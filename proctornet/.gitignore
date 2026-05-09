@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.Python
+env/
+venv/
+.venv/
+
+# Environment variables
+.env
+!.env.example
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+backend/prisma/migrations/
+
+# Uploads (local)
+backend/uploads/
+
+# Python virtual env
+python-service/venv/
+python-service/.venv/
+
+# WireGuard private keys
+vpn-server/keys/
+vpn-server/*.conf
+!vpn-server/*.example.conf
