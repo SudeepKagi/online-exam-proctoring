@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Faculty {
+  id          String     @id @default(uuid())
+  name        String
+  email       String     @unique
+  password    String
+  department  String
+  employeeId  String     @unique
+  isApproved  Boolean    @default(false)
+  approvedBy  String?
+  approvedAt  DateTime?
+  isSuspended Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  exams       Exam[]
+  auditLogs   AuditLog[]
+}
+
+model Student {
+  id             String        @id @default(uuid())
+  name           String
+  usn            String        @unique
+  email          String        @unique
+  password       String
+  department     String
+  semester       Int
+  facePhotoUrl   String
+  idCardPhotoUrl String
+  faceMatchScore Float
+  approvalStatus String        @default("PENDING_FACULTY")
+  approvedBy     String?
+  approvedAt     DateTime?
+  isSuspended    Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  studentExams   StudentExam[]
+  auditLogs      AuditLog[]
+}
+
+model Exam {
+  id                  String               @id @default(uuid())
+  title               String
+  subject             String
+  description         String?
+  facultyId           String
+  faculty             Faculty              @relation(fields: [facultyId], references: [id])
+  startTime           DateTime
+  endTime             DateTime
+  duration            Int
+  totalMarks          Int
+  negativeMarking     Boolean              @default(false)
+  negativeValue       Float                @default(0)
+  questionsPerStudent Int
+  randomiseQuestions  Boolean              @default(true)
+  randomiseOptions    Boolean              @default(true)
+  allowedDepartments  String[]
+  allowedSemesters    Int[]
+  invId               String               @unique
+  invPasswordHash     String
+  status              String               @default("DRAFT")
+  isPaused            Boolean              @default(false)
+  pausedBy            String?
+  pauseReason         String?
+  createdAt           DateTime             @default(now())
+  questions           Question[]
+  studentExams        StudentExam[]
+  invigilatorSessions InvigilatorSession[]
+  chatMessages        ChatMessage[]
+  collusionReports    CollusionReport[]
+  examResults         ExamResult[]
+}
+
+model Question {
+  id            String    @id @default(uuid())
+  examId        String
+  exam          Exam      @relation(fields: [examId], references: [id])
+  type          String
+  questionText  String
+  imageUrl      String?
+  options       Json?
+  correctAnswer String?
+  marks         Float
+  negativeMarks Float     @default(0)
+  difficulty    String    @default("MEDIUM")
+  codeTemplate  String?
+  codeLanguage  String?
+  testCases     Json?
+  wordLimitMin  Int?
+  wordLimitMax  Int?
+  tags          String[]
+  createdAt     DateTime  @default(now())
+  answers       Answer[]
+}
+
+model StudentExam {
+  id                   String                @id @default(uuid())
+  studentId            String
+  student              Student               @relation(fields: [studentId], references: [id])
+  examId               String
+  exam                 Exam                  @relation(fields: [examId], references: [id])
+  assignedQuestionIds  String[]
+  optionOrderMap       Json?
+  watermarkSeed        String
+  vpnKey               String?
+  vpnPeerIp            String?
+  vpnKeyExpiry         DateTime?
+  status               String                @default("PENDING")
+  startedAt            DateTime?
+  submittedAt          DateTime?
+  terminationReason    String?
+  createdAt            DateTime              @default(now())
+  answers              Answer[]
+  evidenceLogs         EvidenceLog[]
+  reverifyLogs         ReverificationLog[]
+  identityVerification IdentityVerification?
+  examResult           ExamResult?
+}
+
+model Answer {
+  id             String      @id @default(uuid())
+  studentExamId  String
+  studentExam    StudentExam @relation(fields: [studentExamId], references: [id])
+  questionId     String
+  question       Question    @relation(fields: [questionId], references: [id])
+  questionType   String
+  selectedOption String?
+  writtenText    String?
+  codeAnswer     String?
+  submittedAt    DateTime    @default(now())
+  timeTakenSecs  Int         @default(0)
+  changedCount   Int         @default(0)
+  autoScore      Float?
+  manualScore    Float?
+  scoredBy       String?
+}
+
+model IdentityVerification {
+  id                 String      @id @default(uuid())
+  studentExamId      String      @unique
+  studentExam        StudentExam @relation(fields: [studentExamId], references: [id])
+  liveFaceMatchScore Float
+  idCardOcrUsn       String?
+  idCardMatchResult  Boolean
+  faceWithIdPhotoUrl String
+  verifiedAt         DateTime    @default(now())
+  status             String
+}
+
+model EvidenceLog {
+  id            String      @id @default(uuid())
+  studentExamId String
+  studentExam   StudentExam @relation(fields: [studentExamId], references: [id])
+  eventType     String
+  timestamp     DateTime    @default(now())
+  screenshotUrl String?
+  cameraFrameUrl String?
+  severity      String      @default("LOW")
+  invAction     String?
+  invActionNote String?
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  examId     String
+  exam       Exam     @relation(fields: [examId], references: [id])
+  studentId  String
+  senderRole String
+  message    String
+  timestamp  DateTime @default(now())
+  isRead     Boolean  @default(false)
+}
+
+model ReverificationLog {
+  id             String      @id @default(uuid())
+  studentExamId  String
+  studentExam    StudentExam @relation(fields: [studentExamId], references: [id])
+  checkTime      DateTime    @default(now())
+  faceMatchScore Float
+  result         String
+  cameraFrameUrl String?
+}
+
+model CollusionReport {
+  id                   String   @id @default(uuid())
+  examId               String
+  exam                 Exam     @relation(fields: [examId], references: [id])
+  student1Id           String
+  student2Id           String
+  similarityScore      Float
+  commonQuestions      String[]
+  matchingWrongAnswers String[]
+  isFlagged            Boolean  @default(true)
+  createdAt            DateTime @default(now())
+}
+
+model ExamResult {
+  id               String      @id @default(uuid())
+  studentExamId    String      @unique
+  studentExam      StudentExam @relation(fields: [studentExamId], references: [id])
+  examId           String
+  exam             Exam        @relation(fields: [examId], references: [id])
+  autoScore        Float       @default(0)
+  manualScore      Float       @default(0)
+  totalScore       Float       @default(0)
+  totalMarks       Float
+  percentage       Float
+  rank             Int?
+  timeTaken        Int
+  flagCount        Int         @default(0)
+  identityVerified Boolean     @default(false)
+  collusionFlagged Boolean     @default(false)
+  isReleased       Boolean     @default(false)
+  releasedAt       DateTime?
+  finalStatus      String      @default("CLEAN")
+  createdAt        DateTime    @default(now())
+}
+
+model InvigilatorSession {
+  id              String   @id @default(uuid())
+  examId          String
+  exam            Exam     @relation(fields: [examId], references: [id])
+  invId           String
+  idCardPhotoUrl  String
+  idCardOcrResult String?
+  loginTime       DateTime @default(now())
+  sessionExpiry   DateTime
+  ipAddress       String?
+  isActive        Boolean  @default(true)
+}
+
+model Announcement {
+  id               String   @id @default(uuid())
+  title            String
+  message          String
+  postedBy         String
+  target           String
+  targetDepartment String?
+  priority         String   @default("NORMAL")
+  createdAt        DateTime @default(now())
+  readBy           String[]
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  userRole  String
+  facultyId String?
+  faculty   Faculty? @relation(fields: [facultyId], references: [id])
+  studentId String?
+  student   Student? @relation(fields: [studentId], references: [id])
+  action    String
+  details   String?
+  ipAddress String?
+  timestamp DateTime @default(now())
+}
+
+model PlatformSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+}
