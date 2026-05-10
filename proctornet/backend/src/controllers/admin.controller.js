@@ -371,11 +371,31 @@ async function getDashboardStats(req, res) {
       global.prisma.evidenceLog.count({ where: { severity: { in: ['HIGH', 'CRITICAL'] } } }),
     ])
 
+    const recentViolationsRaw = await global.prisma.evidenceLog.findMany({
+      take: 5,
+      orderBy: { timestamp: 'desc' },
+      include: {
+        studentExam: {
+          include: { student: true, exam: true }
+        }
+      }
+    });
+
+    const recentViolations = recentViolationsRaw.map(v => ({
+      id: v.id,
+      student: v.studentExam.student.name,
+      exam: v.studentExam.exam.title,
+      type: v.eventType,
+      severity: v.severity,
+      time: v.timestamp
+    }));
+
     res.json({
       faculty:  { total: totalFaculty,   pending: pendingFaculty },
       students: { total: totalStudents,  pending: pendingStudents },
       exams:    { total: totalExams,     active: activeExams },
       flags:    { highSeverity: totalFlags },
+      recentViolations
     })
   } catch (e) {
     console.error('[getDashboardStats]', e)
@@ -451,6 +471,53 @@ async function getAuditLogs(req, res) {
 }
 
 // ════════════════════════════════════════════════════
+// VIOLATIONS
+// ════════════════════════════════════════════════════
+
+/**
+ * GET /api/admin/violations/summary
+ */
+async function getViolationsSummary(req, res) {
+  try {
+    const { status, page = 1, limit = 50 } = req.query
+    const { skip, take } = paginate(page, limit)
+
+    const where = {}
+    if (status && status !== 'all') {
+      where.status = { equals: status, mode: 'insensitive' }
+    }
+
+    const [logs, total] = await Promise.all([
+      global.prisma.evidenceLog.findMany({
+        where, skip, take,
+        orderBy: { timestamp: 'desc' },
+        include: {
+          studentExam: {
+            include: { student: true, exam: true }
+          }
+        }
+      }),
+      global.prisma.evidenceLog.count({ where }),
+    ])
+
+    // Format for frontend
+    const violations = logs.map(v => ({
+      id: v.id,
+      student: `${v.studentExam.student.name} (${v.studentExam.student.usn})`,
+      exam: v.studentExam.exam.title,
+      type: v.eventType,
+      severity: v.severity,
+      status: v.invAction ? 'Reviewed' : 'Pending',
+      time: v.timestamp
+    }))
+
+    res.json({ violations, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+// ════════════════════════════════════════════════════
 // ANNOUNCEMENTS
 // ════════════════════════════════════════════════════
 
@@ -494,6 +561,6 @@ module.exports = {
   listInvigilatorSessions, revokeInvigilatorSession,
   getDashboardStats,
   getSettings, updateSettings,
-  getAuditLogs,
+  getAuditLogs, getViolationsSummary,
   createAnnouncement, listAnnouncements,
 }

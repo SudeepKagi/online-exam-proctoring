@@ -12,20 +12,14 @@ async function seedAdmin() {
   const name     = process.env.ADMIN_NAME     || 'ProctorNet Admin'
 
   try {
-    // Check if admin already exists
-    const existing = await prisma.admin.findUnique({ where: { email } })
-    if (existing) {
-      console.log(`✅ Admin already exists: ${email}`)
-      console.log('   No changes made.')
-      return
-    }
-
     // Hash password
     const hashed = await bcrypt.hash(password, 12)
 
-    // Create admin
-    const admin = await prisma.admin.create({
-      data: { name, email, password: hashed },
+    // Upsert admin
+    const admin = await prisma.admin.upsert({
+      where: { email },
+      update: { password: hashed },
+      create: { name, email, password: hashed },
     })
 
     // Seed default platform settings

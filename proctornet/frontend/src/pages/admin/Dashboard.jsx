@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/services/api'
 import { Alert } from '@/components/common/FormComponents'
+import VPNStatus from '@/components/admin/VPNStatus'
 
 function Icon({ name, style }) {
   return (
@@ -34,24 +35,26 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Placeholder data for design
   useEffect(() => {
-    // In a real app, this would fetch from an API
-    setTimeout(() => {
-      setStats({
-        activeExams: 3,
-        facultyPending: 5,
-        studentsRegistered: 1240,
-        violationsToday: 12
-      })
-      setRecentViolations([
-        { id: 1, student: 'John Doe (1VE22CS001)', exam: 'Data Structures - Midterm', type: 'Multiple Faces', severity: 'High', time: '10 mins ago' },
-        { id: 2, student: 'Jane Smith (1VE22CS045)', exam: 'Database Systems', type: 'No Face Detected', severity: 'Medium', time: '25 mins ago' },
-        { id: 3, student: 'Alice Johnson (1VE22CS088)', exam: 'Data Structures - Midterm', type: 'Tab Switched', severity: 'Medium', time: '1 hour ago' },
-        { id: 4, student: 'Bob Williams (1VE22CS102)', exam: 'Algorithms', type: 'Background Noise', severity: 'Low', time: '2 hours ago' },
-      ])
-      setLoading(false)
-    }, 1000)
+    const fetchDashboardStats = async () => {
+      try {
+        const res = await api.get('/admin/dashboard')
+        const data = res.data
+        setStats({
+          activeExams: data.exams.active,
+          facultyPending: data.faculty.pending,
+          studentsRegistered: data.students.total,
+          violationsToday: data.flags.highSeverity
+        })
+        setRecentViolations(data.recentViolations || [])
+    } catch (err) {
+        console.error('Error fetching dashboard stats:', err)
+        setError('Failed to load dashboard data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchDashboardStats()
   }, [])
 
   return (
@@ -176,6 +179,9 @@ export default function AdminDashboard() {
             </button>
           </div>
         </div>
+
+        {/* VPN Status Widget */}
+        <VPNStatus />
       </div>
     </DashboardLayout>
   )

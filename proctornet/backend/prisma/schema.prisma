@@ -61,11 +61,11 @@ model Exam {
   faculty             Faculty              @relation(fields: [facultyId], references: [id])
   startTime           DateTime
   endTime             DateTime
-  duration            Int
-  totalMarks          Int
+  duration            Int                  @default(60)
+  totalMarks          Int                  @default(100)
   negativeMarking     Boolean              @default(false)
   negativeValue       Float                @default(0)
-  questionsPerStudent Int
+  questionsPerStudent Int                  @default(0) // 0 means all questions
   randomiseQuestions  Boolean              @default(true)
   randomiseOptions    Boolean              @default(true)
   allowedDepartments  String[]
@@ -73,6 +73,17 @@ model Exam {
   invId               String               @unique
   invPasswordHash     String
   status              String               @default("DRAFT")
+  
+  // Proctoring Config
+  cameraRequired      Boolean              @default(true)
+  micRequired         Boolean              @default(false)
+  browserLock         Boolean              @default(true)
+  fullScreenMode      Boolean              @default(true)
+  watermarkRequired   Boolean              @default(true)
+  tabSwitchLimit      Int                  @default(3)
+  aiReverifyInterval  Int                  @default(10) // minutes
+  mobileDetectConfig  Json?
+
   isPaused            Boolean              @default(false)
   pausedBy            String?
   pauseReason         String?
@@ -117,6 +128,7 @@ model StudentExam {
   optionOrderMap       Json?
   watermarkSeed        String
   vpnKey               String?
+  vpnPrivateKey        String?
   vpnPeerIp            String?
   vpnKeyExpiry         DateTime?
   status               String                @default("PENDING")
@@ -147,6 +159,8 @@ model Answer {
   autoScore      Float?
   manualScore    Float?
   scoredBy       String?
+
+  @@unique([studentExamId, questionId])
 }
 
 model IdentityVerification {
@@ -169,6 +183,7 @@ model EvidenceLog {
   timestamp     DateTime    @default(now())
   screenshotUrl String?
   cameraFrameUrl String?
+  details       String?
   severity      String      @default("LOW")
   invAction     String?
   invActionNote String?

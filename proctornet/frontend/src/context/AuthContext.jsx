@@ -1,57 +1,121 @@
-import { createContext, useContext, useState, useEffect } from 'react'
-import api from '@/services/api'
+import React, { createContext, useContext, useReducer, useEffect } from 'react'
+import axios from 'axios'
 
-const AuthContext = createContext(null)
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
+const AuthContext = createContext()
+
+const initialState = {
+  user: null,
+  token: null,
+  role: null,
+  isLoading: true,
+  isAuthenticated: false
+}
+
+function authReducer(state, action) {
+  switch(action.type) {
+    case 'LOGIN_SUCCESS':
+      return {
+        ...state,
+        user: action.payload.user,
+        token: action.payload.token,
+        role: action.payload.role,
+        isAuthenticated: true,
+        isLoading: false
+      }
+    case 'LOGOUT':
+      return {
+        ...initialState,
+        isLoading: false
+      }
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload }
+    default:
+      return state
+  }
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null)
-  const [token, setToken]     = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Rehydrate from localStorage on mount
+  // Axios default header and rehydration
   useEffect(() => {
-    const stored = localStorage.getItem('proctornet_auth')
-    if (stored) {
-      try {
-        const { user: u, token: t } = JSON.parse(stored)
-        setUser(u)
-        setToken(t)
-        api.defaults.headers.common['Authorization'] = `Bearer ${t}`
-      } catch {
-        localStorage.removeItem('proctornet_auth')
-      }
+    const token = localStorage.getItem('proctornet_token')
+    const user = localStorage.getItem('proctornet_user')
+    const role = localStorage.getItem('proctornet_role')
+    
+    if(token && user) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: {
+          token,
+          user: JSON.parse(user),
+          role
+        }
+      })
+    } else {
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-    setLoading(false)
   }, [])
 
-  const login = (userData, jwtToken) => {
-    setUser(userData)
-    setToken(jwtToken)
-    api.defaults.headers.common['Authorization'] = `Bearer ${jwtToken}`
-    localStorage.setItem('proctornet_auth', JSON.stringify({
-      user: userData,
-      token: jwtToken,
-    }))
+  const login = async (credentials, role) => {
+    try {
+      const endpoint = {
+        admin: '/api/auth/admin/login',
+        faculty: '/api/auth/faculty/login',
+        student: '/api/auth/student/login'
+      }[role]
+
+      const res = await axios.post(`${API}${endpoint}`, credentials)
+      
+      const { token, user } = res.data
+      
+      localStorage.setItem('proctornet_token', token)
+      localStorage.setItem('proctornet_user', JSON.stringify(user))
+      localStorage.setItem('proctornet_role', role)
+      
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      
+      dispatch({
+        type: 'LOGIN_SUCCESS',
+        payload: { token, user, role }
+      })
+      
+      return { success: true }
+    } catch(err) {
+      return { 
+        success: false, 
+        error: err.response?.data?.message || err.response?.data?.error || 'Login failed' 
+      }
+    }
   }
 
   const logout = () => {
-    setUser(null)
-    setToken(null)
-    delete api.defaults.headers.common['Authorization']
-    localStorage.removeItem('proctornet_auth')
+    localStorage.removeItem('proctornet_token')
+    localStorage.removeItem('proctornet_user')
+    localStorage.removeItem('proctornet_role')
+    localStorage.removeItem('inv_token')
+    localStorage.removeItem('inv_examId')
+    localStorage.removeItem('inv_session')
+    delete axios.defaults.headers.common['Authorization']
+    dispatch({ type: 'LOGOUT' })
   }
 
-  const isAuthenticated = !!user && !!token
-
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading, isAuthenticated }}>
+    <AuthContext.Provider value={{ 
+      ...state, login, logout 
+    }}>
       {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
+export const useAuth = () => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
 }

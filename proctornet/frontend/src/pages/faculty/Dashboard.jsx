@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { Alert } from '@/components/common/FormComponents'
 import { Link } from 'react-router-dom'
+import api from '@/services/api'
 
 function Icon({ name, style }) {
   return <span className="material-icon" style={style}>{name}</span>
@@ -25,16 +26,19 @@ export default function FacultyDashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Placeholder for API call
-    setTimeout(() => {
-      setStats({
-        activeExams: 1,
-        upcomingExams: 3,
-        totalStudents: 145,
-        flaggedSessions: 2
-      })
-      setLoading(false)
-    }, 1000)
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/faculty/dashboard')
+        setStats(res.data)
+      } catch (e) {
+        console.error('Failed to fetch stats', e)
+        // Use fallback data if API fails
+        setStats({ activeExams: 0, upcomingExams: 0, totalStudents: 0, flaggedSessions: 0 })
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
   }, [])
 
   return (

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { Alert } from '@/components/common/FormComponents'
+import api from '@/services/api'
 
-function Icon({ name, style }) {
-  return <span className="material-icon" style={style}>{name}</span>
+function Icon({ name, style, size = 20 }) {
+  return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
 }
 
 const navItems = [
@@ -14,18 +15,32 @@ const navItems = [
 ]
 
 export default function StudentDashboard() {
+  const navigate = useNavigate()
+  const [exams, setExams] = useState([])
+  const [results, setResults] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Placeholder loading simulation
-    setTimeout(() => {
-      setLoading(false)
-    }, 800)
+    fetchData()
   }, [])
+
+  const fetchData = async () => {
+    try {
+      const [examRes, resultsRes] = await Promise.all([
+        api.get('/student/exams?status=upcoming'),
+        api.get('/student/results')
+      ])
+      setExams(examRes.data.exams.slice(0, 3))
+      setResults(resultsRes.data.results.slice(0, 5))
+      setLoading(false)
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err)
+      setLoading(false)
+    }
+  }
 
   return (
     <DashboardLayout navItems={navItems}>
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Welcome Back</h1>
@@ -37,117 +52,86 @@ export default function StudentDashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
         
-        {/* Main Content: Upcoming & Active Exams */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Live & Upcoming Exams</h3>
-              <Link to="/student/exams" style={{ fontSize: '0.8125rem', fontWeight: 600 }}>View Calendar</Link>
+              <Link to="/student/exams" style={{ fontSize: '0.8125rem', fontWeight: 600 }}>View All</Link>
             </div>
             <div className="card-body">
               {loading ? (
-                <p style={{ color: 'var(--on-surface-variant)' }}>Loading exams...</p>
+                <div className="spinner"></div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  
-                  {/* Live Exam Card */}
-                  <div style={{ 
-                    padding: '1.25rem', 
-                    border: '1px solid var(--primary)', 
-                    borderRadius: '12px', 
-                    background: 'var(--primary-fixed)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                          <span className="live-dot" />
-                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--primary)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                            Live Now
-                          </span>
+                  {exams.length === 0 ? (
+                    <p style={{ color: 'var(--on-surface-variant)', textAlign: 'center', padding: '2rem' }}>No exams scheduled for your batch.</p>
+                  ) : (
+                    exams.map(e => (
+                      <div key={e.id} style={{ 
+                        padding: '1.25rem', 
+                        border: e.isLive ? '1px solid var(--primary)' : '1px solid var(--outline-variant)', 
+                        borderRadius: '12px', 
+                        background: e.isLive ? 'var(--primary-fixed)' : 'var(--surface-container-low)',
+                        position: 'relative'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                              {e.isLive && <span className="live-dot" />}
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: e.isLive ? 'var(--primary)' : 'var(--on-surface-variant)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                {e.isLive ? 'Live Now' : 'Upcoming'}
+                              </span>
+                            </div>
+                            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.25rem' }}>
+                              {e.title}
+                            </h4>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>
+                              {e.faculty.name} • {e.isLive ? 'Ends at ' : 'Starts '}{new Date(e.isLive ? e.endTime : e.startTime).toLocaleTimeString()}
+                            </p>
+                          </div>
+                          {e.isLive && (
+                            <Link to={`/student/exam-lobby/${e.id}`} className="btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
+                              Join Lobby
+                            </Link>
+                          )}
                         </div>
-                        <h4 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--on-primary-fixed)', marginBottom: '0.25rem' }}>
-                          Data Structures Midterm
-                        </h4>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--on-primary-fixed-variant)' }}>
-                          Prof. Alan Turing • Closes in 45 mins
-                        </p>
                       </div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem' }}>
-                      <Link to="/student/exam-lobby" className="btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
-                        Join Security Lobby
-                      </Link>
-                      <span style={{ fontSize: '0.8125rem', color: 'var(--on-primary-fixed-variant)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <Icon name="vpn_lock" size={16} /> VPN Required
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Upcoming Exam Card */}
-                  <div style={{ 
-                    padding: '1.25rem', 
-                    border: '1px solid var(--outline-variant)', 
-                    borderRadius: '12px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}>
-                    <div>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '0.25rem' }}>
-                        Algorithms Final
-                      </h4>
-                      <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>
-                        Tomorrow, 10:00 AM • 120 mins
-                      </p>
-                    </div>
-                    <button className="btn-secondary" disabled>
-                      Not Started
-                    </button>
-                  </div>
-
+                    ))
+                  )}
                 </div>
               )}
             </div>
           </div>
 
-          {/* Recent Results */}
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Recent Results</h3>
             </div>
             <div className="card-body">
-              {loading ? (
-                <p style={{ color: 'var(--on-surface-variant)' }}>Loading results...</p>
-              ) : (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Exam</th>
-                      <th>Date</th>
-                      <th>Score</th>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Exam</th>
+                    <th>Date</th>
+                    <th>Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map(r => (
+                    <tr key={r.id}>
+                      <td style={{ fontWeight: 500 }}>{r.exam.title}</td>
+                      <td style={{ color: 'var(--on-surface-variant)' }}>{new Date(r.gradedAt).toLocaleDateString()}</td>
+                      <td><span className={`badge ${r.percentage > 40 ? 'badge-success' : 'badge-danger'}`}>{r.totalScore} / {r.exam.totalMarks}</span></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ fontWeight: 500 }}>Operating Systems Quiz</td>
-                      <td style={{ color: 'var(--on-surface-variant)' }}>Oct 12, 2025</td>
-                      <td><span className="badge badge-success">85 / 100</span></td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 500 }}>Computer Networks Midterm</td>
-                      <td style={{ color: 'var(--on-surface-variant)' }}>Oct 05, 2025</td>
-                      <td><span className="badge badge-primary">92 / 100</span></td>
-                    </tr>
-                  </tbody>
-                </table>
-              )}
+                  ))}
+                  {results.length === 0 && (
+                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '2rem' }}>No results available yet.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
-
         </div>
 
         {/* Sidebar widgets */}

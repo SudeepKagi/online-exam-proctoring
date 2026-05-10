@@ -40,6 +40,9 @@ router.patch ('/settings',  ctrl.updateSettings)
 // ── Audit logs ─────────────────────────────────────
 router.get('/audit-logs', ctrl.getAuditLogs)
 
+// ── Violations ─────────────────────────────────────
+router.get('/violations/summary', ctrl.getViolationsSummary)
+
 // ── Announcements ──────────────────────────────────
 router.post('/announcements', ctrl.createAnnouncement)
 router.get ('/announcements', ctrl.listAnnouncements)

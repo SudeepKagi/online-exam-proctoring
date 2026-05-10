@@ -62,39 +62,63 @@ export default function StudentRegister() {
 
   // ── Camera ─────────────────────────────────────
   const startCamera = async () => {
+    setError('')
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false,
       })
       streamRef.current = stream
+      setCameraActive(true)
+      
+      // If the video ref is already attached, set the source immediately
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
-      setCameraActive(true)
     } catch (e) {
-      setError('Cannot access camera: ' + e.message)
+      console.error('Camera Error:', e)
+      setError('Cannot access camera. Please ensure permissions are granted.')
     }
   }
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop())
       streamRef.current = null
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
+    }
     setCameraActive(false)
-  }
+  }, [])
+
+  const videoCallbackRef = useCallback((node) => {
+    videoRef.current = node
+    if (node && streamRef.current) {
+      node.srcObject = streamRef.current
+    }
+  }, [])
 
   const capturePhoto = useCallback(() => {
+    const video = videoRef.current
+    if (!video || video.readyState < 2) {
+      setError('Camera is not ready yet. Please wait.')
+      return
+    }
+
     const canvas = document.createElement('canvas')
-    canvas.width  = videoRef.current.videoWidth  || 640
-    canvas.height = videoRef.current.videoHeight || 480
-    canvas.getContext('2d').drawImage(videoRef.current, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+    // Use actual video dimensions
+    canvas.width  = video.videoWidth  || 640
+    canvas.height = video.videoHeight || 480
+    
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
     setFacePhoto(dataUrl)
     setFacePreview(dataUrl)
     stopCamera()
-  }, [])
+  }, [stopCamera])
 
   const retakePhoto = () => {
     setFacePhoto(null)
@@ -296,9 +320,15 @@ export default function StudentRegister() {
             {cameraActive && (
               <div style={{ width: '100%' }}>
                 <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--primary)', marginBottom: '1rem', background: '#000' }}>
-                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block' }} />
+                  <video 
+                    ref={videoCallbackRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    style={{ width: '100%', display: 'block', transform: 'scaleX(-1)' }} // Mirror for user
+                  />
                   {/* Face guide overlay */}
-                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '180px', height: '240px', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: '50%' }} />
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '200px', height: '260px', border: '2px dashed rgba(255,255,255,0.4)', borderRadius: '50%', pointerEvents: 'none' }} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <button onClick={capturePhoto} className="btn-primary" style={{ flex: 1 }}>

@@ -162,20 +162,28 @@ async function studentRegister(req, res) {
     let approvalStatus  = 'PENDING_ADMIN'
 
     try {
-      const pyRes = await compareFaces(facePhotoUrl, idCardPhotoUrl)
-      faceMatchScore = pyRes.matchScore || 0
-      const ocrUsn   = pyRes.ocrUsn || ''
+      // 1. Face Comparison
+      const faceRes = await compareFaces(facePhotoUrl, idCardPhotoUrl)
+      faceMatchScore = faceRes.matchScore || 0
+      
+      // 2. OCR Verification
+      const ocrRes = await verifyIdCardOcr(idCardPhotoUrl)
+      const ocrUsn = ocrRes.extractedUsn || ''
 
-      // Auto-approve to faculty queue if score >= threshold
+      // Auto-approve to faculty queue if score >= threshold AND USN matches
       const threshold = 0.80
-      if (faceMatchScore >= threshold && ocrUsn.toUpperCase() === usn.toUpperCase()) {
+      const usnMatches = ocrUsn.toUpperCase() === usn.toUpperCase()
+      
+      if (faceMatchScore >= threshold && usnMatches) {
         approvalStatus = 'PENDING_FACULTY'
+      } else {
+        console.warn(`[studentRegister] Auto-approval failed: Score=${faceMatchScore}, USN Match=${usnMatches} (OCR: ${ocrUsn}, Input: ${usn})`)
       }
     } catch (pyErr) {
-      // Python service not running in dev — set a default
-      console.warn('[studentRegister] Python service unavailable:', pyErr.message)
-      faceMatchScore = 0.85  // default for dev
-      approvalStatus = 'PENDING_FACULTY'
+      // Python service not running or error — set to manual review
+      console.warn('[studentRegister] AI Service Issue:', pyErr.message)
+      faceMatchScore = 0 // Indicate verification was not performed
+      approvalStatus = 'PENDING_ADMIN' 
     }
 
     const hashed  = await bcrypt.hash(password, 12)

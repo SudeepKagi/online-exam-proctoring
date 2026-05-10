@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import api from '@/services/api'
 import DashboardLayout from '@/components/common/DashboardLayout'
 
 function Icon({ name, style }) {
@@ -16,16 +17,26 @@ const navItems = [
 
 export default function AdminViolations() {
   const [activeFilter, setActiveFilter] = useState('all')
+  const [violations, setViolations] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const violations = [
-    { id: 1, student: 'John Doe (1VE22CS001)', exam: 'Data Structures', type: 'Multiple Faces', severity: 'High', status: 'Pending', time: '10 mins ago' },
-    { id: 2, student: 'Jane Smith (1VE22CS045)', exam: 'Database Systems', type: 'No Face Detected', severity: 'Medium', status: 'Reviewed', time: '25 mins ago' },
-    { id: 3, student: 'Alice Johnson (1VE22CS088)', exam: 'Data Structures', type: 'Tab Switched', severity: 'Medium', status: 'Pending', time: '1 hour ago' },
-    { id: 4, student: 'Bob Williams (1VE22CS102)', exam: 'Algorithms', type: 'Background Noise', severity: 'Low', status: 'Dismissed', time: '2 hours ago' },
-    { id: 5, student: 'Charlie Brown (1VE22CS110)', exam: 'Operating Systems', type: 'VPN Disconnected', severity: 'High', status: 'Pending', time: '3 hours ago' },
-  ]
+  useEffect(() => {
+    fetchViolations()
+  }, [activeFilter])
 
-  const filtered = activeFilter === 'all' ? violations : violations.filter(v => v.status.toLowerCase() === activeFilter)
+  const fetchViolations = async () => {
+    try {
+      setLoading(true)
+      const res = await api.get(`/admin/violations/summary?status=${activeFilter}`)
+      setViolations(res.data.violations)
+    } catch (err) {
+      console.error('Error fetching violations:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filtered = violations
 
   return (
     <DashboardLayout navItems={navItems}>

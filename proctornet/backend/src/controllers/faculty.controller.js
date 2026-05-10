@@ -25,17 +25,22 @@ async function createExam(req, res) {
     const rawInvPassword = Math.random().toString(36).substr(2, 8)
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
 
+    // Fetch faculty details to get department
+    const faculty = await global.prisma.faculty.findUnique({ where: { id: req.user.id } })
+
     const exam = await global.prisma.exam.create({
       data: {
         title, subject, description, 
         startTime: new Date(startTime), 
         endTime: new Date(endTime), 
-        durationMinutes: parseInt(durationMinutes), 
+        duration: parseInt(durationMinutes), 
         totalMarks: parseInt(totalMarks) || 0,
         facultyId: req.user.id,
         status: 'SCHEDULED',
         invId,
         invPasswordHash,
+        allowedDepartments: [faculty.department], // Default to faculty's department
+        allowedSemesters: [1, 2, 3, 4, 5, 6, 7, 8], // Default to all semesters
         cameraRequired: cameraRequired !== undefined ? cameraRequired : true,
         micRequired: micRequired !== undefined ? micRequired : true,
         browserLock: browserLock !== undefined ? browserLock : true,
@@ -55,6 +60,40 @@ async function createExam(req, res) {
     })
   } catch (e) {
     console.error('[createExam]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/dashboard
+ * Dashboard statistics for faculty
+ */
+async function getDashboardStats(req, res) {
+  try {
+    const facultyId = req.user.id
+    
+    const [activeExams, upcomingExams, totalStudents, flaggedSessions] = await Promise.all([
+      global.prisma.exam.count({ where: { facultyId, status: 'IN_PROGRESS' } }),
+      global.prisma.exam.count({ where: { facultyId, status: 'SCHEDULED' } }),
+      // Count unique students enrolled in their exams
+      global.prisma.studentExam.groupBy({
+        by: ['studentId'],
+        where: { exam: { facultyId } }
+      }).then(res => res.length),
+      // Count exam results with high severity flags for their exams
+      global.prisma.evidenceLog.count({
+        where: { studentExam: { exam: { facultyId } }, severity: 'HIGH' }
+      })
+    ])
+
+    res.json({
+      activeExams,
+      upcomingExams,
+      totalStudents,
+      flaggedSessions
+    })
+  } catch (e) {
+    console.error('[faculty getDashboardStats]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -349,7 +388,192 @@ async function listExamResults(req, res) {
   }
 }
 
+/**
+ * GET /api/faculty/students
+ * List students (either all students in the same department as faculty, or enrolled students)
+ * We will return students in the same department for approval
+ */
+async function listStudents(req, res) {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query
+    const { skip, take } = paginate(page, limit)
+
+    // Faculty can only view/approve students from their own department
+    const faculty = await global.prisma.faculty.findUnique({ where: { id: req.user.id } })
+
+    const where = { department: faculty.department }
+    if (status) where.approvalStatus = status
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { usn: { contains: search, mode: 'insensitive' } }
+      ]
+    }
+
+    const [students, total] = await Promise.all([
+      global.prisma.student.findMany({
+        where, skip, take,
+        select: { id: true, name: true, usn: true, department: true, semester: true, approvalStatus: true, createdAt: true },
+        orderBy: { createdAt: 'desc' }
+      }),
+      global.prisma.student.count({ where })
+    ])
+
+    res.json({ students, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    console.error('[faculty listStudents]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * PATCH /api/faculty/students/:id/approve
+ * Approve a student
+ */
+async function approveStudent(req, res) {
+  try {
+    const { id } = req.params
+    const student = await global.prisma.student.findUnique({ where: { id } })
+    if (!student) return res.status(404).json({ error: 'Student not found.' })
+
+    const faculty = await global.prisma.faculty.findUnique({ where: { id: req.user.id } })
+    if (student.department !== faculty.department) {
+      return res.status(403).json({ error: 'Can only approve students in your department.' })
+    }
+
+    const updated = await global.prisma.student.update({
+      where: { id },
+      data: { approvalStatus: 'APPROVED', approvedBy: req.user.id, approvedAt: new Date() }
+    })
+
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'STUDENT_APPROVED', details: `Approved student ${student.usn}` })
+
+    res.json({ message: 'Student approved.', student: updated })
+  } catch (e) {
+    console.error('[faculty approveStudent]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function runCollusionCheck(req, res) {
+  try {
+    const { id } = req.params;
+    const results = await global.prisma.result.findMany({
+      where: { examId: id },
+      include: {
+        studentExam: { include: { student: true } },
+        answers: { include: { question: true } }
+      }
+    });
+
+    if (results.length < 2) {
+      return res.json({ message: 'Not enough submissions to check collusion.', flags: [] });
+    }
+
+    const flags = [];
+    const threshold = 0.85; // 85% similarity
+
+    for (let i = 0; i < results.length; i++) {
+      for (let j = i + 1; j < results.length; j++) {
+        const r1 = results[i];
+        const r2 = results[j];
+        
+        let matches = 0;
+        let total = r1.answers.length;
+
+        r1.answers.forEach(a1 => {
+          const a2 = r2.answers.find(x => x.questionId === a1.questionId);
+          if (!a2) return;
+
+          if (a1.question.type === 'MCQ') {
+            if (a1.selectedOption === a2.selectedOption) matches++;
+          } else {
+            const sim = calculateSimilarity(a1.codeAnswer || '', a2.codeAnswer || '');
+            if (sim > threshold) matches++;
+          }
+        });
+
+        if (total > 0) {
+          const similarityIndex = matches / total;
+          if (similarityIndex > threshold) {
+            flags.push({
+              student1: r1.studentExam.student,
+              student2: r2.studentExam.student,
+              similarity: similarityIndex * 100,
+              details: `High similarity detected across ${matches}/${total} questions.`
+            });
+          }
+        }
+      }
+    }
+
+    res.json({ flags });
+  } catch (error) {
+    console.error('[runCollusionCheck]', error);
+    res.status(500).json({ error: 'Collusion check failed.' });
+  }
+}
+
+function calculateSimilarity(s1, s2) {
+  if (!s1 || !s2) return 0;
+  const longer = s1.length > s2.length ? s1 : s2;
+  const shorter = s1.length > s2.length ? s2 : s1;
+  if (longer.length === 0) return 1.0;
+  return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
+}
+
+function editDistance(s1, s2) {
+  s1 = s1.toLowerCase(); s2 = s2.toLowerCase();
+  const costs = [];
+  for (let i = 0; i <= s1.length; i++) {
+    let lastValue = i;
+    for (let j = 0; j <= s2.length; j++) {
+      if (i === 0) costs[j] = j;
+      else if (j > 0) {
+        let newValue = costs[j - 1];
+        if (s1.charAt(i - 1) !== s2.charAt(j - 1))
+          newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+        costs[j - 1] = lastValue;
+        lastValue = newValue;
+      }
+    }
+    if (i > 0) costs[s2.length] = lastValue;
+  }
+  return costs[s2.length];
+}
+
+async function getStudentResult(req, res) {
+  try {
+    const { id } = req.params; // Result ID
+    const result = await global.prisma.result.findUnique({
+      where: { id },
+      include: {
+        studentExam: {
+          include: {
+            student: true,
+            exam: true,
+            evidenceLogs: true
+          }
+        },
+        answers: {
+          include: {
+            question: true
+          }
+        }
+      }
+    });
+
+    if (!result) return res.status(404).json({ error: 'Result not found.' });
+
+    res.json({ result });
+  } catch (error) {
+    console.error('[getStudentResult]', error);
+    res.status(500).json({ error: 'Failed to fetch result dossier.' });
+  }
+}
+
 module.exports = {
+  getDashboardStats,
   createExam,
   listExams,
   getExam,
@@ -359,5 +583,9 @@ module.exports = {
   bulkAddQuestions,
   addStudentsToExam,
   listExamStudents,
-  listExamResults
+  listExamResults,
+  listStudents,
+  approveStudent,
+  runCollusionCheck,
+  getStudentResult
 }

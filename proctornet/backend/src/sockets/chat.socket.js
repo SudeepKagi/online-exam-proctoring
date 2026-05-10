@@ -1,27 +1,36 @@
 /**
- * chat.socket.js — Private chat between students and invigilator
- * Full implementation in Step 41
+ * chat.socket.js
+ * Handles private proctoring chat between students and invigilators.
  */
-module.exports = function initChatSocket(io) {
+function initChatSocket(io) {
   io.on('connection', (socket) => {
-    // Student sends chat message
-    socket.on('exam:chat', async ({ examId, studentId, message, studentExamId }) => {
-      try {
-        await global.prisma.chatMessage.create({
-          data: { examId, studentId, senderRole: 'student', message },
-        })
-      } catch (e) { /* */ }
-      io.to(`inv:${examId}`).emit('student:chat', { studentId, message, timestamp: new Date() })
+    
+    // Send message (Student -> Invigilator or vice versa)
+    socket.on('chat:send', (data) => {
+      const { examId, studentId, message, senderRole, senderName } = data
+      
+      const payload = {
+        studentId,
+        message,
+        senderRole,
+        senderName,
+        timestamp: new Date()
+      }
+
+      if (senderRole === 'student') {
+        // Broadcast to invigilators
+        io.to(`inv:${examId}`).emit('chat:receive', payload)
+      } else if (senderRole === 'invigilator') {
+        // Send to specific student
+        io.to(`student:${studentId}`).emit('chat:receive', payload)
+      }
     })
 
-    // Invigilator replies
-    socket.on('inv:chat', async ({ examId, studentId, message }) => {
-      try {
-        await global.prisma.chatMessage.create({
-          data: { examId, studentId, senderRole: 'invigilator', message },
-        })
-      } catch (e) { /* */ }
-      io.to(`student:${studentId}`).emit('inv:chatReply', { message, timestamp: new Date() })
+    // Join chat room
+    socket.on('chat:join', ({ roomId }) => {
+      socket.join(`chat:${roomId}`)
     })
   })
 }
+
+module.exports = initChatSocket

@@ -1,61 +1,64 @@
 /**
- * exam.socket.js — Real-time exam event handlers
- * Full implementation in Step 35
+ * exam.socket.js
+ * Handles real-time proctoring events between students and invigilators.
  */
-module.exports = function initExamSocket(io) {
-  const examNs = io.of('/')
-
-  examNs.on('connection', (socket) => {
-    console.log(`[Socket] Client connected: ${socket.id}`)
+function initExamSocket(io) {
+  io.on('connection', (socket) => {
+    console.log('New socket connection:', socket.id)
 
     // Student joins exam room
     socket.on('exam:join', ({ studentId, examId, name, usn }) => {
+      console.log(`Student ${usn} joining exam ${examId}`)
       socket.join(`exam:${examId}`)
       socket.join(`student:${studentId}`)
-      io.to(`inv:${examId}`).emit('student:joined', { studentId, name, usn })
-      console.log(`[Socket] Student ${usn} joined exam ${examId}`)
+      
+      // Notify all invigilators in this exam
+      io.to(`inv:${examId}`).emit('student:online', { studentId, name, usn, socketId: socket.id })
     })
 
-    // Student flag event
-    socket.on('exam:flag', async (data) => {
-      try {
-        await global.prisma.evidenceLog.create({
-          data: {
-            studentExamId: data.studentExamId,
-            eventType: data.eventType,
-            severity: data.severity || 'LOW',
-            screenshotUrl: data.screenshotUrl || null,
-            cameraFrameUrl: data.cameraFrameUrl || null,
-          },
-        })
-      } catch (e) { /* DB may not be connected in dev */ }
-      io.to(`inv:${data.examId}`).emit('student:flag', data)
+    // Student sends a flag (violation)
+    socket.on('exam:flag', (data) => {
+      const { examId, studentId, usn, eventType, severity, timestamp } = data
+      console.log(`Violation: [${severity}] ${eventType} from ${usn}`)
+      
+      // Broadcast to all invigilators for this exam
+      io.to(`inv:${examId}`).emit('student:violation', {
+        studentId,
+        usn,
+        eventType,
+        severity,
+        timestamp: timestamp || new Date(),
+        details: data.details || {}
+      })
+    })
+
+    // Student sends periodic camera frame
+    socket.on('exam:frame', ({ examId, studentId, frame }) => {
+      io.to(`inv:${examId}`).emit('student:frame', { studentId, frame })
     })
 
     // Invigilator joins
     socket.on('inv:join', ({ examId }) => {
+      console.log(`Invigilator joining monitor for exam ${examId}`)
       socket.join(`inv:${examId}`)
-      console.log(`[Socket] Invigilator joined exam ${examId}`)
     })
 
-    // Invigilator warns student
+    // Invigilator sends a warning to a student
     socket.on('inv:warn', ({ studentId, message }) => {
+      console.log(`Warning student ${studentId}: ${message}`)
       io.to(`student:${studentId}`).emit('exam:warning', { message })
     })
 
-    // Invigilator terminates student
-    socket.on('inv:terminate', async ({ studentId, reason, examId }) => {
+    // Invigilator terminates a student's exam
+    socket.on('inv:terminate', ({ studentId, reason }) => {
+      console.log(`Terminating student ${studentId}: ${reason}`)
       io.to(`student:${studentId}`).emit('exam:terminated', { reason })
-      try {
-        await global.prisma.studentExam.updateMany({
-          where: { studentId, examId },
-          data: { status: 'TERMINATED', terminationReason: reason, submittedAt: new Date() },
-        })
-      } catch (e) { /* */ }
     })
 
     socket.on('disconnect', () => {
-      console.log(`[Socket] Client disconnected: ${socket.id}`)
+      console.log('Socket disconnected:', socket.id)
     })
   })
 }
+
+module.exports = initExamSocket

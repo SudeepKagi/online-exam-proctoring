@@ -40,12 +40,17 @@ function uploadBuffer(buffer, folder = 'proctornet', publicId = null) {
  * @returns {Promise<string>} secure_url
  */
 async function uploadBase64(dataUrl, folder = 'proctornet') {
-  const result = await cloudinary.uploader.upload(dataUrl, {
-    folder,
-    resource_type: 'image',
-    transformation: [{ quality: 'auto', fetch_format: 'auto' }],
-  })
-  return result.secure_url
+  try {
+    const result = await cloudinary.uploader.upload(dataUrl, {
+      folder,
+      resource_type: 'image',
+      transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+    })
+    return result.secure_url
+  } catch (err) {
+    console.warn('[Cloudinary] Upload failed, falling back to base64:', err.message)
+    return dataUrl
+  }
 }
 
 /**

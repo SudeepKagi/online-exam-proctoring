@@ -45,7 +45,7 @@ export default function AdminLogin() {
         <Alert type="danger" message={error} />
 
         <InfoBox>
-          Default credentials: <strong>admin@proctornet.com</strong> / <strong>Admin@123</strong>
+          Default credentials: <strong>admin@proctornet.com</strong> / <strong>Admin@2026</strong>
         </InfoBox>
 
         <FormInput

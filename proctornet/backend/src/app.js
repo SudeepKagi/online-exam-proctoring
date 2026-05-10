@@ -18,14 +18,15 @@ const examRoutes         = require('./routes/exam.routes')
 const questionRoutes     = require('./routes/question.routes')
 const answerRoutes       = require('./routes/answer.routes')
 const resultRoutes       = require('./routes/result.routes')
+const vpnRoutes          = require('./routes/vpn.routes')
 
 // ── Socket handlers ──
 const initExamSocket = require('./sockets/exam.socket')
 const initChatSocket = require('./sockets/chat.socket')
 
 // ── Jobs ──
-require('./jobs/vpnRevoke.job')
-
+const vpnService = require('./services/vpn.service')
+vpnService.startAutoRevoke()
 const app    = express()
 const server = http.createServer(app)
 const prisma = new PrismaClient()
@@ -36,7 +37,11 @@ global.prisma = prisma
 // ── Socket.io ──
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'http://localhost:5173',
+      'http://localhost:5174',
+    ],
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -58,6 +63,7 @@ app.use(cors({
   origin: [
     process.env.FRONTEND_URL || 'http://localhost:5173',
     'http://localhost:5173',
+    'http://localhost:5174',
     'http://localhost:3000',
   ],
   credentials: true,
@@ -106,6 +112,7 @@ app.use('/api/exam',         examRoutes)
 app.use('/api/question',     questionRoutes)
 app.use('/api/answer',       answerRoutes)
 app.use('/api/result',       resultRoutes)
+app.use('/api/vpn',          vpnRoutes)
 
 // ── 404 handler ──
 app.use((req, res) => {
