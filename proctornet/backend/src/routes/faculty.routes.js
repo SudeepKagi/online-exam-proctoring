@@ -15,6 +15,13 @@ router.get   ('/exams/:id',  ctrl.getExam)
 router.patch ('/exams/:id',  ctrl.updateExam)
 
 // ── Question Management ───────────────────────────────
-router.post  ('/questions',  ctrl.addQuestion)
+router.post  ('/questions',       ctrl.addQuestion)
+router.get   ('/questions',       ctrl.listQuestions)
+router.post  ('/questions/bulk',  ctrl.bulkAddQuestions)
+
+// ── Student & Result Management ───────────────────────
+router.post  ('/exams/:id/students', ctrl.addStudentsToExam)
+router.get   ('/exams/:id/students', ctrl.listExamStudents)
+router.get   ('/exams/:id/results',  ctrl.listExamResults)
 
 module.exports = router

@@ -178,10 +178,186 @@ async function addQuestion(req, res) {
   }
 }
 
+/**
+ * GET /api/faculty/questions
+ * Step 31: Retrieve question pool for a specific exam or across faculty
+ */
+async function listQuestions(req, res) {
+  try {
+    const { examId, page = 1, limit = 50 } = req.query
+    const { skip, take } = paginate(page, limit)
+
+    const where = {}
+    if (examId) {
+      where.examId = examId
+      // Ensure faculty owns the exam
+      const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
+      if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+    } else {
+      // Find all exams by this faculty to get their questions
+      const exams = await global.prisma.exam.findMany({ where: { facultyId: req.user.id }, select: { id: true } })
+      where.examId = { in: exams.map(e => e.id) }
+    }
+
+    const [questions, total] = await Promise.all([
+      global.prisma.question.findMany({ where, skip, take, orderBy: { createdAt: 'desc' } }),
+      global.prisma.question.count({ where })
+    ])
+
+    res.json({ questions, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * POST /api/faculty/questions/bulk
+ * Step 32: Bulk upload questions via JSON
+ */
+async function bulkAddQuestions(req, res) {
+  try {
+    const { examId, questions } = req.body
+
+    if (!examId || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'Invalid payload.' })
+    }
+
+    const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    let totalMarksAdded = 0
+    const dataToInsert = questions.map(q => {
+      totalMarksAdded += parseInt(q.marks || 0)
+      return {
+        examId,
+        type: q.type || 'MCQ',
+        questionText: q.questionText,
+        options: q.options || [],
+        correctAnswer: q.correctAnswer || null,
+        marks: parseInt(q.marks || 1),
+        difficulty: q.difficulty || 'MEDIUM'
+      }
+    })
+
+    const created = await global.prisma.question.createMany({
+      data: dataToInsert
+    })
+
+    await global.prisma.exam.update({
+      where: { id: examId },
+      data: { totalMarks: exam.totalMarks + totalMarksAdded }
+    })
+
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'BULK_QUESTIONS_ADDED', details: `${created.count} questions added to exam ${examId}` })
+
+    res.status(201).json({ message: `${created.count} questions added successfully.` })
+  } catch (e) {
+    console.error('[bulkAddQuestions]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * POST /api/faculty/exams/:id/students
+ * Step 33: Add students to an exam
+ */
+async function addStudentsToExam(req, res) {
+  try {
+    const { id } = req.params
+    const { studentIds } = req.body
+
+    if (!Array.isArray(studentIds)) return res.status(400).json({ error: 'studentIds must be an array.' })
+
+    const exam = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    // Insert ignoring duplicates
+    let addedCount = 0
+    for (const sId of studentIds) {
+      const exists = await global.prisma.studentExam.findFirst({ where: { examId: id, studentId: sId } })
+      if (!exists) {
+        // Generate random watermark seed for the student
+        const watermarkSeed = Math.random().toString(36).substring(2, 8).toUpperCase()
+        await global.prisma.studentExam.create({
+          data: {
+            examId: id,
+            studentId: sId,
+            watermarkSeed
+          }
+        })
+        addedCount++
+      }
+    }
+
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'STUDENTS_ENROLLED', details: `${addedCount} students enrolled in exam ${id}` })
+    res.status(201).json({ message: `Successfully enrolled ${addedCount} students.` })
+  } catch (e) {
+    console.error('[addStudentsToExam]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/exams/:id/students
+ * Step 34: List students enrolled in an exam
+ */
+async function listExamStudents(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const enrollments = await global.prisma.studentExam.findMany({
+      where: { examId: id },
+      include: {
+        student: { select: { id: true, name: true, usn: true, department: true } }
+      }
+    })
+
+    res.json({ enrollments })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/exams/:id/results
+ * Step 35: Get exam results and cheat flags
+ */
+async function listExamResults(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const results = await global.prisma.examResult.findMany({
+      where: { examId: id },
+      include: {
+        studentExam: {
+          include: {
+            student: { select: { name: true, usn: true } },
+            evidenceLogs: { select: { severity: true } }
+          }
+        }
+      },
+      orderBy: { percentage: 'desc' }
+    })
+
+    res.json({ results })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
 module.exports = {
   createExam,
   listExams,
   getExam,
   updateExam,
-  addQuestion
+  addQuestion,
+  listQuestions,
+  bulkAddQuestions,
+  addStudentsToExam,
+  listExamStudents,
+  listExamResults
 }
