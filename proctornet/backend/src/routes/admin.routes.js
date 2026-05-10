@@ -23,6 +23,16 @@ router.get   ('/students',             ctrl.listStudents)
 router.patch ('/students/:id/approve', ctrl.approveStudent)
 router.patch ('/students/:id/suspend', ctrl.suspendStudent)
 
+// ── Exam oversight ───────────────────────────────
+router.get   ('/exams/all',            ctrl.listExams)
+router.get   ('/exams/:id',            ctrl.getExam)
+router.patch ('/exams/:id/pause',      ctrl.pauseExam)
+router.patch ('/exams/:id/resume',     ctrl.resumeExam)
+
+// ── Invigilator sessions ─────────────────────────
+router.get   ('/invigilator-sessions', ctrl.listInvigilatorSessions)
+router.patch ('/invigilator-sessions/:id/revoke', ctrl.revokeInvigilatorSession)
+
 // ── Platform settings ──────────────────────────────
 router.get   ('/settings',  ctrl.getSettings)
 router.patch ('/settings',  ctrl.updateSettings)

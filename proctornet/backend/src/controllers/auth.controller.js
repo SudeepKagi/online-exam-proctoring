@@ -3,6 +3,7 @@ const { signToken } = require('../utils/jwt')
 const { logAudit }  = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
 const { sendFacultyRegisteredEmail } = require('../services/email.service')
+const { compareFaces, verifyIdCardOcr } = require('../services/python.service')
 
 // ════════════════════════════════════════════════════
 // ADMIN AUTH
@@ -161,14 +162,9 @@ async function studentRegister(req, res) {
     let approvalStatus  = 'PENDING_ADMIN'
 
     try {
-      const axios = require('axios')
-      const pyRes = await axios.post(
-        `${process.env.PYTHON_SERVICE_URL}/api/face/compare`,
-        { facePhotoUrl, idCardPhotoUrl },
-        { timeout: 30000 }
-      )
-      faceMatchScore = pyRes.data.matchScore || 0
-      const ocrUsn   = pyRes.data.ocrUsn || ''
+      const pyRes = await compareFaces(facePhotoUrl, idCardPhotoUrl)
+      faceMatchScore = pyRes.matchScore || 0
+      const ocrUsn   = pyRes.ocrUsn || ''
 
       // Auto-approve to faculty queue if score >= threshold
       const threshold = 0.80
@@ -287,12 +283,8 @@ async function invigilatorLogin(req, res) {
       const { uploadBuffer } = require('../services/cloudinary.service')
       idCardPhotoUrl = await uploadBuffer(req.file.buffer, 'proctornet/invigilator-ids')
       try {
-        const axios = require('axios')
-        const ocrRes = await axios.post(
-          `${process.env.PYTHON_SERVICE_URL}/api/ocr/verify-id`,
-          { idCardUrl: idCardPhotoUrl }, { timeout: 20000 }
-        )
-        idCardOcrResult = ocrRes.data.extractedName || null
+        const ocrRes = await verifyIdCardOcr(idCardPhotoUrl)
+        idCardOcrResult = ocrRes.extractedName || null
       } catch { /* Python unavailable */ }
     }
 

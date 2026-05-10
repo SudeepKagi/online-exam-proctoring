@@ -221,6 +221,133 @@ async function suspendStudent(req, res) {
 }
 
 // ════════════════════════════════════════════════════
+// EXAM OVERSIGHT
+// ════════════════════════════════════════════════════
+
+async function listExams(req, res) {
+  try {
+    const { status, search, page = 1, limit = 20 } = req.query
+    const { skip, take } = paginate(page, limit)
+
+    const where = {}
+    if (status) where.status = status.toUpperCase()
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { subject: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    const [exams, total] = await Promise.all([
+      global.prisma.exam.findMany({
+        where, skip, take,
+        include: { faculty: { select: { name: true, department: true } } },
+        orderBy: { createdAt: 'desc' }
+      }),
+      global.prisma.exam.count({ where }),
+    ])
+
+    res.json({ exams, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function getExam(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.findUnique({
+      where: { id },
+      include: {
+        faculty: { select: { name: true, department: true } },
+        students: { include: { student: { select: { name: true, usn: true } } } },
+      }
+    })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+    res.json({ exam })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function pauseExam(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.update({
+      where: { id },
+      data: { status: 'PAUSED' }
+    })
+    logAudit({ userId: req.user.id, userRole: 'admin', action: 'EXAM_PAUSED', details: `Exam ID: ${id}`, ipAddress: getClientIp(req) })
+    
+    // Broadcast via socket would go here
+
+    res.json({ message: 'Exam paused globally.', exam })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function resumeExam(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.update({
+      where: { id },
+      data: { status: 'ACTIVE' }
+    })
+    logAudit({ userId: req.user.id, userRole: 'admin', action: 'EXAM_RESUMED', details: `Exam ID: ${id}`, ipAddress: getClientIp(req) })
+    
+    // Broadcast via socket would go here
+
+    res.json({ message: 'Exam resumed.', exam })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+// ════════════════════════════════════════════════════
+// INVIGILATOR SESSIONS
+// ════════════════════════════════════════════════════
+
+async function listInvigilatorSessions(req, res) {
+  try {
+    const { isActive, examId, page = 1, limit = 20 } = req.query
+    const { skip, take } = paginate(page, limit)
+
+    const where = {}
+    if (isActive !== undefined) where.isActive = isActive === 'true'
+    if (examId) where.examId = examId
+
+    const [sessions, total] = await Promise.all([
+      global.prisma.invigilatorSession.findMany({
+        where, skip, take,
+        include: { exam: { select: { title: true, subject: true } } },
+        orderBy: { createdAt: 'desc' }
+      }),
+      global.prisma.invigilatorSession.count({ where })
+    ])
+
+    res.json({ sessions, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function revokeInvigilatorSession(req, res) {
+  try {
+    const { id } = req.params
+    const session = await global.prisma.invigilatorSession.update({
+      where: { id },
+      data: { isActive: false, sessionExpiry: new Date() }
+    })
+    logAudit({ userId: req.user.id, userRole: 'admin', action: 'INVIGILATOR_REVOKED', details: `Session ID: ${id}`, ipAddress: getClientIp(req) })
+    
+    res.json({ message: 'Invigilator session revoked.', session })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+// ════════════════════════════════════════════════════
 // DASHBOARD STATS
 // ════════════════════════════════════════════════════
 
@@ -363,6 +490,8 @@ async function listAnnouncements(req, res) {
 module.exports = {
   listFaculty, approveFaculty, rejectFaculty, suspendFaculty, unsuspendFaculty,
   listStudents, approveStudent, suspendStudent,
+  listExams, getExam, pauseExam, resumeExam,
+  listInvigilatorSessions, revokeInvigilatorSession,
   getDashboardStats,
   getSettings, updateSettings,
   getAuditLogs,
