@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Student Dashboard - ProctorNet</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter"],
+                        "section-title": ["Inter"],
+                        "body": ["Inter"],
+                        "card-title": ["Inter"],
+                        "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body text-body min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="bg-surface dark:bg-surface fixed left-0 top-0 h-full w-[260px] border-r border-outline-variant dark:border-outline flex flex-col z-50">
+<div class="p-6 flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="shield">shield</span>
+</div>
+<div>
+<h1 class="font-page-title text-page-title text-primary dark:text-primary-fixed-dim m-0">ProctorNet</h1>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Academic Integrity</p>
+</div>
+</div>
+<div class="flex-1 flex flex-col py-4 overflow-y-auto">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-primary-fixed-dim font-semibold border-r-4 border-primary hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors opacity-90 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span>Live Monitoring</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Student Directory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span>Exam Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>System Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="p-4 border-t border-outline-variant">
+<button class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-surface-container text-on-surface-variant font-caption text-caption rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="help">help</span>
+                Support Center
+            </button>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="ml-[260px] flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface fixed top-0 right-0 left-[260px] h-[60px] border-b border-outline-variant dark:border-outline shadow-sm z-40 flex justify-between items-center px-gutter w-[calc(100%-260px)]">
+<div class="flex items-center gap-6 h-full">
+<!-- Navigation Links are suppressed here based on Student intent vs generic ProctorNet links in JSON, keeping it clean as per "Dead End/Focused Canvas" guidance if needed, but injecting as requested -->
+<nav class="hidden md:flex items-center gap-6 h-full pt-4">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors h-full flex items-center pb-4" href="#">Monitoring</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors h-full flex items-center pb-4" href="#">Exams</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors h-full flex items-center pb-4" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-8 h-8 rounded-full hover:bg-surface-container flex items-center justify-center text-on-surface-variant transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<img alt="Proctor Profile Image" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A professional headshot of a young male student with dark hair, wearing a clean, modern gray t-shirt against a neutral background. The lighting is soft and natural, suggesting a quiet study environment. The mood is focused and academic. High-key lighting, modern SaaS application profile picture style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEAPxvlhPQbxJwHG39OfigBg8TUVY5FMAIlcjx5tb__kXatO9i4NwBS7iTdK2yOIAYglAJEdQFXE3YHmHqZH9C0F2cTB5csG5MOwg7sNAUa3HJUd4FhJpuAaxiy3Ee5y6vzdZFLarkBR5kEl0_o0c8ErkdSnA4-pjM1KWB0eo-50J_TIan7UPcnx-_37wpIc7O-JBiWJrEvIDr5WloLnNq97Fe3CqLkD6EtFisl06PcD2iS-T_DoDAkXVP6pqIQCraLzNug9WlQvZ8"/>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 mt-[60px] p-margin-page overflow-y-auto">
+<div class="max-w-container-max mx-auto space-y-8">
+<!-- Welcome Card -->
+<div class="rounded-xl bg-gradient-to-r from-primary-container to-secondary p-8 text-on-primary shadow-sm relative overflow-hidden">
+<div class="relative z-10">
+<h2 class="font-page-title text-[28px] leading-tight font-bold mb-2">Good Morning, Arjun! 👋</h2>
+<div class="flex gap-4 font-caption text-caption opacity-90">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">badge</span> USN: 1BM21CS045</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">school</span> Dept: Computer Science</span>
+</div>
+</div>
+<!-- Decorative subtle shapes -->
+<div class="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+</div>
+<!-- Stats Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between hover:-translate-y-1 transition-transform duration-200">
+<div class="flex items-center gap-3 text-on-surface-variant mb-4">
+<div class="p-2 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+</div>
+<span class="font-card-title text-card-title">Exams Taken</span>
+</div>
+<div class="text-[36px] font-bold text-on-surface leading-none">12</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between hover:-translate-y-1 transition-transform duration-200">
+<div class="flex items-center gap-3 text-on-surface-variant mb-4">
+<div class="p-2 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-tertiary">trending_up</span>
+</div>
+<span class="font-card-title text-card-title">Average Score</span>
+</div>
+<div class="flex items-end gap-2">
+<div class="text-[36px] font-bold text-on-surface leading-none">76<span class="text-[20px] text-outline">%</span></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between hover:-translate-y-1 transition-transform duration-200">
+<div class="flex items-center gap-3 text-on-surface-variant mb-4">
+<div class="p-2 bg-surface-container rounded-lg">
+<span class="material-symbols-outlined text-error">event</span>
+</div>
+<span class="font-card-title text-card-title">Upcoming</span>
+</div>
+<div class="text-[36px] font-bold text-on-surface leading-none">2</div>
+</div>
+</div>
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Upcoming Exams (Left 2 columns) -->
+<div class="lg:col-span-2 space-y-6">
+<h3 class="font-section-title text-section-title text-on-surface">Upcoming Exams</h3>
+<!-- Live Exam Card -->
+<div class="bg-surface-container-lowest border border-primary rounded-xl p-6 shadow-sm relative overflow-hidden group">
+<!-- Live Indicator -->
+<div class="absolute top-0 right-0 bg-error/10 text-error font-caption text-caption px-3 py-1 rounded-bl-lg flex items-center gap-2 border-b border-l border-error/20">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                                LIVE NOW
+                            </div>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mt-4">
+<div>
+<h4 class="font-card-title text-[20px] text-on-surface mb-2">Data Structures Lab Test</h4>
+<div class="flex flex-wrap gap-4 font-caption text-caption text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> 10:00 AM - 12:00 PM</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">timer</span> 120 Mins</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">videocam</span> Proctoring Active</span>
+</div>
+</div>
+<button class="shrink-0 bg-primary-container text-on-primary hover:bg-primary px-6 py-3 rounded-lg font-card-title text-body shadow-sm transition-colors flex items-center gap-2">
+                                    Join Exam Lobby
+                                    <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Scheduled Exam Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+<div>
+<h4 class="font-card-title text-card-title text-on-surface mb-2">Operating Systems Midterm</h4>
+<div class="flex flex-wrap gap-4 font-caption text-caption text-on-surface-variant">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">calendar_month</span> Tomorrow, Oct 24</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">schedule</span> 2:00 PM - 5:00 PM</span>
+</div>
+</div>
+<button class="shrink-0 bg-secondary-fixed text-on-secondary-fixed hover:bg-primary-fixed-dim px-6 py-2 rounded-lg font-caption text-caption transition-colors border border-outline-variant">
+                                    System Check
+                                </button>
+</div>
+</div>
+</div>
+<!-- Recent Results (Right 1 column) -->
+<div class="lg:col-span-1 space-y-6">
+<h3 class="font-section-title text-section-title text-on-surface">Recent Results</h3>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="p-0">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="py-3 px-4 font-caption text-[11px] uppercase tracking-wider text-on-surface-variant">Subject</th>
+<th class="py-3 px-4 font-caption text-[11px] uppercase tracking-wider text-on-surface-variant text-right">Score</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body text-body">
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface">Database Mgmt</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<span class="font-semibold">82%</span>
+<div class="w-16 h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 82%"></div>
+</div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface">Computer Networks</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<span class="font-semibold">78%</span>
+<div class="w-16 h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-secondary-container rounded-full" style="width: 78%"></div>
+</div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface">Software Engg</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<span class="font-semibold">91%</span>
+<div class="w-16 h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-container rounded-full" style="width: 91%"></div>
+</div>
+</div>
+</td>
+</tr>
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="py-3 px-4 text-on-surface">Discrete Math</td>
+<td class="py-3 px-4 text-right">
+<div class="flex items-center justify-end gap-2">
+<span class="font-semibold">64%</span>
+<div class="w-16 h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-error-container rounded-full" style="width: 64%"></div>
+</div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-3 border-t border-outline-variant text-center">
+<a class="text-primary hover:text-primary-container font-caption text-caption flex items-center justify-center gap-1" href="#">
+                                    View Full Transcript
+                                    <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

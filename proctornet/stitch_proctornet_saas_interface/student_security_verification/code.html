@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProctorNet - Security Verification</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter"],
+                        "section-title": ["Inter"],
+                        "body": ["Inter"],
+                        "card-title": ["Inter"],
+                        "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body min-h-screen flex flex-col selection:bg-primary selection:text-on-primary">
+<!-- Minimal Header / Linear Journey Context -->
+<header class="w-full h-[60px] bg-surface border-b border-outline-variant flex items-center justify-between px-gutter shrink-0">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-[24px]" style="font-variation-settings: 'FILL' 1;">shield_locked</span>
+<h1 class="font-page-title text-page-title text-primary tracking-tight">ProctorNet</h1>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1 bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant">
+<span class="material-symbols-outlined text-[16px]">info</span>
+                Exam Session ID: #88492-AX
+            </span>
+</div>
+</header>
+<!-- Main Content Area: Bento Layout -->
+<main class="flex-1 w-full max-w-container-max mx-auto p-margin-page flex flex-col gap-6">
+<!-- Header Section -->
+<div class="flex flex-col gap-1 w-full max-w-3xl">
+<h2 class="font-page-title text-page-title text-on-surface">Pre-Exam Security Verification</h2>
+<p class="font-body text-body text-on-surface-variant">Please complete all automated system and identity checks before beginning your assessment. Ensure your face remains visible and centered.</p>
+</div>
+<!-- Bento Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+<!-- Left Column: Active Check (Face Verification) [Spans 8 cols] -->
+<div class="lg:col-span-8 bg-surface border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-6 border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-secondary text-[28px]" style="font-variation-settings: 'FILL' 1;">face</span>
+<div>
+<h3 class="font-card-title text-card-title text-on-surface">Face Verification</h3>
+<p class="font-caption text-caption text-on-surface-variant">Active Check in Progress</p>
+</div>
+</div>
+<span class="bg-secondary-container text-on-secondary-container font-caption text-caption px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-on-secondary-container block animate-pulse"></span>
+                        Live Analysis
+                    </span>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-surface-container-lowest">
+<!-- Live Camera Feed -->
+<div class="md:col-span-2 relative bg-inverse-surface rounded-lg overflow-hidden border border-outline-variant shadow-sm aspect-video flex items-center justify-center">
+<img alt="Live Camera Feed" class="w-full h-full object-cover opacity-90 mix-blend-luminosity" data-alt="A medium shot of a young adult student sitting at a desk in a moderately lit room, staring focused at a computer monitor. The lighting is cool, reminiscent of a screen glow on the subject's face against a dim background. The mood is concentrated and serious, typical of a high-stakes online exam environment, captured in a modern, realistic photographic style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3g0ciuhalfwvvbWrxlZhfOgAMp7HHDtOQB27JhP6OURowQxyMEUEQORW0iZ4ABmvGFq8jgcE2hltaVaUqK2-vvpdp4hA8DlM7SYSa26-4FRDgPrxCP5YFfWg0Sw0Ce-cvbc0-zC4icFZ13YH7fbuzboEJCERZGNcyUZmlbMrJ-f9ajHtlGL3bKDIeJr0b3g7sDi0DUcIghG9sJIEIwDi8oCFxutGL0v1Qkmze_-uGn9s7wShVn1YcN7NPJ49tTR5W1sHCU4RBtUtE"/>
+<!-- AI Overlay UI -->
+<div class="absolute inset-0 border-2 border-primary/40 m-8 rounded-lg relative">
+<!-- Corner Accents -->
+<div class="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-primary"></div>
+<div class="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-primary"></div>
+<div class="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-primary"></div>
+<div class="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-primary"></div>
+<!-- Bounding Box -->
+<div class="absolute top-[10%] left-[25%] right-[25%] bottom-[20%] border border-primary bg-primary/10 rounded"></div>
+</div>
+<div class="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+<span class="font-caption text-caption text-on-tertiary bg-inverse-surface/80 px-2 py-1 rounded backdrop-blur-sm">Cam_01_HD</span>
+<span class="font-caption text-caption text-primary bg-surface/90 px-2 py-1 rounded flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">center_focus_strong</span> Lock acquired
+                            </span>
+</div>
+</div>
+<!-- AI Analysis Panel -->
+<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-2">
+<h4 class="font-body text-body text-on-surface font-semibold">Reference Profile</h4>
+<div class="w-full aspect-square bg-surface-container border border-outline-variant rounded-lg overflow-hidden relative shadow-sm">
+<img alt="Profile Thumbnail" class="w-full h-full object-cover" data-alt="A clear, professional ID photo of the same young adult student with a neutral expression against a plain white background. The image is evenly lit, sharp, and formal, exhibiting a corporate or institutional aesthetic typical of a university student ID card." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7qMBHFUle8UQzLPF8HzaA5ckYrFl3cspljpMUnf2jTpWQ6aIEmzqr2GlzzFxESqA0-CKfnABSlRl4mzp3umEmiuY_h68-3raKzL4QKkQGWEiOGiWtTHQ10Mya68-XlyubHpSl79wskwyMbpEU5yUWmvGfmNNvUmTSl_bvZ7xHLDu6gvs1Bj-7ANBNs6o-HVlDXEKrbCA3MAPiXF2ku-Qet7aFWku9c8g6qIbRNnW78VZVt4JCUYndrZ64mbsWL8BmK8iolg1orqYq"/>
+<div class="absolute top-2 right-2 bg-surface p-1 rounded-full shadow-sm">
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-end">
+<span class="font-body text-body text-on-surface font-semibold">AI Match Analysis</span>
+<span class="font-card-title text-card-title text-primary">78%</span>
+</div>
+<div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style="width: 78%"></div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant flex items-center gap-1.5 mt-1">
+<span class="material-symbols-outlined text-[14px] text-secondary">memory</span>
+                                Analyzing biometric landmarks...
+                            </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Verification Progress Checklist [Spans 4 cols] -->
+<div class="lg:col-span-4 bg-surface border border-outline-variant rounded-xl shadow-sm flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant bg-surface-container-lowest">
+<h3 class="font-card-title text-card-title text-on-surface mb-4">Verification Progress</h3>
+<div class="flex items-center justify-between mb-2">
+<span class="font-body text-body text-on-surface-variant">Check 4 of 9 Complete</span>
+<span class="font-body text-body text-on-surface font-semibold">44%</span>
+</div>
+<div class="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-secondary rounded-full" style="width: 44%"></div>
+</div>
+</div>
+<div class="p-4 flex-1 overflow-y-auto flex flex-col gap-2">
+<!-- Passed Checks -->
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body text-body text-on-surface">VPN / Proxy Detection</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body text-body text-on-surface">Browser Environment</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body text-body text-on-surface">Fullscreen Mode</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-lowest transition-colors">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body text-body text-on-surface">Camera Access</span>
+</div>
+<!-- Active Check -->
+<div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container border border-primary-fixed shadow-sm relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<span class="material-symbols-outlined text-primary animate-spin">progress_activity</span>
+<span class="font-body text-body text-on-surface font-semibold">Face Verification</span>
+</div>
+<!-- Pending Checks -->
+<div class="flex items-center gap-3 p-3 rounded-lg opacity-60">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<span class="font-body text-body text-on-surface-variant">Microphone Access</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg opacity-60">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<span class="font-body text-body text-on-surface-variant">Dual Monitor Detection</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg opacity-60">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<span class="font-body text-body text-on-surface-variant">Screen Sharing Status</span>
+</div>
+<div class="flex items-center gap-3 p-3 rounded-lg opacity-60">
+<span class="material-symbols-outlined text-outline">radio_button_unchecked</span>
+<span class="font-body text-body text-on-surface-variant">Identity Document</span>
+</div>
+</div>
+<!-- CTA Area -->
+<div class="p-6 border-t border-outline-variant bg-surface-container-lowest">
+<button class="w-full bg-surface-container-high text-outline font-card-title text-card-title py-3 px-4 rounded-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-80 border border-outline-variant" disabled="">
+<span class="material-symbols-outlined">lock</span>
+                        Start Exam
+                    </button>
+<p class="font-caption text-caption text-center text-on-surface-variant mt-3">Complete all checks to unlock the exam</p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

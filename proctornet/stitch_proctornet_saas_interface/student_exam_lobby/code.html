@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Exam Lobby - ProctorNet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "1rem", /* Adjusted to 16px to match prompt '16px rounded corners for cards' */
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter", "sans-serif"],
+                        "section-title": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "card-title": ["Inter", "sans-serif"],
+                        "caption": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background font-body text-body text-on-surface min-h-screen flex flex-col">
+<!-- Custom Top Bar for Full Width Lobby -->
+<header class="fixed top-0 left-0 w-full h-[60px] bg-surface-container-lowest border-b border-outline-variant shadow-sm z-50 flex justify-between items-center px-gutter">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-[28px]" style="font-variation-settings: 'FILL' 1;">shield_locked</span>
+<span class="font-page-title text-page-title text-primary">ProctorNet</span>
+</div>
+<div class="hidden md:flex flex-col items-center">
+<h1 class="font-section-title text-section-title text-on-surface">Data Structures Lab Test</h1>
+<span class="font-caption text-caption text-on-surface-variant">CS301 - Fall Semester</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden sm:block">
+<div class="font-card-title text-[14px] font-semibold text-on-surface">Alex Mercer</div>
+<div class="font-caption text-caption text-on-surface-variant">ID: 98237492</div>
+</div>
+<img alt="Student Profile" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="A professional headshot of a young male student with short dark hair, wearing a casual light blue button-down shirt. The background is a soft, blurred modern office setting with bright, natural lighting. The lighting is high-key and flattering, suitable for an academic profile picture in a digital platform. The overall tone is calm, focused, and approachable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRMs9EzMPuRYUM4o1reNWmm0PkTMNBOqq3KKrST8F_pZmqS8nJ2tHkPE1mZW6OU0Fxmhk7F9XuXDxpQuL5CXxvLxWTzJ7MGdNeyuuUM7bmbU_cVo0inTvNoQmkf1KlE7GX8nrUa1qe7gaX4pJ83kOdXybs34qAcm8Qf7uejMABOpuBOssgU0C63arl_7pJlpnJDocOwJmrfNu7jo9E7YayhGxYAyd6N2lMpgrf49BH7-CE3p32YxcsxZyUoD-BJ6O6DYVnwYdtH84P"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="mt-[60px] flex-1 w-full max-w-container-max mx-auto p-margin-page">
+<!-- Mobile Header Fallback -->
+<div class="md:hidden mb-stack-md text-center">
+<h1 class="font-section-title text-section-title text-on-surface">Data Structures Lab Test</h1>
+<span class="font-caption text-caption text-on-surface-variant">CS301 - Fall Semester</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Left Column (55% -> roughly 7 columns) -->
+<div class="md:col-span-7 flex flex-col gap-stack-md">
+<!-- Exam Information Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="bg-surface-container-low border-b border-outline-variant px-6 py-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">description</span>
+<h2 class="font-card-title text-card-title text-on-surface">Exam Information</h2>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-2 gap-y-4 gap-x-8">
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block mb-1">Subject code</span>
+<span class="font-body text-body font-medium text-on-surface">CS301</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block mb-1">Instructor</span>
+<span class="font-body text-body font-medium text-on-surface">Dr. Sarah Jenkins</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block mb-1">Duration</span>
+<span class="font-body text-body font-medium text-on-surface">120 Minutes</span>
+</div>
+<div>
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider block mb-1">Total Marks</span>
+<span class="font-body text-body font-medium text-on-surface">100 Pts</span>
+</div>
+<div class="col-span-2 mt-2 p-4 bg-surface-dim rounded-lg border border-outline-variant flex gap-3 items-start">
+<span class="material-symbols-outlined text-primary mt-0.5">info</span>
+<p class="font-body text-body text-on-surface">This is a closed-book examination. All secondary devices must be powered down and placed out of reach. Desk area must be clear of all unauthorized materials.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- System Status Checklist Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="bg-surface-container-low border-b border-outline-variant px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">computer</span>
+<h2 class="font-card-title text-card-title text-on-surface">System Status</h2>
+</div>
+<span class="font-caption text-caption bg-surface-dim text-on-surface px-2 py-1 rounded-md border border-outline-variant">Pre-checks Pending</span>
+</div>
+<div class="p-0">
+<ul class="divide-y divide-outline-variant">
+<li class="flex items-center justify-between px-6 py-4 hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">videocam</span>
+<span class="font-body text-body text-on-surface">Webcam Access</span>
+</div>
+<span class="material-symbols-outlined text-outline">pending</span>
+</li>
+<li class="flex items-center justify-between px-6 py-4 hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">mic</span>
+<span class="font-body text-body text-on-surface">Microphone Access</span>
+</div>
+<span class="material-symbols-outlined text-outline">pending</span>
+</li>
+<li class="flex items-center justify-between px-6 py-4 hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">screen_share</span>
+<span class="font-body text-body text-on-surface">Screen Sharing Permission</span>
+</div>
+<span class="material-symbols-outlined text-outline">pending</span>
+</li>
+<li class="flex items-center justify-between px-6 py-4 hover:bg-surface-bright transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">wifi</span>
+<span class="font-body text-body text-on-surface">Network Stability</span>
+</div>
+<span class="material-symbols-outlined text-outline">pending</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Exam Rules Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="bg-surface-container-low border-b border-outline-variant px-6 py-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">gavel</span>
+<h2 class="font-card-title text-card-title text-on-surface">Exam Rules &amp; Guidelines</h2>
+</div>
+<div class="p-6">
+<ul class="space-y-3">
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">warning</span>
+<span class="font-body text-body text-on-surface">Do not navigate away from the exam browser window once started.</span>
+</li>
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">warning</span>
+<span class="font-body text-body text-on-surface">Ensure your face remains clearly visible within the camera frame at all times.</span>
+</li>
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-error text-[20px] mt-0.5">warning</span>
+<span class="font-body text-body text-on-surface">No headphones, earbuds, or hats are permitted during the examination.</span>
+</li>
+<li class="flex gap-3 items-start">
+<span class="material-symbols-outlined text-secondary text-[20px] mt-0.5">check_circle</span>
+<span class="font-body text-body text-on-surface">You may have one clear water bottle on your desk.</span>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Right Column (45% -> roughly 5 columns) -->
+<div class="md:col-span-5 flex flex-col gap-stack-md">
+<!-- Countdown / Action Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden relative">
+<!-- Subtle top accent -->
+<div class="absolute top-0 left-0 w-full h-1 bg-primary"></div>
+<div class="p-8 text-center flex flex-col items-center">
+<div class="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4 border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-[32px]">hourglass_top</span>
+</div>
+<h2 class="font-section-title text-section-title text-on-surface mb-2">Lobby is Open</h2>
+<p class="font-body text-body text-on-surface-variant mb-6">Complete your identity verification and environment scan to proceed to the examination.</p>
+<button class="w-full bg-primary hover:bg-primary-container text-on-primary font-card-title py-3 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">rocket_launch</span>
+                            Begin Security Checks
+                        </button>
+<p class="font-caption text-caption text-on-surface-variant mt-4">
+                            By clicking begin, you consent to live video and audio monitoring.
+                        </p>
+</div>
+</div>
+<!-- Pre-Exam Chat Card -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm flex flex-col h-[400px]">
+<div class="bg-surface-container-low border-b border-outline-variant px-6 py-4 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">chat</span>
+<h2 class="font-card-title text-card-title text-on-surface">Invigilator Support</h2>
+</div>
+<span class="flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-3 w-3 rounded-full bg-tertiary-fixed-dim opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-tertiary"></span>
+</span>
+</div>
+<!-- Chat Messages Area -->
+<div class="flex-1 p-4 overflow-y-auto bg-surface-bright flex flex-col gap-4">
+<div class="flex flex-col items-center mb-2">
+<span class="font-caption text-caption text-on-surface-variant bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant">Chat started</span>
+</div>
+<!-- System Message -->
+<div class="flex gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-on-primary-fixed text-[16px]">support_agent</span>
+</div>
+<div class="bg-surface-container-highest text-on-surface p-3 rounded-lg rounded-tl-none font-body text-body max-w-[85%] border border-outline-variant">
+                                Hello Alex. I am your proctor for today. Please initiate the security checks when you are ready. Let me know if you encounter any technical issues.
+                            </div>
+</div>
+</div>
+<!-- Chat Input -->
+<div class="p-4 border-t border-outline-variant bg-surface-container-lowest">
+<div class="relative">
+<input class="w-full bg-surface border border-outline-variant rounded-lg pl-4 pr-12 py-3 font-body text-body text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-shadow" placeholder="Type a message to proctor..." type="text"/>
+<button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-primary hover:bg-surface-container-low rounded-md transition-colors">
+<span class="material-symbols-outlined">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

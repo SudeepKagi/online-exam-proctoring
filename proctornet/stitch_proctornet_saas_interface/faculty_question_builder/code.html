@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProctorNet - Add New Question</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter"],
+                        "section-title": ["Inter"],
+                        "body": ["Inter"],
+                        "card-title": ["Inter"],
+                        "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body text-body m-0 p-0 overflow-x-hidden">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-[260px] bg-surface border-r border-outline-variant flex flex-col z-20">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary flex items-center justify-center font-bold text-lg">P</div>
+<div>
+<h1 class="font-page-title text-page-title text-primary tracking-tight">ProctorNet</h1>
+<p class="font-caption text-caption text-on-surface-variant">Academic Integrity</p>
+</div>
+</div>
+<div class="flex flex-col h-full overflow-y-auto mt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span>Live Monitoring</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span>Student Directory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-primary font-semibold border-r-4 border-primary bg-surface-container-lowest" href="#">
+<span class="material-symbols-outlined" data-icon="description">description</span>
+<span>Exam Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>System Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-low hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="p-4 mt-auto border-t border-outline-variant">
+<button class="w-full py-2 px-4 bg-surface-container-low text-primary rounded-lg font-medium hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+                Support Center
+            </button>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[260px] h-[60px] bg-surface border-b border-outline-variant shadow-sm z-10">
+<div class="flex justify-between items-center px-gutter w-full h-full">
+<div class="flex items-center gap-6 h-full">
+<a class="text-on-surface-variant h-full flex items-center hover:text-primary transition-colors" href="#">Monitoring</a>
+<a class="text-primary font-semibold border-b-2 border-primary h-full flex items-center" href="#">Exams</a>
+<a class="text-on-surface-variant h-full flex items-center hover:text-primary transition-colors" href="#">Reports</a>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative flex items-center bg-surface-container-low rounded-lg px-3 py-1.5 border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body p-0 w-48 text-on-surface" placeholder="Search..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<img alt="Proctor Profile Image" class="w-8 h-8 rounded-full border border-outline-variant" data-alt="A professional headshot of a proctor in a brightly lit modern office environment, wearing business casual attire. The lighting is soft and flattering, highlighting a friendly yet authoritative expression suitable for an academic professional." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQNXVjcekVrDlb3H1xveiglUYBSpK4Twp_tw1RPvf5BPJIcbMYf5Fih6cBeBkFNxAodSz6vM0cTmzfn9rb727aQFSErFQk6SNYZKXRlKPgQH5g95hV3602_sE98wzSefGmg5hDbLolRpRqhfhBGaO_jYzzF9jeJiLSH_az30vsQIXNrPVVStO_i1x8rFWUaF6szFenV76nsIDpH7uLM-DoU7X5s42mYyNSaqMcZRaC4LFlrS4RuGUZKigRUXLC9cx0c5U7wTBjCqVE"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-[260px] mt-[60px] p-margin-page min-h-[calc(100vh-60px)] flex justify-center bg-surface-container-lowest">
+<!-- Overlay / Modal Style Card -->
+<div class="w-full max-w-4xl bg-surface border border-outline-variant rounded-xl shadow-sm flex flex-col h-fit">
+<!-- Modal Header -->
+<div class="flex items-start justify-between p-6 border-b border-outline-variant">
+<div>
+<h2 class="font-page-title text-page-title text-on-surface">Add New Question</h2>
+<p class="font-body text-body text-on-surface-variant mt-1 flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="folder">folder</span>
+                        Data Structures
+                    </p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Tabs -->
+<div class="flex items-center gap-2 px-6 py-4 border-b border-outline-variant bg-surface-container-lowest">
+<button class="flex items-center gap-2 px-4 py-2 bg-primary-container text-on-primary rounded-lg font-medium text-sm shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="edit_note">edit_note</span>
+                    MCQ
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-lg font-medium text-sm hover:bg-surface-container transition-colors border border-transparent">
+<span class="material-symbols-outlined text-[18px]" data-icon="code">code</span>
+                    Coding
+                </button>
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-low text-on-surface-variant rounded-lg font-medium text-sm hover:bg-surface-container transition-colors border border-transparent">
+<span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+                    Subjective
+                </button>
+</div>
+<!-- MCQ Form Content -->
+<div class="p-6 flex flex-col gap-6 bg-surface">
+<!-- Question Statement -->
+<div class="flex flex-col gap-2">
+<label class="font-card-title text-card-title text-on-surface">Question Statement</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-3 text-body text-on-surface focus:border-primary focus:ring-1 focus:ring-primary transition-all resize-none" placeholder="Enter the question text here..." rows="4"></textarea>
+</div>
+<!-- Options -->
+<div class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<label class="font-card-title text-card-title text-on-surface">Options</label>
+<span class="text-caption font-caption text-on-surface-variant">Select the correct answer</span>
+</div>
+<!-- Option A -->
+<div class="flex items-center gap-3 p-3 border border-outline-variant rounded-lg bg-surface-container-lowest group hover:border-outline transition-colors">
+<input class="w-4 h-4 text-primary border-outline-variant focus:ring-primary" name="mcq_option" type="radio"/>
+<span class="font-medium text-on-surface-variant w-6">A.</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body p-0 text-on-surface" placeholder="Option A text" type="text"/>
+</div>
+<!-- Option B -->
+<div class="flex items-center gap-3 p-3 border border-outline-variant rounded-lg bg-surface-container-lowest group hover:border-outline transition-colors">
+<input class="w-4 h-4 text-primary border-outline-variant focus:ring-primary" name="mcq_option" type="radio"/>
+<span class="font-medium text-on-surface-variant w-6">B.</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body p-0 text-on-surface" placeholder="Option B text" type="text"/>
+</div>
+<!-- Option C (Correct/Active State) -->
+<div class="flex items-center gap-3 p-3 border-2 border-tertiary rounded-lg bg-on-tertiary-container/10">
+<input checked="" class="w-4 h-4 text-tertiary border-tertiary focus:ring-tertiary" name="mcq_option" type="radio"/>
+<span class="font-medium text-tertiary w-6">C.</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body p-0 text-on-surface font-medium" type="text" value="A complete binary tree is a binary tree in which every level..."/>
+<span class="material-symbols-outlined text-tertiary" data-icon="check_circle" data-weight="fill">check_circle</span>
+</div>
+<!-- Option D -->
+<div class="flex items-center gap-3 p-3 border border-outline-variant rounded-lg bg-surface-container-lowest group hover:border-outline transition-colors">
+<input class="w-4 h-4 text-primary border-outline-variant focus:ring-primary" name="mcq_option" type="radio"/>
+<span class="font-medium text-on-surface-variant w-6">D.</span>
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-body p-0 text-on-surface" placeholder="Option D text" type="text"/>
+</div>
+</div>
+<!-- Settings: Marks & Difficulty -->
+<div class="grid grid-cols-2 gap-6 mt-2 border-t border-outline-variant pt-6">
+<div class="flex flex-col gap-2">
+<label class="font-card-title text-card-title text-on-surface">Marks</label>
+<div class="relative w-full">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[18px]" data-icon="military_tech">military_tech</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2 pl-10 pr-3 text-body text-on-surface focus:border-primary focus:ring-1 focus:ring-primary" max="100" min="1" type="number" value="1"/>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-card-title text-card-title text-on-surface">Difficulty</label>
+<div class="relative w-full">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[18px]" data-icon="speed">speed</span>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg py-2 pl-10 pr-10 text-body text-on-surface focus:border-primary focus:ring-1 focus:ring-primary appearance-none">
+<option>Easy</option>
+<option selected="">Medium</option>
+<option>Hard</option>
+</select>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant pointer-events-none" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-6 border-t border-outline-variant bg-surface-container-lowest flex justify-end gap-4 rounded-b-xl">
+<button class="px-6 py-2 rounded-lg font-medium text-primary hover:bg-surface-container-low transition-colors">
+                    Cancel
+                </button>
+<button class="px-6 py-2 rounded-lg font-medium bg-primary text-on-primary shadow-sm hover:bg-primary-fixed-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="save">save</span>
+                    Save Question
+                </button>
+</div>
+</div>
+</main>
+</body></html>

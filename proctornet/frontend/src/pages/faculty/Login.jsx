@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import AuthLayout from '@/components/common/AuthLayout'
-import { FormInput, SubmitButton, Alert } from '@/components/common/FormComponents'
+import { FormInput, SubmitButton, Alert, InfoBox } from '@/components/common/FormComponents'
 import { facultyLogin } from '@/services/auth.api'
 
 export default function FacultyLogin() {
@@ -46,49 +46,67 @@ export default function FacultyLogin() {
   return (
     <AuthLayout
       title="Faculty Login"
-      subtitle="Access your exam management portal"
-      icon="🎓"
+      subtitle="Access your proctoring dashboard and manage active exam sessions."
     >
+      {/* Role toggle */}
+      <div className="role-toggle">
+        <button type="button" className="role-toggle-btn active">Faculty</button>
+        <Link to="/student/login" className="role-toggle-btn" style={{ textAlign: 'center', display: 'block', textDecoration: 'none', color: 'var(--on-surface-variant)' }}>
+          Student
+        </Link>
+      </div>
+
       <form onSubmit={handleSubmit} noValidate>
-        <Alert type="error" message={error} />
+        <Alert type="danger" message={error} />
 
         <FormInput
           id="faculty-email"
-          label="Email Address"
+          label="Institutional Email"
           type="email"
           value={form.email}
           onChange={set('email')}
-          placeholder="yourname@college.edu"
+          placeholder="faculty@university.edu"
           autoComplete="email"
+          prefixIcon="mail"
           required
         />
 
-        <FormInput
-          id="faculty-password"
-          label="Password"
-          type="password"
-          value={form.password}
-          onChange={set('password')}
-          placeholder="Enter your password"
-          autoComplete="current-password"
-          required
-        />
+        <div style={{ marginBottom: '1.125rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
+            <label htmlFor="faculty-password" className="form-label" style={{ margin: 0 }}>Password</label>
+            <a href="#" style={{ fontSize: '0.8125rem', color: 'var(--primary)', fontWeight: 500 }}>Forgot password?</a>
+          </div>
+          <FormInput
+            id="faculty-password"
+            label=""
+            type="password"
+            value={form.password}
+            onChange={set('password')}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            prefixIcon="lock"
+            required
+          />
+        </div>
+
+        <InfoBox>
+          Registration requires admin approval. If you do not have an account, please contact your department administrator.
+        </InfoBox>
 
         <SubmitButton loading={loading}>
-          {loading ? 'Signing in…' : 'Sign In'}
+          {loading ? 'Signing in…' : (
+            <>Login to Dashboard &nbsp;→</>
+          )}
         </SubmitButton>
       </form>
 
       <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
           New faculty member?{' '}
-          <Link to="/faculty/register" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 600 }}>
+          <Link to="/faculty/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>
             Register here
           </Link>
         </p>
-        <Link to="/" style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
-          ← Back to Home
-        </Link>
       </div>
     </AuthLayout>
   )

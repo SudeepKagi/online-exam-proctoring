@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProctorNet - Student Registration</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "outline": "#737686",
+                            "on-secondary-fixed-variant": "#004395",
+                            "secondary": "#0058be",
+                            "inverse-on-surface": "#eef0ff",
+                            "on-secondary-container": "#fefcff",
+                            "background": "#faf8ff",
+                            "secondary-fixed": "#d8e2ff",
+                            "error": "#ba1a1a",
+                            "on-primary-fixed": "#00174b",
+                            "on-surface": "#131b2e",
+                            "surface-tint": "#0053db",
+                            "on-tertiary": "#ffffff",
+                            "surface-container-lowest": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "secondary-container": "#2170e4",
+                            "on-tertiary-fixed": "#001f26",
+                            "tertiary-container": "#00788c",
+                            "on-primary-fixed-variant": "#003ea8",
+                            "surface-dim": "#d2d9f4",
+                            "primary-fixed": "#dbe1ff",
+                            "on-primary-container": "#eeefff",
+                            "tertiary-fixed": "#acedff",
+                            "surface-container-highest": "#dae2fd",
+                            "on-error": "#ffffff",
+                            "on-primary": "#ffffff",
+                            "tertiary": "#005e6e",
+                            "tertiary-fixed-dim": "#4cd7f6",
+                            "surface-container-low": "#f2f3ff",
+                            "surface-bright": "#faf8ff",
+                            "primary-container": "#2563eb",
+                            "on-surface-variant": "#434655",
+                            "inverse-primary": "#b4c5ff",
+                            "inverse-surface": "#283044",
+                            "surface-variant": "#dae2fd",
+                            "on-tertiary-container": "#d7f6ff",
+                            "error-container": "#ffdad6",
+                            "on-tertiary-fixed-variant": "#004e5c",
+                            "surface-container": "#eaedff",
+                            "primary-fixed-dim": "#b4c5ff",
+                            "secondary-fixed-dim": "#adc6ff",
+                            "on-secondary-fixed": "#001a42",
+                            "outline-variant": "#c3c6d7",
+                            "on-error-container": "#93000a",
+                            "surface": "#faf8ff",
+                            "on-background": "#131b2e",
+                            "primary": "#004ac6",
+                            "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "gutter": "1.5rem",
+                            "sidebar-width": "260px",
+                            "stack-sm": "0.5rem",
+                            "margin-page": "2rem",
+                            "stack-md": "1rem",
+                            "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                            "page-title": ["Inter"],
+                            "section-title": ["Inter"],
+                            "body": ["Inter"],
+                            "card-title": ["Inter"],
+                            "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                            "page-title": ["22px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "section-title": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "body": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "card-title": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                            "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface font-body text-body text-on-surface antialiased min-h-screen flex items-center justify-center p-gutter">
+<!-- Main Registration Container -->
+<main class="w-full max-w-[800px] bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col">
+<!-- Header -->
+<header class="pt-8 pb-6 px-8 border-b border-outline-variant bg-surface-bright text-center flex flex-col items-center gap-2">
+<div class="h-12 w-12 rounded-lg bg-primary-container text-on-primary flex items-center justify-center mb-2 shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 28px;">security</span>
+</div>
+<h1 class="font-page-title text-page-title text-on-surface">ProctorNet</h1>
+<h2 class="font-section-title text-section-title text-on-surface-variant">Create Student Account</h2>
+<p class="font-body text-body text-outline mt-1 max-w-md">Complete your profile and identity verification to access the secure examination environment.</p>
+</header>
+<!-- Form Body -->
+<div class="p-8 flex flex-col gap-8">
+<!-- Section 1: Basic Information -->
+<section class="flex flex-col gap-4">
+<h3 class="font-card-title text-card-title text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">person</span>
+                    Basic Information
+                </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Full Name -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="fullName">Full Name</label>
+<input class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body" id="fullName" placeholder="e.g. Jane Doe" type="text"/>
+</div>
+<!-- USN -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="usn">University Seat Number (USN)</label>
+<input class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body uppercase" id="usn" placeholder="e.g. 1AB23CD456" type="text"/>
+</div>
+<!-- Email -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="email">Institutional Email</label>
+<input class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body" id="email" placeholder="jane.doe@university.edu" type="email"/>
+</div>
+<!-- Password -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="password">Create Password</label>
+<input class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body" id="password" placeholder="••••••••" type="password"/>
+</div>
+<!-- Department -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="department">Department</label>
+<select class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23737686%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[size:1.2em_1.2em] pr-10" id="department">
+<option disabled="" selected="" value="">Select Department</option>
+<option value="cs">Computer Science</option>
+<option value="ee">Electrical Engineering</option>
+<option value="me">Mechanical Engineering</option>
+</select>
+</div>
+<!-- Semester -->
+<div class="flex flex-col gap-1">
+<label class="font-caption text-caption text-on-surface-variant" for="semester">Semester</label>
+<select class="w-full h-10 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-shadow font-body text-body appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23737686%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[size:1.2em_1.2em] pr-10" id="semester">
+<option disabled="" selected="" value="">Select Semester</option>
+<option value="1">1st Semester</option>
+<option value="2">2nd Semester</option>
+<option value="3">3rd Semester</option>
+<option value="4">4th Semester</option>
+<option value="5">5th Semester</option>
+<option value="6">6th Semester</option>
+<option value="7">7th Semester</option>
+<option value="8">8th Semester</option>
+</select>
+</div>
+</div>
+</section>
+<hr class="border-t border-outline-variant w-full"/>
+<!-- Section 2: Identity Verification -->
+<section class="flex flex-col gap-4">
+<div class="flex justify-between items-end">
+<h3 class="font-card-title text-card-title text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">badge</span>
+                        Identity Verification
+                    </h3>
+<span class="font-caption text-caption text-outline">Both required</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Face Photo Upload -->
+<div class="flex flex-col gap-3">
+<div class="font-caption text-caption text-on-surface-variant font-medium">Face Photo</div>
+<div class="border-2 border-dashed border-outline-variant rounded-lg bg-surface-container flex flex-col items-center justify-center p-6 min-h-[180px] hover:border-primary hover:bg-surface-container-high transition-colors cursor-pointer relative overflow-hidden group">
+<!-- State: Uploaded (Simulated) -->
+<div class="absolute inset-0 bg-surface-container-lowest flex flex-col items-center justify-center z-10">
+<div class="w-24 h-24 rounded-full overflow-hidden border-4 border-surface-container-low shadow-sm mb-3">
+<img alt="Face preview" class="w-full h-full object-cover" data-alt="A clear, well-lit portrait photo of a young female university student looking directly at the camera with a neutral expression. The background is a plain, light grey wall. The lighting is soft and even, typical of a professional ID photo. She is wearing a simple collared shirt. The image represents a high-quality registration photo for an academic system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEWsXgQjXXgX1hT_9Y8VM1yEYNoaLTlHyXOedfu2iUSjmfI-onQtZuBXEZdwbSrPBUmBQEJniZ_FkwXL9lFsrQzxe9JbgYD2vVnkp0o84AjjxI2suzc_TW-ZDGhcRBtRhqdQAZUK_gM--u7O5sK0trPDrRao5TdQtiUuGt2QXskLXLSgR-qbjbwZZK9IgtKpepSLPSq3AzmN9nwgycldrttmy3cMMwVFn9bCX4XDZNfaonNA7XEAw27VeYVaZdpK3Dzb76KwxwgeOY"/>
+</div>
+<span class="font-caption text-caption text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">refresh</span> Retake Photo
+                                </span>
+</div>
+</div>
+</div>
+<!-- College ID Upload -->
+<div class="flex flex-col gap-3">
+<div class="font-caption text-caption text-on-surface-variant font-medium">College ID Card</div>
+<div class="border-2 border-dashed border-outline-variant rounded-lg bg-surface-container flex flex-col items-center justify-center p-6 min-h-[180px] hover:border-primary hover:bg-surface-container-high transition-colors cursor-pointer relative overflow-hidden group">
+<!-- State: Uploaded (Simulated) -->
+<div class="absolute inset-0 bg-surface-container-lowest flex flex-col items-center justify-center z-10 p-4">
+<div class="w-full h-24 rounded border border-outline-variant shadow-sm mb-3 overflow-hidden bg-surface flex items-center justify-center relative">
+<div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1633421272714-38c29bf5a7ff?ixlib=rb-4.0.3&amp;auto=format&amp;fit=crop&amp;w=400&amp;q=80')] bg-cover bg-center opacity-80" data-alt="A close-up abstract view of a professional ID card laying flat on a clean white desk. The card features a visible photo thumbnail, barcode, and university crest. The lighting is bright and clear, highlighting the details of the card's surface. The color palette incorporates professional blues and stark whites. It looks like a scanned document ready for verification."></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-highest/80 to-transparent"></div>
+<span class="material-symbols-outlined text-primary z-10 bg-surface-container-lowest rounded-full p-1 shadow-sm">check_circle</span>
+</div>
+<span class="font-caption text-caption text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">edit</span> Change File
+                                </span>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Verification Result (Visible after simulation) -->
+<div class="mt-2 bg-[#F0FDF4] border border-[#BBF7D0] rounded-lg p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] mt-0.5" style="font-variation-settings: 'FILL' 1;">verified</span>
+<div class="flex flex-col gap-1 w-full">
+<div class="flex justify-between items-center">
+<span class="font-card-title text-[14px] leading-5 text-[#166534] font-semibold">AI Verification Result</span>
+<span class="bg-[#DCFCE7] text-[#166534] px-2 py-0.5 rounded text-[12px] font-semibold border border-[#BBF7D0]">Match Score: 92%</span>
+</div>
+<p class="font-caption text-[13px] text-[#15803D]">Identity verified successfully.</p>
+<ul class="mt-2 font-caption text-[13px] text-[#166534] space-y-1">
+<li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">check</span> Face matches ID photo</li>
+<li class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">check</span> USN text extracted and matched</li>
+</ul>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer Actions -->
+<footer class="p-6 bg-surface-container-low border-t border-outline-variant flex justify-end gap-4 mt-auto">
+<button class="px-5 py-2.5 rounded-lg font-card-title text-[14px] text-primary hover:bg-primary-fixed transition-colors" type="button">
+                Cancel
+            </button>
+<button class="px-6 py-2.5 rounded-lg bg-primary-container text-on-primary font-card-title text-[14px] shadow-sm hover:bg-secondary-container transition-colors flex items-center gap-2" type="button">
+                Create Account
+                <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</footer>
+</main>
+</body></html>

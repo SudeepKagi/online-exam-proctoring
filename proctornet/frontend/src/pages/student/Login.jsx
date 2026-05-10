@@ -47,11 +47,18 @@ export default function StudentLogin() {
   return (
     <AuthLayout
       title="Student Login"
-      subtitle="Access your exam portal"
-      icon="📝"
+      subtitle="Access your exam portal and upcoming assessments."
     >
+      {/* Role toggle */}
+      <div className="role-toggle">
+        <Link to="/faculty/login" className="role-toggle-btn" style={{ textAlign: 'center', display: 'block', textDecoration: 'none', color: 'var(--on-surface-variant)' }}>
+          Faculty
+        </Link>
+        <button type="button" className="role-toggle-btn active">Student</button>
+      </div>
+
       <form onSubmit={handleSubmit} noValidate>
-        <Alert type="error" message={error} />
+        <Alert type="danger" message={error} />
 
         <FormInput
           id="student-usn"
@@ -61,6 +68,7 @@ export default function StudentLogin() {
           onChange={set('usn')}
           placeholder="e.g. 1VE22CS001"
           autoComplete="username"
+          prefixIcon="badge"
           required
           hint="Enter your USN in uppercase"
         />
@@ -71,24 +79,25 @@ export default function StudentLogin() {
           type="password"
           value={form.password}
           onChange={(e) => { setForm(p => ({ ...p, password: e.target.value })); setError('') }}
-          placeholder="Enter your password"
+          placeholder="••••••••"
           autoComplete="current-password"
+          prefixIcon="lock"
           required
         />
 
         <SubmitButton loading={loading}>
-          {loading ? 'Signing in…' : 'Sign In to Exam Portal'}
+          {loading ? 'Signing in…' : 'Login to Exam Portal →'}
         </SubmitButton>
       </form>
 
       <div style={{ textAlign: 'center', marginTop: '1.25rem' }}>
-        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)', marginBottom: '0.5rem' }}>
           New student?{' '}
-          <Link to="/student/register" style={{ color: '#34d399', textDecoration: 'none', fontWeight: 600 }}>
-            Register with face verification
+          <Link to="/student/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>
+            Register here
           </Link>
         </p>
-        <Link to="/" style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', textDecoration: 'none' }}>
+        <Link to="/" style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
           ← Back to Home
         </Link>
       </div>

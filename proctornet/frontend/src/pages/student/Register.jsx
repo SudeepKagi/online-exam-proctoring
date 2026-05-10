@@ -1,8 +1,19 @@
 import { useState, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import AuthLayout from '@/components/common/AuthLayout'
-import { FormInput, SelectInput, SubmitButton, Alert } from '@/components/common/FormComponents'
+import { FormInput, SelectInput, SubmitButton, Alert, InfoBox } from '@/components/common/FormComponents'
 import { studentRegister } from '@/services/auth.api'
+
+function Icon({ name, size = 20, style = {} }) {
+  return (
+    <span
+      className="material-icon"
+      style={{ fontSize: size, ...style }}
+    >
+      {name}
+    </span>
+  )
+}
 
 const DEPARTMENTS = [
   { value: '', label: '— Select Department —' },
@@ -21,8 +32,7 @@ const SEMESTERS = Array.from({ length: 8 }, (_, i) => ({
 }))
 SEMESTERS.unshift({ value: '', label: '— Select Semester —' })
 
-// Step labels for the multi-step wizard
-const STEPS = ['Personal Info', 'Face Photo', 'ID Card', 'Review & Submit']
+const STEPS = ['Personal Info', 'Face Photo', 'ID Card', 'Review']
 
 export default function StudentRegister() {
   const [step, setStep]         = useState(0)
@@ -31,9 +41,9 @@ export default function StudentRegister() {
     department: '', semester: '',
   })
   const [errors, setErrors]     = useState({})
-  const [facePhoto, setFacePhoto]   = useState(null)  // base64
+  const [facePhoto, setFacePhoto]   = useState(null)
   const [facePreview, setFacePreview] = useState(null)
-  const [idCardPhoto, setIdCardPhoto] = useState(null) // base64
+  const [idCardPhoto, setIdCardPhoto] = useState(null)
   const [idCardPreview, setIdCardPreview] = useState(null)
   const [cameraActive, setCameraActive] = useState(false)
   const [loading, setLoading]   = useState(false)
@@ -58,7 +68,9 @@ export default function StudentRegister() {
         audio: false,
       })
       streamRef.current = stream
-      videoRef.current.srcObject = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+      }
       setCameraActive(true)
     } catch (e) {
       setError('Cannot access camera: ' + e.message)
@@ -161,36 +173,40 @@ export default function StudentRegister() {
   if (success) {
     const isPendingFaculty = success.status === 'PENDING_FACULTY'
     return (
-      <AuthLayout title="Registration Submitted!" icon="🎉">
+      <AuthLayout title="Registration Submitted!" maxWidth="480px">
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>
-            {isPendingFaculty ? '⏳' : '🔍'}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: isPendingFaculty ? 'var(--success-bg)' : 'var(--warning-bg)',
+              color: isPendingFaculty ? 'var(--success)' : 'var(--warning)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Icon name={isPendingFaculty ? 'hourglass_empty' : 'policy'} size={32} />
+            </div>
           </div>
-          <h3 style={{ fontWeight: 700, color: isPendingFaculty ? '#34d399' : '#fbbf24', marginBottom: '0.75rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.75rem' }}>
             {isPendingFaculty ? 'Awaiting Faculty Approval' : 'Under Admin Review'}
           </h3>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
             {isPendingFaculty
               ? 'Your registration is complete! Your faculty will approve your account before exams.'
               : 'Your identity match score was below threshold. Admin will manually verify your registration.'}
           </p>
           {success.matchScore && (
             <div style={{
-              background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)',
-              padding: '0.75rem', marginBottom: '1rem',
-              display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem',
+              background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: '8px',
+              padding: '1rem', marginBottom: '1.5rem',
+              display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', alignItems: 'center'
             }}>
-              <span style={{ color: 'var(--color-text-secondary)' }}>Face match score</span>
-              <span style={{ color: '#34d399', fontWeight: 700 }}>
+              <span style={{ color: 'var(--on-surface-variant)', fontWeight: 500 }}>Face match score</span>
+              <span className="badge badge-success" style={{ fontSize: '0.875rem' }}>
                 {(success.matchScore * 100).toFixed(1)}%
               </span>
             </div>
           )}
-          <Link to="/student/login" className="btn-primary" style={{
-            display: 'inline-block', padding: '0.625rem 1.5rem',
-            textDecoration: 'none', borderRadius: 'var(--radius-md)',
-          }}>
-            Go to Login
+          <Link to="/student/login" className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+            Return to Login
           </Link>
         </div>
       </AuthLayout>
@@ -198,265 +214,221 @@ export default function StudentRegister() {
   }
 
   return (
-    <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh', padding: '2rem 1rem' }}>
-      {/* Progress header */}
-      <div style={{ maxWidth: '560px', margin: '0 auto 1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+    <AuthLayout maxWidth="520px">
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.5rem' }}>
+          Student Registration
+        </h2>
+        
+        {/* Progress Timeline */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', position: 'relative' }}>
+          <div style={{ position: 'absolute', top: 14, left: 0, right: 0, height: 2, background: 'var(--surface-container-high)', zIndex: 0 }} />
+          <div style={{ position: 'absolute', top: 14, left: 0, height: 2, background: 'var(--primary)', zIndex: 0, transition: 'width 0.3s ease', width: `${(step / (STEPS.length - 1)) * 100}%` }} />
+          
           {STEPS.map((s, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 1, gap: '0.5rem' }}>
               <div style={{
-                width: '32px', height: '32px', borderRadius: '50%',
-                background: i < step ? '#34d399' : i === step ? '#60a5fa' : 'var(--color-bg-card)',
-                border: `2px solid ${i < step ? '#34d399' : i === step ? '#60a5fa' : 'var(--color-border)'}`,
+                width: 28, height: 28, borderRadius: '50%',
+                background: i <= step ? 'var(--primary)' : 'var(--surface-container-lowest)',
+                border: `2px solid ${i <= step ? 'var(--primary)' : 'var(--outline-variant)'}`,
+                color: i <= step ? 'var(--on-primary)' : 'var(--outline)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '0.8rem', fontWeight: 700,
-                color: i <= step ? '#fff' : 'var(--color-text-muted)',
-                transition: 'all 0.3s',
-                marginBottom: '0.25rem',
+                fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.3s ease'
               }}>
-                {i < step ? '✓' : i + 1}
+                {i < step ? <Icon name="check" size={16} /> : i + 1}
               </div>
-              <span style={{
-                fontSize: '0.7rem', color: i === step ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
-                fontWeight: i === step ? 600 : 400, textAlign: 'center',
-              }}>{s}</span>
+              <span style={{ fontSize: '0.6875rem', fontWeight: i === step ? 600 : 500, color: i <= step ? 'var(--on-surface)' : 'var(--outline)' }}>
+                {s}
+              </span>
             </div>
           ))}
         </div>
-        {/* Progress bar */}
-        <div style={{ height: '3px', background: 'var(--color-border)', borderRadius: '9999px', marginTop: '0.5rem' }}>
-          <div style={{
-            height: '100%', borderRadius: '9999px',
-            background: 'linear-gradient(90deg, #34d399, #60a5fa)',
-            width: `${(step / (STEPS.length - 1)) * 100}%`,
-            transition: 'width 0.4s ease',
-          }} />
-        </div>
       </div>
 
-      {/* Card */}
-      <div style={{ maxWidth: '560px', margin: '0 auto' }}>
-        <div className="glass-card" style={{ padding: '2rem' }}>
-          <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{
-              width: '40px', height: '40px',
-              background: 'linear-gradient(135deg,#3b82f6,#7c3aed)',
-              borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem',
-            }}>📝</div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '1.125rem' }}>Student Registration</div>
-              <div style={{ color: 'var(--color-text-secondary)', fontSize: '0.8125rem' }}>
-                Step {step + 1} of {STEPS.length}: {STEPS[step]}
-              </div>
-            </div>
+      <Alert type="danger" message={error} />
+
+      {/* ── Step 0: Personal Info ── */}
+      {step === 0 && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+            <FormInput id="s-name" label="Full Name" value={form.name}
+              onChange={set('name')} placeholder="e.g. John Doe" required />
+            <FormInput id="s-usn" label="USN" value={form.usn}
+              onChange={set('usn')} placeholder="e.g. 1VE22CS001" required />
           </div>
+          <FormInput id="s-email" label="College Email" type="email" value={form.email}
+            onChange={set('email')} placeholder="student@college.edu" required />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+            <SelectInput id="s-dept" label="Department" value={form.department}
+              onChange={set('department')} options={DEPARTMENTS} required />
+            <SelectInput id="s-sem" label="Semester" value={form.semester}
+              onChange={set('semester')} options={SEMESTERS} required />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+            <FormInput id="s-pass" label="Password" type="password" value={form.password}
+              onChange={set('password')} placeholder="Min 8 chars" required />
+            <FormInput id="s-cpass" label="Confirm Password" type="password" value={form.confirmPassword}
+              onChange={set('confirmPassword')} placeholder="Repeat password" required />
+          </div>
+        </div>
+      )}
 
-          <Alert type="error" message={error} />
+      {/* ── Step 1: Face Photo ── */}
+      {step === 1 && (
+        <div style={{ textAlign: 'center' }}>
+          <InfoBox>
+            Look directly at the camera in a well-lit area. This photo will be used for continuous identity verification during exams.
+          </InfoBox>
 
-          {/* ── Step 0: Personal Info ── */}
-          {step === 0 && (
-            <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0.75rem' }}>
-                <FormInput id="s-name" label="Full Name" value={form.name}
-                  onChange={set('name')} placeholder="Sudeep Kagi" error={errors.name} required />
-                <FormInput id="s-usn" label="USN" value={form.usn}
-                  onChange={set('usn')} placeholder="1VE22CS001" error={errors.usn} required />
+          <div style={{ margin: '1.5rem 0', display: 'flex', justifyContent: 'center' }}>
+            {!cameraActive && !facePreview && (
+              <div 
+                style={{ width: '100%', height: 240, border: '2px dashed var(--outline-variant)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', cursor: 'pointer', background: 'var(--surface-container-lowest)' }}
+                onClick={startCamera}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--primary-fixed)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="photo_camera" size={24} />
+                </div>
+                <span style={{ fontWeight: 500, color: 'var(--primary)' }}>Enable Camera</span>
               </div>
-              <FormInput id="s-email" label="College Email" type="email" value={form.email}
-                onChange={set('email')} placeholder="usn@college.edu" error={errors.email} required />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0.75rem' }}>
-                <SelectInput id="s-dept" label="Department" value={form.department}
-                  onChange={set('department')} options={DEPARTMENTS} error={errors.department} required />
-                <SelectInput id="s-sem" label="Semester" value={form.semester}
-                  onChange={set('semester')} options={SEMESTERS} error={errors.semester} required />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0.75rem' }}>
-                <FormInput id="s-pass" label="Password" type="password" value={form.password}
-                  onChange={set('password')} placeholder="Min 8 chars" error={errors.password} required />
-                <FormInput id="s-cpass" label="Confirm Password" type="password" value={form.confirmPassword}
-                  onChange={set('confirmPassword')} placeholder="Repeat" error={errors.confirmPassword} required />
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* ── Step 1: Face Photo ── */}
-          {step === 1 && (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
-                📸 Look directly at the camera in a well-lit area. This photo will be used for identity verification during exams.
-              </p>
-
-              {!cameraActive && !facePreview && (
-                <button onClick={startCamera} className="btn-primary" style={{ padding: '0.75rem 2rem' }}>
-                  📷 Open Camera
-                </button>
-              )}
-
-              {cameraActive && (
-                <div>
-                  <video ref={videoRef} autoPlay playsInline muted style={{
-                    width: '100%', maxWidth: '360px', borderRadius: 'var(--radius-lg)',
-                    border: '2px solid #60a5fa', marginBottom: '1rem',
-                  }} />
-                  <br />
-                  <button onClick={capturePhoto} className="btn-primary" style={{ padding: '0.625rem 2rem', marginRight: '0.75rem' }}>
-                    📸 Capture
+            {cameraActive && (
+              <div style={{ width: '100%' }}>
+                <div style={{ position: 'relative', width: '100%', borderRadius: '12px', overflow: 'hidden', border: '2px solid var(--primary)', marginBottom: '1rem', background: '#000' }}>
+                  <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', display: 'block' }} />
+                  {/* Face guide overlay */}
+                  <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '180px', height: '240px', border: '2px dashed rgba(255,255,255,0.5)', borderRadius: '50%' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={capturePhoto} className="btn-primary" style={{ flex: 1 }}>
+                    <Icon name="camera" /> Capture Photo
                   </button>
-                  <button onClick={stopCamera} className="btn-secondary" style={{ padding: '0.625rem 1rem' }}>
+                  <button onClick={stopCamera} className="btn-secondary">
                     Cancel
                   </button>
                 </div>
-              )}
-
-              {facePreview && !cameraActive && (
-                <div>
-                  <img src={facePreview} alt="Face" style={{
-                    width: '200px', height: '200px', objectFit: 'cover',
-                    borderRadius: '50%', border: '3px solid #34d399', marginBottom: '1rem',
-                  }} />
-                  <br />
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <span style={{ color: '#34d399', fontWeight: 600 }}>✅ Photo captured</span>
-                  </div>
-                  <button onClick={retakePhoto} className="btn-secondary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}>
-                    🔄 Retake
-                  </button>
-                </div>
-              )}
-
-              <div style={{
-                marginTop: '1.25rem', background: 'rgba(251,191,36,0.08)',
-                border: '1px solid rgba(251,191,36,0.2)', borderRadius: 'var(--radius-md)',
-                padding: '0.625rem', fontSize: '0.8rem', color: '#fde68a', textAlign: 'left',
-              }}>
-                ⚠️ Ensure your face is clearly visible, no sunglasses, good lighting, and face the camera directly.
               </div>
-            </div>
-          )}
-
-          {/* ── Step 2: ID Card ── */}
-          {step === 2 && (
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem', lineHeight: 1.6 }}>
-                🪪 Upload a clear photo of your college ID card. Your USN must be readable for OCR verification.
-              </p>
-
-              <input
-                type="file" ref={idFileRef} accept="image/*"
-                onChange={handleIdCardFile} style={{ display: 'none' }}
-              />
-
-              {!idCardPreview ? (
-                <div
-                  onClick={() => idFileRef.current.click()}
-                  style={{
-                    border: '2px dashed var(--color-border)',
-                    borderRadius: 'var(--radius-lg)',
-                    padding: '3rem 2rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    marginBottom: '1rem',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#60a5fa'; e.currentTarget.style.background = 'rgba(59,130,246,0.05)' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.background = 'transparent' }}
-                >
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🪪</div>
-                  <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Click to upload ID card</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>JPG, PNG or WEBP • max 10MB</div>
-                </div>
-              ) : (
-                <div>
-                  <img src={idCardPreview} alt="ID Card" style={{
-                    maxWidth: '100%', maxHeight: '200px', objectFit: 'contain',
-                    borderRadius: 'var(--radius-md)', border: '2px solid #34d399',
-                    marginBottom: '1rem',
-                  }} />
-                  <br />
-                  <div style={{ color: '#34d399', fontWeight: 600, marginBottom: '0.75rem' }}>✅ ID card uploaded</div>
-                  <button onClick={() => idFileRef.current.click()} className="btn-secondary" style={{ padding: '0.5rem 1.25rem', fontSize: '0.875rem' }}>
-                    🔄 Replace
-                  </button>
-                </div>
-              )}
-
-              <div style={{
-                background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)',
-                borderRadius: 'var(--radius-md)', padding: '0.625rem', fontSize: '0.8rem',
-                color: '#93c5fd', textAlign: 'left',
-              }}>
-                ℹ️ Make sure the ID card is flat, well-lit, and your USN is clearly visible.
-              </div>
-            </div>
-          )}
-
-          {/* ── Step 3: Review & Submit ── */}
-          {step === 3 && (
-            <div>
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-                {facePreview && (
-                  <img src={facePreview} alt="Face" style={{
-                    width: '80px', height: '80px', objectFit: 'cover',
-                    borderRadius: '50%', border: '2px solid #34d399',
-                  }} />
-                )}
-                {idCardPreview && (
-                  <img src={idCardPreview} alt="ID" style={{
-                    height: '80px', maxWidth: '140px', objectFit: 'contain',
-                    borderRadius: 'var(--radius-md)', border: '2px solid #60a5fa',
-                  }} />
-                )}
-              </div>
-
-              <div style={{ background: 'var(--color-bg-elevated)', borderRadius: 'var(--radius-md)', padding: '1rem', marginBottom: '1rem' }}>
-                {[
-                  ['Name',       form.name],
-                  ['USN',        form.usn],
-                  ['Email',      form.email],
-                  ['Department', form.department],
-                  ['Semester',   `${form.semester}th`],
-                ].map(([label, value]) => (
-                  <div key={label} style={{
-                    display: 'flex', justifyContent: 'space-between',
-                    padding: '0.375rem 0',
-                    borderBottom: '1px solid var(--color-border)',
-                    fontSize: '0.875rem',
-                  }}>
-                    <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
-                    <span style={{ fontWeight: 600 }}>{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              <Alert type="info" message="By submitting, you confirm that the face photo and ID card are genuine and belong to you." />
-
-              <SubmitButton loading={loading} onClick={handleSubmit} style={{ marginTop: '0.5rem' }}>
-                {loading ? 'Submitting & Verifying…' : '🚀 Submit Registration'}
-              </SubmitButton>
-            </div>
-          )}
-
-          {/* Navigation buttons */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', gap: '0.75rem' }}>
-            {step > 0 ? (
-              <button onClick={() => { setStep(s => s - 1); setError('') }} className="btn-secondary"
-                style={{ padding: '0.625rem 1.25rem', fontSize: '0.875rem' }}>
-                ← Back
-              </button>
-            ) : (
-              <Link to="/student/login" style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-                Already registered? Login
-              </Link>
             )}
 
-            {step < 3 && (
-              <button onClick={nextStep} className="btn-primary"
-                style={{ padding: '0.625rem 1.5rem', fontSize: '0.875rem', marginLeft: 'auto' }}>
-                Next →
-              </button>
+            {facePreview && !cameraActive && (
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <img src={facePreview} alt="Face Preview" style={{ width: 200, height: 200, objectFit: 'cover', borderRadius: '50%', border: '4px solid var(--success)', marginBottom: '1rem' }} />
+                <div style={{ color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Icon name="check_circle" size={18} /> Verified
+                </div>
+                <button onClick={retakePhoto} className="btn-secondary" style={{ padding: '0.5rem 1.5rem' }}>
+                  <Icon name="refresh" /> Retake Photo
+                </button>
+              </div>
             )}
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* ── Step 2: ID Card ── */}
+      {step === 2 && (
+        <div style={{ textAlign: 'center' }}>
+          <InfoBox>
+            Upload a clear photo of your college ID card. Your USN must be readable for automated OCR verification.
+          </InfoBox>
+
+          <input type="file" ref={idFileRef} accept="image/*" onChange={handleIdCardFile} style={{ display: 'none' }} />
+
+          <div style={{ margin: '1.5rem 0', display: 'flex', justifyContent: 'center' }}>
+            {!idCardPreview ? (
+              <div 
+                onClick={() => idFileRef.current.click()}
+                style={{ width: '100%', height: 200, border: '2px dashed var(--outline-variant)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', cursor: 'pointer', background: 'var(--surface-container-lowest)', transition: 'border-color 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--outline-variant)'}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="badge" size={24} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--on-surface)', marginBottom: '0.25rem' }}>Upload ID Card</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--outline)' }}>PNG, JPG up to 10MB</div>
+                </div>
+              </div>
+            ) : (
+              <div style={{ width: '100%' }}>
+                <div style={{ padding: '1rem', border: '1px solid var(--outline-variant)', borderRadius: '12px', background: 'var(--surface-container-lowest)', marginBottom: '1rem' }}>
+                  <img src={idCardPreview} alt="ID Card" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: '8px' }} />
+                </div>
+                <div style={{ color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Icon name="check_circle" size={18} /> Uploaded Successfully
+                </div>
+                <button onClick={() => idFileRef.current.click()} className="btn-secondary" style={{ padding: '0.5rem 1.5rem' }}>
+                  <Icon name="upload" /> Choose Different Image
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Step 3: Review ── */}
+      {step === 3 && (
+        <div>
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+            {facePreview && (
+              <img src={facePreview} alt="Face" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--primary)' }} />
+            )}
+            {idCardPreview && (
+              <img src={idCardPreview} alt="ID" style={{ height: 80, maxWidth: 140, objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--outline-variant)' }} />
+            )}
+          </div>
+
+          <div style={{ background: 'var(--surface-container-lowest)', border: '1px solid var(--outline-variant)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+            {[
+              ['Full Name', form.name],
+              ['USN', form.usn],
+              ['Email', form.email],
+              ['Department', form.department],
+              ['Semester', `${form.semester}th`],
+            ].map(([label, value]) => (
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--surface-container)', fontSize: '0.875rem' }}>
+                <span style={{ color: 'var(--on-surface-variant)' }}>{label}</span>
+                <span style={{ fontWeight: 600, color: 'var(--on-surface)' }}>{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <Alert type="info" message="By submitting, you confirm that the face photo and ID card are genuine and belong to you." />
+          
+          <SubmitButton loading={loading} onClick={handleSubmit} style={{ marginTop: '0' }}>
+            {loading ? 'Verifying Identity…' : 'Submit Registration'}
+          </SubmitButton>
+        </div>
+      )}
+
+      {/* Navigation Buttons */}
+      {step < 3 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2rem', borderTop: '1px solid var(--outline-variant)', paddingTop: '1.5rem' }}>
+          {step > 0 ? (
+            <button type="button" onClick={() => { setStep(s => s - 1); setError('') }} className="btn-secondary">
+              Back
+            </button>
+          ) : (
+            <Link to="/student/login" style={{ fontSize: '0.875rem', color: 'var(--primary)', fontWeight: 500, textDecoration: 'none' }}>
+              Already have an account?
+            </Link>
+          )}
+
+          <button type="button" onClick={nextStep} className="btn-primary" style={{ marginLeft: 'auto' }}>
+            Continue <Icon name="arrow_forward" size={16} style={{ marginLeft: '0.25rem' }} />
+          </button>
+        </div>
+      )}
+      
+      {step === 3 && (
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <button type="button" onClick={() => setStep(2)} style={{ background: 'none', border: 'none', color: 'var(--on-surface-variant)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: 500 }}>
+            Go back to edit details
+          </button>
+        </div>
+      )}
+    </AuthLayout>
   )
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import AuthLayout from '@/components/common/AuthLayout'
-import { FormInput, SubmitButton, Alert } from '@/components/common/FormComponents'
+import { FormInput, SubmitButton, Alert, InfoBox } from '@/components/common/FormComponents'
 import { adminLogin } from '@/services/auth.api'
 
 export default function AdminLogin() {
@@ -39,32 +39,14 @@ export default function AdminLogin() {
   return (
     <AuthLayout
       title="Admin Login"
-      subtitle="ProctorNet platform administration"
-      icon="⚙️"
+      subtitle="ProctorNet platform administration portal."
     >
-      {/* Quick-fill hint */}
-      <div style={{
-        background: 'rgba(167,139,250,0.08)',
-        border: '1px solid rgba(167,139,250,0.2)',
-        borderRadius: 'var(--radius-md)',
-        padding: '0.625rem 0.875rem',
-        marginBottom: '1.25rem',
-        fontSize: '0.8rem',
-        color: '#c4b5fd',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-      }}>
-        <span>🔑</span>
-        <span>
-          Default: <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '3px' }}>admin@proctornet.com</code>
-          {' / '}
-          <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '3px' }}>Admin@123</code>
-        </span>
-      </div>
-
       <form onSubmit={handleSubmit} noValidate>
-        <Alert type="error" message={error} />
+        <Alert type="danger" message={error} />
+
+        <InfoBox>
+          Default credentials: <strong>admin@proctornet.com</strong> / <strong>Admin@123</strong>
+        </InfoBox>
 
         <FormInput
           id="admin-email"
@@ -74,31 +56,36 @@ export default function AdminLogin() {
           onChange={set('email')}
           placeholder="admin@proctornet.com"
           autoComplete="email"
+          prefixIcon="mail"
           required
         />
 
-        <FormInput
-          id="admin-password"
-          label="Password"
-          type="password"
-          value={form.password}
-          onChange={set('password')}
-          placeholder="Enter your password"
-          autoComplete="current-password"
-          required
-        />
+        <div style={{ marginBottom: '1.125rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.375rem' }}>
+            <label htmlFor="admin-password" className="form-label" style={{ margin: 0 }}>Password</label>
+            <a href="#" style={{ fontSize: '0.8125rem', color: 'var(--primary)', fontWeight: 500 }}>Forgot password?</a>
+          </div>
+          <FormInput
+            id="admin-password"
+            label=""
+            type="password"
+            value={form.password}
+            onChange={set('password')}
+            placeholder="••••••••"
+            autoComplete="current-password"
+            prefixIcon="lock"
+            required
+          />
+        </div>
 
         <SubmitButton loading={loading}>
-          {loading ? 'Signing in…' : 'Sign In as Admin'}
+          {loading ? 'Signing in…' : 'Login to Dashboard →'}
         </SubmitButton>
       </form>
 
-      <p style={{
-        textAlign: 'center', marginTop: '1.25rem',
-        fontSize: '0.8125rem', color: 'var(--color-text-muted)',
-      }}>
+      <p style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.8125rem', color: 'var(--on-surface-variant)' }}>
         Not an admin?{' '}
-        <Link to="/" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 600 }}>
+        <Link to="/" style={{ color: 'var(--primary)', fontWeight: 600 }}>
           Back to Home
         </Link>
       </p>

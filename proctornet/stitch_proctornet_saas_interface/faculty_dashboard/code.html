@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Faculty Dashboard - ProctorNet</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;  /* Preferred icon size */
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+    </style>
+<!-- Tailwind CSS & Config -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                            "outline": "#737686",
+                            "on-secondary-fixed-variant": "#004395",
+                            "secondary": "#0058be",
+                            "inverse-on-surface": "#eef0ff",
+                            "on-secondary-container": "#fefcff",
+                            "background": "#faf8ff",
+                            "secondary-fixed": "#d8e2ff",
+                            "error": "#ba1a1a",
+                            "on-primary-fixed": "#00174b",
+                            "on-surface": "#131b2e",
+                            "surface-tint": "#0053db",
+                            "on-tertiary": "#ffffff",
+                            "surface-container-lowest": "#ffffff",
+                            "on-secondary": "#ffffff",
+                            "secondary-container": "#2170e4",
+                            "on-tertiary-fixed": "#001f26",
+                            "tertiary-container": "#00788c",
+                            "on-primary-fixed-variant": "#003ea8",
+                            "surface-dim": "#d2d9f4",
+                            "primary-fixed": "#dbe1ff",
+                            "on-primary-container": "#eeefff",
+                            "tertiary-fixed": "#acedff",
+                            "surface-container-highest": "#dae2fd",
+                            "on-error": "#ffffff",
+                            "on-primary": "#ffffff",
+                            "tertiary": "#005e6e",
+                            "tertiary-fixed-dim": "#4cd7f6",
+                            "surface-container-low": "#f2f3ff",
+                            "surface-bright": "#faf8ff",
+                            "primary-container": "#2563eb",
+                            "on-surface-variant": "#434655",
+                            "inverse-primary": "#b4c5ff",
+                            "inverse-surface": "#283044",
+                            "surface-variant": "#dae2fd",
+                            "on-tertiary-container": "#d7f6ff",
+                            "error-container": "#ffdad6",
+                            "on-tertiary-fixed-variant": "#004e5c",
+                            "surface-container": "#eaedff",
+                            "primary-fixed-dim": "#b4c5ff",
+                            "secondary-fixed-dim": "#adc6ff",
+                            "on-secondary-fixed": "#001a42",
+                            "outline-variant": "#c3c6d7",
+                            "on-error-container": "#93000a",
+                            "surface": "#faf8ff",
+                            "on-background": "#131b2e",
+                            "primary": "#004ac6",
+                            "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                            "DEFAULT": "0.25rem",
+                            "lg": "0.5rem",
+                            "xl": "0.75rem",
+                            "full": "9999px"
+                    },
+                    "spacing": {
+                            "gutter": "1.5rem",
+                            "sidebar-width": "260px",
+                            "stack-sm": "0.5rem",
+                            "margin-page": "2rem",
+                            "stack-md": "1rem",
+                            "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                            "page-title": ["Inter"],
+                            "section-title": ["Inter"],
+                            "body": ["Inter"],
+                            "card-title": ["Inter"],
+                            "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                            "page-title": ["22px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                            "section-title": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                            "body": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                            "card-title": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                            "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+</head>
+<body class="bg-background font-body text-body text-on-background min-h-screen flex antialiased">
+<!-- SideNavBar Component -->
+<aside class="fixed left-0 top-0 h-full w-[260px] bg-surface dark:bg-surface border-r border-outline-variant dark:border-outline flex flex-col overflow-y-auto z-20 hidden md:flex">
+<!-- Header -->
+<div class="px-gutter pt-8 pb-6 flex flex-col items-start border-b border-outline-variant">
+<div class="h-10 w-10 bg-primary-container text-on-primary rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined font-[FILL:1]" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<h1 class="font-page-title text-page-title text-primary dark:text-primary-fixed-dim">ProctorNet</h1>
+<p class="font-caption text-caption text-on-surface-variant">Academic Integrity</p>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 py-4 flex flex-col gap-1 px-2">
+<!-- Active Tab: Dashboard -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-primary-fixed-dim font-semibold border-r-4 border-primary bg-surface-container opacity-90 transition-all rounded-r-full" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-r-full" href="#">
+<span class="material-symbols-outlined">videocam</span>
+<span>Live Monitoring</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-r-full" href="#">
+<span class="material-symbols-outlined">group</span>
+<span>Student Directory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-r-full" href="#">
+<span class="material-symbols-outlined">description</span>
+<span>Exam Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-r-full" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>System Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors rounded-r-full mt-auto" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<!-- CTA -->
+<div class="p-4 border-t border-outline-variant">
+<button class="w-full flex items-center justify-center gap-2 py-2 px-4 bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors rounded-lg font-body text-body border border-outline-variant shadow-sm">
+<span class="material-symbols-outlined text-[18px]">help_center</span>
+                Support Center
+            </button>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[260px] min-w-0">
+<!-- TopNavBar Component -->
+<header class="h-[60px] bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline shadow-sm flex justify-between items-center px-gutter w-full sticky top-0 z-10 hidden md:flex">
+<!-- Search -->
+<div class="flex-1 flex items-center">
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-1.5 bg-surface-bright border border-outline-variant rounded-full font-body text-body text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search ID or Name..." type="text"/>
+</div>
+</div>
+<!-- Links -->
+<nav class="flex gap-6 items-center">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Monitoring</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Exams</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Reports</a>
+</nav>
+<!-- Actions -->
+<div class="flex-1 flex justify-end items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:scale-95 duration-150 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors hover:scale-95 duration-150">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border border-outline-variant cursor-pointer hover:scale-95 duration-150 transition-transform">
+<img alt="Proctor Profile Image" class="w-full h-full object-cover" data-alt="A professional headshot of a female university professor of South Asian descent, looking approachable yet authoritative. The lighting is soft and natural, creating a bright, modern corporate aesthetic suitable for an enterprise software dashboard. The background is a subtle, out-of-focus academic office setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_OFRNpQHgcZYQuraoyYAxvOninJz51Q3ta1UQ1yxvLP9HvUKN-XCJo-o_vQu7jNMcjn_zIjioQN0WxGFdcL6T1lzRmA72aKV4EAOLxX-AFhTE-oxhykHyVn5f7vdsKrffdnBrzHJFpFulQnySXWozbH1hU62JPajhEaPLewovoIrVJm3kKt_zUu_o2XcX-ekSK-vmf-nAfrF7Q_3DjW8fkZiMJaMXf_eN5trfkljxua4JPnIE2UphVSg3EakL11R828r3F8lWEri2"/>
+</div>
+</div>
+</header>
+<!-- Canvas (Page Content) -->
+<main class="flex-1 p-margin-page overflow-x-hidden">
+<div class="max-w-container-max mx-auto flex flex-col gap-8">
+<!-- Welcome Section -->
+<header class="flex flex-col gap-1">
+<h2 class="font-page-title text-page-title text-on-surface">Welcome back, Dr. Anjali 👋</h2>
+<p class="font-body text-body text-on-surface-variant">Computer Science Department</p>
+</header>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<div class="bg-surface border border-outline-variant rounded-xl p-5 flex items-center justify-between shadow-sm">
+<div class="flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">My Exams</span>
+<span class="text-2xl font-bold text-on-surface font-page-title">8</span>
+</div>
+<div class="h-10 w-10 bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">description</span>
+</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-5 flex items-center justify-between shadow-sm border-l-4 border-l-tertiary">
+<div class="flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">Active Now</span>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-bold text-on-surface font-page-title">1</span>
+<span class="flex items-center gap-1 text-tertiary text-xs font-semibold bg-tertiary-fixed px-2 py-0.5 rounded-full">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary animate-pulse"></span> Live
+                                </span>
+</div>
+</div>
+<div class="h-10 w-10 bg-tertiary-container text-on-tertiary flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">videocam</span>
+</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-5 flex items-center justify-between shadow-sm">
+<div class="flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">My Students</span>
+<span class="text-2xl font-bold text-on-surface font-page-title">340</span>
+</div>
+<div class="h-10 w-10 bg-surface-container-high text-on-surface flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">group</span>
+</div>
+</div>
+<div class="bg-surface border border-outline-variant rounded-xl p-5 flex items-center justify-between shadow-sm border-l-4 border-l-[#F59E0B]">
+<div class="flex flex-col gap-1">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">Pending Approvals</span>
+<div class="flex items-center gap-2">
+<span class="text-2xl font-bold text-on-surface font-page-title">5</span>
+<span class="text-[#D97706] text-xs font-semibold bg-[#FEF3C7] px-2 py-0.5 rounded-full">Action Req</span>
+</div>
+</div>
+<div class="h-10 w-10 bg-[#FEF3C7] text-[#D97706] flex items-center justify-center rounded-lg">
+<span class="material-symbols-outlined">how_to_reg</span>
+</div>
+</div>
+</div>
+<!-- Main Layout Grid (65/35) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column (65%) -->
+<div class="lg:col-span-8 flex flex-col gap-6">
+<!-- My Exams Table Card -->
+<div class="bg-surface border border-outline-variant rounded-[16px] shadow-sm flex flex-col overflow-hidden">
+<!-- Header & Tabs -->
+<div class="px-6 pt-5 pb-0 border-b border-outline-variant flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<h3 class="font-section-title text-section-title text-on-surface">My Exams</h3>
+<button class="text-primary hover:text-on-primary-fixed-variant font-caption text-caption font-semibold flex items-center gap-1 transition-colors">
+                                        View Calendar <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<div class="flex gap-6 -mb-[1px]">
+<button class="pb-3 border-b-2 border-primary text-primary font-body text-body font-semibold">All</button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-colors font-body text-body">Active</button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-colors font-body text-body">Draft</button>
+<button class="pb-3 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-colors font-body text-body">Completed</button>
+</div>
+</div>
+<!-- Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low border-b border-outline-variant">
+<th class="px-6 py-3 font-caption text-caption text-on-surface-variant uppercase tracking-wider font-semibold">Course Name</th>
+<th class="px-6 py-3 font-caption text-caption text-on-surface-variant uppercase tracking-wider font-semibold">Date &amp; Time</th>
+<th class="px-6 py-3 font-caption text-caption text-on-surface-variant uppercase tracking-wider font-semibold">Students</th>
+<th class="px-6 py-3 font-caption text-caption text-on-surface-variant uppercase tracking-wider font-semibold">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant font-body text-body">
+<tr class="hover:bg-surface-bright transition-colors group cursor-pointer">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded bg-primary-fixed text-on-primary-fixed flex items-center justify-center font-bold text-xs">DS</div>
+<span class="font-semibold text-on-surface group-hover:text-primary transition-colors">Data Structures</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Today, 10:00 AM</td>
+<td class="px-6 py-4 text-on-surface-variant">120</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium bg-tertiary-fixed text-on-tertiary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span> Active
+                                                </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors group cursor-pointer">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded bg-surface-container-high text-on-surface flex items-center justify-center font-bold text-xs">DB</div>
+<span class="font-semibold text-on-surface group-hover:text-primary transition-colors">DBMS Quiz</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Tomorrow, 2:00 PM</td>
+<td class="px-6 py-4 text-on-surface-variant">85</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium bg-surface-container text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span> Draft
+                                                </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors group cursor-pointer">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded bg-surface-container-high text-on-surface flex items-center justify-center font-bold text-xs">NW</div>
+<span class="font-semibold text-on-surface group-hover:text-primary transition-colors">Networks Mid</span>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface-variant">Oct 15, 9:00 AM</td>
+<td class="px-6 py-4 text-on-surface-variant">135</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium bg-surface-container text-on-surface-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span> Scheduled
+                                                </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Right Column (35%) -->
+<div class="lg:col-span-4 flex flex-col gap-6">
+<!-- Pending Student Approvals Card -->
+<div class="bg-surface border border-outline-variant rounded-[16px] shadow-sm flex flex-col p-5">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-card-title text-card-title text-on-surface">Pending Approvals</h3>
+<span class="bg-[#FEF3C7] text-[#D97706] text-xs font-bold px-2 py-1 rounded-full">5</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Student Item -->
+<div class="flex items-center justify-between p-3 border border-outline-variant rounded-lg bg-surface-bright">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body text-body font-semibold text-on-surface">Rahul Sharma</span>
+<span class="font-caption text-caption text-error flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">warning</span> ID Match: 65%
+                                            </span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="h-8 w-8 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface flex items-center justify-center transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+<button class="h-8 w-8 rounded-md bg-primary-container text-on-primary hover:bg-primary transition-colors flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+</div>
+</div>
+<!-- Student Item -->
+<div class="flex items-center justify-between p-3 border border-outline-variant rounded-lg bg-surface-bright">
+<div class="flex items-center gap-3">
+<div class="h-10 w-10 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-outline">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body text-body font-semibold text-on-surface">Priya Patel</span>
+<span class="font-caption text-caption text-[#D97706] flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">info</span> Unclear Photo
+                                            </span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="h-8 w-8 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface flex items-center justify-center transition-colors border border-outline-variant">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+<button class="h-8 w-8 rounded-md bg-primary-container text-on-primary hover:bg-primary transition-colors flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[18px]">check</span>
+</button>
+</div>
+</div>
+</div>
+<button class="mt-4 w-full py-2 text-primary font-caption text-caption font-semibold hover:bg-surface-container-low rounded-lg transition-colors border border-transparent hover:border-outline-variant">
+                                View All Pending (5)
+                            </button>
+</div>
+<!-- Invigilator Credentials Card -->
+<div class="bg-secondary-fixed border border-secondary-fixed-dim rounded-[16px] shadow-sm flex flex-col p-5 relative overflow-hidden">
+<!-- Background decoration -->
+<div class="absolute -right-4 -top-4 opacity-10 transform rotate-12">
+<span class="material-symbols-outlined text-[120px]">vpn_key</span>
+</div>
+<div class="relative z-10 flex flex-col h-full justify-between">
+<div>
+<div class="flex items-center gap-2 mb-2 text-on-secondary-fixed">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<h3 class="font-card-title text-card-title">Invigilator Access</h3>
+</div>
+<p class="font-caption text-caption text-on-secondary-fixed-variant mb-4">Credentials for currently active "Data Structures" exam.</p>
+</div>
+<div class="bg-surface rounded-lg p-3 border border-outline-variant flex flex-col gap-2">
+<div class="flex justify-between items-center">
+<span class="font-caption text-caption text-on-surface-variant">Session ID</span>
+<span class="font-body text-body font-bold text-on-surface font-mono">DS-8492-X</span>
+</div>
+<hr class="border-outline-variant border-dashed"/>
+<div class="flex justify-between items-center">
+<span class="font-caption text-caption text-on-surface-variant">Master PIN</span>
+<div class="flex items-center gap-2">
+<span class="font-body text-body font-bold text-primary tracking-widest">••••</span>
+<button class="text-outline hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

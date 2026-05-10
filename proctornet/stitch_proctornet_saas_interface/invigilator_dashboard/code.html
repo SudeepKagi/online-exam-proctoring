@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProctorNet - Invigilator Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter"],
+                        "section-title": ["Inter"],
+                        "body": ["Inter"],
+                        "card-title": ["Inter"],
+                        "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- Top Navigation Area -->
+<header class="bg-surface shadow-sm border-b border-outline-variant h-[60px] flex justify-between items-center px-gutter w-full z-10 sticky top-0 shrink-0">
+<div class="flex items-center gap-4">
+<div class="font-page-title text-page-title text-primary tracking-tight">ProctorNet</div>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div>
+<h1 class="font-section-title text-section-title text-on-surface">CS101 — Data Structures</h1>
+<div class="flex items-center gap-3 mt-0.5">
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+<span class="w-2 h-2 rounded-full bg-secondary"></span> 28 Active
+                    </span>
+<span class="font-caption text-caption text-error flex items-center gap-1 font-medium">
+<span class="w-2 h-2 rounded-full bg-error"></span> 2 Flagged
+                    </span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex flex-col items-end">
+<span class="font-caption text-caption text-on-surface-variant uppercase tracking-wider">Remaining Time</span>
+<span class="font-page-title text-page-title text-on-surface font-mono">01:45:22</span>
+</div>
+<button class="bg-error text-on-error font-card-title text-card-title px-4 py-2 rounded-lg shadow-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">stop_circle</span>
+                End Session
+            </button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex overflow-hidden">
+<!-- Left: Student Grid -->
+<section class="flex-1 p-margin-page overflow-y-auto bg-surface-container-low">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-stack-md">
+<!-- Highlighted Student Tile (Arjun Kumar) -->
+<div class="bg-surface border-2 border-error rounded-xl overflow-hidden shadow-sm flex flex-col relative ring-4 ring-error-container">
+<div class="absolute top-2 right-2 z-10 flex gap-1">
+<span class="bg-error text-on-error font-caption text-caption px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[14px]">flag</span> 2 Flags
+                        </span>
+</div>
+<div class="aspect-video bg-[#0F172A] relative w-full border-b border-outline-variant">
+<img alt="Male student looking away from screen" class="w-full h-full object-cover opacity-80" data-alt="A young male student looking away from his computer screen during an online exam. The lighting is slightly dim, illuminating his face mostly from the monitor. The setting is a typical messy student bedroom, giving a realistic, slightly stressful mood. The overall aesthetic is serious and functional, highlighting the need for proctoring in a remote learning environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAJMvqDwYO6Eb1kKHp03l5plf9NwdsV8bace1ZPsQgfIJZBevC7GBjaBbY5qwSSDtpJ8SFMhYPKlOb8YMOhYN3AVAFDW8Lm_U82SJK9Uv60tTgrl7W67mLITsdVOIXdbbu0ZX07wSnnXTHJLrAD3EO8Mkq_iG6WXWF6MHAuwcMKZEUyv3XZ3MeZvt5phCOpqbfwddCnZFVkzwx7lvlbijVVuPsurrKKi1stkXc470E7S4rDtjP0ozdJp4JMBdww7JMpzLPHB4YlpgWl"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-1 rounded text-[10px] font-mono tracking-wider backdrop-blur-sm">LIVE FEED</div>
+</div>
+<div class="p-3 flex justify-between items-center bg-error-container/30">
+<div>
+<div class="font-card-title text-card-title text-on-surface">Arjun Kumar</div>
+<div class="font-caption text-caption text-error font-medium">Multiple screen focus changes</div>
+</div>
+<button class="text-primary hover:bg-primary-container/10 p-1 rounded transition-colors">
+<span class="material-symbols-outlined">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Normal Student Tile 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col relative group hover:border-primary transition-colors cursor-pointer">
+<div class="aspect-video bg-[#0F172A] relative w-full border-b border-outline-variant">
+<img alt="Female student focusing on screen" class="w-full h-full object-cover opacity-90" data-alt="A focused young female student staring intently at her computer screen during an online exam. The lighting is bright and even, highlighting her concentration. The background is a tidy home office setup, suggesting a quiet, controlled environment. The overall aesthetic is professional and secure, emphasizing academic integrity in remote settings." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRp-jvFYSeawp5-LkVTi93ZSpcN_mmMy2NiJ0fGfgP42XDJt9mUxzGEn_Ew8sibQaTgDLU5_lJzWmJZNYIrkd_1SssxCqVvvUB2si8O5K3voC0NAzW4-Vh-yvh5fzyh0OwB_jP1c8KmBirSnFUrAhg7yNOBmTdsLYkoH2yw4bNFU-632-ILdTCHC5-ghKm6U2b58HlDh06-RBn5q7uxzyHnqBEksmG3AA0RvFQ41UVqSe4ohZJgv56ZYwilSFx4c3u2VbAOXYbWWVA"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-1 rounded text-[10px] font-mono tracking-wider backdrop-blur-sm">LIVE FEED</div>
+</div>
+<div class="p-3 flex justify-between items-center">
+<div>
+<div class="font-card-title text-card-title text-on-surface">Sarah Jenkins</div>
+<div class="font-caption text-caption text-on-surface-variant">Active • 12ms ping</div>
+</div>
+</div>
+</div>
+<!-- Normal Student Tile 2 -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col relative group hover:border-primary transition-colors cursor-pointer">
+<div class="aspect-video bg-[#0F172A] relative w-full border-b border-outline-variant">
+<img alt="Male student focusing on screen" class="w-full h-full object-cover opacity-90" data-alt="A male student deeply concentrated on his laptop screen during a remote examination. The scene is lit with cool, artificial light typical of a late-night study session. The background is slightly blurred, showing a generic home environment. The visual style is crisp and clear, essential for reliable proctoring monitoring." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBowoT4mE50txI60ctlyY-MZiyLoP14kl826T_dXwBKcy9e6SRjl-Btb2GcUUDt3v9Jw07dsFJFB5bisuJOChbIIT9t4Bj5PjtFCX0KKnc7BCLgRQDvp0nShkoqYr3Xd8Zdr-GCWUD2xs1_wP7KUinwc1LOMigccWnBzAlOJyH9eZK4rlijMss3_NhAmKyfiCAK5-dqNPpDktN80xSRvlEknu1X9pCZGqJ831rDdEDRyvEW9RFaRNQAjhsKltMfo03RQxFIDUkOSZpD"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-1 rounded text-[10px] font-mono tracking-wider backdrop-blur-sm">LIVE FEED</div>
+</div>
+<div class="p-3 flex justify-between items-center">
+<div>
+<div class="font-card-title text-card-title text-on-surface">Michael Chen</div>
+<div class="font-caption text-caption text-on-surface-variant">Active • 15ms ping</div>
+</div>
+</div>
+</div>
+<!-- Normal Student Tile 3 -->
+<div class="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col relative group hover:border-primary transition-colors cursor-pointer">
+<div class="aspect-video bg-[#0F172A] relative w-full border-b border-outline-variant">
+<img alt="Female student taking notes" class="w-full h-full object-cover opacity-90" data-alt="A female student glancing down to take notes while taking an online exam. The lighting is soft and natural, coming from a nearby window. The background features bookshelves, indicating a study area. The aesthetic is calm but vigilant, capturing the nuances of student behavior during assessments." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAwtBs5jgRmuhbwohmsnkb84yTwKQgmUbo3m8qwfVhwr6zzAjpP4MbGSw-zS9oaUBxuvw3WdshxqDtbYD165DFPLB5Q0xyGLcz9GJxTUyvwlgi4IEf5h7mdZuAEtwhqwFfJa5VXxKNN3gGRufC8ksWxHxjBu92LldTZ5FwT7a_OgyBz3iAekwVzfxMi1bFtmOHOTabytcdSXuHv76qXWJK1fv9mCoy5RoJlXHZfPW6gb8zQq7B2U6MrySaD2HrwSJvntLM-NE8Svzq"/>
+<div class="absolute bottom-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-1 rounded text-[10px] font-mono tracking-wider backdrop-blur-sm">LIVE FEED</div>
+</div>
+<div class="p-3 flex justify-between items-center">
+<div>
+<div class="font-card-title text-card-title text-on-surface">Emily Davis</div>
+<div class="font-caption text-caption text-on-surface-variant">Active • 18ms ping</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Panel: Alerts & Chat -->
+<aside class="w-[340px] bg-surface border-l border-outline-variant flex flex-col shrink-0 h-full">
+<!-- Tabs -->
+<div class="flex border-b border-outline-variant">
+<button class="flex-1 py-3 text-center font-card-title text-card-title text-primary border-b-2 border-primary bg-surface-container-low font-semibold relative">
+                    Alerts
+                    <span class="absolute top-3 right-8 bg-error text-on-error text-[10px] px-1.5 py-0.5 rounded-full font-bold">3</span>
+</button>
+<button class="flex-1 py-3 text-center font-card-title text-card-title text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                    Chat
+                </button>
+</div>
+<!-- Alerts Feed -->
+<div class="flex-1 overflow-y-auto p-4 space-y-3 bg-surface-bright">
+<!-- High Severity Alert -->
+<div class="bg-error-container/20 border border-error/30 rounded-lg p-3 relative">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div>
+<div class="font-card-title text-card-title text-on-surface flex items-center justify-between">
+                                Arjun Kumar
+                                <span class="font-caption text-caption text-on-surface-variant">Just now</span>
+</div>
+<p class="font-body text-body text-error mt-1 font-medium">Multiple Faces Detected</p>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Secondary face detected in background frame for 4 seconds.</p>
+<div class="mt-2 flex gap-2">
+<button class="text-[12px] font-semibold text-primary hover:underline">Review Clip</button>
+<span class="text-outline-variant">•</span>
+<button class="text-[12px] font-semibold text-error hover:underline">Take Action</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Medium Severity Alert -->
+<div class="bg-surface-container border border-outline-variant rounded-lg p-3 relative">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary-container mt-0.5">visibility_off</span>
+<div>
+<div class="font-card-title text-card-title text-on-surface flex items-center justify-between">
+                                David Lee
+                                <span class="font-caption text-caption text-on-surface-variant">2m ago</span>
+</div>
+<p class="font-body text-body text-tertiary mt-1 font-medium">Looking Away from Screen</p>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Gaze diverted from primary display for extended period (&gt;15s).</p>
+</div>
+</div>
+</div>
+<!-- High Severity Alert -->
+<div class="bg-error-container/20 border border-error/30 rounded-lg p-3 relative">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5">tab_unselected</span>
+<div>
+<div class="font-card-title text-card-title text-on-surface flex items-center justify-between">
+                                Arjun Kumar
+                                <span class="font-caption text-caption text-on-surface-variant">5m ago</span>
+</div>
+<p class="font-body text-body text-error mt-1 font-medium">Browser Tab Switch</p>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Focus lost from exam tab to unknown external application.</p>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Detailed Modal Overlay (Simulated Active State for Arjun Kumar) -->
+<div class="fixed inset-0 bg-on-surface/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div class="bg-surface rounded-xl shadow-lg w-full max-w-4xl overflow-hidden flex flex-col max-h-[921px]">
+<!-- Modal Header -->
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<div>
+<h2 class="font-page-title text-page-title text-on-surface flex items-center gap-2">
+                        Arjun Kumar
+                        <span class="bg-error text-on-error font-caption text-caption px-2 py-0.5 rounded-full flex items-center gap-1 font-normal ml-2">
+<span class="material-symbols-outlined text-[14px]">flag</span> High Risk Profile
+                        </span>
+</h2>
+<p class="font-caption text-caption text-on-surface-variant mt-1">Student ID: 1048291 • IP: 192.168.1.45</p>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-2xl">close</span>
+</button>
+</div>
+<!-- Modal Content Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Main Feed Area -->
+<div class="flex-1 p-6 flex flex-col gap-4 overflow-y-auto">
+<!-- Primary Video Feed -->
+<div class="aspect-video bg-[#0F172A] rounded-lg overflow-hidden relative shadow-sm border border-outline-variant">
+<img alt="Arjun Kumar Live Feed" class="w-full h-full object-cover" data-alt="A detailed, clear live video feed of a male student, Arjun Kumar, during an exam. He is looking off to the side, away from the camera, which is a flagged behavior. The lighting is slightly shadowy, highlighting the suspicious nature of the movement. The setting is a bedroom workspace. The UI style is functional and secure, typical of a high-stakes proctoring dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI5pUhMuf3INYiuMJ0P04thYiFMzGaVv-BDcbPu4ndyZDNJoDhwhi3txhL6JYwFB_6v5QH1oo2nLlN_qIAaGiVsDkDHNpXsgdhGmP0SgwwGU1CjebFL-aQdyO33kn8_6sfpInBxF0vtj5hrnsdPfT8jBD0_0QQzZkccC4cS7bZZiT8liKbw3UfpZfc3TQr9eQifslolWqMjVf8Iqm3qf2Ls7od5SQCBsEj9ye9Yfv502Ugpaxzyc_Xn1-xRar7NcU4QnFzz73WB3pv"/>
+<!-- Video Controls Overlay -->
+<div class="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-on-surface/80 to-transparent flex justify-between items-center">
+<div class="flex gap-2">
+<span class="bg-error text-on-error font-caption text-caption px-2 py-1 rounded flex items-center gap-1 text-[10px] tracking-wider">
+<span class="w-2 h-2 rounded-full bg-on-error animate-pulse"></span> LIVE
+                                </span>
+<span class="bg-inverse-surface/80 text-inverse-on-surface font-caption text-caption px-2 py-1 rounded text-[10px]">1080p • 30fps</span>
+</div>
+<div class="flex gap-2 text-on-tertiary">
+<button class="p-1 hover:bg-on-surface/40 rounded transition-colors"><span class="material-symbols-outlined text-[20px]">mic_off</span></button>
+<button class="p-1 hover:bg-on-surface/40 rounded transition-colors"><span class="material-symbols-outlined text-[20px]">screenshot_monitor</span></button>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex gap-4 mt-2">
+<button class="flex-1 bg-secondary-container text-on-secondary-container font-card-title text-card-title py-3 rounded-lg shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 border border-secondary-fixed">
+<span class="material-symbols-outlined">chat</span>
+                            Message Student
+                        </button>
+<button class="flex-1 bg-surface-container text-primary font-card-title text-card-title py-3 rounded-lg shadow-sm hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2 border border-primary-fixed">
+<span class="material-symbols-outlined">warning</span>
+                            Send Warning
+                        </button>
+<button class="flex-1 bg-error text-on-error font-card-title text-card-title py-3 rounded-lg shadow-sm hover:opacity-90 transition-opacity flex items-center justify-center gap-2 font-bold">
+<span class="material-symbols-outlined">block</span>
+                            Terminate Exam
+                        </button>
+</div>
+</div>
+<!-- Timeline Sidebar -->
+<div class="w-[300px] border-l border-outline-variant bg-surface-container-lowest flex flex-col shrink-0">
+<div class="px-4 py-3 border-b border-outline-variant bg-surface-container-low">
+<h3 class="font-section-title text-section-title text-on-surface">Event Timeline</h3>
+</div>
+<div class="flex-1 p-4 overflow-y-auto space-y-4 relative before:absolute before:inset-y-4 before:left-[23px] before:w-px before:bg-outline-variant">
+<!-- Timeline Item 1 -->
+<div class="relative pl-10">
+<span class="absolute left-[15px] top-1 w-4 h-4 rounded-full bg-error border-2 border-surface shadow-sm z-10 flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-on-error"></span>
+</span>
+<p class="font-caption text-caption text-on-surface-variant mb-0.5">10:42 AM (Now)</p>
+<p class="font-card-title text-card-title text-on-surface">Multiple Faces Detected</p>
+<p class="font-body text-body text-on-surface-variant mt-1 bg-error-container/20 p-2 rounded border border-error/20">System flagged potential unauthorized person in frame.</p>
+</div>
+<!-- Timeline Item 2 -->
+<div class="relative pl-10">
+<span class="absolute left-[15px] top-1 w-4 h-4 rounded-full bg-tertiary-container border-2 border-surface shadow-sm z-10"></span>
+<p class="font-caption text-caption text-on-surface-variant mb-0.5">10:37 AM</p>
+<p class="font-card-title text-card-title text-on-surface">Browser Tab Switch</p>
+<p class="font-body text-body text-on-surface-variant mt-1">Focus lost for 12 seconds.</p>
+</div>
+<!-- Timeline Item 3 -->
+<div class="relative pl-10">
+<span class="absolute left-[15px] top-1 w-4 h-4 rounded-full bg-tertiary-container border-2 border-surface shadow-sm z-10"></span>
+<p class="font-caption text-caption text-on-surface-variant mb-0.5">10:15 AM</p>
+<p class="font-card-title text-card-title text-on-surface">Fullscreen Exit</p>
+<p class="font-body text-body text-on-surface-variant mt-1">Exam window minimized.</p>
+</div>
+<!-- Timeline Item 4 (Start) -->
+<div class="relative pl-10">
+<span class="absolute left-[15px] top-1 w-4 h-4 rounded-full bg-secondary border-2 border-surface shadow-sm z-10"></span>
+<p class="font-caption text-caption text-on-surface-variant mb-0.5">09:00 AM</p>
+<p class="font-card-title text-card-title text-on-surface">Session Started</p>
+<p class="font-body text-body text-on-surface-variant mt-1">Identity verified successfully.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import AuthLayout from '@/components/common/AuthLayout'
-import { FormInput, SelectInput, SubmitButton, Alert } from '@/components/common/FormComponents'
+import { FormInput, SelectInput, SubmitButton, Alert, InfoBox } from '@/components/common/FormComponents'
 import { facultyRegister } from '@/services/auth.api'
+
+function Icon({ name, size = 20, style = {} }) {
+  return (
+    <span
+      className="material-icon"
+      style={{ fontSize: size, ...style }}
+    >
+      {name}
+    </span>
+  )
+}
 
 const DEPARTMENTS = [
   { value: '', label: '— Select Department —' },
@@ -69,28 +80,37 @@ export default function FacultyRegister() {
 
   if (success) {
     return (
-      <AuthLayout title="Registration Submitted" icon="📬">
-        <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⏳</div>
-          <h3 style={{ fontWeight: 700, marginBottom: '0.75rem', color: '#60a5fa' }}>
+      <AuthLayout title="Registration Submitted" maxWidth="480px">
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%',
+              background: 'var(--primary-fixed)',
+              color: 'var(--primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Icon name="schedule" size={32} />
+            </div>
+          </div>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.75rem' }}>
             Waiting for Admin Approval
           </h3>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+          <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.875rem', lineHeight: 1.6, marginBottom: '1.5rem' }}>
             Your faculty account registration has been submitted successfully.
             The admin will review your details and you will receive an email notification once approved.
           </p>
+          
           <div style={{
-            background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)',
-            borderRadius: 'var(--radius-md)', padding: '0.75rem', marginBottom: '1.5rem',
-            fontSize: '0.875rem', color: '#6ee7b7',
+            background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)',
+            borderRadius: '8px', padding: '1rem', marginBottom: '1.5rem',
+            fontSize: '0.875rem', color: 'var(--on-surface-variant)', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center'
           }}>
-            ✅ Registered as: <strong>{form.name}</strong> ({form.employeeId})
+            <Icon name="verified" size={18} style={{ color: 'var(--primary)' }} />
+            <span>Registered as: <strong>{form.name}</strong> ({form.employeeId})</span>
           </div>
-          <Link to="/faculty/login" className="btn-primary" style={{
-            display: 'inline-block', padding: '0.625rem 1.5rem',
-            textDecoration: 'none', borderRadius: 'var(--radius-md)',
-          }}>
-            Go to Login
+
+          <Link to="/faculty/login" className="btn-primary" style={{ width: '100%', padding: '0.75rem' }}>
+            Return to Login
           </Link>
         </div>
       </AuthLayout>
@@ -100,68 +120,60 @@ export default function FacultyRegister() {
   return (
     <AuthLayout
       title="Faculty Registration"
-      subtitle="Create your ProctorNet faculty account"
-      icon="🎓"
-      maxWidth="480px"
+      subtitle="Create your ProctorNet faculty account to monitor exams and manage students."
+      maxWidth="520px"
     >
       <form onSubmit={handleSubmit} noValidate>
-        <Alert type="error" message={error} />
+        <Alert type="danger" message={error} />
 
         {/* Two-column name + employee ID */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
           <FormInput
             id="f-name" label="Full Name" value={form.name}
-            onChange={set('name')} placeholder="Dr. John Doe"
-            error={errors.name} required
+            onChange={set('name')} placeholder="e.g. Dr. John Doe" required
           />
           <FormInput
             id="f-empid" label="Employee ID" value={form.employeeId}
-            onChange={set('employeeId')} placeholder="EMP001"
-            error={errors.employeeId} required
+            onChange={set('employeeId')} placeholder="e.g. EMP001" required
           />
         </div>
 
         <FormInput
-          id="f-email" label="College Email" type="email" value={form.email}
-          onChange={set('email')} placeholder="yourname@college.edu"
-          error={errors.email} required autoComplete="email"
+          id="f-email" label="Institutional Email" type="email" value={form.email}
+          onChange={set('email')} placeholder="faculty@university.edu" required autoComplete="email"
+          prefixIcon="mail"
         />
 
         <SelectInput
           id="f-dept" label="Department" value={form.department}
-          onChange={set('department')} options={DEPARTMENTS}
-          error={errors.department} required
+          onChange={set('department')} options={DEPARTMENTS} required
         />
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
           <FormInput
             id="f-pass" label="Password" type="password" value={form.password}
-            onChange={set('password')} placeholder="Min. 8 characters"
-            error={errors.password} required autoComplete="new-password"
+            onChange={set('password')} placeholder="Min. 8 chars" required autoComplete="new-password"
+            prefixIcon="lock"
           />
           <FormInput
             id="f-cpass" label="Confirm Password" type="password" value={form.confirmPassword}
-            onChange={set('confirmPassword')} placeholder="Repeat password"
-            error={errors.confirmPassword} required autoComplete="new-password"
+            onChange={set('confirmPassword')} placeholder="Repeat password" required autoComplete="new-password"
+            prefixIcon="lock"
           />
         </div>
 
-        <div style={{
-          background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)',
-          borderRadius: 'var(--radius-md)', padding: '0.625rem 0.875rem',
-          marginBottom: '1rem', fontSize: '0.8rem', color: '#93c5fd',
-        }}>
-          ℹ️ After registration, an admin will review and approve your account before you can login.
-        </div>
+        <InfoBox>
+          After registration, an admin will review and approve your account before you can log in.
+        </InfoBox>
 
         <SubmitButton loading={loading}>
-          {loading ? 'Submitting…' : 'Submit Registration'}
+          {loading ? 'Submitting Registration…' : 'Submit Registration'}
         </SubmitButton>
       </form>
 
-      <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+      <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>
         Already registered?{' '}
-        <Link to="/faculty/login" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 600 }}>
+        <Link to="/faculty/login" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>
           Login here
         </Link>
       </p>

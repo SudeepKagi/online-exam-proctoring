@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Faculty Management - ProctorNet</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Style Guidance -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter", "sans-serif"],
+                        "section-title": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "card-title": ["Inter", "sans-serif"],
+                        "caption": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "section-title": ["18px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "card-title": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "caption": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+</head>
+<body class="bg-background text-on-background font-body antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="bg-surface fixed left-0 top-0 h-full w-[260px] border-r border-outline-variant flex flex-col overflow-y-auto z-20">
+<!-- Header -->
+<div class="px-6 py-6 border-b border-outline-variant flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary shadow-sm shrink-0">
+<span class="material-symbols-outlined text-[18px]">school</span>
+</div>
+<div>
+<h1 class="font-page-title text-page-title text-primary">ProctorNet</h1>
+<p class="font-caption text-caption text-on-surface-variant">Academic Integrity</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<nav class="flex-1 py-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body text-body">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">videocam</span>
+<span class="font-body text-body">Live Monitoring</span>
+</a>
+<!-- Active Tab: Student Directory mapped to Faculty intent for this screen context -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary font-semibold border-r-4 border-primary bg-surface-container-lowest transition-all opacity-90" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body text-body">Student Directory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body text-body">Exam Management</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body text-body">System Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body text-body">Settings</span>
+</a>
+</nav>
+<!-- CTA -->
+<div class="p-4 border-t border-outline-variant">
+<button class="w-full py-2 px-4 rounded-lg border border-outline-variant text-on-surface font-body text-body hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                Support Center
+            </button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-1 ml-[260px] flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="bg-surface fixed top-0 right-0 left-[260px] h-[60px] border-b border-outline-variant shadow-sm flex justify-between items-center px-gutter z-10 transition-transform duration-150">
+<!-- Search Bar (on_left per JSON) -->
+<div class="flex items-center bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-1.5 w-64 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-fixed transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px] mr-2">search</span>
+<input class="bg-transparent border-none focus:outline-none focus:ring-0 w-full font-body text-body text-on-surface placeholder:text-outline" placeholder="Search ProctorNet..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<!-- Navigation Links -->
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-on-surface-variant font-body text-body hover:text-primary transition-colors" href="#">Monitoring</a>
+<a class="text-on-surface-variant font-body text-body hover:text-primary transition-colors" href="#">Exams</a>
+<a class="text-on-surface-variant font-body text-body hover:text-primary transition-colors" href="#">Reports</a>
+</nav>
+<div class="h-6 w-px bg-outline-variant hidden md:block"></div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded-full hover:bg-surface-container-low">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden ml-2 cursor-pointer shadow-sm">
+<img alt="Proctor Profile Image" class="w-full h-full object-cover" data-alt="A professional headshot of a male proctor in his late 30s with short dark hair and a neat beard. He is wearing a crisp light blue collared shirt and smiling softly. The lighting is bright and even, typical of a modern corporate portrait. The background is a soft, blurred light gray wall, seamlessly fitting into a clean, light-mode dashboard interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUIsZ7-HMk1RGrGx-Q46nRHw2oaCr25ZuZL6CeoleU8n66eaVs2ySQRqKhEhtYs9f-vObiG-7Gr5qvCPFHMWDGB7pqXPj5ddvl90IksJgYIq29LHVptYxzKC5_eJOAUNgvKewDf5xI4cggOjczQhrsNu6mx4NCNcZkfSsSFW0ePIlXQ6GWUituysyWkSI_re3Y_y4fk-1NyZx-5jO7nVdJPtt9Pc4-53PWiUvxxq1ZtxD6VwTt0Rd3i04rXe82U09A74sOlewX1OBC"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="mt-[60px] p-margin-page flex-1 max-w-container-max mx-auto w-full">
+<!-- Page Header -->
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-page-title text-page-title text-on-surface">Faculty Management</h2>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-lg font-body text-body font-medium shadow-sm hover:bg-primary-container transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                    Invite Faculty
+                </button>
+</div>
+<!-- Tabs -->
+<div class="flex gap-8 border-b border-outline-variant mb-margin-page">
+<button class="font-section-title text-section-title text-primary border-b-2 border-primary pb-3 px-1">Pending (2)</button>
+<button class="font-section-title text-section-title text-on-surface-variant hover:text-on-surface pb-3 px-1 transition-colors">Approved (22)</button>
+<button class="font-section-title text-section-title text-on-surface-variant hover:text-on-surface pb-3 px-1 transition-colors">Suspended (0)</button>
+</div>
+<!-- Pending Section (Displayed as prominent cards above the main table to satisfy prompt requirements in a single view) -->
+<div class="mb-margin-page">
+<h3 class="font-card-title text-card-title text-on-surface mb-stack-md">Awaiting Approval</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Card 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-high overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Dr. Ravi Sharma" class="w-full h-full object-cover" data-alt="A professional headshot of a middle-aged South Asian male academic. He has short salt-and-pepper hair and wears rectangular glasses. He is dressed in a dark blazer over a white shirt. The lighting is studio-quality, bright and flattering. The background is a plain, soft white, perfectly matching a clean corporate SaaS UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCA9Qz9Nh9MJeU2paYoKFfm79DKa-puXBc7S4W7eDROwBPYfsAPCn8-EJY7Vh76QoTqqMu721oTWnP33w_Olurie23oCqCAyJ7VGqX50SfaZHsHvB701RaU5J3gHyhgcW1qYFBBu8VW53u5k1HtqylS38PpUBtVlhdJI_krepFEJPchgQqsD5KQB9leIsElY8zFfudYaND7oPxu5kiJPagirubzJdgpQHkMkhmZWexujI27rimtxH9DzQ5qho8EN4B8EsYECimMsqK0"/>
+</div>
+<div>
+<h4 class="font-card-title text-card-title text-on-surface">Dr. Ravi Sharma</h4>
+<p class="font-body text-body text-on-surface-variant">Computer Science • EMP-8472</p>
+</div>
+</div>
+<span class="bg-surface-container text-on-surface-variant px-2 py-1 rounded-md text-caption font-caption border border-outline-variant">New Request</span>
+</div>
+<div class="flex items-center gap-3 mt-2">
+<button class="flex-1 bg-primary text-on-primary px-3 py-2 rounded-lg font-body text-body font-medium shadow-sm hover:bg-primary-container transition-colors">Approve</button>
+<button class="flex-1 bg-surface-container-lowest text-on-surface px-3 py-2 rounded-lg font-body text-body font-medium border border-outline-variant shadow-sm hover:bg-surface-container-low transition-colors">Reject</button>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-5 shadow-sm flex flex-col gap-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-surface-container-high overflow-hidden shrink-0 border border-outline-variant">
+<img alt="Prof. Meena Iyer" class="w-full h-full object-cover" data-alt="A professional headshot of an Indian female professor in her 40s. She has shoulder-length dark wavy hair and wears subtle, elegant earrings. She is wearing a professional navy blue blouse. The photograph is well-lit with soft, natural-looking light. The background is completely white and minimal, blending seamlessly into a modern digital interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtVE8oRJFKmukHA1ynEjUu_WGfnjDsTHwAezNhKrjaJLd-AzgZ8YiyMWqqrfIZaRqyUG3SlymG0MYp_xEhe5bRi_ds5AJKyzNvTHRbmjBKsLtGWjArCzwzXV-bEB_T4SBjWkzNNwRU9Sg9uJSEvC4hDPb013NES_LP5TZJfjIZUy18hXA_o1CSmJD5k_ICey6HeWWc7WBn_uqTgAcYOOglBXMBwM4YOHSB5tBLEH00tgmmmCN1CvZYzH_PssJawfGrqGMwT6KuTQ-C"/>
+</div>
+<div>
+<h4 class="font-card-title text-card-title text-on-surface">Prof. Meena Iyer</h4>
+<p class="font-body text-body text-on-surface-variant">Mathematics • EMP-9103</p>
+</div>
+</div>
+<span class="bg-surface-container text-on-surface-variant px-2 py-1 rounded-md text-caption font-caption border border-outline-variant">New Request</span>
+</div>
+<div class="flex items-center gap-3 mt-2">
+<button class="flex-1 bg-primary text-on-primary px-3 py-2 rounded-lg font-body text-body font-medium shadow-sm hover:bg-primary-container transition-colors">Approve</button>
+<button class="flex-1 bg-surface-container-lowest text-on-surface px-3 py-2 rounded-lg font-body text-body font-medium border border-outline-variant shadow-sm hover:bg-surface-container-low transition-colors">Reject</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Approved Section (Main Table) -->
+<div>
+<!-- Toolbar -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-stack-md">
+<!-- Search -->
+<div class="relative w-full sm:w-80">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface border border-outline-variant rounded-lg pl-10 pr-4 py-2 font-body text-body text-on-surface focus:border-primary focus:ring-2 focus:ring-primary-fixed outline-none shadow-sm transition-all" placeholder="Search approved faculty..." type="text"/>
+</div>
+<!-- Filters -->
+<div class="flex items-center gap-3 w-full sm:w-auto">
+<button class="flex items-center gap-2 bg-surface border border-outline-variant rounded-lg px-4 py-2 font-body text-body text-on-surface shadow-sm hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">domain</span>
+                            Department
+                            <span class="material-symbols-outlined text-[16px] ml-1">arrow_drop_down</span>
+</button>
+<button class="flex items-center gap-2 bg-surface border border-outline-variant rounded-lg px-4 py-2 font-body text-body text-on-surface shadow-sm hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                            Status
+                            <span class="material-symbols-outlined text-[16px] ml-1">arrow_drop_down</span>
+</button>
+</div>
+</div>
+<!-- Data Table Container -->
+<div class="bg-surface border border-outline-variant rounded-xl shadow-sm overflow-x-auto">
+<table class="w-full text-left font-body text-body whitespace-nowrap">
+<thead class="bg-surface-container-low text-on-surface-variant border-b border-outline-variant">
+<tr>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold">Name &amp; Email</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold">Dept</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold">Emp ID</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold text-center">Exams</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold">Last Login</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold">Status</th>
+<th class="px-6 py-4 font-caption text-caption uppercase tracking-wider font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A portrait of a confident female professional in her 50s. She has short blonde hair and wears modern glasses. She is dressed in a tailored gray suit jacket over a white blouse. The background is a clean, bright white studio setting, perfectly aligned with a professional, light-themed SaaS dashboard interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQQgonnZoiYLQCRkkL_zNnoctELlQ5WjFZtIrJBwSbJFepHXlbsVrUo5RbVWePAQraKZtTSPF7L1JHu3DTqK1d48RjpnJAKWqwfnugzq8BBBLCdLT1TFjDdBszj7odCPPP3BFSRgfQLVzV-3PYIDEGqWjHcR8iIXeTdttPExHt4Xh3lmw8b1b_aDg5f1XYVcDwqduWKnLC8NadYw5KpwEe60Sqp198agjizaKPQxdPJP6G1uzcOnVJ0Ea7L9g0qN8M5ka1TVi0MY9i"/>
+</div>
+<div>
+<div class="font-medium text-on-surface">Dr. Sarah Jenkins</div>
+<div class="text-on-surface-variant text-caption">s.jenkins@proctornet.edu</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface">Physics</td>
+<td class="px-6 py-4 text-on-surface-variant">EMP-1024</td>
+<td class="px-6 py-4 text-center text-on-surface">12</td>
+<td class="px-6 py-4 text-on-surface-variant">2 hrs ago</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-highest text-primary font-caption text-caption font-medium border border-primary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        Active
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-high overflow-hidden shrink-0">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="A close-up headshot of a younger male academic in his late 20s. He has short brown hair and a light stubble. He is wearing a simple, high-quality gray crew neck sweater. The lighting is soft and neutral, casting very faint shadows. The background is pure white, designed to blend into a minimalist corporate application design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDashlsycsRMwqAqbVWn8ebp_FMd0MoxmDvxPRIjKq5YReIhkk3Mq8GdXlWb3B3_p6I25YyhkQExlJT23UlIP_Pq2p0EV9vFBTXJSnqI4sqttRsnZG9LAHmeyvrLRzMART9Oi7qZ7E7xjwASVQzlIG-2qFO_DwJkejEU_pLfx0Kg0108xs66ZL5YUUNgPSVG7MfA5w_PnWf_ylCeWF5yIS1u1IcxI4WQBMsI-nmFM4Q5wIA_oqWGq7QYI-8ElQnGD7Jl5l5_uce1hQE"/>
+</div>
+<div>
+<div class="font-medium text-on-surface">Prof. Alan Turing</div>
+<div class="text-on-surface-variant text-caption">a.turing@proctornet.edu</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface">Computer Science</td>
+<td class="px-6 py-4 text-on-surface-variant">EMP-2048</td>
+<td class="px-6 py-4 text-center text-on-surface">8</td>
+<td class="px-6 py-4 text-on-surface-variant">1 day ago</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-highest text-primary font-caption text-caption font-medium border border-primary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        Active
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-lowest transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed overflow-hidden shrink-0 flex items-center justify-center text-primary font-bold text-lg border border-outline-variant">
+                                            EW
+                                        </div>
+<div>
+<div class="font-medium text-on-surface">Dr. Emily Wong</div>
+<div class="text-on-surface-variant text-caption">e.wong@proctornet.edu</div>
+</div>
+</div>
+</td>
+<td class="px-6 py-4 text-on-surface">Biology</td>
+<td class="px-6 py-4 text-on-surface-variant">EMP-3192</td>
+<td class="px-6 py-4 text-center text-on-surface">4</td>
+<td class="px-6 py-4 text-on-surface-variant">3 days ago</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container-highest text-primary font-caption text-caption font-medium border border-primary-fixed">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                                        Active
+                                    </span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 rounded hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination (Placeholder) -->
+<div class="flex justify-between items-center mt-4 px-2">
+<span class="font-caption text-caption text-on-surface-variant">Showing 1 to 3 of 22 entries</span>
+<div class="flex gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50"><span class="material-symbols-outlined">chevron_left</span></button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary font-caption text-caption flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-caption text-caption flex items-center justify-center transition-colors">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-caption text-caption flex items-center justify-center transition-colors">3</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-container-low"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ProctorNet - Student Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline": "#737686",
+                        "on-secondary-fixed-variant": "#004395",
+                        "secondary": "#0058be",
+                        "inverse-on-surface": "#eef0ff",
+                        "on-secondary-container": "#fefcff",
+                        "background": "#faf8ff",
+                        "secondary-fixed": "#d8e2ff",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed": "#00174b",
+                        "on-surface": "#131b2e",
+                        "surface-tint": "#0053db",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "secondary-container": "#2170e4",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-container": "#00788c",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-dim": "#d2d9f4",
+                        "primary-fixed": "#dbe1ff",
+                        "on-primary-container": "#eeefff",
+                        "tertiary-fixed": "#acedff",
+                        "surface-container-highest": "#dae2fd",
+                        "on-error": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#005e6e",
+                        "tertiary-fixed-dim": "#4cd7f6",
+                        "surface-container-low": "#f2f3ff",
+                        "surface-bright": "#faf8ff",
+                        "primary-container": "#2563eb",
+                        "on-surface-variant": "#434655",
+                        "inverse-primary": "#b4c5ff",
+                        "inverse-surface": "#283044",
+                        "surface-variant": "#dae2fd",
+                        "on-tertiary-container": "#d7f6ff",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-container": "#eaedff",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "secondary-fixed-dim": "#adc6ff",
+                        "on-secondary-fixed": "#001a42",
+                        "outline-variant": "#c3c6d7",
+                        "on-error-container": "#93000a",
+                        "surface": "#faf8ff",
+                        "on-background": "#131b2e",
+                        "primary": "#004ac6",
+                        "surface-container-high": "#e2e7ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-sm": "0.5rem",
+                        "margin-page": "2rem",
+                        "stack-md": "1rem",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "page-title": ["Inter"],
+                        "section-title": ["Inter"],
+                        "body": ["Inter"],
+                        "card-title": ["Inter"],
+                        "caption": ["Inter"]
+                    },
+                    "fontSize": {
+                        "page-title": ["22px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "section-title": ["18px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "card-title": ["16px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "caption": ["12px", { "lineHeight": "16px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body antialiased selection:bg-primary-container selection:text-on-primary-container h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface dark:bg-surface border-r border-outline-variant dark:border-outline fixed left-0 top-0 h-full w-[260px] flex flex-col z-20">
+<div class="px-gutter pt-stack-md pb-stack-md border-b border-outline-variant flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px]">shield</span>
+</div>
+<div>
+<h1 class="font-page-title text-page-title text-primary dark:text-primary-fixed-dim tracking-tight">ProctorNet</h1>
+<p class="font-caption text-caption text-on-surface-variant">Academic Integrity</p>
+</div>
+</div>
+<div class="flex flex-col h-full overflow-y-auto py-stack-md">
+<!-- Dashboard (Inactive) -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">dashboard</span>
+<span class="font-body text-body">Dashboard</span>
+</a>
+<!-- Live Monitoring (Inactive) -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">videocam</span>
+<span class="font-body text-body">Live Monitoring</span>
+</a>
+<!-- Student Directory (Active) -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary dark:text-primary-fixed-dim font-semibold border-r-4 border-primary opacity-90 transition-all bg-surface-container-low" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-body text-body">Student Directory</span>
+</a>
+<!-- Exam Management (Inactive) -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">description</span>
+<span class="font-body text-body">Exam Management</span>
+</a>
+<!-- System Logs (Inactive) -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-body text-body">System Logs</span>
+</a>
+<!-- Settings (Inactive) -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-low hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors mt-auto" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-body text-body">Settings</span>
+</a>
+</div>
+<div class="p-4 border-t border-outline-variant">
+<button class="w-full py-2 px-4 bg-surface-container-high text-on-surface rounded-lg font-card-title text-card-title hover:bg-surface-variant transition-colors flex items-center justify-center gap-2 shadow-sm">
+<span class="material-symbols-outlined text-[18px]">help</span>
+                Support Center
+            </button>
+</div>
+</nav>
+<!-- Main Wrapper -->
+<div class="flex-1 ml-[260px] flex flex-col h-full bg-background relative z-10">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-surface fixed top-0 right-0 left-[260px] h-[60px] border-b border-outline-variant dark:border-outline shadow-sm flex justify-between items-center px-gutter z-10">
+<!-- Search Bar -->
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center w-full h-10 rounded-lg bg-surface-container-low border border-outline-variant focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-fixed overflow-hidden transition-all">
+<div class="grid place-items-center h-full w-12 text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-2 font-body" id="search" placeholder="Search students, exams..." type="text"/>
+</div>
+</div>
+<!-- Navigation Links & Actions -->
+<div class="flex items-center gap-gutter">
+<div class="hidden lg:flex items-center gap-6 mr-4">
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Monitoring</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Exams</a>
+<a class="text-on-surface-variant dark:text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors font-body text-body" href="#">Reports</a>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full hover:bg-surface-container-high grid place-items-center text-on-surface-variant transition-colors hover:scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full hover:bg-surface-container-high grid place-items-center text-on-surface-variant transition-colors hover:scale-95 duration-150">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden border border-outline-variant ml-2 shrink-0 cursor-pointer hover:opacity-80 transition-opacity">
+<img alt="Proctor Profile Image" class="w-full h-full object-cover" data-alt="A professional headshot of a mature male administrator wearing a modern blue suit and white shirt. The background is a clean, bright, corporate office setting typical of a high-end software company or educational institution. The lighting is soft and flattering, emphasizing a trustworthy and authoritative presence suitable for an administrative dashboard profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDsYxkXZnf1zHCFbsLF4sStb8JwAy-U8BKKKsK1quGDFkYF4Ul9y9g8kHbQIcOArOGYROOdPvTkyulCv2s66z8FmGczkfz9Nl8OUZ6az73gEd6zQx2EkYX15QSZWoDsCgzeaS83wThY_mUmJ2NthxmcVaxGh-oTHTrlJkEpbqFsQwCeYQ9hTZwj0OQJ-FNAfR5rGpThBBykgAASlUD41-T-79qvxloJhH1-5ME0i2NiC4d3A63MJjozydHLVqSMB8y9LK6V15qPMxkB"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto mt-[60px] p-margin-page">
+<!-- Page Header -->
+<div class="mb-stack-md flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+<div>
+<h2 class="font-page-title text-page-title text-on-surface mb-1">Student Management</h2>
+<p class="font-body text-body text-on-surface-variant">Manage enrollments, verify identities, and review automated flags.</p>
+</div>
+</div>
+<!-- Tabs -->
+<div class="flex items-center border-b border-outline-variant mb-stack-md overflow-x-auto hide-scrollbar">
+<button class="px-4 py-3 font-card-title text-card-title text-primary dark:text-primary-fixed-dim font-semibold border-b-2 border-primary whitespace-nowrap">
+                    Pending Review (2)
+                </button>
+<button class="px-4 py-3 font-card-title text-card-title text-on-surface-variant dark:text-on-surface-variant hover:text-primary transition-colors whitespace-nowrap">
+                    All Students (1240)
+                </button>
+</div>
+<!-- Pending Review Content -->
+<div class="space-y-stack-md">
+<div class="bg-surface-container-low p-4 rounded-lg border border-outline-variant flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary">info</span>
+<div>
+<h3 class="font-card-title text-card-title text-on-surface">Manual Verification Required</h3>
+<p class="font-body text-body text-on-surface-variant mt-1">The following student check-ins have been flagged by the automated system due to identity match scores below the 80% threshold. Please review the live capture against the official institution ID.</p>
+</div>
+</div>
+<!-- Bento Grid for Review Cards -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-stack-md">
+<!-- Review Card 1 -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col">
+<!-- Card Header -->
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant grid place-items-center font-card-title">AJ</div>
+<div>
+<h4 class="font-card-title text-card-title text-on-surface leading-tight">Alex Johnson</h4>
+<p class="font-caption text-caption text-on-surface-variant">USN: 2023-ENG-4091 • Computer Science</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-error-container text-on-error-container font-caption text-caption uppercase tracking-wider font-bold">Review</span>
+</div>
+<!-- Photos Comparison -->
+<div class="p-4 grid grid-cols-2 gap-4 flex-1">
+<div class="space-y-2">
+<div class="aspect-[4/3] rounded-lg border border-outline-variant overflow-hidden bg-inverse-surface relative">
+<span class="absolute top-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest backdrop-blur-sm z-10 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span> Live Capture
+                                    </span>
+<img alt="Live Webcam Capture" class="w-full h-full object-cover" data-alt="A slightly grainy, low-light webcam capture of a stressed university student looking directly into the camera during an online exam. The lighting is uneven, typical of a dorm room desk setting at night. The student wears a casual hoodie. The overall mood is tense and realistic, adhering to a stark, unpolished aesthetic required for a proctoring dashboard's live feed preview." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDvXNtPTBaukczDGs7RQRce5DmZZ1YdTR-d1b-ea4EpzwpqboC_fFOuzDaWRKIDX5ziNyEWujwh6ynTm5ABbme_Uvfjx4NrUtM9eXtXLF3LnlObfcuFxtJtbDRZbqCLjwOPyAaBCFN2KbkHJ7-5y764gsS_fxTy9gLyGXMWAfP1uc_lns64RICiqXxPVJLPL4vpMXL3wzz-7u7oHNIURXfI62bWCxSQ0yMmK7JoIlnozWBzfhNOsLPony11Pc_2pCgnVnFqEOR97Da"/>
+</div>
+<p class="font-caption text-caption text-center text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> 09:41 AM (Today)
+                                </p>
+</div>
+<div class="space-y-2">
+<div class="aspect-[4/3] rounded-lg border border-outline-variant overflow-hidden bg-surface-container relative">
+<span class="absolute top-2 left-2 bg-surface/80 text-on-surface px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest backdrop-blur-sm z-10">
+                                        File: Official ID
+                                    </span>
+<img alt="Official Student ID Photo" class="w-full h-full object-cover" data-alt="A clean, professional, high-resolution scanned image of an official university student ID photo. The subject is the same individual as the live capture but looks younger, well-rested, and is wearing formal attire against a plain, bright white studio background. The image is cropped to focus on the face and shoulders, typical of an institutional database record." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnqL9jZ4sybT257pH7Z99RzWij4oJFBGBugQ804goPMgGhxAbyPxHM4FxcgAkhFqnfvs-yJR2_7M0lm6kqs1YMKLMby3vlHGKuoCs7O0y6Xz_eQc8uYb8_7UXNm_MsaV-kIZfWRFa_pO65zMS2ajhwmMLbbeU390f070n3QGwsRrRY5i9EqWqrGbUkr4hSY0t6cnXqdL2yvXb196GpcZTRHu0mbtSXq258NHXQ2jeVGespcqyNWkGM2UuAXL_ulof_Hua_0H0hCfrc"/>
+</div>
+<p class="font-caption text-caption text-center text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">badge</span> Database Record
+                                </p>
+</div>
+</div>
+<!-- Analysis Metrics -->
+<div class="px-4 py-3 bg-surface-container-lowest border-t border-outline-variant space-y-3">
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="font-caption text-caption text-on-surface-variant font-medium uppercase tracking-wider">AI Match Score</span>
+<span class="font-card-title text-card-title text-error">67%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full transition-all duration-500" style="width: 67%;"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-tertiary">check_circle</span>
+<span class="font-body">USN Format Verified</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-error">warning</span>
+<span class="font-body">Lighting Variance Flag</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="p-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+<button class="px-4 py-2 rounded-lg font-card-title text-card-title text-on-surface border border-outline-variant hover:bg-surface-container-low transition-colors shadow-sm bg-surface">
+                                Reject Attempt
+                            </button>
+<button class="px-4 py-2 rounded-lg font-card-title text-card-title bg-secondary-fixed text-on-secondary-fixed-variant hover:bg-secondary-fixed-dim transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                                Approve Manually
+                            </button>
+</div>
+</div>
+<!-- Review Card 2 -->
+<div class="bg-surface rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col">
+<!-- Card Header -->
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant grid place-items-center font-card-title">SK</div>
+<div>
+<h4 class="font-card-title text-card-title text-on-surface leading-tight">Sarah Kline</h4>
+<p class="font-caption text-caption text-on-surface-variant">USN: 2022-BIO-1102 • Biology</p>
+</div>
+</div>
+<span class="px-2 py-1 rounded bg-error-container text-on-error-container font-caption text-caption uppercase tracking-wider font-bold">Review</span>
+</div>
+<!-- Photos Comparison -->
+<div class="p-4 grid grid-cols-2 gap-4 flex-1">
+<div class="space-y-2">
+<div class="aspect-[4/3] rounded-lg border border-outline-variant overflow-hidden bg-inverse-surface relative">
+<span class="absolute top-2 left-2 bg-inverse-surface/80 text-inverse-on-surface px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest backdrop-blur-sm z-10 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span> Live Capture
+                                    </span>
+<img alt="Live Webcam Capture" class="w-full h-full object-cover" data-alt="A slightly distorted webcam capture of a female university student wearing thick glasses. The image is slightly blurred due to movement, with glaring light reflection on the glasses lenses obscuring the eyes partially. The setting is a cluttered home office background. The overall aesthetic is functional and raw, matching the data-dense, realistic nature of a security monitoring system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCN7r7VfK4jD-rE9Uv-4lSHJCPqxSEinusSSG7slP3yfCiPA2iND_vTBQjQRmr40nhqiLzGwvHAV_h4wZzqSbLaZ7iJXozIyDfWwP7qAz_zE3n_WhM1M-xTzL0RWLBM6auJ0p01sOkfF_FANOnoVmQdB7KFRB4aSYs1sU8fQULm07fBjnJEpjBBQrsHqv63gE0gZwvbDxF06Keik5PUXV7guGOZZJZxdLLkAnwiDf-_o2UOC_MGvOl2exRJ82tyvsgFl5Cbc1TigJ8"/>
+</div>
+<p class="font-caption text-caption text-center text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span> 09:45 AM (Today)
+                                </p>
+</div>
+<div class="space-y-2">
+<div class="aspect-[4/3] rounded-lg border border-outline-variant overflow-hidden bg-surface-container relative">
+<span class="absolute top-2 left-2 bg-surface/80 text-on-surface px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest backdrop-blur-sm z-10">
+                                        File: Official ID
+                                    </span>
+<img alt="Official Student ID Photo" class="w-full h-full object-cover" data-alt="A pristine, professionally lit student ID portrait of a female student without glasses. The background is a solid, neutral gray. The lighting is even and flat, avoiding any shadows. The image quality is high, contrasting with the webcam capture, representing an ideal institutional record photo within a secure dashboard UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2XztZ9Bx3sfJDJ_hnimgLqKRsxb2RB5ciWf8rI2ipEECFqcl4a6uKhtmTAbbSt1n6B0rMsM7ys1fnu67aX0AO2ZK_r_ELzRUx-WmTOUUUHDoGS4hkiaGL9csWur5IBw2SmfFGIRiAmcJ7CIwzhDN_1PO6eyDFaZ4P_ldZlw2AZNzYUndAV2Qd-MG6a1cBYkh7EWbFsiuA_YHDpmjBUchdn8KRucLzZ0JNFIVluDFY7RArvEFUImYcrQZJyrIa-fifCOTAsofU9s_K"/>
+</div>
+<p class="font-caption text-caption text-center text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">badge</span> Database Record
+                                </p>
+</div>
+</div>
+<!-- Analysis Metrics -->
+<div class="px-4 py-3 bg-surface-container-lowest border-t border-outline-variant space-y-3">
+<div>
+<div class="flex justify-between items-end mb-1">
+<span class="font-caption text-caption text-on-surface-variant font-medium uppercase tracking-wider">AI Match Score</span>
+<span class="font-card-title text-card-title text-error">52%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-error rounded-full transition-all duration-500" style="width: 52%;"></div>
+</div>
+</div>
+<div class="flex items-center justify-between text-sm">
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-tertiary">check_circle</span>
+<span class="font-body">USN Format Verified</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-error">warning</span>
+<span class="font-body">Accessory Detected (Glasses)</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="p-4 bg-surface-bright border-t border-outline-variant flex justify-end gap-3">
+<button class="px-4 py-2 rounded-lg font-card-title text-card-title text-on-surface border border-outline-variant hover:bg-surface-container-low transition-colors shadow-sm bg-surface">
+                                Reject Attempt
+                            </button>
+<button class="px-4 py-2 rounded-lg font-card-title text-card-title bg-secondary-fixed text-on-secondary-fixed-variant hover:bg-secondary-fixed-dim transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">verified</span>
+                                Approve Manually
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>
