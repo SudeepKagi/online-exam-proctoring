@@ -1,506 +1,472 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import { FormInput, FormTextarea, SubmitButton, SelectInput } from '@/components/common/FormComponents'
 import api from '@/utils/api'
-import { toast } from 'react-hot-toast'
-import Editor from '@monaco-editor/react'
-import { 
-  Plus, Trash2, Edit3, Save, X, 
-  HelpCircle, Code, FileText, 
-  ChevronDown, ChevronUp, AlertTriangle,
-  Layers, CheckCircle2
+import toast from 'react-hot-toast'
+import {
+  Plus, Trash2, Edit3, Save, X, FileText, Sparkles,
+  ChevronDown, ChevronUp, Upload, Loader2, CheckCircle,
+  BookOpen, AlertCircle, RefreshCw
 } from 'lucide-react'
 
-export default function QuestionPool() {
-  const { id: examId } = useParams()
-  const navigate = useNavigate()
-  
-  const [questions, setQuestions] = useState([])
-  const [showBuilder, setShowBuilder] = useState(false)
-  const [questionType, setQuestionType] = useState('MCQ')
-  const [currentQuestionId, setCurrentQuestionId] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
+// ── Difficulty badge ──────────────────────────────────────────
+const diffColor = { EASY: 'bg-green-100 text-green-700', MEDIUM: 'bg-amber-100 text-amber-700', HARD: 'bg-red-100 text-red-700' }
 
-  // MCQ State
-  const [mcqData, setMcqData] = useState({
-    questionText: '',
-    options: [
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false },
-      { text: '', isCorrect: false }
-    ],
-    marks: 2,
-    negativeMarks: 0,
-    difficulty: 'MEDIUM'
+// ── Single question card ──────────────────────────────────────
+function QuestionCard({ q, index, onDelete, onEdit }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 p-4 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+        <span className="w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+        <p className="flex-1 text-sm text-gray-800 font-medium line-clamp-2">{q.questionText}</p>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${diffColor[q.difficulty] || diffColor.MEDIUM}`}>{q.difficulty}</span>
+          <span className="text-xs text-gray-400 font-medium">{q.marks}m</span>
+          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{q.type}</span>
+          <button onClick={e => { e.stopPropagation(); onEdit(q) }} className="p-1.5 hover:bg-indigo-50 rounded-lg text-indigo-500"><Edit3 size={13} /></button>
+          <button onClick={e => { e.stopPropagation(); onDelete(q.id) }} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400"><Trash2 size={13} /></button>
+          {open ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+        </div>
+      </div>
+      {open && q.type === 'MCQ' && Array.isArray(q.options) && q.options.length > 0 && (
+        <div className="px-4 pb-4 grid grid-cols-2 gap-2">
+          {q.options.map((opt, i) => {
+            const text = typeof opt === 'string' ? opt : opt.text
+            const correct = typeof opt === 'object' ? opt.isCorrect : text === q.correctAnswer
+            return (
+              <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm ${correct ? 'bg-green-50 border border-green-200 text-green-800 font-semibold' : 'bg-gray-50 text-gray-600'}`}>
+                {correct && <CheckCircle size={12} className="text-green-500 flex-shrink-0" />}
+                <span>{text}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {open && q.type !== 'MCQ' && q.correctAnswer && (
+        <div className="px-4 pb-4">
+          <p className="text-xs text-gray-400 mb-1">Model Answer / Key Points</p>
+          <p className="text-sm text-gray-700 bg-gray-50 rounded-xl p-3">{q.correctAnswer}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Option row for MCQ builder ────────────────────────────────
+function OptionRow({ opt, index, onChange, onRemove, onMark }) {
+  return (
+    <div className="flex items-center gap-2">
+      <input type="radio" name="correct" checked={opt.isCorrect} onChange={() => onMark(index)} className="accent-indigo-600" />
+      <input value={opt.text} onChange={e => onChange(index, e.target.value)}
+        placeholder={`Option ${String.fromCharCode(65 + index)}`}
+        className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <button onClick={() => onRemove(index)} className="p-1.5 hover:bg-red-50 rounded-lg text-red-400"><X size={13} /></button>
+    </div>
+  )
+}
+
+// ── Manual Question Form ──────────────────────────────────────
+function QuestionForm({ examId, editQ, onSaved, onCancel }) {
+  const [type, setType] = useState(editQ?.type || 'MCQ')
+  const [stem, setStem] = useState(editQ?.questionText || '')
+  const [options, setOptions] = useState(() => {
+    if (editQ?.type === 'MCQ' && Array.isArray(editQ.options) && editQ.options.length)
+      return editQ.options.map(o => typeof o === 'string' ? { text: o, isCorrect: o === editQ.correctAnswer } : o)
+    return [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }]
   })
+  const [correctAnswer, setCorrectAnswer] = useState(editQ?.correctAnswer || '')
+  const [marks, setMarks] = useState(editQ?.marks || 2)
+  const [negativeMarks, setNegativeMarks] = useState(editQ?.negativeMarks || 0)
+  const [difficulty, setDifficulty] = useState(editQ?.difficulty || 'MEDIUM')
+  const [saving, setSaving] = useState(false)
 
-  // Code State
-  const [codeData, setCodeData] = useState({
-    questionText: '',
-    codeLanguage: 'python',
-    codeTemplate: '',
-    testCases: [{ input: '', output: '' }],
-    marks: 10,
-    difficulty: 'HARD'
-  })
+  const updateOpt = (i, val) => setOptions(opts => opts.map((o, idx) => idx === i ? { ...o, text: val } : o))
+  const markCorrect = (i) => setOptions(opts => opts.map((o, idx) => ({ ...o, isCorrect: idx === i })))
+  const removeOpt = (i) => setOptions(opts => opts.filter((_, idx) => idx !== i))
+  const addOpt = () => setOptions(opts => [...opts, { text: '', isCorrect: false }])
 
-  // Subjective State
-  const [subjectiveData, setSubjectiveData] = useState({
-    questionText: '',
-    wordLimitMin: 100,
-    wordLimitMax: 500,
-    marks: 5,
-    difficulty: 'MEDIUM'
-  })
-
-  const fetchQuestions = useCallback(async () => {
+  const handleSave = async () => {
+    if (!stem.trim()) return toast.error('Question text is required')
+    if (type === 'MCQ' && !options.some(o => o.isCorrect)) return toast.error('Mark at least one correct option')
+    setSaving(true)
     try {
-      const res = await api.get(`/faculty/exams/${examId}/questions`)
-      setQuestions(res.data.questions)
-    } catch (err) {
-      toast.error('Failed to load questions')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [examId])
-
-  useEffect(() => {
-    if (examId) fetchQuestions()
-  }, [examId, fetchQuestions])
-
-  const resetForms = () => {
-    setMcqData({
-      questionText: '',
-      options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }],
-      marks: 2,
-      negativeMarks: 0,
-      difficulty: 'MEDIUM'
-    })
-    setCodeData({
-      questionText: '',
-      codeLanguage: 'python',
-      codeTemplate: '',
-      testCases: [{ input: '', output: '' }],
-      marks: 10,
-      difficulty: 'HARD'
-    })
-    setSubjectiveData({
-      questionText: '',
-      wordLimitMin: 100,
-      wordLimitMax: 500,
-      marks: 5,
-      difficulty: 'MEDIUM'
-    })
-    setCurrentQuestionId(null)
-  }
-
-  const handleOptionChange = (index, value) => {
-    const updated = [...mcqData.options]
-    updated[index].text = value
-    setMcqData({ ...mcqData, options: updated })
-  }
-
-  const handleCorrectAnswer = (index) => {
-    const updated = mcqData.options.map((opt, i) => ({
-      ...opt,
-      isCorrect: i === index
-    }))
-    setMcqData({ ...mcqData, options: updated })
-  }
-
-  const addTestCase = () => {
-    setCodeData({
-      ...codeData,
-      testCases: [...codeData.testCases, { input: '', output: '' }]
-    })
-  }
-
-  const removeTestCase = (index) => {
-    const updated = codeData.testCases.filter((_, i) => i !== index)
-    setCodeData({ ...codeData, testCases: updated })
-  }
-
-  const handleTestCaseChange = (index, field, value) => {
-    const updated = [...codeData.testCases]
-    updated[index][field] = value
-    setCodeData({ ...codeData, testCases: updated })
-  }
-
-  const saveQuestion = async () => {
-    const payload = questionType === 'MCQ' 
-      ? { type: 'MCQ', ...mcqData }
-      : questionType === 'CODE'
-      ? { type: 'CODE', ...codeData }
-      : { type: 'SUBJECTIVE', ...subjectiveData }
-    
-    // Validation
-    if (!payload.questionText.trim()) {
-      toast.error('Question text is required')
-      return
-    }
-
-    try {
-      if(currentQuestionId) {
-        await api.put(`/faculty/questions/${currentQuestionId}`, payload)
+      const payload = {
+        type,
+        questionText: stem,
+        options: type === 'MCQ' ? options : [],
+        correctAnswer: type === 'MCQ' ? (options.find(o => o.isCorrect)?.text || '') : correctAnswer,
+        marks: parseFloat(marks),
+        negativeMarks: parseFloat(negativeMarks),
+        difficulty,
+      }
+      if (editQ) {
+        await api.put(`/faculty/questions/${editQ.id}`, payload)
         toast.success('Question updated!')
       } else {
         await api.post(`/faculty/exams/${examId}/questions`, payload)
         toast.success('Question added!')
       }
-      fetchQuestions()
-      setShowBuilder(false)
-      resetForms()
-    } catch(err) {
-      toast.error('Failed to save question')
-    }
-  }
-
-  const deleteQuestion = async (qid) => {
-    if(!window.confirm('Delete this question?')) return
-    try {
-      await api.delete(`/faculty/questions/${qid}`)
-      toast.success('Question deleted')
-      fetchQuestions()
-    } catch(err) {
-      toast.error('Failed to delete')
-    }
-  }
-
-  const editQuestion = (q) => {
-    setCurrentQuestionId(q.id)
-    setQuestionType(q.type)
-    if(q.type === 'MCQ') setMcqData({ ...q })
-    if(q.type === 'CODE') setCodeData({ ...q })
-    if(q.type === 'SUBJECTIVE') setSubjectiveData({ ...q })
-    setShowBuilder(true)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+      onSaved()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save question')
+    } finally { setSaving(false) }
   }
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Question Pool</h1>
-          <p className="text-gray-500 text-sm">Manage the assessment items for this examination.</p>
-        </div>
-        {!showBuilder && (
-          <button 
-            onClick={() => { resetForms(); setShowBuilder(true) }}
-            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-100"
-          >
-            <Plus size={18} /> Add New Question
-          </button>
-        )}
+    <div className="bg-white border border-indigo-100 rounded-2xl shadow-lg p-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-gray-900">{editQ ? 'Edit Question' : 'Add Question'}</h3>
+        <button onClick={onCancel} className="p-1.5 hover:bg-gray-100 rounded-lg"><X size={15} /></button>
       </div>
 
-      {showBuilder && (
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-blue-100 mb-8 animate-in fade-in slide-in-from-top-4">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-                {currentQuestionId ? <Edit3 size={18} /> : <Plus size={18} />}
-              </span>
-              {currentQuestionId ? 'Edit Question' : 'Question Builder'}
-            </h2>
-            <button onClick={() => setShowBuilder(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
-              <X size={24} />
-            </button>
-          </div>
+      {/* Type selector */}
+      <div className="flex gap-2">
+        {['MCQ', 'SUBJECTIVE', 'CODE'].map(t => (
+          <button key={t} onClick={() => setType(t)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${type === t ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-200 hover:border-indigo-300'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {[
-              { id: 'MCQ', label: 'Multiple Choice', icon: <HelpCircle size={18} />, color: 'blue' },
-              { id: 'CODE', label: 'Programming', icon: <Code size={18} />, color: 'purple' },
-              { id: 'SUBJECTIVE', label: 'Subjective/Essay', icon: <FileText size={18} />, color: 'amber' }
-            ].map(type => (
-              <button
-                key={type.id}
-                onClick={() => setQuestionType(type.id)}
-                disabled={currentQuestionId}
-                className={`flex items-center justify-center gap-3 p-4 rounded-xl border-2 transition-all ${
-                  questionType === type.id
-                    ? `border-${type.color}-600 bg-${type.color}-50 text-${type.color}-700 shadow-md`
-                    : 'border-gray-100 hover:border-gray-200 text-gray-500 hover:bg-gray-50'
-                } ${currentQuestionId && questionType !== type.id ? 'opacity-50 grayscale' : ''}`}
-              >
-                {type.icon}
-                <span className="font-bold">{type.label}</span>
-              </button>
-            ))}
-          </div>
+      {/* Question stem */}
+      <textarea value={stem} onChange={e => setStem(e.target.value)} rows={3}
+        placeholder="Enter question text…"
+        className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400" />
 
-          <div className="space-y-6">
-            <FormTextarea 
-              label="Question Stem" 
-              value={questionType === 'MCQ' ? mcqData.questionText : questionType === 'CODE' ? codeData.questionText : subjectiveData.questionText}
-              onChange={(e) => {
-                if(questionType === 'MCQ') setMcqData({...mcqData, questionText: e.target.value})
-                else if(questionType === 'CODE') setCodeData({...codeData, questionText: e.target.value})
-                else setSubjectiveData({...subjectiveData, questionText: e.target.value})
-              }}
-              placeholder="Enter the main question text or prompt here..."
-              rows={4}
-            />
-
-            {questionType === 'MCQ' && (
-              <div className="space-y-4">
-                <label className="block text-sm font-semibold text-gray-700">Options & Correct Answer</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {mcqData.options.map((opt, idx) => (
-                    <div key={idx} className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${opt.isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-100 focus-within:border-blue-200'}`}>
-                      <button 
-                        onClick={() => handleCorrectAnswer(idx)}
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${opt.isCorrect ? 'bg-green-600 text-white' : 'border-2 border-gray-300 hover:border-blue-400'}`}
-                      >
-                        {opt.isCorrect && <CheckCircle2 size={14} />}
-                      </button>
-                      <input 
-                        type="text" 
-                        value={opt.text}
-                        onChange={(e) => handleOptionChange(idx, e.target.value)}
-                        placeholder={`Option ${idx + 1}`}
-                        className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {questionType === 'CODE' && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <SelectInput 
-                    label="Language" 
-                    value={codeData.codeLanguage} 
-                    onChange={(e) => setCodeData({...codeData, codeLanguage: e.target.value})}
-                    options={[
-                      { value: 'python', label: 'Python 3' },
-                      { value: 'javascript', label: 'JavaScript (Node)' },
-                      { value: 'cpp', label: 'C++' },
-                      { value: 'java', label: 'Java' }
-                    ]}
-                  />
-                  <div className="flex items-end h-full pb-1 text-sm text-gray-500">
-                    Students will write their code in the Monaco Editor.
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">Starter Code / Template</label>
-                  <div className="rounded-xl overflow-hidden border border-gray-200">
-                    <Editor
-                      height="200px"
-                      language={codeData.codeLanguage}
-                      value={codeData.codeTemplate}
-                      onChange={(val) => setCodeData({...codeData, codeTemplate: val})}
-                      theme="vs-dark"
-                      options={{ minimap: { enabled: false }, fontSize: 14 }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <label className="block text-sm font-semibold text-gray-700">Auto-Grade Test Cases</label>
-                    <button onClick={addTestCase} className="text-blue-600 text-sm font-bold flex items-center gap-1 hover:underline">
-                      <Plus size={14} /> Add Test Case
-                    </button>
-                  </div>
-                  {codeData.testCases.map((tc, idx) => (
-                    <div key={idx} className="flex flex-col sm:flex-row gap-3 p-4 bg-gray-50 rounded-xl relative group">
-                      <div className="flex-1">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Input</label>
-                        <input 
-                          type="text" 
-                          value={tc.input}
-                          onChange={(e) => handleTestCaseChange(idx, 'input', e.target.value)}
-                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono"
-                          placeholder="e.g. 5 10"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Expected Output</label>
-                        <input 
-                          type="text" 
-                          value={tc.output}
-                          onChange={(e) => handleTestCaseChange(idx, 'output', e.target.value)}
-                          className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono"
-                          placeholder="e.g. 15"
-                        />
-                      </div>
-                      {codeData.testCases.length > 1 && (
-                        <button onClick={() => removeTestCase(idx)} className="absolute -right-2 -top-2 bg-white text-red-500 rounded-full p-1 shadow-md opacity-0 group-hover:opacity-100 transition-opacity border border-gray-100">
-                          <X size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {questionType === 'SUBJECTIVE' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <FormInput 
-                  label="Min Word Limit" 
-                  type="number" 
-                  value={subjectiveData.wordLimitMin} 
-                  onChange={(e) => setSubjectiveData({...subjectiveData, wordLimitMin: Number(e.target.value)})}
-                />
-                <FormInput 
-                  label="Max Word Limit" 
-                  type="number" 
-                  value={subjectiveData.wordLimitMax} 
-                  onChange={(e) => setSubjectiveData({...subjectiveData, wordLimitMax: Number(e.target.value)})}
-                />
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t">
-              <FormInput 
-                label="Question Weightage (Marks)" 
-                type="number" 
-                value={questionType === 'MCQ' ? mcqData.marks : questionType === 'CODE' ? codeData.marks : subjectiveData.marks}
-                onChange={(e) => {
-                  const val = Number(e.target.value)
-                  if(questionType === 'MCQ') setMcqData({...mcqData, marks: val})
-                  else if(questionType === 'CODE') setCodeData({...codeData, marks: val})
-                  else setSubjectiveData({...subjectiveData, marks: val})
-                }}
-              />
-              <SelectInput 
-                label="Difficulty Level" 
-                value={questionType === 'MCQ' ? mcqData.difficulty : questionType === 'CODE' ? codeData.difficulty : subjectiveData.difficulty}
-                onChange={(e) => {
-                  if(questionType === 'MCQ') setMcqData({...mcqData, difficulty: e.target.value})
-                  else if(questionType === 'CODE') setCodeData({...codeData, difficulty: e.target.value})
-                  else setSubjectiveData({...subjectiveData, difficulty: e.target.value})
-                }}
-                options={[
-                  { value: 'EASY', label: 'Beginner (Easy)' },
-                  { value: 'MEDIUM', label: 'Standard (Medium)' },
-                  { value: 'HARD', label: 'Advanced (Hard)' }
-                ]}
-              />
-              {questionType === 'MCQ' && (
-                <FormInput 
-                  label="Negative Marking" 
-                  type="number" 
-                  step="0.25"
-                  value={mcqData.negativeMarks} 
-                  onChange={(e) => setMcqData({...mcqData, negativeMarks: Number(e.target.value)})}
-                />
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 mt-8">
-              <button onClick={() => setShowBuilder(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 font-semibold text-gray-600 hover:bg-gray-50 transition-all">
-                Discard Changes
-              </button>
-              <button 
-                onClick={saveQuestion}
-                className="px-8 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all flex items-center gap-2"
-              >
-                <Save size={18} /> {currentQuestionId ? 'Update Question' : 'Save Question to Pool'}
-              </button>
-            </div>
-          </div>
+      {/* MCQ options */}
+      {type === 'MCQ' && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Options — select correct answer</p>
+          {options.map((opt, i) => (
+            <OptionRow key={i} opt={opt} index={i} onChange={updateOpt} onRemove={removeOpt} onMark={markCorrect} />
+          ))}
+          {options.length < 6 && (
+            <button onClick={addOpt} className="text-xs text-indigo-600 hover:underline flex items-center gap-1"><Plus size={12} /> Add option</button>
+          )}
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b flex justify-between items-center bg-gray-50/50">
-          <h3 className="font-bold text-gray-900 flex items-center gap-2">
-            <Layers size={18} className="text-blue-600" />
-            Questions in this Exam ({questions.length})
-          </h3>
-          <div className="text-sm font-medium text-gray-500">
-            Total Weighted Marks: <span className="text-blue-600 font-bold">{questions.reduce((sum, q) => sum + q.marks, 0)}</span>
-          </div>
-        </div>
+      {/* Subjective/Code answer */}
+      {type !== 'MCQ' && (
+        <textarea value={correctAnswer} onChange={e => setCorrectAnswer(e.target.value)} rows={3}
+          placeholder="Model answer or key points…"
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      )}
 
-        {isLoading ? (
-          <div className="py-20 text-center">
-            <div className="w-10 h-10 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-500 font-medium">Synchronizing pool...</p>
-          </div>
-        ) : questions.length === 0 ? (
-          <div className="py-20 text-center px-4">
-            <div className="w-16 h-16 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-6">
-              <HelpCircle size={32} />
-            </div>
-            <h4 className="text-lg font-bold text-gray-900 mb-2">Question Pool is Empty</h4>
-            <p className="text-gray-500 max-w-sm mx-auto mb-8">You haven't added any questions to this exam yet. Use the builder to populate your assessment.</p>
-            {!showBuilder && (
-              <button 
-                onClick={() => setShowBuilder(true)}
-                className="inline-flex items-center gap-2 bg-white border border-blue-200 text-blue-600 px-6 py-2.5 rounded-xl font-bold hover:bg-blue-50 transition-all"
-              >
-                <Plus size={18} /> Start Building Now
-              </button>
-            )}
+      {/* Marks / difficulty */}
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Marks</label>
+          <input type="number" min={0} step={0.5} value={marks} onChange={e => setMarks(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Negative Marks</label>
+          <input type="number" min={0} step={0.5} value={negativeMarks} onChange={e => setNegativeMarks(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        </div>
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Difficulty</label>
+          <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option>EASY</option><option>MEDIUM</option><option>HARD</option>
+          </select>
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={saving}
+        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60">
+        {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+        {saving ? 'Saving…' : editQ ? 'Update Question' : 'Add Question'}
+      </button>
+    </div>
+  )
+}
+
+// ── AI Generator Panel ────────────────────────────────────────
+function AIGeneratorPanel({ examId, onGenerated }) {
+  const [file, setFile] = useState(null)
+  const [extractedText, setExtractedText] = useState('')
+  const [numMCQ, setNumMCQ] = useState(5)
+  const [numEssay, setNumEssay] = useState(2)
+  const [difficulty, setDifficulty] = useState('MEDIUM')
+  const [marksPerMCQ, setMarksPerMCQ] = useState(2)
+  const [marksPerEssay, setMarksPerEssay] = useState(10)
+  const [step, setStep] = useState('upload') // upload | preview | generating | done
+  const [generating, setGenerating] = useState(false)
+  const fileRef = useRef()
+
+  // Extract text from PDF using browser FileReader + pdf.js via CDN
+  const handleFileChange = async (e) => {
+    const f = e.target.files[0]
+    if (!f) return
+    if (f.type !== 'application/pdf') return toast.error('Please upload a PDF file')
+    setFile(f)
+    setStep('upload')
+
+    // Read as ArrayBuffer and extract text via pdf.js
+    toast.loading('Extracting text from PDF…', { id: 'pdf' })
+    try {
+      const arrayBuffer = await f.arrayBuffer()
+      // Use pdf.js from CDN if available, else fall back to raw text
+      if (window.pdfjsLib) {
+        const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        let fullText = ''
+        for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
+          const page = await pdf.getPage(i)
+          const content = await page.getTextContent()
+          fullText += content.items.map(item => item.str).join(' ') + '\n'
+        }
+        setExtractedText(fullText.trim())
+      } else {
+        // Fallback: read as text (works for text-based PDFs)
+        const text = await f.text().catch(() => '')
+        setExtractedText(text.replace(/[^\x20-\x7E\n]/g, ' ').trim())
+      }
+      toast.success('Text extracted!', { id: 'pdf' })
+      setStep('preview')
+    } catch {
+      toast.error('Could not read PDF. Try pasting text below.', { id: 'pdf' })
+      setStep('preview')
+    }
+  }
+
+  const handleGenerate = async () => {
+    const text = extractedText.trim()
+    if (text.length < 50) return toast.error('Need at least 50 characters of content')
+    setGenerating(true)
+    setStep('generating')
+    try {
+      const res = await api.post(`/faculty/exams/${examId}/ai-generate`, {
+        text, numMCQ: parseInt(numMCQ), numEssay: parseInt(numEssay),
+        difficulty, marksPerMCQ: parseFloat(marksPerMCQ), marksPerEssay: parseFloat(marksPerEssay)
+      })
+      toast.success(res.data.message || 'Questions generated!')
+      setStep('done')
+      onGenerated()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'AI generation failed')
+      setStep('preview')
+    } finally { setGenerating(false) }
+  }
+
+  return (
+    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-5 space-y-4">
+      <div className="flex items-center gap-2 mb-1">
+        <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center">
+          <Sparkles size={16} className="text-white" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900 text-sm">AI Question Generator</h3>
+          <p className="text-xs text-gray-500">Upload a PDF — Gemini AI will generate your question pool</p>
+        </div>
+      </div>
+
+      {/* PDF Upload */}
+      <div
+        onClick={() => fileRef.current?.click()}
+        className="border-2 border-dashed border-indigo-200 rounded-2xl p-6 text-center cursor-pointer hover:border-indigo-400 hover:bg-white/60 transition-all">
+        <input ref={fileRef} type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
+        {file ? (
+          <div className="flex items-center justify-center gap-2">
+            <FileText size={18} className="text-indigo-500" />
+            <span className="text-sm font-medium text-indigo-700">{file.name}</span>
           </div>
         ) : (
-          <div className="divide-y overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-gray-400 font-bold">
-                  <th className="px-6 py-4">S.No</th>
-                  <th className="px-6 py-4">Question Details</th>
-                  <th className="px-6 py-4">Type</th>
-                  <th className="px-6 py-4 text-center">Marks</th>
-                  <th className="px-6 py-4">Difficulty</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y text-sm">
-                {questions.map((q, idx) => (
-                  <tr key={q.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-6 py-4 font-bold text-gray-400">{idx + 1}</td>
-                    <td className="px-6 py-4">
-                      <div className="max-w-md truncate font-semibold text-gray-800" title={q.questionText}>
-                        {q.questionText}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${
-                        q.type === 'MCQ' ? 'bg-blue-100 text-blue-700' : 
-                        q.type === 'CODE' ? 'bg-purple-100 text-purple-700' : 
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {q.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center font-bold text-gray-900">{q.marks}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-2 h-2 rounded-full ${
-                          q.difficulty === 'HARD' ? 'bg-red-500' : 
-                          q.difficulty === 'MEDIUM' ? 'bg-amber-500' : 'bg-green-500'
-                        }`}></div>
-                        <span className="font-medium text-gray-600">{q.difficulty}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => editQuestion(q)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Edit3 size={18} />
-                        </button>
-                        <button onClick={() => deleteQuestion(q.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <Upload size={24} className="text-indigo-300 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Click to upload PDF</p>
+            <p className="text-xs text-gray-400 mt-0.5">or paste text below</p>
+          </>
         )}
       </div>
+
+      {/* Extracted / pasted text */}
+      <div>
+        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 block">
+          Content Text <span className="text-gray-400 font-normal">(auto-filled from PDF, or paste manually)</span>
+        </label>
+        <textarea value={extractedText} onChange={e => setExtractedText(e.target.value)} rows={5}
+          placeholder="Paste your lecture notes, textbook content, or topic summary here…"
+          className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+        <p className="text-xs text-gray-400 mt-1">{extractedText.length} characters</p>
+      </div>
+
+      {/* Config */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[
+          { label: 'MCQ Count', value: numMCQ, set: setNumMCQ, min: 1, max: 20 },
+          { label: 'Essay Count', value: numEssay, set: setNumEssay, min: 0, max: 10 },
+          { label: 'Marks / MCQ', value: marksPerMCQ, set: setMarksPerMCQ, min: 0.5, step: 0.5 },
+          { label: 'Marks / Essay', value: marksPerEssay, set: setMarksPerEssay, min: 1 },
+        ].map(({ label, value, set, min = 1, max, step = 1 }) => (
+          <div key={label}>
+            <label className="text-xs text-gray-400 mb-1 block">{label}</label>
+            <input type="number" min={min} max={max} step={step} value={value} onChange={e => set(e.target.value)}
+              className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+        ))}
+        <div>
+          <label className="text-xs text-gray-400 mb-1 block">Difficulty</label>
+          <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
+            className="w-full border border-gray-200 bg-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option>EASY</option><option>MEDIUM</option><option>HARD</option>
+          </select>
+        </div>
+      </div>
+
+      {step === 'done' ? (
+        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+          <CheckCircle size={16} className="text-green-500" />
+          <p className="text-sm text-green-700 font-medium">Questions generated and saved!</p>
+          <button onClick={() => { setStep('upload'); setFile(null); setExtractedText('') }}
+            className="ml-auto text-xs text-green-600 hover:underline flex items-center gap-1"><RefreshCw size={11} /> Generate more</button>
+        </div>
+      ) : (
+        <button onClick={handleGenerate} disabled={generating || extractedText.trim().length < 50}
+          className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors">
+          {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+          {generating ? 'Generating with Gemini AI…' : `Generate ${numMCQ} MCQ + ${numEssay} Essay Questions`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── Main Page ─────────────────────────────────────────────────
+export default function QuestionPool() {
+  const { id: examId } = useParams()
+  const navigate = useNavigate()
+  const [questions, setQuestions] = useState([])
+  const [exam, setExam] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editQ, setEditQ] = useState(null)
+  const [showAI, setShowAI] = useState(false)
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [qRes, eRes] = await Promise.all([
+        api.get(`/faculty/exams/${examId}/questions`),
+        api.get(`/faculty/exams/${examId}`)
+      ])
+      setQuestions(qRes.data.questions || [])
+      setExam(eRes.data.exam)
+    } catch { toast.error('Failed to load questions') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchData() }, [examId])
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this question?')) return
+    try {
+      await api.delete(`/faculty/questions/${id}`)
+      toast.success('Question deleted')
+      fetchData()
+    } catch { toast.error('Failed to delete') }
+  }
+
+  const handleEdit = (q) => {
+    setEditQ(q)
+    setShowForm(true)
+    setShowAI(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const onSaved = () => {
+    setShowForm(false)
+    setEditQ(null)
+    fetchData()
+  }
+
+  const totalMarks = questions.reduce((s, q) => s + (q.marks || 0), 0)
+
+  return (
+    <DashboardLayout title="Question Pool">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{exam?.title || 'Question Pool'}</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {questions.length} questions · {totalMarks} total marks
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => { setShowAI(v => !v); setShowForm(false); setEditQ(null) }}
+            className={`flex items-center gap-2 px-4 py-2.5 font-semibold text-sm rounded-xl border transition-all ${showAI ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-50'}`}>
+            <Sparkles size={15} /> AI Generate
+          </button>
+          <button onClick={() => { setShowForm(v => !v); setEditQ(null); setShowAI(false) }}
+            className={`flex items-center gap-2 px-4 py-2.5 font-semibold text-sm rounded-xl border transition-all ${showForm && !editQ ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>
+            <Plus size={15} /> Add Manually
+          </button>
+          <button onClick={() => navigate(`/faculty/exams/${examId}`)}
+            className="px-4 py-2.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-xl bg-white">
+            ← Back
+          </button>
+        </div>
+      </div>
+
+      {/* AI Panel */}
+      {showAI && (
+        <div className="mb-5">
+          <AIGeneratorPanel examId={examId} onGenerated={() => { fetchData(); setShowAI(false) }} />
+        </div>
+      )}
+
+      {/* Manual Form */}
+      {showForm && (
+        <div className="mb-5">
+          <QuestionForm examId={examId} editQ={editQ} onSaved={onSaved} onCancel={() => { setShowForm(false); setEditQ(null) }} />
+        </div>
+      )}
+
+      {/* Questions list */}
+      {loading ? (
+        <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}</div>
+      ) : questions.length === 0 ? (
+        <div className="bg-white border border-gray-100 rounded-2xl p-14 text-center shadow-sm">
+          <BookOpen size={40} className="text-gray-200 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium mb-1">No questions yet</p>
+          <p className="text-sm text-gray-400 mb-5">Use AI Generate to create questions from a PDF, or add manually.</p>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => setShowAI(true)} className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700">
+              <Sparkles size={14} /> AI Generate from PDF
+            </button>
+            <button onClick={() => setShowForm(true)} className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-50">
+              <Plus size={14} /> Add Manually
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {questions.map((q, i) => (
+            <QuestionCard key={q.id} q={q} index={i} onDelete={handleDelete} onEdit={handleEdit} />
+          ))}
+        </div>
+      )}
+
+      {/* Summary bar */}
+      {questions.length > 0 && (
+        <div className="mt-6 bg-white border border-gray-100 rounded-2xl p-4 flex items-center gap-6 shadow-sm">
+          {[
+            { label: 'Total Questions', value: questions.length },
+            { label: 'MCQ', value: questions.filter(q => q.type === 'MCQ').length },
+            { label: 'Subjective', value: questions.filter(q => q.type === 'SUBJECTIVE').length },
+            { label: 'Code', value: questions.filter(q => q.type === 'CODE').length },
+            { label: 'Total Marks', value: totalMarks, highlight: true },
+          ].map(({ label, value, highlight }) => (
+            <div key={label} className="text-center">
+              <p className={`text-xl font-bold ${highlight ? 'text-indigo-600' : 'text-gray-900'}`}>{value}</p>
+              <p className="text-xs text-gray-400">{label}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </DashboardLayout>
   )
 }

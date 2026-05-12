@@ -9,10 +9,15 @@ const api = axios.create({
 })
 
 // Request interceptor — add token
+// Priority: inv_token for invigilator requests, proctornet_token for regular users
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('proctornet_token') || localStorage.getItem('inv_token')
-    if(token) {
+    const invToken = localStorage.getItem('inv_token')
+    const regularToken = localStorage.getItem('proctornet_token')
+    // Use inv_token if the request is to an invigilator endpoint
+    const isInvRoute = config.url?.includes('/invigilator/')
+    const token = (isInvRoute && invToken) ? invToken : (regularToken || invToken)
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
@@ -24,12 +29,27 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Check if it's NOT a login/register request
     const isAuthRequest = error.config?.url?.includes('/login') || error.config?.url?.includes('/register')
     
-    if(error.response?.status === 401 && !isAuthRequest) {
-      localStorage.clear()
-      window.location.href = '/'
+    if (error.response?.status === 401 && !isAuthRequest) {
+      const isInvigilatorSession = !!localStorage.getItem('inv_token') && !localStorage.getItem('proctornet_token')
+      
+      if (isInvigilatorSession) {
+        localStorage.removeItem('inv_token')
+        localStorage.removeItem('inv_examId')
+        localStorage.removeItem('inv_session')
+        window.location.href = '/invigilator-login'
+      } else {
+        const role = localStorage.getItem('proctornet_role')
+        localStorage.removeItem('proctornet_token')
+        localStorage.removeItem('proctornet_user')
+        localStorage.removeItem('proctornet_role')
+        
+        const loginPath = role === 'admin' ? '/admin/login'
+          : role === 'faculty' ? '/faculty/login'
+          : '/student/login'
+        window.location.href = loginPath
+      }
     }
     return Promise.reject(error)
   }

@@ -1,571 +1,448 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import * as faceapi from 'face-api.js'
 import { io } from 'socket.io-client'
-import api from '@/utils/api'
-import { toast } from 'react-hot-toast'
-import { useAuth } from '@/context/AuthContext'
+import * as faceapi from 'face-api.js'
 import Editor from '@monaco-editor/react'
-import { 
-  Shield, Timer, Camera, AlertCircle, 
-  ChevronLeft, ChevronRight, CheckCircle, 
-  FileText, Code, Monitor, Maximize, Send, WifiOff
+import api from '@/utils/api'
+import { useAuth } from '@/context/AuthContext'
+import toast from 'react-hot-toast'
+import {
+  Clock, Camera, CameraOff, AlertTriangle, CheckCircle,
+  ChevronLeft, ChevronRight, Flag, Send, Eye, Code, List
 } from 'lucide-react'
 
-// --- Constants ---
-const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models'
+// ── Helpers ────────────────────────────────────────────
+function pad(n) { return String(n).padStart(2, '0') }
+function formatTime(secs) {
+  const h = Math.floor(secs / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}
+
+// ── Small status pill ──────────────────────────────────
+function StatusPill({ ok, label }) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+      {label}
+    </span>
+  )
+}
 
 export default function ExamInterface() {
   const { id: examId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  
-  // State
+
+  // ── Exam data ──
   const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
-  const [answers, setAnswers] = useState({})
+  const [loading, setLoading] = useState(true)
+
+  // ── Navigation ──
   const [currentIdx, setCurrentIdx] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const [violationCount, setViolationCount] = useState(0)
-  const [vpnConnected, setVpnConnected] = useState(true)
-  const [isPaused, setIsPaused] = useState(false)
+  const [answers, setAnswers] = useState({})    // { questionId: { selected, code, text } }
+  const [flagged, setFlagged] = useState(new Set())
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  // Refs
-  const socketRef = useRef(null)
-  const videoRef = useRef(null)
+  // ── Timer ──
+  const [timeLeft, setTimeLeft] = useState(null)
   const timerRef = useRef(null)
-  const faceDetectionIntv = useRef(null)
-  const frameStreamIntv = useRef(null)
-  const vpnCheckRef = useRef(null)
 
-  // 1. Initial Load & Socket Setup
+  // ── Camera / Face-API ──
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
+  const faceIntervalRef = useRef(null)
+  const [cameraOk, setCameraOk] = useState(false)
+  const [faceOk, setFaceOk] = useState(false)
+  const [modelsLoaded, setModelsLoaded] = useState(false)
+
+  // ── Socket ──
+  const socketRef = useRef(null)
+  const [violations, setViolations] = useState(0)
+
+  // ── Auto-save ──
+  const autoSaveRef = useRef(null)
+
+  // ─────────────────────────────────────────────────────
+  // 1. Load exam data
+  // ─────────────────────────────────────────────────────
   useEffect(() => {
-    fetchExamData()
-    setupSecurity()
-    
-    return () => {
-      cleanup()
-    }
+    api.get(`/student/exams/${examId}/start`)
+      .then(res => {
+        const { exam, questions: qs } = res.data
+        setExam(exam)
+        setQuestions(qs || [])
+        const secs = (exam.duration || 60) * 60
+        setTimeLeft(secs)
+        // Pre-fill saved answers
+        if (res.data.savedAnswers) {
+          const saved = {}
+          res.data.savedAnswers.forEach(a => { saved[a.questionId] = { selected: a.selectedOption, code: a.codeAnswer, text: a.textAnswer } })
+          setAnswers(saved)
+        }
+      })
+      .catch(() => toast.error('Failed to load exam'))
+      .finally(() => setLoading(false))
   }, [examId])
 
-  // 1.5 VPN Monitor
+  // ─────────────────────────────────────────────────────
+  // 2. Countdown timer
+  // ─────────────────────────────────────────────────────
   useEffect(() => {
-    vpnCheckRef.current = setInterval(async () => {
-      try {
-        const res = await api.get(`/vpn/status/${examId}`) // Using api instance instead of axios
-        
-        if(!res.data.connected && vpnConnected) {
-          setVpnConnected(false)
-          setIsPaused(true)
-          
-          socketRef.current?.emit('exam:flag', {
-            examId,
-            studentId: user.id,
-            eventType: 'vpn_disconnected',
-            severity: 'HIGH',
-            studentName: user.name
-          })
-          
-          toast.error(
-            '⚠️ VPN Disconnected! Exam paused. Reconnect WireGuard immediately.',
-            { duration: 0 }
-          )
-        }
-        
-        if(res.data.connected && !vpnConnected) {
-          setVpnConnected(true)
-          setIsPaused(false)
-          toast.dismiss()
-          toast.success('VPN reconnected — Exam resumed')
-        }
-        
-      } catch(err) {}
-    }, 120000)
-    
-    return () => clearInterval(vpnCheckRef.current)
-  }, [examId, vpnConnected, user])
+    if (timeLeft === null || submitted) return
+    if (timeLeft <= 0) { handleSubmit(true); return }
+    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000)
+    return () => clearTimeout(timerRef.current)
+  }, [timeLeft, submitted])
 
-  const fetchExamData = async () => {
-    try {
-      const res = await api.get(`/student/exams/${examId}/start`)
-      setExam(res.data.exam)
-      setQuestions(res.data.questions)
-      
-      // Map existing answers
-      const initialAnswers = {}
-      res.data.answers.forEach(a => {
-        initialAnswers[a.questionId] = a.selectedOption || a.codeAnswer || a.subjectiveAnswer || ''
-      })
-      setAnswers(initialAnswers)
-
-      // Time sync
-      const endTime = new Date(res.data.exam.endTime).getTime()
-      const now = new Date().getTime()
-      const diff = Math.floor((endTime - now) / 1000)
-      setTimeLeft(Math.max(0, diff))
-      
-      setIsLoading(false)
-      startTimer()
-    } catch(err) {
-      toast.error('Eligibility check failed or exam not found')
-      navigate('/student/dashboard')
-    }
-  }
-
-  const setupSecurity = async () => {
-    // Socket
+  // ─────────────────────────────────────────────────────
+  // 3. Socket.io — join room + listen for warnings
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
     const token = localStorage.getItem('proctornet_token')
-    socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
-      auth: { token },
-      transports: ['websocket']
+    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
+      auth: { token }, transports: ['websocket', 'polling']
     })
-    
-    const socket = socketRef.current
-    socket.emit('student:join', { examId, name: user.name, usn: user.usn })
+    socketRef.current = socket
+    socket.emit('exam:join', { examId, studentId: user?.id, name: user?.name, usn: user?.usn })
+    socket.on('exam:warning', ({ message }) => toast.error(`⚠️ ${message}`, { duration: 6000 }))
+    socket.on('exam:terminated', () => { toast.error('Exam terminated by invigilator'); handleSubmit(true) })
+    return () => socket.disconnect()
+  }, [examId])
 
-    socket.on('inv:warn', (data) => {
-      toast.error(`INVIGILATOR WARNING: ${data.message}`, { duration: 10000, icon: '⚠️' })
-    })
-
-    socket.on('inv:terminate', (data) => {
-      alert(`SESSION TERMINATED: ${data.reason}`)
-      navigate('/student/dashboard')
-    })
-
-    // Face API Models
-    try {
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
-      ])
-    } catch(e) { console.error('FaceAPI Models failed to load') }
-
-    // Media
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
-      if(videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.onplay = () => startProctoringLoops()
-      }
-    } catch(e) {
-      logViolation('CAMERA_BLOCKED', 'Student denied camera access')
+  // ─────────────────────────────────────────────────────
+  // 4. Tab-switch / window-blur detection
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (submitted) return
+    const handleBlur = () => emitViolation('TAB_SWITCH', 'MEDIUM')
+    const handleVisibility = () => { if (document.hidden) emitViolation('TAB_SWITCH', 'MEDIUM') }
+    window.addEventListener('blur', handleBlur)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener('blur', handleBlur)
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
+  }, [submitted])
 
-    // Fullscreen Listeners
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    window.addEventListener('blur', handleWindowBlur)
-  }
+  // ─────────────────────────────────────────────────────
+  // 5. Load face-api models + start camera
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const MODEL_URL = '/models'
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+    ]).then(() => setModelsLoaded(true)).catch(() => console.warn('Face models unavailable'))
 
-  const cleanup = () => {
-    if(socketRef.current) socketRef.current.disconnect()
-    if(timerRef.current) clearInterval(timerRef.current)
-    if(faceDetectionIntv.current) clearInterval(faceDetectionIntv.current)
-    if(frameStreamIntv.current) clearInterval(frameStreamIntv.current)
-    if(vpnCheckRef.current) clearInterval(vpnCheckRef.current)
-    
-    document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    window.removeEventListener('blur', handleWindowBlur)
-    
-    const stream = videoRef.current?.srcObject
-    stream?.getTracks().forEach(t => t.stop())
-  }
-
-  const startTimer = () => {
-    timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if(isPaused) return prev // Stop timer if paused
-        if(prev <= 1) {
-          clearInterval(timerRef.current)
-          autoSubmit()
-          return 0
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        streamRef.current = stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current.play().catch(e => console.warn('Play error:', e))
+          }
         }
-        return prev - 1
+        setCameraOk(true)
       })
-    }, 1000)
-  }
-
-  const startProctoringLoops = () => {
-    // Face Detection Loop (Every 4s)
-    faceDetectionIntv.current = setInterval(async () => {
-      if(!videoRef.current) return
-      const detections = await faceapi.detectAllFaces(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-      
-      if(detections.length === 0) logViolation('NO_FACE_DETECTED', 'Face not visible in camera')
-      else if(detections.length > 1) logViolation('MULTIPLE_FACES', `${detections.length} faces detected in frame`)
-    }, 4000)
-
-    // Frame Streaming Loop (Every 2s - low res)
-    const canvas = document.createElement('canvas')
-    canvas.width = 160
-    canvas.height = 120
-    const ctx = canvas.getContext('2d')
-    
-    frameStreamIntv.current = setInterval(() => {
-      if(!videoRef.current || !socketRef.current) return
-      ctx.drawImage(videoRef.current, 0, 0, 160, 120)
-      const frame = canvas.toDataURL('image/jpeg', 0.4)
-      socketRef.current.emit('student:frame', { examId, frame })
-    }, 2000)
-  }
-
-  const logViolation = async (type, details) => {
-    setViolationCount(prev => prev + 1)
-    const log = {
-      examId,
-      eventType: type,
-      details,
-      timestamp: new Date()
-    }
-    
-    // Alert Socket
-    socketRef.current.emit('student:violation', log)
-    
-    // Persist to DB
-    try {
-      await api.post(`/student/exams/${examId}/violation`, log)
-    } catch(e) {}
-
-    toast.error(`Security Alert: ${details}`, { icon: '🚨' })
-    
-    if(violationCount > (exam?.tabSwitchLimit || 3)) {
-      autoSubmit('Excessive security violations')
-    }
-  }
-
-  const handleFullscreenChange = () => {
-    const isFull = !!document.fullscreenElement
-    setIsFullscreen(isFull)
-    if(!isFull && !isSubmitting) {
-      logViolation('FULLSCREEN_EXIT', 'Student exited fullscreen mode')
-    }
-  }
-
-  const handleWindowBlur = () => {
-    if(!isSubmitting) {
-      logViolation('TAB_SWITCH', 'Window focus lost (possible tab switch)')
-    }
-  }
-
-  const enterFullscreen = () => {
-    const el = document.documentElement
-    if(el.requestFullscreen) el.requestFullscreen()
-    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen()
-  }
-
-  const handleAnswerChange = async (val) => {
-    const q = questions[currentIdx]
-    setAnswers(prev => ({ ...prev, [q.id]: val }))
-    
-    // Async background save
-    try {
-      await api.post(`/student/exams/${examId}/autosave`, {
-        questionId: q.id,
-        answer: val
+      .catch((err) => {
+        console.error('Camera access error:', err)
+        setCameraOk(false)
+        emitViolation('CAMERA_BLOCKED', 'HIGH')
+        toast.error('Camera access denied — violations will be logged')
       })
-    } catch(e) {}
-  }
 
-  const autoSubmit = async (reason = 'Time Expired') => {
-    if(isSubmitting) return
-    setIsSubmitting(true)
-    toast.loading(`Mandatory Submission: ${reason}...`)
-    try {
-      await api.post(`/student/exams/${examId}/submit`)
-      toast.dismiss()
-      navigate('/student/results')
-    } catch(e) {
-      navigate('/student/dashboard')
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+      }
+      clearInterval(faceIntervalRef.current)
     }
+  }, [])
+
+  // ─────────────────────────────────────────────────────
+  // 6. Face detection loop (every 5s)
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!modelsLoaded || !cameraOk || submitted) return
+    faceIntervalRef.current = setInterval(async () => {
+      if (!videoRef.current || videoRef.current.readyState < 2) return
+      try {
+        if (socketRef.current && canvasRef.current) {
+          const ctx = canvasRef.current.getContext('2d')
+          canvasRef.current.width = videoRef.current.videoWidth
+          canvasRef.current.height = videoRef.current.videoHeight
+          ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height)
+          const frame = canvasRef.current.toDataURL('image/jpeg', 0.5)
+          socketRef.current.emit('exam:frame', { examId, studentId: user?.id, frame })
+        }
+
+        const options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 })
+        const detections = await faceapi.detectAllFaces(videoRef.current, options)
+        if (detections.length === 0) {
+          setFaceOk(false)
+          emitViolation('NO_FACE', 'HIGH')
+        } else if (detections.length > 1) {
+          setFaceOk(false)
+          emitViolation('MULTIPLE_FACES', 'CRITICAL')
+          toast.error('Multiple faces detected!', { duration: 4000 })
+        } else {
+          setFaceOk(true)
+        }
+      } catch { /* silent */ }
+    }, 5000)
+    return () => clearInterval(faceIntervalRef.current)
+  }, [modelsLoaded, cameraOk, submitted])
+
+  // ─────────────────────────────────────────────────────
+  // 7. Auto-save every 30s
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    autoSaveRef.current = setInterval(() => {
+      Object.entries(answers).forEach(([questionId, ans]) => {
+        api.post(`/student/exams/${examId}/autosave`, { questionId, ...ans }).catch(() => {})
+      })
+    }, 30000)
+    return () => clearInterval(autoSaveRef.current)
+  }, [answers, examId])
+
+  // ─────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────
+  const emitViolation = useCallback((type, severity) => {
+    setViolations(v => v + 1)
+    socketRef.current?.emit('exam:flag', { examId, studentId: user?.id, studentName: user?.name, eventType: type, severity })
+    api.post(`/student/exams/${examId}/violation`, { eventType: type, severity }).catch(() => {})
+  }, [examId, user])
+
+  const setAnswer = (questionId, field, value) => {
+    setAnswers(prev => ({ ...prev, [questionId]: { ...prev[questionId], [field]: value } }))
+    api.post(`/student/exams/${examId}/answer`, { questionId, [field]: value }).catch(() => {})
   }
 
-  const handleManualSubmit = async () => {
-    if(!window.confirm('Final submission? This cannot be undone.')) return
-    setIsSubmitting(true)
+  const toggleFlag = (id) => {
+    setFlagged(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+  }
+
+  const handleSubmit = async (auto = false) => {
+    if (submitting || submitted) return
+    if (!auto && !confirm('Are you sure you want to submit? You cannot change answers after submission.')) return
+    setSubmitting(true)
+    clearInterval(autoSaveRef.current)
+    clearInterval(faceIntervalRef.current)
+    streamRef.current?.getTracks().forEach(t => t.stop())
     try {
-      await api.post(`/student/exams/${examId}/submit`)
-      toast.success('Exam submitted successfully')
-      navigate('/student/dashboard')
-    } catch(err) {
-      toast.error('Submission failed. Check connection.')
-      setIsSubmitting(false)
-    }
+      await api.post(`/student/exams/${examId}/submit`, { answers })
+      setSubmitted(true)
+      toast.success('Exam submitted successfully!')
+      setTimeout(() => navigate('/student/results'), 3000)
+    } catch { toast.error('Submission failed. Try again.') }
+    finally { setSubmitting(false) }
   }
 
-  const formatTime = (s) => {
-    const h = Math.floor(s / 3600)
-    const m = Math.floor((s % 3600) / 60)
-    const sec = s % 60
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
-  }
-
-  if(isLoading) return (
-    <div className="h-screen bg-white flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      <p className="font-bold text-gray-500 uppercase tracking-widest text-xs">Initializing Secure Environment...</p>
+  // ── Loading / Submit states ──
+  if (loading) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="text-center"><div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-gray-400">Loading exam…</p></div>
     </div>
   )
 
-  const currentQuestion = questions[currentIdx]
+  if (submitted) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="text-center">
+        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle size={40} className="text-green-400" /></div>
+        <h2 className="text-2xl font-bold text-white mb-2">Submitted!</h2>
+        <p className="text-gray-400">Redirecting to results…</p>
+      </div>
+    </div>
+  )
+
+  const currentQ = questions[currentIdx]
+  const answered = Object.keys(answers).length
+  const timerColor = timeLeft < 300 ? 'text-red-400' : timeLeft < 600 ? 'text-amber-400' : 'text-green-400'
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden select-none">
-      
-      {/* VPN disconnected overlay UI */}
-      {!vpnConnected && (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-[100] flex items-center justify-center">
-          <div className="bg-white rounded-3xl p-10 max-w-md text-center space-y-6 shadow-2xl border-4 border-red-500">
-            <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto">
-              <WifiOff size={48} className="text-red-500" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">VPN Disconnected!</h2>
-              <p className="text-slate-500 mt-2 font-medium">Your exam is paused. Reconnect your WireGuard VPN to resume.</p>
-            </div>
-            
-            <div className="bg-slate-50 rounded-2xl p-6 text-left border border-slate-100">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Recovery Steps</p>
-              <div className="space-y-3 text-sm font-medium text-slate-600">
-                <p className="flex gap-3"><span className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-xs">1</span> Open WireGuard app</p>
-                <p className="flex gap-3"><span className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-xs">2</span> Select ProctorNet tunnel</p>
-                <p className="flex gap-3"><span className="w-5 h-5 rounded bg-white border border-slate-200 flex items-center justify-center text-xs">3</span> Click "Activate"</p>
-                <p className="flex gap-3"><span className="w-5 h-5 rounded border border-blue-200 bg-blue-50 text-blue-600 flex items-center justify-center text-xs">4</span> Auto-resumes</p>
-              </div>
-            </div>
-            
-            <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest bg-red-50 p-3 rounded-xl">
-              This incident has been logged
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* HUD Header */}
-      <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shadow-sm z-30">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
-            <Shield size={20} />
-          </div>
+    <div className="min-h-screen bg-gray-950 flex flex-col">
+      {/* ── Top bar ── */}
+      <header className="bg-gray-900 border-b border-gray-800 h-14 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center"><Eye size={14} className="text-white" /></div>
           <div>
-            <h1 className="text-sm font-bold text-slate-900 uppercase tracking-tight">{exam.title}</h1>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded uppercase">{user.usn}</span>
-              <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Session</span>
-            </div>
+            <p className="text-sm font-semibold text-white leading-none">{exam?.title}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{exam?.subject} • {questions.length} questions</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-8">
-          <div className={`flex items-center gap-3 px-6 py-2 rounded-2xl font-mono font-black text-lg tabular-nums border-2 transition-all ${
-            timeLeft < 300 ? 'bg-red-50 border-red-500 text-red-600 animate-pulse' : 'bg-slate-50 border-slate-100 text-slate-700'
-          }`}>
-            <Timer size={20} />
-            {formatTime(timeLeft)}
-          </div>
-          
-          <button 
-            onClick={handleManualSubmit}
-            disabled={isSubmitting}
-            className="bg-blue-600 text-white px-8 py-2.5 rounded-2xl font-bold hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all disabled:bg-slate-300 flex items-center gap-2"
-          >
-            {isSubmitting ? 'Finalizing...' : <><Send size={18} /> Finish Exam</>}
-          </button>
+        <div className="flex items-center gap-3">
+          <StatusPill ok={cameraOk} label="Camera" />
+          <StatusPill ok={faceOk} label="Face" />
+          {violations > 0 && <span className="text-xs font-semibold text-red-400 bg-red-950 px-2 py-0.5 rounded-full">{violations} flags</span>}
+          <div className={`font-mono text-lg font-bold ${timerColor}`}>{timeLeft !== null ? formatTime(timeLeft) : '--:--'}</div>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* Navigation Sidebar */}
-        <aside className="w-72 bg-white border-r border-slate-200 flex flex-col z-20">
-          <div className="p-6 flex-1 overflow-y-auto">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6">Question Matrix</h3>
-            <div className="grid grid-cols-4 gap-3">
-              {questions.map((q, i) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentIdx(i)}
-                  className={`aspect-square rounded-xl font-bold text-sm transition-all border-2 ${
-                    i === currentIdx ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-inner scale-110' : 
-                    answers[q.id] ? 'border-emerald-100 bg-emerald-50 text-emerald-600' : 'border-slate-50 bg-slate-50 text-slate-400'
-                  }`}
-                >
-                  {i + 1}
+      <div className="flex flex-1 overflow-hidden">
+        {/* ── Left: question panel ── */}
+        <main className="flex-1 flex flex-col overflow-hidden">
+          {currentQ ? (
+            <div className="flex-1 overflow-y-auto p-5 lg:p-6">
+              {/* Question header */}
+              <div className="flex items-start justify-between mb-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">Q{currentIdx + 1} of {questions.length}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                      currentQ.difficulty === 'HARD' ? 'bg-red-900/60 text-red-300' : currentQ.difficulty === 'EASY' ? 'bg-green-900/60 text-green-300' : 'bg-amber-900/60 text-amber-300'
+                    }`}>{currentQ.difficulty}</span>
+                    <span className="text-xs text-gray-500">{currentQ.marks} marks</span>
+                  </div>
+                  <p className="text-base font-medium text-gray-100 leading-relaxed max-w-2xl">{currentQ.questionText}</p>
+                </div>
+                <button onClick={() => toggleFlag(currentQ.id)}
+                  className={`p-2 rounded-lg transition-colors ${flagged.has(currentQ.id) ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-gray-800 text-gray-500'}`}>
+                  <Flag size={16} />
                 </button>
+              </div>
+
+              {/* MCQ */}
+              {currentQ.type === 'MCQ' && (
+                <div className="space-y-2.5">
+                  {['A','B','C','D'].map((opt, i) => {
+                    const text = currentQ[`option${opt}`] || currentQ.options?.[i]
+                    if (!text) return null
+                    const selected = answers[currentQ.id]?.selected === opt
+                    return (
+                      <button key={opt} onClick={() => setAnswer(currentQ.id, 'selected', opt)}
+                        className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
+                          selected ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:border-gray-500 hover:bg-gray-800'
+                        }`}>
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${selected ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'}`}>{opt}</span>
+                        {text}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Coding question */}
+              {currentQ.type === 'CODE' && (
+                <div className="rounded-xl overflow-hidden border border-gray-700">
+                  <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+                    <div className="flex items-center gap-2 text-xs text-gray-400"><Code size={13} /> Code Editor</div>
+                    <select className="bg-gray-700 text-gray-300 text-xs rounded px-2 py-1 border-0">
+                      <option>Python</option><option>JavaScript</option><option>Java</option><option>C++</option>
+                    </select>
+                  </div>
+                  <Editor
+                    height="320px"
+                    defaultLanguage="python"
+                    value={answers[currentQ.id]?.code || '# Write your solution here\n'}
+                    onChange={val => setAnswer(currentQ.id, 'code', val)}
+                    theme="vs-dark"
+                    options={{ minimap: { enabled: false }, fontSize: 14, scrollBeyondLastLine: false, wordWrap: 'on' }}
+                  />
+                </div>
+              )}
+
+              {/* Subjective */}
+              {currentQ.type === 'SUBJECTIVE' && (
+                <textarea
+                  value={answers[currentQ.id]?.text || ''}
+                  onChange={e => setAnswer(currentQ.id, 'text', e.target.value)}
+                  placeholder="Write your answer here…"
+                  rows={8}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl text-gray-200 text-sm p-4 focus:outline-none focus:border-blue-500 resize-none"
+                />
+              )}
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-500">No questions loaded.</div>
+          )}
+
+          {/* ── Question navigation footer ── */}
+          <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-t border-gray-800 flex-shrink-0">
+            <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg disabled:opacity-40 transition-colors">
+              <ChevronLeft size={16} /> Previous
+            </button>
+            <div className="flex items-center gap-1.5 text-sm text-gray-400">
+              <CheckCircle size={14} className="text-green-400" />
+              <span><span className="text-green-400 font-semibold">{answered}</span>/{questions.length} answered</span>
+            </div>
+            {currentIdx < questions.length - 1 ? (
+              <button onClick={() => setCurrentIdx(i => i + 1)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                Next <ChevronRight size={16} />
+              </button>
+            ) : (
+              <button disabled={submitting} onClick={() => handleSubmit(false)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-60 transition-colors">
+                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={15} />}
+                Submit Exam
+              </button>
+            )}
+          </div>
+        </main>
+
+        {/* ── Right sidebar ── */}
+        <aside className="w-60 bg-gray-900 border-l border-gray-800 flex flex-col flex-shrink-0 hidden lg:flex">
+          {/* Camera feed */}
+          <div className="p-3 border-b border-gray-800">
+            <p className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Live Camera</p>
+            <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video">
+              <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
+              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+              {!cameraOk && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                  <div className="text-center"><CameraOff size={20} className="text-red-400 mx-auto mb-1" /><p className="text-xs text-red-400">No Camera</p></div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Question palette */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <p className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide flex items-center gap-1"><List size={11} /> Questions</p>
+            <div className="grid grid-cols-5 gap-1.5">
+              {questions.map((q, i) => {
+                const isAnswered = !!answers[q.id]?.selected || !!answers[q.id]?.code || !!answers[q.id]?.text
+                const isFlagged = flagged.has(q.id)
+                const isCurrent = i === currentIdx
+                return (
+                  <button key={q.id} onClick={() => setCurrentIdx(i)}
+                    className={`w-full aspect-square rounded-lg text-xs font-bold transition-all ${
+                      isCurrent ? 'bg-blue-600 text-white ring-2 ring-blue-400' :
+                      isFlagged ? 'bg-amber-500/30 text-amber-400 border border-amber-600' :
+                      isAnswered ? 'bg-green-500/20 text-green-400' :
+                      'bg-gray-800 text-gray-500 hover:bg-gray-700'
+                    }`}>
+                    {i + 1}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-4 space-y-1.5">
+              {[['bg-blue-600', 'Current'], ['bg-green-500/20 border border-green-700', 'Answered'], ['bg-amber-500/30 border border-amber-600', 'Flagged'], ['bg-gray-800', 'Unanswered']].map(([cls, label]) => (
+                <div key={label} className="flex items-center gap-2 text-xs text-gray-500">
+                  <div className={`w-3 h-3 rounded ${cls}`} />{label}
+                </div>
               ))}
             </div>
           </div>
 
-          {/* Mini Proctor View */}
-          <div className="p-6 border-t bg-slate-50/50">
-            <div className="aspect-video bg-slate-900 rounded-2xl overflow-hidden shadow-2xl relative border-4 border-white">
-              <video 
-                ref={videoRef} 
-                autoPlay 
-                muted 
-                playsInline 
-                className="w-full h-full object-cover transform scale-x-[-1]" 
-              />
-              <div className="absolute top-3 right-3 flex gap-1.5">
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
-                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-              </div>
-            </div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center mt-3 flex items-center justify-center gap-2">
-              <Camera size={12} /> Proctoring Active
-            </p>
+          {/* Submit button */}
+          <div className="p-3 border-t border-gray-800">
+            <button disabled={submitting} onClick={() => handleSubmit(false)}
+              className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors">
+              {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
+              Submit Exam
+            </button>
           </div>
         </aside>
-
-        {/* Question Interface */}
-        <main className="flex-1 overflow-y-auto p-12 bg-slate-100/30">
-          <div className="max-w-4xl mx-auto space-y-8">
-            
-            {/* Fullscreen Overlay Trigger */}
-            {!isFullscreen && (
-              <div className="bg-slate-900 text-white p-8 rounded-[2.5rem] shadow-2xl flex items-center justify-between animate-bounce">
-                <div className="flex items-center gap-4">
-                  <Monitor className="text-blue-400" size={32} />
-                  <div>
-                    <h3 className="font-bold text-lg">Fullscreen Environment Required</h3>
-                    <p className="text-slate-400 text-sm">Exam security protocol requires total isolation.</p>
-                  </div>
-                </div>
-                <button onClick={enterFullscreen} className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 transition-all">
-                  <Maximize size={18} /> Lock Environment
-                </button>
-              </div>
-            )}
-
-            <div className="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden min-h-[60vh] flex flex-col">
-              <div className="px-10 py-8 border-b flex justify-between items-center bg-slate-50/30">
-                <div className="flex items-center gap-3">
-                  <span className="w-10 h-10 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-bold">
-                    {currentIdx + 1}
-                  </span>
-                  <div className="h-6 w-[1px] bg-slate-200"></div>
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                    {currentQuestion.type === 'MCQ' ? 'Multiple Choice' : currentQuestion.type === 'CODE' ? 'Technical Snippet' : 'Creative Writing'}
-                  </span>
-                </div>
-                <div className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                  Weight: {currentQuestion.marks} Marks
-                </div>
-              </div>
-
-              <div className="p-10 flex-1 space-y-10">
-                <div className="text-xl font-bold text-slate-800 leading-relaxed">
-                  {currentQuestion.questionText}
-                </div>
-
-                {/* MCQ Renderer */}
-                {currentQuestion.type === 'MCQ' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {currentQuestion.options?.map((opt, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleAnswerChange(opt.text)}
-                        className={`flex items-center gap-4 p-5 rounded-[2rem] border-2 transition-all text-left font-bold ${
-                          answers[currentQuestion.id] === opt.text 
-                            ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md scale-[1.02]' 
-                            : 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
-                        }`}
-                      >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                          answers[currentQuestion.id] === opt.text ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200'
-                        }`}>
-                          {String.fromCharCode(65 + idx)}
-                        </div>
-                        {opt.text}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* CODE Renderer */}
-                {currentQuestion.type === 'CODE' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-400 px-2">
-                      <span>{currentQuestion.codeLanguage} Runtime</span>
-                      <span className="flex items-center gap-1"><Maximize size={12} /> Auto-Saving...</span>
-                    </div>
-                    <div className="rounded-[2rem] overflow-hidden border-2 border-slate-100 shadow-inner">
-                      <Editor
-                        height="400px"
-                        language={currentQuestion.codeLanguage || 'python'}
-                        value={answers[currentQuestion.id] || currentQuestion.codeTemplate || ''}
-                        onChange={(val) => handleAnswerChange(val)}
-                        theme="vs-dark"
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 14,
-                          padding: { top: 20 },
-                          scrollBeyondLastLine: false,
-                          lineNumbers: 'on',
-                          roundedSelection: true
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* SUBJECTIVE Renderer */}
-                {currentQuestion.type === 'SUBJECTIVE' && (
-                  <div className="space-y-4">
-                    <textarea
-                      value={answers[currentQuestion.id] || ''}
-                      onChange={(e) => handleAnswerChange(e.target.value)}
-                      placeholder="Synthesize your response here..."
-                      className="w-full min-h-[300px] p-8 rounded-[2rem] border-2 border-slate-100 focus:border-blue-300 focus:ring-0 outline-none transition-all text-lg leading-relaxed placeholder:italic placeholder:text-slate-300 shadow-inner"
-                    />
-                    <div className="flex justify-end px-4">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        { (answers[currentQuestion.id] || '').split(/\s+/).filter(Boolean).length } Words Typed
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Navigation Footer */}
-              <div className="px-10 py-8 bg-slate-50/30 border-t flex justify-between items-center">
-                <button
-                  disabled={currentIdx === 0}
-                  onClick={() => setCurrentIdx(prev => prev - 1)}
-                  className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-900 transition-all disabled:opacity-0"
-                >
-                  <ChevronLeft size={20} /> Previous
-                </button>
-                <div className="flex gap-2">
-                  {currentIdx < questions.length - 1 ? (
-                    <button
-                      onClick={() => setCurrentIdx(prev => prev + 1)}
-                      className="bg-slate-900 text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-100"
-                    >
-                      Next Question <ChevronRight size={20} />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleManualSubmit}
-                      className="bg-green-600 text-white px-10 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-green-700 transition-all shadow-xl shadow-green-100"
-                    >
-                      <CheckCircle size={20} /> Finish Attempt
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* Dynamic Watermark */}
-      <div className="fixed inset-0 pointer-events-none z-50 opacity-[0.03] flex items-center justify-center overflow-hidden rotate-[-30deg] whitespace-nowrap">
-        <div className="text-[150px] font-black text-slate-900 select-none">
-          {user.usn} • {user.usn} • {user.usn} • {user.usn}
-        </div>
       </div>
     </div>
   )

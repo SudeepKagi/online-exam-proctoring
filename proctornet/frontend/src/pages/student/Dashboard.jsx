@@ -1,184 +1,260 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import { Alert } from '@/components/common/FormComponents'
-import api from '@/services/api'
+import { useAuth } from '@/context/AuthContext'
+import api from '@/utils/api'
+import {
+  BookOpen, Clock, CheckCircle, BarChart2, Wifi, WifiOff,
+  Camera, ChevronRight, Play, AlertCircle, Trophy, Target
+} from 'lucide-react'
 
-function Icon({ name, style, size = 20 }) {
-  return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
+function VPNStatusCard() {
+  const [vpn, setVpn] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/vpn/status').then(r => setVpn(r.data)).catch(() => setVpn({ connected: false })).finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className={`rounded-2xl p-4 border ${vpn?.connected ? 'bg-green-50 border-green-100' : 'bg-amber-50 border-amber-100'}`}>
+      <div className="flex items-center gap-3">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${vpn?.connected ? 'bg-green-100' : 'bg-amber-100'}`}>
+          {vpn?.connected ? <Wifi size={18} className="text-green-600" /> : <WifiOff size={18} className="text-amber-600" />}
+        </div>
+        <div>
+          <p className={`text-sm font-semibold ${vpn?.connected ? 'text-green-800' : 'text-amber-800'}`}>
+            {loading ? 'Checking VPN…' : vpn?.connected ? 'VPN Connected' : 'VPN Not Connected'}
+          </p>
+          <p className={`text-xs ${vpn?.connected ? 'text-green-600' : 'text-amber-600'}`}>
+            {vpn?.connected ? `IP: ${vpn.assignedIp || 'Assigned'}` : 'Connect VPN before joining any exam'}
+          </p>
+        </div>
+        {!vpn?.connected && !loading && (
+          <a href="#vpn-setup" className="ml-auto text-xs text-amber-700 font-semibold underline">Setup →</a>
+        )}
+      </div>
+    </div>
+  )
 }
 
-const navItems = [
-  { to: '/student/dashboard', icon: 'home', label: 'Home' },
-  { to: '/student/exams', icon: 'assignment', label: 'My Exams' },
-  { to: '/student/results', icon: 'military_tech', label: 'Results' },
-]
-
 export default function StudentDashboard() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [exams, setExams] = useState([])
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchData()
+    const load = async () => {
+      try {
+        const [examRes, resultsRes] = await Promise.all([
+          api.get('/student/exams'),
+          api.get('/student/results'),
+        ])
+        setExams((examRes.data.exams || examRes.data || []).slice(0, 4))
+        setResults((resultsRes.data.results || resultsRes.data || []).slice(0, 5))
+      } catch (err) { console.error(err) }
+      finally { setLoading(false) }
+    }
+    load()
   }, [])
 
-  const fetchData = async () => {
-    try {
-      const [examRes, resultsRes] = await Promise.all([
-        api.get('/student/exams?status=upcoming'),
-        api.get('/student/results')
-      ])
-      setExams(examRes.data.exams.slice(0, 3))
-      setResults(resultsRes.data.results.slice(0, 5))
-      setLoading(false)
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err)
-      setLoading(false)
-    }
+  const upcomingExams = exams.filter(e => e.status === 'SCHEDULED' || e.status === 'ACTIVE')
+  const activeExams = exams.filter(e => e.status === 'ACTIVE')
+
+  const avgScore = results.length > 0
+    ? Math.round(results.reduce((sum, r) => sum + (r.percentage || 0), 0) / results.length)
+    : null
+
+  const greeting = () => {
+    const h = new Date().getHours()
+    if (h < 12) return 'Good morning'
+    if (h < 17) return 'Good afternoon'
+    return 'Good evening'
   }
 
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="page-header">
+    <DashboardLayout title="Dashboard">
+      {/* Welcome */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Welcome Back</h1>
-          <p className="page-subtitle">View your upcoming exams and recent performance.</p>
+          <h1 className="text-xl font-bold text-gray-900">{greeting()}, {user?.name?.split(' ')[0]} 👋</h1>
+          <p className="text-sm text-gray-500 mt-0.5">USN: {user?.usn} · {user?.department} Dept</p>
         </div>
+        <Link to="/student/exams"
+          className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm rounded-xl transition-colors">
+          <BookOpen size={15} /> View Exams
+        </Link>
       </div>
 
-      <Alert type="info" message="Ensure your VPN client is active before joining any exam session." />
-
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginTop: '1.5rem' }}>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Live & Upcoming Exams</h3>
-              <Link to="/student/exams" style={{ fontSize: '0.8125rem', fontWeight: 600 }}>View All</Link>
-            </div>
-            <div className="card-body">
-              {loading ? (
-                <div className="spinner"></div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {exams.length === 0 ? (
-                    <p style={{ color: 'var(--on-surface-variant)', textAlign: 'center', padding: '2rem' }}>No exams scheduled for your batch.</p>
-                  ) : (
-                    exams.map(e => (
-                      <div key={e.id} style={{ 
-                        padding: '1.25rem', 
-                        border: e.isLive ? '1px solid var(--primary)' : '1px solid var(--outline-variant)', 
-                        borderRadius: '12px', 
-                        background: e.isLive ? 'var(--primary-fixed)' : 'var(--surface-container-low)',
-                        position: 'relative'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              {e.isLive && <span className="live-dot" />}
-                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: e.isLive ? 'var(--primary)' : 'var(--on-surface-variant)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                                {e.isLive ? 'Live Now' : 'Upcoming'}
-                              </span>
-                            </div>
-                            <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.25rem' }}>
-                              {e.title}
-                            </h4>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)' }}>
-                              {e.faculty.name} • {e.isLive ? 'Ends at ' : 'Starts '}{new Date(e.isLive ? e.endTime : e.startTime).toLocaleTimeString()}
-                            </p>
-                          </div>
-                          {e.isLive && (
-                            <Link to={`/student/exam-lobby/${e.id}`} className="btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
-                              Join Lobby
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
+      {/* Active exam alert */}
+      {activeExams.length > 0 && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-2xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <div>
+              <p className="text-sm font-semibold text-green-800">Exam in progress: {activeExams[0].title}</p>
+              <p className="text-xs text-green-600">Click to join immediately</p>
             </div>
           </div>
+          <Link to={`/student/exam-lobby/${activeExams[0].id}`}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm rounded-xl transition-colors">
+            <Play size={14} /> Join Now
+          </Link>
+        </div>
+      )}
 
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Recent Results</h3>
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        {loading ? (
+          [...Array(4)].map((_, i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl animate-pulse" />)
+        ) : [
+          { label: 'Upcoming Exams', value: upcomingExams.length, icon: Clock, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Exams Taken', value: results.length, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Average Score', value: avgScore !== null ? `${avgScore}%` : '—', icon: Target, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Best Score', value: results.length > 0 ? `${Math.max(...results.map(r => r.percentage || 0))}%` : '—', icon: Trophy, color: 'text-amber-600', bg: 'bg-amber-50' },
+        ].map(({ label, value, icon: Icon, color, bg }) => (
+          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center`}>
+              <Icon size={18} className={color} />
             </div>
-            <div className="card-body">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Exam</th>
-                    <th>Date</th>
-                    <th>Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map(r => (
-                    <tr key={r.id}>
-                      <td style={{ fontWeight: 500 }}>{r.exam.title}</td>
-                      <td style={{ color: 'var(--on-surface-variant)' }}>{new Date(r.gradedAt).toLocaleDateString()}</td>
-                      <td><span className={`badge ${r.percentage > 40 ? 'badge-success' : 'badge-danger'}`}>{r.totalScore} / {r.exam.totalMarks}</span></td>
-                    </tr>
-                  ))}
-                  {results.length === 0 && (
-                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '2rem' }}>No results available yet.</td></tr>
-                  )}
-                </tbody>
-              </table>
+            <div>
+              <p className="text-xs text-gray-400 font-medium">{label}</p>
+              <p className="text-xl font-bold text-gray-900">{value}</p>
             </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* Upcoming Exams */}
+        <div className="xl:col-span-2 space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800">Live & Upcoming Exams</h3>
+              <Link to="/student/exams" className="text-xs text-emerald-600 font-semibold hover:underline flex items-center gap-1">
+                View all <ChevronRight size={12} />
+              </Link>
+            </div>
+            {loading ? (
+              <div className="p-5 space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : upcomingExams.length === 0 ? (
+              <div className="p-10 text-center">
+                <BookOpen size={36} className="text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No upcoming exams scheduled</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {upcomingExams.map(exam => (
+                  <div key={exam.id} className={`px-5 py-4 flex items-center gap-4 ${exam.status === 'ACTIVE' ? 'bg-green-50' : ''}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${exam.status === 'ACTIVE' ? 'bg-green-100' : 'bg-emerald-50'}`}>
+                      {exam.status === 'ACTIVE'
+                        ? <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                        : <BookOpen size={18} className="text-emerald-600" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{exam.title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {exam.status === 'ACTIVE'
+                          ? `Ends: ${new Date(exam.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                          : `Starts: ${new Date(exam.startTime).toLocaleString()}`
+                        } · {exam.duration} min
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {exam.status === 'ACTIVE' ? (
+                        <Link to={`/student/exam-lobby/${exam.id}`}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors">
+                          <Play size={12} /> Join
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2.5 py-1 rounded-full">Scheduled</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Recent Results */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-800">Recent Results</h3>
+              <Link to="/student/results" className="text-xs text-emerald-600 font-semibold hover:underline flex items-center gap-1">
+                View all <ChevronRight size={12} />
+              </Link>
+            </div>
+            {loading ? (
+              <div className="p-5 space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : results.length === 0 ? (
+              <div className="p-8 text-center">
+                <BarChart2 size={32} className="text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500 text-sm">No exam results yet</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {results.map(r => (
+                  <div key={r.id} className="px-5 py-3.5 flex items-center gap-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">{r.exam?.title || r.examTitle}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{r.gradedAt ? new Date(r.gradedAt).toLocaleDateString() : '—'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-bold ${(r.percentage || 0) >= 40 ? 'text-green-600' : 'text-red-500'}`}>
+                        {r.totalScore}/{r.exam?.totalMarks || r.totalMarks}
+                      </p>
+                      <p className="text-xs text-gray-400">{r.percentage || 0}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Sidebar widgets */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">System Status</h3>
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <VPNStatusCard />
+
+          {/* Profile card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-gray-800 mb-4">My Profile</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm overflow-hidden flex-shrink-0">
+                {user?.facePhotoUrl && user.facePhotoUrl !== 'placeholder_face'
+                  ? <img src={user.facePhotoUrl} alt="" className="w-full h-full object-cover" />
+                  : user?.name?.slice(0, 2).toUpperCase()
+                }
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-400">{user?.email}</p>
+              </div>
             </div>
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--success-bg)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="vpn_key" size={18} />
+            <div className="space-y-2">
+              {[['USN', user?.usn], ['Department', user?.department], ['Semester', `Semester ${user?.semester}`]].map(([label, val]) => (
+                <div key={label} className="flex items-center justify-between text-sm">
+                  <span className="text-gray-400">{label}</span>
+                  <span className="font-medium text-gray-800">{val}</span>
                 </div>
-                <div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface)' }}>VPN Configuration</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>Keys provisioned</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--success-bg)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="face" size={18} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface)' }}>Biometric Profile</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)' }}>Verified by Admin</div>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
 
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">Support</h3>
-            </div>
-            <div className="card-body">
-              <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', marginBottom: '1rem', lineHeight: 1.6 }}>
-                Having trouble with your VPN connection or camera setup?
-              </p>
-              <button className="btn-secondary" style={{ width: '100%', justifyContent: 'center' }}>
-                <Icon name="help_center" /> Contact Helpdesk
-              </button>
-            </div>
+          {/* Help */}
+          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5">
+            <p className="text-sm font-semibold text-emerald-800 mb-2">Before your exam</p>
+            <ul className="space-y-1.5 text-xs text-emerald-700">
+              <li className="flex items-center gap-2"><CheckCircle size={12} />Connect to ProctorNet VPN</li>
+              <li className="flex items-center gap-2"><CheckCircle size={12} />Allow camera access in browser</li>
+              <li className="flex items-center gap-2"><CheckCircle size={12} />Use full-screen mode during exam</li>
+              <li className="flex items-center gap-2"><CheckCircle size={12} />Keep your college ID card ready</li>
+            </ul>
           </div>
-
         </div>
-
       </div>
     </DashboardLayout>
   )

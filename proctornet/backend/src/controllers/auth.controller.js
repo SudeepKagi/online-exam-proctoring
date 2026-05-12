@@ -49,7 +49,7 @@ async function adminLogin(req, res) {
  */
 async function facultyRegister(req, res) {
   try {
-    const { name, email, password, department, employeeId } = req.body
+    const { name, email, password, department, employeeId, idCardBase64, profilePhotoBase64 } = req.body
     if (!name || !email || !password || !department || !employeeId)
       return res.status(400).json({ error: 'All fields are required.' })
 
@@ -62,9 +62,20 @@ async function facultyRegister(req, res) {
       return res.status(409).json({ error: `${field} is already registered.` })
     }
 
+    const { uploadBase64 } = require('../services/cloudinary.service')
+    let idCardPhotoUrl = null
+    let profilePhotoUrl = null
+
+    if (idCardBase64) {
+      idCardPhotoUrl = await uploadBase64(idCardBase64, 'proctornet/faculty-ids')
+    }
+    if (profilePhotoBase64) {
+      profilePhotoUrl = await uploadBase64(profilePhotoBase64, 'proctornet/faculty-profiles')
+    }
+
     const hashed  = await bcrypt.hash(password, 12)
     const faculty = await global.prisma.faculty.create({
-      data: { name, email, password: hashed, department, employeeId, isApproved: false },
+      data: { name, email, password: hashed, department, employeeId, idCardPhotoUrl, profilePhotoUrl, isApproved: false },
     })
 
     logAudit({ userId: faculty.id, userRole: 'faculty', action: 'FACULTY_REGISTERED',

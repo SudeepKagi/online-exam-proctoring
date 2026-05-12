@@ -12,24 +12,37 @@ router.use(authenticate, isFaculty, auditRequest)
 router.get   ('/dashboard',  ctrl.getDashboardStats)
 
 // ── Exam Management ───────────────────────────────────
-router.post  ('/exams',      ctrl.createExam)
-router.get   ('/exams',      ctrl.listExams)
-router.get   ('/exams/:id',  ctrl.getExam)
-router.patch ('/exams/:id',  ctrl.updateExam)
+router.post  ('/exams',            ctrl.createExam)
+router.get   ('/exams',            ctrl.listExams)
+router.get   ('/exams/:id',        ctrl.getExam)
+router.patch ('/exams/:id',        ctrl.updateExam)
+router.delete('/exams/:id',        ctrl.deleteExam)
+router.patch ('/exams/:id/publish',    ctrl.publishExam)
+router.post  ('/exams/:id/duplicate',  ctrl.duplicateExam)
+
+// ── Results ───────────────────────────────────────────
+router.get   ('/results',                    ctrl.listAllResults)
+router.get   ('/exams/:id/results',          ctrl.listExamResults)
+router.patch ('/exams/:id/results/release',  ctrl.releaseResults)
+router.get   ('/exams/:id/collusion',        ctrl.runCollusionCheck)
+router.get   ('/results/:id',                ctrl.getStudentResult)
 
 // ── Question Management ───────────────────────────────
-router.post  ('/questions',       ctrl.addQuestion)
-router.get   ('/questions',       ctrl.listQuestions)
-router.post  ('/questions/bulk',  ctrl.bulkAddQuestions)
+router.post  ('/exams/:examId/questions',     ctrl.addQuestion)
+router.get   ('/exams/:examId/questions',     ctrl.listExamQuestions)
+router.post  ('/exams/:examId/ai-generate',   ctrl.generateQuestionsFromAI)
+router.put   ('/questions/:id',               ctrl.updateQuestion)
+router.delete('/questions/:id',               ctrl.deleteQuestion)
+router.post  ('/questions/bulk',              ctrl.bulkAddQuestions)
 
-// ── Student & Result Management ───────────────────────
-router.get   ('/students',           ctrl.listStudents)
+// ── Legacy question routes ────────────────────────────
+router.post  ('/questions',  ctrl.addQuestion)
+router.get   ('/questions',  ctrl.listQuestions)
+
+// ── Student Management ────────────────────────────────
+router.get   ('/students',             ctrl.listStudents)
 router.patch ('/students/:id/approve', ctrl.approveStudent)
-router.post  ('/exams/:id/students', ctrl.addStudentsToExam)
-router.get   ('/exams/:id/students', ctrl.listExamStudents)
-router.get   ('/exams/:id/results',  ctrl.listExamResults)
-router.get   ('/results/:id',        ctrl.getStudentResult)
-router.post  ('/exams/:id/collusion-check', ctrl.runCollusionCheck)
+router.post  ('/exams/:id/students',   ctrl.addStudentsToExam)
+router.get   ('/exams/:id/students',   ctrl.listExamStudents)
 
 module.exports = router
-

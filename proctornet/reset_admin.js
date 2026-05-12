@@ -5,7 +5,7 @@ const prisma = new PrismaClient()
 
 async function resetAdmin() {
   const email = 'admin@proctornet.com'
-  const password = 'Admin@123'
+  const password = 'Admin@2026'
   const hashed = await bcrypt.hash(password, 12)
   
   await prisma.admin.upsert({

@@ -7,10 +7,11 @@ async function main() {
   console.log('🌱 Starting seed...')
 
   // Clear existing non-admin data
+  await prisma.evidenceLog.deleteMany()
+  await prisma.studentAnswer.deleteMany()
   await prisma.studentExam.deleteMany()
   await prisma.exam.deleteMany()
   await prisma.student.deleteMany()
-  // await prisma.faculty.deleteMany() // Keep the ones I just made in the browser subagent
 
   // 1. Create fake Faculty
   const facultyPassword = await bcrypt.hash('Faculty@123', 10)

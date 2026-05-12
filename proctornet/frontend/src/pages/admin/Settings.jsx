@@ -1,154 +1,190 @@
-import React, { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import { FormInput, SelectInput, SubmitButton, Alert } from '@/components/common/FormComponents'
+import api from '@/utils/api'
+import toast from 'react-hot-toast'
+import { Save, RefreshCw, Shield, Camera, Wifi, Eye, Cpu, AlertTriangle, CheckCircle } from 'lucide-react'
 
-function Icon({ name, style }) {
-  return <span className="material-icon" style={style}>{name}</span>
+function ToggleSwitch({ checked, onChange, id }) {
+  return (
+    <button id={id} type="button" onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}>
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
+    </button>
+  )
 }
 
-const navItems = [
-  { to: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/admin/faculty', icon: 'groups', label: 'Faculty Approval' },
-  { to: '/admin/students', icon: 'school', label: 'Students' },
-  { to: '/admin/exams', icon: 'assignment', label: 'Active Exams' },
-  { to: '/admin/violations', icon: 'warning', label: 'Violations' },
-  { to: '/admin/settings', icon: 'settings', label: 'Settings' },
-]
+function SliderInput({ label, value, min, max, step = 1, unit, onChange }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg">{value}{unit}</span>
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>{min}{unit}</span><span>{max}{unit}</span>
+      </div>
+    </div>
+  )
+}
+
+const DEFAULT_SETTINGS = {
+  faceMatchThreshold: 85,
+  reverifyIntervalMins: 10,
+  faceAbsenceWarnSecs: 10,
+  faceAbsencePauseSecs: 20,
+  collusionThreshold: 80,
+  vpnEnforced: true,
+  watermarkVisible: true,
+  faceVerificationEnabled: true,
+  idCardVerificationEnabled: true,
+  vmDetectionEnabled: true,
+  collusionDetectionEnabled: true,
+}
 
 export default function AdminSettings() {
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
 
-  const handleSave = (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      setSaved(true)
-      setTimeout(() => setSaved(false), 3000)
-    }, 1000)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await api.get('/admin/settings')
+        if (res.data) setSettings({ ...DEFAULT_SETTINGS, ...res.data })
+      } catch {
+        toast.error('Could not load settings — using defaults')
+      } finally { setLoading(false) }
+    }
+    load()
+  }, [])
+
+  const set = (key) => (val) => setSettings(prev => ({ ...prev, [key]: val }))
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await api.patch('/admin/settings', settings)
+      toast.success('Settings saved successfully')
+    } catch {
+      toast.error('Failed to save settings')
+    } finally { setSaving(false) }
   }
 
+  const sections = [
+    {
+      title: 'Face Verification',
+      icon: Camera,
+      color: 'bg-purple-50 text-purple-600',
+      items: [
+        { type: 'toggle', label: 'Enable Face Verification', key: 'faceVerificationEnabled', desc: 'Continuously verify student identity via camera' },
+        { type: 'slider', label: 'Face Match Threshold', key: 'faceMatchThreshold', min: 70, max: 100, unit: '%', desc: 'Minimum confidence score required to pass face check' },
+        { type: 'slider', label: 'Re-verify Interval', key: 'reverifyIntervalMins', min: 5, max: 30, unit: ' min', desc: 'How often to re-run face verification during exam' },
+        { type: 'slider', label: 'Face Absence Warning', key: 'faceAbsenceWarnSecs', min: 5, max: 30, unit: 's', desc: 'Seconds before showing warning when no face detected' },
+        { type: 'slider', label: 'Face Absence Pause', key: 'faceAbsencePauseSecs', min: 10, max: 60, unit: 's', desc: 'Seconds before pausing exam when no face detected' },
+      ]
+    },
+    {
+      title: 'Identity Verification',
+      icon: Eye,
+      color: 'bg-blue-50 text-blue-600',
+      items: [
+        { type: 'toggle', label: 'ID Card Verification', key: 'idCardVerificationEnabled', desc: 'Require students to show ID card before exam' },
+        { type: 'toggle', label: 'Visible Watermark', key: 'watermarkVisible', desc: 'Show student USN watermark across exam screen' },
+      ]
+    },
+    {
+      title: 'VPN & Network',
+      icon: Wifi,
+      color: 'bg-green-50 text-green-600',
+      items: [
+        { type: 'toggle', label: 'Enforce VPN Connection', key: 'vpnEnforced', desc: 'Require WireGuard VPN before allowing exam access' },
+      ]
+    },
+    {
+      title: 'Security Detection',
+      icon: Shield,
+      color: 'bg-red-50 text-red-600',
+      items: [
+        { type: 'toggle', label: 'VM Detection', key: 'vmDetectionEnabled', desc: 'Block students running virtual machines' },
+        { type: 'toggle', label: 'Collusion Detection', key: 'collusionDetectionEnabled', desc: 'Detect suspicious answer pattern similarities' },
+        { type: 'slider', label: 'Collusion Threshold', key: 'collusionThreshold', min: 70, max: 100, unit: '%', desc: 'Similarity score above which answers are flagged' },
+      ]
+    }
+  ]
+
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="page-header">
+    <DashboardLayout title="Platform Settings">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">Platform Settings</h1>
-          <p className="page-subtitle">Configure global security thresholds and system preferences.</p>
+          <h1 className="text-xl font-bold text-gray-900">Platform Settings</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Configure proctoring rules, thresholds, and security features</p>
         </div>
+        <button onClick={handleSave} disabled={saving || loading}
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+          {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : <><Save size={15} />Save Settings</>}
+        </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-        
-        {/* Main Settings Form */}
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Security & Proctoring</h3>
-          </div>
-          <div className="card-body">
-            {saved && <Alert type="success" message="Settings saved successfully." />}
-            
-            <form onSubmit={handleSave}>
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                Identity Verification
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                <FormInput 
-                  id="face-match-threshold" label="Face Match Threshold (%)" type="number" defaultValue="85"
-                  required
-                />
-                <SelectInput
-                  id="id-verification" label="ID Card Verification" defaultValue="auto"
-                  options={[
-                    { value: 'auto', label: 'Automated (OCR + Face Match)' },
-                    { value: 'manual', label: 'Manual Review Required' },
-                    { value: 'hybrid', label: 'Hybrid (Manual on Low Confidence)' },
-                  ]} required
-                />
+      {loading ? (
+        <div className="space-y-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-48 bg-gray-100 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {sections.map(({ title, icon: Icon, color, items }) => (
+            <div key={title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+                  <Icon size={18} />
+                </div>
+                <h3 className="text-base font-semibold text-gray-900">{title}</h3>
               </div>
+              <div className="p-6 space-y-6">
+                {items.map(item => (
+                  <div key={item.key} className={`${item.type === 'slider' ? 'border border-gray-100 rounded-xl p-4' : 'flex items-start justify-between gap-4'}`}>
+                    {item.type === 'toggle' ? (
+                      <>
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{item.label}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                        </div>
+                        <ToggleSwitch checked={settings[item.key]} onChange={set(item.key)} />
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-500 mb-3">{item.desc}</p>
+                        <SliderInput
+                          label={item.label}
+                          value={settings[item.key]}
+                          min={item.min}
+                          max={item.max}
+                          unit={item.unit}
+                          onChange={set(item.key)}
+                        />
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
 
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                VPN Infrastructure
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
-                <SelectInput
-                  id="vpn-mode" label="VPN Enforcement" defaultValue="strict"
-                  options={[
-                    { value: 'strict', label: 'Strict (Drop connection if disconnected)' },
-                    { value: 'lenient', label: 'Lenient (Log disconnections)' },
-                    { value: 'disabled', label: 'Disabled (Not recommended)' },
-                  ]} required
-                />
-                <FormInput 
-                  id="vpn-server" label="Primary OpenVPN Server" defaultValue="vpn-01.proctornet.local"
-                  required
-                />
-              </div>
-
-              <h4 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>
-                System Behavior
-              </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <FormInput 
-                  id="session-timeout" label="Idle Session Timeout (mins)" type="number" defaultValue="30"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem', borderTop: '1px solid var(--outline-variant)', paddingTop: '1.5rem' }}>
-                <SubmitButton loading={loading} style={{ width: 'auto', marginTop: 0 }}>
-                  <Icon name="save" /> Save Settings
-                </SubmitButton>
-              </div>
-            </form>
+          {/* Save bar */}
+          <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+            <div className="flex items-center gap-2 text-sm text-blue-700">
+              <CheckCircle size={16} />
+              <span>Changes are applied to all future exam sessions</span>
+            </div>
+            <button onClick={handleSave} disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60">
+              {saving ? 'Saving…' : 'Save All Settings'}
+            </button>
           </div>
         </div>
-
-        {/* Action Sidebar */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">System Actions</h3>
-            </div>
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <button className="btn-secondary" style={{ justifyContent: 'flex-start', color: 'var(--on-surface)' }}>
-                <Icon name="vpn_key" /> Regenerate VPN Certificates
-              </button>
-              <button className="btn-secondary" style={{ justifyContent: 'flex-start', color: 'var(--on-surface)' }}>
-                <Icon name="sync" /> Sync External Database
-              </button>
-              <button className="btn-secondary" style={{ justifyContent: 'flex-start', color: 'var(--error)', borderColor: 'var(--error-container)' }}>
-                <Icon name="delete_forever" /> Clear Session Logs
-              </button>
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <h3 className="card-title">System Info</h3>
-            </div>
-            <div className="card-body">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--on-surface-variant)' }}>Version</span>
-                  <span style={{ fontWeight: 600 }}>v2.4.0</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--on-surface-variant)' }}>Environment</span>
-                  <span style={{ fontWeight: 600, color: 'var(--primary)' }}>Production</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--on-surface-variant)' }}>Last Update</span>
-                  <span style={{ fontWeight: 600 }}>2 hours ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
+      )}
     </DashboardLayout>
   )
 }

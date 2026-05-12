@@ -220,6 +220,20 @@ async function suspendStudent(req, res) {
   }
 }
 
+/**
+ * PATCH /api/admin/students/:id/unsuspend
+ */
+async function unsuspendStudent(req, res) {
+  try {
+    const { id } = req.params
+    await global.prisma.student.update({ where: { id }, data: { isSuspended: false } })
+    logAudit({ userId: req.user.id, userRole: 'admin', action: 'STUDENT_UNSUSPENDED', details: id, ipAddress: getClientIp(req) })
+    res.json({ message: 'Student unsuspended.' })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
 // ════════════════════════════════════════════════════
 // EXAM OVERSIGHT
 // ════════════════════════════════════════════════════
@@ -321,13 +335,14 @@ async function listInvigilatorSessions(req, res) {
       global.prisma.invigilatorSession.findMany({
         where, skip, take,
         include: { exam: { select: { title: true, subject: true } } },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { loginTime: 'desc' }   // InvigilatorSession has loginTime not createdAt
       }),
       global.prisma.invigilatorSession.count({ where })
     ])
 
     res.json({ sessions, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
   } catch (e) {
+    console.error('[listInvigilatorSessions]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -381,14 +396,16 @@ async function getDashboardStats(req, res) {
       }
     });
 
-    const recentViolations = recentViolationsRaw.map(v => ({
-      id: v.id,
-      student: v.studentExam.student.name,
-      exam: v.studentExam.exam.title,
-      type: v.eventType,
-      severity: v.severity,
-      time: v.timestamp
-    }));
+    const recentViolations = recentViolationsRaw
+      .filter(v => v.studentExam && v.studentExam.student && v.studentExam.exam)
+      .map(v => ({
+        id: v.id,
+        student: v.studentExam.student.name,
+        exam: v.studentExam.exam.title,
+        type: v.eventType,
+        severity: v.severity,
+        time: v.timestamp
+      }))
 
     res.json({
       faculty:  { total: totalFaculty,   pending: pendingFaculty },
@@ -479,17 +496,12 @@ async function getAuditLogs(req, res) {
  */
 async function getViolationsSummary(req, res) {
   try {
-    const { status, page = 1, limit = 50 } = req.query
+    const { page = 1, limit = 50 } = req.query
     const { skip, take } = paginate(page, limit)
-
-    const where = {}
-    if (status && status !== 'all') {
-      where.status = { equals: status, mode: 'insensitive' }
-    }
 
     const [logs, total] = await Promise.all([
       global.prisma.evidenceLog.findMany({
-        where, skip, take,
+        skip, take,
         orderBy: { timestamp: 'desc' },
         include: {
           studentExam: {
@@ -497,25 +509,204 @@ async function getViolationsSummary(req, res) {
           }
         }
       }),
-      global.prisma.evidenceLog.count({ where }),
+      global.prisma.evidenceLog.count(),
     ])
 
-    // Format for frontend
-    const violations = logs.map(v => ({
-      id: v.id,
-      student: `${v.studentExam.student.name} (${v.studentExam.student.usn})`,
-      exam: v.studentExam.exam.title,
-      type: v.eventType,
-      severity: v.severity,
-      status: v.invAction ? 'Reviewed' : 'Pending',
-      time: v.timestamp
-    }))
+    const violations = logs
+      .filter(v => v.studentExam && v.studentExam.student && v.studentExam.exam)
+      .map(v => ({
+        id: v.id,
+        student: `${v.studentExam.student.name} (${v.studentExam.student.usn})`,
+        exam: v.studentExam.exam.title,
+        type: v.eventType,
+        severity: v.severity,
+        status: v.invAction ? 'Reviewed' : 'Pending',
+        time: v.timestamp
+      }))
 
     res.json({ violations, total, page: parseInt(page), totalPages: Math.ceil(total / take) })
+  } catch (e) {
+    console.error('[getViolationsSummary]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+// ════════════════════════════════════════════════════
+// PENDING LISTS
+// ════════════════════════════════════════════════════
+
+async function listPendingFaculty(req, res) {
+  try {
+    const faculty = await global.prisma.faculty.findMany({
+      where: { isApproved: false, isSuspended: false },
+      select: {
+        id: true, name: true, email: true, department: true, employeeId: true,
+        isApproved: true, isSuspended: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ faculty })
+  } catch (e) {
+    console.error('[listPendingFaculty]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function listPendingStudents(req, res) {
+  try {
+    const students = await global.prisma.student.findMany({
+      where: { approvalStatus: 'PENDING_FACULTY' },
+      select: {
+        id: true, name: true, email: true, usn: true, department: true,
+        semester: true, facePhotoUrl: true, idCardPhotoUrl: true,
+        faceMatchScore: true, approvalStatus: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ students })
+  } catch (e) {
+    console.error('[listPendingStudents]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+async function rejectStudent(req, res) {
+  try {
+    const { id } = req.params
+    const student = await global.prisma.student.findUnique({ where: { id } })
+    if (!student) return res.status(404).json({ error: 'Student not found.' })
+    const updated = await global.prisma.student.update({
+      where: { id },
+      data: { approvalStatus: 'REJECTED' },
+    })
+    logAudit({ userId: req.user.id, userRole: 'admin', action: 'STUDENT_REJECTED',
+      details: `${student.name} (${student.usn})`, ipAddress: getClientIp(req) })
+    res.json({ message: 'Student rejected.', student: updated })
+  } catch (e) {
+    console.error('[rejectStudent]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+// ════════════════════════════════════════════════════
+// VIOLATIONS (detailed list)
+// ════════════════════════════════════════════════════
+
+async function getViolations(req, res) {
+  try {
+    const { page = 1, limit = 50 } = req.query
+    const { skip, take } = paginate(page, limit)
+    const logs = await global.prisma.evidenceLog.findMany({
+      skip, take,
+      orderBy: { timestamp: 'desc' },
+      include: { studentExam: { include: { student: true, exam: true } } }
+    })
+    const violations = logs.map(v => ({
+      id: v.id,
+      studentName: v.studentExam?.student?.name,
+      studentUsn: v.studentExam?.student?.usn,
+      examTitle: v.studentExam?.exam?.title,
+      eventType: v.eventType,
+      severity: v.severity,
+      timestamp: v.timestamp,
+      cameraFrameUrl: v.cameraFrameUrl,
+      details: v.details,
+    }))
+    res.json({ violations })
   } catch (e) {
     res.status(500).json({ error: 'Server error.' })
   }
 }
+
+// ════════════════════════════════════════════════════
+// REPORTS
+// ════════════════════════════════════════════════════
+
+async function getReports(req, res) {
+  try {
+    const period = req.query.period || '7d'
+    const days = period === '90d' ? 90 : period === '30d' ? 30 : 7
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    const [totalExams, totalStudents, totalViolations, avgResult] = await Promise.all([
+      global.prisma.exam.count(),
+      global.prisma.student.count(),
+      global.prisma.evidenceLog.count({ where: { timestamp: { gte: since } } }),
+      global.prisma.examResult.aggregate({ _avg: { percentage: true } }),
+    ])
+
+    // Daily exam activity
+    const recentExams = await global.prisma.exam.findMany({
+      where: { createdAt: { gte: since } },
+      select: { createdAt: true },
+    })
+    const recentStudentExams = await global.prisma.studentExam.findMany({
+      where: { startedAt: { gte: since } },
+      select: { startedAt: true },
+    })
+
+    // Build day buckets
+    const dayLabels = []
+    const dayMap = {}
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000)
+      const key = d.toLocaleDateString('en-US', { weekday: days <= 7 ? 'short' : undefined, month: days > 7 ? 'short' : undefined, day: days > 7 ? 'numeric' : undefined })
+      dayLabels.push(key)
+      dayMap[key] = { day: key, exams: 0, students: 0 }
+    }
+    recentExams.forEach(e => {
+      const key = new Date(e.createdAt).toLocaleDateString('en-US', { weekday: days <= 7 ? 'short' : undefined, month: days > 7 ? 'short' : undefined, day: days > 7 ? 'numeric' : undefined })
+      if (dayMap[key]) dayMap[key].exams++
+    })
+    recentStudentExams.forEach(se => {
+      const key = new Date(se.startedAt).toLocaleDateString('en-US', { weekday: days <= 7 ? 'short' : undefined, month: days > 7 ? 'short' : undefined, day: days > 7 ? 'numeric' : undefined })
+      if (dayMap[key]) dayMap[key].students++
+    })
+    const examActivity = dayLabels.map(k => dayMap[k])
+
+    // Violation type breakdown
+    const violsByType = await global.prisma.evidenceLog.groupBy({
+      by: ['eventType'],
+      where: { timestamp: { gte: since } },
+      _count: { eventType: true },
+      orderBy: { _count: { eventType: 'desc' } },
+      take: 5,
+    })
+    const violationBreakdown = violsByType.map(v => ({
+      name: v.eventType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      value: v._count.eventType,
+    }))
+
+    // Score distribution
+    const results = await global.prisma.examResult.findMany({ select: { percentage: true } })
+    const ranges = [
+      { range: '0-40', min: 0, max: 40 }, { range: '41-50', min: 41, max: 50 },
+      { range: '51-60', min: 51, max: 60 }, { range: '61-70', min: 61, max: 70 },
+      { range: '71-80', min: 71, max: 80 }, { range: '81-90', min: 81, max: 90 },
+      { range: '91-100', min: 91, max: 100 },
+    ]
+    const scoreDistribution = ranges.map(r => ({
+      range: r.range,
+      students: results.filter(res => (res.percentage || 0) >= r.min && (res.percentage || 0) <= r.max).length,
+    }))
+
+    res.json({
+      summary: {
+        totalExams,
+        totalStudents,
+        violationsThisWeek: totalViolations,
+        avgScore: Math.round(avgResult._avg.percentage || 0),
+      },
+      examActivity,
+      violationBreakdown,
+      scoreDistribution,
+    })
+  } catch (e) {
+    console.error('[getReports]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
 
 // ════════════════════════════════════════════════════
 // ANNOUNCEMENTS
@@ -526,15 +717,31 @@ async function getViolationsSummary(req, res) {
  */
 async function createAnnouncement(req, res) {
   try {
-    const { title, message, target, targetDepartment, priority } = req.body
-    if (!title || !message || !target)
-      return res.status(400).json({ error: 'title, message, and target are required.' })
+    // Accept both naming conventions from frontend
+    const title = req.body.title
+    const content = req.body.content || req.body.message
+    const audience = req.body.audience || req.body.target || 'ALL'
+    const priority = req.body.priority || 'NORMAL'
+    const targetDepartment = req.body.targetDepartment || null
+
+    if (!title || !content)
+      return res.status(400).json({ error: 'title and content are required.' })
 
     const ann = await global.prisma.announcement.create({
-      data: { title, message, target, targetDepartment: targetDepartment || null,
-        priority: priority || 'NORMAL', postedBy: req.user.id },
+      data: {
+        title,
+        message: content,
+        target: audience,
+        targetDepartment,
+        priority,
+        postedBy: req.user.id,
+      },
     })
-    res.status(201).json({ message: 'Announcement created.', announcement: ann })
+    // Return both field names for frontend compatibility
+    res.status(201).json({
+      message: 'Announcement created.',
+      announcement: { ...ann, content: ann.message, audience: ann.target },
+    })
   } catch (e) {
     res.status(500).json({ error: 'Server error.' })
   }
@@ -545,22 +752,44 @@ async function createAnnouncement(req, res) {
  */
 async function listAnnouncements(req, res) {
   try {
-    const announcements = await global.prisma.announcement.findMany({
+    const raw = await global.prisma.announcement.findMany({
       orderBy: { createdAt: 'desc' }, take: 50,
     })
+    // Map to frontend field names
+    const announcements = raw.map(a => ({
+      ...a,
+      content: a.message,
+      audience: a.target,
+    }))
     res.json({ announcements })
   } catch (e) {
     res.status(500).json({ error: 'Server error.' })
   }
 }
 
+/**
+ * DELETE /api/admin/announcements/:id
+ */
+async function deleteAnnouncement(req, res) {
+  try {
+    const { id } = req.params
+    await global.prisma.announcement.delete({ where: { id } })
+    res.json({ message: 'Announcement deleted.' })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
 module.exports = {
-  listFaculty, approveFaculty, rejectFaculty, suspendFaculty, unsuspendFaculty,
-  listStudents, approveStudent, suspendStudent,
+  listFaculty, listPendingFaculty,
+  approveFaculty, rejectFaculty, suspendFaculty, unsuspendFaculty,
+  listStudents, listPendingStudents,
+  approveStudent, rejectStudent, suspendStudent, unsuspendStudent,
   listExams, getExam, pauseExam, resumeExam,
   listInvigilatorSessions, revokeInvigilatorSession,
   getDashboardStats,
   getSettings, updateSettings,
-  getAuditLogs, getViolationsSummary,
-  createAnnouncement, listAnnouncements,
+  getAuditLogs, getViolationsSummary, getViolations,
+  createAnnouncement, listAnnouncements, deleteAnnouncement,
+  getReports,
 }

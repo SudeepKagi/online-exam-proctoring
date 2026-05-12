@@ -1,177 +1,139 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import { getMyExams } from '@/services/student.api'
+import api from '@/utils/api'
+import { BookOpen, Clock, Play, Search, Filter, Calendar } from 'lucide-react'
 
-function Icon({ name, style }) {
-  return <span className="material-icon" style={style}>{name}</span>
+function ExamCard({ exam }) {
+  const start = new Date(exam.startTime)
+  const end = new Date(exam.endTime)
+  const now = new Date()
+  const isActive = exam.status === 'ACTIVE'
+  const isUpcoming = exam.status === 'SCHEDULED' && start > now
+  const canJoin = isActive || (exam.status === 'SCHEDULED' && (start - now) < 15 * 60 * 1000)
+
+  const timeLabel = isActive
+    ? `Ends ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    : `${start.toLocaleDateString()} at ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+
+  return (
+    <div className={`bg-white rounded-2xl border shadow-sm p-5 hover:shadow-md transition-shadow ${isActive ? 'border-green-200' : 'border-gray-100'}`}>
+      <div className="flex items-start gap-3 mb-4">
+        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${isActive ? 'bg-green-100' : 'bg-emerald-50'}`}>
+          {isActive
+            ? <span className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+            : <BookOpen size={20} className="text-emerald-600" />
+          }
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">{exam.title}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{exam.subject}</p>
+        </div>
+        {isActive && <span className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full flex-shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> LIVE
+        </span>}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Duration</p>
+          <p className="text-sm font-bold text-gray-800">{exam.duration}<span className="text-xs font-normal text-gray-400"> min</span></p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Questions</p>
+          <p className="text-sm font-bold text-gray-800">{exam._count?.questions ?? exam.questionCount ?? '—'}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Marks</p>
+          <p className="text-sm font-bold text-gray-800">{exam.totalMarks}</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-4">
+        <Calendar size={11} /> {timeLabel}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 flex-wrap">
+          {exam.cameraRequired && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">📷 Camera</span>}
+          {exam.browserLock && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">🔒 Locked</span>}
+          {exam.vpnRequired && <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">🛡️ VPN</span>}
+        </div>
+        {canJoin ? (
+          <Link to={`/student/exam-lobby/${exam.id}`}
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors">
+            <Play size={12} /> {isActive ? 'Join Now' : 'Enter Lobby'}
+          </Link>
+        ) : exam.status === 'ENDED' ? (
+          <span className="text-xs text-gray-400 bg-gray-100 px-3 py-1.5 rounded-full">Completed</span>
+        ) : (
+          <span className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full font-medium">Not yet open</span>
+        )}
+      </div>
+    </div>
+  )
 }
 
-const navItems = [
-  { to: '/student/dashboard', icon: 'home', label: 'Home' },
-  { to: '/student/exams', icon: 'assignment', label: 'My Exams' },
-  { to: '/student/results', icon: 'military_tech', label: 'Results' },
-]
-
 export default function StudentExams() {
-  const [activeTab, setActiveTab] = useState('upcoming')
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
 
   useEffect(() => {
-    fetchExams()
-  }, [activeTab])
+    api.get('/student/exams')
+      .then(r => setExams(r.data.exams || r.data || []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
-  const fetchExams = async () => {
-    try {
-      setLoading(true)
-      const res = await getMyExams({ status: activeTab })
-      setExams(res.data.exams)
-    } catch (err) {
-      console.error('Error fetching exams:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const filtered = exams.filter(e => {
+    const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
+      (e.subject || '').toLowerCase().includes(search.toLowerCase())
+    const matchStatus = !filterStatus || e.status === filterStatus
+    return matchSearch && matchStatus
+  })
 
-  const formatTime = (dateStr) => {
-    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  }
-
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-  }
-  
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="page-header">
+    <DashboardLayout title="My Exams">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">My Exams</h1>
-          <p className="page-subtitle">View your exam schedule and join active sessions.</p>
+          <h1 className="text-xl font-bold text-gray-900">My Exams</h1>
+          <p className="text-sm text-gray-500 mt-0.5">View and join your scheduled exam sessions</p>
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ borderBottom: '1px solid var(--outline-variant)', display: 'flex', gap: '2rem', padding: '0 1.5rem' }}>
-          <button 
-            style={{ background: 'none', border: 'none', padding: '1rem 0', fontWeight: 600, color: activeTab === 'upcoming' ? 'var(--primary)' : 'var(--on-surface-variant)', borderBottom: activeTab === 'upcoming' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}
-            onClick={() => setActiveTab('upcoming')}
-          >
-            Upcoming & Live
-          </button>
-          <button 
-            style={{ background: 'none', border: 'none', padding: '1rem 0', fontWeight: 600, color: activeTab === 'past' ? 'var(--primary)' : 'var(--on-surface-variant)', borderBottom: activeTab === 'past' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}
-            onClick={() => setActiveTab('past')}
-          >
-            Past Exams
-          </button>
+      <div className="flex flex-wrap gap-3 mb-5">
+        <div className="relative flex-1 min-w-48">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exams…"
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
         </div>
-        
-        <div className="card-body">
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '3rem' }}>
-              <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-              <p style={{ color: 'var(--on-surface-variant)' }}>Loading exams...</p>
-            </div>
-          ) : (
-            <>
-              {activeTab === 'upcoming' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {exams.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--on-surface-variant)' }}>
-                      <Icon name="event_busy" size={48} style={{ opacity: 0.5, marginBottom: '1rem' }} />
-                      <p>No upcoming exams scheduled for your department.</p>
-                    </div>
-                  )}
-                  {exams.map(exam => (
-                    <div key={exam.id} style={{ 
-                      padding: '1.5rem', 
-                      border: `1px solid ${exam.isLive ? 'var(--primary)' : 'var(--outline-variant)'}`, 
-                      borderRadius: '12px',
-                      background: exam.isLive ? 'var(--primary-fixed)' : 'transparent'
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          {exam.isLive && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <span className="live-dot" />
-                              <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Live Now</span>
-                            </div>
-                          )}
-                          {!exam.isLive && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <span className="badge badge-neutral">{formatDate(exam.startTime)}</span>
-                            </div>
-                          )}
-                          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '0.5rem' }}>{exam.title}</h3>
-                          <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--on-surface-variant)', fontSize: '0.875rem' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Icon name="schedule" size={16} /> {exam.duration} Minutes</span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Icon name="person" size={16} /> {exam.faculty.name}</span>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', marginBottom: '1rem' }}>
-                            {exam.isLive ? `Closes at ${formatTime(exam.endTime)}` : `Starts at ${formatTime(exam.startTime)}`}
-                          </div>
-                          {exam.isLive ? (
-                            <Link to={`/student/exam-lobby/${exam.id}`} className="btn-primary">
-                              Join Lobby <Icon name="arrow_forward" size={16} style={{ marginLeft: '0.5rem' }} />
-                            </Link>
-                          ) : (
-                            <button className="btn-secondary" disabled>
-                              Lobby Not Open
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 'past' && (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Exam Title</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exams.map(exam => (
-                      <tr key={exam.id}>
-                        <td style={{ fontWeight: 500 }}>{exam.title}</td>
-                        <td style={{ color: 'var(--on-surface-variant)' }}>{formatDate(exam.startTime)}</td>
-                        <td>
-                          <span className={`badge ${exam.studentStatus === 'SUBMITTED' ? 'badge-success' : 'badge-neutral'}`}>
-                            {exam.studentStatus === 'SUBMITTED' ? 'Completed' : 'Absent'}
-                          </span>
-                        </td>
-                        <td>
-                          {exam.studentStatus === 'SUBMITTED' ? (
-                            <Link to={`/student/results/${exam.id}`} style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none', fontSize: '0.875rem' }}>View Result</Link>
-                          ) : (
-                            <span style={{ color: 'var(--outline)', fontSize: '0.875rem' }}>No Data</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {exams.length === 0 && (
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--on-surface-variant)' }}>
-                          No past exams found.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </>
-          )}
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+          {['', 'ACTIVE', 'SCHEDULED', 'ENDED'].map(status => (
+            <button key={status} onClick={() => setFilterStatus(status)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${filterStatus === status ? 'bg-white shadow-sm text-emerald-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              {status || 'All'}
+            </button>
+          ))}
         </div>
       </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-56 bg-gray-100 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
+          <BookOpen size={40} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">No exams found</p>
+          <p className="text-sm text-gray-400 mt-1">Exams assigned to your department and semester will appear here</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(exam => <ExamCard key={exam.id} exam={exam} />)}
+        </div>
+      )}
     </DashboardLayout>
   )
 }

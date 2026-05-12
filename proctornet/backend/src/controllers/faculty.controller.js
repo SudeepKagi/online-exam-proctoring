@@ -8,15 +8,19 @@ const bcrypt = require('bcryptjs')
  */
 async function createExam(req, res) {
   try {
-    const { 
-      title, subject, description, startTime, endTime, 
-      durationMinutes, totalMarks,
+    const {
+      title, subject, description, startTime, endTime,
+      duration, durationMinutes, totalMarks,
+      questionsPerStudent,
+      negativeMarking, negativeValue,
+      randomiseQuestions, randomiseOptions,
+      allowedDepartments, allowedSemesters,
       cameraRequired, micRequired, browserLock, fullScreenMode, watermarkRequired,
-      tabSwitchLimit, mobileDetectConfig
+      tabSwitchLimit
     } = req.body
 
     // Basic validation
-    if (!title || !subject || !startTime || !endTime || !durationMinutes) {
+    if (!title || !subject || !startTime || !endTime) {
       return res.status(400).json({ error: 'Missing required exam details.' })
     }
 
@@ -25,38 +29,50 @@ async function createExam(req, res) {
     const rawInvPassword = Math.random().toString(36).substr(2, 8)
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
 
-    // Fetch faculty details to get department
+    // Fetch faculty details to get default department
     const faculty = await global.prisma.faculty.findUnique({ where: { id: req.user.id } })
+
+    const durationValue = parseInt(duration || durationMinutes || 90)
+    const departments = Array.isArray(allowedDepartments) && allowedDepartments.length > 0
+      ? allowedDepartments
+      : [faculty.department]
+    const semesters = Array.isArray(allowedSemesters) && allowedSemesters.length > 0
+      ? allowedSemesters.map(Number)
+      : [1, 2, 3, 4, 5, 6, 7, 8]
 
     const exam = await global.prisma.exam.create({
       data: {
-        title, subject, description, 
-        startTime: new Date(startTime), 
-        endTime: new Date(endTime), 
-        duration: parseInt(durationMinutes), 
+        title, subject, description: description || '',
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        duration: durationValue,
         totalMarks: parseInt(totalMarks) || 0,
+        questionsPerStudent: parseInt(questionsPerStudent) || 0,
         facultyId: req.user.id,
         status: 'SCHEDULED',
         invId,
         invPasswordHash,
-        allowedDepartments: [faculty.department], // Default to faculty's department
-        allowedSemesters: [1, 2, 3, 4, 5, 6, 7, 8], // Default to all semesters
-        cameraRequired: cameraRequired !== undefined ? cameraRequired : true,
-        micRequired: micRequired !== undefined ? micRequired : true,
-        browserLock: browserLock !== undefined ? browserLock : true,
-        fullScreenMode: fullScreenMode !== undefined ? fullScreenMode : true,
-        watermarkRequired: watermarkRequired !== undefined ? watermarkRequired : true,
+        allowedDepartments: departments,
+        allowedSemesters: semesters,
+        cameraRequired: cameraRequired !== undefined ? Boolean(cameraRequired) : true,
+        micRequired: micRequired !== undefined ? Boolean(micRequired) : false,
+        browserLock: browserLock !== undefined ? Boolean(browserLock) : true,
+        fullScreenMode: fullScreenMode !== undefined ? Boolean(fullScreenMode) : true,
+        watermarkRequired: watermarkRequired !== undefined ? Boolean(watermarkRequired) : true,
         tabSwitchLimit: tabSwitchLimit !== undefined ? parseInt(tabSwitchLimit) : 3,
-        mobileDetectConfig: mobileDetectConfig || {}
+        randomiseQuestions: randomiseQuestions !== undefined ? Boolean(randomiseQuestions) : true,
+        randomiseOptions: randomiseOptions !== undefined ? Boolean(randomiseOptions) : true,
+        negativeMarking: negativeMarking !== undefined ? Boolean(negativeMarking) : false,
+        negativeValue: negativeValue !== undefined ? parseFloat(negativeValue) : 0.25,
       }
     })
 
     logAudit({ userId: req.user.id, userRole: 'faculty', action: 'EXAM_CREATED', details: `Exam: ${title}`, ipAddress: getClientIp(req) })
 
-    res.status(201).json({ 
-      message: 'Exam created successfully', 
+    res.status(201).json({
+      message: 'Exam created successfully',
       exam,
-      invCredentials: { invId, password: rawInvPassword } // To be displayed once to the faculty
+      invCredentials: { invId, password: rawInvPassword }
     })
   } catch (e) {
     console.error('[createExam]', e)
@@ -135,13 +151,13 @@ async function getExam(req, res) {
       where: { id, facultyId: req.user.id },
       include: {
         questions: { select: { id: true, questionText: true, type: true, marks: true } },
-        students: { include: { student: { select: { name: true, usn: true, department: true } } } }
+        studentExams: { include: { student: { select: { name: true, usn: true, department: true } } } }
       }
     })
-    
     if (!exam) return res.status(404).json({ error: 'Exam not found or you do not have permission.' })
     res.json({ exam })
   } catch (e) {
+    console.error('[getExam]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -185,10 +201,12 @@ async function updateExam(req, res) {
  */
 async function addQuestion(req, res) {
   try {
-    const { examId, type, questionText, options, correctAnswer, marks, difficulty } = req.body
+    // examId can come from URL param (:examId) or request body
+    const examId = req.params.examId || req.body.examId
+    const { type, questionText, options, correctAnswer, marks, negativeMarks, difficulty, codeTemplate, wordLimitMax } = req.body
 
     if (!examId || !type || !questionText || marks === undefined) {
-      return res.status(400).json({ error: 'Missing required question details.' })
+      return res.status(400).json({ error: 'examId, type, questionText and marks are required.' })
     }
 
     const existing = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
@@ -196,18 +214,22 @@ async function addQuestion(req, res) {
 
     const question = await global.prisma.question.create({
       data: {
-        examId, type, questionText, 
-        options: options || [], 
+        examId,
+        type: type.toUpperCase(),
+        questionText,
+        options: options || [],
         correctAnswer: correctAnswer || null,
-        marks: parseInt(marks),
-        difficulty: difficulty || 'MEDIUM'
+        marks: parseFloat(marks),
+        negativeMarks: parseFloat(negativeMarks || 0),
+        difficulty: difficulty || 'MEDIUM',
+        codeTemplate: codeTemplate || null,
+        wordLimitMax: wordLimitMax ? parseInt(wordLimitMax) : null,
       }
     })
 
-    // Update total marks of exam
     await global.prisma.exam.update({
       where: { id: examId },
-      data: { totalMarks: existing.totalMarks + parseInt(marks) }
+      data: { totalMarks: existing.totalMarks + parseFloat(marks) }
     })
 
     res.status(201).json({ message: 'Question added.', question })
@@ -572,20 +594,508 @@ async function getStudentResult(req, res) {
   }
 }
 
+/**
+ * GET /api/faculty/exams/:examId/questions
+ * List questions for a specific exam
+ */
+async function listExamQuestions(req, res) {
+  try {
+    const { examId } = req.params
+    const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const questions = await global.prisma.question.findMany({
+      where: { examId },
+      orderBy: { createdAt: 'desc' }
+    })
+    res.json({ questions, total: questions.length })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * PUT /api/faculty/questions/:id
+ * Update an existing question
+ */
+async function updateQuestion(req, res) {
+  try {
+    const { id } = req.params
+    const question = await global.prisma.question.findUnique({ where: { id } })
+    if (!question) return res.status(404).json({ error: 'Question not found.' })
+
+    // Ensure faculty owns the exam this question belongs to
+    const exam = await global.prisma.exam.findFirst({ where: { id: question.examId, facultyId: req.user.id } })
+    if (!exam) return res.status(403).json({ error: 'Not authorized.' })
+
+    const allowed = ['questionText', 'options', 'correctAnswer', 'marks', 'difficulty',
+      'codeLanguage', 'codeTemplate', 'starterCode', 'visibleTestCases', 'hiddenTestCases',
+      'wordLimitMin', 'wordLimitMax', 'tags']
+    const updateData = {}
+    allowed.forEach(field => {
+      if (req.body[field] !== undefined) updateData[field] = req.body[field]
+    })
+
+    const updated = await global.prisma.question.update({ where: { id }, data: updateData })
+    res.json({ message: 'Question updated.', question: updated })
+  } catch (e) {
+    console.error('[updateQuestion]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * DELETE /api/faculty/questions/:id
+ * Delete a question
+ */
+async function deleteQuestion(req, res) {
+  try {
+    const { id } = req.params
+    const question = await global.prisma.question.findUnique({ where: { id } })
+    if (!question) return res.status(404).json({ error: 'Question not found.' })
+
+    const exam = await global.prisma.exam.findFirst({ where: { id: question.examId, facultyId: req.user.id } })
+    if (!exam) return res.status(403).json({ error: 'Not authorized.' })
+
+    await global.prisma.question.delete({ where: { id } })
+
+    // Adjust exam total marks
+    await global.prisma.exam.update({
+      where: { id: question.examId },
+      data: { totalMarks: Math.max(0, exam.totalMarks - question.marks) }
+    })
+
+    res.json({ message: 'Question deleted.' })
+  } catch (e) {
+    console.error('[deleteQuestion]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * PATCH /api/faculty/exams/:id/publish
+ * Publish an exam (set status to PUBLISHED)
+ */
+async function publishExam(req, res) {
+  try {
+    const { id } = req.params
+    const existing = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!existing) return res.status(404).json({ error: 'Exam not found.' })
+
+    const questionCount = await global.prisma.question.count({ where: { examId: id } })
+    if (questionCount === 0) return res.status(400).json({ error: 'Cannot publish exam with no questions.' })
+
+    const exam = await global.prisma.exam.update({
+      where: { id },
+      data: { status: 'PUBLISHED' }
+    })
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'EXAM_PUBLISHED', details: `Exam: ${id}`, ipAddress: getClientIp(req) })
+    res.json({ message: 'Exam published.', exam })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * PATCH /api/faculty/exams/:id/results/release
+ * Toggle result visibility for students
+ */
+async function releaseResults(req, res) {
+  try {
+    const { id } = req.params
+    const { release } = req.body
+    const existing = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!existing) return res.status(404).json({ error: 'Exam not found.' })
+
+    await global.prisma.examResult.updateMany({
+      where: { examId: id },
+      data: { isReleased: Boolean(release), releasedAt: release ? new Date() : null }
+    })
+
+    res.json({
+      message: release ? 'Results released to students.' : 'Results hidden from students.',
+      isReleased: Boolean(release)
+    })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/exams/:id/collusion
+ * Run collusion check for an exam
+ */
+async function runCollusionCheck(req, res) {
+  try {
+    const { id } = req.params
+    // This is a stub for the ML/Python microservice integration.
+    // For now we just return an empty array or dummy data.
+    res.json({ flags: [] })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/results/:id
+ * Get details for a specific result dossier
+ */
+async function getStudentResult(req, res) {
+  try {
+    const { id } = req.params
+    const result = await global.prisma.examResult.findUnique({
+      where: { id },
+      include: {
+        studentExam: {
+          include: {
+            student: true,
+            exam: true,
+            answers: { include: { question: true } },
+            evidenceLogs: true
+          }
+        }
+      }
+    })
+    if (!result) return res.status(404).json({ error: 'Result not found.' })
+    res.json({ result })
+  } catch (e) {
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * DELETE /api/faculty/exams/:id
+ */
+async function deleteExam(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.findUnique({ where: { id }, select: { facultyId: true, status: true, title: true } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+    if (exam.facultyId !== req.user.id) return res.status(403).json({ error: 'Not your exam.' })
+    if (exam.status === 'ACTIVE') return res.status(409).json({ error: 'Cannot delete an active exam.' })
+
+    await global.prisma.exam.delete({ where: { id } })
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'EXAM_DELETED', details: exam.title, ipAddress: getClientIp(req) })
+    res.json({ message: 'Exam deleted.' })
+  } catch (e) {
+    console.error('[deleteExam]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * POST /api/faculty/exams/:id/duplicate
+ */
+async function duplicateExam(req, res) {
+  try {
+    const { id } = req.params
+    const original = await global.prisma.exam.findUnique({
+      where: { id },
+      include: { questions: true }
+    })
+    if (!original) return res.status(404).json({ error: 'Exam not found.' })
+    if (original.facultyId !== req.user.id) return res.status(403).json({ error: 'Not your exam.' })
+
+    const { questions, id: _id, createdAt, updatedAt, status, invId, invPasswordHash, ...examData } = original
+
+    // Generate new invigilator credentials
+    const invId2 = `INV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+    const rawInvPassword = Math.random().toString(36).substr(2, 8)
+    const invPasswordHash2 = await require('bcryptjs').hash(rawInvPassword, 10)
+
+    const newExam = await global.prisma.exam.create({
+      data: {
+        ...examData,
+        title: `${original.title} (Copy)`,
+        status: 'DRAFT',
+        invId: invId2,
+        invPasswordHash: invPasswordHash2,
+        questions: {
+          create: questions.map(({ id: _qid, examId: _eid, createdAt: _ca, ...q }) => q)
+        }
+      }
+    })
+    res.status(201).json({ message: 'Exam duplicated.', exam: newExam, invCredentials: { invId: invId2, password: rawInvPassword } })
+  } catch (e) {
+    console.error('[duplicateExam]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/results
+ * All results across all exams created by this faculty
+ */
+async function listAllResults(req, res) {
+  try {
+    const exams = await global.prisma.exam.findMany({
+      where: { facultyId: req.user.id },
+      select: { id: true }
+    })
+    const examIds = exams.map(e => e.id)
+
+    const results = await global.prisma.examResult.findMany({
+      where: { studentExam: { examId: { in: examIds } } },
+      include: {
+        studentExam: {
+          include: {
+            student: { select: { id: true, name: true, usn: true } },
+            exam: { select: { id: true, title: true, subject: true, totalMarks: true } }
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200
+    })
+
+    const formatted = results.map(r => ({
+      id: r.id,
+      student: r.studentExam.student,
+      exam: r.studentExam.exam,
+      totalScore: r.totalScore,
+      percentage: r.percentage,
+      submittedAt: r.studentExam?.submittedAt,
+    }))
+
+    res.json({ results: formatted })
+  } catch (e) {
+    console.error('[listAllResults]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/faculty/exams/:examId/questions
+ */
+async function listExamQuestions(req, res) {
+  try {
+    const { examId } = req.params
+    const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const questions = await global.prisma.question.findMany({
+      where: { examId },
+      orderBy: { createdAt: 'asc' }
+    })
+    res.json({ questions, total: questions.length })
+  } catch (e) {
+    console.error('[listExamQuestions]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * DELETE /api/faculty/questions/:id
+ */
+async function deleteQuestion(req, res) {
+  try {
+    const { id } = req.params
+    const q = await global.prisma.question.findUnique({ where: { id } })
+    if (!q) return res.status(404).json({ error: 'Question not found.' })
+    // Verify faculty owns the exam
+    const exam = await global.prisma.exam.findFirst({ where: { id: q.examId, facultyId: req.user.id } })
+    if (!exam) return res.status(403).json({ error: 'Forbidden.' })
+    await global.prisma.question.delete({ where: { id } })
+    await global.prisma.exam.update({ where: { id: q.examId }, data: { totalMarks: Math.max(0, exam.totalMarks - q.marks) } })
+    res.json({ message: 'Question deleted.' })
+  } catch (e) {
+    console.error('[deleteQuestion]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * PUT /api/faculty/questions/:id
+ */
+async function updateQuestion(req, res) {
+  try {
+    const { id } = req.params
+    const q = await global.prisma.question.findUnique({ where: { id } })
+    if (!q) return res.status(404).json({ error: 'Question not found.' })
+    const exam = await global.prisma.exam.findFirst({ where: { id: q.examId, facultyId: req.user.id } })
+    if (!exam) return res.status(403).json({ error: 'Forbidden.' })
+
+    const { questionText, options, correctAnswer, marks, negativeMarks, difficulty, codeTemplate } = req.body
+    const updated = await global.prisma.question.update({
+      where: { id },
+      data: {
+        questionText: questionText ?? q.questionText,
+        options: options ?? q.options,
+        correctAnswer: correctAnswer ?? q.correctAnswer,
+        marks: marks !== undefined ? parseFloat(marks) : q.marks,
+        negativeMarks: negativeMarks !== undefined ? parseFloat(negativeMarks) : q.negativeMarks,
+        difficulty: difficulty ?? q.difficulty,
+        codeTemplate: codeTemplate ?? q.codeTemplate,
+      }
+    })
+    // Recalculate total marks for the exam
+    const allQ = await global.prisma.question.findMany({ where: { examId: q.examId }, select: { marks: true } })
+    const newTotal = allQ.reduce((s, x) => s + x.marks, 0)
+    await global.prisma.exam.update({ where: { id: q.examId }, data: { totalMarks: newTotal } })
+
+    res.json({ message: 'Question updated.', question: updated })
+  } catch (e) {
+    console.error('[updateQuestion]', e)
+    res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * POST /api/faculty/exams/:examId/ai-generate
+ * Generate questions from text using Groq (LLaMA fast inference)
+ */
+async function generateQuestionsFromAI(req, res) {
+  try {
+    const { examId } = req.params
+    const { text, numMCQ = 5, numEssay = 2, difficulty = 'MEDIUM', marksPerMCQ = 2, marksPerEssay = 10 } = req.body
+
+    if (!text || text.trim().length < 50) {
+      return res.status(400).json({ error: 'Please provide at least 50 characters of content.' })
+    }
+
+    const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const apiKey = process.env.GROQ_API_KEY
+    if (!apiKey) return res.status(500).json({ error: 'Groq API key not configured.' })
+
+    const systemPrompt = `You are an expert academic exam question generator. Always respond with ONLY valid JSON — no markdown, no code blocks, no extra text.`
+
+    const userPrompt = `Generate exactly ${numMCQ} MCQ questions and ${numEssay} subjective questions at ${difficulty} difficulty from the content below.
+
+Content:
+"""
+${text.substring(0, 10000)}
+"""
+
+Return ONLY this JSON structure (no markdown):
+{
+  "questions": [
+    {
+      "type": "MCQ",
+      "questionText": "...",
+      "options": [
+        {"text": "Option A", "isCorrect": false},
+        {"text": "Option B", "isCorrect": true},
+        {"text": "Option C", "isCorrect": false},
+        {"text": "Option D", "isCorrect": false}
+      ],
+      "correctAnswer": "Option B",
+      "marks": ${marksPerMCQ},
+      "difficulty": "${difficulty}"
+    },
+    {
+      "type": "SUBJECTIVE",
+      "questionText": "...",
+      "options": [],
+      "correctAnswer": "Key points for grading...",
+      "marks": ${marksPerEssay},
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`
+
+    const axios = require('axios')
+    const groqRes = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.4,
+        max_tokens: 4096,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    )
+
+    const rawText = groqRes.data.choices?.[0]?.message?.content || ''
+    // Strip markdown code blocks if present
+    const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('[AI] Raw response:', rawText.substring(0, 500))
+      return res.status(500).json({ error: 'AI returned invalid format. Try again.' })
+    }
+
+    let parsed
+    try { parsed = JSON.parse(jsonMatch[0]) }
+    catch (parseErr) {
+      console.error('[AI] JSON parse error:', parseErr.message)
+      return res.status(500).json({ error: 'AI response could not be parsed. Try again.' })
+    }
+
+    const questions = parsed.questions || []
+    if (questions.length === 0) return res.status(500).json({ error: 'AI generated no questions. Try again.' })
+
+    // Save to DB
+    let totalMarksAdded = 0
+    const savedQuestions = []
+    for (const q of questions) {
+      const saved = await global.prisma.question.create({
+        data: {
+          examId,
+          type: (q.type || 'MCQ').toUpperCase(),
+          questionText: q.questionText || 'Question',
+          options: q.options || [],
+          correctAnswer: q.correctAnswer || null,
+          marks: parseFloat(q.marks || marksPerMCQ),
+          negativeMarks: 0,
+          difficulty: q.difficulty || difficulty,
+        }
+      })
+      totalMarksAdded += saved.marks
+      savedQuestions.push(saved)
+    }
+
+    await global.prisma.exam.update({
+      where: { id: examId },
+      data: { totalMarks: exam.totalMarks + totalMarksAdded }
+    })
+
+    logAudit({ userId: req.user.id, userRole: 'faculty', action: 'AI_QUESTIONS_GENERATED', details: `${savedQuestions.length} questions for exam ${examId}` })
+
+    res.status(201).json({ message: `${savedQuestions.length} questions generated successfully!`, questions: savedQuestions })
+  } catch (e) {
+    console.error('[generateQuestionsFromAI]', e.response?.data || e.message)
+    if (e.response?.status === 401) return res.status(500).json({ error: 'Invalid Groq API key.' })
+    if (e.response?.status === 429) return res.status(429).json({ error: 'AI rate limit hit. Please wait a moment and try again.' })
+    res.status(500).json({ error: 'AI generation failed: ' + (e.response?.data?.error?.message || e.message) })
+  }
+}
+
+
 module.exports = {
+
   getDashboardStats,
   createExam,
   listExams,
   getExam,
   updateExam,
+  deleteExam,
+  duplicateExam,
+  publishExam,
   addQuestion,
   listQuestions,
+  listExamQuestions,
+  updateQuestion,
+  deleteQuestion,
   bulkAddQuestions,
   addStudentsToExam,
   listExamStudents,
   listExamResults,
+  listAllResults,
+  releaseResults,
   listStudents,
   approveStudent,
   runCollusionCheck,
-  getStudentResult
+  getStudentResult,
+  generateQuestionsFromAI,
 }

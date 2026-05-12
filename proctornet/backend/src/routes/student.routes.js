@@ -7,11 +7,32 @@ const { isStudent }    = require('../middleware/role.middleware')
 // All student routes require authentication and student role
 router.use(authenticate, isStudent)
 
-router.get('/exams', ctrl.listMyExams)
-router.get('/exams/:id', ctrl.getExamDetails)
-router.get('/exams/:id/start', ctrl.startExam)
+// ── Exam listing ───────────────────────────────────────────────────
+router.get('/exams',               ctrl.listMyExams)
+router.get('/exams/:id',           ctrl.getExamDetails)
+router.get('/exams/:id/lobby',     ctrl.getExamLobby)
+router.get('/exams/:id/start',     ctrl.startExam)
+
+// ── Answer management ──────────────────────────────────────────────
+router.post('/exams/:id/answer',   ctrl.saveAnswer)
 router.post('/exams/:id/autosave', ctrl.autoSaveAnswer)
-router.post('/exams/:id/violation', ctrl.logViolation)
+
+// ── Security & evidence ────────────────────────────────────────────
+router.post('/exams/:id/evidence',    ctrl.logEvidence)
+router.post('/exams/:id/violation',   ctrl.logViolation)
+router.post('/exams/:id/acknowledge', ctrl.acknowledgeWatermark)
+
+// ── Chat ───────────────────────────────────────────────────────────
+router.get ('/exams/:id/chat',  ctrl.getChatHistory)
+router.post('/exams/:id/chat',  ctrl.saveChatMessage)
+
+// ── Submission ─────────────────────────────────────────────────────
 router.post('/exams/:id/submit', ctrl.submitExam)
+
+// ── Results ────────────────────────────────────────────────────────
+router.get('/results', ctrl.getMyResults)
+
+// ── Face verification ──────────────────────────────────────────────
+router.post('/verify-face', ctrl.verifyFace)
 
 module.exports = router

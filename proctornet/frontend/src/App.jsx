@@ -49,17 +49,34 @@ import LoadingSpinner from '@/components/common/LoadingSpinner'
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }) {
   const { isAuthenticated, role, isLoading } = useAuth()
-  
-  if(isLoading) return <LoadingSpinner />
-  
-  if(!isAuthenticated) {
-    return <Navigate to="/student/login" replace />
+
+  if (isLoading) return <LoadingSpinner />
+
+  // Check for invigilator token if role allows invigilator
+  if (allowedRoles?.includes('invigilator')) {
+    const invToken = localStorage.getItem('inv_token')
+    if (invToken) return children
   }
-  
-  if(allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to={`/${role}/dashboard`} replace />
+
+  if (!isAuthenticated) {
+    // Redirect to correct login based on requested role
+    const loginPath = allowedRoles?.includes('admin')
+      ? '/admin/login'
+      : allowedRoles?.includes('faculty')
+      ? '/faculty/login'
+      : allowedRoles?.includes('invigilator')
+      ? '/invigilator-login'
+      : '/student/login'
+    return <Navigate to={loginPath} replace />
   }
-  
+
+  if (allowedRoles && !allowedRoles.includes(role)) {
+    const dashPath = role === 'admin' ? '/admin/dashboard'
+      : role === 'faculty' ? '/faculty/dashboard'
+      : '/student/dashboard'
+    return <Navigate to={dashPath} replace />
+  }
+
   return children
 }
 
@@ -125,6 +142,7 @@ export default function App() {
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
           <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
+          <Route path="/student/exam-lobby/:id" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
           <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
           <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
           <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />

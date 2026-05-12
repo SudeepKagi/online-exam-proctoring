@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/services/api'
+import api from '@/utils/api'
 import CodeQuestion from '@/components/exam/CodeQuestion'
 
 function Icon({ name, size = 20, style = {} }) {

@@ -22,8 +22,10 @@ model Faculty {
   email       String     @unique
   password    String
   department  String
-  employeeId  String     @unique
-  isApproved  Boolean    @default(false)
+  employeeId      String     @unique
+  idCardPhotoUrl  String?
+  profilePhotoUrl String?
+  isApproved      Boolean    @default(false)
   approvedBy  String?
   approvedAt  DateTime?
   isSuspended Boolean    @default(false)

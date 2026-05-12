@@ -1,117 +1,72 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import { FormInput } from '@/components/common/FormComponents'
-import api from '@/services/api'
-
-function Icon({ name, style }) {
-  return <span className="material-icon" style={style}>{name}</span>
-}
-
-const navItems = [
-  { to: '/faculty/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/faculty/exams', icon: 'assignment', label: 'My Exams' },
-  { to: '/faculty/question-pool', icon: 'quiz', label: 'Question Bank' },
-  { to: '/faculty/students', icon: 'groups', label: 'My Students' },
-  { to: '/faculty/results', icon: 'analytics', label: 'Results & Reports' },
-]
+import api from '@/utils/api'
+import { GraduationCap, Search } from 'lucide-react'
 
 export default function FacultyStudents() {
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
-
-  const fetchStudents = async () => {
-    try {
-      const res = await api.get('/faculty/students')
-      setStudents(res.data.students)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
-    fetchStudents()
+    api.get('/faculty/students?status=APPROVED')
+      .then(r => setStudents(r.data.students || r.data || []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }, [])
 
-  const handleApprove = async (id) => {
-    try {
-      await api.patch(`/faculty/students/${id}/approve`, {})
-      fetchStudents()
-    } catch (e) {
-      alert('Error approving student')
-      console.error(e)
-    }
-  }
+  const filtered = students.filter(s =>
+    !search ||
+    s.name.toLowerCase().includes(search.toLowerCase()) ||
+    s.usn.toLowerCase().includes(search.toLowerCase()) ||
+    (s.department || '').toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="page-header">
+    <DashboardLayout title="My Students">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="page-title">My Students</h1>
-          <p className="page-subtitle">Manage enrollments and approve student registrations in your department.</p>
+          <h1 className="text-xl font-bold text-gray-900">My Students</h1>
+          <p className="text-sm text-gray-500">{students.length} enrolled students</p>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ width: '300px' }}>
-            <FormInput id="search-stu" placeholder="Search by name or USN..." prefixIcon="search" style={{ marginBottom: 0 }} />
-          </div>
-          <button className="btn-secondary">
-            <Icon name="filter_list" /> Filter
-          </button>
-        </div>
+      <div className="relative mb-4 max-w-sm">
+        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, USN, or dept…"
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      </div>
 
-        <div className="card-body" style={{ padding: 0 }}>
-          {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--on-surface-variant)' }}>Loading students...</div>
-          ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>USN</th>
-                  <th>Full Name</th>
-                  <th>Semester</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.map(s => (
-                  <tr key={s.id}>
-                    <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{s.usn}</td>
-                    <td style={{ fontWeight: 500 }}>{s.name}</td>
-                    <td style={{ color: 'var(--on-surface-variant)' }}>{s.semester}th</td>
-                    <td>
-                      <span className={`badge ${s.approvalStatus === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
-                        {s.approvalStatus}
-                      </span>
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {loading ? (
+          <div className="p-8 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center"><GraduationCap size={36} className="text-gray-300 mx-auto mb-2" /><p className="text-gray-500">No students found</p></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50">
+                {['Name','USN','Department','Semester','Email'].map(h => <th key={h} className="px-5 py-3.5 text-left font-semibold">{h}</th>)}
+              </tr></thead>
+              <tbody className="divide-y divide-gray-50">
+                {filtered.map(s => (
+                  <tr key={s.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2.5">
+                        {s.facePhotoUrl ? <img src={s.facePhotoUrl} alt="" className="w-7 h-7 rounded-full object-cover" /> : <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">{s.name[0]}</div>}
+                        <span className="font-semibold text-gray-900">{s.name}</span>
+                      </div>
                     </td>
-                    <td>
-                      {s.approvalStatus === 'PENDING_FACULTY' ? (
-                        <button className="btn-primary" onClick={() => handleApprove(s.id)} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
-                          Approve
-                        </button>
-                      ) : (
-                        <button className="btn-secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>
-                          View Profile
-                        </button>
-                      )}
-                    </td>
+                    <td className="px-5 py-3.5 font-mono text-xs text-gray-600">{s.usn}</td>
+                    <td className="px-5 py-3.5 text-gray-600">{s.department}</td>
+                    <td className="px-5 py-3.5"><span className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full font-medium">Sem {s.semester}</span></td>
+                    <td className="px-5 py-3.5 text-gray-400 text-xs">{s.email}</td>
                   </tr>
                 ))}
-                {students.length === 0 && (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--on-surface-variant)' }}>
-                      No students found in your department.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

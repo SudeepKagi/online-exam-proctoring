@@ -30,18 +30,19 @@ export default function InvDashboard() {
 
   // Initialization
   useEffect(() => {
-    const token = localStorage.getItem('proctornet_token')
+    const token = localStorage.getItem('inv_token') || localStorage.getItem('proctornet_token')
     
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
       auth: { token },
-      transports: ['websocket']
+      transports: ['websocket', 'polling']
     })
     
     const socket = socketRef.current
     
     socket.emit('inv:join', { examId })
     
-    socket.on('student:online', (data) => {
+    // Student joined the exam (new event name)
+    socket.on('student:joined', (data) => {
       setStudents(prev => {
         const exists = prev.find(s => s.studentId === data.studentId)
         if(exists) return prev.map(s => s.studentId === data.studentId ? { ...s, status: 'active' } : s)
@@ -61,7 +62,8 @@ export default function InvDashboard() {
       toast(`${data.name} is now online`, { icon: '👋' })
     })
     
-    socket.on('student:violation', (data) => {
+    // Student flag event (was student:violation)
+    socket.on('student:flag', (data) => {
       setAlerts(prev => [{
         id: Date.now(),
         ...data,
@@ -82,7 +84,8 @@ export default function InvDashboard() {
       playAlertSound(data.severity)
     })
     
-    socket.on('student:frame', (data) => {
+    // Camera frame event (was student:frame)
+    socket.on('student:cameraFrame', (data) => {
       setStudents(prev => prev.map(s =>
         s.studentId === data.studentId
           ? { ...s, cameraFrame: data.frame }
@@ -107,23 +110,25 @@ export default function InvDashboard() {
 
   const fetchExamData = async () => {
     try {
-      const res = await api.get(`/faculty/exams/${examId}`)
+      // Use invigilator endpoint
+      const res = await api.get(`/invigilator/exam/${examId}`)
       setExamInfo(res.data.exam)
       
-      const studentsRes = await api.get(`/faculty/exams/${examId}/students`)
-      setStudents(studentsRes.data.students.map(s => ({
-        studentId: s.id,
+      const initialStudents = (res.data.students || []).map(s => ({
+        studentId: s.studentId || s.id,
         name: s.name,
         usn: s.usn,
-        status: s.studentExams?.[0]?.status === 'ACTIVE' ? 'active' : 'offline',
-        progress: { answered: 0, total: 0 },
-        flagCount: 0,
+        status: s.status === 'ACTIVE' ? 'active' : 'offline',
+        progress: s.progress || { answered: 0, total: 0 },
+        flagCount: s.flagCount || 0,
         cameraFrame: null,
-        events: []
-      })))
+        events: s.events || []
+      }))
+      setStudents(initialStudents)
       
       startTimer(res.data.exam.endTime)
     } catch(err) {
+      console.error('[fetchExamData]', err)
       toast.error('Failed to synchronize terminal data')
     } finally {
       setIsLoading(false)
@@ -163,22 +168,35 @@ export default function InvDashboard() {
     } catch(e) {}
   }
 
-  const warnStudent = (studentId) => {
-    const message = prompt('Enter warning message to send to student:')
-    if(!message?.trim()) return
+  const warnStudent = async (studentId, message) => {
+    const msg = message || prompt('Enter warning message to send to student:')
+    if(!msg?.trim()) return
     
-    socketRef.current.emit('inv:warn', { studentId, message, examId })
+    // Emit via socket
+    socketRef.current?.emit('inv:warn', { studentId, message: msg, examId })
+    
+    // Also save to backend
+    try {
+      await api.post(`/invigilator/exam/${examId}/warn/${studentId}`, { message: msg })
+    } catch(e) {
+      console.warn('Warning API call failed, socket still sent')
+    }
     toast.success('Warning dispatched')
   }
 
-  const terminateStudent = (studentId) => {
+  const terminateStudent = async (studentId) => {
     const reason = prompt('CRITICAL: Enter reason for mandatory termination:')
     if(!reason?.trim()) return
     
-    socketRef.current.emit('inv:terminate', { studentId, reason, examId })
-    setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, status: 'terminated' } : s))
-    toast.error('Student session terminated')
-    setShowModal(false)
+    try {
+      await api.post(`/invigilator/exam/${examId}/terminate/${studentId}`, { reason })
+      socketRef.current?.emit('inv:terminate', { studentId, reason, examId })
+      setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, status: 'terminated' } : s))
+      toast.error('Student session terminated')
+      setShowModal(false)
+    } catch(err) {
+      toast.error('Failed to terminate: ' + (err.response?.data?.error || 'Server error'))
+    }
   }
 
   const filteredStudents = students.filter(s => {

@@ -1,182 +1,207 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/services/api'
+import api from '@/utils/api'
+import toast from 'react-hot-toast'
+import {
+  Plus, Search, BookOpen, Clock, Users, Edit, Trash2,
+  Eye, Copy, Play, StopCircle, ChevronRight, Filter, MoreHorizontal
+} from 'lucide-react'
 
-function Icon({ name, style }) {
-  return <span className="material-icon" style={style}>{name}</span>
+function ExamStatusBadge({ status }) {
+  const map = {
+    DRAFT: 'bg-gray-100 text-gray-600',
+    SCHEDULED: 'bg-blue-100 text-blue-700',
+    ACTIVE: 'bg-green-100 text-green-700',
+    ENDED: 'bg-gray-100 text-gray-500',
+    CANCELLED: 'bg-red-100 text-red-700',
+  }
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[status] || map.DRAFT}`}>
+      {status === 'ACTIVE' && <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />}
+      {status}
+    </span>
+  )
 }
 
-const navItems = [
-  { to: '/faculty/dashboard', icon: 'dashboard', label: 'Dashboard' },
-  { to: '/faculty/exams', icon: 'assignment', label: 'My Exams' },
-  { to: '/faculty/question-pool', icon: 'quiz', label: 'Question Bank' },
-  { to: '/faculty/students', icon: 'groups', label: 'My Students' },
-  { to: '/faculty/results', icon: 'analytics', label: 'Results & Reports' },
-]
-
-export default function FacultyExams() {
+function ExamCard({ exam, onDelete, onCopy }) {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('active')
-  const [exams, setExams] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  useEffect(() => {
-    const fetchExams = async () => {
-      try {
-        const res = await api.get('/faculty/exams')
-        setExams(res.data.exams)
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchExams()
-  }, [])
-
-  const activeExams = exams.filter(e => e.status === 'IN_PROGRESS' || e.status === 'SCHEDULED')
-  const pastExams = exams.filter(e => e.status === 'COMPLETED' || e.status === 'CANCELLED')
-  const draftExams = exams.filter(e => e.status === 'DRAFT')
+  const startTime = exam.startTime ? new Date(exam.startTime) : null
+  const endTime = exam.endTime ? new Date(exam.endTime) : null
 
   return (
-    <DashboardLayout navItems={navItems}>
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">My Exams</h1>
-          <p className="page-subtitle">Manage your created exams and monitor active sessions.</p>
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+            <BookOpen size={18} className="text-indigo-600" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 truncate">{exam.title}</h3>
+            <p className="text-xs text-gray-500 mt-0.5">{exam.subject}</p>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link to="/faculty/exams/create" className="btn-primary">
-            <Icon name="add" /> Create New Exam
-          </Link>
-        </div>
-      </div>
-
-      <div className="card">
-        <div style={{ borderBottom: '1px solid var(--outline-variant)', display: 'flex', gap: '2rem', padding: '0 1.5rem' }}>
-          <button 
-            style={{ background: 'none', border: 'none', padding: '1rem 0', fontWeight: 600, color: activeTab === 'active' ? 'var(--primary)' : 'var(--on-surface-variant)', borderBottom: activeTab === 'active' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}
-            onClick={() => setActiveTab('active')}
-          >
-            Active & Upcoming
+        <div className="relative flex-shrink-0 ml-2">
+          <button onClick={() => setMenuOpen(o => !o)} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+            <MoreHorizontal size={16} className="text-gray-400" />
           </button>
-          <button 
-            style={{ background: 'none', border: 'none', padding: '1rem 0', fontWeight: 600, color: activeTab === 'drafts' ? 'var(--primary)' : 'var(--on-surface-variant)', borderBottom: activeTab === 'drafts' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}
-            onClick={() => setActiveTab('drafts')}
-          >
-            Drafts
-          </button>
-          <button 
-            style={{ background: 'none', border: 'none', padding: '1rem 0', fontWeight: 600, color: activeTab === 'past' ? 'var(--primary)' : 'var(--on-surface-variant)', borderBottom: activeTab === 'past' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer' }}
-            onClick={() => setActiveTab('past')}
-          >
-            Past Exams
-          </button>
-        </div>
-
-        <div className="card-body">
-          {loading ? (
-             <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--on-surface-variant)' }}>Loading exams...</div>
-          ) : (
-            <>
-              {activeTab === 'active' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {activeExams.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--on-surface-variant)' }}>No active or upcoming exams.</div>
-                  )}
-                  {activeExams.map(exam => (
-                    <div key={exam.id} style={{ padding: '1.5rem', border: exam.status === 'IN_PROGRESS' ? '1px solid var(--primary)' : '1px solid var(--outline-variant)', borderRadius: '12px', background: exam.status === 'IN_PROGRESS' ? 'var(--primary-fixed)' : 'transparent' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            {exam.status === 'IN_PROGRESS' && <span className="live-dot" />}
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: exam.status === 'IN_PROGRESS' ? 'var(--primary)' : 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              {exam.status === 'IN_PROGRESS' ? 'In Progress' : new Date(exam.startTime).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: exam.status === 'IN_PROGRESS' ? 'var(--on-primary-fixed)' : 'var(--on-surface)', marginBottom: '0.5rem' }}>{exam.title}</h3>
-                          <div style={{ display: 'flex', gap: '1.5rem', color: exam.status === 'IN_PROGRESS' ? 'var(--on-primary-fixed-variant)' : 'var(--on-surface-variant)', fontSize: '0.875rem' }}>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Icon name="schedule" size={16} /> {exam.durationMinutes} Minutes</span>
-                            {exam.status === 'IN_PROGRESS' && <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: 'var(--error)' }}><Icon name="warning" size={16} /> Monitor Feed Available</span>}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <button className="btn-secondary" style={{ padding: '0.5rem 1rem', background: 'transparent', borderColor: 'var(--outline-variant)' }} onClick={() => navigate(`/faculty/exams/${exam.id}`)}>
-                            Details
-                          </button>
-                          {exam.status === 'IN_PROGRESS' && (
-                            <button className="btn-primary" style={{ padding: '0.5rem 1rem' }} onClick={() => navigate(`/invigilator/exam/${exam.id}`)}>
-                              Monitor Feed
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-10">
+              <button onClick={() => { navigate(`/faculty/exams/${exam.id}`); setMenuOpen(false) }}
+                className="w-full text-left px-3.5 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                <Eye size={13} /> View Details
+              </button>
+              {exam.status === 'DRAFT' && (
+                <button onClick={() => { navigate(`/faculty/exams/${exam.id}/edit`); setMenuOpen(false) }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                  <Edit size={13} /> Edit Exam
+                </button>
               )}
-
-              {activeTab === 'drafts' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {draftExams.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--on-surface-variant)' }}>
-                      <Icon name="edit_document" style={{ fontSize: '3rem', color: 'var(--outline)', marginBottom: '1rem' }} />
-                      <p>You don't have any drafted exams right now.</p>
-                    </div>
-                  ) : (
-                    draftExams.map(exam => (
-                      <div key={exam.id} style={{ padding: '1.5rem', border: '1px solid var(--outline-variant)', borderRadius: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--on-surface)', marginBottom: '0.5rem' }}>{exam.title}</h3>
-                            <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--on-surface-variant)', fontSize: '0.875rem' }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Icon name="event" size={16} /> Unscheduled</span>
-                            </div>
-                          </div>
-                          <button className="btn-secondary" onClick={() => navigate(`/faculty/exams/${exam.id}`)}>
-                            <Icon name="edit" /> Edit
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+              <button onClick={() => { onCopy(exam.id); setMenuOpen(false) }}
+                className="w-full text-left px-3.5 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                <Copy size={13} /> Duplicate
+              </button>
+              {['DRAFT', 'SCHEDULED'].includes(exam.status) && (
+                <button onClick={() => { onDelete(exam.id); setMenuOpen(false) }}
+                  className="w-full text-left px-3.5 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-2">
+                  <Trash2 size={13} /> Delete
+                </button>
               )}
-
-              {activeTab === 'past' && (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Exam Title</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pastExams.map(exam => (
-                      <tr key={exam.id}>
-                        <td style={{ fontWeight: 500 }}>{exam.title}</td>
-                        <td style={{ color: 'var(--on-surface-variant)' }}>{new Date(exam.startTime).toLocaleDateString()}</td>
-                        <td><span className="badge badge-neutral">{exam.status}</span></td>
-                        <td>
-                          <Link to={`/faculty/exams/${exam.id}/results`} style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none', fontSize: '0.875rem' }}>View Reports</Link>
-                        </td>
-                      </tr>
-                    ))}
-                    {pastExams.length === 0 && (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--on-surface-variant)' }}>No past exams found.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
-            </>
+            </div>
           )}
         </div>
       </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Duration</p>
+          <p className="text-sm font-bold text-gray-800">{exam.duration}<span className="text-xs font-normal text-gray-400"> min</span></p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Questions</p>
+          <p className="text-sm font-bold text-gray-800">{exam._count?.questions ?? exam.questionCount ?? '—'}</p>
+        </div>
+        <div className="bg-gray-50 rounded-xl p-2.5 text-center">
+          <p className="text-xs text-gray-400">Marks</p>
+          <p className="text-sm font-bold text-gray-800">{exam.totalMarks}</p>
+        </div>
+      </div>
+
+      {startTime && (
+        <div className="text-xs text-gray-400 flex items-center gap-1.5 mb-3">
+          <Clock size={11} />
+          {startTime.toLocaleDateString()} {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {endTime && ` → ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between">
+        <ExamStatusBadge status={exam.status} />
+        <button onClick={() => navigate(`/faculty/exams/${exam.id}`)}
+          className="flex items-center gap-1 text-xs text-indigo-600 font-semibold hover:underline">
+          {exam.status === 'ACTIVE' ? 'Monitor' : 'View'} <ChevronRight size={12} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default function FacultyExams() {
+  const navigate = useNavigate()
+  const [exams, setExams] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+
+  const fetchExams = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/faculty/exams')
+      setExams(res.data.exams || res.data || [])
+    } catch { toast.error('Failed to load exams') }
+    finally { setLoading(false) }
+  }
+
+  useEffect(() => { fetchExams() }, [])
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this exam? This cannot be undone.')) return
+    try {
+      await api.delete(`/faculty/exams/${id}`)
+      toast.success('Exam deleted')
+      fetchExams()
+    } catch { toast.error('Failed to delete exam') }
+  }
+
+  const handleCopy = async (id) => {
+    try {
+      await api.post(`/faculty/exams/${id}/duplicate`)
+      toast.success('Exam duplicated')
+      fetchExams()
+    } catch { toast.error('Failed to duplicate exam') }
+  }
+
+  const filtered = exams.filter(e => {
+    const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
+      (e.subject || '').toLowerCase().includes(search.toLowerCase())
+    const matchStatus = !filterStatus || e.status === filterStatus
+    return matchSearch && matchStatus
+  })
+
+  return (
+    <DashboardLayout title="My Exams">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">My Exams</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Create, manage, and monitor your exam sessions</p>
+        </div>
+        <Link to="/faculty/exams/create"
+          className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm rounded-xl transition-colors">
+          <Plus size={16} /> Create Exam
+        </Link>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-5">
+        <div className="relative flex-1 min-w-48">
+          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search exams…"
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition" />
+        </div>
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+          {['', 'ACTIVE', 'SCHEDULED', 'DRAFT', 'ENDED'].map(status => (
+            <button key={status} onClick={() => setFilterStatus(status)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${filterStatus === status ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+              {status || 'All'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-52 bg-gray-100 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-14 text-center">
+          <BookOpen size={40} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">{search || filterStatus ? 'No exams match your filters' : 'No exams yet'}</p>
+          {!search && !filterStatus && (
+            <Link to="/faculty/exams/create"
+              className="inline-flex items-center gap-2 mt-4 px-4 py-2.5 bg-indigo-600 text-white font-semibold text-sm rounded-xl hover:bg-indigo-700 transition-colors">
+              <Plus size={14} /> Create your first exam
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map(exam => (
+            <ExamCard key={exam.id} exam={exam} onDelete={handleDelete} onCopy={handleCopy} />
+          ))}
+        </div>
+      )}
     </DashboardLayout>
   )
 }

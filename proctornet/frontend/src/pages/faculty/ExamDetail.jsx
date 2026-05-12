@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { FormInput, SelectInput, FormTextarea, SubmitButton, Alert } from '@/components/common/FormComponents'
-import api from '@/services/api'
+import api from '@/utils/api'
 
 function Icon({ name, size = 20, style = {} }) {
   return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
