@@ -61,7 +61,7 @@ python app.py
 
 ## 🔐 Administrative Access
 - **Portal**: `/admin/login`
-- **Default Credentials**: `admin@proctornet.com` / `Admin@123`
+- **Default Credentials**: Configure `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend `.env` file before running the seed script.
 - **First Step**: Log in as admin and approve faculty registrations to enable exam creation.
 
 ---

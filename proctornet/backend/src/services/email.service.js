@@ -42,8 +42,12 @@ async function sendEmail({ to, subject, html, text }) {
 // ── Email templates ────────────────────────────────────────────────
 
 async function sendFacultyRegisteredEmail(faculty) {
+  if (!process.env.ADMIN_EMAIL) {
+    console.warn("[Email] ADMIN_EMAIL is not configured in .env. Skipping faculty registration notification email to administrator.")
+    return false
+  }
   await sendEmail({
-    to:      process.env.ADMIN_EMAIL || 'admin@proctornet.com',
+    to:      process.env.ADMIN_EMAIL,
     subject: `[ProctorNet] New Faculty Registration: ${faculty.name}`,
     html: `
       <h2>New Faculty Registration</h2>

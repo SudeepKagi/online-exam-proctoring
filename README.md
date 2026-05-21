@@ -48,6 +48,30 @@ ProctorNet is packed with advanced features designed to make it stand out as a p
 
 ### 1. ⚡ Reactive Pub-Sub Dual-Stream Pipeline
 Traditional proctoring portals suffer from severe visual lag when streaming multiple candidate screens and webcams, dragging down the browser CPU to near 100%. ProctorNet completely re-engineers this pipeline:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Student as Student Client
+    participant Socket as Socket.io Broker
+    participant Dashboard as InvDashboard (Parent)
+    participant Ref as Frame Buffer Ref
+    participant Window as Window Event Bus
+    participant Feed as Feed Subcomponent
+
+    Student->>Socket: Emit student:cameraFrame (base64)
+    Socket->>Dashboard: Broadcast student:cameraFrame
+    rect rgb(30, 41, 59)
+        note over Dashboard, Ref: Decoupled State Render Logic
+        Dashboard->>Ref: Store frame in latestFramesRef.current
+        note right of Ref: Ref updates bypass React re-renders!
+        Dashboard->>Window: Dispatch CustomEvent('student-frame-update')
+    end
+    Window->>Feed: Trigger subscriber hook (studentId match)
+    Feed->>Feed: Update local state (setFrame)
+    note right of Feed: Only individual image DOM node re-renders!
+```
+
 - **Ref-Based Buffer Storage**: Incoming WebSocket image payloads are buffered into a component-level reference (`latestFramesRef`), bypassing React's heavy state reconciliation tree.
 - **Custom Event Bus**: The application dispatches lightweight `student-frame-update` custom events dynamically on the client window.
 - **Self-Subscribing Nodes**: `<WebcamFeed />` and `<ScreenFeed />` components subscribe only to their own student ID events, resulting in isolated DOM node updates.
@@ -63,6 +87,31 @@ ProctorNet features a secure, multi-stage biometric entry lobby before candidate
                                                                  v
 [ Start Exam ] <--- [ 128D Embedding Match ] <--- [ Capture Live Face Snap ]
 ```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Candidate as Student
+    participant Lobby as Verification Lobby
+    participant Node as Node.js Gateway
+    participant AI as Python AI Service (dlib)
+    database DB as Supabase DB
+
+    Candidate->>Lobby: Upload ID Card & Live Snap
+    Lobby->>Node: Transmit FormPayload (multipart/form-data)
+    Node->>AI: Forward Payload to AI Endpoints
+    rect rgb(15, 23, 42)
+        note right of AI: AI Internal Processing Pipeline
+        AI->>AI: Extract USN via Tesseract OCR
+        AI->>AI: Detect landmarks (Dlib shape_predictor)
+        AI->>AI: Calculate 128D Face Embedding vectors
+    end
+    AI->>Node: Return extracted USN & Euclidean face distance
+    Node->>DB: Verify USN match & profile picture distance
+    DB-->>Node: Returns verified identity state
+    Node-->>Lobby: Redirects to secure exam console
+```
+
 - **Tesseract OCR Parsing**: The system automatically scans uploaded student physical ID cards, pre-parsing the USN and student name.
 - **Biometric Matching**: The Python microservice takes a live camera snap and applies deep residual learning networks via `dlib` to compute 128-dimensional facial embedding vectors.
 - **Frictionless Validation**: Matches the live face snapshot against the pre-stored profile picture in database storage, validating identity with an precision score before granting exam entry.
@@ -177,7 +226,7 @@ To test and execute the complete examination cycle, log in using these portals:
 
 | Portal | Endpoint Route | Default Credentials | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Admin Portal** | `/admin/login` | `admin@proctornet.com` / `Admin@123` | Approves new Faculty signups, inspects audit logs, and monitors system health. |
+| **Admin Portal** | `/admin/login` | `[ADMIN_EMAIL]` / `[ADMIN_PASSWORD]` *(Set in .env)* | Approves new Faculty signups, inspects audit logs, and monitors system health. |
 | **Faculty Portal** | `/faculty/login` | *(Registered & approved)* | Creates questions bank, deploys examinations, and reviews violation logs. |
 | **Student Lobby** | `/student/login` | *(Registered via USN)* | Conducts biometric verification, takes active exam under locked full-screen. |
 | **Invigilator HUD** | `/invigilator/login` | *(Assigned credentials per exam)* | Accesses real-time streaming, chat log, alerts sidebar, and lightbox dossier overlay. |

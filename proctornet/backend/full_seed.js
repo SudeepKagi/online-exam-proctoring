@@ -1,3 +1,4 @@
+require('dotenv').config()
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
 
@@ -26,11 +27,21 @@ async function main() {
   await prisma.admin.deleteMany()
 
   // 1. Create Admin
-  const adminPassword = await bcrypt.hash('Admin@2026', 12)
+  const adminEmail = process.env.ADMIN_EMAIL
+  const adminPasswordRaw = process.env.ADMIN_PASSWORD
+  const adminName = process.env.ADMIN_NAME || 'ProctorNet Admin'
+
+  if (!adminEmail || !adminPasswordRaw) {
+    console.error('\n❌ ERROR: ADMIN_EMAIL and ADMIN_PASSWORD must be defined in your .env file to seed the administrative user securely.')
+    console.error('Please configure your .env file before seeding the database.\n')
+    throw new Error('Missing ADMIN_EMAIL and ADMIN_PASSWORD environment variables.')
+  }
+
+  const adminPassword = await bcrypt.hash(adminPasswordRaw, 12)
   const admin = await prisma.admin.create({
     data: {
-      name: 'ProctorNet Admin',
-      email: 'admin@proctornet.com',
+      name: adminName,
+      email: adminEmail,
       password: adminPassword,
     }
   })
@@ -156,8 +167,8 @@ async function main() {
   console.log('=============================================')
   
   console.log('\n👨‍💼 ADMIN:')
-  console.log('Email:    admin@proctornet.com')
-  console.log('Password: Admin@2026')
+  console.log(`Email:    ${process.env.ADMIN_EMAIL}`)
+  console.log('Password: (As configured in your .env file)')
   
   console.log('\n👩‍🏫 FACULTY:')
   console.log('Email:    dr.smith@proctornet.com')

@@ -7,9 +7,15 @@ const prisma = new PrismaClient()
 async function seedAdmin() {
   console.log('\n🌱 Seeding ProctorNet Admin account...\n')
 
-  const email    = process.env.ADMIN_EMAIL    || 'admin@proctornet.com'
-  const password = process.env.ADMIN_PASSWORD || 'Admin@123'
+  const email    = process.env.ADMIN_EMAIL
+  const password = process.env.ADMIN_PASSWORD
   const name     = process.env.ADMIN_NAME     || 'ProctorNet Admin'
+
+  if (!email || !password) {
+    console.error('\n❌ ERROR: ADMIN_EMAIL and ADMIN_PASSWORD must be defined in your .env file to seed the administrative user securely.')
+    console.error('Please configure your .env file before seeding the database.\n')
+    throw new Error('Missing ADMIN_EMAIL and ADMIN_PASSWORD environment variables.')
+  }
 
   try {
     // Hash password
