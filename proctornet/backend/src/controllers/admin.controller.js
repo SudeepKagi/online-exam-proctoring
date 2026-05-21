@@ -39,6 +39,7 @@ async function listFaculty(req, res) {
         select: {
           id: true, name: true, email: true, department: true, employeeId: true,
           isApproved: true, isSuspended: true, approvedAt: true, createdAt: true,
+          idCardPhotoUrl: true, profilePhotoUrl: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -168,7 +169,7 @@ async function listStudents(req, res) {
         select: {
           id: true, name: true, usn: true, email: true, department: true,
           semester: true, approvalStatus: true, isSuspended: true,
-          faceMatchScore: true, facePhotoUrl: true, createdAt: true,
+          faceMatchScore: true, facePhotoUrl: true, idCardPhotoUrl: true, createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -542,6 +543,7 @@ async function listPendingFaculty(req, res) {
       select: {
         id: true, name: true, email: true, department: true, employeeId: true,
         isApproved: true, isSuspended: true, createdAt: true,
+        idCardPhotoUrl: true, profilePhotoUrl: true,
       },
       orderBy: { createdAt: 'desc' },
     })

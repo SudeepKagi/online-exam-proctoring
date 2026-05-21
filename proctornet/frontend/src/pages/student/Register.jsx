@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff, User, Hash, Phone, Upload, CheckCircle } from 'lucide-react'
+import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff, User, Hash, Phone, Upload, CheckCircle, ArrowLeft, Camera } from 'lucide-react'
 import api from '@/utils/api'
 
 const DEPARTMENTS = ['CS', 'ECE', 'ME', 'CV', 'IS', 'EE']
@@ -21,6 +21,70 @@ export default function StudentRegister() {
   const [submitted, setSubmitted] = useState(false)
   const idCardRef = useRef()
   const photoRef = useRef()
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
+  const streamRef = useRef(null)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [liveStream, setLiveStream] = useState(null)
+
+  // Assign stream to video element AFTER it mounts in the DOM
+  useEffect(() => {
+    if (liveStream && videoRef.current) {
+      videoRef.current.srcObject = liveStream
+      videoRef.current.play().catch(err => console.warn('Video play error:', err))
+    }
+  }, [liveStream, cameraActive])
+
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+      }
+    }
+  }, [])
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' },
+        audio: false
+      })
+      streamRef.current = stream
+      // Set cameraActive first so the <video> element renders,
+      // then the useEffect above will assign srcObject once it's in the DOM
+      setCameraActive(true)
+      setLiveStream(stream)
+      setErrors(prev => ({ ...prev, photo: '' }))
+    } catch (err) {
+      console.error('Camera access failed:', err)
+      setErrors(prev => ({ ...prev, photo: 'Could not access webcam. Please allow camera permission in your browser.' }))
+    }
+  }
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+    setLiveStream(null)
+    setCameraActive(false)
+  }
+
+  const capturePhoto = () => {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+    setProfilePreview(dataUrl)
+    setProfilePhoto(dataUrl)
+    setErrors(prev => ({ ...prev, photo: '' }))
+    stopCamera()
+  }
 
   const set = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
@@ -72,13 +136,13 @@ export default function StudentRegister() {
     setLoading(true)
     try {
       const payload = {
-        name: form.name,
-        usn: form.usn,
-        email: form.email,
+        name: form.name.trim(),
+        usn: form.usn.trim().toUpperCase(),
+        email: form.email.trim(),
         password: form.password,
         department: form.department,
         semester: form.semester,
-        phone: form.phone,
+        phone: form.phone.trim(),
         facePhotoBase64: profilePreview,
         idCardBase64: idCardPreview
       }
@@ -119,6 +183,11 @@ export default function StudentRegister() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* Back Link */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition mb-4">
+          <ArrowLeft size={14} /> Back to Home
+        </Link>
+
         <div className="flex items-center gap-3 mb-8">
           <Link to="/student/login" className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center">
@@ -257,22 +326,71 @@ export default function StudentRegister() {
                 {errors.idCard && <p className="text-red-500 text-xs mt-1">{errors.idCard}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Profile Photo * <span className="text-gray-400 font-normal">(max 2MB)</span></label>
-                <input ref={photoRef} type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
-                <button type="button" onClick={() => photoRef.current.click()}
-                  className={`w-full border-2 border-dashed rounded-xl p-4 text-center transition hover:border-emerald-400 hover:bg-emerald-50 ${errors.photo ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                  {profilePreview ? (
-                    <div className="space-y-2">
-                      <img src={profilePreview} alt="Profile" className="w-16 h-16 object-cover rounded-full mx-auto border-2 border-emerald-200" />
-                      <p className="text-xs text-gray-500">Click to change</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Profile Photo * <span className="text-gray-400 font-normal">(Live Camera Capture)</span></label>
+                <canvas ref={canvasRef} className="hidden" />
+                
+                {profilePreview ? (
+                  <div className="border border-gray-200 bg-gray-50 rounded-xl p-4 text-center">
+                    <div className="relative inline-block">
+                      <img src={profilePreview} alt="Profile Capture" className="w-24 h-24 object-cover rounded-full mx-auto border-2 border-emerald-500 shadow-md" />
+                      <div className="absolute bottom-0 right-0 w-6 h-6 bg-emerald-600 rounded-full flex items-center justify-center border border-white">
+                        <CheckCircle size={12} className="text-white" />
+                      </div>
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <Upload size={20} className="mx-auto text-gray-400" />
-                      <p className="text-sm text-gray-500">Upload face photo</p>
+                    <p className="text-xs text-gray-500 mt-2 font-medium">Snapshot captured successfully!</p>
+                    <button 
+                      type="button" 
+                      onClick={startCamera}
+                      className="mt-3 px-4 py-2 border border-emerald-600 text-emerald-600 hover:bg-emerald-50 text-xs font-semibold rounded-lg transition"
+                    >
+                      Retake Photo
+                    </button>
+                  </div>
+                ) : cameraActive ? (
+                  <div className="border border-emerald-200 bg-gray-900 rounded-xl p-3 text-center">
+                    <div className="relative rounded-lg overflow-hidden border border-gray-700 bg-black aspect-video max-h-40 mx-auto flex items-center justify-center">
+                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 border-2 border-dashed border-emerald-500/40 rounded-lg pointer-events-none flex items-center justify-center">
+                        <div className="w-20 h-20 border border-dashed border-emerald-500/60 rounded-full" />
+                      </div>
                     </div>
-                  )}
-                </button>
+                    <div className="flex gap-2 mt-3 justify-center">
+                      <button 
+                        type="button" 
+                        onClick={capturePhoto}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition"
+                      >
+                        <Camera size={14} /> Capture Photo
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={stopCamera}
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`border-2 border-dashed rounded-xl p-6 text-center transition hover:border-emerald-400 hover:bg-emerald-50 ${errors.photo ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="space-y-3">
+                      <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mx-auto">
+                        <Camera size={20} className="text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-700">Capture Live Picture</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Use your webcam to take your profile picture</p>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={startCamera}
+                        className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl text-xs transition"
+                      >
+                        Start Camera
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {errors.photo && <p className="text-red-500 text-xs mt-1">{errors.photo}</p>}
               </div>
             </div>
@@ -285,10 +403,16 @@ export default function StudentRegister() {
             </button>
           </form>
 
-          <p className="text-center mt-5 text-sm text-gray-500">
+          <p className="text-center mt-5 text-sm text-gray-500 mb-4">
             Already have an account?{' '}
             <Link to="/student/login" className="text-emerald-600 font-semibold hover:underline">Login here</Link>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-400">
+            <Link to="/faculty/register" className="hover:text-gray-600 transition">Faculty Registration</Link>
+            <span>•</span>
+            <Link to="/invigilator-login" className="hover:text-gray-600 transition">Invigilator access →</Link>
+          </div>
         </div>
       </div>
     </div>

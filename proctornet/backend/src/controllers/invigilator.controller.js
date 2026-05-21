@@ -89,35 +89,82 @@ async function getExamInfo(req, res) {
 
     const exam = await global.prisma.exam.findUnique({
       where: { id: examId },
-      include: { faculty: { select: { name: true, department: true } } }
+      include: {
+        faculty: { select: { name: true, department: true } },
+        _count: { select: { questions: true } }
+      }
     })
     if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    // Find all eligible students based on department and semester
+    const eligibleStudents = await global.prisma.student.findMany({
+      where: {
+        department: exam.allowedDepartments.length > 0 ? { in: exam.allowedDepartments } : undefined,
+        semester: exam.allowedSemesters.length > 0 ? { in: exam.allowedSemesters } : undefined
+      },
+      select: { id: true, name: true, usn: true, facePhotoUrl: true }
+    })
 
     const studentSessions = await global.prisma.studentExam.findMany({
       where: { examId },
       include: {
-        student: { select: { id: true, name: true, usn: true, facePhotoUrl: true } },
+        identityVerification: {
+          select: { liveFaceMatchScore: true, status: true, verifiedAt: true }
+        },
         evidenceLogs: {
           orderBy: { timestamp: 'desc' },
-          take: 3,
-          select: { eventType: true, severity: true, timestamp: true }
+          take: 10,
+          select: { eventType: true, severity: true, timestamp: true, details: true, screenshotUrl: true, cameraFrameUrl: true }
+        },
+        answers: {
+          select: { id: true }
         }
       }
     })
 
-    const students = studentSessions.map(se => ({
-      studentId: se.student.id,
-      name: se.student.name,
-      usn: se.student.usn,
-      facePhotoUrl: se.student.facePhotoUrl,
-      status: se.status,
-      flagCount: se.evidenceLogs.filter(e => ['HIGH', 'CRITICAL'].includes(e.severity)).length,
-      events: se.evidenceLogs,
-      progress: { answered: 0, total: exam.questionsPerStudent || 0 },
-      startedAt: se.startedAt
+    let totalQuestions = exam.questionsPerStudent || 0
+    if (totalQuestions === 0 && exam._count) {
+      totalQuestions = exam._count.questions
+    }
+
+    const students = eligibleStudents.map(student => {
+      const se = studentSessions.find(s => s.studentId === student.id)
+      let total = totalQuestions
+      if (se && se.assignedQuestionIds && se.assignedQuestionIds.length > 0) {
+        total = se.assignedQuestionIds.length
+      }
+      return {
+        studentId: student.id,
+        name: student.name,
+        usn: student.usn,
+        facePhotoUrl: student.facePhotoUrl,
+        status: se ? se.status : 'NOT_STARTED',
+        flagCount: se ? se.evidenceLogs.filter(e => ['HIGH', 'CRITICAL'].includes(e.severity)).length : 0,
+        events: se ? se.evidenceLogs : [],
+        progress: {
+          answered: se ? se.answers.length : 0,
+          total: total
+        },
+        startedAt: se ? se.startedAt : null,
+        faceMatchScore: se?.identityVerification?.liveFaceMatchScore ?? null,
+        identityStatus: se?.identityVerification?.status ?? null
+      }
+    })
+
+    // Fetch all chat messages for this exam
+    const chatMessagesRaw = await global.prisma.chatMessage.findMany({
+      where: { examId },
+      orderBy: { timestamp: 'asc' }
+    }).catch(() => [])
+
+    const chatMessages = chatMessagesRaw.map(c => ({
+      studentId: c.studentId,
+      sender: c.senderRole,
+      message: c.message,
+      timestamp: c.timestamp
     }))
 
-    res.json({ exam, students })
+    res.json({ exam, students, chatMessages })
   } catch (e) {
     console.error('[getExamInfo]', e)
     res.status(500).json({ error: 'Failed to fetch exam data.' })

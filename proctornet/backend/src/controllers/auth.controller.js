@@ -53,12 +53,18 @@ async function facultyRegister(req, res) {
     if (!name || !email || !password || !department || !employeeId)
       return res.status(400).json({ error: 'All fields are required.' })
 
-    // Check duplicate
+    // Check duplicate case-insensitively
     const existing = await global.prisma.faculty.findFirst({
-      where: { OR: [{ email }, { employeeId }] },
+      where: {
+        OR: [
+          { email: { equals: email.trim(), mode: 'insensitive' } },
+          { employeeId: { equals: employeeId.trim(), mode: 'insensitive' } }
+        ]
+      },
     })
     if (existing) {
-      const field = existing.email === email ? 'Email' : 'Employee ID'
+      const isEmailMatch = existing.email.toLowerCase() === email.trim().toLowerCase()
+      const field = isEmailMatch ? 'Email' : 'Employee ID'
       return res.status(409).json({ error: `${field} is already registered.` })
     }
 
@@ -90,6 +96,11 @@ async function facultyRegister(req, res) {
     })
   } catch (e) {
     console.error('[facultyRegister]', e)
+    if (e.code === 'P2002') {
+      const target = e.meta?.target || []
+      const field = target.includes('email') ? 'Email' : target.includes('employeeId') ? 'Employee ID' : 'Email or Employee ID'
+      return res.status(409).json({ error: `${field} is already registered.` })
+    }
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -142,17 +153,25 @@ async function facultyLogin(req, res) {
  */
 async function studentRegister(req, res) {
   try {
-    const { name, usn, email, password, department, semester, facePhotoBase64, idCardBase64 } = req.body
+    const { name, usn: rawUsn, email, password, department, semester, facePhotoBase64, idCardBase64 } = req.body
 
-    if (!name || !usn || !email || !password || !department || !semester)
+    if (!name || !rawUsn || !email || !password || !department || !semester)
       return res.status(400).json({ error: 'All fields are required.' })
 
-    // Check duplicates
+    const usn = rawUsn.trim().toUpperCase()
+
+    // Check duplicates case-insensitively
     const existing = await global.prisma.student.findFirst({
-      where: { OR: [{ email }, { usn }] },
+      where: {
+        OR: [
+          { email: { equals: email.trim(), mode: 'insensitive' } },
+          { usn: { equals: usn, mode: 'insensitive' } }
+        ]
+      },
     })
     if (existing) {
-      const field = existing.email === email ? 'Email' : 'USN'
+      const isEmailMatch = existing.email.toLowerCase() === email.trim().toLowerCase()
+      const field = isEmailMatch ? 'Email' : 'USN'
       return res.status(409).json({ error: `${field} is already registered.` })
     }
 
@@ -220,6 +239,11 @@ async function studentRegister(req, res) {
     })
   } catch (e) {
     console.error('[studentRegister]', e)
+    if (e.code === 'P2002') {
+      const target = e.meta?.target || []
+      const field = target.includes('email') ? 'Email' : target.includes('usn') ? 'USN' : 'Email or USN'
+      return res.status(409).json({ error: `${field} is already registered.` })
+    }
     res.status(500).json({ error: 'Server error: ' + e.message })
   }
 }
@@ -229,9 +253,11 @@ async function studentRegister(req, res) {
  */
 async function studentLogin(req, res) {
   try {
-    const { usn, password } = req.body
-    if (!usn || !password)
+    const { usn: rawUsn, password } = req.body
+    if (!rawUsn || !password)
       return res.status(400).json({ error: 'USN and password are required.' })
+
+    const usn = rawUsn.trim().toUpperCase()
 
     const student = await global.prisma.student.findUnique({ where: { usn } })
     if (!student)

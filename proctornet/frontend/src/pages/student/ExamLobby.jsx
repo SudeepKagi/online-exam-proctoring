@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Shield, Clock, BookOpen, MessageSquare, CheckCircle, AlertCircle, Send, ArrowRight } from 'lucide-react'
+import { Shield, Clock, BookOpen, MessageSquare, CheckCircle, AlertCircle, Send, ArrowRight, Camera, CameraOff } from 'lucide-react'
 import api from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import { io } from 'socket.io-client'
@@ -31,45 +31,78 @@ export default function ExamLobby() {
   const [error, setError] = useState('')
   const [timeToStart, setTimeToStart] = useState(null)
   const [canEnter, setCanEnter] = useState(false)
+  const [isOver, setIsOver] = useState(false)
   const [chatMessages, setChatMessages] = useState([])
   const [chatInput, setChatInput] = useState('')
   const [chatOpen, setChatOpen] = useState(false)
+  const [cameraOk, setCameraOk] = useState(false)
 
   const socketRef = useRef(null)
   const timerRef = useRef(null)
   const chatEndRef = useRef(null)
+  const lobbyVideoRef = useRef(null)
+  const lobbyStreamRef = useRef(null)
 
   // Fetch exam info
   useEffect(() => {
     const fetchExam = async () => {
       try {
         const res = await api.get(`/student/exams/${examId}/lobby`)
+        
+        if (res.data.isEligible === false) {
+          setError('You are not eligible to take this exam (Department or Semester mismatch).')
+          toast.error('Exam eligibility check failed.')
+          setTimeout(() => navigate('/student/exams'), 3000)
+          setLoading(false)
+          return
+        }
+
         const examData = res.data.exam
         setExam(examData)
         setChatMessages(res.data.chatMessages || [])
 
         // Countdown timer
         const startTime = new Date(examData.startTime)
-        const tick = () => {
-          const now = new Date()
-          const diff = startTime - now
+        const endTime = new Date(examData.endTime)
+        const ENTRY_WINDOW_MS = 15 * 60 * 1000 // 15 minutes before start
 
-          if (diff <= 0) {
+        const serverTime = res.data.serverTime ? new Date(res.data.serverTime) : new Date()
+        const offset = serverTime.getTime() - Date.now()
+
+        const tick = () => {
+          const now = new Date(Date.now() + offset)
+          const diffToStart = startTime - now
+          const diffToEnd = endTime - now
+
+          // Exam is over
+          if (diffToEnd <= 0) {
+            setIsOver(true)
+            setCanEnter(false)
             setTimeToStart(0)
-            setCanEnter(true)
-            clearInterval(timerRef.current)
+            if (timerRef.current) clearInterval(timerRef.current)
             return
           }
 
-          // Allow entry 15 minutes before
-          if (diff <= 15 * 60 * 1000) {
+          // Exam started — allow entry
+          if (diffToStart <= 0) {
+            setTimeToStart(0)
             setCanEnter(true)
+            setIsOver(false)
+            return
           }
-          setTimeToStart(diff)
+
+          // Within 15-min window before start — show button
+          if (diffToStart <= ENTRY_WINDOW_MS) {
+            setCanEnter(true)
+          } else {
+            setCanEnter(false)
+          }
+
+          setTimeToStart(diffToStart)
         }
 
-        tick()
         timerRef.current = setInterval(tick, 1000)
+        tick()
       } catch (err) {
         setError(err.response?.data?.error || 'Failed to load exam. Please try again.')
         toast.error('Exam not found or you are not eligible.')
@@ -83,6 +116,33 @@ export default function ExamLobby() {
     return () => clearInterval(timerRef.current)
   }, [examId])
 
+  // Lobby camera preview initialization
+  useEffect(() => {
+    if (!exam || !exam.cameraRequired) return
+
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then(stream => {
+        lobbyStreamRef.current = stream
+        if (lobbyVideoRef.current) {
+          lobbyVideoRef.current.srcObject = stream
+          lobbyVideoRef.current.onloadedmetadata = () => {
+            lobbyVideoRef.current.play().catch(e => console.warn('Play error:', e))
+          }
+        }
+        setCameraOk(true)
+      })
+      .catch((err) => {
+        console.error('Lobby camera access error:', err)
+        setCameraOk(false)
+      })
+
+    return () => {
+      if (lobbyStreamRef.current) {
+        lobbyStreamRef.current.getTracks().forEach(t => t.stop())
+      }
+    }
+  }, [exam])
+
   // Socket connection for lobby chat
   useEffect(() => {
     if (!user) return
@@ -94,7 +154,7 @@ export default function ExamLobby() {
     )
 
     const socket = socketRef.current
-    socket.emit('lobby:join', { examId, studentId: user.id })
+    socket.emit('lobby:join', { examId, studentId: user.id, name: user.name, usn: user.usn })
 
     socket.on('inv:chatReply', (data) => {
       setChatMessages(prev => [...prev, {
@@ -120,6 +180,7 @@ export default function ExamLobby() {
     socketRef.current?.emit('exam:chat', {
       examId,
       studentId: user?.id,
+      studentName: user?.name,
       message
     })
 
@@ -192,9 +253,16 @@ export default function ExamLobby() {
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <div className="flex items-center gap-2 text-gray-500 text-sm mb-4">
                 <Clock size={16} />
-                <span>Time until exam starts</span>
+                <span>
+                  {isOver ? 'Exam status' : timeToStart === 0 ? 'Exam is live' : 'Time until exam starts'}
+                </span>
               </div>
-              {canEnter && timeToStart === 0 ? (
+              {isOver ? (
+                <div className="text-center">
+                  <div className="text-5xl font-mono font-black text-red-500 mb-2">ENDED</div>
+                  <p className="text-red-400 font-medium">This exam has concluded</p>
+                </div>
+              ) : timeToStart === 0 ? (
                 <div className="text-center">
                   <div className="text-5xl font-mono font-black text-green-600 mb-2">LIVE</div>
                   <p className="text-green-600 font-medium">Exam is now active</p>
@@ -205,8 +273,8 @@ export default function ExamLobby() {
                     {formatCountdown(timeToStart)}
                   </div>
                   {canEnter && (
-                    <p className="text-green-600 font-medium mt-2 text-sm">
-                      ✓ Early entry allowed (within 15 minutes)
+                    <p className="text-amber-500 text-sm font-semibold mt-2">
+                      ⏰ Entry opens 15 min early — you may enter now
                     </p>
                   )}
                 </div>
@@ -259,27 +327,71 @@ export default function ExamLobby() {
 
           {/* Right: Actions + Chat */}
           <div className="space-y-4">
+            {/* Webcam Preview Card */}
+            {exam.cameraRequired && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm overflow-hidden text-center space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Camera size={16} className="text-blue-600" />
+                  <span>Lobby Webcam Preview</span>
+                </div>
+                <div className="relative aspect-video rounded-xl overflow-hidden bg-gray-900 flex items-center justify-center border border-gray-100 shadow-inner">
+                  {cameraOk ? (
+                    <video
+                      ref={lobbyVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover scale-x-[-1]"
+                    />
+                  ) : (
+                    <div className="text-center p-4">
+                      <CameraOff size={32} className="text-gray-500 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400">Camera permission or hardware is required for this proctored exam.</p>
+                    </div>
+                  )}
+                </div>
+                <div className="text-[10px] text-gray-500 flex items-center justify-center gap-1.5 bg-blue-50/50 py-1.5 rounded-lg font-semibold">
+                  <span className={`w-2 h-2 rounded-full ${cameraOk ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+                  <span>{cameraOk ? 'Webcam ready for exam' : 'Webcam blocked or loading'}</span>
+                </div>
+              </div>
+            )}
+
             {/* Enter Exam Button */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-center">
-              <button
-                onClick={handleEnterExam}
-                disabled={!canEnter}
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-                  canEnter
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100'
-                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {canEnter ? (
-                  <>Proceed to Verification <ArrowRight size={20} /></>
-                ) : (
-                  'Exam Not Started Yet'
-                )}
-              </button>
-              {!canEnter && (
-                <p className="text-xs text-gray-400 mt-3">
-                  Entry opens 15 minutes before start time
-                </p>
+              {isOver ? (
+                <>
+                  <div className="w-full py-4 rounded-xl font-bold text-lg bg-red-50 border-2 border-red-200 text-red-500 flex items-center justify-center gap-2">
+                    🚫 Exam is Over
+                  </div>
+                  <p className="text-xs text-gray-400 mt-3">
+                    This examination has ended. Check your results soon.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleEnterExam}
+                    disabled={!canEnter}
+                    className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                      canEnter
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 active:scale-95'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {canEnter ? (
+                      <>Proceed to Verification <ArrowRight size={20} /></>
+                    ) : (
+                      'Exam Not Yet Available'
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-400 mt-3">
+                    {canEnter
+                      ? 'Entry is open. You may begin your security check.'
+                      : `Entry opens 15 minutes before the exam — at ${new Date(new Date(exam.startTime) - 15 * 60 * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                    }
+                  </p>
+                </>
               )}
             </div>
 

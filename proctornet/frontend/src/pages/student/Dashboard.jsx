@@ -52,7 +52,8 @@ export default function StudentDashboard() {
           api.get('/student/exams'),
           api.get('/student/results'),
         ])
-        setExams((examRes.data.exams || examRes.data || []).slice(0, 4))
+        const allExams = examRes.data.exams || examRes.data || []
+        setExams(allExams)
         setResults((resultsRes.data.results || resultsRes.data || []).slice(0, 5))
       } catch (err) { console.error(err) }
       finally { setLoading(false) }
@@ -60,8 +61,19 @@ export default function StudentDashboard() {
     load()
   }, [])
 
-  const upcomingExams = exams.filter(e => e.status === 'SCHEDULED' || e.status === 'ACTIVE')
-  const activeExams = exams.filter(e => e.status === 'ACTIVE')
+  const now = new Date()
+  const upcomingExams = exams.filter(e => {
+    const isEnded = e.status === 'ENDED' || now > new Date(e.endTime)
+    return !isEnded && (e.status === 'SCHEDULED' || e.status === 'PUBLISHED' || e.status === 'ACTIVE')
+  }).slice(0, 4)
+
+  const activeExams = exams.filter(e => {
+    const start = new Date(e.startTime)
+    const end = new Date(e.endTime)
+    const isEnded = e.status === 'ENDED' || now > end
+    const isActive = e.status === 'ACTIVE' || (now >= start && now <= end && (e.status === 'PUBLISHED' || e.status === 'SCHEDULED' || e.status === 'ACTIVE'))
+    return isActive && !isEnded
+  })
 
   const avgScore = results.length > 0
     ? Math.round(results.reduce((sum, r) => sum + (r.percentage || 0), 0) / results.length)
@@ -164,14 +176,31 @@ export default function StudentDashboard() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {exam.status === 'ACTIVE' ? (
-                        <Link to={`/student/exam-lobby/${exam.id}`}
-                          className="flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors">
-                          <Play size={12} /> Join
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2.5 py-1 rounded-full">Scheduled</span>
-                      )}
+                      {(() => {
+                        const start = new Date(exam.startTime)
+                        const end = new Date(exam.endTime)
+                        const now = new Date()
+                        const isEnded = exam.status === 'ENDED' || now > end
+                        const fifteenMinsBeforeStart = new Date(start.getTime() - 15 * 60 * 1000)
+                        const canJoin = !isEnded && now >= fifteenMinsBeforeStart && now <= end
+                        
+                        if (canJoin) {
+                          return (
+                            <Link to={`/student/exam-lobby/${exam.id}`}
+                              className="flex items-center gap-1.5 px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors">
+                              <Play size={12} /> {exam.status === 'ACTIVE' || (now >= start && now <= end) ? 'Join' : 'Enter Lobby'}
+                            </Link>
+                          )
+                        } else if (isEnded) {
+                          return (
+                            <span className="text-xs text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-full font-semibold">Exam Over</span>
+                          )
+                        } else {
+                          return (
+                            <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2.5 py-1 rounded-full">Scheduled</span>
+                          )
+                        }
+                      })()}
                     </div>
                   </div>
                 ))}

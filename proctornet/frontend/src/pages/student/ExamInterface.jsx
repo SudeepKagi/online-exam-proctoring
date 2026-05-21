@@ -8,7 +8,8 @@ import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
 import {
   Clock, Camera, CameraOff, AlertTriangle, CheckCircle,
-  ChevronLeft, ChevronRight, Flag, Send, Eye, Code, List
+  ChevronLeft, ChevronRight, Flag, Send, Eye, Code, List,
+  Lock, Monitor
 } from 'lucide-react'
 
 // ── Helpers ────────────────────────────────────────────
@@ -39,6 +40,8 @@ export default function ExamInterface() {
   const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isWaiting, setIsWaiting] = useState(false)
+  const [secsToStart, setSecsToStart] = useState(null)
 
   // ── Navigation ──
   const [currentIdx, setCurrentIdx] = useState(0)
@@ -47,12 +50,19 @@ export default function ExamInterface() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  const submittingRef = useRef(false)
+  const submittedRef = useRef(false)
+  const isConfirmingRef = useRef(false)
+  submittingRef.current = submitting
+  submittedRef.current = submitted
+
   // ── Timer ──
   const [timeLeft, setTimeLeft] = useState(null)
   const timerRef = useRef(null)
 
   // ── Camera / Face-API ──
   const videoRef = useRef(null)
+  const captureVideoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const faceIntervalRef = useRef(null)
@@ -60,34 +70,141 @@ export default function ExamInterface() {
   const [faceOk, setFaceOk] = useState(false)
   const [modelsLoaded, setModelsLoaded] = useState(false)
 
+  // ── Screen Share Refs & Fullscreen Gating State ──
+  const screenVideoRef = useRef(null)
+  const screenCanvasRef = useRef(null)
+  const [isFullscreenLocked, setIsFullscreenLocked] = useState(true)
+  const [isScreenShareLocked, setIsScreenShareLocked] = useState(false)
+
   // ── Socket ──
   const socketRef = useRef(null)
+  const [socketConnected, setSocketConnected] = useState(false)
   const [violations, setViolations] = useState(0)
 
   // ── Auto-save ──
   const autoSaveRef = useRef(null)
 
+  // ── Violation Logger ──
+  const emitViolation = useCallback((type, severity) => {
+    setViolations(v => v + 1)
+    
+    let cameraFrameUrl = null
+    let screenshotUrl = null
+    
+    // Snap camera frame
+    const captVideo = captureVideoRef.current || videoRef.current
+    if (captVideo && canvasRef.current) {
+      try {
+        const ctx = canvasRef.current.getContext('2d')
+        const w = captVideo.videoWidth || 320
+        const h = captVideo.videoHeight || 240
+        canvasRef.current.width = w
+        canvasRef.current.height = h
+        ctx.drawImage(captVideo, 0, 0, w, h)
+        cameraFrameUrl = canvasRef.current.toDataURL('image/jpeg', 0.5)
+      } catch (err) {
+        console.warn('Failed to capture camera violation frame:', err)
+      }
+    }
+    
+    // Snap screen frame
+    if (screenVideoRef.current && screenCanvasRef.current) {
+      try {
+        const sCtx = screenCanvasRef.current.getContext('2d')
+        const w = screenVideoRef.current.videoWidth || 640
+        const h = screenVideoRef.current.videoHeight || 360
+        screenCanvasRef.current.width = w
+        screenCanvasRef.current.height = h
+        sCtx.drawImage(screenVideoRef.current, 0, 0, w, h)
+        screenshotUrl = screenCanvasRef.current.toDataURL('image/jpeg', 0.6)
+      } catch (err) {
+        console.warn('Failed to capture screen violation frame:', err)
+      }
+    }
+    
+    socketRef.current?.emit('exam:flag', { 
+      examId, 
+      studentId: user?.id, 
+      studentName: user?.name, 
+      studentUsn: user?.usn, 
+      eventType: type, 
+      severity,
+      cameraFrameUrl,
+      screenshotUrl
+    })
+    
+    api.post(`/student/exams/${examId}/violation`, { 
+      eventType: type, 
+      severity,
+      cameraFrameUrl,
+      screenshotUrl
+    }).catch(() => {})
+  }, [examId, user])
+
   // ─────────────────────────────────────────────────────
-  // 1. Load exam data
+  // 1. Load exam data (reusable callback)
   // ─────────────────────────────────────────────────────
-  useEffect(() => {
-    api.get(`/student/exams/${examId}/start`)
-      .then(res => {
-        const { exam, questions: qs } = res.data
-        setExam(exam)
+  const fetchExamSession = useCallback(async () => {
+    try {
+      const res = await api.get(`/student/exams/${examId}/start`)
+      if (res.data.waiting) {
+        setIsWaiting(true)
+        setExam(res.data.exam)
+        
+        // Calculate server-client offset and initial secsToStart
+        const serverTime = new Date(res.data.serverTime)
+        const startTime = new Date(res.data.exam.startTime)
+        const diffMs = startTime.getTime() - serverTime.getTime()
+        const diffSecs = Math.max(0, Math.ceil(diffMs / 1000))
+        setSecsToStart(diffSecs)
+      } else {
+        setIsWaiting(false)
+        const { exam: examData, questions: qs } = res.data
+        setExam(examData)
         setQuestions(qs || [])
-        const secs = (exam.duration || 60) * 60
+        const secs = (examData.duration || 60) * 60
         setTimeLeft(secs)
-        // Pre-fill saved answers
-        if (res.data.savedAnswers) {
+        
+        // Pre-fill saved answers (correctly reading answers from res.data.answers)
+        if (res.data.answers) {
           const saved = {}
-          res.data.savedAnswers.forEach(a => { saved[a.questionId] = { selected: a.selectedOption, code: a.codeAnswer, text: a.textAnswer } })
+          res.data.answers.forEach(a => {
+            saved[a.questionId] = {
+              selected: a.selectedOption,
+              code: a.codeAnswer,
+              text: a.writtenText
+            }
+          })
           setAnswers(saved)
         }
-      })
-      .catch(() => toast.error('Failed to load exam'))
-      .finally(() => setLoading(false))
-  }, [examId])
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.error || 'Failed to load exam'
+      toast.error(errMsg)
+      navigate('/student/exams')
+    } finally {
+      setLoading(false)
+    }
+  }, [examId, navigate])
+
+  useEffect(() => {
+    fetchExamSession()
+  }, [fetchExamSession])
+
+  // ─────────────────────────────────────────────────────
+  // 1.1 Waiting holding countdown timer
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isWaiting || secsToStart === null) return
+    if (secsToStart <= 0) {
+      fetchExamSession()
+      return
+    }
+    const timer = setTimeout(() => {
+      setSecsToStart(s => s - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [isWaiting, secsToStart, fetchExamSession])
 
   // ─────────────────────────────────────────────────────
   // 2. Countdown timer
@@ -103,31 +220,42 @@ export default function ExamInterface() {
   // 3. Socket.io — join room + listen for warnings
   // ─────────────────────────────────────────────────────
   useEffect(() => {
+    if (!user) return
     const token = localStorage.getItem('proctornet_token')
     const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
       auth: { token }, transports: ['websocket', 'polling']
     })
     socketRef.current = socket
+    setSocketConnected(true)
     socket.emit('exam:join', { examId, studentId: user?.id, name: user?.name, usn: user?.usn })
     socket.on('exam:warning', ({ message }) => toast.error(`⚠️ ${message}`, { duration: 6000 }))
     socket.on('exam:terminated', () => { toast.error('Exam terminated by invigilator'); handleSubmit(true) })
-    return () => socket.disconnect()
-  }, [examId])
+    return () => {
+      socket.disconnect()
+      socketRef.current = null
+      setSocketConnected(false)
+    }
+  }, [examId, user])
 
   // ─────────────────────────────────────────────────────
   // 4. Tab-switch / window-blur detection
   // ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (submitted) return
-    const handleBlur = () => emitViolation('TAB_SWITCH', 'MEDIUM')
-    const handleVisibility = () => { if (document.hidden) emitViolation('TAB_SWITCH', 'MEDIUM') }
+    const handleBlur = () => {
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      emitViolation('TAB_SWITCH', 'MEDIUM')
+    }
+    const handleVisibility = () => {
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      if (document.hidden) emitViolation('TAB_SWITCH', 'MEDIUM')
+    }
     window.addEventListener('blur', handleBlur)
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       window.removeEventListener('blur', handleBlur)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [submitted])
+  }, [emitViolation])
 
   // ─────────────────────────────────────────────────────
   // 5. Load face-api models + start camera
@@ -148,6 +276,12 @@ export default function ExamInterface() {
             videoRef.current.play().catch(e => console.warn('Play error:', e))
           }
         }
+        if (captureVideoRef.current) {
+          captureVideoRef.current.srcObject = stream
+          captureVideoRef.current.onloadedmetadata = () => {
+            captureVideoRef.current.play().catch(e => console.warn('Capture play error:', e))
+          }
+        }
         setCameraOk(true)
       })
       .catch((err) => {
@@ -165,39 +299,79 @@ export default function ExamInterface() {
     }
   }, [])
 
+  // Ensure camera feed stays connected when views transition (waiting lobby <-> exam interface)
+  useEffect(() => {
+    if (streamRef.current) {
+      if (videoRef.current && !videoRef.current.srcObject) {
+        videoRef.current.srcObject = streamRef.current
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current.play().catch(e => console.warn('Play error:', e))
+        }
+      }
+      if (captureVideoRef.current && !captureVideoRef.current.srcObject) {
+        captureVideoRef.current.srcObject = streamRef.current
+        captureVideoRef.current.onloadedmetadata = () => {
+          captureVideoRef.current.play().catch(e => console.warn('Capture play error:', e))
+        }
+      }
+    }
+  }, [isWaiting, cameraOk])
+
   // ─────────────────────────────────────────────────────
-  // 6. Face detection loop (every 5s)
+  // 6. Face detection and frame streaming loop (every 1.5s)
   // ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (!modelsLoaded || !cameraOk || submitted) return
+    if (!cameraOk || submitted) return
     faceIntervalRef.current = setInterval(async () => {
-      if (!videoRef.current || videoRef.current.readyState < 2) return
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      const captVideo = captureVideoRef.current || videoRef.current
+      if (!captVideo) return
       try {
         if (socketRef.current && canvasRef.current) {
+          if (!captVideo.srcObject && streamRef.current) {
+            captVideo.srcObject = streamRef.current
+            captVideo.play().catch(e => console.warn('Webcam recovery play error:', e))
+          }
           const ctx = canvasRef.current.getContext('2d')
-          canvasRef.current.width = videoRef.current.videoWidth
-          canvasRef.current.height = videoRef.current.videoHeight
-          ctx.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height)
+          canvasRef.current.width = captVideo.videoWidth || 320
+          canvasRef.current.height = captVideo.videoHeight || 240
+          ctx.drawImage(captVideo, 0, 0, canvasRef.current.width, canvasRef.current.height)
           const frame = canvasRef.current.toDataURL('image/jpeg', 0.5)
           socketRef.current.emit('exam:frame', { examId, studentId: user?.id, frame })
         }
 
-        const options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 })
-        const detections = await faceapi.detectAllFaces(videoRef.current, options)
-        if (detections.length === 0) {
-          setFaceOk(false)
-          emitViolation('NO_FACE', 'HIGH')
-        } else if (detections.length > 1) {
-          setFaceOk(false)
-          emitViolation('MULTIPLE_FACES', 'CRITICAL')
-          toast.error('Multiple faces detected!', { duration: 4000 })
-        } else {
-          setFaceOk(true)
+        // Emit screen frame as well
+        if (socketRef.current && screenVideoRef.current && screenCanvasRef.current) {
+          if (!screenVideoRef.current.srcObject && window.screenShareStream) {
+            screenVideoRef.current.srcObject = window.screenShareStream
+            screenVideoRef.current.play().catch(e => console.warn('Screen recovery play error:', e))
+          }
+          const sCtx = screenCanvasRef.current.getContext('2d')
+          screenCanvasRef.current.width = 640
+          screenCanvasRef.current.height = 360
+          sCtx.drawImage(screenVideoRef.current, 0, 0, 640, 360)
+          const screenFrame = screenCanvasRef.current.toDataURL('image/jpeg', 0.4)
+          socketRef.current.emit('exam:screenFrame', { examId, studentId: user?.id, frame: screenFrame })
+        }
+
+        if (modelsLoaded) {
+          const options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 })
+          const detections = await faceapi.detectAllFaces(captVideo, options)
+          if (detections.length === 0) {
+            setFaceOk(false)
+            emitViolation('NO_FACE', 'HIGH')
+          } else if (detections.length > 1) {
+            setFaceOk(false)
+            emitViolation('MULTIPLE_FACES', 'CRITICAL')
+            toast.error('Multiple faces detected!', { duration: 4000 })
+          } else {
+            setFaceOk(true)
+          }
         }
       } catch { /* silent */ }
-    }, 5000)
+    }, 1500)
     return () => clearInterval(faceIntervalRef.current)
-  }, [modelsLoaded, cameraOk, submitted])
+  }, [modelsLoaded, cameraOk, submitted, examId, user, emitViolation])
 
   // ─────────────────────────────────────────────────────
   // 7. Auto-save every 30s
@@ -214,14 +388,135 @@ export default function ExamInterface() {
   // ─────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────
-  const emitViolation = useCallback((type, severity) => {
-    setViolations(v => v + 1)
-    socketRef.current?.emit('exam:flag', { examId, studentId: user?.id, studentName: user?.name, eventType: type, severity })
-    api.post(`/student/exams/${examId}/violation`, { eventType: type, severity }).catch(() => {})
-  }, [examId, user])
+
+  const handleRequestScreenShare = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          displaySurface: "monitor",
+          cursor: "always"
+        },
+        audio: false
+      })
+
+      const videoTrack = stream.getVideoTracks()[0]
+      if (!videoTrack) {
+        throw new Error('No video track found in screen share stream.')
+      }
+
+      window.screenShareStream = stream
+
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = stream
+        screenVideoRef.current.onloadedmetadata = () => {
+          screenVideoRef.current.play().catch(e => console.warn('Screen play error:', e))
+        }
+      }
+
+      // Add the track ended listener to the new stream
+      const handleTrackEnded = () => {
+        if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+        setIsScreenShareLocked(true)
+        emitViolation('SCREEN_SHARE_STOPPED', 'CRITICAL')
+        toast.error('Screen sharing stopped! A critical security violation has been logged.', { duration: 6000 })
+      }
+      videoTrack.addEventListener('ended', handleTrackEnded)
+
+      setIsScreenShareLocked(false)
+      toast.success('Screen share successfully re-authorized.')
+    } catch (err) {
+      console.error(err)
+      toast.error('You must share your entire screen to proceed with this exam.')
+    }
+  }
+
+  // ── Bind Screen Share Stream ──
+  useEffect(() => {
+    if (!window.screenShareStream) {
+      setIsScreenShareLocked(true)
+      return
+    }
+
+    const screenVideo = screenVideoRef.current
+    if (screenVideo) {
+      screenVideo.srcObject = window.screenShareStream
+      screenVideo.onloadedmetadata = () => {
+        screenVideo.play().catch(e => console.warn('Screen play error:', e))
+      }
+
+      const videoTrack = window.screenShareStream.getVideoTracks()[0]
+      if (videoTrack) {
+        const handleTrackEnded = () => {
+          if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+          setIsScreenShareLocked(true)
+          emitViolation('SCREEN_SHARE_STOPPED', 'CRITICAL')
+          toast.error('Screen sharing stopped! A critical security violation has been logged.', { duration: 6000 })
+        }
+        videoTrack.addEventListener('ended', handleTrackEnded)
+        return () => {
+          videoTrack.removeEventListener('ended', handleTrackEnded)
+        }
+      }
+    }
+  }, [emitViolation])
+
+  // ── Fullscreen Gating & Exit Blur ──
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      const isFull = !!document.fullscreenElement
+      setIsFullscreenLocked(isFull)
+      if (!isFull) {
+        emitViolation('FULLSCREEN_EXIT', 'HIGH')
+        toast.error('Fullscreen mode exited! Please return to fullscreen immediately.')
+      }
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+
+    // Try to enter fullscreen on mount
+    const requestInitialFullscreen = async () => {
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen()
+          setIsFullscreenLocked(true)
+        }
+      } catch (err) {
+        console.warn('Initial fullscreen request failed:', err)
+        setIsFullscreenLocked(false)
+      }
+    }
+    requestInitialFullscreen()
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+    }
+  }, [emitViolation])
+
+  // Emit progress on initial load and whenever answers change
+  useEffect(() => {
+    if (socketRef.current && socketConnected && questions.length > 0) {
+      socketRef.current.emit('student:progress', {
+        examId,
+        studentId: user?.id,
+        answered: Object.keys(answers).length,
+        total: questions.length
+      })
+    }
+  }, [questions, answers, examId, user, socketConnected])
 
   const setAnswer = (questionId, field, value) => {
-    setAnswers(prev => ({ ...prev, [questionId]: { ...prev[questionId], [field]: value } }))
+    setAnswers(prev => {
+      const newAnswers = { ...prev, [questionId]: { ...prev[questionId], [field]: value } }
+      socketRef.current?.emit('student:progress', {
+        examId,
+        studentId: user?.id,
+        answered: Object.keys(newAnswers).length,
+        total: questions.length
+      })
+      return newAnswers
+    })
     api.post(`/student/exams/${examId}/answer`, { questionId, [field]: value }).catch(() => {})
   }
 
@@ -231,18 +526,59 @@ export default function ExamInterface() {
 
   const handleSubmit = async (auto = false) => {
     if (submitting || submitted) return
-    if (!auto && !confirm('Are you sure you want to submit? You cannot change answers after submission.')) return
+    let confirmed = false
+    if (!auto) {
+      isConfirmingRef.current = true
+      confirmed = confirm('Are you sure you want to submit? You cannot change answers after submission.')
+      isConfirmingRef.current = false
+      if (!confirmed) {
+        // Re-request fullscreen to restore compliance immediately if canceled
+        try {
+          if (!document.fullscreenElement) {
+            await document.documentElement.requestFullscreen()
+            setIsFullscreenLocked(true)
+          }
+        } catch (err) {
+          setIsFullscreenLocked(false)
+        }
+        return
+      }
+    }
+    submittingRef.current = true
     setSubmitting(true)
     clearInterval(autoSaveRef.current)
     clearInterval(faceIntervalRef.current)
-    streamRef.current?.getTracks().forEach(t => t.stop())
+
     try {
       await api.post(`/student/exams/${examId}/submit`, { answers })
+      submittedRef.current = true
       setSubmitted(true)
+
+      // Clean up local media feeds immediately to release hardware on successful submission
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop())
+      }
+      if (window.screenShareStream) {
+        window.screenShareStream.getTracks().forEach(t => t.stop())
+      }
+      
+      // Clean up fullscreen mode programmatically on successful submission
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen()
+        }
+      } catch (err) {
+        console.warn('Failed to exit fullscreen:', err)
+      }
+
       toast.success('Exam submitted successfully!')
       setTimeout(() => navigate('/student/results'), 3000)
-    } catch { toast.error('Submission failed. Try again.') }
-    finally { setSubmitting(false) }
+    } catch (err) { 
+      toast.error('Submission failed. Try again.') 
+      submittingRef.current = false
+    } finally { 
+      setSubmitting(false) 
+    }
   }
 
   // ── Loading / Submit states ──
@@ -261,6 +597,87 @@ export default function ExamInterface() {
       </div>
     </div>
   )
+
+  if (isWaiting) {
+    const timerColor = secsToStart < 60 ? 'text-rose-400 animate-pulse' : secsToStart < 300 ? 'text-amber-400' : 'text-blue-400'
+    return (
+      <div className="min-h-screen bg-[#070b19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-950/40 via-[#070b19] to-[#04060d] text-gray-200 flex flex-col items-center justify-center p-4">
+        {/* Background glowing rings */}
+        <div className="absolute top-20 right-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-indigo-900/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-2xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 lg:p-8 relative text-center">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-9 h-9 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
+              <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />
+            </div>
+            <div className="text-left">
+              <h1 className="font-bold text-sm tracking-wide text-white">PROCTORNET WAITING LOBBY</h1>
+              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Security Check Complete</p>
+            </div>
+          </div>
+
+          <h2 className="text-2xl font-bold text-white mb-1">{exam?.title}</h2>
+          <p className="text-sm text-gray-400 mb-6">{exam?.subject} • Prof. {exam?.faculty?.name || 'Faculty'}</p>
+
+          {/* Countdown timer */}
+          <div className="bg-black/30 rounded-2xl p-6 border border-white/5 mb-6 max-w-sm mx-auto">
+            <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider mb-2">Exam Starts In</p>
+            <div className={`font-mono text-4xl font-extrabold tracking-wider ${timerColor}`}>
+              {formatTime(secsToStart)}
+            </div>
+          </div>
+
+          {/* Proctored preview and status list */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            {/* Live Camera Preview */}
+            <div className="space-y-2">
+              <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider flex items-center gap-1.5 justify-center"><Camera size={12} /> Active Feed Preview</span>
+              <div className="relative bg-black/60 rounded-2xl border border-white/10 overflow-hidden aspect-video flex items-center justify-center mx-auto">
+                <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover rounded-2xl" />
+                {!cameraOk && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                    <div className="text-center">
+                      <CameraOff size={24} className="text-red-400 mx-auto mb-1 animate-pulse" />
+                      <p className="text-xs text-red-400">Camera Inactive</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Shield and integrity status */}
+            <div className="text-left space-y-3 bg-white/5 border border-white/5 rounded-2xl p-4">
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">🛡 Active Security Gating</h3>
+              <ul className="space-y-2 text-xs text-gray-400">
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>Exclusive Fullscreen Gated</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>Tab switch enforcement active</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>Biometric face tracking ready</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>Live frame invigilator socket active</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-white/10 text-xs text-gray-500 flex items-center justify-center gap-2">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
+            <span>Secure holding state. Do not close or refresh this tab.</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const currentQ = questions[currentIdx]
   const answered = Object.keys(answers).length
@@ -312,8 +729,20 @@ export default function ExamInterface() {
               {currentQ.type === 'MCQ' && (
                 <div className="space-y-2.5">
                   {['A','B','C','D'].map((opt, i) => {
-                    const text = currentQ[`option${opt}`] || currentQ.options?.[i]
-                    if (!text) return null
+                    const optRaw = currentQ[`option${opt}`] || currentQ.options?.[i]
+                    if (!optRaw) return null
+                    
+                    let text = ''
+                    if (typeof optRaw === 'object' && optRaw !== null) {
+                      if (optRaw.text !== undefined && optRaw.text !== null) {
+                        text = typeof optRaw.text === 'object' ? (optRaw.text.text || JSON.stringify(optRaw.text)) : String(optRaw.text)
+                      } else {
+                        text = JSON.stringify(optRaw)
+                      }
+                    } else {
+                      text = String(optRaw)
+                    }
+
                     const selected = answers[currentQ.id]?.selected === opt
                     return (
                       <button key={opt} onClick={() => setAnswer(currentQ.id, 'selected', opt)}
@@ -395,7 +824,6 @@ export default function ExamInterface() {
             <p className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Live Camera</p>
             <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video">
               <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-              <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
               {!cameraOk && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
                   <div className="text-center"><CameraOff size={20} className="text-red-400 mx-auto mb-1" /><p className="text-xs text-red-400">No Camera</p></div>
@@ -444,6 +872,61 @@ export default function ExamInterface() {
           </div>
         </aside>
       </div>
+
+      {/* Security Compliance Lock Overlay */}
+      {(!isFullscreenLocked || isScreenShareLocked) && !submitted && !submitting && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-950/85 backdrop-blur-xl p-4 text-center select-none">
+          <div className="max-w-md w-full bg-white/5 border border-red-500/30 rounded-3xl p-8 shadow-2xl relative">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/30">
+              <AlertTriangle size={36} className="text-red-500 animate-bounce" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mt-6 mb-2">Security Shield Active</h2>
+            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+              {!isFullscreenLocked && isScreenShareLocked
+                ? "Multiple security requirements are breached. You have exited fullscreen and screen sharing is inactive."
+                : !isFullscreenLocked
+                ? "You have exited fullscreen mode. Exiting fullscreen is an unauthorized action and has been logged as a high-severity violation."
+                : "Continuous screen sharing is required to proctor this exam. The proctoring system has lost access to your desktop stream."}
+              {" "}Your exam workspace is locked until full compliance is restored.
+            </p>
+            <div className="space-y-3">
+              {!isFullscreenLocked && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await document.documentElement.requestFullscreen()
+                      setIsFullscreenLocked(true)
+                    } catch (err) {
+                      toast.error('Failed to enter fullscreen mode. Please click again or check browser permissions.')
+                    }
+                  }}
+                  className="w-full py-3.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/30"
+                >
+                  <Lock size={16} />
+                  Return to Fullscreen Mode
+                </button>
+              )}
+              {isScreenShareLocked && (
+                <button
+                  onClick={handleRequestScreenShare}
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                >
+                  <Monitor size={16} />
+                  Re-Authorize Screen Share
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-500 mt-5 uppercase tracking-widest font-semibold">
+              ProctorNet Integrity Shield Active
+            </p>
+          </div>
+        </div>
+      )}
+
+      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={screenCanvasRef} className="hidden" />
+      <video ref={captureVideoRef} style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '320px', height: '240px', opacity: 0, pointerEvents: 'none' }} playsInline muted />
+      <video ref={screenVideoRef} style={{ position: 'fixed', top: '-10000px', left: '-10000px', width: '640px', height: '360px', opacity: 0, pointerEvents: 'none' }} playsInline muted />
     </div>
   )
 }

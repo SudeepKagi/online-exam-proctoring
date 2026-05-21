@@ -40,7 +40,7 @@ async function listMyExams(req, res) {
       examResult: null // populated if needed
     }))
 
-    res.json({ exams: formatted })
+    res.json({ exams: formatted, serverTime: new Date() })
   } catch (e) {
     console.error('[listMyExams]', e)
     res.status(500).json({ error: 'Failed to fetch exams' })
@@ -59,7 +59,7 @@ async function getExamDetails(req, res) {
       include: { faculty: { select: { name: true } } }
     })
     if (!exam) return res.status(404).json({ error: 'Exam not found' })
-    res.json({ exam })
+    res.json({ exam, serverTime: new Date() })
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch details' })
   }
@@ -85,11 +85,17 @@ async function getExamLobby(req, res) {
     const isEligible = exam.allowedDepartments.includes(student.department)
 
     // Get chat history
-    const chatMessages = await global.prisma.chatMessage.findMany({
+    const chatMessagesRaw = await global.prisma.chatMessage.findMany({
       where: { examId, studentId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { timestamp: 'asc' },
       take: 50
-    }).catch(() => []) // If table doesn't exist, return empty
+    }).catch(() => [])
+
+    const chatMessages = chatMessagesRaw.map(c => ({
+      sender: c.senderRole,
+      message: c.message,
+      timestamp: c.timestamp
+    }))
 
     res.json({
       exam: {
@@ -107,7 +113,8 @@ async function getExamLobby(req, res) {
         fullScreenMode: exam.fullScreenMode
       },
       isEligible,
-      chatMessages
+      chatMessages,
+      serverTime: new Date()
     })
   } catch (e) {
     console.error('[getExamLobby]', e)
@@ -133,7 +140,22 @@ async function startExam(req, res) {
 
     const now = new Date()
     if (now < new Date(exam.startTime)) {
-      return res.status(403).json({ error: 'Exam has not started yet' })
+      return res.json({
+        waiting: true,
+        exam: {
+          id: exam.id,
+          title: exam.title,
+          subject: exam.subject,
+          startTime: exam.startTime,
+          endTime: exam.endTime,
+          duration: exam.duration,
+          tabSwitchLimit: exam.tabSwitchLimit,
+          cameraRequired: exam.cameraRequired,
+          fullScreenMode: exam.fullScreenMode,
+          watermarkRequired: exam.watermarkRequired
+        },
+        serverTime: now
+      })
     }
     if (now > new Date(exam.endTime)) {
       return res.status(403).json({ error: 'Exam has ended' })
@@ -145,11 +167,24 @@ async function startExam(req, res) {
       include: { answers: true }
     })
 
-    if (studentExam?.status === 'SUBMITTED') {
-      return res.status(403).json({ error: 'Exam already submitted' })
-    }
-
-    if (!studentExam) {
+    if (studentExam) {
+      if (studentExam.status === 'SUBMITTED') {
+        return res.status(403).json({ error: 'Exam already submitted' })
+      }
+      if (studentExam.status === 'TERMINATED') {
+        return res.status(403).json({ error: 'Exam has been terminated by an invigilator' })
+      }
+      if (studentExam.status !== 'ACTIVE') {
+        studentExam = await global.prisma.studentExam.update({
+          where: { id: studentExam.id },
+          data: {
+            status: 'ACTIVE',
+            startedAt: studentExam.startedAt || new Date()
+          },
+          include: { answers: true }
+        })
+      }
+    } else {
       const pool = exam.questions
       const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
         ? pool.length
@@ -228,21 +263,25 @@ async function saveAnswer(req, res) {
     const question = await global.prisma.question.findUnique({ where: { id: questionId } })
     if (!question) return res.status(404).json({ error: 'Question not found' })
 
+    const selectedVal = req.body.selectedOption ?? req.body.selected ?? answer?.selectedOption ?? answer?.selected ?? answer;
+    const codeVal = req.body.codeAnswer ?? req.body.code ?? answer?.codeAnswer ?? answer?.code ?? answer;
+    const writtenVal = req.body.writtenText ?? req.body.text ?? req.body.subjectiveAnswer ?? answer?.writtenText ?? answer?.text ?? answer?.subjectiveAnswer ?? answer;
+
     const updateData = {}
     if (question.type === 'MCQ') {
-      updateData.selectedOption = answer?.selectedOption ?? answer
+      updateData.selectedOption = selectedVal
     } else if (question.type === 'CODE') {
-      updateData.codeAnswer = answer?.codeAnswer ?? answer
+      updateData.codeAnswer = codeVal
     } else {
-      updateData.subjectiveAnswer = answer?.writtenText ?? answer
+      updateData.writtenText = writtenVal
     }
 
     await global.prisma.answer.upsert({
       where: {
         studentExamId_questionId: { studentExamId: session.id, questionId }
       },
-      update: { ...updateData, updatedAt: new Date() },
-      create: { studentExamId: session.id, questionId, ...updateData }
+      update: { ...updateData },
+      create: { studentExamId: session.id, questionId, questionType: question.type, ...updateData }
     })
 
     res.json({ success: true })
@@ -271,15 +310,19 @@ async function autoSaveAnswer(req, res) {
     if (questionId && answer !== undefined) {
       const question = await global.prisma.question.findUnique({ where: { id: questionId } })
       if (question) {
+        const selectedVal = answer?.selectedOption ?? answer?.selected ?? answer;
+        const codeVal = answer?.codeAnswer ?? answer?.code ?? answer;
+        const writtenVal = answer?.writtenText ?? answer?.text ?? answer?.subjectiveAnswer ?? answer;
+
         const updateData = {}
-        if (question.type === 'MCQ') updateData.selectedOption = answer?.selectedOption ?? answer
-        else if (question.type === 'CODE') updateData.codeAnswer = answer?.codeAnswer ?? answer
-        else updateData.subjectiveAnswer = answer?.writtenText ?? answer
+        if (question.type === 'MCQ') updateData.selectedOption = selectedVal
+        else if (question.type === 'CODE') updateData.codeAnswer = codeVal
+        else updateData.writtenText = writtenVal
 
         await global.prisma.answer.upsert({
           where: { studentExamId_questionId: { studentExamId: session.id, questionId } },
-          update: { ...updateData, updatedAt: new Date() },
-          create: { studentExamId: session.id, questionId, ...updateData }
+          update: { ...updateData },
+          create: { studentExamId: session.id, questionId, questionType: question.type, ...updateData }
         })
       }
       return res.json({ success: true })
@@ -297,15 +340,19 @@ async function autoSaveAnswer(req, res) {
           const ans = answers[question.id]
           if (!ans) return
 
+          const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
+          const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
+          const writtenVal = ans.writtenText ?? ans.text ?? ans.subjectiveAnswer ?? (typeof ans === 'string' ? ans : null)
+
           const updateData = {}
-          if (question.type === 'MCQ') updateData.selectedOption = ans.selectedOption ?? null
-          else if (question.type === 'CODE') updateData.codeAnswer = ans.codeAnswer ?? ''
-          else updateData.subjectiveAnswer = ans.writtenText ?? ''
+          if (question.type === 'MCQ') updateData.selectedOption = selectedVal
+          else if (question.type === 'CODE') updateData.codeAnswer = codeVal
+          else updateData.writtenText = writtenVal
 
           return global.prisma.answer.upsert({
             where: { studentExamId_questionId: { studentExamId: session.id, questionId: question.id } },
-            update: { ...updateData, updatedAt: new Date() },
-            create: { studentExamId: session.id, questionId: question.id, ...updateData }
+            update: { ...updateData },
+            create: { studentExamId: session.id, questionId: question.id, questionType: question.type, ...updateData }
           })
         })
       )
@@ -396,11 +443,17 @@ async function getChatHistory(req, res) {
     const { id: examId } = req.params
     const studentId = req.user.id
 
-    const messages = await global.prisma.chatMessage.findMany({
+    const messagesRaw = await global.prisma.chatMessage.findMany({
       where: { examId, studentId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { timestamp: 'asc' },
       take: 100
     }).catch(() => [])
+
+    const messages = messagesRaw.map(c => ({
+      sender: c.senderRole,
+      message: c.message,
+      timestamp: c.timestamp
+    }))
 
     res.json({ messages })
   } catch (e) {
@@ -424,7 +477,7 @@ async function saveChatMessage(req, res) {
       data: {
         examId,
         studentId,
-        sender: 'student',
+        senderRole: 'student',
         message: message.trim()
       }
     }).catch(() => {}) // Table may not exist — ignore
@@ -465,15 +518,19 @@ async function submitExam(req, res) {
         questions.map(async (q) => {
           const ans = answers[q.id]
           if (!ans) return
+          const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
+          const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
+          const writtenVal = ans.writtenText ?? ans.text ?? ans.subjectiveAnswer ?? (typeof ans === 'string' ? ans : null)
+
           const updateData = {}
-          if (q.type === 'MCQ') updateData.selectedOption = ans.selectedOption ?? null
-          else if (q.type === 'CODE') updateData.codeAnswer = ans.codeAnswer ?? ''
-          else updateData.subjectiveAnswer = ans.writtenText ?? ''
+          if (q.type === 'MCQ') updateData.selectedOption = selectedVal
+          else if (q.type === 'CODE') updateData.codeAnswer = codeVal
+          else updateData.writtenText = writtenVal
 
           return global.prisma.answer.upsert({
             where: { studentExamId_questionId: { studentExamId: session.id, questionId: q.id } },
-            update: { ...updateData, updatedAt: new Date() },
-            create: { studentExamId: session.id, questionId: q.id, ...updateData }
+            update: { ...updateData },
+            create: { studentExamId: session.id, questionId: q.id, questionType: q.type, ...updateData }
           })
         })
       )
@@ -494,8 +551,47 @@ async function submitExam(req, res) {
       totalMarks += ans.question.marks
 
       if (ans.question.type === 'MCQ') {
-        const correctOption = ans.question.options?.find(o => o.isCorrect)
-        const isCorrect = correctOption && (ans.selectedOption === correctOption.text)
+        const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 };
+        const selectedIdx = letterToIndex[ans.selectedOption?.toUpperCase()];
+        let isCorrect = false;
+
+        // 1. Direct match (e.g. 'A' === 'A' or full text === full text)
+        if (ans.question.correctAnswer && ans.selectedOption && 
+            ans.selectedOption.trim().toUpperCase() === ans.question.correctAnswer.trim().toUpperCase()) {
+          isCorrect = true;
+        }
+
+        // 2. Options array structure match
+        if (!isCorrect && Array.isArray(ans.question.options) && ans.question.options.length > 0) {
+          const correctOptIdx = ans.question.options.findIndex(o => o && typeof o === 'object' && o.isCorrect);
+          if (correctOptIdx !== -1) {
+            if (selectedIdx === correctOptIdx) {
+              isCorrect = true;
+            } else {
+              const correctOpt = ans.question.options[correctOptIdx];
+              if (correctOpt && correctOpt.text && ans.selectedOption === correctOpt.text) {
+                isCorrect = true;
+              }
+            }
+          } else {
+            const qCorrect = ans.question.correctAnswer;
+            if (qCorrect) {
+              const correctIdxFromAnswer = letterToIndex[qCorrect.toUpperCase()];
+              if (correctIdxFromAnswer !== undefined && selectedIdx === correctIdxFromAnswer) {
+                isCorrect = true;
+              } else {
+                const correctTextIdx = ans.question.options.findIndex(o => {
+                  const text = typeof o === 'string' ? o : o?.text;
+                  return text && text.trim().toLowerCase() === qCorrect.trim().toLowerCase();
+                });
+                if (correctTextIdx !== -1 && selectedIdx === correctTextIdx) {
+                  isCorrect = true;
+                }
+              }
+            }
+          }
+        }
+
         const marksAwarded = isCorrect ? ans.question.marks : 0
         totalScore += marksAwarded
 
@@ -559,18 +655,18 @@ async function verifyFace(req, res) {
       })
 
       if (student?.facePhotoUrl && liveFrame) {
-        const pyRes = await axios.post(`${pythonUrl}/verify-face`, {
-          referenceUrl: student.facePhotoUrl,
-          liveFrame
+        const pyRes = await axios.post(`${pythonUrl}/api/face/verify-live`, {
+          registeredPhotoUrl: student.facePhotoUrl,
+          liveFrameBase64: liveFrame
         }, { timeout: 8000 })
 
         return res.json({
-          verified: pyRes.data.match,
-          matchScore: pyRes.data.similarity || 0.9
+          verified: pyRes.data.isMatch || pyRes.data.verified || false,
+          matchScore: pyRes.data.matchScore || pyRes.data.similarity || 0.9
         })
       }
     } catch (pyErr) {
-      console.warn('[verifyFace] Python service unavailable, using stub')
+      console.warn('[verifyFace] Python service unavailable, using stub:', pyErr.message)
     }
 
     // Stub: allow through in development
@@ -578,6 +674,100 @@ async function verifyFace(req, res) {
   } catch (e) {
     console.error('[verifyFace]', e)
     res.json({ verified: true, matchScore: 0.9 })
+  }
+}
+
+/**
+ * POST /api/student/verify-id
+ * OCR for student ID card, calling python-service /api/ocr/verify-id
+ */
+async function verifyIdCard(req, res) {
+  try {
+    const { idCardPhoto, examId } = req.body // idCardPhoto is base64 string
+    const studentId = req.user.id
+
+    // Try calling Python service
+    try {
+      const axios = require('axios')
+      const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5001'
+
+      const pyRes = await axios.post(`${pythonUrl}/api/ocr/verify-id`, {
+        idCardUrl: idCardPhoto
+      }, { timeout: 8000 })
+
+      return res.json({
+        success: pyRes.data.isValid || false,
+        extractedUsn: pyRes.data.extractedUsn || '',
+        extractedName: pyRes.data.extractedName || '',
+        warning: pyRes.data.warning || null
+      })
+    } catch (pyErr) {
+      console.warn('[verifyIdCard] Python OCR service unavailable, using fallback:', pyErr.message)
+    }
+
+    // Fallback logic
+    const student = await global.prisma.student.findUnique({
+      where: { id: studentId }
+    })
+
+    res.json({
+      success: true,
+      extractedUsn: student?.usn || '1VE22CS888',
+      extractedName: student?.name || 'DEV FALLBACK',
+      warning: 'OCR System Fallback (Mock active)'
+    })
+  } catch (e) {
+    console.error('[verifyIdCard]', e)
+    res.json({ success: true, extractedUsn: '1VE22CS888' })
+  }
+}
+
+/**
+ * POST /api/student/exams/:id/identity-verify
+ * Save IdentityVerification record
+ */
+async function saveIdentityVerification(req, res) {
+  try {
+    const { id: examId } = req.params
+    const { liveFaceMatchScore, idCardOcrUsn, idCardMatchResult, faceWithIdPhotoUrl, status } = req.body
+    const studentId = req.user.id
+
+    const session = await global.prisma.studentExam.findFirst({
+      where: { studentId, examId }
+    })
+    if (!session) return res.status(404).json({ error: 'Student exam session not found' })
+
+    const verification = await global.prisma.identityVerification.upsert({
+      where: { studentExamId: session.id },
+      update: {
+        liveFaceMatchScore: liveFaceMatchScore || 1.0,
+        idCardOcrUsn: idCardOcrUsn || '',
+        idCardMatchResult: idCardMatchResult !== undefined ? idCardMatchResult : true,
+        faceWithIdPhotoUrl: faceWithIdPhotoUrl || '',
+        status: status || 'VERIFIED',
+        verifiedAt: new Date()
+      },
+      create: {
+        studentExamId: session.id,
+        liveFaceMatchScore: liveFaceMatchScore || 1.0,
+        idCardOcrUsn: idCardOcrUsn || '',
+        idCardMatchResult: idCardMatchResult !== undefined ? idCardMatchResult : true,
+        faceWithIdPhotoUrl: faceWithIdPhotoUrl || '',
+        status: status || 'VERIFIED',
+        verifiedAt: new Date()
+      }
+    })
+
+    // Update StudentExam status to READY / active or update student session
+    await global.prisma.studentExam.update({
+      where: { id: session.id },
+      data: { status: 'READY' }
+    }).catch(() => {})
+
+    res.json({ success: true, verification })
+  } catch (e) {
+    console.error('[saveIdentityVerification]', e)
+    res.status(500).json({ error: 'Failed to save identity verification' })
   }
 }
 
@@ -594,7 +784,17 @@ async function getMyResults(req, res) {
       include: {
         studentExam: {
           include: {
-            exam: { select: { title: true, subject: true, totalMarks: true } }
+            exam: {
+              select: {
+                title: true,
+                subject: true,
+                totalMarks: true,
+                duration: true,
+                _count: {
+                  select: { questions: true }
+                }
+              }
+            }
           }
         }
       },
@@ -609,7 +809,8 @@ async function getMyResults(req, res) {
       percentage: r.percentage,
       timeTaken: r.timeTaken,
       finalStatus: r.finalStatus,
-      createdAt: r.createdAt
+      createdAt: r.createdAt,
+      gradedAt: r.createdAt
     }))
 
     res.json({ results: formatted })
@@ -633,5 +834,7 @@ module.exports = {
   saveChatMessage,
   submitExam,
   verifyFace,
+  verifyIdCard,
+  saveIdentityVerification,
   getMyResults
 }

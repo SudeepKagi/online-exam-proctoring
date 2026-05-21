@@ -43,42 +43,7 @@ import StudentResults from '@/pages/student/Results'
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
 
-// Common
-import LoadingSpinner from '@/components/common/LoadingSpinner'
-
-// Protected Route Component
-function ProtectedRoute({ children, allowedRoles }) {
-  const { isAuthenticated, role, isLoading } = useAuth()
-
-  if (isLoading) return <LoadingSpinner />
-
-  // Check for invigilator token if role allows invigilator
-  if (allowedRoles?.includes('invigilator')) {
-    const invToken = localStorage.getItem('inv_token')
-    if (invToken) return children
-  }
-
-  if (!isAuthenticated) {
-    // Redirect to correct login based on requested role
-    const loginPath = allowedRoles?.includes('admin')
-      ? '/admin/login'
-      : allowedRoles?.includes('faculty')
-      ? '/faculty/login'
-      : allowedRoles?.includes('invigilator')
-      ? '/invigilator-login'
-      : '/student/login'
-    return <Navigate to={loginPath} replace />
-  }
-
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    const dashPath = role === 'admin' ? '/admin/dashboard'
-      : role === 'faculty' ? '/faculty/dashboard'
-      : '/student/dashboard'
-    return <Navigate to={dashPath} replace />
-  }
-
-  return children
-}
+import ProtectedRoute from '@/components/ProtectedRoute'
 
 export default function App() {
   return (

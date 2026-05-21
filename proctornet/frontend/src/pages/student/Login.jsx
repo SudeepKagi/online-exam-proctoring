@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { Shield, Hash, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Shield, Hash, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 
 export default function StudentLogin() {
   const navigate = useNavigate()
@@ -65,6 +65,10 @@ export default function StudentLogin() {
       {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-6 bg-gray-50">
         <div className="w-full max-w-md">
+          {/* Back Link */}
+          <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition mb-4">
+            <ArrowLeft size={14} /> Back to Home
+          </Link>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             {/* Role switch */}
             <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-6">
@@ -138,9 +142,13 @@ export default function StudentLogin() {
               <Link to="/student/register" className="text-emerald-600 font-semibold hover:underline">Register here</Link>
             </p>
 
-            <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-              <Link to="/invigilator-login" className="text-xs text-gray-400 hover:text-gray-600 transition">
+            <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-400">
+              <Link to="/invigilator-login" className="hover:text-gray-600 transition">
                 Invigilator access →
+              </Link>
+              <span>•</span>
+              <Link to="/admin/login" className="hover:text-gray-600 transition">
+                Admin access →
               </Link>
             </div>
           </div>

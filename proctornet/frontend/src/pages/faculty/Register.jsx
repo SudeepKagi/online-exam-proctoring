@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff, User, Hash, Phone, Upload, CheckCircle } from 'lucide-react'
+import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff, User, Hash, Phone, Upload, CheckCircle, ArrowLeft } from 'lucide-react'
 import api from '@/utils/api'
 
 const DEPARTMENTS = ['CS', 'ECE', 'ME', 'CV', 'IS', 'EE']
@@ -120,6 +120,11 @@ export default function FacultyRegister() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
+        {/* Back Link */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition mb-4">
+          <ArrowLeft size={14} /> Back to Home
+        </Link>
+
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link to="/faculty/login" className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition">
@@ -295,10 +300,16 @@ export default function FacultyRegister() {
             </button>
           </form>
 
-          <p className="text-center mt-5 text-sm text-gray-500">
+          <p className="text-center mt-5 text-sm text-gray-500 mb-4">
             Already have an account?{' '}
             <Link to="/faculty/login" className="text-indigo-600 font-semibold hover:underline">Login here</Link>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-400">
+            <Link to="/student/register" className="hover:text-gray-600 transition">Student Registration</Link>
+            <span>•</span>
+            <Link to="/invigilator-login" className="hover:text-gray-600 transition">Invigilator access →</Link>
+          </div>
         </div>
       </div>
     </div>

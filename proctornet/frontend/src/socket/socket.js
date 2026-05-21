@@ -1,33 +1,43 @@
 import { io } from 'socket.io-client'
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
-
-// Singleton socket instance — connects only when first imported
 let socket = null
 
-export function getSocket() {
-  if (!socket) {
-    socket = io(SOCKET_URL, {
-      autoConnect: false,
-      withCredentials: true,
+export const connectSocket = (token) => {
+  if(socket?.connected) return socket
+  
+  socket = io(
+    import.meta.env.VITE_SOCKET_URL 
+    || 'http://localhost:5000',
+    {
+      auth: { token },
       transports: ['websocket', 'polling'],
-    })
-  }
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 10000
+    }
+  )
+  
+  socket.on('connect', () => {
+    console.log('✅ Socket connected:', socket.id)
+  })
+  
+  socket.on('connect_error', (err) => {
+    console.error('❌ Socket error:', err.message)
+  })
+  
+  socket.on('disconnect', (reason) => {
+    console.log('Socket disconnected:', reason)
+  })
+  
   return socket
 }
 
-export function connectSocket(token) {
-  const s = getSocket()
-  s.auth = { token }
-  s.connect()
-  return s
-}
+export const getSocket = () => socket
 
-export function disconnectSocket() {
-  if (socket) {
+export const disconnectSocket = () => {
+  if(socket) {
     socket.disconnect()
     socket = null
   }
 }
-
-export default getSocket

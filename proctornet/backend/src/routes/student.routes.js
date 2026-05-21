@@ -32,7 +32,9 @@ router.post('/exams/:id/submit', ctrl.submitExam)
 // ── Results ────────────────────────────────────────────────────────
 router.get('/results', ctrl.getMyResults)
 
-// ── Face verification ──────────────────────────────────────────────
+// ── Face & ID verification ──────────────────────────────────────────────
 router.post('/verify-face', ctrl.verifyFace)
+router.post('/verify-id',   ctrl.verifyIdCard)
+router.post('/exams/:id/identity-verify', ctrl.saveIdentityVerification)
 
 module.exports = router

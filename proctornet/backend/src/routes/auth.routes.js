@@ -16,7 +16,7 @@ router.post('/student/register', ctrl.studentRegister)
 router.post('/student/login',    ctrl.studentLogin)
 
 // ── Invigilator ────────────────────────────────────
-router.post('/invigilator/login', uploadIdCard, ctrl.invigilatorLogin)
+router.post('/invigilator/login', ctrl.invigilatorLogin)
 
 // ── Verify token (used by frontend on reload) ──────
 router.get('/me', authenticate, (req, res) => {

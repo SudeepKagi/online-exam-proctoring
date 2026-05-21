@@ -150,7 +150,7 @@ async function getExam(req, res) {
     const exam = await global.prisma.exam.findFirst({
       where: { id, facultyId: req.user.id },
       include: {
-        questions: { select: { id: true, questionText: true, type: true, marks: true } },
+        questions: true,
         studentExams: { include: { student: { select: { name: true, usn: true, department: true } } } }
       }
     })
@@ -480,51 +480,66 @@ async function approveStudent(req, res) {
 async function runCollusionCheck(req, res) {
   try {
     const { id } = req.params;
-    const results = await global.prisma.result.findMany({
-      where: { examId: id },
+    
+    // Query submitted or terminated student exams and include student and answers
+    const studentExams = await global.prisma.studentExam.findMany({
+      where: {
+        examId: id,
+        status: { in: ['SUBMITTED', 'TERMINATED'] }
+      },
       include: {
-        studentExam: { include: { student: true } },
-        answers: { include: { question: true } }
+        student: true,
+        answers: {
+          include: {
+            question: true
+          }
+        }
       }
     });
 
-    if (results.length < 2) {
+    if (studentExams.length < 2) {
       return res.json({ message: 'Not enough submissions to check collusion.', flags: [] });
     }
 
     const flags = [];
-    const threshold = 0.85; // 85% similarity
+    const threshold = 0.85; // 85% similarity threshold
 
-    for (let i = 0; i < results.length; i++) {
-      for (let j = i + 1; j < results.length; j++) {
-        const r1 = results[i];
-        const r2 = results[j];
+    for (let i = 0; i < studentExams.length; i++) {
+      for (let j = i + 1; j < studentExams.length; j++) {
+        const r1 = studentExams[i];
+        const r2 = studentExams[j];
         
         let matches = 0;
         let total = r1.answers.length;
+
+        if (total === 0) continue;
 
         r1.answers.forEach(a1 => {
           const a2 = r2.answers.find(x => x.questionId === a1.questionId);
           if (!a2) return;
 
           if (a1.question.type === 'MCQ') {
-            if (a1.selectedOption === a2.selectedOption) matches++;
+            if (a1.selectedOption && a2.selectedOption && a1.selectedOption === a2.selectedOption) {
+              matches++;
+            }
           } else {
-            const sim = calculateSimilarity(a1.codeAnswer || '', a2.codeAnswer || '');
-            if (sim > threshold) matches++;
+            const ans1 = a1.codeAnswer || a1.writtenText || '';
+            const ans2 = a2.codeAnswer || a2.writtenText || '';
+            if (ans1.trim() && ans2.trim()) {
+              const sim = calculateSimilarity(ans1, ans2);
+              if (sim > threshold) matches++;
+            }
           }
         });
 
-        if (total > 0) {
-          const similarityIndex = matches / total;
-          if (similarityIndex > threshold) {
-            flags.push({
-              student1: r1.studentExam.student,
-              student2: r2.studentExam.student,
-              similarity: similarityIndex * 100,
-              details: `High similarity detected across ${matches}/${total} questions.`
-            });
-          }
+        const similarityIndex = matches / total;
+        if (similarityIndex > threshold) {
+          flags.push({
+            student1: r1.student,
+            student2: r2.student,
+            similarity: similarityIndex * 100,
+            details: `High similarity detected across ${matches}/${total} questions.`
+          });
         }
       }
     }
@@ -564,114 +579,6 @@ function editDistance(s1, s2) {
   return costs[s2.length];
 }
 
-async function getStudentResult(req, res) {
-  try {
-    const { id } = req.params; // Result ID
-    const result = await global.prisma.result.findUnique({
-      where: { id },
-      include: {
-        studentExam: {
-          include: {
-            student: true,
-            exam: true,
-            evidenceLogs: true
-          }
-        },
-        answers: {
-          include: {
-            question: true
-          }
-        }
-      }
-    });
-
-    if (!result) return res.status(404).json({ error: 'Result not found.' });
-
-    res.json({ result });
-  } catch (error) {
-    console.error('[getStudentResult]', error);
-    res.status(500).json({ error: 'Failed to fetch result dossier.' });
-  }
-}
-
-/**
- * GET /api/faculty/exams/:examId/questions
- * List questions for a specific exam
- */
-async function listExamQuestions(req, res) {
-  try {
-    const { examId } = req.params
-    const exam = await global.prisma.exam.findFirst({ where: { id: examId, facultyId: req.user.id } })
-    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
-
-    const questions = await global.prisma.question.findMany({
-      where: { examId },
-      orderBy: { createdAt: 'desc' }
-    })
-    res.json({ questions, total: questions.length })
-  } catch (e) {
-    res.status(500).json({ error: 'Server error.' })
-  }
-}
-
-/**
- * PUT /api/faculty/questions/:id
- * Update an existing question
- */
-async function updateQuestion(req, res) {
-  try {
-    const { id } = req.params
-    const question = await global.prisma.question.findUnique({ where: { id } })
-    if (!question) return res.status(404).json({ error: 'Question not found.' })
-
-    // Ensure faculty owns the exam this question belongs to
-    const exam = await global.prisma.exam.findFirst({ where: { id: question.examId, facultyId: req.user.id } })
-    if (!exam) return res.status(403).json({ error: 'Not authorized.' })
-
-    const allowed = ['questionText', 'options', 'correctAnswer', 'marks', 'difficulty',
-      'codeLanguage', 'codeTemplate', 'starterCode', 'visibleTestCases', 'hiddenTestCases',
-      'wordLimitMin', 'wordLimitMax', 'tags']
-    const updateData = {}
-    allowed.forEach(field => {
-      if (req.body[field] !== undefined) updateData[field] = req.body[field]
-    })
-
-    const updated = await global.prisma.question.update({ where: { id }, data: updateData })
-    res.json({ message: 'Question updated.', question: updated })
-  } catch (e) {
-    console.error('[updateQuestion]', e)
-    res.status(500).json({ error: 'Server error.' })
-  }
-}
-
-/**
- * DELETE /api/faculty/questions/:id
- * Delete a question
- */
-async function deleteQuestion(req, res) {
-  try {
-    const { id } = req.params
-    const question = await global.prisma.question.findUnique({ where: { id } })
-    if (!question) return res.status(404).json({ error: 'Question not found.' })
-
-    const exam = await global.prisma.exam.findFirst({ where: { id: question.examId, facultyId: req.user.id } })
-    if (!exam) return res.status(403).json({ error: 'Not authorized.' })
-
-    await global.prisma.question.delete({ where: { id } })
-
-    // Adjust exam total marks
-    await global.prisma.exam.update({
-      where: { id: question.examId },
-      data: { totalMarks: Math.max(0, exam.totalMarks - question.marks) }
-    })
-
-    res.json({ message: 'Question deleted.' })
-  } catch (e) {
-    console.error('[deleteQuestion]', e)
-    res.status(500).json({ error: 'Server error.' })
-  }
-}
-
 /**
  * PATCH /api/faculty/exams/:id/publish
  * Publish an exam (set status to PUBLISHED)
@@ -685,13 +592,36 @@ async function publishExam(req, res) {
     const questionCount = await global.prisma.question.count({ where: { examId: id } })
     if (questionCount === 0) return res.status(400).json({ error: 'Cannot publish exam with no questions.' })
 
+    // Generate secure random uppercase 8-character credentials
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let rawInvPassword = ''
+    for (let i = 0; i < 8; i++) {
+      rawInvPassword += characters.charAt(Math.floor(Math.random() * characters.length))
+    }
+
+    const invId = `INV-${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+    const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
+
     const exam = await global.prisma.exam.update({
       where: { id },
-      data: { status: 'PUBLISHED' }
+      data: { 
+        status: 'PUBLISHED',
+        invId,
+        invPasswordHash
+      }
     })
     logAudit({ userId: req.user.id, userRole: 'faculty', action: 'EXAM_PUBLISHED', details: `Exam: ${id}`, ipAddress: getClientIp(req) })
-    res.json({ message: 'Exam published.', exam })
+    
+    res.json({ 
+      message: 'Exam published.', 
+      exam,
+      invCredentials: {
+        invId,
+        password: rawInvPassword
+      }
+    })
   } catch (e) {
+    console.error('[publishExam]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -722,23 +652,8 @@ async function releaseResults(req, res) {
 }
 
 /**
- * GET /api/faculty/exams/:id/collusion
- * Run collusion check for an exam
- */
-async function runCollusionCheck(req, res) {
-  try {
-    const { id } = req.params
-    // This is a stub for the ML/Python microservice integration.
-    // For now we just return an empty array or dummy data.
-    res.json({ flags: [] })
-  } catch (e) {
-    res.status(500).json({ error: 'Server error.' })
-  }
-}
-
-/**
  * GET /api/faculty/results/:id
- * Get details for a specific result dossier
+ * Get details for a specific result dossier with properly formatted answers
  */
 async function getStudentResult(req, res) {
   try {
@@ -757,8 +672,24 @@ async function getStudentResult(req, res) {
       }
     })
     if (!result) return res.status(404).json({ error: 'Result not found.' })
-    res.json({ result })
+
+    // Format the result to map answers directly on the root as the frontend expects
+    const formattedResult = {
+      ...result,
+      answers: result.studentExam.answers.map(ans => ({
+        id: ans.id,
+        selectedOption: ans.selectedOption,
+        codeAnswer: ans.codeAnswer,
+        writtenText: ans.writtenText,
+        question: ans.question,
+        isCorrect: ans.autoScore > 0 || ans.manualScore > 0 || ans.selectedOption === ans.question.correctAnswer,
+        marksAwarded: ans.manualScore !== null ? ans.manualScore : ans.autoScore
+      }))
+    }
+
+    res.json({ result: formattedResult })
   } catch (e) {
+    console.error('[getStudentResult]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -1071,9 +1002,140 @@ Return ONLY this JSON structure (no markdown):
   }
 }
 
+/**
+ * POST /api/faculty/exams/ai-generate-preview
+ * Generate questions from text using Groq (database-free for creation wizard preview)
+ */
+async function generateQuestionsPreview(req, res) {
+  try {
+    const { text, numMCQ = 5, numEssay = 2, difficulty = 'MEDIUM', marksPerMCQ = 2, marksPerEssay = 10 } = req.body
+
+    if (!text || text.trim().length < 50) {
+      return res.status(400).json({ error: 'Please provide at least 50 characters of content.' })
+    }
+
+    const apiKey = process.env.GROQ_API_KEY
+    if (!apiKey) return res.status(500).json({ error: 'Groq API key not configured.' })
+
+    const systemPrompt = `You are an expert academic exam question generator. Always respond with ONLY valid JSON — no markdown, no code blocks, no extra text.`
+
+    const userPrompt = `Generate exactly ${numMCQ} MCQ questions and ${numEssay} subjective questions at ${difficulty} difficulty from the content below.
+
+Content:
+"""
+${text.substring(0, 10000)}
+"""
+
+Return ONLY this JSON structure (no markdown):
+{
+  "questions": [
+    {
+      "type": "MCQ",
+      "questionText": "...",
+      "options": [
+        {"text": "Option A", "isCorrect": false},
+        {"text": "Option B", "isCorrect": true},
+        {"text": "Option C", "isCorrect": false},
+        {"text": "Option D", "isCorrect": false}
+      ],
+      "correctAnswer": "Option B",
+      "marks": ${marksPerMCQ},
+      "difficulty": "${difficulty}"
+    },
+    {
+      "type": "SUBJECTIVE",
+      "questionText": "...",
+      "options": [],
+      "correctAnswer": "Key points for grading...",
+      "marks": ${marksPerEssay},
+      "difficulty": "${difficulty}"
+    }
+  ]
+}`
+
+    const axios = require('axios')
+    const groqRes = await axios.post(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.4,
+        max_tokens: 4096,
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    )
+
+    const rawText = groqRes.data.choices?.[0]?.message?.content || ''
+    // Strip markdown code blocks if present
+    const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      console.error('[AI Preview] Raw response:', rawText.substring(0, 500))
+      return res.status(500).json({ error: 'AI returned invalid format. Try again.' })
+    }
+
+    let parsed
+    try { parsed = JSON.parse(jsonMatch[0]) }
+    catch (parseErr) {
+      console.error('[AI Preview] JSON parse error:', parseErr.message)
+      return res.status(500).json({ error: 'AI response could not be parsed. Try again.' })
+    }
+
+    const questions = parsed.questions || []
+    if (questions.length === 0) return res.status(500).json({ error: 'AI generated no questions. Try again.' })
+
+    res.json({ message: `${questions.length} questions generated successfully!`, questions })
+  } catch (e) {
+    console.error('[generateQuestionsPreview]', e.response?.data || e.message)
+    if (e.response?.status === 401) return res.status(500).json({ error: 'Invalid Groq API key.' })
+    if (e.response?.status === 429) return res.status(429).json({ error: 'AI rate limit hit. Please wait a moment and try again.' })
+    res.status(500).json({ error: 'AI generation failed: ' + (e.response?.data?.error?.message || e.message) })
+  }
+}
+
+
+/**
+ * GET /api/faculty/exams/:id/credentials
+ * Return invigilator credentials for an exam.
+ * Since the password is hashed and unrecoverable, we reset it to a new random one.
+ */
+async function getExamCredentials(req, res) {
+  try {
+    const exam = await global.prisma.exam.findFirst({
+      where: { id: req.params.id, facultyId: req.user.id },
+      select: { id: true, title: true, invId: true, status: true }
+    })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+    if (!exam.invId) return res.status(400).json({ error: 'This exam has no invigilator credentials yet. Publish it first.' })
+
+    // Generate a fresh password (hash stored, raw returned once)
+    const newPassword = Math.random().toString(36).substr(2, 8).toUpperCase()
+    const newHash = await bcrypt.hash(newPassword, 10)
+    await global.prisma.exam.update({
+      where: { id: exam.id },
+      data: { invPasswordHash: newHash }
+    })
+
+    return res.json({
+      invCredentials: { invId: exam.invId, password: newPassword },
+      exam: { id: exam.id, title: exam.title }
+    })
+  } catch (err) {
+    console.error('getExamCredentials error:', err)
+    return res.status(500).json({ error: 'Failed to retrieve credentials.' })
+  }
+}
 
 module.exports = {
-
   getDashboardStats,
   createExam,
   listExams,
@@ -1082,6 +1144,7 @@ module.exports = {
   deleteExam,
   duplicateExam,
   publishExam,
+  getExamCredentials,
   addQuestion,
   listQuestions,
   listExamQuestions,
@@ -1098,4 +1161,5 @@ module.exports = {
   runCollusionCheck,
   getStudentResult,
   generateQuestionsFromAI,
+  generateQuestionsPreview,
 }

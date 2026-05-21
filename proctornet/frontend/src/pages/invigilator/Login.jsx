@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Shield, Hash, Lock, AlertCircle, Upload, Eye, EyeOff, Key } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Shield, Hash, Lock, AlertCircle, Eye, EyeOff, Key, ArrowLeft } from 'lucide-react'
 import api from '@/utils/api'
 
 export default function InvigilatorLogin() {
@@ -9,36 +9,22 @@ export default function InvigilatorLogin() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showPw, setShowPw] = useState(false)
-  const [idCard, setIdCard] = useState(null)
-  const [idPreview, setIdPreview] = useState(null)
-  const fileRef = useRef()
 
   const set = (field) => (e) => {
     setForm(prev => ({ ...prev, [field]: e.target.value }))
     setError('')
   }
 
-  const handleFile = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    setIdCard(file)
-    const reader = new FileReader()
-    reader.onload = (ev) => setIdPreview(ev.target.result)
-    reader.readAsDataURL(file)
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!form.examId || !form.invId || !form.invPassword) { setError('All fields are required.'); return }
-    if (!idCard) { setError('Please upload your ID card photo.'); return }
     setLoading(true)
     try {
-      const data = new FormData()
-      data.append('examId', form.examId.trim())
-      data.append('invId', form.invId.trim())
-      data.append('invPassword', form.invPassword)
-      data.append('idCard', idCard)
-      const res = await api.post('/auth/invigilator/login', data, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res = await api.post('/auth/invigilator/login', {
+        examId: form.examId.trim(),
+        invId: form.invId.trim(),
+        invPassword: form.invPassword
+      })
       const { token, session } = res.data
       localStorage.setItem('inv_token', token)
       localStorage.setItem('inv_examId', session.examId)
@@ -54,6 +40,11 @@ export default function InvigilatorLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 p-6">
       <div className="w-full max-w-md">
+        {/* Back Link */}
+        <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition mb-6">
+          <ArrowLeft size={14} /> Back to Home
+        </Link>
+
         {/* Brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
@@ -109,39 +100,25 @@ export default function InvigilatorLogin() {
               </div>
             </div>
 
-            {/* ID Card Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">ID Card Photo *</label>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-              <button type="button" onClick={() => fileRef.current.click()}
-                className="w-full border-2 border-dashed border-gray-600 rounded-xl p-4 text-center transition hover:border-blue-500 hover:bg-gray-700/50">
-                {idPreview ? (
-                  <div className="space-y-2">
-                    <img src={idPreview} alt="ID" className="w-full h-24 object-cover rounded-lg" />
-                    <p className="text-xs text-gray-400">Click to change</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <Upload size={20} className="mx-auto text-gray-500" />
-                    <p className="text-sm text-gray-400">Upload your ID card</p>
-                  </div>
-                )}
-              </button>
-            </div>
-
             <button type="submit" disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-4">
               {loading ? (
                 <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Verifying…</>
               ) : 'Access Exam Dashboard →'}
             </button>
           </form>
 
-          <div className="mt-6 pt-5 border-t border-gray-700 text-center">
-            <p className="text-xs text-gray-500">This session expires when the exam ends. Contact faculty for access credentials.</p>
+          {/* Quick-switch anchors */}
+          <div className="mt-6 pt-5 border-t border-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-gray-500">
+            <Link to="/student/login" className="hover:text-white transition">Student Login</Link>
+            <span>•</span>
+            <Link to="/faculty/login" className="hover:text-white transition">Faculty Login</Link>
+            <span>•</span>
+            <Link to="/admin/login" className="hover:text-white transition">Admin Login</Link>
           </div>
         </div>
       </div>
     </div>
   )
 }
+

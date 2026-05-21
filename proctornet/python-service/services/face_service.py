@@ -7,11 +7,11 @@ import re
 
 # Conditional imports for local development portability
 try:
-    import face_recognition
+    from deepface import DeepFace
     HAS_FACE_AI = True
 except ImportError:
     HAS_FACE_AI = False
-    print("[FaceService Warning] face_recognition library not found. Using Mock AI fallback.")
+    print("[FaceService Warning] deepface library not found. Using Mock AI fallback.")
 
 def download_image_as_numpy(source):
     try:
@@ -45,23 +45,44 @@ def compare_faces(face_photo_url, id_card_photo_url):
         img1 = download_image_as_numpy(face_photo_url)
         img2 = download_image_as_numpy(id_card_photo_url)
 
-        enc1 = face_recognition.face_encodings(img1)
-        enc2 = face_recognition.face_encodings(img2)
+        # Using DeepFace to verify with ArcFace (most accurate) and ssd detector_backend (highly robust)
+        # Fall back to Facenet if ArcFace weights are not downloaded/available offline
+        try:
+            result = DeepFace.verify(
+                img1_path=img1,
+                img2_path=img2,
+                enforce_detection=False,
+                model_name="ArcFace",
+                detector_backend="ssd"
+            )
+            threshold = 0.68
+        except Exception as e_arc:
+            print(f"[FaceService ArcFace Error] {str(e_arc)}. Falling back to Facenet...")
+            result = DeepFace.verify(
+                img1_path=img1,
+                img2_path=img2,
+                enforce_detection=False,
+                model_name="Facenet",
+                detector_backend="ssd"
+            )
+            threshold = 0.40
 
-        if not enc1 or not enc2:
-            return {
-                "matchScore": 0.0,
-                "isMatch": False,
-                "error": "Could not detect a face in one of the images."
-            }
+        distance = result.get("distance", 1.0)
+        verified = bool(result.get("verified", False))
 
-        distance = face_recognition.face_distance([enc1[0]], enc2[0])[0]
-        match_score = max(0, 1 - distance)
-        
+        # Calibrate match score based on verification status and threshold
+        # Verified matches scale between [70%, 100%]; unverified scales below 70%
+        if verified:
+            capped_distance = min(distance, threshold)
+            match_score = 1.0 - (capped_distance / threshold) * 0.30
+        else:
+            excess_distance = max(0.0, distance - threshold)
+            match_score = max(0.0, 0.70 - (excess_distance / (1.5 - threshold)) * 0.70)
+
         return {
             "matchScore": float(match_score),
             "distance": float(distance),
-            "isMatch": bool(distance < 0.6)
+            "isMatch": verified
         }
 
     except Exception as e:
