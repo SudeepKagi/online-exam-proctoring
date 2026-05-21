@@ -44,7 +44,7 @@ graph TD
 
 ## 🌟 Impressive Engineering Components
 
-ProctorNet is packed with advanced features designed to make it stand out as a premium, production-ready final year engineering project.
+ProctorNet is packed with advanced features designed to perform as a premium, production-ready, and enterprise-grade system.
 
 ### 1. ⚡ Reactive Pub-Sub Dual-Stream Pipeline
 Traditional proctoring portals suffer from severe visual lag when streaming multiple candidate screens and webcams, dragging down the browser CPU to near 100%. ProctorNet completely re-engineers this pipeline:
@@ -95,7 +95,7 @@ sequenceDiagram
     participant Lobby as Verification Lobby
     participant Node as Node.js Gateway
     participant AI as Python AI Service (dlib)
-    database DB as Supabase DB
+    participant DB as Supabase DB
 
     Candidate->>Lobby: Upload ID Card & Live Snap
     Lobby->>Node: Transmit FormPayload (multipart/form-data)
@@ -248,5 +248,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <div align="center">
-  <sub>ProctorNet is a fully featured, state-of-the-art final year engineering capstone project designed for maximum security and performance.</sub>
+  <sub>ProctorNet is a fully featured, state-of-the-art online examination proctoring and laboratory network security platform designed for maximum reliability and performance.</sub>
 </div>

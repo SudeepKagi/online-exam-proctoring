@@ -175,7 +175,7 @@ export default function LandingPage() {
           fontWeight: 600,
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', animation: 'blink 1.5s infinite', display: 'inline-block' }} />
-          College Lab Proctoring System — Final Year Project
+          College Lab Proctoring & Network Isolation System
         </div>
 
         <h1 style={{
@@ -337,7 +337,7 @@ export default function LandingPage() {
         <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>ProctorNet</span>
         {' '} — Secure Exam Proctoring System · Built with React, Node.js, Python Flask, WireGuard
         <br />
-        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Final Year Project · 2024</span>
+        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Enterprise-Grade Lab Security · 2026</span>
       </footer>
     </div>
   )
