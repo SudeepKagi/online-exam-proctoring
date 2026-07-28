@@ -143,6 +143,8 @@ model StudentExam {
   reverifyLogs         ReverificationLog[]
   identityVerification IdentityVerification?
   examResult           ExamResult?
+
+  @@unique([studentId, examId])
 }
 
 model Answer {

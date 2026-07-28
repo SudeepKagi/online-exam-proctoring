@@ -1,78 +1,72 @@
-# 🛡️ ProctorNet: Forensic-Grade Online Exam Proctoring
+# 🛡️ ProctorNet: Online Exam Proctoring & Lab Security System
 
-ProctorNet is a secure, network-level online examination proctoring system designed for college lab and classroom environments. It combines real-time biometric monitoring, network isolation, and forensic-grade anti-cheat logic.
+ProctorNet is a real-time online examination proctoring system engineered for college laboratory and classroom environments. Combining **browser-side face detection**, **dual-stream Socket.io + WebRTC synchronization**, **DeepFace (ArcFace) biometric verification**, **Tesseract OCR parsing**, and **WireGuard network isolation**, ProctorNet provides continuous multi-role invigilator awareness.
 
 ---
 
 ## 🏗️ Technical Architecture
 
-### 1. Frontend (React + Vite)
-- **Design**: Premium "Industrial-Brutalist" UI with Tailwind CSS.
-- **Biometrics**: `face-api.js` for real-time browser-side face detection.
-- **Communication**: Socket.io-client for live violation streaming.
-- **Security**: Monaco Editor (Code) and Canvas-based forensic watermarking.
+### 1. Frontend (React 19 + Vite)
+- **UI Framework**: React 19 SPA with Tailwind CSS 4 & Lucide icons.
+- **Browser Biometrics**: `face-api.js` (TinyFaceDetector) for continuous real-time presence detection (no face / multiple faces).
+- **Live Feeds**: Socket.io-client emitting compressed base64 JPEG frames + WebRTC P2P stream upgrade.
+- **Student Console**: Monaco Editor for programming questions, reactive fullscreen lock, and tab-switch telemetry.
 
-### 2. Main Backend (Node.js + Express)
-- **Database**: Prisma ORM with Supabase (PostgreSQL).
-- **Auth**: JWT-based stateless authentication with role-level enforcement.
-- **Real-time**: Socket.io engine for student-invigilator synchronization.
-- **VPN Engine**: WireGuard key management for network-level isolation.
+### 2. Main Backend (Node.js + Express + Socket.io)
+- **Database Layer**: Prisma ORM 5 connected to Supabase (PostgreSQL).
+- **Auth & Security**: Role-based JWT authentication, rate limiting, and Helmet headers.
+- **Real-Time Broker**: Socket.io engine relaying student stream frames, chat, flags, and WebRTC signaling.
+- **VPN Engine**: WireGuard key pair allocation and automated cron-based key revocation.
 
 ### 3. AI Microservice (Python + Flask)
-- **Face Matching**: `face_recognition` (dlib) for ID-to-Live biometric matching.
-- **OCR Engine**: Tesseract OCR for automated Student ID parsing.
-- **Communication**: RESTful bridge via Axios from the Node.js backend.
+- **Biometric Matching**: DeepFace engine using ArcFace (with FaceNet fallback) for Euclidean face distance computation.
+- **OCR Engine**: PyTesseract parsing physical student ID cards for USN extraction (`[1-4][A-Z]{2}[0-9]{2}[A-Z]{2}[0-9]{3}`).
+- **REST Bridge**: Axios HTTP communication with the main Node.js backend.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (v3.9+)
-- Tesseract OCR (installed on system)
-- PostgreSQL (or Supabase URL)
+- **Node.js** (v18+)
+- **Python** (v3.9+)
+- **Tesseract OCR Engine** ([Install Guide](https://github.com/tesseract-ocr/tesseract))
 
-### Installation
+### Installation & Execution
 
-#### 1. Clone & Core Setup
 ```bash
-# Frontend setup
-cd proctornet/frontend
-npm install
-npm run dev
-
-# Backend setup
-cd proctornet/backend
+# 1. Start Backend
+cd backend
 npm install
 npx prisma generate
 npx prisma db push
 npm run dev
-```
 
-#### 2. AI Service Setup
-```bash
-cd proctornet/python-service
+# 2. Start AI Microservice (in new terminal)
+cd ../python-service
+python -m venv venv
+source venv/bin/activate # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
+
+# 3. Start Frontend (in new terminal)
+cd ../frontend
+npm install
+npm run dev
 ```
 
 ---
 
-## 🔐 Administrative Access
-- **Portal**: `/admin/login`
-- **Default Credentials**: Configure `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend `.env` file before running the seed script.
-- **First Step**: Log in as admin and approve faculty registrations to enable exam creation.
+## 🔐 Administrative Access & Roles
+- **Admin Portal**: `/admin/login` (approves Faculty signups & monitors audit logs)
+- **Faculty Portal**: `/faculty/login` (creates question banks, schedules exams, evaluates results)
+- **Invigilator HUD**: `/invigilator/login` (monitors live grid tiles, receives real-time flags, opens evidence lightboxes)
+- **Student Lobby**: `/student/login` (completes security check, takes locked fullscreen exam)
 
 ---
 
 ## 🛡️ Anti-Cheat Protocols
-- **Biometric Presence**: Continuous face detection via `face-api.js`.
-- **Environment Locking**: Automated tab-switch detection and full-screen enforcement.
-- **Forensic Watermarking**: Unique session-based invisible watermarks to trace photo leaks.
-- **Collusion Detection**: Real-time code and MCQ similarity analysis.
-
----
-
-## 🛠️ Built for Production
-Automatically implements SEO best practices, secure HTTP headers (Helmet), and rate-limiting to protect against DDoS and brute-force attacks.
+- **Continuous Face Detection**: `face-api.js` TinyFaceDetector flags `NO_FACE` (HIGH severity) or `MULTIPLE_FACES` (CRITICAL severity).
+- **Viewport Lockdown**: Strict fullscreen lock enforcement and tab-switch (`blur` & `visibilitychange`) logging.
+- **Dual Snapshot Evidence**: Captures simultaneous webcam and screen frames when a violation occurs.
+- **Session Watermark**: Unique per-session seed generated in database for forensic tracking.

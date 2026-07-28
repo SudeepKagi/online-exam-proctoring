@@ -31,14 +31,10 @@ def download_image_as_numpy(source):
 
 def compare_faces(face_photo_url, id_card_photo_url):
     if not HAS_FACE_AI:
-        # High-fidelity mock for local demonstration
-        import time
-        time.sleep(0.5)
         return {
-            "matchScore": 0.92,
-            "distance": 0.08,
-            "isMatch": True,
-            "warning": "Library missing: Using Mock AI Fallback"
+            "error": "DeepFace AI library not installed on python service",
+            "isMatch": False,
+            "matchScore": 0.0
         }
 
     try:

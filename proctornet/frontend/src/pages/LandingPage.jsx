@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 const features = [
   {
@@ -89,6 +89,24 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const { user, isAuthenticated } = useAuth()
 
+  const [activeDropdown, setActiveDropdown] = useState(null) // 'signin' | 'register' | null
+  const signinRef = useRef(null)
+  const registerRef = useRef(null)
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        (signinRef.current && !signinRef.current.contains(event.target)) &&
+        (registerRef.current && !registerRef.current.contains(event.target))
+      ) {
+        setActiveDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   // Auto-redirect if already logged in
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -102,47 +120,348 @@ export default function LandingPage() {
     }
   }, [isAuthenticated, user, navigate])
 
+  const signInItems = [
+    {
+      role: 'Student',
+      title: 'Student Portal',
+      desc: 'Verify face and take active exams',
+      icon: 'school',
+      color: '#34d399',
+      path: '/student/login'
+    },
+    {
+      role: 'Faculty',
+      title: 'Faculty Portal',
+      desc: 'Create exams and monitor results',
+      icon: 'history_edu',
+      color: '#60a5fa',
+      path: '/faculty/login'
+    },
+    {
+      role: 'Admin',
+      title: 'Admin Control',
+      desc: 'Approve users and audit system logs',
+      icon: 'admin_panel_settings',
+      color: '#a78bfa',
+      path: '/admin/login'
+    },
+    {
+      role: 'Invigilator',
+      title: 'Invigilator Console',
+      desc: 'Real-time lab proctoring & flag verification',
+      icon: 'visibility',
+      color: '#fb923c',
+      path: '/invigilator-login'
+    }
+  ]
+
+  const registerItems = [
+    {
+      role: 'Student',
+      title: 'Student Registration',
+      desc: 'Register with student ID & face photo',
+      icon: 'person_add',
+      color: '#34d399',
+      path: '/student/register'
+    },
+    {
+      role: 'Faculty',
+      title: 'Faculty Registration',
+      desc: 'Register as instructor for your department',
+      icon: 'badge',
+      color: '#60a5fa',
+      path: '/faculty/register'
+    }
+  ]
+
   return (
-    <div style={{ background: 'var(--color-bg-primary)', minHeight: '100vh' }}>
+    <div style={{ background: '#0a0e1a', color: '#ffffff', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+        .animate-slide-down {
+          animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .nav-dropdown-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.875rem;
+          padding: 0.75rem;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          text-align: left;
+          width: '100%';
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.15s ease;
+        }
+        .nav-dropdown-item:hover {
+          background: rgba(255, 255, 255, 0.05);
+          transform: translateX(4px);
+        }
+        .nav-link {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.7);
+          transition: color 0.25s;
+          text-decoration: none;
+        }
+        .nav-link:hover {
+          color: #60a5fa;
+        }
+        .text-gradient {
+          background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+        .glass-card {
+          background: rgba(255, 255, 255, 0.03);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 1rem;
+          transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .glass-card:hover {
+          transform: translateY(-3px);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .stats-card {
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 1rem;
+          padding: 1.5rem;
+          transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .stats-card:hover {
+          transform: translateY(-2px);
+          border-color: rgba(96, 165, 250, 0.2);
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+      `}</style>
 
       {/* ── NAV ── */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 50,
         background: 'rgba(10,14,26,0.85)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--color-border)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
         padding: '0 2rem',
-        height: '60px',
+        height: '64px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
       }}>
+        {/* Brand Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
-            width: '32px', height: '32px',
-            background: 'linear-gradient(135deg,#3b82f6,#7c3aed)',
-            borderRadius: '8px',
+            width: '38px', height: '38px',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '16px',
-          }}>🔒</div>
-          <span style={{ fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>
+            transition: 'transform 0.3s',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05) rotate(3deg)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
+          >
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logo-grad-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00c6ff" />
+                  <stop offset="100%" stopColor="#0072ff" />
+                </linearGradient>
+              </defs>
+              <path 
+                d="M12 2C16 3.5 20 3.5 20 3.5C20 3.5 20.5 7.5 19.5 11.5C18.5 14.5 16 17.5 16 17.5L13 14.5C14.2 13.3 16 11.5 16 9C16 6.5 13.5 5.5 12 5V2Z" 
+                fill="url(#logo-grad-dark)" 
+              />
+              <path 
+                d="M12 2C8 3.5 4 3.5 4 3.5C4 3.5 3.5 7.5 4.5 11.5C5.5 15.5 8 19 12 22C12 22 13 21 15 19L12 16C10.8 15.2 9 13.5 9 11C9 8.5 11.5 7.5 12 7V2Z" 
+                fill="url(#logo-grad-dark)" 
+              />
+            </svg>
+          </div>
+          <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
             Proctor<span style={{ color: '#60a5fa' }}>Net</span>
           </span>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.8125rem' }}
-            onClick={() => navigate('/faculty/register')}>
-            Register Faculty
-          </button>
-          <button className="btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.8125rem' }}
-            onClick={() => navigate('/student/register')}>
-            Student Register
-          </button>
+
+        {/* Center Links */}
+        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+          <a href="#how-it-works" className="nav-link">How it Works</a>
+          <a href="#features" className="nav-link">Security Suite</a>
+          <a href="#portals" className="nav-link">All Portals</a>
+        </div>
+
+        {/* Right Actions */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* REGISTER DROPDOWN */}
+          <div ref={registerRef} style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setActiveDropdown(activeDropdown === 'register' ? null : 'register')}
+              style={{
+                padding: '0.45rem 1.1rem',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Register
+              <span className="material-symbols-outlined" style={{ 
+                fontSize: '16px', 
+                transition: 'transform 0.2s ease', 
+                transform: activeDropdown === 'register' ? 'rotate(180deg)' : 'rotate(0deg)' 
+              }}>
+                keyboard_arrow_down
+              </span>
+            </button>
+
+            {activeDropdown === 'register' && (
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 8px)',
+                width: '320px',
+                background: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+                zIndex: 100,
+                animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}>
+                <div style={{ padding: '0.5rem 0.75rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.375rem' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Create Account</p>
+                </div>
+                {registerItems.map((item) => (
+                  <button
+                    key={item.role}
+                    onClick={() => { navigate(item.path); setActiveDropdown(null) }}
+                    className="nav-dropdown-item"
+                  >
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: item.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ffffff' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>{item.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* SIGN IN DROPDOWN */}
+          <div ref={signinRef} style={{ position: 'relative' }}>
+            <button 
+              onClick={() => setActiveDropdown(activeDropdown === 'signin' ? null : 'signin')}
+              style={{
+                padding: '0.45rem 1.1rem',
+                fontSize: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.375rem',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Sign In
+              <span className="material-symbols-outlined" style={{ 
+                fontSize: '16px', 
+                transition: 'transform 0.2s ease', 
+                transform: activeDropdown === 'signin' ? 'rotate(180deg)' : 'rotate(0deg)' 
+              }}>
+                keyboard_arrow_down
+              </span>
+            </button>
+
+            {activeDropdown === 'signin' && (
+              <div style={{
+                position: 'absolute',
+                right: 0,
+                top: 'calc(100% + 8px)',
+                width: '320px',
+                background: '#0f172a',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: '16px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+                zIndex: 100,
+                animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              }}>
+                <div style={{ padding: '0.5rem 0.75rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.375rem' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access Portals</p>
+                </div>
+                {signInItems.map((item) => (
+                  <button
+                    key={item.role}
+                    onClick={() => { navigate(item.path); setActiveDropdown(null) }}
+                    className="nav-dropdown-item"
+                  >
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: item.color,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ffffff' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>{item.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </nav>
 
       {/* ── HERO ── */}
-      <section style={{
+      <section className="animate-fade-in" style={{
         padding: '5rem 2rem 4rem',
         textAlign: 'center',
         position: 'relative',
@@ -175,7 +494,7 @@ export default function LandingPage() {
           fontWeight: 600,
         }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', animation: 'blink 1.5s infinite', display: 'inline-block' }} />
-          College Lab Proctoring & Network Isolation System
+          College Lab Proctoring &amp; Network Isolation System
         </div>
 
         <h1 style={{
@@ -184,15 +503,16 @@ export default function LandingPage() {
           letterSpacing: '-0.04em',
           lineHeight: 1.1,
           marginBottom: '1.25rem',
+          color: '#ffffff'
         }}>
-          <span style={{ color: 'var(--color-text-primary)' }}>Secure Online Exams,</span>
+          Secure Online Exams,
           <br />
           <span className="text-gradient">Forensic-Grade Integrity</span>
         </h1>
 
         <p style={{
           fontSize: '1.125rem',
-          color: 'var(--color-text-secondary)',
+          color: 'rgba(255,255,255,0.7)',
           maxWidth: '600px',
           margin: '0 auto 2.5rem',
           lineHeight: 1.7,
@@ -202,13 +522,38 @@ export default function LandingPage() {
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button className="btn-primary animate-pulse-glow" style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
-            onClick={() => navigate('/student/register')}>
+          <button 
+            className="btn-primary" 
+            style={{ 
+              padding: '0.75rem 2rem', 
+              fontSize: '1rem',
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
+            }}
+            onClick={() => navigate('/student/register')}
+          >
             Get Started as Student
           </button>
-          <button className="btn-secondary" style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}
-            onClick={() => navigate('/admin/login')}>
-            Admin Portal →
+          <button 
+            className="btn-secondary" 
+            style={{ 
+              padding: '0.75rem 2rem', 
+              fontSize: '1rem',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+            onClick={() => navigate('/faculty/register')}
+          >
+            Register as Faculty
           </button>
         </div>
 
@@ -224,23 +569,22 @@ export default function LandingPage() {
             ['VPN', 'Network Lock'],
           ].map(([val, label]) => (
             <div key={label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2rem', fontWeight: 800, color: '#60a5fa' }}>{val}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
+              <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#60a5fa' }}>{val}</div>
+              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── HOW IT WORKS ── */}
-      <section style={{ padding: '4rem 2rem', maxWidth: '900px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em' }}>
+      <section id="how-it-works" style={{ padding: '4rem 2rem', maxWidth: '900px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
           How It Works
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
           {steps.map((s, i) => (
-            <div key={i} className="glass-card animate-fade-in" style={{
+            <div key={i} className="glass-card" style={{
               padding: '1.5rem',
-              animationDelay: `${i * 0.1}s`,
               position: 'relative',
               overflow: 'hidden',
             }}>
@@ -252,19 +596,19 @@ export default function LandingPage() {
                 fontSize: '2.5rem', fontWeight: 900, color: 'rgba(59,130,246,0.15)',
                 letterSpacing: '-0.04em', marginBottom: '0.5rem', lineHeight: 1,
               }}>{s.n}</div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.5rem' }}>{s.title}</div>
-              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{s.desc}</div>
+              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.5rem', color: '#ffffff' }}>{s.title}</div>
+              <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>{s.desc}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── FEATURES ── */}
-      <section style={{ padding: '3rem 2rem', maxWidth: '1100px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em' }}>
+      <section id="features" style={{ padding: '3rem 2rem', maxWidth: '1100px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
           Enterprise-Grade Security Features
         </h2>
-        <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', marginBottom: '2.5rem', fontSize: '0.9375rem' }}>
+        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', marginBottom: '2.5rem', fontSize: '0.9375rem' }}>
           Built for college labs — not home proctoring.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
@@ -272,14 +616,15 @@ export default function LandingPage() {
             <div key={i} className="stats-card" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
               <div style={{
                 fontSize: '1.75rem', width: '48px', height: '48px',
-                background: 'var(--color-bg-elevated)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#60a5fa',
                 borderRadius: '12px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>{f.icon}</div>
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.375rem' }}>{f.title}</div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>{f.desc}</div>
+                <div style={{ fontWeight: 700, marginBottom: '0.375rem', color: '#ffffff' }}>{f.title}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>{f.desc}</div>
               </div>
             </div>
           ))}
@@ -287,16 +632,16 @@ export default function LandingPage() {
       </section>
 
       {/* ── ROLE PORTALS ── */}
-      <section style={{ padding: '3rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em' }}>
+      <section id="portals" style={{ padding: '3rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
+        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
           Access Your Portal
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
           {roles.map((r) => (
             <div key={r.role} style={{
-              background: 'var(--color-bg-card)',
+              background: '#111625',
               border: `1px solid ${r.border}`,
-              borderRadius: 'var(--radius-xl)',
+              borderRadius: '1rem',
               padding: '1.5rem',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
@@ -308,12 +653,12 @@ export default function LandingPage() {
             >
               <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>{r.icon}</div>
               <div style={{ fontWeight: 700, fontSize: '1.1rem', color: r.color, marginBottom: '0.5rem' }}>{r.role}</div>
-              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, marginBottom: '1.25rem' }}>{r.desc}</div>
+              <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: '1.25rem' }}>{r.desc}</div>
               <button style={{
                 width: '100%', padding: '0.5rem',
                 background: `${r.glow}`,
                 border: `1px solid ${r.border}`,
-                borderRadius: 'var(--radius-md)',
+                borderRadius: '8px',
                 color: r.color,
                 fontWeight: 700,
                 fontSize: '0.8125rem',
@@ -327,14 +672,14 @@ export default function LandingPage() {
 
       {/* ── FOOTER ── */}
       <footer style={{
-        borderTop: '1px solid var(--color-border)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
         padding: '1.5rem 2rem',
         textAlign: 'center',
-        color: 'var(--color-text-muted)',
+        color: 'rgba(255,255,255,0.4)',
         fontSize: '0.8125rem',
         marginTop: '2rem',
       }}>
-        <span style={{ fontWeight: 700, color: 'var(--color-text-secondary)' }}>ProctorNet</span>
+        <span style={{ fontWeight: 700, color: '#ffffff' }}>ProctorNet</span>
         {' '} — Secure Exam Proctoring System · Built with React, Node.js, Python Flask, WireGuard
         <br />
         <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Enterprise-Grade Lab Security · 2026</span>

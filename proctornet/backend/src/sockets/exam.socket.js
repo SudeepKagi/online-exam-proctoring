@@ -46,6 +46,49 @@ module.exports = (io) => {
       })
     })
 
+    // ── WebRTC Signaling Events ──
+    socket.on('webrtc:request-stream', (data) => {
+      const { studentId, examId } = data
+      io.to(`student:${studentId}`).emit('webrtc:request-stream', {
+        invId: socket.id,
+        examId
+      })
+      console.log(`Invigilator socket ${socket.id} requested WebRTC stream for student ${studentId}`)
+    })
+
+    socket.on('webrtc:offer', (data) => {
+      const { offer, invId, studentId } = data
+      io.to(invId).emit('webrtc:offer', {
+        offer,
+        studentId,
+        senderId: socket.id
+      })
+    })
+
+    socket.on('webrtc:answer', (data) => {
+      const { answer, studentId } = data
+      io.to(`student:${studentId}`).emit('webrtc:answer', {
+        answer,
+        invId: socket.id
+      })
+    })
+
+    socket.on('webrtc:ice-candidate', (data) => {
+      const { candidate, targetId } = data
+      if (socket.data?.role === 'student') {
+        io.to(targetId).emit('webrtc:ice-candidate', {
+          candidate,
+          senderId: socket.id,
+          studentId: socket.data.studentId
+        })
+      } else {
+        io.to(`student:${targetId}`).emit('webrtc:ice-candidate', {
+          candidate,
+          senderId: socket.id
+        })
+      }
+    })
+
     // ── STUDENT sends flag/violation ──
     socket.on('exam:flag', async (data) => {
       // Forward to invigilator immediately
@@ -62,11 +105,7 @@ module.exports = (io) => {
       
       // Save to DB
       try {
-        const { PrismaClient } = require('@prisma/client')
-        const prisma = new PrismaClient()
-        // Wait, check the relation fields of EvidenceLog in the active Prisma schema.
-        // In active schema: EvidenceLog has studentExamId, which is NOT nullable.
-        // Let's check studentExamId. We need to query studentExamId first!
+        const prisma = global.prisma
         const studentExam = await prisma.studentExam.findFirst({
           where: { studentId: data.studentId, examId: data.examId }
         })
@@ -82,7 +121,6 @@ module.exports = (io) => {
             }
           })
         }
-        await prisma.$disconnect()
       } catch(e) {
         console.error('Evidence log error:', e.message)
       }
@@ -111,8 +149,7 @@ module.exports = (io) => {
       })
       
       try {
-        const { PrismaClient } = require('@prisma/client')
-        const prisma = new PrismaClient()
+        const prisma = global.prisma
         await prisma.chatMessage.create({
           data: {
             examId,
@@ -121,7 +158,6 @@ module.exports = (io) => {
             message
           }
         })
-        await prisma.$disconnect()
       } catch(e) {
         console.error('Chat save error:', e.message)
       }
@@ -153,8 +189,7 @@ module.exports = (io) => {
         })
       
       try {
-        const { PrismaClient } = require('@prisma/client')
-        const prisma = new PrismaClient()
+        const prisma = global.prisma
         await prisma.studentExam.updateMany({
           where: {
             studentId: data.studentId,
@@ -166,7 +201,6 @@ module.exports = (io) => {
             submittedAt: new Date()
           }
         })
-        await prisma.$disconnect()
       } catch(e) {}
     })
 
@@ -181,8 +215,7 @@ module.exports = (io) => {
         })
       
       try {
-        const { PrismaClient } = require('@prisma/client')
-        const prisma = new PrismaClient()
+        const prisma = global.prisma
         await prisma.chatMessage.create({
           data: {
             examId,
@@ -191,7 +224,6 @@ module.exports = (io) => {
             message
           }
         })
-        await prisma.$disconnect()
       } catch(e) {}
     })
 

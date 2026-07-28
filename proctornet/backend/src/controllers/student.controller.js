@@ -641,39 +641,36 @@ async function submitExam(req, res) {
  */
 async function verifyFace(req, res) {
   try {
-    const { liveFrame, examId } = req.body
+    const { liveFrame } = req.body
+    const axios = require('axios')
+    const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5001'
+    const studentId = req.user.id
 
-    // Try Python service
-    try {
-      const axios = require('axios')
-      const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5001'
-      const studentId = req.user.id
+    const student = await global.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { facePhotoUrl: true }
+    })
 
-      const student = await global.prisma.student.findUnique({
-        where: { id: studentId },
-        select: { facePhotoUrl: true }
-      })
-
-      if (student?.facePhotoUrl && liveFrame) {
-        const pyRes = await axios.post(`${pythonUrl}/api/face/verify-live`, {
-          registeredPhotoUrl: student.facePhotoUrl,
-          liveFrameBase64: liveFrame
-        }, { timeout: 8000 })
-
-        return res.json({
-          verified: pyRes.data.isMatch || pyRes.data.verified || false,
-          matchScore: pyRes.data.matchScore || pyRes.data.similarity || 0.9
-        })
-      }
-    } catch (pyErr) {
-      console.warn('[verifyFace] Python service unavailable, using stub:', pyErr.message)
+    if (!student?.facePhotoUrl || !liveFrame) {
+      return res.status(400).json({ error: 'Missing required face verification parameters' })
     }
 
-    // Stub: allow through in development
-    res.json({ verified: true, matchScore: 0.92 })
-  } catch (e) {
-    console.error('[verifyFace]', e)
-    res.json({ verified: true, matchScore: 0.9 })
+    const pyRes = await axios.post(`${pythonUrl}/api/face/verify-live`, {
+      registeredPhotoUrl: student.facePhotoUrl,
+      liveFrameBase64: liveFrame
+    }, { timeout: 8000 })
+
+    return res.json({
+      verified: pyRes.data.isMatch || pyRes.data.verified || false,
+      matchScore: pyRes.data.matchScore || pyRes.data.similarity || 0.0
+    })
+  } catch (pyErr) {
+    console.error('[verifyFace] Python service error:', pyErr.message)
+    return res.status(503).json({
+      verified: false,
+      matchScore: 0.0,
+      error: 'AI Face Verification service unavailable. Ensure Python microservice is running.'
+    })
   }
 }
 
@@ -683,42 +680,31 @@ async function verifyFace(req, res) {
  */
 async function verifyIdCard(req, res) {
   try {
-    const { idCardPhoto, examId } = req.body // idCardPhoto is base64 string
-    const studentId = req.user.id
-
-    // Try calling Python service
-    try {
-      const axios = require('axios')
-      const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5001'
-
-      const pyRes = await axios.post(`${pythonUrl}/api/ocr/verify-id`, {
-        idCardUrl: idCardPhoto
-      }, { timeout: 8000 })
-
-      return res.json({
-        success: pyRes.data.isValid || false,
-        extractedUsn: pyRes.data.extractedUsn || '',
-        extractedName: pyRes.data.extractedName || '',
-        warning: pyRes.data.warning || null
-      })
-    } catch (pyErr) {
-      console.warn('[verifyIdCard] Python OCR service unavailable, using fallback:', pyErr.message)
+    const { idCardPhoto } = req.body
+    if (!idCardPhoto) {
+      return res.status(400).json({ error: 'Missing ID card photo' })
     }
 
-    // Fallback logic
-    const student = await global.prisma.student.findUnique({
-      where: { id: studentId }
-    })
+    const axios = require('axios')
+    const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:5001'
 
-    res.json({
-      success: true,
-      extractedUsn: student?.usn || '1VE22CS888',
-      extractedName: student?.name || 'DEV FALLBACK',
-      warning: 'OCR System Fallback (Mock active)'
+    const pyRes = await axios.post(`${pythonUrl}/api/ocr/verify-id`, {
+      idCardUrl: idCardPhoto
+    }, { timeout: 8000 })
+
+    return res.json({
+      success: pyRes.data.isValid || false,
+      extractedUsn: pyRes.data.extractedUsn || '',
+      extractedName: pyRes.data.extractedName || '',
+      warning: pyRes.data.warning || null
     })
-  } catch (e) {
-    console.error('[verifyIdCard]', e)
-    res.json({ success: true, extractedUsn: '1VE22CS888' })
+  } catch (pyErr) {
+    console.error('[verifyIdCard] Python OCR service error:', pyErr.message)
+    return res.status(503).json({
+      success: false,
+      extractedUsn: '',
+      error: 'OCR service unavailable. Ensure Python microservice and Tesseract are running.'
+    })
   }
 }
 

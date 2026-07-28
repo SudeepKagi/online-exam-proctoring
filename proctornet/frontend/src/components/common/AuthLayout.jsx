@@ -73,9 +73,18 @@ export default function AuthLayout({ title, subtitle, children, maxWidth = '420p
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               backdropFilter: 'blur(8px)',
             }}>
-              <Icon name="verified_user" size={22} style={{ color: '#fff' }} />
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path 
+                  d="M12 2C16 3.5 20 3.5 20 3.5C20 3.5 20.5 7.5 19.5 11.5C18.5 14.5 16 17.5 16 17.5L13 14.5C14.2 13.3 16 11.5 16 9C16 6.5 13.5 5.5 12 5V2Z" 
+                  fill="#ffffff" 
+                />
+                <path 
+                  d="M12 2C8 3.5 4 3.5 4 3.5C4 3.5 3.5 7.5 4.5 11.5C5.5 15.5 8 19 12 22C12 22 13 21 15 19L12 16C10.8 15.2 9 13.5 9 11C9 8.5 11.5 7.5 12 7V2Z" 
+                  fill="#ffffff" 
+                />
+              </svg>
             </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            <span style={{ fontSize: '1.25rem', fontStyle: 'normal', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
               ProctorNet
             </span>
           </div>

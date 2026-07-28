@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { FormInput, SelectInput, FormTextarea, SubmitButton, Alert } from '@/components/common/FormComponents'
 import api from '@/utils/api'
+import toast from 'react-hot-toast'
 
 function Icon({ name, size = 20, style = {} }) {
   return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
@@ -85,6 +86,10 @@ export default function ExamDetail() {
     correctAnswer: 'A'
   })
 
+  // Settings form state
+  const [settingsForm, setSettingsForm] = useState(null)
+  const [settingsSaving, setSettingsSaving] = useState(false)
+
   // Enrollment State
   const [deptStudents, setDeptStudents] = useState([])
   const [selectedStudents, setSelectedStudents] = useState([])
@@ -93,6 +98,28 @@ export default function ExamDetail() {
     fetchExam()
     fetchDeptStudents()
   }, [id])
+
+  // Sync settingsForm from exam once loaded
+  useEffect(() => {
+    if (exam && !settingsForm) {
+      setSettingsForm({
+        title: exam.title || '',
+        subject: exam.subject || '',
+        description: exam.description || '',
+        startTime: exam.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
+        endTime: exam.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+        duration: exam.duration || 60,
+        tabSwitchLimit: exam.tabSwitchLimit ?? 3,
+        cameraRequired: exam.cameraRequired ?? true,
+        browserLock: exam.browserLock ?? true,
+        fullScreenMode: exam.fullScreenMode ?? true,
+        randomiseQuestions: exam.randomiseQuestions ?? true,
+        randomiseOptions: exam.randomiseOptions ?? true,
+        negativeMarking: exam.negativeMarking ?? false,
+        negativeValue: exam.negativeValue ?? 0.25,
+      })
+    }
+  }, [exam])
 
   const fetchExam = async () => {
     try {
@@ -120,8 +147,9 @@ export default function ExamDetail() {
       await api.post('/faculty/questions', { ...qForm, examId: id })
       fetchExam()
       setQForm({ type: 'MCQ', questionText: '', marks: '5', difficulty: 'MEDIUM', options: ['', '', '', ''], correctAnswer: 'A' })
+      toast.success('Question added successfully!')
     } catch (err) {
-      alert('Error adding question')
+      toast.error('Error adding question')
     }
   }
 
@@ -130,18 +158,39 @@ export default function ExamDetail() {
       await api.post(`/faculty/exams/${id}/students`, { studentIds: selectedStudents })
       fetchExam()
       setSelectedStudents([])
-      alert('Students enrolled successfully')
+      toast.success('Students enrolled successfully!')
     } catch (err) {
-      alert('Error enrolling students')
+      toast.error('Error enrolling students')
+    }
+  }
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault()
+    setSettingsSaving(true)
+    try {
+      await api.patch(`/faculty/exams/${id}`, {
+        ...settingsForm,
+        startTime: settingsForm.startTime ? new Date(settingsForm.startTime).toISOString() : undefined,
+        endTime: settingsForm.endTime ? new Date(settingsForm.endTime).toISOString() : undefined,
+        duration: parseInt(settingsForm.duration),
+        tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit),
+        negativeValue: parseFloat(settingsForm.negativeValue),
+      })
+      await fetchExam()
+      toast.success('Exam settings saved successfully!')
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save settings')
+    } finally {
+      setSettingsSaving(false)
     }
   }
 
   const handlePublish = async () => {
     if (exam.questions.length === 0) {
-      alert('Cannot publish exam with zero questions. Please add questions first.')
+      toast.error('Cannot publish exam with zero questions. Please add questions first.')
       return
     }
-    if (!confirm('Are you sure you want to publish this exam? Once published, questions cannot be modified, and invigilator credentials will be generated.')) {
+    if (!window.confirm('Are you sure you want to publish this exam? Once published, questions cannot be modified, and invigilator credentials will be generated.')) {
       return
     }
     try {
@@ -150,7 +199,7 @@ export default function ExamDetail() {
       setShowCredentialsModal(true)
       fetchExam()
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to publish exam.')
+      toast.error(err.response?.data?.error || 'Failed to publish exam.')
     }
   }
 
@@ -166,7 +215,7 @@ export default function ExamDetail() {
       setCredentials(res.data.invCredentials)
       setShowCredentialsModal(true)
     } catch (err) {
-      alert(err.response?.data?.error || 'Could not retrieve credentials. They may have been reset.')
+      toast.error(err.response?.data?.error || 'Could not retrieve credentials. They may have been reset.')
     }
   }
 
@@ -662,8 +711,7 @@ export default function ExamDetail() {
               </div>
             </div>
           )}
-
-          {activeTab === 'enrollment' && (
+            {activeTab === 'enrollment' && (
             <div style={{ maxWidth: '800px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>Enroll Students</h3>
@@ -693,7 +741,7 @@ export default function ExamDetail() {
                   </thead>
                   <tbody>
                     {deptStudents.map(s => {
-                      const isEnrolled = exam.students.some(e => e.studentId === s.id)
+                      const isEnrolled = (exam.studentExams || exam.students || []).some(e => e.studentId === s.id)
                       return (
                         <tr key={s.id} style={{ opacity: isEnrolled ? 0.6 : 1 }}>
                           <td>
@@ -722,6 +770,110 @@ export default function ExamDetail() {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && settingsForm && (
+            <div style={{ maxWidth: '700px' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Icon name="settings" size={20} style={{ color: 'var(--primary)' }} />
+                Exam Settings & Scheduling
+              </h3>
+              {exam.status !== 'DRAFT' && exam.status !== 'SCHEDULED' && (
+                <div className="alert-warning" style={{ marginBottom: '1.5rem' }}>
+                  ⚠️ This exam is <strong>{exam.status}</strong>. Settings cannot be modified.
+                </div>
+              )}
+              <form onSubmit={handleSaveSettings}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <FormInput
+                      label="Exam Title"
+                      value={settingsForm.title}
+                      onChange={e => setSettingsForm(f => ({ ...f, title: e.target.value }))}
+                      disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                      required
+                    />
+                  </div>
+                  <FormInput
+                    label="Subject"
+                    value={settingsForm.subject}
+                    onChange={e => setSettingsForm(f => ({ ...f, subject: e.target.value }))}
+                    disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                  />
+                  <FormInput
+                    label="Duration (minutes)"
+                    type="number"
+                    value={settingsForm.duration}
+                    onChange={e => setSettingsForm(f => ({ ...f, duration: e.target.value }))}
+                    disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                  />
+                  <FormInput
+                    label="Start Time"
+                    type="datetime-local"
+                    value={settingsForm.startTime}
+                    onChange={e => setSettingsForm(f => ({ ...f, startTime: e.target.value }))}
+                    disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                  />
+                  <FormInput
+                    label="End Time"
+                    type="datetime-local"
+                    value={settingsForm.endTime}
+                    onChange={e => setSettingsForm(f => ({ ...f, endTime: e.target.value }))}
+                    disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                  />
+                  <FormInput
+                    label="Tab Switch Limit"
+                    type="number"
+                    value={settingsForm.tabSwitchLimit}
+                    onChange={e => setSettingsForm(f => ({ ...f, tabSwitchLimit: e.target.value }))}
+                    disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                  />
+                </div>
+
+                <div style={{ background: 'var(--surface-container-low)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '1rem' }}>Security Proctoring Rules</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    {[
+                      ['cameraRequired', 'Camera Required'],
+                      ['browserLock', 'Browser Lock'],
+                      ['fullScreenMode', 'Fullscreen Mode'],
+                      ['randomiseQuestions', 'Randomise Questions'],
+                      ['randomiseOptions', 'Randomise Options'],
+                      ['negativeMarking', 'Negative Marking'],
+                    ].map(([key, label]) => (
+                      <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!settingsForm[key]}
+                          disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                          onChange={e => setSettingsForm(f => ({ ...f, [key]: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                  {settingsForm.negativeMarking && (
+                    <div style={{ marginTop: '0.75rem' }}>
+                      <FormInput
+                        label="Negative Marking Value (per wrong answer)"
+                        type="number"
+                        step="0.25"
+                        value={settingsForm.negativeValue}
+                        onChange={e => setSettingsForm(f => ({ ...f, negativeValue: e.target.value }))}
+                        disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {['DRAFT','SCHEDULED'].includes(exam.status) && (
+                  <SubmitButton disabled={settingsSaving}>
+                    {settingsSaving ? 'Saving…' : 'Save Changes'}
+                  </SubmitButton>
+                )}
+              </form>
             </div>
           )}
         </div>

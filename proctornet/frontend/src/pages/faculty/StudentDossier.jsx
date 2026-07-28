@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import CodeQuestion from '@/components/exam/CodeQuestion'
+import toast from 'react-hot-toast'
 
 function Icon({ name, size = 20, style = {} }) {
   return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
@@ -22,6 +23,7 @@ export default function StudentDossier() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeView, setActiveView] = useState('answers')
+  const [finalizing, setFinalizing] = useState(false)
 
   useEffect(() => {
     fetchDossier()
@@ -35,6 +37,22 @@ export default function StudentDossier() {
     } catch (e) {
       console.error(e)
       setLoading(false)
+    }
+  }
+
+  const handleFinalizeGrade = async () => {
+    if (!result) return
+    const examId = result.studentExam?.exam?.id
+    if (!examId) { toast.error('Could not determine exam ID.'); return }
+    setFinalizing(true)
+    try {
+      await api.patch(`/faculty/exams/${examId}/results/release`, { release: true })
+      toast.success('Grade finalized and released to student!')
+      fetchDossier()
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to finalize grade.')
+    } finally {
+      setFinalizing(false)
     }
   }
 
@@ -56,7 +74,19 @@ export default function StudentDossier() {
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button className="btn-secondary" onClick={() => window.print()}><Icon name="print" /> Print Report</button>
-          <button className="btn-primary"><Icon name="verified" /> Finalize Grade</button>
+          <button
+            className="btn-primary"
+            onClick={handleFinalizeGrade}
+            disabled={finalizing}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {finalizing ? (
+              <span style={{ display: 'inline-block', width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+            ) : (
+              <Icon name="verified" />
+            )}
+            {finalizing ? 'Finalizing…' : 'Finalize Grade'}
+          </button>
         </div>
       </div>
 

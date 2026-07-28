@@ -25,8 +25,9 @@ const initExamSocket = require('./sockets/exam.socket')
 const initChatSocket = require('./sockets/chat.socket')
 
 // ── Jobs ──
+// VPN service is loaded but NOT started here — it will start after DB is confirmed connected
 const vpnService = require('./services/vpn.service')
-vpnService.startAutoRevoke()
+
 const app    = express()
 const server = http.createServer(app)
 const prisma = new PrismaClient()
@@ -41,6 +42,8 @@ const io = new Server(server, {
       process.env.FRONTEND_URL || 'http://localhost:5173',
       'http://localhost:5173',
       'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:3000',
     ],
     methods: ['GET', 'POST'],
     credentials: true,
@@ -138,17 +141,22 @@ const PORT = process.env.PORT || 5000
 server.listen(PORT, async () => {
   console.log(`\n🚀 ProctorNet Backend running on port ${PORT}`)
   console.log(`📊 Health: http://localhost:${PORT}/health`)
-  console.log(`🗄️  Prisma connected to PostgreSQL`)
   console.log(`🔌 Socket.io initialized`)
   console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-  // Test DB connection
+  // Test DB connection — must succeed before starting DB-dependent jobs
   try {
     await prisma.$connect()
     console.log('✅ Database connection successful')
+    console.log('🗄️  Prisma connected to PostgreSQL')
+
+    // Only start VPN cron AFTER database is confirmed connected
+    vpnService.startAutoRevoke()
   } catch (e) {
     console.error('❌ Database connection failed:', e.message)
-    console.log('   → Make sure DATABASE_URL is set in backend/.env')
+    console.log('   → Make sure DATABASE_URL is set correctly in backend/.env')
+    console.log('   → If using Supabase free tier, check that the project is not paused')
+    console.log('   → VPN auto-revoke cron will NOT start until DB is available')
   }
 })
 

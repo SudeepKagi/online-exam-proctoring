@@ -1,12 +1,21 @@
 /**
- * vpnRevoke.job.js — Cron job to revoke expired WireGuard VPN keys
- * Full implementation in Step 75
+ * vpnRevoke.job.js — VPN key revocation job
+ * 
+ * NOTE: The actual cron logic lives in vpn.service.js → startAutoRevoke().
+ * This file previously contained a duplicate auto-executing cron that ran
+ * on require(), causing DB queries before the connection was established.
+ * 
+ * The vpn.service.js cron is now started from app.js AFTER prisma.$connect()
+ * succeeds. This file is kept for reference but no longer self-executes.
  */
-const cron = require('node-cron')
 
-// Check every minute for expired VPN keys
-cron.schedule('* * * * *', async () => {
+async function revokeExpiredKeys() {
   try {
+    if (!global.prisma) {
+      console.warn('[VPN Revoke] global.prisma not available, skipping')
+      return
+    }
+
     const expired = await global.prisma.studentExam.findMany({
       where: {
         vpnKeyExpiry: { lt: new Date() },
@@ -16,8 +25,7 @@ cron.schedule('* * * * *', async () => {
     })
 
     if (expired.length > 0) {
-      console.log(`[VPN Cron] Found ${expired.length} expired VPN keys to revoke`)
-      // Full revocation logic in Step 75 (requires WireGuard on server)
+      console.log(`[VPN Revoke] Found ${expired.length} expired VPN keys to revoke`)
       for (const se of expired) {
         await global.prisma.studentExam.update({
           where: { id: se.id },
@@ -26,8 +34,8 @@ cron.schedule('* * * * *', async () => {
       }
     }
   } catch (e) {
-    // DB not connected in early development — safe to ignore
+    console.error('[VPN Revoke] Error:', e.message)
   }
-})
+}
 
-console.log('[VPN Cron] Started — checking every minute for expired keys')
+module.exports = { revokeExpiredKeys }

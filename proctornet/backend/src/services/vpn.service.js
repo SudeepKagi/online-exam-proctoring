@@ -2,8 +2,15 @@ const { execSync, exec } = require('child_process')
 const { promisify } = require('util')
 const execAsync = promisify(exec)
 const cron = require('node-cron')
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+
+// Use the shared global prisma instance created in app.js
+// instead of creating a separate PrismaClient (wastes connection pool slots)
+function getPrisma() {
+  if (!global.prisma) {
+    throw new Error('global.prisma is not initialized yet — VPN service called before app.js setup')
+  }
+  return global.prisma
+}
 
 const VPN_SERVER_IP = process.env.VPN_SERVER_IP
 const VPN_SERVER_PORT = process.env.VPN_SERVER_PORT || '51820'
@@ -40,7 +47,7 @@ class VPNService {
   // ──────────────────────────────────────
   async allocateIP() {
     // Check DB for used IPs
-    const usedIPs = await prisma.studentExam.findMany({
+    const usedIPs = await getPrisma().studentExam.findMany({
       where: {
         vpnPeerIp: { not: null },
         status: 'ACTIVE'
@@ -118,7 +125,7 @@ class VPNService {
       const config = this.buildConfigFile(privateKey, peerIp)
       
       // Store in DB
-      await prisma.studentExam.update({
+      await getPrisma().studentExam.update({
         where: { studentId_examId: { studentId, examId } },
         data: {
           vpnKey: publicKey,
@@ -194,7 +201,7 @@ PersistentKeepalive = 25`
     // Run every minute
     cron.schedule('* * * * *', async () => {
       try {
-        const expired = await prisma.studentExam.findMany({
+        const expired = await getPrisma().studentExam.findMany({
           where: {
             vpnKey: { not: null },
             vpnKeyExpiry: { lt: new Date() },
@@ -205,7 +212,7 @@ PersistentKeepalive = 25`
         for(const studentExam of expired) {
           if(studentExam.vpnKey) {
             await this.removePeer(studentExam.vpnKey)
-            await prisma.studentExam.update({
+            await getPrisma().studentExam.update({
               where: { id: studentExam.id },
               data: { vpnKey: null, vpnPeerIp: null }
             })
@@ -225,13 +232,13 @@ PersistentKeepalive = 25`
   // ──────────────────────────────────────
   async revokeStudentAccess(studentId, examId) {
     try {
-      const studentExam = await prisma.studentExam.findFirst({
+      const studentExam = await getPrisma().studentExam.findFirst({
         where: { studentId, examId }
       })
       
       if(studentExam?.vpnKey) {
         await this.removePeer(studentExam.vpnKey)
-        await prisma.studentExam.update({
+        await getPrisma().studentExam.update({
           where: { id: studentExam.id },
           data: { vpnKey: null, vpnPeerIp: null }
         })

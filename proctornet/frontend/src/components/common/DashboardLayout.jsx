@@ -123,8 +123,23 @@ export default function DashboardLayout({ children, title }) {
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-100 flex flex-col transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         {/* Brand */}
         <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-          <div className={`w-9 h-9 rounded-xl ${roleColor} flex items-center justify-center flex-shrink-0`}>
-            <Shield size={18} className="text-white" />
+          <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="logo-grad-dash" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#00c6ff" />
+                  <stop offset="100%" stopColor="#0072ff" />
+                </linearGradient>
+              </defs>
+              <path 
+                d="M12 2C16 3.5 20 3.5 20 3.5C20 3.5 20.5 7.5 19.5 11.5C18.5 14.5 16 17.5 16 17.5L13 14.5C14.2 13.3 16 11.5 16 9C16 6.5 13.5 5.5 12 5V2Z" 
+                fill="url(#logo-grad-dash)" 
+              />
+              <path 
+                d="M12 2C8 3.5 4 3.5 4 3.5C4 3.5 3.5 7.5 4.5 11.5C5.5 15.5 8 19 12 22C12 22 13 21 15 19L12 16C10.8 15.2 9 13.5 9 11C9 8.5 11.5 7.5 12 7V2Z" 
+                fill="url(#logo-grad-dash)" 
+              />
+            </svg>
           </div>
           <div>
             <p className="font-bold text-gray-900 text-base leading-none">ProctorNet</p>

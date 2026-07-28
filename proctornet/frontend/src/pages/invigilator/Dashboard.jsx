@@ -3,16 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import api from '@/utils/api'
 import { toast } from 'react-hot-toast'
-import { 
-  Users, AlertTriangle, MessageSquare, Video, 
+import {
+  Users, AlertTriangle, MessageSquare, Video,
   Terminal, Clock, Shield, Search, Filter,
-  MoreVertical, Bell, Info, StopCircle, 
+  MoreVertical, Bell, Info, StopCircle,
   Send, X, User, ExternalLink, Zap, Monitor
 } from 'lucide-react'
 
 // ── Live Feed Subscription Components ───────────────────
 function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 14 }) {
   const [frame, setFrame] = useState(initialFrame)
+  const [stream, setStream] = useState(null)
+  const videoRef = useRef(null)
 
   useEffect(() => {
     const handleFrameUpdate = (e) => {
@@ -20,15 +22,37 @@ function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 14 }) {
         setFrame(e.detail.frame)
       }
     }
+    const handleStreamUpdate = (e) => {
+      if (e.detail.studentId === studentId && e.detail.type === 'camera') {
+        setStream(e.detail.stream)
+      }
+    }
     window.addEventListener('student-frame-update', handleFrameUpdate)
+    window.addEventListener('student-stream-update', handleStreamUpdate)
+
+    if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.camera) {
+      setStream(window.activeWebRTCStreams[studentId].camera)
+    }
+
     return () => {
       window.removeEventListener('student-frame-update', handleFrameUpdate)
+      window.removeEventListener('student-stream-update', handleStreamUpdate)
     }
   }, [studentId])
 
   useEffect(() => {
     setFrame(initialFrame)
   }, [initialFrame])
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream
+    }
+  }, [stream])
+
+  if (stream) {
+    return <video ref={videoRef} autoPlay playsInline muted className={className} />
+  }
 
   if (frame) {
     return <img src={frame} className={className} alt="Webcam" />
@@ -44,6 +68,8 @@ function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 14 }) {
 
 function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 32 }) {
   const [frame, setFrame] = useState(initialFrame)
+  const [stream, setStream] = useState(null)
+  const videoRef = useRef(null)
 
   useEffect(() => {
     const handleFrameUpdate = (e) => {
@@ -51,15 +77,37 @@ function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 32 }) {
         setFrame(e.detail.frame)
       }
     }
+    const handleStreamUpdate = (e) => {
+      if (e.detail.studentId === studentId && e.detail.type === 'screen') {
+        setStream(e.detail.stream)
+      }
+    }
     window.addEventListener('student-frame-update', handleFrameUpdate)
+    window.addEventListener('student-stream-update', handleStreamUpdate)
+
+    if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.screen) {
+      setStream(window.activeWebRTCStreams[studentId].screen)
+    }
+
     return () => {
       window.removeEventListener('student-frame-update', handleFrameUpdate)
+      window.removeEventListener('student-stream-update', handleStreamUpdate)
     }
   }, [studentId])
 
   useEffect(() => {
     setFrame(initialFrame)
   }, [initialFrame])
+
+  useEffect(() => {
+    if (videoRef.current && stream) {
+      videoRef.current.srcObject = stream
+    }
+  }, [stream])
+
+  if (stream) {
+    return <video ref={videoRef} autoPlay playsInline muted className={className} />
+  }
 
   if (frame) {
     return <img src={frame} className={className} alt="Screen" />
@@ -73,6 +121,7 @@ function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 32 }) {
   )
 }
 
+
 export default function InvDashboard() {
   const { examId } = useParams()
   const navigate = useNavigate()
@@ -80,7 +129,9 @@ export default function InvDashboard() {
   const selectedStudentRef = useRef(null)
   const chatEndRef = useRef(null)
   const latestFramesRef = useRef({})
-  
+  const pcsRef = useRef({})
+
+
   // State
   const [students, setStudents] = useState([])
   const [alerts, setAlerts] = useState([])
@@ -97,28 +148,35 @@ export default function InvDashboard() {
   const [timeRemaining, setTimeRemaining] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const requestWebRTCStream = useCallback((studentId) => {
+    if (socketRef.current) {
+      socketRef.current.emit('webrtc:request-stream', { studentId, examId })
+    }
+  }, [examId])
+
   useEffect(() => {
     selectedStudentRef.current = selectedStudent
   }, [selectedStudent])
 
+
   // Initialization
   useEffect(() => {
     const token = localStorage.getItem('inv_token') || localStorage.getItem('proctornet_token')
-    
+
     socketRef.current = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000', {
       auth: { token },
       transports: ['websocket', 'polling']
     })
-    
+
     const socket = socketRef.current
-    
+
     socket.emit('inv:join', { examId })
-    
+
     // Student joined the exam (new event name)
     socket.on('student:joined', (data) => {
       setStudents(prev => {
         const exists = prev.find(s => s.studentId === data.studentId)
-        if(exists) return prev.map(s => s.studentId === data.studentId ? { ...s, status: 'active' } : s)
+        if (exists) return prev.map(s => s.studentId === data.studentId ? { ...s, status: 'active' } : s)
         return [...prev, {
           studentId: data.studentId,
           name: data.name,
@@ -135,8 +193,10 @@ export default function InvDashboard() {
         }]
       })
       toast(`${data.name} is now online`, { icon: '👋' })
+      requestWebRTCStream(data.studentId)
     })
-    
+
+
     // Student flag event (was student:violation)
     socket.on('student:flag', (data) => {
       setAlerts(prev => [{
@@ -144,18 +204,18 @@ export default function InvDashboard() {
         ...data,
         timestamp: new Date()
       }, ...prev])
-      
-      setStudents(prev => prev.map(s => 
+
+      setStudents(prev => prev.map(s =>
         s.studentId === data.studentId
-          ? { 
-              ...s, 
-              flagCount: (s.flagCount || 0) + 1,
-              status: (s.flagCount + 1) >= 5 ? 'critical' : 'flagged',
-              events: [data, ...(s.events || [])]
-            }
+          ? {
+            ...s,
+            flagCount: (s.flagCount || 0) + 1,
+            status: (s.flagCount + 1) >= 5 ? 'critical' : 'flagged',
+            events: [data, ...(s.events || [])]
+          }
           : s
       ))
-      
+
       if (selectedStudentRef.current && selectedStudentRef.current.studentId === data.studentId) {
         setSelectedStudent(prev => prev ? {
           ...prev,
@@ -164,17 +224,17 @@ export default function InvDashboard() {
           events: [data, ...(prev.events || [])]
         } : null)
       }
-      
+
       playAlertSound(data.severity)
     })
-    
+
     // Camera frame event (was student:frame)
     socket.on('student:cameraFrame', (data) => {
       if (!latestFramesRef.current[data.studentId]) {
         latestFramesRef.current[data.studentId] = {}
       }
       latestFramesRef.current[data.studentId].cameraFrame = data.frame
-      
+
       window.dispatchEvent(new CustomEvent('student-frame-update', {
         detail: { studentId: data.studentId, type: 'camera', frame: data.frame }
       }))
@@ -210,7 +270,7 @@ export default function InvDashboard() {
           [studentId]: [...studentMsgs, { sender: 'student', message, timestamp }]
         }
       })
-      
+
       // Increment unread chat count if student modal is not open
       setStudents(prev => prev.map(s => {
         if (s.studentId === studentId) {
@@ -234,11 +294,88 @@ export default function InvDashboard() {
       ))
     })
 
+    // ── WebRTC Signaling Listeners ──
+    socket.on('webrtc:offer', async ({ offer, studentId, senderId }) => {
+      console.log('Received WebRTC offer from student:', studentId)
+      if (pcsRef.current[studentId]) {
+        try { pcsRef.current[studentId].close() } catch (e) { }
+      }
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      })
+      pcsRef.current[studentId] = pc
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit('webrtc:ice-candidate', {
+            candidate: event.candidate,
+            targetId: studentId
+          })
+        }
+      }
+
+      pc.ontrack = (event) => {
+        console.log('Received WebRTC track from student:', studentId, event.track.label)
+        const stream = event.streams[0]
+        const label = (event.track.label || '').toLowerCase()
+        const settings = event.track.getSettings ? event.track.getSettings() : {}
+        const isScreen = label.includes('screen') || label.includes('display') || label.includes('window') || (settings.width && settings.width > 640)
+
+        if (!window.activeWebRTCStreams) {
+          window.activeWebRTCStreams = {}
+        }
+        if (!window.activeWebRTCStreams[studentId]) {
+          window.activeWebRTCStreams[studentId] = {}
+        }
+
+        if (isScreen) {
+          window.activeWebRTCStreams[studentId].screen = stream
+          window.dispatchEvent(new CustomEvent('student-stream-update', {
+            detail: { studentId, type: 'screen', stream }
+          }))
+        } else {
+          window.activeWebRTCStreams[studentId].camera = stream
+          window.dispatchEvent(new CustomEvent('student-stream-update', {
+            detail: { studentId, type: 'camera', stream }
+          }))
+        }
+      }
+
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(offer))
+        const answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+        socket.emit('webrtc:answer', {
+          answer,
+          studentId
+        })
+      } catch (err) {
+        console.error('Failed to negotiate WebRTC:', err)
+      }
+    })
+
+    socket.on('webrtc:ice-candidate', async ({ candidate, studentId }) => {
+      const pc = pcsRef.current[studentId]
+      if (pc) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate))
+        } catch (err) {
+          console.error('Failed to add remote ICE candidate:', err)
+        }
+      }
+    })
+
     fetchExamData()
-    
+
     return () => {
       socket.disconnect()
+      Object.values(pcsRef.current).forEach(pc => {
+        try { pc.close() } catch (e) { }
+      })
+      pcsRef.current = {}
+      window.activeWebRTCStreams = {}
     }
+
   }, [examId])
 
   const fetchExamData = async () => {
@@ -246,7 +383,7 @@ export default function InvDashboard() {
       // Use invigilator endpoint
       const res = await api.get(`/invigilator/exam/${examId}`)
       setExamInfo(res.data.exam)
-      
+
       const initialStudents = (res.data.students || []).map(s => ({
         studentId: s.studentId || s.id,
         name: s.name,
@@ -259,9 +396,17 @@ export default function InvDashboard() {
       }))
       setStudents(initialStudents)
 
+      // Auto-request WebRTC streams for all initially active students
+      initialStudents.forEach(s => {
+          if (s.status === 'active') {
+            requestWebRTCStream(s.studentId)
+          }
+        })
+
+
       // Initialize chats state from pre-loaded messages
       const preloadedChats = {}
-      if (res.data.chatMessages) {
+      if(res.data.chatMessages) {
         res.data.chatMessages.forEach(msg => {
           if (!preloadedChats[msg.studentId]) {
             preloadedChats[msg.studentId] = []
@@ -276,7 +421,7 @@ export default function InvDashboard() {
       setChats(preloadedChats)
       
       startTimer(res.data.exam.endTime)
-    } catch(err) {
+    } catch (err) {
       console.error('[fetchExamData]', err)
       toast.error('Failed to synchronize terminal data')
     } finally {
@@ -289,14 +434,14 @@ export default function InvDashboard() {
     const update = () => {
       const now = new Date()
       const diff = endTime - now
-      if(diff <= 0) {
+      if (diff <= 0) {
         setTimeRemaining('00:00:00')
         return
       }
       const h = Math.floor(diff / 3600000)
       const m = Math.floor((diff % 3600000) / 60000)
       const s = Math.floor((diff % 60000) / 1000)
-      setTimeRemaining(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
+      setTimeRemaining(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
     }
     update()
     const intv = setInterval(update, 1000)
@@ -314,20 +459,20 @@ export default function InvDashboard() {
       gain.gain.value = 0.1
       osc.start()
       setTimeout(() => osc.stop(), 200)
-    } catch(e) {}
+    } catch (e) { }
   }
 
   const warnStudent = async (studentId, message) => {
     const msg = message || prompt('Enter warning message to send to student:')
-    if(!msg?.trim()) return
-    
+    if (!msg?.trim()) return
+
     // Emit via socket
     socketRef.current?.emit('inv:warn', { studentId, message: msg, examId })
-    
+
     // Also save to backend
     try {
       await api.post(`/invigilator/exam/${examId}/warn/${studentId}`, { message: msg })
-    } catch(e) {
+    } catch (e) {
       console.warn('Warning API call failed, socket still sent')
     }
     toast.success('Warning dispatched')
@@ -335,15 +480,15 @@ export default function InvDashboard() {
 
   const terminateStudent = async (studentId) => {
     const reason = prompt('CRITICAL: Enter reason for mandatory termination:')
-    if(!reason?.trim()) return
-    
+    if (!reason?.trim()) return
+
     try {
       await api.post(`/invigilator/exam/${examId}/terminate/${studentId}`, { reason })
       socketRef.current?.emit('inv:terminate', { studentId, reason, examId })
       setStudents(prev => prev.map(s => s.studentId === studentId ? { ...s, status: 'terminated' } : s))
       toast.error('Student session terminated')
       setShowModal(false)
-    } catch(err) {
+    } catch (err) {
       toast.error('Failed to terminate: ' + (err.response?.data?.error || 'Server error'))
     }
   }
@@ -358,10 +503,10 @@ export default function InvDashboard() {
     if (!chatInput.trim() || !selectedStudent) return
     const studentId = selectedStudent.studentId
     const message = chatInput.trim()
-    
+
     // Emit via socket
     socketRef.current?.emit('inv:chat', { studentId, message, examId })
-    
+
     // Append to local state
     setChats(prev => {
       const studentMsgs = prev[studentId] || []
@@ -370,7 +515,7 @@ export default function InvDashboard() {
         [studentId]: [...studentMsgs, { sender: 'invigilator', message, timestamp: new Date().toISOString() }]
       }
     })
-    
+
     setChatInput('')
   }
 
@@ -391,10 +536,10 @@ export default function InvDashboard() {
   }, [])
 
   const filteredStudents = students.filter(s => {
-    if(filter === 'all') return true
-    if(filter === 'flagged') return s.flagCount > 0
-    if(filter === 'active') return s.status === 'active'
-    if(filter === 'offline') return s.status === 'offline'
+    if (filter === 'all') return true
+    if (filter === 'flagged') return s.flagCount > 0
+    if (filter === 'active') return s.status === 'active'
+    if (filter === 'offline') return s.status === 'offline'
     return true
   })
 
@@ -440,7 +585,7 @@ export default function InvDashboard() {
 
       {/* Main Container */}
       <main className="flex-1 flex overflow-hidden">
-        
+
         {/* Left: Alerts Sidebar */}
         <aside className="w-96 bg-white border-r border-slate-200 flex flex-col shadow-inner relative z-10">
           <div className="p-6 border-b bg-slate-50/50 flex items-center justify-between">
@@ -452,7 +597,7 @@ export default function InvDashboard() {
               {alerts.length} New
             </span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {alerts.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3 grayscale opacity-50">
@@ -461,13 +606,11 @@ export default function InvDashboard() {
               </div>
             ) : (
               alerts.map(alert => (
-                <div key={alert.id} className={`p-4 rounded-2xl border-l-4 shadow-sm animate-in fade-in slide-in-from-left-4 ${
-                  alert.severity === 'HIGH' ? 'bg-red-50 border-red-500' : 'bg-amber-50 border-amber-500'
-                }`}>
+                <div key={alert.id} className={`p-4 rounded-2xl border-l-4 shadow-sm animate-in fade-in slide-in-from-left-4 ${alert.severity === 'HIGH' ? 'bg-red-50 border-red-500' : 'bg-amber-50 border-amber-500'
+                  }`}>
                   <div className="flex justify-between items-start mb-2">
-                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${
-                      alert.severity === 'HIGH' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
+                    <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${alert.severity === 'HIGH' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                      }`}>
                       {alert.eventType}
                     </span>
                     <span className="text-[10px] font-bold text-slate-400">{new Date(alert.timestamp).toLocaleTimeString()}</span>
@@ -476,10 +619,10 @@ export default function InvDashboard() {
                   {(alert.cameraFrame || alert.cameraFrameUrl) && (
                     <div className="space-y-1 mb-2">
                       <span className="text-[9px] font-black uppercase text-slate-400">Webcam Capture</span>
-                      <img 
-                        src={alert.cameraFrame || alert.cameraFrameUrl} 
-                        className="w-full h-24 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:brightness-110 transition-all" 
-                        alt="Camera snap" 
+                      <img
+                        src={alert.cameraFrame || alert.cameraFrameUrl}
+                        className="w-full h-24 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:brightness-110 transition-all"
+                        alt="Camera snap"
                         onClick={(e) => {
                           e.stopPropagation()
                           setActiveLightbox({
@@ -500,10 +643,10 @@ export default function InvDashboard() {
                   {(alert.screenshot || alert.screenshotUrl) && (
                     <div className="space-y-1 mb-2">
                       <span className="text-[9px] font-black uppercase text-slate-400">Screen Capture</span>
-                      <img 
-                        src={alert.screenshot || alert.screenshotUrl} 
-                        className="w-full h-24 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:brightness-110 transition-all" 
-                        alt="Screen snap" 
+                      <img
+                        src={alert.screenshot || alert.screenshotUrl}
+                        className="w-full h-24 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:brightness-110 transition-all"
+                        alt="Screen snap"
                         onClick={(e) => {
                           e.stopPropagation()
                           setActiveLightbox({
@@ -539,9 +682,8 @@ export default function InvDashboard() {
                   <button
                     key={t}
                     onClick={() => setFilter(t)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${
-                      filter === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
-                    }`}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all ${filter === t ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'
+                      }`}
                   >
                     {t}
                   </button>
@@ -549,14 +691,14 @@ export default function InvDashboard() {
               </div>
               <div className="relative group">
                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Filter by USN or Name..."
                   className="bg-white border border-slate-200 rounded-2xl py-2 pl-11 pr-4 text-xs font-bold focus:ring-2 focus:ring-blue-100 transition-all outline-none"
                 />
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 text-slate-500 font-bold text-xs uppercase tracking-widest">
               <Users size={16} /> {filteredStudents.length} Connected
             </div>
@@ -564,18 +706,17 @@ export default function InvDashboard() {
 
           <div className="flex-1 overflow-y-auto p-8 pt-0 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {filteredStudents.map(student => (
-              <div 
+              <div
                 key={student.studentId}
                 onClick={() => {
                   setSelectedStudent(student)
                   setShowModal(true)
                   setStudents(prev => prev.map(s => s.studentId === student.studentId ? { ...s, unreadChat: 0 } : s))
                 }}
-                className={`group bg-white rounded-3xl border-2 transition-all cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden ${
-                  student.status === 'active' ? 'border-transparent' : 
-                  student.status === 'flagged' ? 'border-amber-400' : 
-                  student.status === 'critical' ? 'border-red-500 animate-pulse' : 'border-slate-200 grayscale opacity-80'
-                }`}
+                className={`group bg-white rounded-3xl border-2 transition-all cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1 overflow-hidden ${student.status === 'active' ? 'border-transparent' :
+                  student.status === 'flagged' ? 'border-amber-400' :
+                    student.status === 'critical' ? 'border-red-500 animate-pulse' : 'border-slate-200 grayscale opacity-80'
+                  }`}
               >
                 {/* Visual Feed - Dual Feed (Screen-share main background, webcam floating picture-in-picture) */}
                 <div className="aspect-video bg-slate-950 relative overflow-hidden">
@@ -596,12 +737,11 @@ export default function InvDashboard() {
                       fallbackSize={14}
                     />
                   </div>
-                  
+
                   <div className="absolute top-4 left-4 flex gap-2 z-20">
-                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg ${
-                      student.status === 'active' ? 'bg-green-500 text-white' : 
+                    <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest shadow-lg ${student.status === 'active' ? 'bg-green-500 text-white' :
                       student.status === 'flagged' ? 'bg-amber-500 text-white' : 'bg-slate-700 text-white'
-                    }`}>
+                      }`}>
                       {student.status}
                     </span>
                     {student.flagCount > 0 && (
@@ -631,11 +771,10 @@ export default function InvDashboard() {
                   </div>
                   {/* Face Match Score */}
                   {student.faceMatchScore !== null && student.faceMatchScore !== undefined ? (
-                    <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black border ${
-                      student.faceMatchScore < 0.6
-                        ? 'bg-amber-50 border-amber-200 text-amber-700'
-                        : 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                    }`}>
+                    <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black border ${student.faceMatchScore < 0.6
+                      ? 'bg-amber-50 border-amber-200 text-amber-700'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      }`}>
                       <span className="uppercase tracking-widest">
                         {student.faceMatchScore < 0.6 ? '⚠ Low Face Match' : '✓ Face Verified'}
                       </span>
@@ -660,7 +799,7 @@ export default function InvDashboard() {
       {showModal && selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-6xl h-full max-h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-            
+
             <header className="px-10 py-6 border-b flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 font-black text-xl">
@@ -672,11 +811,10 @@ export default function InvDashboard() {
                   {/* Face Match Score in Modal */}
                   {selectedStudent.faceMatchScore !== null && selectedStudent.faceMatchScore !== undefined ? (
                     <div className="mt-2 flex items-center gap-2">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black border ${
-                        selectedStudent.faceMatchScore < 0.6
-                          ? 'bg-amber-50 border-amber-300 text-amber-700'
-                          : 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                      }`}>
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black border ${selectedStudent.faceMatchScore < 0.6
+                        ? 'bg-amber-50 border-amber-300 text-amber-700'
+                        : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                        }`}>
                         <span>{selectedStudent.faceMatchScore < 0.6 ? '⚠' : '✓'}</span>
                         <span>Face Match:</span>
                         <span className="text-base tabular-nums">{(selectedStudent.faceMatchScore * 100).toFixed(1)}%</span>
@@ -738,23 +876,22 @@ export default function InvDashboard() {
                             <div className="shrink-0 w-1 h-full bg-slate-200 rounded-full group-last:bg-transparent"></div>
                             <div className="pb-4 flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase shadow-sm ${
-                                  ev.severity === 'HIGH' || ev.severity === 'CRITICAL' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'
-                                }`}>
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase shadow-sm ${ev.severity === 'HIGH' || ev.severity === 'CRITICAL' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'
+                                  }`}>
                                   {ev.eventType}
                                 </span>
                                 <span className="text-[10px] font-bold text-slate-400">{new Date(ev.timestamp).toLocaleTimeString()}</span>
                               </div>
                               <p className="text-xs text-slate-700 font-bold mb-2">{ev.details || 'System flagged potential violation'}</p>
-                              
+
                               {/* Render visual evidence if exists */}
                               <div className="flex gap-3 mt-2">
                                 {(ev.cameraFrame || ev.cameraFrameUrl) && (
                                   <div className="flex-1 max-w-[120px] space-y-1">
                                     <span className="text-[8px] font-black uppercase text-slate-400 block">Cam Feed</span>
-                                    <img 
-                                      src={ev.cameraFrame || ev.cameraFrameUrl} 
-                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all" 
+                                    <img
+                                      src={ev.cameraFrame || ev.cameraFrameUrl}
+                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all"
                                       alt="Cam snap"
                                       onClick={() => setActiveLightbox({
                                         imageUrl: ev.cameraFrame || ev.cameraFrameUrl,
@@ -773,9 +910,9 @@ export default function InvDashboard() {
                                 {(ev.screenshot || ev.screenshotUrl) && (
                                   <div className="flex-1 max-w-[120px] space-y-1">
                                     <span className="text-[8px] font-black uppercase text-slate-400 block">Screen Feed</span>
-                                    <img 
-                                      src={ev.screenshot || ev.screenshotUrl} 
-                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all" 
+                                    <img
+                                      src={ev.screenshot || ev.screenshotUrl}
+                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all"
                                       alt="Screen snap"
                                       onClick={() => setActiveLightbox({
                                         imageUrl: ev.screenshot || ev.screenshotUrl,
@@ -813,8 +950,8 @@ export default function InvDashboard() {
                         </div>
                       </div>
                     </div>
-                    
-                    <button 
+
+                    <button
                       onClick={() => terminateStudent(selectedStudent.studentId)}
                       className="w-full py-4 bg-red-600 text-white rounded-3xl font-black text-lg shadow-xl shadow-red-100 hover:bg-red-700 transition-all flex items-center justify-center gap-3"
                     >
@@ -830,7 +967,7 @@ export default function InvDashboard() {
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Direct Warning Disptach</h3>
                   <div className="space-y-4">
                     {['Adjust your camera', 'No talking permitted', 'Return to fullscreen', 'Identity verify needed'].map(msg => (
-                      <button 
+                      <button
                         key={msg}
                         onClick={() => warnStudent(selectedStudent.studentId, msg)}
                         className="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
@@ -839,15 +976,15 @@ export default function InvDashboard() {
                       </button>
                     ))}
                     <div className="relative pt-4">
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={customWarning}
                         onChange={(e) => setCustomWarning(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleCustomWarningSend() }}
                         placeholder="Custom warning..."
                         className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-4 pr-12 text-sm outline-none focus:ring-2 focus:ring-blue-100 shadow-sm"
                       />
-                      <button 
+                      <button
                         onClick={handleCustomWarningSend}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all"
                       >
@@ -856,7 +993,7 @@ export default function InvDashboard() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Scrollable chat support timeline */}
                 <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50">
                   <div className="p-4 border-b bg-white">
@@ -882,11 +1019,10 @@ export default function InvDashboard() {
                           const isInv = msg.sender === 'invigilator'
                           return (
                             <div key={idx} className={`flex ${isInv ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
-                                isInv 
-                                  ? 'bg-blue-600 text-white rounded-br-none' 
-                                  : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
-                              }`}>
+                              <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${isInv
+                                ? 'bg-blue-600 text-white rounded-br-none'
+                                : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
+                                }`}>
                                 <p className="text-xs font-medium whitespace-pre-wrap leading-relaxed">{msg.message}</p>
                                 <span className={`text-[8px] block mt-1 text-right ${isInv ? 'text-blue-200' : 'text-slate-400'} font-bold`}>
                                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -928,16 +1064,16 @@ export default function InvDashboard() {
 
       {/* Lightbox Modal */}
       {activeLightbox && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-slate-950/95 backdrop-blur-xl animate-in fade-in duration-300"
           onClick={() => setActiveLightbox(null)}
         >
-          <div 
+          <div
             className="bg-slate-900 border border-slate-800 text-white w-full max-w-5xl h-full max-h-[85vh] md:h-[70vh] md:max-h-[680px] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close Button Top Right (Mobile/Float) */}
-            <button 
+            <button
               onClick={() => setActiveLightbox(null)}
               className="absolute top-4 right-4 md:hidden z-30 bg-slate-800/80 hover:bg-slate-700 p-2.5 rounded-full transition-all border border-slate-700"
             >
@@ -946,17 +1082,17 @@ export default function InvDashboard() {
 
             {/* Left: High-Scale Image Section */}
             <div className="flex-1 md:w-3/5 h-2/3 md:h-full bg-slate-950/80 relative flex items-center justify-center p-6 border-b md:border-b-0 md:border-r border-slate-800">
-              <img 
-                src={activeLightbox.imageUrl} 
-                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-slate-800/60" 
-                alt={activeLightbox.title} 
+              <img
+                src={activeLightbox.imageUrl}
+                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-slate-800/60"
+                alt={activeLightbox.title}
               />
-              
+
               {/* Quick Actions (Floating Overlay) */}
               <div className="absolute bottom-4 left-4 flex gap-2">
-                <a 
-                  href={activeLightbox.imageUrl} 
-                  target="_blank" 
+                <a
+                  href={activeLightbox.imageUrl}
+                  target="_blank"
                   rel="noreferrer"
                   className="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md px-3.5 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white uppercase tracking-wider flex items-center gap-1.5 border border-slate-800 transition-all shadow-lg"
                 >
@@ -977,7 +1113,7 @@ export default function InvDashboard() {
                       {activeLightbox.title}
                     </h2>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setActiveLightbox(null)}
                     className="hidden md:flex bg-slate-800 hover:bg-slate-700/80 text-slate-400 hover:text-white p-3 rounded-2xl transition-all border border-slate-800 shadow-md"
                   >
@@ -987,11 +1123,10 @@ export default function InvDashboard() {
 
                 {/* Violation Severity & Category */}
                 <div className="flex flex-wrap items-center gap-3">
-                  <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border shadow-sm ${
-                    activeLightbox.severity === 'HIGH' || activeLightbox.severity === 'CRITICAL'
-                      ? 'bg-red-500/10 border-red-500/20 text-red-400' 
-                      : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                  }`}>
+                  <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border shadow-sm ${activeLightbox.severity === 'HIGH' || activeLightbox.severity === 'CRITICAL'
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                    }`}>
                     Severity: {activeLightbox.severity || 'UNKNOWN'}
                   </span>
                   <span className="px-3 py-1.5 bg-slate-800 border border-slate-700/50 rounded-xl text-xs font-black uppercase tracking-wider text-slate-300">

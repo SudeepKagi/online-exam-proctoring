@@ -20,14 +20,10 @@ def extract_usn_from_text(text):
 
 def verify_id_card(id_card_url):
     if not HAS_OCR:
-        # High-fidelity mock for local demonstration
-        import time
-        time.sleep(0.5)
         return {
-            "isValid": True,
-            "extractedUsn": "1VE22CS888",
-            "extractedName": "DEV FALLBACK",
-            "warning": "Library missing: Using Mock OCR Fallback"
+            "isValid": False,
+            "extractedUsn": None,
+            "error": "pytesseract library not installed on python service"
         }
 
     try:
@@ -51,10 +47,8 @@ def verify_id_card(id_card_url):
         
     except Exception as e:
         print(f"[OCR Service Error] {str(e)}")
-        # Fallback if tesseract binary is not in path but library is installed
         return {
-            "isValid": True,
-            "extractedUsn": "1VE22CS888",
-            "extractedName": "SYSTEM FALLBACK",
-            "warning": f"Tesseract error: {str(e)}. Using fallback."
+            "isValid": False,
+            "extractedUsn": None,
+            "error": f"Tesseract OCR processing failed: {str(e)}"
         }

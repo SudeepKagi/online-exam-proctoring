@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Shield, Hash, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 export default function StudentLogin() {
   const navigate = useNavigate()
@@ -109,7 +110,11 @@ export default function StudentLogin() {
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-sm font-medium text-gray-700">Password</label>
-                  <a href="#" className="text-xs text-emerald-600 font-medium hover:underline">Forgot password?</a>
+                  <button
+                    type="button"
+                    onClick={() => toast('📧 Please contact your department faculty to reset your password.', { duration: 5000, icon: '🔒' })}
+                    className="text-xs text-emerald-600 font-medium hover:underline bg-transparent border-none cursor-pointer p-0"
+                  >Forgot password?</button>
                 </div>
                 <div className="relative">
                   <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />

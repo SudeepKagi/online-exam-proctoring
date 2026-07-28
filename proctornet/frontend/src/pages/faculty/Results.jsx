@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
+import toast from 'react-hot-toast'
 import { BarChart2, Download, Eye, X, TrendingUp, Users, Trophy } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 

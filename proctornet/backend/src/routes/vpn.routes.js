@@ -3,8 +3,7 @@ const router = express.Router()
 const vpnService = require('../services/vpn.service')
 const { authenticate } = require('../middleware/auth.middleware')
 const { requireRole } = require('../middleware/role.middleware')
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
+const getPrisma = () => global.prisma
 
 // ──────────────────────────────────────────
 // Student: Connect to VPN when exam starts
@@ -19,7 +18,7 @@ router.post('/connect/:examId',
       const studentId = req.user.id
       
       // Check exam exists and is active
-      const exam = await prisma.exam.findUnique({
+      const exam = await getPrisma().exam.findUnique({
         where: { id: examId }
       })
       
@@ -37,7 +36,7 @@ router.post('/connect/:examId',
       }
       
       // Check if student already has VPN key
-      const existing = await prisma.studentExam.findFirst({
+      const existing = await getPrisma().studentExam.findFirst({
         where: { studentId, examId }
       })
       
@@ -95,7 +94,7 @@ router.get('/config/:examId',
       const { examId } = req.params
       const studentId = req.user.id
       
-      const studentExam = await prisma.studentExam.findFirst({
+      const studentExam = await getPrisma().studentExam.findFirst({
         where: { studentId, examId }
       })
       
@@ -132,7 +131,7 @@ router.get('/status/:examId',
       const { examId } = req.params
       const studentId = req.user.id
       
-      const studentExam = await prisma.studentExam.findFirst({
+      const studentExam = await getPrisma().studentExam.findFirst({
         where: { studentId, examId }
       })
       

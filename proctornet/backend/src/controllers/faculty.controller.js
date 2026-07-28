@@ -175,7 +175,7 @@ async function updateExam(req, res) {
     const existing = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
     if (!existing) return res.status(404).json({ error: 'Exam not found.' })
     
-    if (existing.status !== 'SCHEDULED' && existing.status !== 'PAUSED') {
+    if (existing.status !== 'DRAFT' && existing.status !== 'SCHEDULED' && existing.status !== 'PAUSED') {
       return res.status(400).json({ error: 'Cannot update an exam that is active or completed.' })
     }
 
@@ -892,11 +892,22 @@ async function generateQuestionsFromAI(req, res) {
 
     const systemPrompt = `You are an expert academic exam question generator. Always respond with ONLY valid JSON — no markdown, no code blocks, no extra text.`
 
+    // Sliding-window context: take best 8,000-char chunk (middle section is usually densest)
+    const CHUNK_SIZE = 8000
+    let contextText = text.trim()
+    if (contextText.length > CHUNK_SIZE) {
+      // Prefer the first 8,000 chars unless text is very long, then use a centered window
+      const start = contextText.length > CHUNK_SIZE * 2
+        ? Math.floor((contextText.length - CHUNK_SIZE) / 4)  // pick 1/4 into content
+        : 0
+      contextText = contextText.substring(start, start + CHUNK_SIZE)
+    }
+
     const userPrompt = `Generate exactly ${numMCQ} MCQ questions and ${numEssay} subjective questions at ${difficulty} difficulty from the content below.
 
 Content:
 """
-${text.substring(0, 10000)}
+${contextText}
 """
 
 Return ONLY this JSON structure (no markdown):
