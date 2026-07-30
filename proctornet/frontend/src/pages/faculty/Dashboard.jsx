@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { Plus, BookOpen, Users, BarChart2, ChevronRight } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { Plus, BookOpen, Users, BarChart2, ChevronRight, User, Mail, Phone, Building, Briefcase, CheckCircle2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 export default function FacultyDashboard() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +36,52 @@ export default function FacultyDashboard() {
           <Button variant="default" onClick={() => navigate('/faculty/exams/create')}>
             <Plus size={14} className="mr-1.5" /> Create New Exam
           </Button>
+        </div>
+
+        {/* Faculty Personal Info Card */}
+        <div className="px-4 lg:px-6">
+          <Card className="border-[#27272A] bg-[#141416]">
+            <CardHeader className="pb-3 border-b border-[#27272A] flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+                  <User className="w-4 h-4 text-indigo-400" /> Personal & Professional Profile
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-400">Institutional instructor credentials and department assignment.</CardDescription>
+              </div>
+              <Badge variant="outline" className="font-mono text-[10px] text-indigo-400 border-indigo-500/30 bg-indigo-500/10">
+                <CheckCircle2 size={12} className="mr-1" /> FACULTY INSTRUCTOR
+              </Badge>
+            </CardHeader>
+            <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-sans text-xs">
+              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <User size={12} className="text-slate-400" /> Full Name
+                </span>
+                <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Dr. John Smith'}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Briefcase size={12} className="text-slate-400" /> Employee ID
+                </span>
+                <p className="font-semibold font-mono text-slate-100 mt-1">{user?.employeeId || 'EMP101'}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Mail size={12} className="text-slate-400" /> Institutional Email
+                </span>
+                <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'john.smith@college.edu'}</p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                  <Building size={12} className="text-slate-400" /> Department & Contact
+                </span>
+                <p className="font-semibold text-slate-100 mt-1">{user?.department || 'CSE'} • {user?.phone || '9988776655'}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* 4 Metric Cards */}

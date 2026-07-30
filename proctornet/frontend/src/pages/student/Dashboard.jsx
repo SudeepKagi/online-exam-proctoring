@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/utils/api'
-import { BookOpen, Wifi, WifiOff } from 'lucide-react'
+import { BookOpen, Wifi, WifiOff, User, Mail, Phone, ShieldCheck, GraduationCap, Building, CheckCircle2 } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionCards } from '@/components/section-cards'
 import { ChartAreaInteractive } from '@/components/chart-area-interactive'
@@ -81,13 +83,62 @@ export default function StudentDashboard() {
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100">{greeting()}, {user?.name?.split(' ')[0] || 'Sudeep'}</h1>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">USN: {user?.usn || '1NT23EC158'} • {user?.department || 'ECE'}</p>
+            <h1 className="text-lg font-bold tracking-tight text-slate-100">{greeting()}, {user?.name?.split(' ')[0] || 'Student'}</h1>
+            <p className="text-xs font-mono text-slate-400 mt-0.5">USN: {user?.usn || user?.rollNo || '1NT23EC015'} • {user?.department || 'ECE'}</p>
           </div>
-          <Button variant="default" onClick={() => navigate('/student/exams')}>
-            <BookOpen size={14} className="mr-1.5" /> View My Exams
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="text-xs font-mono border-[#27272A] bg-[#141416]" onClick={() => navigate('/student/enrollment')}>
+              <ShieldCheck size={14} className="mr-1.5 text-indigo-400" /> Biometrics Status
+            </Button>
+            <Button variant="default" size="sm" className="text-xs font-mono" onClick={() => navigate('/student/exams')}>
+              <BookOpen size={14} className="mr-1.5" /> View My Exams
+            </Button>
+          </div>
         </div>
+
+        {/* Candidate Personal Info Card */}
+        <Card className="border-[#27272A] bg-[#141416]">
+          <CardHeader className="pb-3 border-b border-[#27272A] flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+                <User className="w-4 h-4 text-indigo-400" /> Personal & Academic Profile
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-400">Verified candidate credentials and institutional enrollment details.</CardDescription>
+            </div>
+            <Badge variant="outline" className="font-mono text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+              <CheckCircle2 size={12} className="mr-1" /> ENROLLED CANDIDATE
+            </Badge>
+          </CardHeader>
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-sans text-xs">
+            <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <User size={12} className="text-slate-400" /> Full Name
+              </span>
+              <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Rohan Kulkarni'}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <GraduationCap size={12} className="text-slate-400" /> Roll No / USN
+              </span>
+              <p className="font-semibold font-mono text-slate-100 mt-1">{user?.usn || user?.rollNo || '1NT23EC015'}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Mail size={12} className="text-slate-400" /> Institutional Email
+              </span>
+              <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'rohan.kulkarni@college.edu'}</p>
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Building size={12} className="text-slate-400" /> Department & Phone
+              </span>
+              <p className="font-semibold text-slate-100 mt-1">{user?.department || 'ECE'} • {user?.phone || '9876543212'}</p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* VPN Status Alert */}
         <VPNStatusAlert />
