@@ -240,8 +240,18 @@ export default function BulkCreateAccounts() {
         <Card className="border-[#27272A] bg-[#141416]">
           <CardHeader className="pb-3 border-b border-[#27272A]">
             <CardTitle className="text-sm font-semibold text-slate-100">1. Upload Roster File</CardTitle>
-            <CardDescription className="text-xs text-slate-400">
-              Upload {role === 'student' ? 'Student' : 'Faculty'} roster in Excel (.xlsx/.xls) or PDF format containing Name, {role === 'faculty' ? 'Employee ID' : 'USN'}, Department, Phone, & Email.
+            <CardDescription className="text-xs text-slate-400 flex items-center justify-between">
+              <span>
+                Upload {role === 'student' ? 'Student' : 'Faculty'} roster in Excel (.xlsx/.xls) or PDF format containing Name, {role === 'faculty' ? 'Employee ID' : 'Roll No/USN'}, Department, Phone, & Email.
+              </span>
+              <a
+                href={role === 'student' ? '/sample_students.xlsx' : '/sample_faculty.xlsx'}
+                download
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono bg-[#09090B] border border-[#27272A] hover:bg-[#18181B] text-indigo-400 rounded-lg transition"
+              >
+                <Download size={13} />
+                Download Sample {role === 'student' ? 'Student' : 'Faculty'} Excel
+              </a>
             </CardDescription>
           </CardHeader>
           <CardContent className="p-5">

@@ -4,23 +4,27 @@ from io import BytesIO
 from PIL import Image
 import numpy as np
 
+import importlib
+
 # Try PaddleOCR, fallback to Pytesseract
 PADDLE_AVAILABLE = False
 PYTESSERACT_AVAILABLE = False
+ocr_engine = None
 
 try:
-    from paddleocr import PaddleOCR
+    paddle_mod = importlib.import_module('paddleocr') # type: ignore
+    PaddleOCR = getattr(paddle_mod, 'PaddleOCR')
     ocr_engine = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
     PADDLE_AVAILABLE = True
     print("[OCR Service] PaddleOCR initialized successfully.")
 except Exception as e:
-    print(f"[OCR Service Warning] PaddleOCR not available ({str(e)}). Checking Pytesseract fallback...")
+    print(f"[OCR Service Warning] PaddleOCR module not loaded ({str(e)}). Checking Pytesseract fallback...")
     try:
-        import pytesseract
+        pyt_mod = importlib.import_module('pytesseract') # type: ignore
         PYTESSERACT_AVAILABLE = True
         print("[OCR Service] Pytesseract fallback available.")
     except Exception as e_pyt:
-        print(f"[OCR Service Warning] Pytesseract also unavailable ({str(e_pyt)}). Mock OCR mode active.")
+        print(f"[OCR Service Warning] Pytesseract unavailable ({str(e_pyt)}). Mock OCR mode active.")
 
 def extract_usn_from_text(text):
     # Regex to match USN / Roll No / Employee ID patterns
