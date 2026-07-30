@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Shield, Hash, Lock, AlertCircle, Eye, EyeOff, Key, ArrowLeft } from 'lucide-react'
-import api from '@/utils/api'
+import { useAuth } from '@/context/AuthContext'
 
 export default function InvigilatorLogin() {
   const navigate = useNavigate()
+  const { loginInvigilator } = useAuth()
   const [form, setForm] = useState({ examId: '', invId: '', invPassword: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,18 +21,14 @@ export default function InvigilatorLogin() {
     if (!form.examId || !form.invId || !form.invPassword) { setError('All fields are required.'); return }
     setLoading(true)
     try {
-      const res = await api.post('/auth/invigilator/login', {
-        examId: form.examId.trim(),
-        invId: form.invId.trim(),
-        invPassword: form.invPassword
-      })
-      const { token, session } = res.data
-      localStorage.setItem('inv_token', token)
-      localStorage.setItem('inv_examId', session.examId)
-      localStorage.setItem('inv_session', JSON.stringify(session))
-      navigate(`/invigilator/exam/${session.examId}`)
+      const result = await loginInvigilator(form.examId.trim(), form.invId.trim(), form.invPassword)
+      if (result.success) {
+        navigate(`/invigilator/live-grid/${result.session.examId}`)
+      } else {
+        setError(result.error)
+      }
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Check your credentials.')
+      setError('Login failed. Check your credentials.')
     } finally {
       setLoading(false)
     }

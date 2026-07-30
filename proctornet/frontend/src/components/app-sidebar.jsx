@@ -96,8 +96,8 @@ export function AppSidebar({ variant = 'inset' }) {
               <AvatarFallback className="font-mono text-[10px] bg-[#27272A] text-white">{initials}</AvatarFallback>
             </Avatar>
             <div className="min-w-0 leading-none">
-              <p className="text-xs font-semibold text-slate-100 truncate">{user?.name || 'Sudeep'}</p>
-              <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{user?.email || 'student@mit.ac.in'}</p>
+              <p className="text-xs font-semibold text-slate-100 truncate">{user?.name || user?.usn || user?.employeeId || 'User Session'}</p>
+              <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{user?.email || (user?.usn ? `${user.usn.toLowerCase()}@college.edu` : user?.employeeId ? `${user.employeeId.toLowerCase()}@college.edu` : `${currentRole}@proctornet.local`)}</p>
             </div>
           </div>
           <button

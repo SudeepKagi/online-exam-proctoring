@@ -766,28 +766,28 @@ export default function InvDashboard() {
                 </div>
 
                 <div className="p-5">
-                  <h3 className="font-black text-slate-900 truncate mb-1">{student.name}</h3>
+                  <h3 className="font-bold text-slate-100 truncate mb-1">{student.name}</h3>
                   <div className="flex justify-between items-center text-slate-400 mb-3">
                     <span className="font-mono text-xs font-bold">{student.usn}</span>
-                    <div className="flex items-center gap-1 text-[10px] font-black uppercase">
+                    <div className="flex items-center gap-1 text-[10px] font-mono">
                       <Clock size={12} /> {student.startedAt ? new Date(student.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                     </div>
                   </div>
                   {/* Face Match Score */}
                   {student.faceMatchScore !== null && student.faceMatchScore !== undefined ? (
-                    <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black border ${student.faceMatchScore < 0.6
-                      ? 'bg-amber-50 border-amber-200 text-amber-700'
-                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    <div className={`flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-mono border ${student.faceMatchScore < 0.6
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+                      : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
                       }`}>
                       <span className="uppercase tracking-widest">
                         {student.faceMatchScore < 0.6 ? '⚠ Low Face Match' : '✓ Face Verified'}
                       </span>
-                      <span className="text-sm font-black tabular-nums">
+                      <span className="text-xs font-bold tabular-nums">
                         {(student.faceMatchScore * 100).toFixed(1)}%
                       </span>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-black border bg-slate-50 border-slate-200 text-slate-400">
+                    <div className="flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-mono border bg-[#18181A] border-[#27272A] text-slate-400">
                       <span className="uppercase tracking-widest">Face Score</span>
                       <span>—</span>
                     </div>

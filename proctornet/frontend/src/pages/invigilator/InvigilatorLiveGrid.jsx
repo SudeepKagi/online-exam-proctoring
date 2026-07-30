@@ -19,25 +19,32 @@ export default function InvigilatorLiveGrid() {
   const [warningMsg, setWarningMsg] = useState('')
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)
 
-  // Demo candidate tiles grid for 100-200 student scale
+  const [examTitle, setExamTitle] = useState('')
+
   const fetchGridData = async () => {
     setLoading(true)
     try {
-      const res = await api.get(`/invigilator/live-grid/${examId || 'active'}`)
-      setCandidates(res.data.candidates || [])
-    } catch {
-      // Mock grid data for demonstration
-      const demoData = Array.from({ length: 24 }).map((_, i) => ({
-        id: `cand_${i + 1}`,
-        seatNo: `A-${101 + i}`,
-        usn: `1NT23CS${(100 + i).toString().slice(1)}`,
-        name: `Candidate ${i + 1}`,
-        status: i === 3 ? 'FLAGGED' : i === 7 ? 'NO_FACE' : 'ACTIVE',
-        alerts: i === 3 ? ['Tab Switch (3x)', 'AnyDesk Process Detected'] : i === 7 ? ['No Face (15s)'] : [],
-        isHotspot: i === 3,
-        lastSnapshot: null,
+      const res = await api.get(`/invigilator/exam/${examId}`)
+      if (res.data.exam) setExamTitle(res.data.exam.title)
+      const rawStudents = res.data.students || []
+      const mapped = rawStudents.map((st, i) => ({
+        id: st.studentId,
+        seatNo: `Seat A-${101 + i}`,
+        usn: st.usn,
+        name: st.name,
+        status: st.status || 'ACTIVE',
+        alerts: (st.events || []).map(e => e.eventType || e.details || 'Security Flag'),
+        isHotspot: st.flagCount > 0,
+        lastSnapshot: st.facePhotoUrl || null,
       }))
-      setCandidates(demoData)
+      setCandidates(mapped)
+    } catch {
+      try {
+        const res = await api.get(`/invigilator/live-grid/${examId || 'active'}`)
+        setCandidates(res.data.candidates || [])
+      } catch {
+        setCandidates([])
+      }
     } finally {
       setLoading(false)
     }
@@ -98,7 +105,7 @@ export default function InvigilatorLiveGrid() {
           <div>
             <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
               <Grid className="w-5 h-5 text-indigo-400" />
-              Live Invigilator Exam Grid (Hall A-1)
+              {examTitle ? `Live Grid: ${examTitle}` : 'Live Invigilator Exam Grid'}
             </h1>
             <p className="text-xs text-slate-400 mt-0.5">
               Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream inspection

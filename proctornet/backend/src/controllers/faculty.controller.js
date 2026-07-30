@@ -1145,6 +1145,53 @@ async function getExamCredentials(req, res) {
     return res.status(500).json({ error: 'Failed to retrieve credentials.' })
   }
 }
+/**
+ * PATCH / POST /api/faculty/exams/:id/publish
+ * Publish an exam and generate invigilator access credentials
+ */
+async function publishExam(req, res) {
+  try {
+    const { id } = req.params
+    const facultyId = req.user.id
+
+    const exam = await global.prisma.exam.findFirst({
+      where: { id, facultyId }
+    })
+
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found or access denied.' })
+    }
+
+    const invId = exam.invId || `INV-${Math.floor(100 + Math.random() * 900)}`
+    const rawPassword = Math.random().toString(36).substr(2, 8).toUpperCase()
+    const bcrypt = require('bcryptjs')
+    const invPasswordHash = await bcrypt.hash(rawPassword, 10)
+
+    const updatedExam = await global.prisma.exam.update({
+      where: { id },
+      data: {
+        status: 'PUBLISHED',
+        invId,
+        invPasswordHash,
+      }
+    })
+
+    logAudit({ userId: facultyId, userRole: 'faculty', action: 'EXAM_PUBLISHED', details: `Published Exam ${id}`, ipAddress: getClientIp(req) })
+
+    return res.json({
+      success: true,
+      message: 'Exam published successfully',
+      exam: updatedExam,
+      invCredentials: {
+        invId,
+        password: rawPassword
+      }
+    })
+  } catch (err) {
+    console.error('publishExam error:', err)
+    return res.status(500).json({ error: 'Failed to publish exam: ' + err.message })
+  }
+}
 
 module.exports = {
   getDashboardStats,

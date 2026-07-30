@@ -82,7 +82,7 @@ function ExamCard({ exam, now }) {
           </div>
 
           {canJoin ? (
-            <Link to={`/student/exam-lobby/${exam.id}`}>
+            <Link to={`/student/exams/${exam.id}/lobby`}>
               <Button size="sm" className="h-7 text-[11px] font-mono">
                 <Play size={11} className="mr-1" /> {isActive ? 'Join Now' : 'Enter Lobby'}
               </Button>

@@ -57,28 +57,28 @@ export default function FacultyDashboard() {
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <User size={12} className="text-slate-400" /> Full Name
                 </span>
-                <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Dr. John Smith'}</p>
+                <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Faculty Member'}</p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Briefcase size={12} className="text-slate-400" /> Employee ID
                 </span>
-                <p className="font-semibold font-mono text-slate-100 mt-1">{user?.employeeId || 'EMP101'}</p>
+                <p className="font-semibold font-mono text-slate-100 mt-1">{user?.employeeId || 'N/A'}</p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Mail size={12} className="text-slate-400" /> Institutional Email
                 </span>
-                <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'john.smith@college.edu'}</p>
+                <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'N/A'}</p>
               </div>
 
               <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                   <Building size={12} className="text-slate-400" /> Department & Contact
                 </span>
-                <p className="font-semibold text-slate-100 mt-1">{user?.department || 'CSE'} • {user?.phone || '9988776655'}</p>
+                <p className="font-semibold text-slate-100 mt-1">{user?.department || 'Faculty'} • {user?.phone || 'N/A'}</p>
               </div>
             </CardContent>
           </Card>

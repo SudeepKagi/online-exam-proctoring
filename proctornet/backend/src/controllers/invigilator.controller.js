@@ -274,10 +274,45 @@ async function terminateStudent(req, res) {
   }
 }
 
+async function sendWarningGeneral(req, res) {
+  try {
+    const { studentId, message } = req.body
+    const io = req.app.get('io')
+    if (io && studentId) {
+      io.to(`student:${studentId}`).emit('exam:warning', {
+        message: message || 'Invigilator warning issued.',
+        from: 'Invigilator',
+        timestamp: new Date().toISOString()
+      })
+    }
+    res.json({ success: true, message: 'Warning dispatched' })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to send warning' })
+  }
+}
+
+async function pauseStudentGeneral(req, res) {
+  try {
+    const { studentId } = req.params
+    const io = req.app.get('io')
+    if (io && studentId) {
+      io.to(`student:${studentId}`).emit('exam:paused', {
+        reason: 'Paused by invigilator',
+        timestamp: new Date().toISOString()
+      })
+    }
+    res.json({ success: true, message: 'Exam session paused' })
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to pause session' })
+  }
+}
+
 module.exports = {
   login,
   getExamInfo,
   getExamStudents,
   warnStudent,
-  terminateStudent
+  terminateStudent,
+  sendWarningGeneral,
+  pauseStudentGeneral
 }

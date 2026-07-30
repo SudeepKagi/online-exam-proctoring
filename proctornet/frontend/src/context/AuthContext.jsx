@@ -161,8 +161,27 @@ export function AuthProvider({ children }) {
     return res.data
   }
 
+  const loginInvigilator = async (examId, invId, invPassword) => {
+    try {
+      const res = await api.post('/auth/invigilator/login', { examId, invId, invPassword })
+      const { token, session } = res.data
+      const user = { id: session.invId, name: `Invigilator ${session.invId}`, examId: session.examId, role: 'invigilator' }
+      
+      localStorage.setItem('proctornet_token', token)
+      localStorage.setItem('proctornet_user', JSON.stringify(user))
+      localStorage.setItem('proctornet_role', 'invigilator')
+      localStorage.setItem('inv_token', token)
+      localStorage.setItem('inv_examId', session.examId)
+
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { token, user, role: 'invigilator' } })
+      return { success: true, session }
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Invigilator login failed.' }
+    }
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, updateUser, refreshUser, changePassword }}>
+    <AuthContext.Provider value={{ ...state, login, loginInvigilator, logout, updateUser, refreshUser, changePassword }}>
       {children}
     </AuthContext.Provider>
   )

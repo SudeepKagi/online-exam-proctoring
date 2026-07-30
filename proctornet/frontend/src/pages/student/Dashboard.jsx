@@ -114,28 +114,28 @@ export default function StudentDashboard() {
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <User size={12} className="text-slate-400" /> Full Name
               </span>
-              <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Rohan Kulkarni'}</p>
+              <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Candidate'}</p>
             </div>
 
             <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <GraduationCap size={12} className="text-slate-400" /> Roll No / USN
               </span>
-              <p className="font-semibold font-mono text-slate-100 mt-1">{user?.usn || user?.rollNo || '1NT23EC015'}</p>
+              <p className="font-semibold font-mono text-slate-100 mt-1">{user?.usn || user?.rollNo || 'N/A'}</p>
             </div>
 
             <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Mail size={12} className="text-slate-400" /> Institutional Email
               </span>
-              <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'rohan.kulkarni@college.edu'}</p>
+              <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || (user?.usn ? `${user.usn.toLowerCase()}@college.edu` : 'N/A')}</p>
             </div>
 
             <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
               <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
                 <Building size={12} className="text-slate-400" /> Department & Phone
               </span>
-              <p className="font-semibold text-slate-100 mt-1">{user?.department || 'ECE'} • {user?.phone || '9876543212'}</p>
+              <p className="font-semibold text-slate-100 mt-1">{user?.department || 'General'} • {user?.phone || 'N/A'}</p>
             </div>
           </CardContent>
         </Card>

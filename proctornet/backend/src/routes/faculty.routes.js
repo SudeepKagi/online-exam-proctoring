@@ -18,6 +18,7 @@ router.get   ('/exams/:id',        ctrl.getExam)
 router.patch ('/exams/:id',        ctrl.updateExam)
 router.delete('/exams/:id',        ctrl.deleteExam)
 router.patch ('/exams/:id/publish',      ctrl.publishExam)
+router.post  ('/exams/:id/publish',      ctrl.publishExam)
 router.get   ('/exams/:id/credentials',  ctrl.getExamCredentials)
 router.post  ('/exams/:id/duplicate',    ctrl.duplicateExam)
 
