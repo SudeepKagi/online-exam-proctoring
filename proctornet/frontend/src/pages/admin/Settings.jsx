@@ -2,29 +2,36 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
-import { Save, RefreshCw, Shield, Camera, Wifi, Eye, Cpu, AlertTriangle, CheckCircle } from 'lucide-react'
+import { Save, RefreshCw, Shield, Camera, Wifi, Eye, Cpu, CheckCircle2, Lock, SlidersHorizontal } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 
-function ToggleSwitch({ checked, onChange, id }) {
+function SliderInput({ label, value, min, max, step = 1, unit, onChange, desc }) {
   return (
-    <button id={id} type="button" onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${checked ? 'bg-blue-600' : 'bg-gray-200'}`}>
-      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-6' : 'translate-x-1'}`} />
-    </button>
-  )
-}
-
-function SliderInput({ label, value, min, max, step = 1, unit, onChange }) {
-  return (
-    <div className="space-y-2">
+    <div className="space-y-2.5 p-4 rounded-xl bg-[#09090B] border border-[#27272A]">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-lg">{value}{unit}</span>
+        <div>
+          <label className="text-xs font-semibold text-slate-200">{label}</label>
+          {desc && <p className="text-[11px] text-slate-400 mt-0.5">{desc}</p>}
+        </div>
+        <Badge variant="outline" className="font-mono text-xs text-indigo-400 border-indigo-500/30 bg-indigo-500/10">
+          {value}{unit}
+        </Badge>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-      <div className="flex justify-between text-xs text-gray-400">
-        <span>{min}{unit}</span><span>{max}{unit}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-2 bg-[#27272A] rounded-lg appearance-none cursor-pointer accent-indigo-500 focus:outline-none"
+      />
+      <div className="flex justify-between text-[10px] font-mono text-slate-500">
+        <span>{min}{unit}</span>
+        <span>{max}{unit}</span>
       </div>
     </div>
   )
@@ -56,135 +63,166 @@ export default function AdminSettings() {
         if (res.data) setSettings({ ...DEFAULT_SETTINGS, ...res.data })
       } catch {
         toast.error('Could not load settings — using defaults')
-      } finally { setLoading(false) }
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [])
 
-  const set = (key) => (val) => setSettings(prev => ({ ...prev, [key]: val }))
+  const setKey = (key) => (val) => setSettings((prev) => ({ ...prev, [key]: val }))
 
   const handleSave = async () => {
     setSaving(true)
     try {
       await api.patch('/admin/settings', settings)
-      toast.success('Settings saved successfully')
+      toast.success('Platform security settings saved successfully')
     } catch {
       toast.error('Failed to save settings')
-    } finally { setSaving(false) }
+    } finally {
+      setSaving(false)
+    }
   }
 
   const sections = [
     {
-      title: 'Face Verification',
+      title: 'Face & Biometric Verification',
       icon: Camera,
-      color: 'bg-purple-50 text-purple-600',
+      badge: 'Exadel CompreFace',
       items: [
-        { type: 'toggle', label: 'Enable Face Verification', key: 'faceVerificationEnabled', desc: 'Continuously verify student identity via camera' },
-        { type: 'slider', label: 'Face Match Threshold', key: 'faceMatchThreshold', min: 70, max: 100, unit: '%', desc: 'Minimum confidence score required to pass face check' },
-        { type: 'slider', label: 'Re-verify Interval', key: 'reverifyIntervalMins', min: 5, max: 30, unit: ' min', desc: 'How often to re-run face verification during exam' },
-        { type: 'slider', label: 'Face Absence Warning', key: 'faceAbsenceWarnSecs', min: 5, max: 30, unit: 's', desc: 'Seconds before showing warning when no face detected' },
-        { type: 'slider', label: 'Face Absence Pause', key: 'faceAbsencePauseSecs', min: 10, max: 60, unit: 's', desc: 'Seconds before pausing exam when no face detected' },
-      ]
+        { type: 'toggle', label: 'Enable Face Verification', key: 'faceVerificationEnabled', desc: 'Continuously verify student identity via camera and CompreFace AI' },
+        { type: 'slider', label: 'Face Match Threshold', key: 'faceMatchThreshold', min: 70, max: 100, unit: '%', desc: 'Minimum confidence score required to auto-pass face check' },
+        { type: 'slider', label: 'Re-verify Interval', key: 'reverifyIntervalMins', min: 5, max: 30, unit: ' min', desc: 'Frequency of background face verification during exam' },
+        { type: 'slider', label: 'Face Absence Warning', key: 'faceAbsenceWarnSecs', min: 5, max: 30, unit: 's', desc: 'Seconds before displaying candidate absence warning' },
+        { type: 'slider', label: 'Face Absence Pause', key: 'faceAbsencePauseSecs', min: 10, max: 60, unit: 's', desc: 'Seconds before pausing exam session due to face absence' },
+      ],
     },
     {
-      title: 'Identity Verification',
+      title: 'Identity & Watermarking',
       icon: Eye,
-      color: 'bg-blue-50 text-blue-600',
+      badge: 'PaddleOCR Engine',
       items: [
-        { type: 'toggle', label: 'ID Card Verification', key: 'idCardVerificationEnabled', desc: 'Require students to show ID card before exam' },
-        { type: 'toggle', label: 'Visible Watermark', key: 'watermarkVisible', desc: 'Show student USN watermark across exam screen' },
-      ]
+        { type: 'toggle', label: 'ID Card OCR Verification', key: 'idCardVerificationEnabled', desc: 'Require students to upload & verify ID card credentials' },
+        { type: 'toggle', label: 'Dynamic Tracked Watermark', key: 'watermarkVisible', desc: 'Overlay candidate identity watermark across exam interface' },
+      ],
     },
     {
-      title: 'VPN & Network',
+      title: 'VPN & Network Routing',
       icon: Wifi,
-      color: 'bg-green-50 text-green-600',
+      badge: 'WireGuard Tunnel',
       items: [
-        { type: 'toggle', label: 'Enforce VPN Connection', key: 'vpnEnforced', desc: 'Require WireGuard VPN before allowing exam access' },
-      ]
+        { type: 'toggle', label: 'Enforce VPN Connection', key: 'vpnEnforced', desc: 'Require active WireGuard VPN tunnel prior to exam lobby entrance' },
+      ],
     },
     {
-      title: 'Security Detection',
+      title: 'Proctoring & Machine Audits',
       icon: Shield,
-      color: 'bg-red-50 text-red-600',
+      badge: 'Proctor Shield',
       items: [
-        { type: 'toggle', label: 'VM Detection', key: 'vmDetectionEnabled', desc: 'Block students running virtual machines' },
-        { type: 'toggle', label: 'Collusion Detection', key: 'collusionDetectionEnabled', desc: 'Detect suspicious answer pattern similarities' },
-        { type: 'slider', label: 'Collusion Threshold', key: 'collusionThreshold', min: 70, max: 100, unit: '%', desc: 'Similarity score above which answers are flagged' },
-      ]
-    }
+        { type: 'toggle', label: 'Virtual Machine Detection', key: 'vmDetectionEnabled', desc: 'Block access from virtualized hypervisors and WebGL software renderers' },
+        { type: 'toggle', label: 'Collusion Pattern Engine', key: 'collusionDetectionEnabled', desc: 'Detect suspicious submission pattern similarities between candidates' },
+        { type: 'slider', label: 'Collusion Similarity Threshold', key: 'collusionThreshold', min: 70, max: 100, unit: '%', desc: 'Answer similarity percentage that flags collusion reports' },
+      ],
+    },
   ]
 
   return (
     <DashboardLayout title="Platform Settings">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Platform Settings</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Configure proctoring rules, thresholds, and security features</p>
+      <div className="flex flex-col gap-6 py-2 font-sans">
+        {/* Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
+              <SlidersHorizontal className="w-5 h-5 text-indigo-400" />
+              Platform Security Settings
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Configure global proctoring thresholds, biometric rules, and AI verification features
+            </p>
+          </div>
+          <Button
+            onClick={handleSave}
+            disabled={saving || loading}
+            className="text-xs font-mono font-bold px-5 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20"
+          >
+            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-2" /> : <Save className="w-3.5 h-3.5 mr-2" />}
+            {saving ? 'Saving...' : 'Save Settings'}
+          </Button>
         </div>
-        <button onClick={handleSave} disabled={saving || loading}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-          {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving…</> : <><Save size={15} />Save Settings</>}
-        </button>
-      </div>
 
-      {loading ? (
-        <div className="space-y-4">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-48 bg-gray-100 rounded-2xl animate-pulse" />)}
-        </div>
-      ) : (
-        <div className="space-y-5">
-          {sections.map(({ title, icon: Icon, color, items }) => (
-            <div key={title} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
-                  <Icon size={18} />
-                </div>
-                <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-              </div>
-              <div className="p-6 space-y-6">
-                {items.map(item => (
-                  <div key={item.key} className={`${item.type === 'slider' ? 'border border-gray-100 rounded-xl p-4' : 'flex items-start justify-between gap-4'}`}>
-                    {item.type === 'toggle' ? (
-                      <>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{item.label}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+        {loading ? (
+          <div className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-44 bg-[#141416] border border-[#27272A] rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {sections.map(({ title, icon: Icon, badge, items }) => (
+              <Card key={title} className="bg-[#141416] border-[#27272A] shadow-xl">
+                <CardHeader className="pb-3 border-b border-[#27272A]/80 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                      <Icon size={18} />
+                    </div>
+                    <div>
+                      <CardTitle className="text-sm font-bold text-slate-100">{title}</CardTitle>
+                      <CardDescription className="text-[11px] text-slate-400">Configure parameters for {title.toLowerCase()}</CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="font-mono text-[10px] text-slate-400 border-[#27272A] bg-[#09090B]">
+                    {badge}
+                  </Badge>
+                </CardHeader>
+
+                <CardContent className="p-5 space-y-4">
+                  {items.map((item) => (
+                    <div key={item.key}>
+                      {item.type === 'toggle' ? (
+                        <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#09090B] border border-[#27272A] hover:border-[#3F3F46] transition">
+                          <div>
+                            <p className="text-xs font-semibold text-slate-200">{item.label}</p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{item.desc}</p>
+                          </div>
+                          <Switch
+                            checked={!!settings[item.key]}
+                            onCheckedChange={setKey(item.key)}
+                          />
                         </div>
-                        <ToggleSwitch checked={settings[item.key]} onChange={set(item.key)} />
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-xs text-gray-500 mb-3">{item.desc}</p>
+                      ) : (
                         <SliderInput
                           label={item.label}
                           value={settings[item.key]}
                           min={item.min}
                           max={item.max}
                           unit={item.unit}
-                          onChange={set(item.key)}
+                          desc={item.desc}
+                          onChange={setKey(item.key)}
                         />
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            ))}
 
-          {/* Save bar */}
-          <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-100 rounded-2xl">
-            <div className="flex items-center gap-2 text-sm text-blue-700">
-              <CheckCircle size={16} />
-              <span>Changes are applied to all future exam sessions</span>
+            {/* Bottom Sticky Action Banner */}
+            <div className="p-4 rounded-2xl bg-[#141416] border border-indigo-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl">
+              <div className="flex items-center gap-2.5 text-xs text-indigo-300">
+                <CheckCircle2 size={16} className="text-indigo-400 shrink-0" />
+                <span>Security configuration changes take effect immediately across all active and scheduled exam lobbies.</span>
+              </div>
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full sm:w-auto text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white"
+              >
+                {saving ? 'Saving...' : 'Apply All Security Policies'}
+              </Button>
             </div>
-            <button onClick={handleSave} disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl transition-colors disabled:opacity-60">
-              {saving ? 'Saving…' : 'Save All Settings'}
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   )
 }

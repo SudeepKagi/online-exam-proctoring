@@ -4,13 +4,17 @@ import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   Search, RefreshCw, CheckCircle, XCircle, UserMinus, UserCheck,
-  Eye, X, ChevronDown, Users, Clock, AlertTriangle
+  Eye, X, Users, Clock, AlertTriangle, ShieldCheck
 } from 'lucide-react'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 function StatusBadge({ isApproved, isSuspended }) {
-  if (isSuspended) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">Suspended</span>
-  if (!isApproved) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Pending</span>
-  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">Active</span>
+  if (isSuspended) return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">Suspended</Badge>
+  if (!isApproved) return <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10 font-mono text-[10px]">Pending</Badge>
+  return <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">Active</Badge>
 }
 
 function IDCardModal({ faculty, onClose, onApprove, onReject }) {
@@ -18,71 +22,87 @@ function IDCardModal({ faculty, onClose, onApprove, onReject }) {
   const [showReject, setShowReject] = useState(false)
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold text-gray-900">Faculty ID Card — {faculty.name}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
-            <X size={18} className="text-gray-500" />
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5 border-b border-[#27272A] pb-3">
+          <h3 className="text-base font-bold text-slate-100">Faculty ID Card — {faculty.name}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-[#27272A] rounded-lg transition-colors">
+            <X size={18} className="text-slate-400" />
           </button>
         </div>
 
-        <div className="bg-gray-100 rounded-xl overflow-hidden mb-4">
+        <div className="bg-[#09090B] border border-[#27272A] rounded-xl overflow-hidden mb-4 flex items-center justify-center min-h-[160px]">
           {faculty.idCardPhotoUrl && faculty.idCardPhotoUrl !== 'placeholder_id' ? (
             <img src={faculty.idCardPhotoUrl} alt="ID Card" className="w-full object-contain max-h-60" />
           ) : (
-            <div className="h-40 flex items-center justify-center text-gray-400 text-sm">No ID card uploaded</div>
+            <div className="h-40 flex items-center justify-center text-slate-500 text-xs font-mono">No ID card photo uploaded</div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-5 text-sm">
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400">Employee ID</p>
-            <p className="font-semibold text-gray-800">{faculty.employeeId}</p>
+        <div className="grid grid-cols-2 gap-3 mb-5 text-xs">
+          <div className="bg-[#09090B] border border-[#27272A] rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Employee ID</p>
+            <p className="font-semibold text-slate-200 mt-0.5 font-mono">{faculty.employeeId}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400">Department</p>
-            <p className="font-semibold text-gray-800">{faculty.department}</p>
+          <div className="bg-[#09090B] border border-[#27272A] rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Department</p>
+            <p className="font-semibold text-slate-200 mt-0.5">{faculty.department}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400">Email</p>
-            <p className="font-semibold text-gray-800 text-xs truncate">{faculty.email}</p>
+          <div className="bg-[#09090B] border border-[#27272A] rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Email</p>
+            <p className="font-semibold text-slate-300 truncate mt-0.5">{faculty.email}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-400">Submitted</p>
-            <p className="font-semibold text-gray-800 text-xs">{new Date(faculty.createdAt).toLocaleDateString()}</p>
+          <div className="bg-[#09090B] border border-[#27272A] rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Submitted</p>
+            <p className="font-semibold text-slate-300 mt-0.5">{new Date(faculty.createdAt).toLocaleDateString()}</p>
           </div>
         </div>
 
         {showReject && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Rejection Reason</label>
-            <textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)}
+            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Rejection Reason</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Provide a reason for rejection..."
-              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
-              rows={3} />
+              className="w-full px-3.5 py-2.5 border border-[#27272A] rounded-xl text-xs bg-[#09090B] text-slate-200 focus:outline-none focus:border-rose-500 resize-none"
+              rows={3}
+            />
           </div>
         )}
 
         <div className="flex gap-3">
           {!showReject ? (
             <>
-              <button onClick={() => onApprove(faculty.id)}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
-                <CheckCircle size={15} /> Approve
+              <button
+                onClick={() => onApprove(faculty.id)}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
+              >
+                <CheckCircle size={15} /> Approve Account
               </button>
-              <button onClick={() => setShowReject(true)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors">
+              <button
+                onClick={() => setShowReject(true)}
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+              >
                 <XCircle size={15} /> Reject
               </button>
             </>
           ) : (
             <>
-              <button onClick={() => { setShowReject(false); setRejectReason('') }}
-                className="flex-1 border border-gray-200 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={() => onReject(faculty.id, rejectReason)}
+              <button
+                onClick={() => {
+                  setShowReject(false)
+                  setRejectReason('')
+                }}
+                className="flex-1 border border-[#27272A] bg-[#09090B] py-2.5 rounded-xl text-xs text-slate-300 hover:bg-[#18181B] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onReject(faculty.id, rejectReason)}
                 disabled={!rejectReason.trim()}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors disabled:opacity-50">
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50"
+              >
                 Confirm Rejection
               </button>
             </>
@@ -109,17 +129,18 @@ export default function AdminFaculty() {
         api.get('/admin/faculty'),
         api.get('/admin/faculty/pending'),
       ])
-      setAllFaculty(allRes.data.faculty || allRes.data || [])
-      setPending(pendingRes.data.faculty || pendingRes.data || [])
-    } catch (err) {
-      console.error(err)
+      setAllFaculty(allRes.data.faculty || [])
+      setPending(pendingRes.data.pending || [])
+    } catch {
       toast.error('Failed to load faculty data')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { fetchAll() }, [])
+  useEffect(() => {
+    fetchAll()
+  }, [])
 
   const handleApprove = async (id) => {
     try {
@@ -127,25 +148,30 @@ export default function AdminFaculty() {
       toast.success('Faculty approved successfully')
       setSelectedFaculty(null)
       fetchAll()
-    } catch { toast.error('Failed to approve faculty') }
+    } catch {
+      toast.error('Failed to approve faculty')
+    }
   }
 
   const handleReject = async (id, reason) => {
     try {
       await api.patch(`/admin/faculty/${id}/reject`, { reason })
-      toast.success('Faculty rejected')
+      toast.success('Faculty registration rejected')
       setSelectedFaculty(null)
       fetchAll()
-    } catch { toast.error('Failed to reject faculty') }
+    } catch {
+      toast.error('Failed to reject faculty')
+    }
   }
 
   const handleSuspend = async (id) => {
-    if (!confirm('Suspend this faculty member?')) return
     try {
       await api.patch(`/admin/faculty/${id}/suspend`)
       toast.success('Faculty suspended')
       fetchAll()
-    } catch { toast.error('Failed to suspend faculty') }
+    } catch {
+      toast.error('Failed to suspend faculty')
+    }
   }
 
   const handleUnsuspend = async (id) => {
@@ -153,13 +179,16 @@ export default function AdminFaculty() {
       await api.patch(`/admin/faculty/${id}/unsuspend`)
       toast.success('Faculty reactivated')
       fetchAll()
-    } catch { toast.error('Failed to reactivate faculty') }
+    } catch {
+      toast.error('Failed to reactivate faculty')
+    }
   }
 
   const DEPTS = ['CS', 'ECE', 'ME', 'CV', 'IS', 'EE']
   const list = tab === 'pending' ? pending : allFaculty
-  const filtered = list.filter(f => {
-    const matchSearch = f.name.toLowerCase().includes(search.toLowerCase()) ||
+  const filtered = list.filter((f) => {
+    const matchSearch =
+      f.name.toLowerCase().includes(search.toLowerCase()) ||
       (f.employeeId || '').toLowerCase().includes(search.toLowerCase()) ||
       f.email.toLowerCase().includes(search.toLowerCase())
     const matchDept = !filterDept || f.department === filterDept
@@ -177,177 +206,161 @@ export default function AdminFaculty() {
         />
       )}
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Faculty Management</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Review applications and manage faculty accounts</p>
-        </div>
-        <button onClick={fetchAll} className="flex items-center gap-2 px-3.5 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 transition-colors">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
-        </button>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mb-5 w-fit">
-        <button onClick={() => setTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'pending' ? 'bg-white shadow-sm text-amber-600' : 'text-gray-500 hover:text-gray-700'}`}>
-          <Clock size={14} /> Pending Approval
-          {pending.length > 0 && <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full">{pending.length}</span>}
-        </button>
-        <button onClick={() => setTab('all')}
-          className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'all' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}>
-          <Users size={14} /> All Faculty
-          <span className="text-xs text-gray-400">({allFaculty.length})</span>
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-3 mb-4">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, ID…"
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
-        </div>
-        <select value={filterDept} onChange={e => setFilterDept(e.target.value)}
-          className="px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All Departments</option>
-          {DEPTS.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-      </div>
-
-      {/* Pending cards */}
-      {tab === 'pending' && !loading && (
-        filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-            <CheckCircle size={40} className="text-green-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium">No pending approvals</p>
-            <p className="text-sm text-gray-400 mt-1">All faculty applications have been processed</p>
+      <div className="flex flex-col gap-5 py-2 font-sans">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-100">Faculty Management</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Review faculty applications and manage system permissions</p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtered.map(f => (
-              <div key={f.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm flex-shrink-0 overflow-hidden">
-                    {f.profilePhotoUrl && f.profilePhotoUrl !== 'placeholder_face'
-                      ? <img src={f.profilePhotoUrl} alt="" className="w-full h-full object-cover" />
-                      : f.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-                    }
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 truncate">{f.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{f.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{f.department}</span>
-                      <span className="text-xs text-gray-400">{f.employeeId}</span>
+          <button
+            onClick={fetchAll}
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-[#27272A] bg-[#141416] hover:bg-[#18181B] text-slate-300 rounded-xl transition"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
+
+        {/* Tabs & Controls Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex bg-[#141416] border border-[#27272A] rounded-full p-1">
+            <button
+              onClick={() => setTab('pending')}
+              className={`flex items-center gap-2 px-4 py-1.5 text-xs font-mono font-bold rounded-full transition-colors ${
+                tab === 'pending' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Clock size={13} /> Pending Approval
+              {pending.length > 0 && <span className="bg-amber-500 text-black font-bold text-[10px] px-1.5 rounded-full">{pending.length}</span>}
+            </button>
+
+            <button
+              onClick={() => setTab('all')}
+              className={`flex items-center gap-2 px-4 py-1.5 text-xs font-mono font-bold rounded-full transition-colors ${
+                tab === 'all' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users size={13} /> All Faculty ({allFaculty.length})
+            </button>
+          </div>
+
+          <div className="flex gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, email, ID..."
+                className="w-full pl-9 pr-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <select
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              className="px-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">All Departments</option>
+              {DEPTS.map((d) => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Pending Approval View */}
+        {tab === 'pending' && !loading && (
+          filtered.length === 0 ? (
+            <Card className="bg-[#141416] border-[#27272A] p-12 text-center shadow-xl">
+              <CheckCircle size={36} className="text-emerald-400 mx-auto mb-3" />
+              <p className="text-slate-200 font-semibold text-sm">No pending approvals</p>
+              <p className="text-xs text-slate-500 mt-1">All faculty applications have been processed.</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((f) => (
+                <Card key={f.id} className="bg-[#141416] border-[#27272A] shadow-xl hover:border-[#3F3F46] transition p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0 overflow-hidden font-mono">
+                        {f.profilePhotoUrl && f.profilePhotoUrl !== 'placeholder_face' ? (
+                          <img src={f.profilePhotoUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          f.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-100 text-sm truncate">{f.name}</p>
+                        <p className="text-xs font-mono text-slate-400 truncate">{f.email}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <Badge variant="outline" className="text-indigo-400 border-indigo-500/30 bg-indigo-500/10 text-[10px]">
+                            {f.department}
+                          </Badge>
+                          <span className="text-[11px] font-mono text-slate-500">{f.employeeId}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-[#09090B] border border-[#27272A] text-xs text-slate-400 mb-4">
+                      <span className="text-[10px] font-mono uppercase text-slate-500">Submitted Date: </span>
+                      <span className="text-slate-200 font-mono">{new Date(f.createdAt).toLocaleDateString()}</span>
                     </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 mb-4 text-xs">
-                  <div className="bg-gray-50 rounded-lg p-2">
-                    <p className="text-gray-400">Submitted</p>
-                    <p className="font-medium text-gray-700">{new Date(f.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-2">
-                    <p className="text-gray-400">Designation</p>
-                    <p className="font-medium text-gray-700 truncate">{f.designation || 'N/A'}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => setSelectedFaculty(f)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-gray-200 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-                    <Eye size={13} /> View ID
-                  </button>
-                  <button onClick={() => handleApprove(f.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold transition-colors">
-                    <CheckCircle size={13} /> Approve
-                  </button>
-                  <button onClick={() => handleReject(f.id, 'Rejected by admin')}
-                    className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition-colors">
-                    <XCircle size={13} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      )}
 
-      {/* All faculty table */}
-      {tab === 'all' && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="p-8 space-y-3">
-              {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}
+                  <div className="flex gap-2 pt-2 border-t border-[#27272A]">
+                    <Button
+                      size="sm"
+                      onClick={() => setSelectedFaculty(f)}
+                      className="w-full text-xs font-mono bg-indigo-600 hover:bg-indigo-500 text-white"
+                    >
+                      <Eye size={13} className="mr-1.5" /> Review Application
+                    </Button>
+                  </div>
+                </Card>
+              ))}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50">
-                    <th className="px-5 py-3.5 text-left font-semibold">Faculty</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Employee ID</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Department</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Status</th>
-                    <th className="px-5 py-3.5 text-left font-semibold">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filtered.length === 0 ? (
-                    <tr><td colSpan={5} className="py-12 text-center text-gray-400">No faculty found</td></tr>
-                  ) : filtered.map(f => (
-                    <tr key={f.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 text-xs flex items-center justify-center font-semibold overflow-hidden flex-shrink-0">
-                            {f.profilePhotoUrl && f.profilePhotoUrl !== 'placeholder_face'
-                              ? <img src={f.profilePhotoUrl} alt="" className="w-full h-full object-cover" />
-                              : f.name?.slice(0, 2).toUpperCase()
-                            }
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{f.name}</p>
-                            <p className="text-xs text-gray-400">{f.email}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-600 font-mono text-xs">{f.employeeId}</td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full font-medium">{f.department}</span>
-                      </td>
-                      <td className="px-5 py-3.5"><StatusBadge isApproved={f.isApproved} isSuspended={f.isSuspended} /></td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setSelectedFaculty(f)}
-                            className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 flex items-center gap-1">
-                            <Eye size={12} /> ID Card
-                          </button>
-                          {!f.isApproved ? (
-                            <button onClick={() => handleApprove(f.id)}
-                              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-1">
-                              <CheckCircle size={12} /> Approve
-                            </button>
-                          ) : f.isSuspended ? (
-                            <button onClick={() => handleUnsuspend(f.id)}
-                              className="px-3 py-1.5 text-xs bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center gap-1">
-                              <UserCheck size={12} /> Reactivate
-                            </button>
-                          ) : (
-                            <button onClick={() => handleSuspend(f.id)}
-                              className="px-3 py-1.5 text-xs bg-red-50 text-red-600 rounded-lg hover:bg-red-100 flex items-center gap-1">
-                              <UserMinus size={12} /> Suspend
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
+          )
+        )}
+
+        {/* All Faculty Table View */}
+        {tab === 'all' && !loading && (
+          <Card className="bg-[#141416] border-[#27272A] shadow-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[#27272A] bg-[#09090B]">
+                  <TableHead className="text-xs text-slate-400 font-mono">Faculty Name</TableHead>
+                  <TableHead className="text-xs text-slate-400 font-mono">Employee ID</TableHead>
+                  <TableHead className="text-xs text-slate-400">Department</TableHead>
+                  <TableHead className="text-xs text-slate-400">Email</TableHead>
+                  <TableHead className="text-xs text-slate-400">Status</TableHead>
+                  <TableHead className="text-xs text-right text-slate-400">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((f) => (
+                  <TableRow key={f.id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
+                    <TableCell className="font-semibold text-xs text-slate-100">{f.name}</TableCell>
+                    <TableCell className="font-mono text-xs text-slate-300">{f.employeeId}</TableCell>
+                    <TableCell><Badge variant="outline" className="text-xs text-slate-300 border-[#27272A] bg-[#09090B]">{f.department}</Badge></TableCell>
+                    <TableCell className="font-mono text-xs text-slate-400">{f.email}</TableCell>
+                    <TableCell><StatusBadge isApproved={f.isApproved} isSuspended={f.isSuspended} /></TableCell>
+                    <TableCell className="text-right">
+                      {f.isSuspended ? (
+                        <Button size="sm" variant="ghost" onClick={() => handleUnsuspend(f.id)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10">
+                          <UserCheck size={13} className="mr-1" /> Reactivate
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" onClick={() => handleSuspend(f.id)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10">
+                          <UserMinus size={13} className="mr-1" /> Suspend
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        )}
+      </div>
     </DashboardLayout>
   )
 }
