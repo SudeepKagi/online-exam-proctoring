@@ -19,6 +19,7 @@ const questionRoutes     = require('./routes/question.routes')
 const answerRoutes       = require('./routes/answer.routes')
 const resultRoutes       = require('./routes/result.routes')
 const vpnRoutes          = require('./routes/vpn.routes')
+const enrollmentRoutes   = require('./routes/enrollment.routes')
 
 // ── Socket handlers ──
 const initExamSocket = require('./sockets/exam.socket')
@@ -116,6 +117,7 @@ app.use('/api/question',     questionRoutes)
 app.use('/api/answer',       answerRoutes)
 app.use('/api/result',       resultRoutes)
 app.use('/api/vpn',          vpnRoutes)
+app.use('/api',              enrollmentRoutes)
 
 // ── 404 handler ──
 app.use((req, res) => {

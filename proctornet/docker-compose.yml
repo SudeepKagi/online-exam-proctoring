@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # Exadel CompreFace Stack (Free, Open-Source Face Recognition)
+  # -------------------------------------------------------------
+  compreface-postgres-db:
+    image: postgres:13-alpine
+    container_name: compreface-postgres-db
+    environment:
+      POSTGRES_DB: compreface
+      POSTGRES_USER: compreface
+      POSTGRES_PASSWORD: compreface_password
+    volumes:
+      - compreface-db-data:/var/lib/postgresql/data
+    networks:
+      - proctornet-net
+    restart: always
+
+  compreface-admin:
+    image: exadel/compreface-admin:1.2.0
+    container_name: compreface-admin
+    environment:
+      - POSTGRES_URL=jdbc:postgresql://compreface-postgres-db:5432/compreface
+      - POSTGRES_USER=compreface
+      - POSTGRES_PASSWORD=compreface_password
+      - SAVE_IMAGES_TO_DB=true
+    ports:
+      - "8000:8080"
+    depends_on:
+      - compreface-postgres-db
+    networks:
+      - proctornet-net
+    restart: always
+
+  compreface-api:
+    image: exadel/compreface-api:1.2.0
+    container_name: compreface-api
+    environment:
+      - POSTGRES_URL=jdbc:postgresql://compreface-postgres-db:5432/compreface
+      - POSTGRES_USER=compreface
+      - POSTGRES_PASSWORD=compreface_password
+      - SAVE_IMAGES_TO_DB=true
+    depends_on:
+      - compreface-postgres-db
+      - compreface-admin
+    networks:
+      - proctornet-net
+    restart: always
+
+  compreface-core:
+    image: exadel/compreface-core:1.2.0
+    container_name: compreface-core
+    environment:
+      - compreface.service.api=http://compreface-api:8080
+    depends_on:
+      - compreface-api
+    networks:
+      - proctornet-net
+    restart: always
+
+  # -------------------------------------------------------------
+  # ProctorNet Application Stack
+  # -------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: proctornet-db
+    environment:
+      POSTGRES_DB: proctornet
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - proctornet-db-data:/var/lib/postgresql/data
+    networks:
+      - proctornet-net
+    restart: always
+
+  python-service:
+    build:
+      context: ./python-service
+    container_name: proctornet-python
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - COMPREFACE_URL=http://compreface-admin:8080
+    networks:
+      - proctornet-net
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+    container_name: proctornet-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/proctornet?schema=public
+      - PYTHON_SERVICE_URL=http://python-service:5001
+      - COMPREFACE_URL=http://compreface-admin:8080
+      - JWT_SECRET=proctornet_super_secret_jwt_key_2026
+    depends_on:
+      - postgres
+      - python-service
+      - compreface-admin
+    networks:
+      - proctornet-net
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: proctornet-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - proctornet-net
+    restart: always
+
+networks:
+  proctornet-net:
+    driver: bridge
+
+volumes:
+  compreface-db-data:
+  proctornet-db-data:

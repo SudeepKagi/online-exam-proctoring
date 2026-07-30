@@ -1,15 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { AuthProvider } from '@/context/AuthContext'
 
 // Pages
 import LandingPage from '@/pages/LandingPage'
 import AdminLogin from '@/pages/admin/Login'
 import FacultyLogin from '@/pages/faculty/Login'
-import FacultyReg from '@/pages/faculty/Register'
 import StudentLogin from '@/pages/student/Login'
-import StudentReg from '@/pages/student/Register'
 import InvLogin from '@/pages/invigilator/Login'
+import ChangePassword from '@/pages/ChangePassword'
 
 // Admin
 import AdminDashboard from '@/pages/admin/Dashboard'
@@ -22,6 +21,8 @@ import AdminSettings from '@/pages/admin/Settings'
 import AdminAnnouncements from '@/pages/admin/Announcements'
 import AdminAuditLogs from '@/pages/admin/AuditLogs'
 import AdminReports from '@/pages/admin/Reports'
+import BulkCreateAccounts from '@/pages/admin/BulkCreateAccounts'
+import AdminEnrollmentReview from '@/pages/admin/AdminEnrollmentReview'
 
 // Faculty
 import FacultyDashboard from '@/pages/faculty/Dashboard'
@@ -39,6 +40,7 @@ import ExamLobby from '@/pages/student/ExamLobby'
 import SecurityCheck from '@/pages/student/SecurityCheck'
 import ExamInterface from '@/pages/student/ExamInterface'
 import StudentResults from '@/pages/student/Results'
+import StudentEnrollment from '@/pages/student/StudentEnrollment'
 
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
@@ -76,13 +78,16 @@ export default function App() {
           {/* Auth */}
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/faculty/login" element={<FacultyLogin />} />
-          <Route path="/faculty/register" element={<FacultyReg />} />
           <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/student/register" element={<StudentReg />} />
           <Route path="/invigilator-login" element={<InvLogin />} />
+
+          {/* Forced Password Change */}
+          <Route path="/change-password" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><ChangePassword /></ProtectedRoute>} />
 
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/bulk-create" element={<ProtectedRoute allowedRoles={['admin']}><BulkCreateAccounts /></ProtectedRoute>} />
+          <Route path="/admin/enrollment-review" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentReview /></ProtectedRoute>} />
           <Route path="/admin/faculty" element={<ProtectedRoute allowedRoles={['admin']}><AdminFaculty /></ProtectedRoute>} />
           <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['admin']}><AdminExams /></ProtectedRoute>} />
@@ -100,22 +105,21 @@ export default function App() {
           <Route path="/faculty/exams/create" element={<ProtectedRoute allowedRoles={['faculty']}><CreateExam /></ProtectedRoute>} />
           <Route path="/faculty/exams/:id" element={<ProtectedRoute allowedRoles={['faculty']}><ExamDetail /></ProtectedRoute>} />
           <Route path="/faculty/exams/:id/questions" element={<ProtectedRoute allowedRoles={['faculty']}><QuestionPool /></ProtectedRoute>} />
-          <Route path="/faculty/exams/:id/results" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyResults /></ProtectedRoute>} />
           <Route path="/faculty/results" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyResults /></ProtectedRoute>} />
 
           {/* Student Routes */}
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+          <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
           <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
-          <Route path="/student/exam-lobby/:id" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
           <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
-          <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
+          <Route path="/student/exams/:id/interface" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
           <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
 
           {/* Invigilator Routes */}
-          <Route path="/invigilator/exam/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
+          <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
 
-          {/* Default Redirect */}
+          {/* Catch-all redirect to Landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

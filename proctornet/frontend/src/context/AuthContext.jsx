@@ -65,7 +65,22 @@ export function AuthProvider({ children }) {
    * Calls the correct auth endpoint based on role.
    * api.js interceptor attaches the token automatically on subsequent requests.
    */
-  const login = async (credentials, role) => {
+  const login = async (arg1, arg2, arg3) => {
+    let credentials = {}
+    let role = 'student'
+
+    if (typeof arg1 === 'object' && arg1 !== null) {
+      credentials = arg1
+      role = arg2
+    } else {
+      role = arg3 || 'student'
+      if (role === 'student') {
+        credentials = { usn: arg1, password: arg2 }
+      } else {
+        credentials = { email: arg1, password: arg2 }
+      }
+    }
+
     const endpoints = {
       admin:   '/auth/admin/login',
       faculty: '/auth/faculty/login',
@@ -128,8 +143,26 @@ export function AuthProvider({ children }) {
     dispatch({ type: 'UPDATE_USER', payload: data })
   }
 
+  const refreshUser = async () => {
+    try {
+      const res = await api.get('/auth/me')
+      if (res.data?.user) {
+        updateUser(res.data.user)
+        return res.data.user
+      }
+    } catch (err) {
+      console.error('[refreshUser]', err)
+    }
+  }
+
+  const changePassword = async (currentPassword, newPassword) => {
+    const res = await api.post('/auth/change-password', { currentPassword, newPassword })
+    updateUser({ mustChangePassword: false })
+    return res.data
+  }
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ ...state, login, logout, updateUser, refreshUser, changePassword }}>
       {children}
     </AuthContext.Provider>
   )

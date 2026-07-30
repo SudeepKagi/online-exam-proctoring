@@ -54,6 +54,14 @@ router.post  ('/announcements',      ctrl.createAnnouncement)
 router.get   ('/announcements',      ctrl.listAnnouncements)
 router.delete('/announcements/:id',  ctrl.deleteAnnouncement)
 
+const multer = require('multer')
+const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } })
+const bulkCtrl = require('../controllers/adminBulk.controller')
+
+// ── Bulk Account Creation (Excel / PDF) ───────────
+router.post('/bulk-upload/parse', upload.single('file'), bulkCtrl.parseBulkFile)
+router.post('/bulk-upload/confirm', bulkCtrl.confirmBulkCreate)
+
 // ── Reports ────────────────────────────────────────
 router.get('/reports', ctrl.getReports)
 

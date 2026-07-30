@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 export default function ProtectedRoute({ children, allowedRoles, role }) {
-  const { isAuthenticated, role: userRole, isLoading } = useAuth()
+  const { user, isAuthenticated, role: userRole, isLoading } = useAuth()
   const invToken = localStorage.getItem('inv_token')
   
   // Normalize roles to an array
@@ -11,6 +11,22 @@ export default function ProtectedRoute({ children, allowedRoles, role }) {
 
   if (isLoading) {
     return <LoadingSpinner />
+  }
+
+  // Force password change if account is flagged
+  if (isAuthenticated && user?.mustChangePassword && window.location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />
+  }
+
+  // Mandatory student biometric enrollment redirect
+  if (
+    isAuthenticated &&
+    userRole === 'student' &&
+    !user?.mustChangePassword &&
+    (user?.profileStatus === 'PENDING' || user?.profileStatus === 'REJECTED') &&
+    window.location.pathname !== '/student/enrollment'
+  ) {
+    return <Navigate to="/student/enrollment" replace />
   }
 
   // Invigilator logic: if role is invigilator, check inv_token

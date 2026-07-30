@@ -1,688 +1,254 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { useEffect, useState, useRef } from 'react'
+import {
+  Shield, ChevronRight, Lock, Eye, Users, Cpu, FileText, CheckCircle2,
+  ArrowRight, Activity, Camera, AlertTriangle, Monitor, Sparkles, Terminal,
+  UserCheck, Layers
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { ProctorNetLogo } from '@/components/ui/proctornet-logo'
 
 const features = [
   {
-    icon: '🛡️',
+    icon: Lock,
     title: 'Network-Level Security',
-    desc: 'WireGuard VPN locks students to the exam network. iptables + Unbound DNS block all external access during exams.',
+    desc: 'Secure VPN connection locks browsers to the exam environment and blocks unauthorized outside network access.',
   },
   {
-    icon: '🎭',
-    title: 'AI Face Verification',
-    desc: 'face_recognition library matches live camera to registered photo. Periodic reverification every 10 minutes.',
+    icon: UserCheck,
+    title: 'Biometric Verification',
+    desc: 'Verifies identity against registered photos with periodic continuous background checks.',
   },
   {
-    icon: '🔏',
+    icon: FileText,
     title: 'Invisible Watermarking',
-    desc: 'LSB steganography embeds student USN in every screenshot. Zero-width characters encode identity in question text.',
+    desc: 'Embeds student credentials into screen captures to prevent question leaks.',
   },
   {
-    icon: '📡',
+    icon: Activity,
     title: 'Real-Time Monitoring',
-    desc: 'Socket.io streams live flag alerts to the invigilator. Camera thumbnails, event timeline, and private chat.',
+    desc: 'Live proctoring feed delivers instant security alerts, camera feeds, and timeline tracking.',
   },
   {
-    icon: '🧠',
-    title: 'Collusion Detection',
-    desc: 'Post-exam analysis compares all student answer pairs. Flags pairs with >85% similarity on common questions.',
+    icon: Cpu,
+    title: 'AI Similarity Scanning',
+    desc: 'Automated cross-student similarity scanning detects copied responses across exams.',
   },
   {
-    icon: '📋',
-    title: 'Forensic Reports',
-    desc: 'PDF evidence reports with identity photos, flag screenshots, event timelines, and decoded watermarks.',
+    icon: Terminal,
+    title: 'Activity Reports',
+    desc: 'Comprehensive post-exam reports including verified identity photos, timeline timestamps, and score logs.',
   },
 ]
 
 const roles = [
   {
     role: 'Admin',
-    icon: '⚙️',
-    color: '#a78bfa',
-    glow: 'rgba(167,139,250,0.15)',
-    border: 'rgba(167,139,250,0.3)',
-    desc: 'Platform control — approves faculty & students, manages settings, views analytics and audit logs.',
+    badge: 'System Control',
+    icon: Shield,
+    desc: 'Full platform administration, user management, activity logs, and system security parameters.',
     path: '/admin/login',
-    label: 'Admin Login',
   },
   {
     role: 'Faculty',
-    icon: '🎓',
-    color: '#60a5fa',
-    glow: 'rgba(96,165,250,0.15)',
-    border: 'rgba(96,165,250,0.3)',
-    desc: 'Creates exams, manages question pools, monitors results, runs collusion checks, downloads reports.',
+    badge: 'Exam Creator',
+    icon: FileText,
+    desc: 'Create exams, manage question pools, view student results, and check similarity scores.',
     path: '/faculty/login',
-    label: 'Faculty Login',
   },
   {
     role: 'Student',
-    icon: '📝',
-    color: '#34d399',
-    glow: 'rgba(52,211,153,0.15)',
-    border: 'rgba(52,211,153,0.3)',
-    desc: 'Registers with face + ID, takes fully locked-down exams with 9-step pre-exam security checks.',
+    badge: 'Candidate',
+    icon: UserCheck,
+    desc: 'Register face profile, complete security pre-checks, and take secure proctored exams.',
     path: '/student/login',
-    label: 'Student Login',
   },
   {
     role: 'Invigilator',
-    icon: '👁️',
-    color: '#fb923c',
-    glow: 'rgba(251,146,60,0.15)',
-    border: 'rgba(251,146,60,0.3)',
-    desc: 'Physical invigilator in the lab. Temporary credential-based access per exam session.',
+    badge: 'Proctor',
+    icon: Eye,
+    desc: 'Real-time lab monitoring console for remote exam supervision per session.',
     path: '/invigilator-login',
-    label: 'Invigilator Login',
   },
 ]
 
 const steps = [
-  { n: '01', title: 'Register', desc: 'Submit face photo + ID card. AI verifies identity match.' },
-  { n: '02', title: '9 Security Checks', desc: 'VPN, browser, fullscreen, camera, face, ID, VM detection, watermark.' },
-  { n: '03', title: 'Monitored Exam', desc: 'Randomised questions, live camera, anti-cheat enforcement.' },
-  { n: '04', title: 'Forensic Results', desc: 'Auto-scoring, collusion check, PDF evidence report.' },
+  { n: '01', title: 'Face Registration', desc: 'Submit a photo to register your biometric baseline profile.' },
+  { n: '02', title: 'System Pre-Check', desc: 'Automated 9-step environment check: camera, VPN, VM detection, and browser lock.' },
+  { n: '03', title: 'Proctored Exam', desc: 'Real-time proctoring with randomized questions and continuous monitoring.' },
+  { n: '04', title: 'Exam Evaluation', desc: 'Instant auto-grading, similarity scanning, and verified result reports.' },
 ]
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, role } = useAuth()
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef(null)
 
-  const [activeDropdown, setActiveDropdown] = useState(null) // 'signin' | 'register' | null
-  const signinRef = useRef(null)
-  const registerRef = useRef(null)
-
-  // Close dropdown on click outside
   useEffect(() => {
     function handleClickOutside(event) {
-      if (
-        (signinRef.current && !signinRef.current.contains(event.target)) &&
-        (registerRef.current && !registerRef.current.contains(event.target))
-      ) {
-        setActiveDropdown(null)
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Auto-redirect if already logged in
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const dash = {
-        admin: '/admin/dashboard',
-        faculty: '/faculty/dashboard',
-        student: '/student/dashboard',
-        invigilator: '/invigilator-login',
-      }
-      navigate(dash[user.role] || '/')
-    }
-  }, [isAuthenticated, user, navigate])
-
-  const signInItems = [
-    {
-      role: 'Student',
-      title: 'Student Portal',
-      desc: 'Verify face and take active exams',
-      icon: 'school',
-      color: '#34d399',
-      path: '/student/login'
-    },
-    {
-      role: 'Faculty',
-      title: 'Faculty Portal',
-      desc: 'Create exams and monitor results',
-      icon: 'history_edu',
-      color: '#60a5fa',
-      path: '/faculty/login'
-    },
-    {
-      role: 'Admin',
-      title: 'Admin Control',
-      desc: 'Approve users and audit system logs',
-      icon: 'admin_panel_settings',
-      color: '#a78bfa',
-      path: '/admin/login'
-    },
-    {
-      role: 'Invigilator',
-      title: 'Invigilator Console',
-      desc: 'Real-time lab proctoring & flag verification',
-      icon: 'visibility',
-      color: '#fb923c',
-      path: '/invigilator-login'
-    }
-  ]
-
-  const registerItems = [
-    {
-      role: 'Student',
-      title: 'Student Registration',
-      desc: 'Register with student ID & face photo',
-      icon: 'person_add',
-      color: '#34d399',
-      path: '/student/register'
-    },
-    {
-      role: 'Faculty',
-      title: 'Faculty Registration',
-      desc: 'Register as instructor for your department',
-      icon: 'badge',
-      color: '#60a5fa',
-      path: '/faculty/register'
-    }
-  ]
-
   return (
-    <div style={{ background: '#0a0e1a', color: '#ffffff', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
-      <style>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-8px) scale(0.98);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        .animate-slide-down {
-          animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .nav-dropdown-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.875rem;
-          padding: 0.75rem;
-          border-radius: 10px;
-          border: none;
-          background: transparent;
-          text-align: left;
-          width: '100%';
-          cursor: pointer;
-          transition: background 0.2s ease, transform 0.15s ease;
-        }
-        .nav-dropdown-item:hover {
-          background: rgba(255, 255, 255, 0.05);
-          transform: translateX(4px);
-        }
-        .nav-link {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.7);
-          transition: color 0.25s;
-          text-decoration: none;
-        }
-        .nav-link:hover {
-          color: #60a5fa;
-        }
-        .text-gradient {
-          background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-        .glass-card {
-          background: rgba(255, 255, 255, 0.03);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          border-radius: 1rem;
-          transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-        .glass-card:hover {
-          transform: translateY(-3px);
-          border-color: rgba(96, 165, 250, 0.3);
-        }
-        .stats-card {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid rgba(255, 255, 255, 0.06);
-          border-radius: 1rem;
-          padding: 1.5rem;
-          transition: transform 0.2s ease, border-color 0.2s ease;
-        }
-        .stats-card:hover {
-          transform: translateY(-2px);
-          border-color: rgba(96, 165, 250, 0.2);
-        }
-        @keyframes blink {
-          0%, 100% { opacity: 0.4; }
-          50% { opacity: 1; }
-        }
-      `}</style>
-
-      {/* ── NAV ── */}
-      <nav style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(10,14,26,0.85)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        padding: '0 2rem',
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        {/* Brand Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{
-            width: '38px', height: '38px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.3s',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05) rotate(3deg)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
-          >
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="logo-grad-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#00c6ff" />
-                  <stop offset="100%" stopColor="#0072ff" />
-                </linearGradient>
-              </defs>
-              <path 
-                d="M12 2C16 3.5 20 3.5 20 3.5C20 3.5 20.5 7.5 19.5 11.5C18.5 14.5 16 17.5 16 17.5L13 14.5C14.2 13.3 16 11.5 16 9C16 6.5 13.5 5.5 12 5V2Z" 
-                fill="url(#logo-grad-dark)" 
-              />
-              <path 
-                d="M12 2C8 3.5 4 3.5 4 3.5C4 3.5 3.5 7.5 4.5 11.5C5.5 15.5 8 19 12 22C12 22 13 21 15 19L12 16C10.8 15.2 9 13.5 9 11C9 8.5 11.5 7.5 12 7V2Z" 
-                fill="url(#logo-grad-dark)" 
-              />
-            </svg>
-          </div>
-          <span style={{ fontWeight: 800, fontSize: '1.25rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
-            Proctor<span style={{ color: '#60a5fa' }}>Net</span>
-          </span>
-        </div>
-
-        {/* Center Links */}
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-          <a href="#how-it-works" className="nav-link">How it Works</a>
-          <a href="#features" className="nav-link">Security Suite</a>
-          <a href="#portals" className="nav-link">All Portals</a>
-        </div>
-
-        {/* Right Actions */}
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {/* REGISTER DROPDOWN */}
-          <div ref={registerRef} style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setActiveDropdown(activeDropdown === 'register' ? null : 'register')}
-              style={{
-                padding: '0.45rem 1.1rem',
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                color: '#ffffff',
-                borderRadius: '8px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Register
-              <span className="material-symbols-outlined" style={{ 
-                fontSize: '16px', 
-                transition: 'transform 0.2s ease', 
-                transform: activeDropdown === 'register' ? 'rotate(180deg)' : 'rotate(0deg)' 
-              }}>
-                keyboard_arrow_down
-              </span>
-            </button>
-
-            {activeDropdown === 'register' && (
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 8px)',
-                width: '320px',
-                background: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '16px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                padding: '0.75rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem',
-                zIndex: 100,
-                animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}>
-                <div style={{ padding: '0.5rem 0.75rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.375rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Create Account</p>
-                </div>
-                {registerItems.map((item) => (
-                  <button
-                    key={item.role}
-                    onClick={() => { navigate(item.path); setActiveDropdown(null) }}
-                    className="nav-dropdown-item"
-                  >
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      background: 'rgba(255,255,255,0.06)',
-                      color: item.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ffffff' }}>{item.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>{item.desc}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
+    <div className="min-h-screen bg-[#09090B] text-slate-100 font-sans selection:bg-white selection:text-black">
+      {/* ── Navigation Top Bar ── */}
+      <nav className="border-b border-[#27272A] bg-[#09090B]/90 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-white text-black flex items-center justify-center font-bold text-xs">
+              <ProctorNetLogo className="w-4 h-4 text-black" />
+            </div>
+            <span className="font-bold tracking-tight text-slate-100 text-sm">ProctorNet</span>
+            <Badge variant="secondary" className="hidden sm:inline-flex text-[9px] font-mono">
+              ONLINE PROCTORING
+            </Badge>
           </div>
 
-          {/* SIGN IN DROPDOWN */}
-          <div ref={signinRef} style={{ position: 'relative' }}>
-            <button 
-              onClick={() => setActiveDropdown(activeDropdown === 'signin' ? null : 'signin')}
-              style={{
-                padding: '0.45rem 1.1rem',
-                fontSize: '0.85rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.375rem',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Sign In
-              <span className="material-symbols-outlined" style={{ 
-                fontSize: '16px', 
-                transition: 'transform 0.2s ease', 
-                transform: activeDropdown === 'signin' ? 'rotate(180deg)' : 'rotate(0deg)' 
-              }}>
-                keyboard_arrow_down
-              </span>
-            </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
 
-            {activeDropdown === 'signin' && (
-              <div style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 8px)',
-                width: '320px',
-                background: '#0f172a',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                borderRadius: '16px',
-                boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                padding: '0.75rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem',
-                zIndex: 100,
-                animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-              }}>
-                <div style={{ padding: '0.5rem 0.75rem 0.25rem', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '0.375rem' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Access Portals</p>
-                </div>
-                {signInItems.map((item) => (
-                  <button
-                    key={item.role}
-                    onClick={() => { navigate(item.path); setActiveDropdown(null) }}
-                    className="nav-dropdown-item"
-                  >
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      background: 'rgba(255,255,255,0.06)',
-                      color: item.color,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ffffff' }}>{item.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.125rem', lineHeight: 1.4 }}>{item.desc}</div>
-                    </div>
-                  </button>
-                ))}
+            {isAuthenticated ? (
+              <Button size="sm" onClick={() => navigate(`/${role}/dashboard`)}>
+                Go to Console <ChevronRight size={13} className="ml-1" />
+              </Button>
+            ) : (
+              <div className="relative" ref={dropdownRef}>
+                <Button size="sm" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                  Sign In <ChevronRight size={13} className="ml-1" />
+                </Button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl py-1 z-50 animate-in fade-in-80">
+                    {roles.map((r) => (
+                      <Link
+                        key={r.role}
+                        to={r.path}
+                        onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-[#27272A] hover:text-white transition-colors"
+                      >
+                        <r.icon size={14} className="text-slate-400" />
+                        <span>{r.role} Login</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </nav>
 
-      {/* ── HERO ── */}
-      <section className="animate-fade-in" style={{
-        padding: '5rem 2rem 4rem',
-        textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Background glow blobs */}
-        <div style={{
-          position: 'absolute', top: '-100px', left: '50%',
-          transform: 'translateX(-50%)',
-          width: '600px', height: '400px',
-          background: 'radial-gradient(ellipse, rgba(59,130,246,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', top: '50px', left: '10%',
-          width: '300px', height: '300px',
-          background: 'radial-gradient(ellipse, rgba(124,58,237,0.08) 0%, transparent 70%)',
-          pointerEvents: 'none',
-        }} />
-
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-          padding: '0.375rem 0.875rem',
-          background: 'rgba(59,130,246,0.1)',
-          border: '1px solid rgba(59,130,246,0.2)',
-          borderRadius: '9999px',
-          fontSize: '0.8125rem',
-          color: '#93c5fd',
-          marginBottom: '1.5rem',
-          fontWeight: 600,
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6', animation: 'blink 1.5s infinite', display: 'inline-block' }} />
-          College Lab Proctoring &amp; Network Isolation System
+      {/* ── Hero Section ── */}
+      <section className="relative pt-16 pb-12 px-4 sm:px-6 max-w-5xl mx-auto text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#141416] border border-[#27272A] text-slate-300 text-xs font-mono mb-6">
+          <Badge variant="default" className="text-[9px]">v2.0 RELEASE</Badge>
+          <span>Secure Online Examination Platform</span>
         </div>
 
-        <h1 style={{
-          fontSize: 'clamp(2.5rem, 6vw, 4rem)',
-          fontWeight: 900,
-          letterSpacing: '-0.04em',
-          lineHeight: 1.1,
-          marginBottom: '1.25rem',
-          color: '#ffffff'
-        }}>
-          Secure Online Exams,
-          <br />
-          <span className="text-gradient">Forensic-Grade Integrity</span>
+        <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white max-w-3xl mx-auto leading-tight">
+          AI-Powered Online Exam & Remote Proctoring
         </h1>
 
-        <p style={{
-          fontSize: '1.125rem',
-          color: 'rgba(255,255,255,0.7)',
-          maxWidth: '600px',
-          margin: '0 auto 2.5rem',
-          lineHeight: 1.7,
-        }}>
-          ProctorNet combines AI face verification, WireGuard VPN, invisible watermarking,
-          and real-time anti-cheat monitoring — purpose-built for college lab environments.
+        <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+          Comprehensive exam security featuring AI face verification, encrypted network connections, anti-cheat detection, and instant evaluation.
         </p>
 
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button 
-            className="btn-primary" 
-            style={{ 
-              padding: '0.75rem 2rem', 
-              fontSize: '1rem',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
-            }}
-            onClick={() => navigate('/student/register')}
-          >
-            Get Started as Student
-          </button>
-          <button 
-            className="btn-secondary" 
-            style={{ 
-              padding: '0.75rem 2rem', 
-              fontSize: '1rem',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              color: '#ffffff',
-              borderRadius: '8px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-            onClick={() => navigate('/faculty/register')}
-          >
-            Register as Faculty
-          </button>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button size="lg" onClick={() => navigate('/student/login')}>
+            Student Login <ArrowRight size={15} className="ml-1.5" />
+          </Button>
+          <Button size="lg" variant="outline" onClick={() => navigate('/faculty/login')}>
+            Faculty Portal
+          </Button>
+        </div>
+      </section>
+
+      {/* ── Role Selector Section ── */}
+      <section className="py-12 px-4 sm:px-6 max-w-6xl mx-auto border-t border-[#27272A]">
+        <div className="text-center mb-8">
+          <h2 className="text-lg font-bold text-white tracking-tight">Access Portals</h2>
+          <p className="text-xs text-slate-400 mt-1">Select your account role to proceed to your dashboard.</p>
         </div>
 
-        {/* Stats bar */}
-        <div style={{
-          display: 'flex', justifyContent: 'center', gap: '3rem',
-          marginTop: '3.5rem', flexWrap: 'wrap',
-        }}>
-          {[
-            ['9', 'Security Checks'],
-            ['4', 'User Roles'],
-            ['AI', 'Face + OCR'],
-            ['VPN', 'Network Lock'],
-          ].map(([val, label]) => (
-            <div key={label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '2.25rem', fontWeight: 800, color: '#60a5fa' }}>{val}</div>
-              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>{label}</div>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {roles.map((r) => (
+            <Card key={r.role} className="border-[#27272A] bg-[#141416] hover:border-[#3F3F46] transition-all flex flex-col justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-[#27272A] text-white flex items-center justify-center border border-[#3F3F46]">
+                    <r.icon size={16} />
+                  </div>
+                  <Badge variant="secondary" className="text-[9px] font-mono">{r.badge}</Badge>
+                </div>
+                <CardTitle className="text-sm font-bold text-white">{r.role} Portal</CardTitle>
+                <CardDescription className="text-xs text-slate-400 mt-1">{r.desc}</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <Link to={r.path}>
+                  <Button variant="outline" size="sm" className="w-full h-8 text-xs font-mono">
+                    Enter {r.role} Portal <ChevronRight size={12} className="ml-1" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" style={{ padding: '4rem 2rem', maxWidth: '900px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
-          How It Works
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
-          {steps.map((s, i) => (
-            <div key={i} className="glass-card" style={{
-              padding: '1.5rem',
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
-                background: 'linear-gradient(90deg, #3b82f6, #7c3aed)',
-              }} />
-              <div style={{
-                fontSize: '2.5rem', fontWeight: 900, color: 'rgba(59,130,246,0.15)',
-                letterSpacing: '-0.04em', marginBottom: '0.5rem', lineHeight: 1,
-              }}>{s.n}</div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.5rem', color: '#ffffff' }}>{s.title}</div>
-              <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>{s.desc}</div>
-            </div>
-          ))}
+      {/* ── Key Features Grid ── */}
+      <section className="py-12 px-4 sm:px-6 max-w-6xl mx-auto border-t border-[#27272A]">
+        <div className="text-center mb-8">
+          <h2 className="text-lg font-bold text-white tracking-tight">Exam Security Features</h2>
+          <p className="text-xs text-slate-400 mt-1">Built for modern educational institutions and remote assessments.</p>
         </div>
-      </section>
 
-      {/* ── FEATURES ── */}
-      <section id="features" style={{ padding: '3rem 2rem', maxWidth: '1100px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '0.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
-          Enterprise-Grade Security Features
-        </h2>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', marginBottom: '2.5rem', fontSize: '0.9375rem' }}>
-          Built for college labs — not home proctoring.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((f, i) => (
-            <div key={i} className="stats-card" style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{
-                fontSize: '1.75rem', width: '48px', height: '48px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                color: '#60a5fa',
-                borderRadius: '12px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}>{f.icon}</div>
+            <div key={i} className="p-4 rounded-2xl bg-[#141416] border border-[#27272A] flex flex-col justify-between">
               <div>
-                <div style={{ fontWeight: 700, marginBottom: '0.375rem', color: '#ffffff' }}>{f.title}</div>
-                <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6 }}>{f.desc}</div>
+                <div className="w-8 h-8 rounded-xl bg-[#27272A] text-white flex items-center justify-center border border-[#3F3F46] mb-3">
+                  <f.icon size={16} />
+                </div>
+                <h3 className="text-xs font-bold text-white mb-1">{f.title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">{f.desc}</p>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── ROLE PORTALS ── */}
-      <section id="portals" style={{ padding: '3rem 2rem', maxWidth: '1000px', margin: '0 auto' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 800, marginBottom: '2.5rem', letterSpacing: '-0.02em', color: '#ffffff' }}>
-          Access Your Portal
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-          {roles.map((r) => (
-            <div key={r.role} style={{
-              background: '#111625',
-              border: `1px solid ${r.border}`,
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: `0 0 0 0 ${r.glow}`,
-            }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 0 30px ${r.glow}`; e.currentTarget.style.transform = 'translateY(-3px)' }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 0 0 transparent'; e.currentTarget.style.transform = 'translateY(0)' }}
-              onClick={() => navigate(r.path)}
-            >
-              <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>{r.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem', color: r.color, marginBottom: '0.5rem' }}>{r.role}</div>
-              <div style={{ fontSize: '0.8125rem', color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, marginBottom: '1.25rem' }}>{r.desc}</div>
-              <button style={{
-                width: '100%', padding: '0.5rem',
-                background: `${r.glow}`,
-                border: `1px solid ${r.border}`,
-                borderRadius: '8px',
-                color: r.color,
-                fontWeight: 700,
-                fontSize: '0.8125rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}>{r.label} →</button>
+      {/* ── Simple 4-Step Process ── */}
+      <section className="py-12 px-4 sm:px-6 max-w-5xl mx-auto border-t border-[#27272A]">
+        <div className="text-center mb-8">
+          <h2 className="text-lg font-bold text-white tracking-tight">How ProctorNet Works</h2>
+          <p className="text-xs text-slate-400 mt-1">Simple and secure end-to-end examination workflow.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {steps.map((s) => (
+            <div key={s.n} className="p-4 rounded-2xl bg-[#141416] border border-[#27272A]">
+              <span className="text-xs font-mono font-bold text-slate-400">{s.n}</span>
+              <h3 className="text-xs font-bold text-white mt-1 mb-1">{s.title}</h3>
+              <p className="text-[11px] text-slate-400 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer style={{
-        borderTop: '1px solid rgba(255,255,255,0.08)',
-        padding: '1.5rem 2rem',
-        textAlign: 'center',
-        color: 'rgba(255,255,255,0.4)',
-        fontSize: '0.8125rem',
-        marginTop: '2rem',
-      }}>
-        <span style={{ fontWeight: 700, color: '#ffffff' }}>ProctorNet</span>
-        {' '} — Secure Exam Proctoring System · Built with React, Node.js, Python Flask, WireGuard
-        <br />
-        <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>Enterprise-Grade Lab Security · 2026</span>
+      {/* ── Footer ── */}
+      <footer className="border-t border-[#27272A] py-6 text-center text-xs font-mono text-slate-400">
+        <p>© {new Date().getFullYear()} ProctorNet. Secure Examination Platform.</p>
       </footer>
     </div>
   )

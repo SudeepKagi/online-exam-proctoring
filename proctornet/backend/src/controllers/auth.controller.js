@@ -1,9 +1,7 @@
-const bcrypt  = require('bcryptjs')
+const bcrypt = require('bcryptjs')
 const { signToken } = require('../utils/jwt')
-const { logAudit }  = require('../utils/auditLogger')
+const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
-const { sendFacultyRegisteredEmail } = require('../services/email.service')
-const { compareFaces, verifyIdCardOcr } = require('../services/python.service')
 
 // ════════════════════════════════════════════════════
 // ADMIN AUTH
@@ -32,7 +30,7 @@ async function adminLogin(req, res) {
 
     res.json({
       token,
-      user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' },
+      user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin', mustChangePassword: false },
     })
   } catch (e) {
     console.error('[adminLogin]', e)
@@ -45,64 +43,12 @@ async function adminLogin(req, res) {
 // ════════════════════════════════════════════════════
 
 /**
- * POST /api/auth/faculty/register
+ * POST /api/auth/faculty/register (DISABLED — Admin-Managed Creation Only)
  */
 async function facultyRegister(req, res) {
-  try {
-    const { name, email, password, department, employeeId, idCardBase64, profilePhotoBase64 } = req.body
-    if (!name || !email || !password || !department || !employeeId)
-      return res.status(400).json({ error: 'All fields are required.' })
-
-    // Check duplicate case-insensitively
-    const existing = await global.prisma.faculty.findFirst({
-      where: {
-        OR: [
-          { email: { equals: email.trim(), mode: 'insensitive' } },
-          { employeeId: { equals: employeeId.trim(), mode: 'insensitive' } }
-        ]
-      },
-    })
-    if (existing) {
-      const isEmailMatch = existing.email.toLowerCase() === email.trim().toLowerCase()
-      const field = isEmailMatch ? 'Email' : 'Employee ID'
-      return res.status(409).json({ error: `${field} is already registered.` })
-    }
-
-    const { uploadBase64 } = require('../services/cloudinary.service')
-    let idCardPhotoUrl = null
-    let profilePhotoUrl = null
-
-    if (idCardBase64) {
-      idCardPhotoUrl = await uploadBase64(idCardBase64, 'proctornet/faculty-ids')
-    }
-    if (profilePhotoBase64) {
-      profilePhotoUrl = await uploadBase64(profilePhotoBase64, 'proctornet/faculty-profiles')
-    }
-
-    const hashed  = await bcrypt.hash(password, 12)
-    const faculty = await global.prisma.faculty.create({
-      data: { name, email, password: hashed, department, employeeId, idCardPhotoUrl, profilePhotoUrl, isApproved: false },
-    })
-
-    logAudit({ userId: faculty.id, userRole: 'faculty', action: 'FACULTY_REGISTERED',
-      details: `${name} (${employeeId})`, ipAddress: getClientIp(req), facultyId: faculty.id })
-
-    // Notify admin (non-blocking)
-    sendFacultyRegisteredEmail(faculty).catch(() => {})
-
-    res.status(201).json({
-      message: 'Registration successful. Waiting for admin approval.',
-      status: 'PENDING_APPROVAL',
-    })
-  } catch (e) {
-    console.error('[facultyRegister]', e)
-    if (e.code === 'P2002') {
-      const target = e.meta?.target || []
-      const field = target.includes('email') ? 'Email' : target.includes('employeeId') ? 'Employee ID' : 'Email or Employee ID'
-      return res.status(409).json({ error: `${field} is already registered.` })
-    }
-    res.status(500).json({ error: 'Server error.' })
-  }
+  return res.status(403).json({
+    error: 'Public self-registration is disabled. Accounts are managed by System Administration.',
+  })
 }
 
 /**
@@ -134,7 +80,15 @@ async function facultyLogin(req, res) {
 
     res.json({
       token,
-      user: { id: faculty.id, name: faculty.name, email: faculty.email, department: faculty.department, role: 'faculty' },
+      user: {
+        id: faculty.id,
+        name: faculty.name,
+        email: faculty.email,
+        department: faculty.department,
+        employeeId: faculty.employeeId,
+        role: 'faculty',
+        mustChangePassword: faculty.mustChangePassword || false,
+      },
     })
   } catch (e) {
     console.error('[facultyLogin]', e)
@@ -147,105 +101,12 @@ async function facultyLogin(req, res) {
 // ════════════════════════════════════════════════════
 
 /**
- * POST /api/auth/student/register
- * Requires: name, usn, email, password, department, semester
- * + facePhoto and idCard as multipart OR base64 in body
+ * POST /api/auth/student/register (DISABLED — Admin-Managed Creation Only)
  */
 async function studentRegister(req, res) {
-  try {
-    const { name, usn: rawUsn, email, password, department, semester, facePhotoBase64, idCardBase64 } = req.body
-
-    if (!name || !rawUsn || !email || !password || !department || !semester)
-      return res.status(400).json({ error: 'All fields are required.' })
-
-    const usn = rawUsn.trim().toUpperCase()
-
-    // Check duplicates case-insensitively
-    const existing = await global.prisma.student.findFirst({
-      where: {
-        OR: [
-          { email: { equals: email.trim(), mode: 'insensitive' } },
-          { usn: { equals: usn, mode: 'insensitive' } }
-        ]
-      },
-    })
-    if (existing) {
-      const isEmailMatch = existing.email.toLowerCase() === email.trim().toLowerCase()
-      const field = isEmailMatch ? 'Email' : 'USN'
-      return res.status(409).json({ error: `${field} is already registered.` })
-    }
-
-    // Upload photos to Cloudinary
-    const { uploadBase64 } = require('../services/cloudinary.service')
-    let facePhotoUrl   = 'placeholder_face'
-    let idCardPhotoUrl = 'placeholder_id'
-
-    if (facePhotoBase64) {
-      facePhotoUrl = await uploadBase64(facePhotoBase64, 'proctornet/faces')
-    }
-    if (idCardBase64) {
-      idCardPhotoUrl = await uploadBase64(idCardBase64, 'proctornet/idcards')
-    }
-
-    // Call Python AI service for face match + OCR
-    let faceMatchScore  = 0
-    let approvalStatus  = 'PENDING_ADMIN'
-
-    try {
-      // 1. Face Comparison
-      const faceRes = await compareFaces(facePhotoUrl, idCardPhotoUrl)
-      faceMatchScore = faceRes.matchScore || 0
-      
-      // 2. OCR Verification
-      const ocrRes = await verifyIdCardOcr(idCardPhotoUrl)
-      const ocrUsn = ocrRes.extractedUsn || ''
-
-      // Auto-approve to faculty queue if score >= threshold AND USN matches
-      const threshold = 0.80
-      const usnMatches = ocrUsn.toUpperCase() === usn.toUpperCase()
-      
-      if (faceMatchScore >= threshold && usnMatches) {
-        approvalStatus = 'PENDING_FACULTY'
-      } else {
-        console.warn(`[studentRegister] Auto-approval failed: Score=${faceMatchScore}, USN Match=${usnMatches} (OCR: ${ocrUsn}, Input: ${usn})`)
-      }
-    } catch (pyErr) {
-      // Python service not running or error — set to manual review
-      console.warn('[studentRegister] AI Service Issue:', pyErr.message)
-      faceMatchScore = 0 // Indicate verification was not performed
-      approvalStatus = 'PENDING_ADMIN' 
-    }
-
-    const hashed  = await bcrypt.hash(password, 12)
-    const student = await global.prisma.student.create({
-      data: {
-        name, usn, email, password: hashed, department,
-        semester: parseInt(semester),
-        facePhotoUrl, idCardPhotoUrl,
-        faceMatchScore,
-        approvalStatus,
-      },
-    })
-
-    logAudit({ userId: student.id, userRole: 'student', action: 'STUDENT_REGISTERED',
-      details: `${name} (${usn}) score=${faceMatchScore}`, ipAddress: getClientIp(req), studentId: student.id })
-
-    res.status(201).json({
-      message: approvalStatus === 'PENDING_FACULTY'
-        ? 'Registration successful. Awaiting faculty approval.'
-        : 'Registration submitted. Under admin review due to low identity match score.',
-      status: approvalStatus,
-      matchScore: faceMatchScore,
-    })
-  } catch (e) {
-    console.error('[studentRegister]', e)
-    if (e.code === 'P2002') {
-      const target = e.meta?.target || []
-      const field = target.includes('email') ? 'Email' : target.includes('usn') ? 'USN' : 'Email or USN'
-      return res.status(409).json({ error: `${field} is already registered.` })
-    }
-    res.status(500).json({ error: 'Server error: ' + e.message })
-  }
+  return res.status(403).json({
+    error: 'Public self-registration is disabled. Accounts are managed by System Administration.',
+  })
 }
 
 /**
@@ -283,15 +144,158 @@ async function studentLogin(req, res) {
     res.json({
       token,
       user: {
-        id: student.id, name: student.name, usn: student.usn,
-        email: student.email, department: student.department,
-        semester: student.semester, facePhotoUrl: student.facePhotoUrl,
+        id: student.id,
+        name: student.name,
+        usn: student.usn,
+        email: student.email,
+        department: student.department,
+        semester: student.semester,
+        facePhotoUrl: student.facePhotoUrl,
         role: 'student',
+        mustChangePassword: student.mustChangePassword || false,
+        profileStatus: student.profileStatus || 'PENDING',
       },
     })
   } catch (e) {
     console.error('[studentLogin]', e)
     res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+/**
+ * GET /api/auth/me - Return current user profile with live DB status
+ */
+async function getMe(req, res) {
+  try {
+    const { id, role } = req.user
+
+    if (role === 'student') {
+      const student = await global.prisma.student.findUnique({ where: { id } })
+      if (!student) return res.status(404).json({ error: 'Student not found.' })
+      return res.json({
+        user: {
+          id: student.id,
+          name: student.name,
+          usn: student.usn,
+          email: student.email,
+          department: student.department,
+          semester: student.semester,
+          facePhotoUrl: student.facePhotoUrl,
+          idDocumentUrl: student.idDocumentUrl,
+          role: 'student',
+          mustChangePassword: student.mustChangePassword || false,
+          profileStatus: student.profileStatus || 'PENDING',
+          rejectionReason: student.rejectionReason,
+        }
+      })
+    } else if (role === 'faculty') {
+      const faculty = await global.prisma.faculty.findUnique({ where: { id } })
+      if (!faculty) return res.status(404).json({ error: 'Faculty not found.' })
+      return res.json({
+        user: {
+          id: faculty.id,
+          name: faculty.name,
+          email: faculty.email,
+          department: faculty.department,
+          employeeId: faculty.employeeId,
+          role: 'faculty',
+          mustChangePassword: faculty.mustChangePassword || false,
+        }
+      })
+    } else if (role === 'admin') {
+      const admin = await global.prisma.admin.findUnique({ where: { id } })
+      if (!admin) return res.status(404).json({ error: 'Admin not found.' })
+      return res.json({
+        user: {
+          id: admin.id,
+          name: admin.name,
+          email: admin.email,
+          role: 'admin',
+          mustChangePassword: false,
+        }
+      })
+    }
+
+    return res.json({ user: req.user })
+  } catch (err) {
+    console.error('[getMe]', err)
+    return res.status(500).json({ error: 'Server error.' })
+  }
+}
+
+
+// ════════════════════════════════════════════════════
+// FORCED PASSWORD CHANGE (Student, Faculty, Admin)
+// ════════════════════════════════════════════════════
+
+/**
+ * POST /api/auth/change-password
+ */
+async function changePassword(req, res) {
+  try {
+    const { currentPassword, newPassword } = req.body
+    const userId = req.user.id
+    const userRole = req.user.role
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required.' })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' })
+    }
+
+    let userObj = null
+    let modelName = ''
+
+    if (userRole === 'student') {
+      userObj = await global.prisma.student.findUnique({ where: { id: userId } })
+      modelName = 'student'
+    } else if (userRole === 'faculty') {
+      userObj = await global.prisma.faculty.findUnique({ where: { id: userId } })
+      modelName = 'faculty'
+    } else if (userRole === 'admin') {
+      userObj = await global.prisma.admin.findUnique({ where: { id: userId } })
+      modelName = 'admin'
+    }
+
+    if (!userObj) {
+      return res.status(404).json({ error: 'User account not found.' })
+    }
+
+    const valid = await bcrypt.compare(currentPassword, userObj.password)
+    if (!valid) {
+      return res.status(401).json({ error: 'Current password is incorrect.' })
+    }
+
+    const newHashed = await bcrypt.hash(newPassword, 10)
+
+    if (modelName === 'student') {
+      await global.prisma.student.update({
+        where: { id: userId },
+        data: { password: newHashed, mustChangePassword: false },
+      })
+    } else if (modelName === 'faculty') {
+      await global.prisma.faculty.update({
+        where: { id: userId },
+        data: { password: newHashed, mustChangePassword: false },
+      })
+    } else if (modelName === 'admin') {
+      await global.prisma.admin.update({
+        where: { id: userId },
+        data: { password: newHashed },
+      })
+    }
+
+    logAudit({ userId, userRole, action: 'PASSWORD_CHANGED', ipAddress: getClientIp(req) })
+
+    return res.json({
+      success: true,
+      message: 'Password changed successfully. Your account is now fully unlocked.',
+    })
+  } catch (e) {
+    console.error('[changePassword]', e)
+    return res.status(500).json({ error: 'Server error: ' + e.message })
   }
 }
 
@@ -308,7 +312,6 @@ async function invigilatorLogin(req, res) {
     if (!invId || !invPassword || !examId)
       return res.status(400).json({ error: 'invId, invPassword and examId are required.' })
 
-    // Find exam
     const exam = await global.prisma.exam.findUnique({ where: { id: examId } })
     if (!exam)
       return res.status(404).json({ error: 'Exam not found.' })
@@ -320,36 +323,20 @@ async function invigilatorLogin(req, res) {
     if (!valid)
       return res.status(401).json({ error: 'Invalid invigilator credentials.' })
 
-    // Handle ID card OCR (optional — photo may come as multipart)
-    let idCardPhotoUrl  = 'placeholder_id'
-    let idCardOcrResult = null
-
-    if (req.file) {
-      const { uploadBuffer } = require('../services/cloudinary.service')
-      idCardPhotoUrl = await uploadBuffer(req.file.buffer, 'proctornet/invigilator-ids')
-      try {
-        const ocrRes = await verifyIdCardOcr(idCardPhotoUrl)
-        idCardOcrResult = ocrRes.extractedName || null
-      } catch { /* Python unavailable */ }
-    }
-
-    // Session expires at exam end + 30 mins
     const sessionExpiry = new Date(exam.endTime.getTime() + 30 * 60 * 1000)
 
-    // Create session record
     const session = await global.prisma.invigilatorSession.create({
       data: {
         examId,
         invId,
-        idCardPhotoUrl,
-        idCardOcrResult,
+        idCardPhotoUrl: 'placeholder_id',
+        idCardOcrResult: null,
         sessionExpiry,
         ipAddress: getClientIp(req),
         isActive: true,
       },
     })
 
-    // Temp JWT expires at exam end + 30 min
     const secondsUntilExpiry = Math.floor((sessionExpiry - Date.now()) / 1000)
     const token = signToken(
       { id: session.id, role: 'invigilator', examId },
@@ -378,5 +365,7 @@ module.exports = {
   facultyLogin,
   studentRegister,
   studentLogin,
+  changePassword,
   invigilatorLogin,
+  getMe,
 }

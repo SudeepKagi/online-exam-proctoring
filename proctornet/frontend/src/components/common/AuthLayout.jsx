@@ -1,162 +1,112 @@
-/**
- * AuthLayout — Split-panel login layout matching the Stitch reference.
- * Left: deep blue gradient with brand info + feature list
- * Right: white panel with form card
- */
-
-function Icon({ name, size = 20, style = {} }) {
-  return (
-    <span
-      style={{
-        fontFamily: "'Material Symbols Outlined'",
-        fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24",
-        fontSize: size,
-        lineHeight: 1,
-        userSelect: 'none',
-        display: 'inline-block',
-        ...style,
-      }}
-    >
-      {name}
-    </span>
-  )
-}
+import * as React from 'react'
+import { Shield, Check, ArrowLeft } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { Badge } from '@/components/ui/badge'
 
 const FEATURES = [
   {
-    icon: 'smart_toy',
     title: 'AI-Powered Verification',
     desc: 'Continuous identity confirmation utilizing multimodal biometrics.',
   },
   {
-    icon: 'videocam',
     title: 'Real-Time Monitoring Feed',
     desc: 'Low-latency video and screen capture streams with automated flagging.',
   },
   {
-    icon: 'lock',
     title: 'Secure Browser Lock',
     desc: 'Prevents unauthorized application access and systemic navigation.',
   },
 ]
 
-export default function AuthLayout({ title, subtitle, children, maxWidth = '420px' }) {
+export default function AuthLayout({ title, subtitle, children, maxWidth = '440px' }) {
   return (
-    <div className="auth-layout">
-      {/* ── Left panel ── */}
-      <div className="auth-left">
-        {/* Abstract blobs */}
-        <div style={{
-          position: 'absolute', top: '-10%', left: '-10%',
-          width: '50%', height: '50%',
-          background: 'rgba(255,255,255,0.05)',
-          borderRadius: '50%',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
-        }} />
-        <div style={{
-          position: 'absolute', bottom: '-10%', right: '-10%',
-          width: '60%', height: '60%',
-          background: 'rgba(37,99,235,0.2)',
-          borderRadius: '50%',
-          filter: 'blur(60px)',
-          pointerEvents: 'none',
-        }} />
+    <div className="min-h-screen bg-background text-foreground flex flex-col lg:flex-row">
+      {/* ── Left Panel (Hero & Features - Zinc / Dark aesthetic) ── */}
+      <div className="lg:flex-1 bg-card border-r border-border p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden hidden lg:flex">
+        {/* Background mesh grid effect */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
+        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Brand */}
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-            <div style={{
-              width: 40, height: 40,
-              background: 'rgba(255,255,255,0.15)',
-              borderRadius: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              backdropFilter: 'blur(8px)',
-            }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path 
-                  d="M12 2C16 3.5 20 3.5 20 3.5C20 3.5 20.5 7.5 19.5 11.5C18.5 14.5 16 17.5 16 17.5L13 14.5C14.2 13.3 16 11.5 16 9C16 6.5 13.5 5.5 12 5V2Z" 
-                  fill="#ffffff" 
-                />
-                <path 
-                  d="M12 2C8 3.5 4 3.5 4 3.5C4 3.5 3.5 7.5 4.5 11.5C5.5 15.5 8 19 12 22C12 22 13 21 15 19L12 16C10.8 15.2 9 13.5 9 11C9 8.5 11.5 7.5 12 7V2Z" 
-                  fill="#ffffff" 
-                />
-              </svg>
+        {/* Top Header */}
+        <div className="relative z-10 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm transition-transform group-hover:scale-105">
+              <Shield size={18} />
             </div>
-            <span style={{ fontSize: '1.25rem', fontStyle: 'normal', fontWeight: 800, color: '#fff', letterSpacing: '-0.02em' }}>
+            <span className="font-semibold tracking-tight text-foreground text-lg">
               ProctorNet
             </span>
-          </div>
-
-          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#fff', lineHeight: 1.2, marginBottom: '1rem', maxWidth: 400 }}>
-            Secure Exam Proctoring
-          </h2>
-
-          <p style={{ color: 'rgba(180,197,255,0.85)', fontSize: '1rem', lineHeight: 1.7, marginBottom: '3rem', maxWidth: 380 }}>
-            Ensuring academic integrity through advanced monitoring and real-time behavioral analysis
-            for high-stakes digital environments.
-          </p>
-
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {FEATURES.map(f => (
-              <li key={f.title} style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
-                <div style={{
-                  marginTop: 2,
-                  width: 28, height: 28,
-                  background: 'rgba(255,255,255,0.15)',
-                  borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0,
-                }}>
-                  <Icon name="check" size={16} style={{ color: '#fff' }} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>{f.title}</div>
-                  <div style={{ fontSize: '0.8125rem', color: 'rgba(180,197,255,0.8)', lineHeight: 1.6 }}>{f.desc}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
+          </Link>
+          <Badge variant="outline" className="font-mono text-xs">
+            v2.0 • Enterprise
+          </Badge>
         </div>
 
-        {/* Footer */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '0.8125rem', color: 'rgba(180,197,255,0.7)' }}>
+        {/* Middle Feature Highlights */}
+        <div className="relative z-10 my-12 max-w-lg">
+          <Badge variant="secondary" className="mb-4">
+            Next-Gen Exam Integrity
+          </Badge>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl mb-4 leading-tight">
+            Secure, Intelligent Online Examination Platform.
+          </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed mb-8">
+            Empower your organization with automated proctoring, live incident response, and end-to-end encryption.
+          </p>
+
+          <div className="space-y-4">
+            {FEATURES.map(f => (
+              <div key={f.title} className="flex items-start gap-3 p-3 rounded-lg border border-border/40 bg-background/50 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                  <Check size={14} />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-foreground">{f.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bottom Footer */}
+        <div className="relative z-10 flex items-center gap-4 text-xs text-muted-foreground">
           <span>© 2025 ProctorNet Inc.</span>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(180,197,255,0.5)' }} />
-          <a href="#" style={{ color: 'inherit' }}>Privacy Policy</a>
-          <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'rgba(180,197,255,0.5)' }} />
-          <a href="#" style={{ color: 'inherit' }}>Support</a>
+          <span>•</span>
+          <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
+          <span>•</span>
+          <a href="#" className="hover:text-foreground transition-colors">Support</a>
         </div>
       </div>
 
-      {/* ── Right panel ── */}
-      <div className="auth-right">
-        <div style={{ width: '100%', maxWidth }}>
-          {/* Mobile logo */}
-          <div style={{ display: 'none' }}>
-            <Icon name="verified_user" size={28} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontWeight: 800 }}>ProctorNet</span>
-          </div>
+      {/* ── Right Panel (Auth Form) ── */}
+      <div className="flex-1 flex flex-col justify-between p-6 sm:p-12 relative bg-background">
+        {/* Top bar on form side */}
+        <div className="flex items-center justify-between mb-8">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft size={14} />
+            Back to Home
+          </Link>
+          <ThemeToggle />
+        </div>
 
-          <div className="auth-card">
-            {/* Title */}
+        {/* Form Container */}
+        <div className="w-full max-w-md mx-auto my-auto">
+          <div className="rounded-xl border border-border bg-card p-6 sm:p-8 shadow-sm">
             {(title || subtitle) && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                {title && (
-                  <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--on-surface)', marginBottom: '0.375rem' }}>
-                    {title}
-                  </h2>
-                )}
-                {subtitle && (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
-                    {subtitle}
-                  </p>
-                )}
+              <div className="mb-6">
+                {title && <h2 className="text-xl font-bold tracking-tight text-foreground">{title}</h2>}
+                {subtitle && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{subtitle}</p>}
               </div>
             )}
             {children}
           </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-[11px] text-muted-foreground mt-8">
+          Need help signing in? Contact your institution administrator.
         </div>
       </div>
     </div>

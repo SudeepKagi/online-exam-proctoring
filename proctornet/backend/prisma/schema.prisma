@@ -17,42 +17,82 @@ model Admin {
 }
 
 model Faculty {
-  id          String     @id @default(uuid())
-  name        String
-  email       String     @unique
-  password    String
-  department  String
-  employeeId      String     @unique
-  idCardPhotoUrl  String?
-  profilePhotoUrl String?
-  isApproved      Boolean    @default(false)
-  approvedBy  String?
-  approvedAt  DateTime?
-  isSuspended Boolean    @default(false)
-  createdAt   DateTime   @default(now())
-  exams       Exam[]
-  auditLogs   AuditLog[]
+  id                 String     @id @default(uuid())
+  name               String
+  email              String     @unique
+  password           String
+  department         String
+  employeeId         String     @unique
+  phone              String?
+  idCardPhotoUrl     String?
+  profilePhotoUrl    String?
+  mustChangePassword Boolean    @default(false)
+  isApproved         Boolean    @default(true)
+  approvedBy         String?
+  approvedAt         DateTime?
+  isSuspended        Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  exams              Exam[]
+  auditLogs          AuditLog[]
 }
 
 model Student {
-  id             String        @id @default(uuid())
-  name           String
-  usn            String        @unique
-  email          String        @unique
-  password       String
-  department     String
-  semester       Int
-  facePhotoUrl   String
-  idCardPhotoUrl String
-  faceMatchScore Float
-  approvalStatus String        @default("PENDING_FACULTY")
-  approvedBy     String?
-  approvedAt     DateTime?
-  isSuspended    Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  studentExams   StudentExam[]
-  auditLogs      AuditLog[]
+  id                      String                 @id @default(uuid())
+  name                    String
+  usn                     String                 @unique
+  email                   String                 @unique
+  password                String
+  department              String
+  semester                Int                    @default(1)
+  phone                   String?
+  facePhotoUrl            String                 @default("")
+  idCardPhotoUrl          String                 @default("")
+  faceMatchScore          Float                  @default(1.0)
+  mustChangePassword      Boolean                @default(false)
+  approvalStatus          String                 @default("APPROVED")
+  approvedBy              String?
+  approvedAt              DateTime?
+  isSuspended             Boolean                @default(false)
+
+  // Biometric Enrollment & Verification Fields
+  profileStatus           String                 @default("PENDING") // PENDING, SUBMITTED, VERIFIED, REJECTED, LOCKED
+  faceSubjectId           String?
+  faceEmbeddingRef        String?
+  idDocumentUrl           String?
+  idCroppedFaceUrl        String?
+  idOcrFields             Json?
+  consentTimestamp        DateTime?
+  biometricEnrollDeadline DateTime?
+  rejectionReason         String?
+
+  createdAt               DateTime               @default(now())
+  studentExams            StudentExam[]
+  auditLogs               AuditLog[]
+  verificationLogs        VerificationAuditLog[]
 }
+
+model VerificationAuditLog {
+  id            String   @id @default(uuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentExamId String?
+  checkType     String   // ENROLLMENT_FACE, ENROLLMENT_ID, EXAM_FACE_VERIFY, EXAM_ID_VERIFY
+  score         Float?
+  status        String   // PASS, FLAGGED, FAIL
+  details       String?
+  timestamp     DateTime @default(now())
+}
+
+model BiometricOverrideLog {
+  id         String   @id @default(uuid())
+  studentId  String
+  approverId String
+  reason     String
+  prevStatus String
+  newStatus  String
+  timestamp  DateTime @default(now())
+}
+
 
 model Exam {
   id                  String               @id @default(uuid())
