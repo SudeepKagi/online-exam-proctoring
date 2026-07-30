@@ -1,12 +1,7 @@
-const express = require('express')
-const cors = require('cors')
+const http = require('http')
 const { exec } = require('child_process')
 
-const app = express()
 const PORT = 49152 // BYOD Agent Port
-
-app.use(cors({ origin: '*' }))
-app.use(express.json())
 
 const BANNED_PROCESS_PATTERNS = [
   'anydesk', 'teamviewer', 'ultraviewer', 'chrome-remote-desktop',
@@ -23,42 +18,58 @@ const VIRTUAL_CAM_PATTERNS = [
 function getRunningProcesses() {
   return new Promise((resolve) => {
     const isWin = process.platform === 'win32'
-    const cmd = isWin ? 'tasklist /FO CSV' : 'ps aux'
+    const cmd = isWin ? 'tasklist' : 'ps aux'
 
     exec(cmd, (err, stdout) => {
-      if (err || !stdout) return resolve([])
+      if (err) return resolve([])
       const lines = stdout.toLowerCase().split('\n')
-      const found = []
-
-      lines.forEach((line) => {
-        BANNED_PROCESS_PATTERNS.forEach((pattern) => {
-          if (line.includes(pattern) && !found.includes(pattern)) {
-            found.push(pattern)
-          }
-        })
-      })
-
-      resolve(found)
+      resolve(lines)
     })
   })
 }
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', agent: 'ProctorNet BYOD Agent v1.0', platform: process.platform })
+const server = http.createServer(async (req, res) => {
+  // CORS Headers
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204)
+    return res.end()
+  }
+
+  if (req.url === '/scan') {
+    try {
+      const processLines = await getRunningProcesses()
+      const blockedProcesses = []
+
+      for (const line of processLines) {
+        for (const pattern of BANNED_PROCESS_PATTERNS) {
+          if (line.includes(pattern) && !blockedProcesses.includes(pattern)) {
+            blockedProcesses.push(pattern)
+          }
+        }
+      }
+
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({
+        agentStatus: 'HEALTHY',
+        platform: process.platform,
+        blockedProcesses,
+        virtualCams: [],
+        scannedAt: new Date().toISOString(),
+      }))
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: e.message }))
+    }
+  }
+
+  res.writeHead(404, { 'Content-Type': 'application/json' })
+  res.end(JSON.stringify({ error: 'Not found' }))
 })
 
-app.get('/scan', async (req, res) => {
-  const foundProcesses = await getRunningProcesses()
-  
-  res.json({
-    ok: foundProcesses.length === 0,
-    timestamp: new Date().toISOString(),
-    blockedProcesses: foundProcesses,
-    virtualCams: [],
-    platform: process.platform,
-  })
-})
-
-app.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n🛡️  ProctorNet BYOD Local Agent listening on http://127.0.0.1:${PORT}`)
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`🔒 ProctorNet BYOD Companion Agent running on http://127.0.0.1:${PORT}`)
 })

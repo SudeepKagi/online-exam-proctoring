@@ -29,12 +29,20 @@ export default function BYODDeviceCheck() {
   const checkAgentHealth = async () => {
     setCheckingAgent(true)
     try {
-      const res = await fetch('http://127.0.0.1:49152/scan', { mode: 'cors' })
-      const data = await res.json()
-      setAgentConnected(true)
-      setBlockedProcesses(data.blockedProcesses || [])
-      setVirtualCams(data.virtualCams || [])
-    } catch {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 1500)
+      const res = await fetch('http://127.0.0.1:49152/scan', { mode: 'cors', signal: controller.signal })
+      clearTimeout(timeoutId)
+      if (res.ok) {
+        const data = await res.json()
+        setAgentConnected(true)
+        setBlockedProcesses(data.blockedProcesses || [])
+        setVirtualCams(data.virtualCams || [])
+      } else {
+        setAgentConnected(false)
+      }
+    } catch (e) {
+      // Local agent offline or refused connection
       setAgentConnected(false)
       setBlockedProcesses([])
     } finally {
