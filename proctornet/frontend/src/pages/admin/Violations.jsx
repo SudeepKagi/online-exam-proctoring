@@ -1,20 +1,20 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { AlertTriangle, Search, RefreshCw, Eye, Filter } from 'lucide-react'
+import { AlertTriangle, Search, RefreshCw, Eye, X } from 'lucide-react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 
 function SeverityBadge({ severity }) {
-  const cls = {
-    CRITICAL: 'bg-red-100 text-red-700 border-red-200',
-    HIGH: 'bg-red-100 text-red-700 border-red-200',
-    MEDIUM: 'bg-amber-100 text-amber-700 border-amber-200',
-    LOW: 'bg-gray-100 text-gray-600 border-gray-200',
+  if (severity === 'CRITICAL' || severity === 'HIGH') {
+    return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">{severity}</Badge>
   }
-  return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${cls[severity] || cls.LOW}`}>
-      {severity}
-    </span>
-  )
+  if (severity === 'MEDIUM') {
+    return <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10 font-mono text-[10px]">{severity}</Badge>
+  }
+  return <Badge variant="outline" className="text-slate-400 border-[#27272A] bg-[#09090B] font-mono text-[10px]">{severity || 'LOW'}</Badge>
 }
 
 const EVENT_LABELS = {
@@ -37,19 +37,25 @@ export default function AdminViolations() {
   const [filterType, setFilterType] = useState('')
   const [selected, setSelected] = useState(null)
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await api.get('/admin/violations')
-        setViolations(res.data.violations || res.data || [])
-      } catch { console.error('Failed to load violations') }
-      finally { setLoading(false) }
+  const fetchViolations = async () => {
+    setLoading(true)
+    try {
+      const res = await api.get('/admin/violations')
+      setViolations(res.data.violations || res.data || [])
+    } catch {
+      console.error('Failed to load violations')
+    } finally {
+      setLoading(false)
     }
-    load()
+  }
+
+  useEffect(() => {
+    fetchViolations()
   }, [])
 
-  const filtered = violations.filter(v => {
-    const matchSearch = (v.studentName || '').toLowerCase().includes(search.toLowerCase()) ||
+  const filtered = violations.filter((v) => {
+    const matchSearch =
+      (v.studentName || '').toLowerCase().includes(search.toLowerCase()) ||
       (v.examTitle || '').toLowerCase().includes(search.toLowerCase())
     const matchSeverity = !filterSeverity || v.severity === filterSeverity
     const matchType = !filterType || v.eventType === filterType
@@ -58,137 +64,176 @@ export default function AdminViolations() {
 
   const stats = {
     total: violations.length,
-    high: violations.filter(v => ['HIGH', 'CRITICAL'].includes(v.severity)).length,
-    medium: violations.filter(v => v.severity === 'MEDIUM').length,
-    low: violations.filter(v => v.severity === 'LOW').length,
+    high: violations.filter((v) => ['HIGH', 'CRITICAL'].includes(v.severity)).length,
+    medium: violations.filter((v) => v.severity === 'MEDIUM').length,
+    low: violations.filter((v) => v.severity === 'LOW').length,
   }
 
   return (
     <DashboardLayout title="Violations">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Violations Center</h1>
-          <p className="text-sm text-gray-500 mt-0.5">All security events and proctoring flags</p>
-        </div>
-        <button onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-3.5 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600">
-          <RefreshCw size={14} /> Refresh
-        </button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Flags', value: stats.total, color: 'text-gray-700', bg: 'bg-gray-50' },
-          { label: 'High/Critical', value: stats.high, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Medium', value: stats.medium, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Low', value: stats.low, color: 'text-gray-500', bg: 'bg-gray-50' },
-        ].map(({ label, value, color, bg }) => (
-          <div key={label} className={`rounded-2xl p-4 ${bg} border border-gray-100`}>
-            <p className="text-xs font-medium text-gray-500">{label}</p>
-            <p className={`text-2xl font-bold mt-0.5 ${color}`}>{value}</p>
+      <div className="flex flex-col gap-5 py-2 font-sans">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-100">Violations & Security Flags</h1>
+            <p className="text-xs text-slate-400 mt-0.5">Real-time proctoring security events and candidate violation audits</p>
           </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <div className="relative flex-1 min-w-48">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search student or exam…"
-            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+          <button
+            onClick={fetchViolations}
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-[#27272A] bg-[#141416] hover:bg-[#18181B] text-slate-300 rounded-xl transition"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
         </div>
-        <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)}
-          className="px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All Severities</option>
-          {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select value={filterType} onChange={e => setFilterType(e.target.value)}
-          className="px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-          <option value="">All Types</option>
-          {Object.entries(EVENT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-      </div>
 
-      {/* Detail modal */}
-      {selected && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-gray-900">Violation Detail</h3>
-              <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 text-xl">×</button>
-            </div>
-            <div className="space-y-3">
-              {selected.cameraFrameUrl && (
-                <img src={selected.cameraFrameUrl} alt="Camera frame" className="w-full rounded-xl object-cover max-h-48" />
-              )}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                {[
-                  ['Student', selected.studentName || 'N/A'],
-                  ['USN', selected.studentUsn || 'N/A'],
-                  ['Exam', selected.examTitle || 'N/A'],
-                  ['Type', EVENT_LABELS[selected.eventType] || selected.eventType],
-                  ['Severity', selected.severity],
-                  ['Time', selected.timestamp ? new Date(selected.timestamp).toLocaleString() : 'N/A'],
-                ].map(([label, val]) => (
-                  <div key={label} className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-xs text-gray-400">{label}</p>
-                    <p className="font-semibold text-gray-800 mt-0.5">{val}</p>
-                  </div>
-                ))}
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card className="bg-[#141416] border-[#27272A] p-4 shadow-xl">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Total Flags</p>
+            <p className="text-2xl font-bold font-mono text-slate-100 mt-1">{stats.total}</p>
+          </Card>
+          <Card className="bg-[#141416] border-[#27272A] p-4 shadow-xl">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Critical / High</p>
+            <p className="text-2xl font-bold font-mono text-rose-400 mt-1">{stats.high}</p>
+          </Card>
+          <Card className="bg-[#141416] border-[#27272A] p-4 shadow-xl">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Medium Flags</p>
+            <p className="text-2xl font-bold font-mono text-amber-400 mt-1">{stats.medium}</p>
+          </Card>
+          <Card className="bg-[#141416] border-[#27272A] p-4 shadow-xl">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Low Flags</p>
+            <p className="text-2xl font-bold font-mono text-slate-400 mt-1">{stats.low}</p>
+          </Card>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search candidate or exam..."
+              className="w-full pl-9 pr-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select
+              value={filterSeverity}
+              onChange={(e) => setFilterSeverity(e.target.value)}
+              className="px-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">All Severities</option>
+              {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="px-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">All Flag Types</option>
+              {Object.entries(EVENT_LABELS).map(([k, v]) => (
+                <option key={k} value={k}>{v}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Detail modal */}
+        {selected && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+            <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4 border-b border-[#27272A] pb-3">
+                <h3 className="text-base font-bold text-slate-100">Violation Event Snapshot</h3>
+                <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-[#27272A] rounded-lg">
+                  <X size={18} className="text-slate-400" />
+                </button>
               </div>
-              {selected.details && (
-                <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                  <p className="text-xs text-gray-500 font-medium">Details</p>
-                  <p className="text-sm text-gray-700 mt-0.5">{selected.details}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {loading ? (
-          <div className="p-8 space-y-3">{[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-gray-100 rounded-xl animate-pulse" />)}</div>
-        ) : filtered.length === 0 ? (
-          <div className="p-12 text-center">
-            <AlertTriangle size={40} className="text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 font-medium">No violations found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs text-gray-400 uppercase tracking-wide border-b border-gray-100 bg-gray-50">
-                  {['Student','Exam','Event Type','Severity','Time','Action'].map(h => (
-                    <th key={h} className="px-5 py-3.5 text-left font-semibold">{h}</th>
+              <div className="space-y-3 text-xs">
+                {selected.cameraFrameUrl && (
+                  <img src={selected.cameraFrameUrl} alt="Camera frame" className="w-full rounded-xl object-cover max-h-48 border border-[#27272A]" />
+                )}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    ['Student Name', selected.studentName || 'N/A'],
+                    ['Candidate USN', selected.studentUsn || 'N/A'],
+                    ['Exam Session', selected.examTitle || 'N/A'],
+                    ['Flag Type', EVENT_LABELS[selected.eventType] || selected.eventType],
+                    ['Severity', selected.severity],
+                    ['Time Flagged', selected.timestamp ? new Date(selected.timestamp).toLocaleString() : 'N/A'],
+                  ].map(([label, val]) => (
+                    <div key={label} className="bg-[#09090B] border border-[#27272A] rounded-xl p-2.5">
+                      <p className="text-[10px] font-mono text-slate-500 uppercase">{label}</p>
+                      <p className="font-semibold text-slate-200 mt-0.5 font-mono">{val}</p>
+                    </div>
                   ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {filtered.map((v, i) => (
-                  <tr key={v.id || i} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3.5 font-semibold text-gray-900">{v.studentName || '—'}</td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs max-w-32 truncate">{v.examTitle || '—'}</td>
-                    <td className="px-5 py-3.5 text-gray-700">{EVENT_LABELS[v.eventType] || v.eventType}</td>
-                    <td className="px-5 py-3.5"><SeverityBadge severity={v.severity} /></td>
-                    <td className="px-5 py-3.5 text-gray-400 text-xs">
-                      {v.timestamp ? new Date(v.timestamp).toLocaleString() : '—'}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <button onClick={() => setSelected(v)}
-                        className="flex items-center gap-1 px-3 py-1.5 text-xs border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
-                        <Eye size={12} /> View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setSelected(null)}
+                className="mt-5 w-full text-xs font-mono bg-[#09090B] border border-[#27272A] hover:bg-[#18181B] text-slate-300"
+              >
+                Close Snapshot
+              </Button>
+            </div>
           </div>
         )}
+
+        {/* Table */}
+        <Card className="bg-[#141416] border-[#27272A] shadow-xl overflow-hidden">
+          {loading ? (
+            <div className="p-8 space-y-3">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-10 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="p-12 text-center">
+              <AlertTriangle size={36} className="text-slate-600 mx-auto mb-2" />
+              <p className="text-slate-300 font-semibold text-sm">No violations recorded</p>
+              <p className="text-xs text-slate-500 mt-1">No candidate proctoring flags match your filter query.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[#27272A] bg-[#09090B]">
+                  <TableHead className="text-xs text-slate-400 font-mono">Candidate</TableHead>
+                  <TableHead className="text-xs text-slate-400 font-mono">Exam Session</TableHead>
+                  <TableHead className="text-xs text-slate-400">Event Type</TableHead>
+                  <TableHead className="text-xs text-slate-400">Severity</TableHead>
+                  <TableHead className="text-xs text-slate-400 font-mono">Time</TableHead>
+                  <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((v, i) => (
+                  <TableRow key={v.id || i} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
+                    <TableCell className="font-semibold text-xs text-slate-100">{v.studentName || 'Candidate'}</TableCell>
+                    <TableCell className="font-mono text-xs text-indigo-400 truncate max-w-xs">{v.examTitle || 'Exam'}</TableCell>
+                    <TableCell className="text-xs text-slate-300">{EVENT_LABELS[v.eventType] || v.eventType}</TableCell>
+                    <TableCell><SeverityBadge severity={v.severity} /></TableCell>
+                    <TableCell className="font-mono text-xs text-slate-400">{v.timestamp ? new Date(v.timestamp).toLocaleString() : '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelected(v)}
+                        className="h-7 text-xs text-slate-300 hover:bg-[#27272A]"
+                      >
+                        <Eye size={13} className="mr-1" /> View Snapshot
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
       </div>
     </DashboardLayout>
   )
