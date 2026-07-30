@@ -76,4 +76,6 @@ async function deleteByUrl(url) {
   }
 }
 
-module.exports = { uploadBuffer, uploadBase64, uploadFile, deleteByUrl }
+const uploadToCloudinary = uploadBase64
+
+module.exports = { uploadBuffer, uploadBase64, uploadFile, deleteByUrl, uploadToCloudinary }

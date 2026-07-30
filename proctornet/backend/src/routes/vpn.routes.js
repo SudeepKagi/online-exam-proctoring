@@ -120,6 +120,13 @@ router.get('/config/:examId',
   }
 )
 
+router.get('/status',
+  authenticate,
+  async (req, res) => {
+    return res.json({ connected: false, message: 'VPN monitoring active' })
+  }
+)
+
 // ──────────────────────────────────────────
 // Student: Check VPN connection status
 // GET /api/vpn/status/:examId
