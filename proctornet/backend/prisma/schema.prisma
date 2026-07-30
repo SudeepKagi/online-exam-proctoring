@@ -335,3 +335,27 @@ model PlatformSetting {
   updatedBy String?
   updatedAt DateTime @updatedAt
 }
+
+model DeviceCheckLog {
+  id               String   @id @default(uuid())
+  studentId        String
+  studentExamId    String?
+  agentConnected   Boolean  @default(true)
+  blockedProcesses String[]
+  virtualCams      String[]
+  isSubnetMatched  Boolean  @default(true)
+  clientIp         String?
+  status           String   @default("PASSED") // PASSED, FLAGGED, BLOCKED
+  timestamp        DateTime @default(now())
+}
+
+model EvidenceClip {
+  id            String   @id @default(uuid())
+  studentExamId String
+  violationType String
+  severity      String   @default("MEDIUM")
+  clipUrl       String
+  snapshotUrl   String?
+  timestamp     DateTime @default(now())
+}
+

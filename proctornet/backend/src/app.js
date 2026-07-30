@@ -20,6 +20,9 @@ const answerRoutes       = require('./routes/answer.routes')
 const resultRoutes       = require('./routes/result.routes')
 const vpnRoutes          = require('./routes/vpn.routes')
 const enrollmentRoutes   = require('./routes/enrollment.routes')
+const deviceCheckRoutes  = require('./routes/deviceCheck.routes')
+
+const path = require('path')
 
 // ── Socket handlers ──
 const initExamSocket = require('./sockets/exam.socket')
@@ -32,6 +35,9 @@ const vpnService = require('./services/vpn.service')
 const app    = express()
 const server = http.createServer(app)
 const prisma = new PrismaClient()
+
+// Static uploads folder for snapshots & evidence clips
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
 // ── Make prisma globally available ──
 global.prisma = prisma
@@ -118,6 +124,7 @@ app.use('/api/answer',       answerRoutes)
 app.use('/api/result',       resultRoutes)
 app.use('/api/vpn',          vpnRoutes)
 app.use('/api',              enrollmentRoutes)
+app.use('/api',              deviceCheckRoutes)
 
 // ── 404 handler ──
 app.use((req, res) => {

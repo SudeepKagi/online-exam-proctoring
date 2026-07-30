@@ -2,6 +2,42 @@ version: '3.8'
 
 services:
   # -------------------------------------------------------------
+  # LiveKit SFU WebRTC Media Server (Free, Open-Source)
+  # -------------------------------------------------------------
+  livekit:
+    image: livekit/livekit-server:v1.5.0
+    container_name: proctornet-livekit
+    command: --config /etc/livekit.yaml
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    networks:
+      - proctornet-net
+    restart: always
+
+  # -------------------------------------------------------------
+  # MinIO Object Storage (Self-Hosted S3 Snapshots & Buffer Store)
+  # -------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-01-31T03-24-00Z
+    container_name: proctornet-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-storage:/data
+    networks:
+      - proctornet-net
+    restart: always
+
+  # -------------------------------------------------------------
   # Exadel CompreFace Stack (Free, Open-Source Face Recognition)
   # -------------------------------------------------------------
   compreface-postgres-db:
@@ -101,11 +137,19 @@ services:
       - DATABASE_URL=postgresql://postgres:postgrespassword@postgres:5432/proctornet?schema=public
       - PYTHON_SERVICE_URL=http://python-service:5001
       - COMPREFACE_URL=http://compreface-admin:8080
+      - LIVEKIT_API_KEY=devkey
+      - LIVEKIT_API_SECRET=secretsecretsecretsecretsecretsecret
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadminpassword
       - JWT_SECRET=proctornet_super_secret_jwt_key_2026
     depends_on:
       - postgres
       - python-service
       - compreface-admin
+      - minio
+      - livekit
     networks:
       - proctornet-net
     restart: always
@@ -129,3 +173,4 @@ networks:
 volumes:
   compreface-db-data:
   proctornet-db-data:
+  minio-storage:

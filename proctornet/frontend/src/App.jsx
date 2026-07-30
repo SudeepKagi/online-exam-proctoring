@@ -41,9 +41,11 @@ import SecurityCheck from '@/pages/student/SecurityCheck'
 import ExamInterface from '@/pages/student/ExamInterface'
 import StudentResults from '@/pages/student/Results'
 import StudentEnrollment from '@/pages/student/StudentEnrollment'
+import BYODDeviceCheck from '@/pages/student/BYODDeviceCheck'
 
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
+import InvigilatorLiveGrid from '@/pages/invigilator/InvigilatorLiveGrid'
 
 import ProtectedRoute from '@/components/ProtectedRoute'
 
@@ -110,6 +112,7 @@ export default function App() {
           {/* Student Routes */}
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
+          <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
           <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
           <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
@@ -118,6 +121,7 @@ export default function App() {
 
           {/* Invigilator Routes */}
           <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
+          <Route path="/invigilator/live-grid/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
 
           {/* Catch-all redirect to Landing */}
           <Route path="*" element={<Navigate to="/" replace />} />
