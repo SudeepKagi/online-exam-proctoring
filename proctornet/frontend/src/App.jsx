@@ -42,6 +42,7 @@ import ExamInterface from '@/pages/student/ExamInterface'
 import StudentResults from '@/pages/student/Results'
 import StudentEnrollment from '@/pages/student/StudentEnrollment'
 import BYODDeviceCheck from '@/pages/student/BYODDeviceCheck'
+import StudentProfile from '@/pages/student/Profile'
 
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
@@ -111,6 +112,7 @@ export default function App() {
 
           {/* Student Routes */}
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+          <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
           <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
           <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />

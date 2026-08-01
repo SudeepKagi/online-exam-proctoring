@@ -31,6 +31,7 @@ const NAV_ITEMS = {
   ],
   student: [
     { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/student/profile', icon: UserCheck, label: 'My Profile' },
     { to: '/student/device-check/demo', icon: Shield, label: 'Device Readiness' },
     { to: '/student/exams', icon: BookOpen, label: 'My Exams' },
     { to: '/student/results', icon: BarChart2, label: 'Results' },

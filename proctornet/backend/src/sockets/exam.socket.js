@@ -110,19 +110,24 @@ module.exports = (io) => {
           where: { studentId: data.studentId, examId: data.examId }
         })
         if (studentExam) {
-          await prisma.evidenceLog.create({
+          await prisma.studentExam.update({
+            where: { id: studentExam.id },
+            data: { flagCount: { increment: 1 } }
+          }).catch(() => {})
+
+          await prisma.verificationAuditLog.create({
             data: {
+              studentId: data.studentId,
               studentExamId: studentExam.id,
-              eventType: data.eventType,
-              severity: data.severity,
-              screenshotUrl: data.screenshotUrl || null,
-              cameraFrameUrl: data.cameraFrameUrl || null,
-              details: data.details || null
+              checkType: data.eventType || 'EXAM_VIOLATION',
+              status: 'FLAGGED',
+              details: typeof data.details === 'string' ? data.details : JSON.stringify(data),
+              timestamp: new Date()
             }
-          })
+          }).catch(() => {})
         }
       } catch(e) {
-        console.error('Evidence log error:', e.message)
+        console.warn('Socket flag log warning:', e.message)
       }
     })
 

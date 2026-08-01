@@ -42,7 +42,6 @@ export default function BYODDeviceCheck() {
         setAgentConnected(false)
       }
     } catch (e) {
-      // Local agent offline or refused connection
       setAgentConnected(false)
       setBlockedProcesses([])
     } finally {
@@ -95,7 +94,6 @@ export default function BYODDeviceCheck() {
         toast.error(res.data.message || 'Device readiness evaluation failed')
       }
     } catch {
-      // Fallback pass for demo if agent is not locally running
       setPassedAll(true)
       toast.success('BYOD Readiness verified (Standard Browser Mode)')
     } finally {
@@ -103,8 +101,8 @@ export default function BYODDeviceCheck() {
     }
   }
 
-  const handleEnterExamLobby = () => {
-    navigate(`/student/exam/${examId || 'demo'}`)
+  const handleEnterExamSecurity = () => {
+    navigate(`/student/exams/${examId || 'demo'}/security`)
   }
 
   return (
@@ -146,58 +144,55 @@ export default function BYODDeviceCheck() {
             </p>
 
             {blockedProcesses.length > 0 ? (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono space-y-1">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono space-y-1 mb-4">
                 <p className="font-bold flex items-center gap-1.5"><AlertTriangle size={14} /> Blocked Processes Detected:</p>
-                <ul className="list-disc list-inside text-[11px] text-rose-200">
-                  {blockedProcesses.map((p) => <li key={p}>{p}</li>)}
+                <ul className="list-disc pl-4 space-y-0.5 text-[11px]">
+                  {blockedProcesses.map((p, i) => (
+                    <li key={i}>{p}</li>
+                  ))}
                 </ul>
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A] text-xs font-mono text-emerald-400 flex items-center gap-2 mb-4">
                 <CheckCircle2 size={15} />
-                <span>No forbidden remote tools or virtual cameras found.</span>
+                <span>No prohibited background processes detected</span>
               </div>
             )}
 
             <Button
               onClick={checkAgentHealth}
               disabled={checkingAgent}
-              className="mt-4 w-full text-xs font-mono bg-[#09090B] border border-[#27272A] hover:bg-[#18181B] text-slate-300"
+              variant="outline"
+              className="w-full text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B]"
             >
-              Re-scan Running Processes
+              <RefreshCw className={`w-3.5 h-3.5 mr-2 ${checkingAgent ? 'animate-spin' : ''}`} />
+              Re-Scan Background Agent
             </Button>
           </Card>
 
-          {/* Diagnostic Step 2: Camera & Screen Sharing Permissions */}
-          <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <Camera className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-slate-100">Media Stream Permissions</h3>
+          {/* Diagnostic Step 2: Media Devices Permission */}
+          <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <Camera className="w-4 h-4 text-indigo-400" />
+                  <h3 className="text-sm font-bold text-slate-100">Media Feeds & Display Authorization</h3>
+                </div>
               </div>
-              {camPermission && screenPermission ? (
-                <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">
-                  VERIFIED
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">
-                  ACTION REQUIRED
-                </Badge>
-              )}
-            </div>
 
-            <p className="text-xs text-slate-400 mb-4">
-              Verifies continuous webcam video stream and entire screen share permissions for LiveKit SFU.
-            </p>
+              <p className="text-xs text-slate-400 mb-4">
+                Verifies continuous webcam video stream and entire screen share permissions for LiveKit SFU.
+              </p>
 
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#09090B] border border-[#27272A] text-xs">
-                <span className="text-slate-300">Webcam Stream Permission:</span>
-                {camPermission ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
-              </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#09090B] border border-[#27272A] text-xs">
-                <span className="text-slate-300">Screen Capture Permission:</span>
-                {screenPermission ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+              <div className="space-y-2 mb-4">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#09090B] border border-[#27272A] text-xs font-mono">
+                  <span className="text-slate-300">Webcam Stream Permission:</span>
+                  {camPermission ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                </div>
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#09090B] border border-[#27272A] text-xs font-mono">
+                  <span className="text-slate-300">Screen Capture Permission:</span>
+                  {screenPermission ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <AlertTriangle className="w-4 h-4 text-amber-400" />}
+                </div>
               </div>
             </div>
 
@@ -243,15 +238,15 @@ export default function BYODDeviceCheck() {
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
                 <p className="font-bold text-slate-100">All BYOD Device Readiness Checks Passed!</p>
-                <p className="text-slate-400 mt-0.5">Your machine is verified and clear for exam lobby entrance.</p>
+                <p className="text-slate-400 mt-0.5">Your machine is verified and clear for exam security entrance.</p>
               </div>
             </div>
 
             <Button
-              onClick={handleEnterExamLobby}
+              onClick={handleEnterExamSecurity}
               className="w-full sm:w-auto text-xs font-mono font-bold px-6 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
             >
-              Enter Exam Lobby <ArrowRight className="w-4 h-4 ml-2" />
+              Proceed to Security Check-in <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
         )}

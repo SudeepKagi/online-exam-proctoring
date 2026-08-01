@@ -84,40 +84,42 @@ export default function ExamInterface() {
 
   // ── Auto-save ──
   const autoSaveRef = useRef(null)
+  const lastViolationTimeRef = useRef({})
 
-  // ── Violation Logger ──
+  // ── Violation Logger (Throttled to prevent false positive cascades) ──
   const emitViolation = useCallback((type, severity) => {
+    const now = Date.now()
+    const lastTime = lastViolationTimeRef.current[type] || 0
+    if (now - lastTime < 10000) return // Throttle 10 seconds per type
+
+    lastViolationTimeRef.current[type] = now
     setViolations(v => v + 1)
     
     let cameraFrameUrl = null
     let screenshotUrl = null
     
-    // Snap camera frame
+    // Snap camera frame (optimized 320x240 thumbnail)
     const captVideo = captureVideoRef.current || videoRef.current
     if (captVideo && canvasRef.current) {
       try {
         const ctx = canvasRef.current.getContext('2d')
-        const w = captVideo.videoWidth || 320
-        const h = captVideo.videoHeight || 240
-        canvasRef.current.width = w
-        canvasRef.current.height = h
-        ctx.drawImage(captVideo, 0, 0, w, h)
-        cameraFrameUrl = canvasRef.current.toDataURL('image/jpeg', 0.5)
+        canvasRef.current.width = 320
+        canvasRef.current.height = 240
+        ctx.drawImage(captVideo, 0, 0, 320, 240)
+        cameraFrameUrl = canvasRef.current.toDataURL('image/jpeg', 0.35)
       } catch (err) {
         console.warn('Failed to capture camera violation frame:', err)
       }
     }
     
-    // Snap screen frame
+    // Snap screen frame (optimized 640x360 thumbnail)
     if (screenVideoRef.current && screenCanvasRef.current) {
       try {
         const sCtx = screenCanvasRef.current.getContext('2d')
-        const w = screenVideoRef.current.videoWidth || 640
-        const h = screenVideoRef.current.videoHeight || 360
-        screenCanvasRef.current.width = w
-        screenCanvasRef.current.height = h
-        sCtx.drawImage(screenVideoRef.current, 0, 0, w, h)
-        screenshotUrl = screenCanvasRef.current.toDataURL('image/jpeg', 0.6)
+        screenCanvasRef.current.width = 640
+        screenCanvasRef.current.height = 360
+        sCtx.drawImage(screenVideoRef.current, 0, 0, 640, 360)
+        screenshotUrl = screenCanvasRef.current.toDataURL('image/jpeg', 0.35)
       } catch (err) {
         console.warn('Failed to capture screen violation frame:', err)
       }
@@ -330,18 +332,12 @@ export default function ExamInterface() {
   // 4. Tab-switch / window-blur detection
   // ─────────────────────────────────────────────────────
   useEffect(() => {
-    const handleBlur = () => {
-      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
-      emitViolation('TAB_SWITCH', 'MEDIUM')
-    }
     const handleVisibility = () => {
       if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
       if (document.hidden) emitViolation('TAB_SWITCH', 'MEDIUM')
     }
-    window.addEventListener('blur', handleBlur)
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
-      window.removeEventListener('blur', handleBlur)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [emitViolation])

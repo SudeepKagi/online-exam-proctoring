@@ -32,6 +32,10 @@ router.post('/exams/:id/submit', ctrl.submitExam)
 // ── Results ────────────────────────────────────────────────────────
 router.get('/results', ctrl.getMyResults)
 
+// ── Profile & Biometric Setup ─────────────────────────────────────
+router.get('/profile', ctrl.getProfile)
+router.put('/profile', ctrl.updateProfile)
+
 // ── Face & ID verification ──────────────────────────────────────────────
 router.post('/verify-face', ctrl.verifyFace)
 router.post('/verify-id',   ctrl.verifyIdCard)
