@@ -1,9 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const axios = require('axios')
 
-const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || 'localhost'
-const MINIO_PORT = process.env.MINIO_PORT || 9000
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/snapshots')
 
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -46,4 +43,7 @@ async function storeEvidenceClip(studentExamId, violationType, clipBase64) {
   }
 }
 
-module.exports = { storeSnapshot, storeEvidenceClip }
+module.exports = {
+  storeSnapshot,
+  storeEvidenceClip
+}

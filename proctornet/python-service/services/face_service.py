@@ -16,7 +16,7 @@ except ImportError:
     print("[FaceService Warning] opencv-python not installed.")
 
 try:
-    from mtcnn import MTCNN
+    from mtcnn import MTCNN  # type: ignore # pyrefly: ignore [missing-import]
     detector = MTCNN()
     MTCNN_AVAILABLE = True
     print("[FaceService] MTCNN face detector initialized.")
@@ -99,7 +99,15 @@ def compare_face_embeddings(live_frame_base64, reference_url):
         live_img = download_image_as_pil(live_frame_base64)
         live_np = np.array(live_img)
         
-        ref_img = download_image_as_pil(reference_url) if reference_url else live_img
+        if not reference_url:
+            return {
+                "success": False,
+                "matched": False,
+                "similarity": 0.0,
+                "error": "Missing reference image"
+            }
+
+        ref_img = download_image_as_pil(reference_url)
         ref_np = np.array(ref_img)
         
         if CV2_AVAILABLE:
@@ -113,11 +121,11 @@ def compare_face_embeddings(live_frame_base64, reference_url):
             cv2.normalize(hist2, hist2, alpha=0, beta=1, norm_type=cv2.NORM_MINMAX)
             
             raw_corr = float(cv2.compareHist(hist1, hist2, cv2.HISTCMP_CORREL))
-            similarity = max(0.1, min(0.99, (raw_corr + 1.0) / 2.0))
+            similarity = max(0.0, min(0.99, (raw_corr + 1.0) / 2.0))
         else:
-            similarity = 0.88
+            similarity = 0.0
             
-        verified = bool(similarity >= 0.45)
+        verified = bool(similarity >= 0.65)
         return {
             "success": True,
             "matched": verified,
@@ -126,9 +134,10 @@ def compare_face_embeddings(live_frame_base64, reference_url):
     except Exception as e:
         print(f"[compare_face_embeddings Error] {str(e)}")
         return {
-            "success": True,
-            "matched": True,
-            "similarity": 0.88
+            "success": False,
+            "matched": False,
+            "similarity": 0.0,
+            "error": str(e)
         }
 
 def check_liveness_anti_spoofing(image_url_or_base64):

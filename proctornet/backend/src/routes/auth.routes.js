@@ -2,7 +2,6 @@ const express  = require('express')
 const router   = express.Router()
 const ctrl     = require('../controllers/auth.controller')
 const { authenticate } = require('../middleware/auth.middleware')
-const { uploadIdCard }  = require('../middleware/upload.middleware')
 
 // ── Admin ──────────────────────────────────────────
 router.post('/admin/login',   ctrl.adminLogin)

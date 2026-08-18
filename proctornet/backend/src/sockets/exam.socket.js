@@ -201,7 +201,9 @@ module.exports = (io) => {
             submittedAt: new Date()
           }
         })
-      } catch(e) {}
+      } catch (err) {
+        console.warn('[inv:terminate socket error]:', err.message)
+      }
     })
 
     // ── INVIGILATOR sends chat reply ──
@@ -224,7 +226,9 @@ module.exports = (io) => {
             message
           }
         })
-      } catch(e) {}
+      } catch (err) {
+        console.warn('[inv:chat socket error]:', err.message)
+      }
     })
 
     // ── DISCONNECT ──

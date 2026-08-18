@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
+    "test": "node --test tests/**/*.js",
+    "lint": "eslint src/",
     "seed": "node prisma/seed/admin.js",
     "migrate": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",

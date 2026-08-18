@@ -1,10 +1,9 @@
-const { execSync, exec } = require('child_process')
+const { exec } = require('child_process')
 const { promisify } = require('util')
 const execAsync = promisify(exec)
 const cron = require('node-cron')
 
 // Use the shared global prisma instance created in app.js
-// instead of creating a separate PrismaClient (wastes connection pool slots)
 function getPrisma() {
   if (!global.prisma) {
     throw new Error('global.prisma is not initialized yet — VPN service called before app.js setup')
@@ -17,10 +16,6 @@ const VPN_SERVER_PORT = process.env.VPN_SERVER_PORT || '51820'
 const VPN_SERVER_PUBLIC_KEY = process.env.VPN_SERVER_PUBLIC_KEY
 const VPN_SUBNET = '10.0.0'
 const VPN_INTERFACE = 'wg0'
-
-// IP allocation pool
-// 10.0.0.2 to 10.0.0.254 (253 students max)
-let ipCounter = 2
 
 class VPNService {
 
@@ -38,7 +33,7 @@ class VPNService {
       }
     } catch(err) {
       console.error('Key generation failed:', err)
-      throw new Error('Failed to generate VPN keys')
+      throw new Error('Failed to generate VPN keys', { cause: err })
     }
   }
 
@@ -46,7 +41,6 @@ class VPNService {
   // Allocate unique IP from pool
   // ──────────────────────────────────────
   async allocateIP() {
-    // Check DB for used IPs
     const usedIPs = await getPrisma().studentExam.findMany({
       where: {
         vpnPeerIp: { not: null },
@@ -57,7 +51,6 @@ class VPNService {
     
     const usedSet = new Set(usedIPs.map(s => s.vpnPeerIp))
     
-    // Find available IP
     for(let i = 2; i <= 254; i++) {
       const ip = `${VPN_SUBNET}.${i}`
       if(!usedSet.has(ip)) return ip
@@ -74,15 +67,13 @@ class VPNService {
       const command = `wg set ${VPN_INTERFACE} peer ${publicKey} allowed-ips ${peerIp}/32`
       
       await execAsync(command)
-      
-      // Save config permanently
       await execAsync(`wg-quick save ${VPN_INTERFACE}`)
       
       console.log(`Peer added: ${peerIp} → ${publicKey}`)
       return true
     } catch(err) {
       console.error('Add peer failed:', err)
-      throw new Error('Failed to add VPN peer')
+      throw new Error('Failed to add VPN peer', { cause: err })
     }
   }
 
@@ -109,22 +100,13 @@ class VPNService {
   // ──────────────────────────────────────
   async generateStudentConfig(studentId, examId, examEndTime) {
     try {
-      // Generate key pair
       const { privateKey, publicKey } = await this.generateKeyPair()
-      
-      // Allocate IP
       const peerIp = await this.allocateIP()
-      
-      // Add to WireGuard server
       await this.addPeer(publicKey, peerIp)
       
-      // Calculate expiry (exam end + 10 min buffer)
       const expiry = new Date(new Date(examEndTime).getTime() + 10 * 60 * 1000)
-      
-      // Build config file content
       const config = this.buildConfigFile(privateKey, peerIp)
       
-      // Store in DB
       await getPrisma().studentExam.update({
         where: { studentId_examId: { studentId, examId } },
         data: {
@@ -136,7 +118,7 @@ class VPNService {
       })
       
       return {
-        config,       // Full WireGuard config text
+        config,
         publicKey,
         privateKey,
         peerIp,
@@ -169,27 +151,23 @@ PersistentKeepalive = 25`
   // ──────────────────────────────────────
   // Verify student is connected to VPN
   // ──────────────────────────────────────
-  async isStudentConnected(peerIp) {
+  async isStudentConnected() {
     try {
-      const { stdout } = await execAsync(`wg show ${VPN_INTERFACE} peers`)
-      const { stdout: transfer } = await execAsync(`wg show ${VPN_INTERFACE} transfer`)
       const { stdout: handshakes } = await execAsync(`wg show ${VPN_INTERFACE} latest-handshakes`)
       
-      // Parse handshakes output
       const lines = handshakes.split('\n')
       for(const line of lines) {
         const parts = line.trim().split('\t')
         if(parts.length >= 2) {
           const timestamp = parseInt(parts[1])
           const now = Math.floor(Date.now() / 1000)
-          // Connected if handshake within 3 minutes
           if(now - timestamp < 180) {
             return true
           }
         }
       }
       return false
-    } catch(err) {
+    } catch(_err) {
       return false
     }
   }
@@ -198,7 +176,6 @@ PersistentKeepalive = 25`
   // Revoke expired keys (cron job)
   // ──────────────────────────────────────
   startAutoRevoke() {
-    // Run every minute
     cron.schedule('* * * * *', async () => {
       try {
         const expired = await getPrisma().studentExam.findMany({
