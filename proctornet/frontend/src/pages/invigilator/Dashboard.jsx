@@ -801,30 +801,30 @@ export default function InvDashboard() {
 
       {/* Dossier Modal */}
       {showModal && selectedStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-slate-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-6xl h-full max-h-[90vh] rounded-[3rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-[#09090B]/85 backdrop-blur-md animate-in fade-in duration-300 font-sans">
+          <div className="bg-[#141416] border border-[#27272A] w-full max-w-6xl h-full max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300 text-slate-100">
 
-            <header className="px-10 py-6 border-b flex justify-between items-center bg-slate-50/50">
+            <header className="px-8 py-5 border-b border-[#27272A] flex justify-between items-center bg-[#09090B]">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 font-black text-xl">
+                <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/30 rounded-2xl flex items-center justify-center text-indigo-400 font-mono font-bold text-lg">
                   {selectedStudent.name[0]}
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">{selectedStudent.name}</h2>
-                  <p className="text-slate-400 font-mono font-bold tracking-widest">{selectedStudent.usn}</p>
+                  <h2 className="text-xl font-bold text-slate-100">{selectedStudent.name}</h2>
+                  <p className="text-xs font-mono text-slate-400 mt-0.5">{selectedStudent.usn}</p>
                   {/* Face Match Score in Modal */}
                   {selectedStudent.faceMatchScore !== null && selectedStudent.faceMatchScore !== undefined ? (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-black border ${selectedStudent.faceMatchScore < 0.6
-                        ? 'bg-amber-50 border-amber-300 text-amber-700'
-                        : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+                    <div className="mt-2 flex items-center gap-2 font-mono">
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border ${selectedStudent.faceMatchScore < 0.6
+                        ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                         }`}>
                         <span>{selectedStudent.faceMatchScore < 0.6 ? '⚠' : '✓'}</span>
                         <span>Face Match:</span>
-                        <span className="text-base tabular-nums">{(selectedStudent.faceMatchScore * 100).toFixed(1)}%</span>
+                        <span className="tabular-nums font-bold">{(selectedStudent.faceMatchScore * 100).toFixed(1)}%</span>
                       </div>
                       {selectedStudent.faceMatchScore < 0.6 && (
-                        <span className="text-[10px] text-amber-600 font-bold uppercase tracking-widest">
+                        <span className="text-[10px] text-rose-400 font-semibold uppercase tracking-wider">
                           Flagged for Review
                         </span>
                       )}
@@ -832,70 +832,70 @@ export default function InvDashboard() {
                   ) : null}
                 </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="bg-slate-100 hover:bg-slate-200 p-3 rounded-2xl transition-all">
-                <X size={24} className="text-slate-500" />
+              <button onClick={() => setShowModal(false)} className="bg-[#09090B] hover:bg-[#18181B] border border-[#27272A] p-2.5 rounded-xl transition-all text-slate-400 hover:text-white">
+                <X size={20} />
               </button>
             </header>
 
-            <div className="flex-1 overflow-hidden flex">
+            <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
               {/* Modal Left: Visual Evidence (Webcam and Screen Sharing side-by-side) */}
-              <div className="w-2/3 p-10 overflow-y-auto space-y-8 border-r">
-                <div className="grid grid-cols-2 gap-6">
+              <div className="w-full md:w-2/3 p-6 md:p-8 overflow-y-auto space-y-6 border-b md:border-b-0 md:border-r border-[#27272A] bg-[#09090B]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Webcam Feed */}
-                  <div className="aspect-video bg-slate-950 rounded-3xl shadow-xl overflow-hidden border-4 border-slate-100 relative group">
+                  <div className="aspect-video bg-[#141416] rounded-2xl shadow-xl overflow-hidden border border-[#27272A] relative group">
                     <WebcamFeed
                       studentId={selectedStudent.studentId}
                       initialFrame={latestFramesRef.current[selectedStudent.studentId]?.cameraFrame}
                       className="w-full h-full object-cover animate-in fade-in"
                       fallbackSize={48}
                     />
-                    <div className="absolute bottom-4 right-4 bg-slate-900/60 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest border border-white/10">
+                    <div className="absolute bottom-3 right-3 bg-[#09090B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold text-slate-300 uppercase tracking-wider border border-[#27272A]">
                       Primary Webcam
                     </div>
                   </div>
 
                   {/* Screen Sharing Feed */}
-                  <div className="aspect-video bg-slate-950 rounded-3xl shadow-xl overflow-hidden border-4 border-slate-100 relative group">
+                  <div className="aspect-video bg-[#141416] rounded-2xl shadow-xl overflow-hidden border border-[#27272A] relative group">
                     <ScreenFeed
                       studentId={selectedStudent.studentId}
                       initialFrame={latestFramesRef.current[selectedStudent.studentId]?.screenFrame}
                       className="w-full h-full object-cover animate-in fade-in"
                       fallbackSize={48}
                     />
-                    <div className="absolute bottom-4 right-4 bg-slate-900/60 backdrop-blur-md px-3 py-1.5 rounded-xl text-[9px] font-black text-white uppercase tracking-widest border border-white/10">
+                    <div className="absolute bottom-3 right-3 bg-[#09090B]/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[9px] font-mono font-bold text-slate-300 uppercase tracking-wider border border-[#27272A]">
                       Live Screen Share
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="bg-slate-50 rounded-3xl p-8 border border-slate-200">
-                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Violation Timeline</h3>
-                    <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-[#141416] rounded-2xl p-5 border border-[#27272A]">
+                    <h3 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-4">Violation Timeline</h3>
+                    <div className="space-y-3 font-mono">
                       {selectedStudent.events?.length === 0 ? (
-                        <p className="text-sm font-bold text-slate-300 text-center py-8">No recorded violations</p>
+                        <p className="text-xs text-slate-500 text-center py-6">No recorded violations</p>
                       ) : (
                         selectedStudent.events.map((ev, i) => (
-                          <div key={i} className="flex gap-4 group">
-                            <div className="shrink-0 w-1 h-full bg-slate-200 rounded-full group-last:bg-transparent"></div>
-                            <div className="pb-4 flex-1">
+                          <div key={i} className="flex gap-3 group">
+                            <div className="shrink-0 w-0.5 h-full bg-[#27272A] rounded-full group-last:bg-transparent"></div>
+                            <div className="pb-3 flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase shadow-sm ${ev.severity === 'HIGH' || ev.severity === 'CRITICAL' ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-amber-50 border border-amber-200 text-amber-700'
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${ev.severity === 'HIGH' || ev.severity === 'CRITICAL' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
                                   }`}>
                                   {ev.eventType}
                                 </span>
-                                <span className="text-[10px] font-bold text-slate-400">{new Date(ev.timestamp).toLocaleTimeString()}</span>
+                                <span className="text-[10px] text-slate-500">{new Date(ev.timestamp).toLocaleTimeString()}</span>
                               </div>
-                              <p className="text-xs text-slate-700 font-bold mb-2">{ev.details || 'System flagged potential violation'}</p>
+                              <p className="text-xs text-slate-300 font-sans mb-2">{ev.details || 'System flagged potential violation'}</p>
 
                               {/* Render visual evidence if exists */}
-                              <div className="flex gap-3 mt-2">
+                              <div className="flex gap-2 mt-2">
                                 {(ev.cameraFrame || ev.cameraFrameUrl) && (
                                   <div className="flex-1 max-w-[120px] space-y-1">
-                                    <span className="text-[8px] font-black uppercase text-slate-400 block">Cam Feed</span>
+                                    <span className="text-[8px] uppercase text-slate-500 block">Cam Feed</span>
                                     <img
                                       src={ev.cameraFrame || ev.cameraFrameUrl}
-                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all"
+                                      className="w-full h-16 object-cover rounded-xl border border-[#27272A] cursor-zoom-in hover:scale-105 transition-all"
                                       alt="Cam snap"
                                       onClick={() => setActiveLightbox({
                                         imageUrl: ev.cameraFrame || ev.cameraFrameUrl,
@@ -913,10 +913,10 @@ export default function InvDashboard() {
                                 )}
                                 {(ev.screenshot || ev.screenshotUrl) && (
                                   <div className="flex-1 max-w-[120px] space-y-1">
-                                    <span className="text-[8px] font-black uppercase text-slate-400 block">Screen Feed</span>
+                                    <span className="text-[8px] uppercase text-slate-500 block">Screen Feed</span>
                                     <img
                                       src={ev.screenshot || ev.screenshotUrl}
-                                      className="w-full h-16 object-cover rounded-xl border border-slate-200 cursor-zoom-in hover:scale-105 transition-all"
+                                      className="w-full h-16 object-cover rounded-xl border border-[#27272A] cursor-zoom-in hover:scale-105 transition-all"
                                       alt="Screen snap"
                                       onClick={() => setActiveLightbox({
                                         imageUrl: ev.screenshot || ev.screenshotUrl,
@@ -940,95 +940,95 @@ export default function InvDashboard() {
                     </div>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-100">
-                      <h3 className="text-[10px] font-black text-blue-200 uppercase tracking-widest mb-4">Exam Stats</h3>
-                      <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-2xl p-5 text-slate-100 font-mono shadow-xl shadow-indigo-600/5">
+                      <h3 className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-3">Exam Stats</h3>
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <div className="text-3xl font-black mb-1">{selectedStudent.progress?.answered || 0}/{selectedStudent.progress?.total || 0}</div>
-                          <div className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">Progress</div>
+                          <div className="text-2xl font-bold text-slate-100">{selectedStudent.progress?.answered || 0}/{selectedStudent.progress?.total || 0}</div>
+                          <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">Progress</div>
                         </div>
                         <div>
-                          <div className="text-3xl font-black mb-1">{selectedStudent.flagCount || 0}</div>
-                          <div className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">Flag Score</div>
+                          <div className="text-2xl font-bold text-slate-100">{selectedStudent.flagCount || 0}</div>
+                          <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">Flag Score</div>
                         </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => terminateStudent(selectedStudent.studentId)}
-                      className="w-full py-4 bg-red-600 text-white rounded-3xl font-black text-lg shadow-xl shadow-red-100 hover:bg-red-700 transition-all flex items-center justify-center gap-3"
+                      className="w-full py-3.5 bg-rose-600 text-white rounded-2xl font-mono font-bold text-sm shadow-xl shadow-rose-600/20 hover:bg-rose-500 transition-all flex items-center justify-center gap-2"
                     >
-                      <StopCircle size={24} /> Force Terminate Session
+                      <StopCircle size={18} /> Force Terminate Session
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Modal Right: Communication */}
-              <div className="w-1/3 flex flex-col bg-slate-50/50">
-                <div className="p-8 border-b">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Direct Warning Disptach</h3>
-                  <div className="space-y-4">
+              <div className="w-full md:w-1/3 flex flex-col bg-[#141416]">
+                <div className="p-6 border-b border-[#27272A]">
+                  <h3 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider mb-4">Direct Warning Dispatch</h3>
+                  <div className="space-y-2.5 font-mono">
                     {['Adjust your camera', 'No talking permitted', 'Return to fullscreen', 'Identity verify needed'].map(msg => (
                       <button
                         key={msg}
                         onClick={() => warnStudent(selectedStudent.studentId, msg)}
-                        className="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl text-xs font-bold text-slate-600 hover:border-blue-400 hover:text-blue-600 transition-all shadow-sm"
+                        className="w-full text-left px-3.5 py-2.5 bg-[#09090B] border border-[#27272A] rounded-xl text-xs font-medium text-slate-300 hover:border-indigo-500 hover:text-indigo-400 hover:bg-[#18181B] transition-all shadow-sm"
                       >
                         {msg}
                       </button>
                     ))}
-                    <div className="relative pt-4">
+                    <div className="relative pt-2">
                       <input
                         type="text"
                         value={customWarning}
                         onChange={(e) => setCustomWarning(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleCustomWarningSend() }}
-                        placeholder="Custom warning..."
-                        className="w-full bg-white border border-slate-200 rounded-2xl py-3 pl-4 pr-12 text-sm outline-none focus:ring-2 focus:ring-blue-100 shadow-sm"
+                        placeholder="Custom warning message..."
+                        className="w-full bg-[#09090B] border border-[#27272A] rounded-xl py-2.5 pl-3.5 pr-10 text-xs font-mono text-slate-200 outline-none focus:border-indigo-500"
                       />
                       <button
                         onClick={handleCustomWarningSend}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 mt-1 p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-all"
                       >
-                        <Send size={16} />
+                        <Send size={14} />
                       </button>
                     </div>
                   </div>
                 </div>
 
                 {/* Scrollable chat support timeline */}
-                <div className="flex-1 flex flex-col min-h-0 bg-slate-50/50">
-                  <div className="p-4 border-b bg-white">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <MessageSquare size={14} className="text-blue-500" />
+                <div className="flex-1 flex flex-col min-h-0 bg-[#141416]">
+                  <div className="px-6 py-3.5 border-b border-[#27272A] bg-[#09090B]">
+                    <h4 className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                      <MessageSquare size={13} className="text-indigo-400" />
                       Student Live Support Chat
                     </h4>
                   </div>
 
                   {/* Chat Message Timeline */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+                  <div className="flex-1 overflow-y-auto p-5 space-y-3 min-h-0 font-sans">
                     {(() => {
                       const studentId = selectedStudent.studentId
                       const messages = chats[studentId] || []
                       return messages.length === 0 ? (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2 opacity-60">
-                          <MessageSquare size={36} />
-                          <p className="text-[10px] font-black uppercase tracking-widest">No messages yet</p>
-                          <p className="text-[10px] text-slate-400 text-center font-medium px-4">Student can send chat messages for clarification or technical help.</p>
+                        <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2 opacity-70">
+                          <MessageSquare size={28} />
+                          <p className="text-[10px] font-mono uppercase tracking-wider">No messages yet</p>
+                          <p className="text-xs text-slate-400 text-center px-4">Student can send chat messages for clarification or technical help.</p>
                         </div>
                       ) : (
                         messages.map((msg, idx) => {
                           const isInv = msg.sender === 'invigilator'
                           return (
                             <div key={idx} className={`flex ${isInv ? 'justify-end' : 'justify-start'}`}>
-                              <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${isInv
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none'
+                              <div className={`max-w-[85%] rounded-2xl p-3.5 shadow-sm text-xs ${isInv
+                                ? 'bg-indigo-600 text-white rounded-br-none font-sans'
+                                : 'bg-[#09090B] border border-[#27272A] text-slate-200 rounded-bl-none font-sans'
                                 }`}>
-                                <p className="text-xs font-medium whitespace-pre-wrap leading-relaxed">{msg.message}</p>
-                                <span className={`text-[8px] block mt-1 text-right ${isInv ? 'text-blue-200' : 'text-slate-400'} font-bold`}>
+                                <p className="leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                                <span className={`text-[9px] font-mono block mt-1 text-right ${isInv ? 'text-indigo-200' : 'text-slate-500'}`}>
                                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
@@ -1041,21 +1041,21 @@ export default function InvDashboard() {
                   </div>
 
                   {/* Input Area */}
-                  <div className="p-4 border-t bg-white">
-                    <div className="relative flex items-center">
+                  <div className="p-4 border-t border-[#27272A] bg-[#09090B]">
+                    <div className="relative flex items-center font-mono">
                       <input
                         type="text"
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSendChat() }}
                         placeholder="Type reply to student..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3 pl-4 pr-12 text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-100 transition-all"
+                        className="w-full bg-[#141416] border border-[#27272A] rounded-xl py-2.5 pl-3.5 pr-10 text-xs text-slate-200 outline-none focus:border-indigo-500 transition-all"
                       />
                       <button
                         onClick={handleSendChat}
-                        className="absolute right-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all shadow-md shadow-blue-100"
+                        className="absolute right-1.5 p-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-all shadow-md shadow-indigo-600/20"
                       >
-                        <Send size={14} />
+                        <Send size={13} />
                       </button>
                     </div>
                   </div>

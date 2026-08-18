@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import {
   Plus, Search, BookOpen, Clock, Users, Edit, Trash2,
   Eye, Copy, Play, StopCircle, ChevronRight, Filter, MoreHorizontal
@@ -114,6 +115,7 @@ export default function FacultyExams() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [examToDelete, setExamToDelete] = useState(null)
 
   const fetchExams = async () => {
     setLoading(true)
@@ -126,13 +128,18 @@ export default function FacultyExams() {
 
   useEffect(() => { fetchExams() }, [])
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this exam? This cannot be undone.')) return
+  const handleDelete = (id) => {
+    setExamToDelete(id)
+  }
+
+  const performDelete = async () => {
+    if (!examToDelete) return
     try {
-      await api.delete(`/faculty/exams/${id}`)
+      await api.delete(`/faculty/exams/${examToDelete}`)
       toast.success('Exam deleted')
       fetchExams()
     } catch { toast.error('Failed to delete exam') }
+    finally { setExamToDelete(null) }
   }
 
   const handleCopy = async (id) => {
@@ -202,6 +209,17 @@ export default function FacultyExams() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!examToDelete}
+        onOpenChange={(open) => { if (!open) setExamToDelete(null) }}
+        title="Delete Examination?"
+        description="Are you sure you want to delete this exam? All associated student assignments and records for this exam will be permanently removed. This action cannot be undone."
+        confirmText="Delete Exam"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={performDelete}
+      />
     </DashboardLayout>
   )
 }

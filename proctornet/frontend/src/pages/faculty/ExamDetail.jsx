@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/common/DashboardLayout'
 import { FormInput, SelectInput, FormTextarea, SubmitButton, Alert } from '@/components/common/FormComponents'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 
 function Icon({ name, size = 20, style = {} }) {
   return <span className="material-icon" style={{ fontSize: size, ...style }}>{name}</span>
@@ -73,6 +74,7 @@ export default function ExamDetail() {
   
   // Credentials modal state
   const [showCredentialsModal, setShowCredentialsModal] = useState(false)
+  const [showPublishModal, setShowPublishModal] = useState(false)
   const [credentials, setCredentials] = useState(null)
   const [copiedField, setCopiedField] = useState('')
 
@@ -173,8 +175,8 @@ export default function ExamDetail() {
         startTime: settingsForm.startTime ? new Date(settingsForm.startTime).toISOString() : undefined,
         endTime: settingsForm.endTime ? new Date(settingsForm.endTime).toISOString() : undefined,
         duration: parseInt(settingsForm.duration),
-        tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit),
-        negativeValue: parseFloat(settingsForm.negativeValue),
+        tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit || 3),
+        negativeValue: parseFloat(settingsForm.negativeValue || 0.25),
       })
       await fetchExam()
       toast.success('Exam settings saved successfully!')
@@ -185,19 +187,21 @@ export default function ExamDetail() {
     }
   }
 
-  const handlePublish = async () => {
+  const handlePublish = () => {
     if (exam.questions.length === 0) {
       toast.error('Cannot publish exam with zero questions. Please add questions first.')
       return
     }
-    if (!window.confirm('Are you sure you want to publish this exam? Once published, questions cannot be modified, and invigilator credentials will be generated.')) {
-      return
-    }
+    setShowPublishModal(true)
+  }
+
+  const performPublish = async () => {
     try {
       const res = await api.patch(`/faculty/exams/${id}/publish`)
       setCredentials(res.data.invCredentials)
       setShowCredentialsModal(true)
       fetchExam()
+      toast.success('Exam published successfully!')
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to publish exam.')
     }
@@ -878,6 +882,17 @@ export default function ExamDetail() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={showPublishModal}
+        onOpenChange={setShowPublishModal}
+        title="Publish Examination?"
+        description="Are you sure you want to publish this exam? Once published, questions cannot be modified, and invigilator credentials will be automatically generated."
+        confirmText="Publish Exam"
+        cancelText="Cancel"
+        variant="default"
+        onConfirm={performPublish}
+      />
     </DashboardLayout>
   )
 }

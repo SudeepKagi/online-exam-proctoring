@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import {
   Plus, Trash2, Edit3, Save, X, FileText, Sparkles,
   ChevronDown, ChevronUp, Upload, Loader2, CheckCircle,
@@ -64,6 +65,7 @@ export default function QuestionPool() {
   const [showAI, setShowAI] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [editQ, setEditQ] = useState(null)
+  const [questionToDelete, setQuestionToDelete] = useState(null)
 
   const [form, setForm] = useState({
     type: 'MCQ', questionText: '', marks: 2, difficulty: 'MEDIUM',
@@ -107,13 +109,18 @@ export default function QuestionPool() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this question?')) return
+  const handleDelete = (id) => {
+    setQuestionToDelete(id)
+  }
+
+  const performDelete = async () => {
+    if (!questionToDelete) return
     try {
-      await api.delete(`/faculty/questions/${id}`)
+      await api.delete(`/faculty/questions/${questionToDelete}`)
       toast.success('Question deleted')
       loadAll()
     } catch { toast.error('Failed to delete') }
+    finally { setQuestionToDelete(null) }
   }
 
   return (
@@ -149,6 +156,17 @@ export default function QuestionPool() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!questionToDelete}
+        onOpenChange={(open) => { if (!open) setQuestionToDelete(null) }}
+        title="Delete Question?"
+        description="Are you sure you want to delete this question? It will be removed from this exam's question pool."
+        confirmText="Delete Question"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={performDelete}
+      />
     </DashboardLayout>
   )
 }

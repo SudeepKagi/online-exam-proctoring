@@ -154,14 +154,36 @@ export default function ExamLobby() {
               onClick={() => navigate(`/student/device-check/${examId}`)}
               className="w-full sm:w-auto text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B]"
             >
-              Run Optional Device Diagnostic
+              Run Pre-Exam Device Diagnostic (Recommended)
             </Button>
-            <Button
-              onClick={() => navigate(`/student/exams/${examId}/security`)}
-              className="w-full sm:w-auto text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-7 h-10 rounded-xl shadow-lg shadow-indigo-600/20"
-            >
-              Start Automated Security Check <ArrowRight size={14} className="ml-2" />
-            </Button>
+            <div className="flex flex-col sm:items-end w-full sm:w-auto gap-1">
+              <Button
+                disabled={isOver || timeToStart > 0}
+                onClick={() => navigate(`/student/exams/${examId}/security`)}
+                className={`w-full sm:w-auto text-xs font-mono font-bold px-7 h-10 rounded-xl shadow-lg transition-all ${
+                  isOver || timeToStart > 0
+                    ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed shadow-none'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                }`}
+              >
+                {isOver
+                  ? 'Exam Concluded'
+                  : timeToStart > 0
+                  ? `Waiting for Start Window (${formatCountdown(timeToStart)})`
+                  : 'Start Automated Security Check'}
+                {!isOver && timeToStart === 0 && <ArrowRight size={14} className="ml-2" />}
+              </Button>
+              {timeToStart > 0 && !isOver && (
+                <span className="text-[10px] font-mono text-amber-400/80 text-center sm:text-right">
+                  Security check unlocks when countdown reaches zero
+                </span>
+              )}
+              {isOver && (
+                <span className="text-[10px] font-mono text-rose-400 text-center sm:text-right">
+                  This examination session has ended and is closed for entry
+                </span>
+              )}
+            </div>
           </div>
         </Card>
       </div>

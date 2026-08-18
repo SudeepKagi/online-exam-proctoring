@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { Megaphone, Plus, Trash2, Eye, X, Users, GraduationCap, BookOpen } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -120,6 +121,7 @@ export default function AdminAnnouncements() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [announcementToDelete, setAnnouncementToDelete] = useState(null)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -137,14 +139,20 @@ export default function AdminAnnouncements() {
     fetchAll()
   }, [])
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this announcement?')) return
+  const handleDelete = (id) => {
+    setAnnouncementToDelete(id)
+  }
+
+  const performDelete = async () => {
+    if (!announcementToDelete) return
     try {
-      await api.delete(`/admin/announcements/${id}`)
+      await api.delete(`/admin/announcements/${announcementToDelete}`)
       toast.success('Announcement deleted')
       fetchAll()
     } catch {
       toast.error('Failed to delete')
+    } finally {
+      setAnnouncementToDelete(null)
     }
   }
 
@@ -245,6 +253,17 @@ export default function AdminAnnouncements() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!announcementToDelete}
+        onOpenChange={(open) => { if (!open) setAnnouncementToDelete(null) }}
+        title="Delete Announcement?"
+        description="Are you sure you want to delete this announcement? It will be permanently removed from all dashboards."
+        confirmText="Delete Announcement"
+        cancelText="Cancel"
+        variant="destructive"
+        onConfirm={performDelete}
+      />
     </DashboardLayout>
   )
 }

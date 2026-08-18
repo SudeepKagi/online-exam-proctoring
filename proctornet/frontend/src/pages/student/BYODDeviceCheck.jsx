@@ -93,9 +93,9 @@ export default function BYODDeviceCheck() {
         setPassedAll(false)
         toast.error(res.data.message || 'Device readiness evaluation failed')
       }
-    } catch {
-      setPassedAll(true)
-      toast.success('BYOD Readiness verified (Standard Browser Mode)')
+    } catch (err) {
+      setPassedAll(false)
+      toast.error('Device readiness evaluation failed. Please check network connection and retry.')
     } finally {
       setEvaluating(false)
     }
@@ -114,7 +114,7 @@ export default function BYODDeviceCheck() {
             BYOD Device Readiness Diagnostic
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Mandatory client security scan before joining your live exam lobby.
+            Pre-exam client security & hardware diagnostic scan before joining your live exam lobby.
           </p>
         </div>
 

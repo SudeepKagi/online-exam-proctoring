@@ -12,6 +12,8 @@ import {
   Lock, Monitor, ShieldCheck, ShieldAlert
 } from 'lucide-react'
 
+import ConfirmDialog from '@/components/ui/confirm-dialog'
+
 // ── Helpers ────────────────────────────────────────────
 function pad(n) { return String(n).padStart(2, '0') }
 function formatTime(secs) {
@@ -24,8 +26,12 @@ function formatTime(secs) {
 // ── Small status pill ──────────────────────────────────
 function StatusPill({ ok, label }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${ok ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium border ${
+      ok
+        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+        : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+    }`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
       {label}
     </span>
   )
@@ -49,6 +55,7 @@ export default function ExamInterface() {
   const [flagged, setFlagged] = useState(new Set())
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
 
   const submittingRef = useRef(false)
   const submittedRef = useRef(false)
@@ -766,26 +773,17 @@ export default function ExamInterface() {
     setFlagged(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
   }
 
-  const handleSubmit = async (auto = false) => {
+  const handleSubmit = (auto = false) => {
     if (submitting || submitted) return
-    let confirmed = false
     if (!auto) {
-      isConfirmingRef.current = true
-      confirmed = confirm('Are you sure you want to submit? You cannot change answers after submission.')
-      isConfirmingRef.current = false
-      if (!confirmed) {
-        // Re-request fullscreen to restore compliance immediately if canceled
-        try {
-          if (!document.fullscreenElement) {
-            await document.documentElement.requestFullscreen()
-            setIsFullscreenLocked(true)
-          }
-        } catch (err) {
-          setIsFullscreenLocked(false)
-        }
-        return
-      }
+      setShowSubmitConfirm(true)
+      return
     }
+    performSubmit()
+  }
+
+  const performSubmit = async () => {
+    if (submitting || submitted) return
     submittingRef.current = true
     setSubmitting(true)
     clearInterval(autoSaveRef.current)
@@ -828,46 +826,51 @@ export default function ExamInterface() {
 
   // ── Loading / Submit states ──
   if (loading) return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="text-center"><div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-gray-400">Loading exam…</p></div>
+    <div className="min-h-screen bg-[#09090B] text-slate-100 flex items-center justify-center font-sans">
+      <div className="text-center">
+        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-xs font-mono text-slate-400">Loading exam environment…</p>
+      </div>
     </div>
   )
 
   if (submitted) return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4"><CheckCircle size={40} className="text-green-400" /></div>
-        <h2 className="text-2xl font-bold text-white mb-2">Submitted!</h2>
-        <p className="text-gray-400">Redirecting to results…</p>
+    <div className="min-h-screen bg-[#09090B] text-slate-100 flex items-center justify-center font-sans">
+      <div className="text-center p-8 bg-[#141416] border border-[#27272A] rounded-3xl shadow-2xl max-w-sm w-full mx-4">
+        <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <CheckCircle size={32} className="text-emerald-400" />
+        </div>
+        <h2 className="text-xl font-bold text-slate-100 mb-1 font-sans">Exam Submitted</h2>
+        <p className="text-xs font-mono text-slate-400">Your answers have been securely recorded. Redirecting to results…</p>
       </div>
     </div>
   )
 
   if (isWaiting) {
-    const timerColor = secsToStart < 60 ? 'text-rose-400 animate-pulse' : secsToStart < 300 ? 'text-amber-400' : 'text-blue-400'
+    const timerColor = secsToStart < 60 ? 'text-rose-400 animate-pulse' : secsToStart < 300 ? 'text-amber-400' : 'text-indigo-400'
     return (
-      <div className="min-h-screen bg-[#070b19] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-950/40 via-[#070b19] to-[#04060d] text-gray-200 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-[#09090B] text-slate-200 flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden">
         {/* Background glowing rings */}
-        <div className="absolute top-20 right-20 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-indigo-900/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-20 right-20 w-80 h-80 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="w-full max-w-2xl bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 lg:p-8 relative text-center">
+        <div className="w-full max-w-2xl bg-[#141416] border border-[#27272A] rounded-3xl shadow-2xl p-6 lg:p-8 relative text-center">
           <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-9 h-9 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping" />
+            <div className="w-9 h-9 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/30">
+              <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping" />
             </div>
             <div className="text-left">
               <h1 className="font-bold text-sm tracking-wide text-white">PROCTORNET WAITING LOBBY</h1>
-              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-semibold">Security Check Complete</p>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest font-mono font-semibold">Security Check Complete</p>
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-white mb-1">{exam?.title}</h2>
-          <p className="text-sm text-gray-400 mb-6">{exam?.subject} • Prof. {exam?.faculty?.name || 'Faculty'}</p>
+          <h2 className="text-2xl font-bold text-slate-100 mb-1">{exam?.title}</h2>
+          <p className="text-xs font-mono text-slate-400 mb-6">{exam?.subject} • Prof. {exam?.faculty?.name || 'Faculty'}</p>
 
           {/* Countdown timer */}
-          <div className="bg-black/30 rounded-2xl p-6 border border-white/5 mb-6 max-w-sm mx-auto">
-            <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider mb-2">Exam Starts In</p>
+          <div className="bg-[#09090B] rounded-2xl p-6 border border-[#27272A] mb-6 max-w-sm mx-auto">
+            <p className="text-[10px] text-slate-400 uppercase font-mono tracking-wider mb-2">Exam Starts In</p>
             <div className={`font-mono text-4xl font-extrabold tracking-wider ${timerColor}`}>
               {formatTime(secsToStart)}
             </div>
@@ -877,14 +880,14 @@ export default function ExamInterface() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             {/* Live Camera Preview */}
             <div className="space-y-2">
-              <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider flex items-center gap-1.5 justify-center"><Camera size={12} /> Active Feed Preview</span>
-              <div className="relative bg-black/60 rounded-2xl border border-white/10 overflow-hidden aspect-video flex items-center justify-center mx-auto">
+              <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider flex items-center gap-1.5 justify-center"><Camera size={12} /> Active Feed Preview</span>
+              <div className="relative bg-[#09090B] rounded-2xl border border-[#27272A] overflow-hidden aspect-video flex items-center justify-center mx-auto">
                 <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover rounded-2xl" />
                 {!cameraOk && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#09090B]/90">
                     <div className="text-center">
-                      <CameraOff size={24} className="text-red-400 mx-auto mb-1 animate-pulse" />
-                      <p className="text-xs text-red-400">Camera Inactive</p>
+                      <CameraOff size={24} className="text-rose-400 mx-auto mb-1 animate-pulse" />
+                      <p className="text-xs text-rose-400 font-mono">Camera Inactive</p>
                     </div>
                   </div>
                 )}
@@ -892,9 +895,9 @@ export default function ExamInterface() {
             </div>
 
             {/* Shield and integrity status */}
-            <div className="text-left space-y-3 bg-white/5 border border-white/5 rounded-2xl p-4">
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">🛡 Active Security Gating</h3>
-              <ul className="space-y-2 text-xs text-gray-400">
+            <div className="text-left space-y-3 bg-[#09090B] border border-[#27272A] rounded-2xl p-4">
+              <h3 className="text-xs font-bold text-slate-100 uppercase font-mono tracking-wider flex items-center gap-1.5">🛡 Active Security Gating</h3>
+              <ul className="space-y-2 text-xs font-mono text-slate-400">
                 <li className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-400 shrink-0" />
                   <span>Exclusive Fullscreen Gated</span>
@@ -923,7 +926,7 @@ export default function ExamInterface() {
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-white/10 text-xs text-gray-500 flex items-center justify-center gap-2">
+          <div className="mt-8 pt-4 border-t border-[#27272A] text-xs font-mono text-slate-500 flex items-center justify-center gap-2">
             <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
             <span>Secure holding state. Do not close or refresh this tab.</span>
           </div>
@@ -934,35 +937,35 @@ export default function ExamInterface() {
 
   const currentQ = questions[currentIdx]
   const answered = Object.keys(answers).length
-  const timerColor = timeLeft < 300 ? 'text-red-400' : timeLeft < 600 ? 'text-amber-400' : 'text-green-400'
+  const timerColor = timeLeft < 300 ? 'text-rose-400' : timeLeft < 600 ? 'text-amber-400' : 'text-emerald-400'
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col">
+    <div className="min-h-screen bg-[#09090B] text-slate-100 flex flex-col font-sans">
       {/* ── Top bar ── */}
-      <header className="bg-gray-900 border-b border-gray-800 h-14 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
+      <header className="bg-[#141416] border-b border-[#27272A] h-14 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center"><Eye size={14} className="text-white" /></div>
+          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-600/20"><Eye size={14} className="text-white" /></div>
           <div>
-            <p className="text-sm font-semibold text-white leading-none">{exam?.title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{exam?.subject} • {questions.length} questions</p>
+            <p className="text-sm font-semibold text-slate-100 leading-none">{exam?.title}</p>
+            <p className="text-xs font-mono text-slate-400 mt-0.5">{exam?.subject} • {questions.length} questions</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 font-mono">
           <StatusPill ok={cameraOk} label="Camera" />
           <StatusPill ok={faceOk} label="Face" />
           {/* YOLO Object Detection badge — only shown once first scan completes */}
           {yoloStatus !== null && (
             <span
               title={yoloStatus === 'clean' ? 'YOLO: No threats detected' : 'YOLO: Threat detected!'}
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-500 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium border transition-colors duration-500 ${
                 yoloStatus === 'clean'
-                  ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-red-100 text-red-700 animate-pulse'
+                  ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                  : 'bg-rose-500/10 border-rose-500/20 text-rose-400 animate-pulse'
               }`}
             >
               {yoloStatus === 'clean'
-                ? <ShieldCheck size={12} className="text-emerald-600" />
-                : <ShieldAlert size={12} className="text-red-600" />}
+                ? <ShieldCheck size={12} className="text-emerald-400" />
+                : <ShieldAlert size={12} className="text-rose-400" />}
               YOLO
             </span>
           )}
@@ -971,40 +974,40 @@ export default function ExamInterface() {
             title={`Mic level: ${Math.round(micLevel * 100)}% — Lab noise monitoring active`}
             className="flex items-center gap-1"
           >
-            <span className="text-[10px] text-gray-500">🎙</span>
-            <div className="w-10 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+            <span className="text-[10px] text-slate-500">🎙</span>
+            <div className="w-10 h-1.5 bg-[#27272A] rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-200 ${
-                  micLevel > 0.72 ? 'bg-orange-500' : micLevel > 0.45 ? 'bg-yellow-400' : 'bg-emerald-500'
+                  micLevel > 0.72 ? 'bg-rose-500' : micLevel > 0.45 ? 'bg-amber-400' : 'bg-emerald-500'
                 }`}
                 style={{ width: `${Math.round(micLevel * 100)}%` }}
               />
             </div>
           </div>
-          {violations > 0 && <span className="text-xs font-semibold text-red-400 bg-red-950 px-2 py-0.5 rounded-full">{violations} flags</span>}
-          <div className={`font-mono text-lg font-bold ${timerColor}`}>{timeLeft !== null ? formatTime(timeLeft) : '--:--'}</div>
+          {violations > 0 && <span className="text-xs font-semibold text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">{violations} flags</span>}
+          <div className={`font-mono text-base font-bold ${timerColor}`}>{timeLeft !== null ? formatTime(timeLeft) : '--:--'}</div>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Left: question panel ── */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[#09090B]">
           {currentQ ? (
             <div className="flex-1 overflow-y-auto p-5 lg:p-6">
               {/* Question header */}
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold text-blue-400 uppercase tracking-wide">Q{currentIdx + 1} of {questions.length}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                      currentQ.difficulty === 'HARD' ? 'bg-red-900/60 text-red-300' : currentQ.difficulty === 'EASY' ? 'bg-green-900/60 text-green-300' : 'bg-amber-900/60 text-amber-300'
+                  <div className="flex items-center gap-2 mb-1.5 font-mono">
+                    <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wide">Q{currentIdx + 1} of {questions.length}</span>
+                    <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+                      currentQ.difficulty === 'HARD' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : currentQ.difficulty === 'EASY' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                     }`}>{currentQ.difficulty}</span>
-                    <span className="text-xs text-gray-500">{currentQ.marks} marks</span>
+                    <span className="text-xs text-slate-500">{currentQ.marks} marks</span>
                   </div>
-                  <p className="text-base font-medium text-gray-100 leading-relaxed max-w-2xl">{currentQ.questionText}</p>
+                  <p className="text-base font-medium text-slate-100 leading-relaxed max-w-2xl font-sans">{currentQ.questionText}</p>
                 </div>
                 <button onClick={() => toggleFlag(currentQ.id)}
-                  className={`p-2 rounded-lg transition-colors ${flagged.has(currentQ.id) ? 'bg-amber-500/20 text-amber-400' : 'hover:bg-gray-800 text-gray-500'}`}>
+                  className={`p-2 rounded-xl border transition-colors ${flagged.has(currentQ.id) ? 'bg-amber-500/20 border-amber-500/40 text-amber-400' : 'bg-[#141416] border-[#27272A] hover:bg-[#18181B] text-slate-400'}`}>
                   <Flag size={16} />
                 </button>
               </div>
@@ -1031,10 +1034,10 @@ export default function ExamInterface() {
                     return (
                       <button key={opt} onClick={() => setAnswer(currentQ.id, 'selected', opt)}
                         className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all ${
-                          selected ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:border-gray-500 hover:bg-gray-800'
+                          selected ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-sm shadow-indigo-600/10' : 'bg-[#141416] border-[#27272A] text-slate-300 hover:border-[#3F3F46] hover:bg-[#18181B]'
                         }`}>
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${selected ? 'bg-blue-500 text-white' : 'bg-gray-700 text-gray-400'}`}>{opt}</span>
-                        {text}
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 font-mono ${selected ? 'bg-indigo-600 text-white' : 'bg-[#18181B] border border-[#27272A] text-slate-400'}`}>{opt}</span>
+                        <span className="text-sm font-sans">{text}</span>
                       </button>
                     )
                   })}
@@ -1043,10 +1046,10 @@ export default function ExamInterface() {
 
               {/* Coding question */}
               {currentQ.type === 'CODE' && (
-                <div className="rounded-xl overflow-hidden border border-gray-700">
-                  <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-                    <div className="flex items-center gap-2 text-xs text-gray-400"><Code size={13} /> Code Editor</div>
-                    <select className="bg-gray-700 text-gray-300 text-xs rounded px-2 py-1 border-0">
+                <div className="rounded-2xl overflow-hidden border border-[#27272A] bg-[#141416]">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#141416] border-b border-[#27272A]">
+                    <div className="flex items-center gap-2 text-xs font-mono text-slate-400"><Code size={13} className="text-indigo-400" /> Code Editor</div>
+                    <select className="bg-[#09090B] text-slate-300 font-mono text-xs rounded-lg px-2.5 py-1 border border-[#27272A] outline-none">
                       <option>Python</option><option>JavaScript</option><option>Java</option><option>C++</option>
                     </select>
                   </div>
@@ -1068,33 +1071,33 @@ export default function ExamInterface() {
                   onChange={e => setAnswer(currentQ.id, 'text', e.target.value)}
                   placeholder="Write your answer here…"
                   rows={8}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl text-gray-200 text-sm p-4 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full bg-[#141416] border border-[#27272A] rounded-2xl text-slate-100 text-sm p-4 focus:outline-none focus:border-indigo-500 resize-none font-sans"
                 />
               )}
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-500">No questions loaded.</div>
+            <div className="flex-1 flex items-center justify-center text-xs font-mono text-slate-500">No questions loaded.</div>
           )}
 
           {/* ── Question navigation footer ── */}
-          <div className="flex items-center justify-between px-5 py-3 bg-gray-900 border-t border-gray-800 flex-shrink-0">
+          <div className="flex items-center justify-between px-5 py-3 bg-[#141416] border-t border-[#27272A] flex-shrink-0 font-mono">
             <button disabled={currentIdx === 0} onClick={() => setCurrentIdx(i => i - 1)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg disabled:opacity-40 transition-colors">
+              className="flex items-center gap-2 px-4 py-2 bg-[#09090B] hover:bg-[#18181B] text-slate-300 border border-[#27272A] text-xs font-medium rounded-xl disabled:opacity-40 transition-colors">
               <ChevronLeft size={16} /> Previous
             </button>
-            <div className="flex items-center gap-1.5 text-sm text-gray-400">
-              <CheckCircle size={14} className="text-green-400" />
-              <span><span className="text-green-400 font-semibold">{answered}</span>/{questions.length} answered</span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <CheckCircle size={14} className="text-emerald-400" />
+              <span><span className="text-emerald-400 font-semibold">{answered}</span>/{questions.length} answered</span>
             </div>
             {currentIdx < questions.length - 1 ? (
               <button onClick={() => setCurrentIdx(i => i + 1)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">
+                className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20">
                 Next <ChevronRight size={16} />
               </button>
             ) : (
               <button disabled={submitting} onClick={() => handleSubmit(false)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg disabled:opacity-60 transition-colors">
-                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={15} />}
+                className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl disabled:opacity-60 transition-all shadow-md shadow-emerald-600/20">
+                {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
                 Submit Exam
               </button>
             )}
@@ -1102,15 +1105,15 @@ export default function ExamInterface() {
         </main>
 
         {/* ── Right sidebar ── */}
-        <aside className="w-60 bg-gray-900 border-l border-gray-800 flex flex-col flex-shrink-0 hidden lg:flex">
+        <aside className="w-60 bg-[#141416] border-l border-[#27272A] flex flex-col flex-shrink-0 hidden lg:flex font-mono">
           {/* Camera feed */}
-          <div className="p-3 border-b border-gray-800">
-            <p className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide">Live Camera</p>
-            <div className="relative bg-gray-800 rounded-xl overflow-hidden aspect-video">
+          <div className="p-3 border-b border-[#27272A]">
+            <p className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wide">Live Camera</p>
+            <div className="relative bg-[#09090B] rounded-xl overflow-hidden aspect-video border border-[#27272A]">
               <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
               {!cameraOk && (
-                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/80">
-                  <div className="text-center"><CameraOff size={20} className="text-red-400 mx-auto mb-1" /><p className="text-xs text-red-400">No Camera</p></div>
+                <div className="absolute inset-0 flex items-center justify-center bg-[#09090B]/90">
+                  <div className="text-center"><CameraOff size={20} className="text-rose-400 mx-auto mb-1" /><p className="text-[10px] text-rose-400">No Camera</p></div>
                 </div>
               )}
             </div>
@@ -1118,7 +1121,7 @@ export default function ExamInterface() {
 
           {/* Question palette */}
           <div className="flex-1 overflow-y-auto p-3">
-            <p className="text-xs text-gray-500 font-semibold mb-2 uppercase tracking-wide flex items-center gap-1"><List size={11} /> Questions</p>
+            <p className="text-[10px] text-slate-400 font-semibold mb-2 uppercase tracking-wide flex items-center gap-1"><List size={11} /> Questions</p>
             <div className="grid grid-cols-5 gap-1.5">
               {questions.map((q, i) => {
                 const isAnswered = !!answers[q.id]?.selected || !!answers[q.id]?.code || !!answers[q.id]?.text
@@ -1127,19 +1130,19 @@ export default function ExamInterface() {
                 return (
                   <button key={q.id} onClick={() => setCurrentIdx(i)}
                     className={`w-full aspect-square rounded-lg text-xs font-bold transition-all ${
-                      isCurrent ? 'bg-blue-600 text-white ring-2 ring-blue-400' :
-                      isFlagged ? 'bg-amber-500/30 text-amber-400 border border-amber-600' :
-                      isAnswered ? 'bg-green-500/20 text-green-400' :
-                      'bg-gray-800 text-gray-500 hover:bg-gray-700'
+                      isCurrent ? 'bg-indigo-600 text-white ring-2 ring-indigo-400 shadow-md shadow-indigo-600/20' :
+                      isFlagged ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' :
+                      isAnswered ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      'bg-[#09090B] border border-[#27272A] text-slate-400 hover:bg-[#18181B]'
                     }`}>
                     {i + 1}
                   </button>
                 )
               })}
             </div>
-            <div className="mt-4 space-y-1.5">
-              {[['bg-blue-600', 'Current'], ['bg-green-500/20 border border-green-700', 'Answered'], ['bg-amber-500/30 border border-amber-600', 'Flagged'], ['bg-gray-800', 'Unanswered']].map(([cls, label]) => (
-                <div key={label} className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="mt-4 space-y-1.5 text-[11px]">
+              {[['bg-indigo-600', 'Current'], ['bg-emerald-500/20 border border-emerald-500/30', 'Answered'], ['bg-amber-500/20 border border-amber-500/40', 'Flagged'], ['bg-[#09090B] border border-[#27272A]', 'Unanswered']].map(([cls, label]) => (
+                <div key={label} className="flex items-center gap-2 text-slate-400">
                   <div className={`w-3 h-3 rounded ${cls}`} />{label}
                 </div>
               ))}
@@ -1147,9 +1150,9 @@ export default function ExamInterface() {
           </div>
 
           {/* Submit button */}
-          <div className="p-3 border-t border-gray-800">
+          <div className="p-3 border-t border-[#27272A]">
             <button disabled={submitting} onClick={() => handleSubmit(false)}
-              className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-colors">
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/20">
               {submitting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={14} />}
               Submit Exam
             </button>
@@ -1157,15 +1160,28 @@ export default function ExamInterface() {
         </aside>
       </div>
 
+      {/* Submit Confirmation Dialog */}
+      <ConfirmDialog
+        open={showSubmitConfirm}
+        onOpenChange={setShowSubmitConfirm}
+        title="Submit Examination?"
+        description={`You have answered ${answered} of ${questions.length} questions. Are you sure you want to finalize your submission? Once submitted, answers cannot be edited.`}
+        confirmText="Confirm & Submit"
+        cancelText="Return to Exam"
+        variant="default"
+        onConfirm={performSubmit}
+        loading={submitting}
+      />
+
       {/* Security Compliance Lock Overlay */}
       {(!isFullscreenLocked || isScreenShareLocked) && !submitted && !submitting && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gray-950/85 backdrop-blur-xl p-4 text-center select-none">
-          <div className="max-w-md w-full bg-white/5 border border-red-500/30 rounded-3xl p-8 shadow-2xl relative">
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center border border-red-500/30">
-              <AlertTriangle size={36} className="text-red-500 animate-bounce" />
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#09090B]/90 backdrop-blur-xl p-4 text-center select-none font-sans">
+          <div className="max-w-md w-full bg-[#141416] border border-rose-500/30 rounded-3xl p-8 shadow-2xl relative">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-rose-500/15 rounded-full flex items-center justify-center border border-rose-500/30">
+              <AlertTriangle size={36} className="text-rose-500 animate-bounce" />
             </div>
-            <h2 className="text-2xl font-bold text-white mt-6 mb-2">Security Shield Active</h2>
-            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+            <h2 className="text-xl font-bold text-slate-100 mt-6 mb-2">Security Shield Active</h2>
+            <p className="text-slate-400 text-xs mb-6 leading-relaxed font-mono">
               {!isFullscreenLocked && isScreenShareLocked
                 ? "Multiple security requirements are breached. You have exited fullscreen and screen sharing is inactive."
                 : !isFullscreenLocked
@@ -1173,7 +1189,7 @@ export default function ExamInterface() {
                 : "Continuous screen sharing is required to proctor this exam. The proctoring system has lost access to your desktop stream."}
               {" "}Your exam workspace is locked until full compliance is restored.
             </p>
-            <div className="space-y-3">
+            <div className="space-y-3 font-mono">
               {!isFullscreenLocked && (
                 <button
                   onClick={async () => {
@@ -1184,23 +1200,23 @@ export default function ExamInterface() {
                       toast.error('Failed to enter fullscreen mode. Please click again or check browser permissions.')
                     }
                   }}
-                  className="w-full py-3.5 bg-red-600 hover:bg-red-700 active:scale-95 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/30"
+                  className="w-full py-3 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-rose-600/30"
                 >
-                  <Lock size={16} />
+                  <Lock size={15} />
                   Return to Fullscreen Mode
                 </button>
               )}
               {isScreenShareLocked && (
                 <button
                   onClick={handleRequestScreenShare}
-                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-600/30"
                 >
-                  <Monitor size={16} />
+                  <Monitor size={15} />
                   Re-Authorize Screen Share
                 </button>
               )}
             </div>
-            <p className="text-[10px] text-gray-500 mt-5 uppercase tracking-widest font-semibold">
+            <p className="text-[10px] text-slate-500 mt-5 uppercase tracking-widest font-mono font-semibold">
               ProctorNet Integrity Shield Active
             </p>
           </div>

@@ -24,14 +24,17 @@
   --color-accent: #27272A;
   --color-accent-foreground: #FAFAFA;
 
-  --color-destructive: #FFFFFF;
-  --color-destructive-foreground: #000000;
+  --color-destructive: #EF4444;
+  --color-destructive-foreground: #FFFFFF;
 
-  --color-success: #FFFFFF;
-  --color-success-foreground: #000000;
+  --color-success: #10B981;
+  --color-success-foreground: #FFFFFF;
 
-  --color-warning: #A1A1AA;
+  --color-warning: #F59E0B;
   --color-warning-foreground: #000000;
+
+  --color-info: #6366F1;
+  --color-info-foreground: #FFFFFF;
 
   --color-border: #27272A;
   --color-input: #27272A;
