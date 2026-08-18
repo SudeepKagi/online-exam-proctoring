@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken')
 
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey'
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secretsecretsecretsecretsecretsecret'
+const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY
+const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET
 
 /**
  * Generate a signed LiveKit Access Token for WebRTC Room Streaming

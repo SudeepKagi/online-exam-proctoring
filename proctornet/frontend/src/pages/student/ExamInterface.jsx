@@ -9,7 +9,7 @@ import toast from 'react-hot-toast'
 import {
   Clock, Camera, CameraOff, AlertTriangle, CheckCircle,
   ChevronLeft, ChevronRight, Flag, Send, Eye, Code, List,
-  Lock, Monitor
+  Lock, Monitor, ShieldCheck, ShieldAlert
 } from 'lucide-react'
 
 // ── Helpers ────────────────────────────────────────────
@@ -85,6 +85,18 @@ export default function ExamInterface() {
   // ── Auto-save ──
   const autoSaveRef = useRef(null)
   const lastViolationTimeRef = useRef({})
+
+  // ── YOLO Object Detection ──
+  const yoloIntervalRef = useRef(null)
+  const [yoloStatus, setYoloStatus] = useState(null) // null | 'clean' | 'threat'
+
+  // ── Microphone Noise Monitor ──
+  const audioContextRef   = useRef(null)
+  const analyserRef       = useRef(null)
+  const micSourceRef      = useRef(null)
+  const audioIntervalRef  = useRef(null)
+  const noiseSustainRef   = useRef(0)           // consecutive high-noise ticks
+  const [micLevel, setMicLevel] = useState(0)   // 0–1 normalized volume level
 
   // ── Violation Logger (Throttled to prevent false positive cascades) ──
   const emitViolation = useCallback((type, severity) => {
@@ -440,15 +452,22 @@ export default function ExamInterface() {
         }
 
         if (modelsLoaded) {
-          const options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.3 })
+          const options = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.45 })
           const detections = await faceapi.detectAllFaces(captVideo, options)
           if (detections.length === 0) {
             setFaceOk(false)
             emitViolation('NO_FACE', 'HIGH')
           } else if (detections.length > 1) {
-            setFaceOk(false)
-            emitViolation('MULTIPLE_FACES', 'CRITICAL')
-            toast.error('Multiple faces detected!', { duration: 4000 })
+            // Lab mode: multiple faces are expected (classmates nearby).
+            // Do NOT count as a violation — silently log to invigilator via socket.
+            setFaceOk(true) // primary student is present
+            socketRef.current?.emit('exam:flag', {
+              examId,
+              studentId: user?.id,
+              eventType: 'MULTIPLE_FACES_LAB',
+              severity: 'INFO',
+              note: `${detections.length} faces detected — lab background context`,
+            })
           } else {
             setFaceOk(true)
           }
@@ -457,6 +476,144 @@ export default function ExamInterface() {
     }, 1500)
     return () => clearInterval(faceIntervalRef.current)
   }, [modelsLoaded, cameraOk, submitted, examId, user, emitViolation])
+
+  // ─────────────────────────────────────────────────────
+  // 6b. YOLO Object Detection loop (every 5s) — detects
+  //     phones, books, multiple persons
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!cameraOk || submitted) return
+
+    yoloIntervalRef.current = setInterval(async () => {
+      if (submittedRef.current || submittingRef.current || isConfirmingRef.current) return
+      const captVideo = captureVideoRef.current || videoRef.current
+      if (!captVideo || !canvasRef.current) return
+
+      try {
+        // Capture a 320×240 frame for YOLO — small enough for fast CPU inference
+        const yoloCanvas = document.createElement('canvas')
+        yoloCanvas.width  = 320
+        yoloCanvas.height = 240
+        const ctx = yoloCanvas.getContext('2d')
+        ctx.drawImage(captVideo, 0, 0, 320, 240)
+        const frameBase64 = yoloCanvas.toDataURL('image/jpeg', 0.6)
+
+        const result = await api.post(`/student/exams/${examId}/yolo-check`, { frame: frameBase64 })
+        const detection = result.data
+
+        if (!detection || !detection.success) {
+          // YOLO unavailable or error — silently degrade, do not interrupt exam
+          setYoloStatus(prev => prev === null ? null : prev)
+          return
+        }
+
+        const violations = detection.violations || []
+        const backgroundPersons = detection.background_persons || 0
+        let hasThreat = false
+
+        // Lab mode: PROXIMITY_ALERT replaces MULTIPLE_PERSONS
+        // Only flag if someone is leaning CLOSE to this student's screen
+        if (violations.includes('PROXIMITY_ALERT')) {
+          hasThreat = true
+          emitViolation('PROXIMITY_ALERT', 'HIGH')
+          toast.error('🚨 Someone leaning close to your screen!', { duration: 5000 })
+        }
+
+        // Background persons: silently inform invigilator only — no student-facing toast
+        if (backgroundPersons > 0) {
+          socketRef.current?.emit('exam:flag', {
+            examId,
+            studentId: user?.id,
+            eventType: 'BACKGROUND_PERSONS',
+            severity: 'INFO',
+            note: `${backgroundPersons} background person(s) detected — lab context`,
+          })
+        }
+
+        if (violations.includes('PHONE_DETECTED')) {
+          hasThreat = true
+          emitViolation('PHONE_DETECTED', 'HIGH')
+          toast.error('📱 Mobile phone detected!', { duration: 5000 })
+        }
+        if (violations.includes('BOOK_DETECTED')) {
+          hasThreat = true
+          emitViolation('BOOK_DETECTED', 'MEDIUM')
+          toast.error('📚 Reference material detected!', { duration: 4000 })
+        }
+        if (violations.includes('LAPTOP_DETECTED')) {
+          hasThreat = true
+          emitViolation('LAPTOP_DETECTED', 'HIGH')
+          toast.error('💻 Additional device detected!', { duration: 4000 })
+        }
+
+        setYoloStatus(hasThreat ? 'threat' : 'clean')
+      } catch {
+        // Silent — never let YOLO errors reach the student or interrupt the exam
+      }
+    }, 5000)  // Every 5 seconds — heavier than face-api so we use a longer interval
+
+    return () => clearInterval(yoloIntervalRef.current)
+  }, [cameraOk, submitted, examId, emitViolation])
+
+  // ─────────────────────────────────────────────────────
+  // 6c. Microphone Noise Monitor (lab-aware, every 500ms)
+  //
+  //  Classroom background chatter is NORMAL → ignored.
+  //  Only flags SUSTAINED LOUD SPEECH (≥2 seconds) close
+  //  to the mic, suggesting someone dictating answers.
+  //  No student-facing toast — just a soft invigilator log.
+  // ─────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!cameraOk || submitted) return
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(micStream => {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        audioContextRef.current = ctx
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 512
+        analyserRef.current = analyser
+        const source = ctx.createMediaStreamSource(micStream)
+        micSourceRef.current = source
+        source.connect(analyser)
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount)
+
+        audioIntervalRef.current = setInterval(() => {
+          if (submittedRef.current || submittingRef.current) return
+          analyser.getByteFrequencyData(dataArray)
+
+          // RMS volume: 0–128 range → normalize to 0–1
+          const rms = Math.sqrt(dataArray.reduce((s, v) => s + v * v, 0) / dataArray.length)
+          const level = Math.min(1, rms / 128)
+          setMicLevel(level)
+
+          // Threshold 0.72 ≈ very loud close-range speech
+          // Background chatter stays well below this
+          if (level > 0.72) {
+            noiseSustainRef.current += 1
+            // Need 4 consecutive ticks (= 2 seconds sustained) to flag
+            if (noiseSustainRef.current >= 4) {
+              noiseSustainRef.current = 0
+              emitViolation('NOISE_VIOLATION', 'LOW')
+              // No student-facing toast — lab noise is normal
+              // Invigilator sees it in the violation log as a soft alert
+            }
+          } else {
+            // Volume dropped — decay the sustain counter
+            noiseSustainRef.current = Math.max(0, noiseSustainRef.current - 1)
+          }
+        }, 500)
+      })
+      .catch(() => {
+        console.warn('[AudioMonitor] Microphone unavailable — noise monitoring disabled')
+      })
+
+    return () => {
+      clearInterval(audioIntervalRef.current)
+      try { audioContextRef.current?.close() } catch {}
+    }
+  }, [cameraOk, submitted, emitViolation])
 
   // ─────────────────────────────────────────────────────
   // 7. Auto-save every 30s
@@ -633,6 +790,9 @@ export default function ExamInterface() {
     setSubmitting(true)
     clearInterval(autoSaveRef.current)
     clearInterval(faceIntervalRef.current)
+    clearInterval(yoloIntervalRef.current)   // Stop YOLO scans on submit
+    clearInterval(audioIntervalRef.current)  // Stop audio monitor on submit
+    try { audioContextRef.current?.close() } catch {}
 
     try {
       await api.post(`/student/exams/${examId}/submit`, { answers })
@@ -745,11 +905,19 @@ export default function ExamInterface() {
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-400 shrink-0" />
-                  <span>Biometric face tracking ready</span>
+                  <span>Biometric face tracking (lab-aware)</span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle size={14} className="text-emerald-400 shrink-0" />
                   <span>Live frame invigilator socket active</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>YOLOv8 proximity + phone + notes detection</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                  <span>🎙 Noise monitor (sustained speech detection)</span>
                 </li>
               </ul>
             </div>
@@ -782,6 +950,37 @@ export default function ExamInterface() {
         <div className="flex items-center gap-3">
           <StatusPill ok={cameraOk} label="Camera" />
           <StatusPill ok={faceOk} label="Face" />
+          {/* YOLO Object Detection badge — only shown once first scan completes */}
+          {yoloStatus !== null && (
+            <span
+              title={yoloStatus === 'clean' ? 'YOLO: No threats detected' : 'YOLO: Threat detected!'}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold transition-colors duration-500 ${
+                yoloStatus === 'clean'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-red-100 text-red-700 animate-pulse'
+              }`}
+            >
+              {yoloStatus === 'clean'
+                ? <ShieldCheck size={12} className="text-emerald-600" />
+                : <ShieldAlert size={12} className="text-red-600" />}
+              YOLO
+            </span>
+          )}
+          {/* Mic noise level bar — thin, unobtrusive indicator */}
+          <div
+            title={`Mic level: ${Math.round(micLevel * 100)}% — Lab noise monitoring active`}
+            className="flex items-center gap-1"
+          >
+            <span className="text-[10px] text-gray-500">🎙</span>
+            <div className="w-10 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-200 ${
+                  micLevel > 0.72 ? 'bg-orange-500' : micLevel > 0.45 ? 'bg-yellow-400' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${Math.round(micLevel * 100)}%` }}
+              />
+            </div>
+          </div>
           {violations > 0 && <span className="text-xs font-semibold text-red-400 bg-red-950 px-2 py-0.5 rounded-full">{violations} flags</span>}
           <div className={`font-mono text-lg font-bold ${timerColor}`}>{timeLeft !== null ? formatTime(timeLeft) : '--:--'}</div>
         </div>

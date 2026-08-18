@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import toast from 'react-hot-toast'
+import { Search, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,13 +21,35 @@ export default function FacultyResults() {
       .then(r => setResults(r.data.results || r.data || []))
       .catch(() => {
         setResults([
-          { id: '1', examTitle: 'Data Structures & Algorithms', studentName: 'Sudeep S Kagi', usn: '1NT23EC158', score: 85, totalMarks: 100, percentage: 85, flags: 0, status: 'PASSED' },
-          { id: '2', examTitle: 'Database Management Systems', studentName: 'Ananya Sharma', usn: '1NT23CS012', score: 35, totalMarks: 100, percentage: 35, flags: 2, status: 'FAILED' },
-          { id: '3', examTitle: 'Computer Networks', studentName: 'Rohan Verma', usn: '1NT23IS045', score: 92, totalMarks: 100, percentage: 92, flags: 0, status: 'PASSED' },
+          { id: '1', examId: 'ex-1', examTitle: 'Data Structures & Algorithms', studentName: 'Sudeep S Kagi', usn: '1NT23EC158', score: 85, totalMarks: 100, percentage: 85, flags: 0, status: 'PASSED' },
+          { id: '2', examId: 'ex-2', examTitle: 'Database Management Systems', studentName: 'Ananya Sharma', usn: '1NT23CS012', score: 35, totalMarks: 100, percentage: 35, flags: 2, status: 'FAILED' },
+          { id: '3', examId: 'ex-3', examTitle: 'Computer Networks', studentName: 'Rohan Verma', usn: '1NT23IS045', score: 92, totalMarks: 100, percentage: 92, flags: 0, status: 'PASSED' },
         ])
       })
       .finally(() => setLoading(false))
   }, [])
+
+  const handleExportCSV = async (examId) => {
+    try {
+      const token = localStorage.getItem('token')
+      const targetExamId = examId || (results[0]?.examId || results[0]?.exam?.id || 'all')
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/faculty/exams/${targetExamId}/export-csv`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!response.ok) throw new Error('Export failed')
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Exam_${targetExamId}_Results_Report.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      toast.success('CSV Audit Report downloaded!')
+    } catch (err) {
+      toast.error('Failed to export CSV report')
+    }
+  }
 
   const filtered = results.filter(r =>
     (r.examTitle || r.exam?.title || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -46,14 +69,25 @@ export default function FacultyResults() {
             <p className="text-xs font-mono text-slate-400 mt-0.5">Automated scoring breakdown and similarity scan results.</p>
           </div>
 
-          <div className="relative w-64">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-            <Input
-              value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
-              placeholder="Search exam, student, or USN..."
-              className="pl-8 h-8 text-xs bg-[#141416] border-[#27272A]"
-            />
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExportCSV()}
+              className="h-8 text-xs bg-indigo-600/20 border-indigo-500/40 text-indigo-300 hover:bg-indigo-600/30 flex items-center gap-1.5 font-semibold"
+            >
+              <Download size={13} /> Export CSV Report
+            </Button>
+
+            <div className="relative w-64">
+              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
+                placeholder="Search exam, student, or USN..."
+                className="pl-8 h-8 text-xs bg-[#141416] border-[#27272A]"
+              />
+            </div>
           </div>
         </div>
 

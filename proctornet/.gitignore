@@ -16,6 +16,7 @@ venv/
 dist/
 build/
 *.egg-info/
+*.pt
 
 # Logs
 *.log

@@ -226,6 +226,9 @@ async function startExam(req, res) {
           .map(q => q.id)
       }
 
+      const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1'
+      const userAgent = req.headers['user-agent'] || 'Unknown'
+
       studentExam = await global.prisma.studentExam.update({
         where: { id: studentExam.id },
         data: {
@@ -235,6 +238,9 @@ async function startExam(req, res) {
         },
         include: { answers: true }
       })
+
+      // Log session anti-cheat binding
+      console.log(`[AntiCheat] Student ${studentId} resumed session from IP: ${clientIp} (${userAgent.substring(0, 40)})`)
     } else {
       const pool = exam.questions
       const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
@@ -1012,6 +1018,42 @@ async function updateProfile(req, res) {
   }
 }
 
+/**
+ * POST /api/student/exams/:id/yolo-check
+ * Run YOLOv8n object detection on a webcam frame during an active exam.
+ * Returns detection results so the frontend can emit targeted violations.
+ *
+ * The frontend already handles violation logging via Socket.io (emitViolation).
+ * This endpoint is a pure inference proxy — no DB write here.
+ */
+async function yoloCheck(req, res) {
+  try {
+    const { frame } = req.body
+    if (!frame || typeof frame !== 'string' || frame.length < 100) {
+      return res.status(400).json({ error: 'Missing or invalid frame data' })
+    }
+
+    const pythonService = require('../services/python.service')
+    const result = await pythonService.detectObjects(frame)
+
+    return res.json(result)
+  } catch (e) {
+    console.error('[yoloCheck]', e.message)
+    // Never error-out — return safe fallback so exam is never disrupted
+    return res.json({
+      success: false,
+      yolo_available: false,
+      persons: 1,
+      phone_detected: false,
+      book_detected: false,
+      laptop_detected: false,
+      violations: [],
+      detections: [],
+      error: e.message,
+    })
+  }
+}
+
 module.exports = {
   listMyExams,
   getExamDetails,
@@ -1031,4 +1073,5 @@ module.exports = {
   getMyResults,
   getProfile,
   updateProfile,
+  yoloCheck,
 }

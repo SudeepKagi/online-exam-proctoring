@@ -2,7 +2,7 @@ const axios = require('axios')
 const FormData = require('form-data')
 
 const COMPREFACE_URL = process.env.COMPREFACE_URL || 'http://localhost:8000'
-const COMPREFACE_API_KEY = process.env.COMPREFACE_API_KEY || '00000000-0000-0000-0000-000000000000' // Recognition API key
+const COMPREFACE_API_KEY = process.env.COMPREFACE_API_KEY
 
 /**
  * Helper to turn URL or Data-URI/Base64 into a Buffer + filename for Form-Data
@@ -55,12 +55,11 @@ async function addFaceToSubject(subjectName, imageInput) {
     }
   } catch (error) {
     console.error('[compreface.service - addFaceToSubject Error]', error.response?.data || error.message)
-    // Return mock success if CompreFace server is offline in dev environment
-    if (process.env.NODE_ENV !== 'production' && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
-      console.warn('[CompreFace Warning] CompreFace service unreachable. Using fallback reference ID.')
-      return { success: true, image_id: `mock-face-${Date.now()}`, subject: subjectName, mock: true }
+    return {
+      success: false,
+      error: 'COMPREFACE_UNAVAILABLE',
+      message: 'Face recognition service (CompreFace) is currently unreachable or unavailable.'
     }
-    throw new Error('Failed to enroll face in CompreFace: ' + (error.response?.data?.message || error.message))
   }
 }
 
@@ -110,12 +109,13 @@ async function recognizeFace(imageInput, expectedSubject = null) {
     }
   } catch (error) {
     console.error('[compreface.service - recognizeFace Error]', error.response?.data || error.message)
-    // Return dev fallback if CompreFace server is offline
-    if (process.env.NODE_ENV !== 'production' && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
-      console.warn('[CompreFace Warning] CompreFace service unreachable. Using fallback recognition score 0.92.')
-      return { matched: true, similarity: 0.92, subject: expectedSubject || 'mock-student', mock: true }
+    return {
+      matched: false,
+      similarity: 0.0,
+      subject: null,
+      error: 'COMPREFACE_UNAVAILABLE',
+      message: 'Face recognition service (CompreFace) is currently unreachable or unavailable.'
     }
-    throw new Error('Failed to process face recognition: ' + (error.response?.data?.message || error.message))
   }
 }
 

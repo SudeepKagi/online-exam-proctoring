@@ -22,7 +22,12 @@ async function checkLiveness(image) {
     return response.data
   } catch (error) {
     console.error('[python.service - checkLiveness Error]', error.message)
-    return { isReal: true, livenessScore: 0.9, message: 'Liveness passed with default status' }
+    return {
+      isReal: false,
+      livenessScore: 0.0,
+      error: 'LIVENESS_SERVICE_UNAVAILABLE',
+      message: 'Liveness check service is currently unavailable.'
+    }
   }
 }
 
@@ -43,8 +48,56 @@ async function verifyIdCardOcr(idCardUrl) {
   }
 }
 
+/**
+ * Run YOLOv8n object detection on a base64-encoded webcam frame.
+ * Detects: multiple persons, phone, book, laptop.
+ * Returns the detection result from the Python AI service.
+ * Returns explicit error status on failure.
+ *
+ * @param {string} frameBase64 - base64 data-URI string of the webcam frame
+ * @returns {Promise<Object>} detection result
+ */
+async function detectObjects(frameBase64) {
+  try {
+    const response = await axios.post(
+      `${PYTHON_API_URL}/api/detect/yolo`,
+      { frame: frameBase64 },
+      { timeout: 10000 }  // 10s timeout — generous for CPU inference
+    )
+    return response.data
+  } catch (error) {
+    console.error('[python.service - detectObjects Error]', error.message)
+    return {
+      success: false,
+      yolo_available: false,
+      error: 'OBJECT_DETECTION_UNAVAILABLE',
+      message: 'Object detection service (YOLO) is currently unreachable or unavailable.',
+      detections: [],
+      violations: []
+    }
+  }
+}
+
+/**
+ * Generate AI questions dynamically via Python service
+ */
+async function generateAIQuestions({ topic, difficulty, count, type }) {
+  try {
+    const response = await axios.post(`${PYTHON_API_URL}/api/ai/generate-questions`, {
+      topic, difficulty, count, type
+    }, { timeout: 25000 })
+    return response.data
+  } catch (error) {
+    console.error('[python.service - generateAIQuestions Error]', error.message)
+    return { success: false, error: error.message, questions: [] }
+  }
+}
+
 module.exports = {
   cropIdFace,
   checkLiveness,
-  verifyIdCardOcr
+  verifyIdCardOcr,
+  detectObjects,
+  generateAIQuestions,
 }
+

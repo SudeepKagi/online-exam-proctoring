@@ -1193,6 +1193,145 @@ async function publishExam(req, res) {
   }
 }
 
+/**
+ * POST /api/faculty/exams/ai-generate-preview
+ * Preview AI-generated questions before adding
+ */
+async function generateQuestionsPreview(req, res) {
+  try {
+    const { topic, difficulty = 'Medium', count = 5, type = 'MCQ' } = req.body
+    if (!topic) return res.status(400).json({ error: 'Topic is required.' })
+
+    const pythonService = require('../services/python.service')
+    const result = await pythonService.generateAIQuestions({ topic, difficulty, count, type })
+
+    if (!result.success) {
+      return res.status(500).json({ error: result.error || 'Failed to generate AI questions' })
+    }
+
+    return res.json({ success: true, questions: result.questions, source: result.source })
+  } catch (err) {
+    console.error('generateQuestionsPreview error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+}
+
+/**
+ * POST /api/faculty/exams/:examId/ai-generate
+ * Generate AI questions and attach directly to an exam
+ */
+async function generateQuestionsFromAI(req, res) {
+  try {
+    const { examId } = req.params
+    const { topic, difficulty = 'Medium', count = 5, type = 'MCQ' } = req.body
+
+    const exam = await global.prisma.exam.findFirst({
+      where: { id: examId, facultyId: req.user.id }
+    })
+    if (!exam) return res.status(404).json({ error: 'Exam not found or access denied.' })
+
+    const pythonService = require('../services/python.service')
+    const result = await pythonService.generateAIQuestions({
+      topic: topic || exam.title || 'General Subject',
+      difficulty,
+      count,
+      type
+    })
+
+    if (!result.success || !result.questions || result.questions.length === 0) {
+      return res.status(500).json({ error: result.error || 'AI question generation returned no results.' })
+    }
+
+    // Save generated questions to database
+    const createdQuestions = []
+    for (let i = 0; i < result.questions.length; i++) {
+      const q = result.questions[i]
+      const created = await global.prisma.question.create({
+        data: {
+          examId,
+          text: q.questionText || q.text,
+          type: 'MCQ',
+          options: q.options || [],
+          correctAnswer: String(q.correctOption !== undefined ? q.correctOption : 0),
+          marks: 1,
+          order: i + 1,
+        }
+      })
+      createdQuestions.push(created)
+    }
+
+    return res.json({
+      success: true,
+      message: `Successfully generated ${createdQuestions.length} AI questions`,
+      questions: createdQuestions
+    })
+  } catch (err) {
+    console.error('generateQuestionsFromAI error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+}
+
+/**
+ * GET /api/faculty/exams/:id/export-csv
+ * Export full exam results with cheat violations breakdown as a downloadable CSV
+ */
+async function exportExamResultsCSV(req, res) {
+  try {
+    const { id } = req.params
+    const exam = await global.prisma.exam.findFirst({ where: { id, facultyId: req.user.id } })
+    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
+
+    const results = await global.prisma.examResult.findMany({
+      where: { examId: id },
+      include: {
+        studentExam: {
+          include: {
+            student: { select: { name: true, usn: true, department: true } },
+            evidenceLogs: { select: { severity: true, eventType: true } }
+          }
+        }
+      },
+      orderBy: { percentage: 'desc' }
+    })
+
+    // Construct CSV Header
+    let csv = 'Student Name,USN,Department,Score,Percentage,High Violations,Medium Violations,Low Violations,Proctor Status\n'
+
+    results.forEach(r => {
+      const student = r.studentExam?.student || {}
+      const logs = r.studentExam?.evidenceLogs || []
+      const highCount = logs.filter(l => l.severity === 'HIGH' || l.severity === 'CRITICAL').length
+      const medCount = logs.filter(l => l.severity === 'MEDIUM').length
+      const lowCount = logs.filter(l => l.severity === 'LOW').length
+      
+      let status = 'CLEAN'
+      if (highCount > 2) status = 'HIGH_RISK_FLAGGED'
+      else if (highCount > 0 || medCount > 3) status = 'SUSPICIOUS'
+
+      const row = [
+        `"${(student.name || 'Unknown').replace(/"/g, '""')}"`,
+        `"${(student.usn || 'N/A').replace(/"/g, '""')}"`,
+        `"${(student.department || 'N/A').replace(/"/g, '""')}"`,
+        r.score || 0,
+        `${(r.percentage || 0).toFixed(1)}%`,
+        highCount,
+        medCount,
+        lowCount,
+        status
+      ].join(',')
+
+      csv += row + '\n'
+    })
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="Exam_${id}_Results_Report.csv"`)
+    return res.status(200).send(csv)
+  } catch (err) {
+    console.error('exportExamResultsCSV error:', err)
+    return res.status(500).json({ error: 'Failed to export CSV: ' + err.message })
+  }
+}
+
 module.exports = {
   getDashboardStats,
   createExam,
@@ -1220,4 +1359,5 @@ module.exports = {
   getStudentResult,
   generateQuestionsFromAI,
   generateQuestionsPreview,
+  exportExamResultsCSV,
 }

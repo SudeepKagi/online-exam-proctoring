@@ -1,6 +1,5 @@
 module.exports = (io) => {
   io.on('connection', (socket) => {
-    console.log('Client connected:', socket.id)
 
     // ── STUDENT joins exam ──
     socket.on('exam:join', (data) => {
@@ -13,7 +12,6 @@ module.exports = (io) => {
         studentId, name, usn,
         joinedAt: new Date().toISOString()
       })
-      console.log(`Student ${usn} joined exam ${examId}`)
     })
 
     // ── STUDENT joins lobby ──
@@ -27,7 +25,6 @@ module.exports = (io) => {
         studentId, name, usn,
         joinedAt: new Date().toISOString()
       })
-      console.log(`Student ${usn} joined lobby ${examId}`)
     })
 
     // ── STUDENT sends camera frame ──
@@ -53,7 +50,6 @@ module.exports = (io) => {
         invId: socket.id,
         examId
       })
-      console.log(`Invigilator socket ${socket.id} requested WebRTC stream for student ${studentId}`)
     })
 
     socket.on('webrtc:offer', (data) => {
@@ -174,7 +170,6 @@ module.exports = (io) => {
       socket.data = { 
         examId: data.examId, role: 'invigilator' 
       }
-      console.log(`Invigilator joined exam ${data.examId}`)
     })
 
     // ── INVIGILATOR warns student ──
@@ -239,7 +234,6 @@ module.exports = (io) => {
         io.to(`inv:${examId}`)
           .emit('student:offline', { studentId })
       }
-      console.log('Client disconnected:', socket.id)
     })
   })
 }

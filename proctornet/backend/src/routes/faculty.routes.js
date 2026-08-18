@@ -25,6 +25,7 @@ router.post  ('/exams/:id/duplicate',    ctrl.duplicateExam)
 // ── Results ───────────────────────────────────────────
 router.get   ('/results',                    ctrl.listAllResults)
 router.get   ('/exams/:id/results',          ctrl.listExamResults)
+router.get   ('/exams/:id/export-csv',       ctrl.exportExamResultsCSV)
 router.patch ('/exams/:id/results/release',  ctrl.releaseResults)
 router.get   ('/exams/:id/collusion',        ctrl.runCollusionCheck)
 router.get   ('/results/:id',                ctrl.getStudentResult)
