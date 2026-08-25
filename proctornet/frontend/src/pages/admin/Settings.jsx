@@ -25,7 +25,6 @@ const DEFAULT_SETTINGS = {
   faceAbsenceWarnSecs: 10,
   faceAbsencePauseSecs: 20,
   collusionThreshold: 80,
-  vpnEnforced: true,
   watermarkVisible: true,
   faceVerificationEnabled: true,
   idCardVerificationEnabled: true,
@@ -70,7 +69,6 @@ export default function AdminSettings() {
   const tabs = [
     { id: 'profile', label: 'Face Verification', icon: Camera, desc: 'AI Face detection & match thresholds' },
     { id: 'account', label: 'ID & OCR Credentials', icon: Key, desc: 'PaddleOCR ID document verification' },
-    { id: 'vpn', label: 'VPN & Routing', icon: Wifi, desc: 'WireGuard network tunnel requirements' },
     { id: 'proctoring', label: 'Security & Probes', icon: Shield, desc: 'VM & Collusion security rules' },
     { id: 'display', label: 'Display & Watermark', icon: Monitor, desc: 'Watermark overlay preferences' },
   ]
@@ -203,33 +201,7 @@ export default function AdminSettings() {
               </div>
             )}
 
-            {/* TAB 3: VPN & Routing */}
-            {activeTab === 'vpn' && (
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-100">VPN & Network Tunnel Configuration</h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Enforce WireGuard VPN connectivity to ensure secure exam transport.
-                  </p>
-                </div>
-                <div className="h-[1px] bg-[#27272A]" />
-
-                <div className="space-y-5">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090B] border border-[#27272A]">
-                    <div>
-                      <p className="text-xs font-semibold text-slate-200">Enforce WireGuard VPN Connection</p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Block exam entrance unless candidate's traffic is routed through encrypted WireGuard tunnel.</p>
-                    </div>
-                    <Switch
-                      checked={!!settings.vpnEnforced}
-                      onCheckedChange={setKey('vpnEnforced')}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: Security & Probes */}
+            {/* TAB 3: Security & Probes */}
             {activeTab === 'proctoring' && (
               <div className="space-y-6">
                 <div>

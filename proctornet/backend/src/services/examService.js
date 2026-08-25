@@ -18,7 +18,7 @@ async function getFacultyDashboardStats(facultyId) {
           select: {
             questions: true,
             studentExams: true,
-            results: true
+            examResults: true
           }
         }
       },
@@ -47,25 +47,23 @@ async function createExam({ facultyId, data }) {
     title,
     description,
     subject,
-    courseCode,
     duration,
     startTime,
     endTime,
     totalMarks,
-    securityLevel,
-    browserLockdown,
-    tabLockdown,
-    fullScreen,
-    faceTrack,
-    aiObjectDetection,
-    audioMonitoring,
-    screenShareMonitoring,
-    ipCheck,
     negativeMarking,
     negativeValue,
+    questionsPerStudent,
+    randomiseQuestions,
+    randomiseOptions,
+    allowedDepartments,
+    allowedSemesters,
+    cameraRequired,
+    browserLock,
+    fullScreenMode,
+    watermarkRequired,
     tabSwitchLimit,
-    allowRetake,
-    maxRetakes
+    aiReverifyInterval
   } = data
 
   if (!title || !subject || !duration || !startTime || !endTime) {
@@ -74,32 +72,38 @@ async function createExam({ facultyId, data }) {
     throw error
   }
 
+  const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const invId = `INV-${randomSuffix}`
+  const rawPassword = Math.random().toString(36).substring(2, 10).toUpperCase()
+  const invPasswordHash = await bcrypt.hash(rawPassword, 10)
+
   const exam = await global.prisma.exam.create({
     data: {
       facultyId,
       title,
       description: description || '',
       subject,
-      courseCode: courseCode || subject,
       duration: parseInt(duration),
       startTime: new Date(startTime),
       endTime: new Date(endTime),
-      totalMarks: totalMarks ? parseFloat(totalMarks) : 0,
-      status: 'DRAFT',
-      securityLevel: securityLevel || 'MEDIUM',
-      browserLockdown: Boolean(browserLockdown),
-      tabLockdown: Boolean(tabLockdown),
-      fullScreen: Boolean(fullScreen),
-      faceTrack: Boolean(faceTrack),
-      aiObjectDetection: Boolean(aiObjectDetection),
-      audioMonitoring: Boolean(audioMonitoring),
-      screenShareMonitoring: Boolean(screenShareMonitoring),
-      ipCheck: Boolean(ipCheck),
+      totalMarks: totalMarks !== undefined ? parseInt(totalMarks) : 0,
       negativeMarking: Boolean(negativeMarking),
-      negativeValue: negativeValue !== undefined ? parseFloat(negativeValue) : 0.25,
+      negativeValue: negativeValue !== undefined ? parseFloat(negativeValue) : 0,
+      questionsPerStudent: questionsPerStudent !== undefined ? parseInt(questionsPerStudent) : 0,
+      randomiseQuestions: randomiseQuestions !== undefined ? Boolean(randomiseQuestions) : true,
+      randomiseOptions: randomiseOptions !== undefined ? Boolean(randomiseOptions) : true,
+      allowedDepartments: Array.isArray(allowedDepartments) ? allowedDepartments : ['CSE'],
+      allowedSemesters: Array.isArray(allowedSemesters) ? allowedSemesters.map(s => parseInt(s)) : [5],
+      cameraRequired: cameraRequired !== undefined ? Boolean(cameraRequired) : true,
+      micRequired: false,
+      browserLock: browserLock !== undefined ? Boolean(browserLock) : true,
+      fullScreenMode: fullScreenMode !== undefined ? Boolean(fullScreenMode) : true,
+      watermarkRequired: watermarkRequired !== undefined ? Boolean(watermarkRequired) : true,
       tabSwitchLimit: tabSwitchLimit !== undefined ? parseInt(tabSwitchLimit) : 3,
-      allowRetake: Boolean(allowRetake),
-      maxRetakes: maxRetakes !== undefined ? parseInt(maxRetakes) : 1
+      aiReverifyInterval: aiReverifyInterval !== undefined ? parseInt(aiReverifyInterval) : 10,
+      invId,
+      invPasswordHash,
+      status: 'DRAFT'
     }
   })
 
@@ -114,7 +118,7 @@ async function listFacultyExams(facultyId) {
         select: {
           questions: true,
           studentExams: true,
-          results: true
+          examResults: true
         }
       }
     },
@@ -142,7 +146,7 @@ async function getExamById({ id, facultyId }) {
         select: {
           questions: true,
           studentExams: true,
-          results: true
+          examResults: true
         }
       }
     }
@@ -171,7 +175,7 @@ async function updateExamById({ id, facultyId, data }) {
   const fields = [
     'title', 'description', 'subject', 'courseCode', 'status',
     'securityLevel', 'browserLockdown', 'tabLockdown', 'fullScreen',
-    'faceTrack', 'aiObjectDetection', 'audioMonitoring', 'screenShareMonitoring',
+    'faceTrack', 'aiObjectDetection', 'screenShareMonitoring',
     'ipCheck', 'negativeMarking', 'allowRetake'
   ]
 
@@ -224,32 +228,38 @@ async function duplicateExamById({ id, facultyId }) {
   }
 
   const now = new Date()
+  const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
+  const invId = `INV-${randomSuffix}`
+  const rawPassword = Math.random().toString(36).substring(2, 10).toUpperCase()
+  const invPasswordHash = await bcrypt.hash(rawPassword, 10)
+
   const duplicated = await global.prisma.exam.create({
     data: {
       facultyId,
       title: `${original.title} (Copy)`,
       description: original.description,
       subject: original.subject,
-      courseCode: original.courseCode,
       duration: original.duration,
       startTime: new Date(now.getTime() + 3600000), // 1 hour from now
       endTime: new Date(now.getTime() + 7200000),   // 2 hours from now
       totalMarks: original.totalMarks,
-      status: 'DRAFT',
-      securityLevel: original.securityLevel,
-      browserLockdown: original.browserLockdown,
-      tabLockdown: original.tabLockdown,
-      fullScreen: original.fullScreen,
-      faceTrack: original.faceTrack,
-      aiObjectDetection: original.aiObjectDetection,
-      audioMonitoring: original.audioMonitoring,
-      screenShareMonitoring: original.screenShareMonitoring,
-      ipCheck: original.ipCheck,
       negativeMarking: original.negativeMarking,
       negativeValue: original.negativeValue,
+      questionsPerStudent: original.questionsPerStudent,
+      randomiseQuestions: original.randomiseQuestions,
+      randomiseOptions: original.randomiseOptions,
+      allowedDepartments: original.allowedDepartments,
+      allowedSemesters: original.allowedSemesters,
+      cameraRequired: original.cameraRequired,
+      micRequired: false,
+      browserLock: original.browserLock,
+      fullScreenMode: original.fullScreenMode,
+      watermarkRequired: original.watermarkRequired,
       tabSwitchLimit: original.tabSwitchLimit,
-      allowRetake: original.allowRetake,
-      maxRetakes: original.maxRetakes,
+      aiReverifyInterval: original.aiReverifyInterval,
+      invId,
+      invPasswordHash,
+      status: 'DRAFT',
       questions: {
         create: original.questions.map(q => ({
           type: q.type,
@@ -259,10 +269,12 @@ async function duplicateExamById({ id, facultyId }) {
           difficulty: q.difficulty,
           options: q.options,
           correctAnswer: q.correctAnswer,
-          sampleInput: q.sampleInput,
-          sampleOutput: q.sampleOutput,
+          codeTemplate: q.codeTemplate,
+          codeLanguage: q.codeLanguage,
           testCases: q.testCases,
-          order: q.order
+          wordLimitMin: q.wordLimitMin,
+          wordLimitMax: q.wordLimitMax,
+          tags: q.tags
         }))
       }
     },
@@ -413,7 +425,7 @@ async function listStudentsInExam({ examId, facultyId }) {
       student: {
         select: { id: true, name: true, email: true, usn: true, department: true }
       },
-      results: true,
+      examResult: true,
       _count: { select: { answers: true, evidenceLogs: true } }
     },
     orderBy: { createdAt: 'asc' }

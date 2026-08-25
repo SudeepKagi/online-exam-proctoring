@@ -321,34 +321,6 @@ async function updateProfile(req, res) {
   }
 }
 
-/**
- * POST /api/student/exams/:id/yolo-check
- * YOLO inference proxy
- */
-async function yoloCheck(req, res) {
-  try {
-    const { frame } = req.body
-    if (!frame || typeof frame !== 'string' || frame.length < 100) {
-      return res.status(400).json({ error: 'Missing or invalid frame data' })
-    }
-    const result = await pythonService.detectObjects(frame)
-    return res.json(result)
-  } catch (e) {
-    console.error('[yoloCheck]', e.message)
-    return res.json({
-      success: false,
-      yolo_available: false,
-      persons: 1,
-      phone_detected: false,
-      book_detected: false,
-      laptop_detected: false,
-      violations: [],
-      detections: [],
-      error: e.message,
-    })
-  }
-}
-
 module.exports = {
   listMyExams,
   getExamDetails,
@@ -368,5 +340,4 @@ module.exports = {
   getMyResults,
   getProfile,
   updateProfile,
-  yoloCheck,
 }

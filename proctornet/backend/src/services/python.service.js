@@ -49,36 +49,6 @@ async function verifyIdCardOcr(idCardUrl) {
 }
 
 /**
- * Run YOLOv8n object detection on a base64-encoded webcam frame.
- * Detects: multiple persons, phone, book, laptop.
- * Returns the detection result from the Python AI service.
- * Returns explicit error status on failure.
- *
- * @param {string} frameBase64 - base64 data-URI string of the webcam frame
- * @returns {Promise<Object>} detection result
- */
-async function detectObjects(frameBase64) {
-  try {
-    const response = await axios.post(
-      `${PYTHON_API_URL}/api/detect/yolo`,
-      { frame: frameBase64 },
-      { timeout: 10000 }  // 10s timeout — generous for CPU inference
-    )
-    return response.data
-  } catch (error) {
-    console.error('[python.service - detectObjects Error]', error.message)
-    return {
-      success: false,
-      yolo_available: false,
-      error: 'OBJECT_DETECTION_UNAVAILABLE',
-      message: 'Object detection service (YOLO) is currently unreachable or unavailable.',
-      detections: [],
-      violations: []
-    }
-  }
-}
-
-/**
  * Generate AI questions dynamically via Python service
  */
 async function generateAIQuestions({ topic, difficulty, count, type }) {
@@ -97,7 +67,6 @@ module.exports = {
   cropIdFace,
   checkLiveness,
   verifyIdCardOcr,
-  detectObjects,
   generateAIQuestions,
 }
 

@@ -15,14 +15,14 @@ import { ProctorNetLogo } from '@/components/ui/proctornet-logo'
 
 const features = [
   {
-    icon: Lock,
-    title: 'Network-Level Security',
-    desc: 'Secure VPN connection locks browsers to the exam environment and blocks unauthorized outside network access.',
+    icon: Monitor,
+    title: 'Screen & Environment Integrity',
+    desc: 'Continuous full-screen display capture and live kiosk lock ensure focused assessment compliance.',
   },
   {
     icon: UserCheck,
-    title: 'Biometric Verification',
-    desc: 'Verifies identity against registered photos with periodic continuous background checks.',
+    title: 'Face Identity Verification',
+    desc: 'Verifies candidate identity against registered institutional photos with periodic background checks.',
   },
   {
     icon: FileText,
@@ -78,8 +78,8 @@ const roles = [
 ]
 
 const steps = [
-  { n: '01', title: 'Face Registration', desc: 'Submit a photo to register your biometric baseline profile.' },
-  { n: '02', title: 'System Pre-Check', desc: 'Automated 9-step environment check: camera, VPN, VM detection, and browser lock.' },
+  { n: '01', title: 'Face Registration', desc: 'Submit a photo to register your baseline identity profile.' },
+  { n: '02', title: '4-Stage Pre-Check', desc: 'Automated 4-stage environment check: System Audit, Hardware Media Feeds, Face Verification, and Fullscreen Kiosk.' },
   { n: '03', title: 'Proctored Exam', desc: 'Real-time proctoring with randomized questions and continuous monitoring.' },
   { n: '04', title: 'Exam Evaluation', desc: 'Instant auto-grading, similarity scanning, and verified result reports.' },
 ]
@@ -161,7 +161,7 @@ export default function LandingPage() {
         </h1>
 
         <p className="mt-4 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Comprehensive exam security featuring AI face verification, encrypted network connections, anti-cheat detection, and instant evaluation.
+          Comprehensive exam security featuring AI face verification, live screen capture, kiosk lock enforcement, and instant evaluation.
         </p>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

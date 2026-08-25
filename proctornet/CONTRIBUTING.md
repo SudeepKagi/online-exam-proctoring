@@ -38,7 +38,7 @@ Large monolithic files increase cognitive overhead, make merge conflicts painful
 ProctorNet protects high-stakes examination integrity. Any security-critical check must **fail closed**:
 
 - **Biometric & Face Matching**: If the AI microservice, CompreFace, or network connection fails/times out, the verification status must evaluate to `verified: false` and `matchScore: 0`. Never return `true` or mock passing scores on error.
-- **Proctoring Telemetry**: Fullscreen exit, window blurs, and suspicious audio triggers must be logged as evidence events with throttled client timestamps.
+- **Proctoring Telemetry**: Fullscreen exit, tab switches, and window blurs must be logged as evidence events with throttled client timestamps.
 - **Auditing**: Administrative actions (approvals, suspensions, exam terminations) must invoke `logAudit()` with IP address and target identifiers.
 
 ---

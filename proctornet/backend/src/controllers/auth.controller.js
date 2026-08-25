@@ -7,6 +7,18 @@ const { getClientIp } = require('../utils/helpers')
 // ADMIN AUTH
 // ════════════════════════════════════════════════════
 
+function handleAuthError(res, err, context) {
+  console.error(`[${context}]`, err.message || err)
+  const msg = err.message || ''
+  if (msg.includes('tenant') || msg.includes('ENOTFOUND') || msg.includes('PrismaClientInitializationError') || msg.includes('connect')) {
+    return res.status(503).json({
+      error: 'Database is currently unreachable. If using Supabase free tier, please unpause your project in the Supabase dashboard.',
+      details: msg
+    })
+  }
+  return res.status(500).json({ error: 'Authentication service encountered an error. Please try again.' })
+}
+
 /**
  * POST /api/auth/admin/login
  */
@@ -33,8 +45,7 @@ async function adminLogin(req, res) {
       user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin', mustChangePassword: false },
     })
   } catch (e) {
-    console.error('[adminLogin]', e)
-    res.status(500).json({ error: 'Server error.' })
+    handleAuthError(res, e, 'adminLogin')
   }
 }
 
@@ -91,8 +102,7 @@ async function facultyLogin(req, res) {
       },
     })
   } catch (e) {
-    console.error('[facultyLogin]', e)
-    res.status(500).json({ error: 'Server error.' })
+    handleAuthError(res, e, 'facultyLogin')
   }
 }
 
@@ -157,8 +167,7 @@ async function studentLogin(req, res) {
       },
     })
   } catch (e) {
-    console.error('[studentLogin]', e)
-    res.status(500).json({ error: 'Server error.' })
+    handleAuthError(res, e, 'studentLogin')
   }
 }
 
@@ -354,8 +363,7 @@ async function invigilatorLogin(req, res) {
       },
     })
   } catch (e) {
-    console.error('[invigilatorLogin]', e)
-    res.status(500).json({ error: 'Server error.' })
+    handleAuthError(res, e, 'invigilatorLogin')
   }
 }
 

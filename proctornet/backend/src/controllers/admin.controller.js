@@ -377,7 +377,8 @@ async function getViolations(req, res) {
     const violations = await adminService.getViolationsListRecords(req.query)
     res.json({ violations })
   } catch (e) {
-    res.status(500).json({ error: 'Server error.' })
+    console.error('[getViolations]', e)
+    res.status(500).json({ error: e.message || 'Server error.' })
   }
 }
 

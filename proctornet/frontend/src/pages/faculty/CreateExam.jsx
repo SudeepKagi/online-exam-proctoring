@@ -200,7 +200,6 @@ export default function CreateExam() {
     allowedDepartments: ['CSE'],
     allowedSemesters: [5],
     cameraRequired: true,
-    micRequired: false,
     browserLock: true,
     fullScreenMode: true,
     watermarkRequired: true,

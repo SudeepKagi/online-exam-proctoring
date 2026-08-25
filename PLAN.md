@@ -92,10 +92,10 @@ frontend/src/
 │   └── ExamInterface.jsx                  # Main exam layout & high-level state orchestration
 ├── hooks/
 │   ├── useExamSocket.js                   # Socket.IO connection, room join/leave, chat
-│   ├── useProctoringMonitors.js           # Webcam, screen capture, YOLO polling, audio level monitoring
+│   ├── useProctoringMonitors.js           # Webcam, screen capture, audio level monitoring, face presence
 │   └── useExamTimer.js                    # Countdown timer, warning thresholds, auto-submit trigger
 └── components/exam/
-    ├── ExamHeader.jsx                     # Topbar with status indicators, YOLO/mic pills, timer
+    ├── ExamHeader.jsx                     # Topbar with status indicators, face/mic pills, timer
     ├── QuestionPanel.jsx                  # MCQ option buttons, Monaco code editor, subjective text area
     ├── ExamSidebar.jsx                    # Live camera PIP feed, question jump palette, submit action
     └── ComplianceOverlay.jsx              # Fullscreen lock and screen-share enforcement screen

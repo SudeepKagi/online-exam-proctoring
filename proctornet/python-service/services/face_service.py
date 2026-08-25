@@ -7,7 +7,8 @@ import re
 
 # Face detection / crop & liveness setup
 CV2_AVAILABLE = False
-MTCNN_AVAILABLE = False
+MTCNN_AVAILABLE = None
+_mtcnn_detector = None
 
 try:
     import cv2
@@ -15,13 +16,23 @@ try:
 except ImportError:
     print("[FaceService Warning] opencv-python not installed.")
 
-try:
-    from mtcnn import MTCNN  # type: ignore # pyrefly: ignore [missing-import]
-    detector = MTCNN()
-    MTCNN_AVAILABLE = True
-    print("[FaceService] MTCNN face detector initialized.")
-except Exception as e:
-    print(f"[FaceService Warning] MTCNN not available ({str(e)}). Using Haar Cascade / PIL crop fallback.")
+def get_mtcnn_detector():
+    """Lazily load MTCNN on first use so Python microservice startup memory is minimal."""
+    global _mtcnn_detector, MTCNN_AVAILABLE
+    if _mtcnn_detector is not None:
+        return _mtcnn_detector
+    if MTCNN_AVAILABLE is False:
+        return None
+    try:
+        from mtcnn import MTCNN  # type: ignore # pyrefly: ignore [missing-import]
+        _mtcnn_detector = MTCNN()
+        MTCNN_AVAILABLE = True
+        print("[FaceService] Lazy-loaded MTCNN face detector initialized successfully.")
+        return _mtcnn_detector
+    except Exception as e:
+        MTCNN_AVAILABLE = False
+        print(f"[FaceService Warning] MTCNN not available ({str(e)}). Using Haar Cascade / PIL crop fallback.")
+        return None
 
 def download_image_as_pil(source):
     if source.startswith('data:image'):
@@ -45,7 +56,8 @@ def crop_face_from_id(id_card_image_url):
 
         cropped_pil = None
 
-        if MTCNN_AVAILABLE:
+        detector = get_mtcnn_detector()
+        if detector is not None:
             faces = detector.detect_faces(img_np)
             if faces:
                 x, y, w, h = faces[0]['box']

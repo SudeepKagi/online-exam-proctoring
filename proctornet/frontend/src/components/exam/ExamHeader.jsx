@@ -1,4 +1,4 @@
-import { Clock, ShieldCheck, ShieldAlert, Mic, Activity } from 'lucide-react'
+import { Clock, ShieldCheck, ShieldAlert } from 'lucide-react'
 
 function StatusPill({ ok, label }) {
   return (
@@ -21,8 +21,6 @@ export default function ExamHeader({
   isCritical,
   cameraOk,
   faceOk,
-  yoloStatus,
-  micLevel,
   socketConnected,
   violations
 }) {
@@ -46,27 +44,6 @@ export default function ExamHeader({
       {/* Center: Proctoring Status Pills */}
       <div className="hidden md:flex items-center gap-2.5">
         <StatusPill ok={cameraOk && faceOk} label={cameraOk && faceOk ? 'Face Verified' : 'Face Alert'} />
-        
-        {/* YOLO Detection status */}
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium border ${
-          yoloStatus === 'threat'
-            ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-        }`}>
-          <Activity size={12} className={yoloStatus === 'threat' ? 'text-rose-400 animate-bounce' : 'text-emerald-400'} />
-          {yoloStatus === 'threat' ? 'Object Detected' : 'AI Shield: Clear'}
-        </span>
-
-        {/* Mic Level bar */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border border-[#27272A] bg-[#09090B]">
-          <Mic size={12} className={micLevel > 0.45 ? 'text-amber-400' : 'text-slate-400'} />
-          <div className="w-12 h-1.5 bg-[#27272A] rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-200 ${micLevel > 0.45 ? 'bg-amber-400' : 'bg-emerald-400'}`}
-              style={{ width: `${Math.min(100, micLevel * 100)}%` }}
-            />
-          </div>
-        </div>
 
         {/* Violations count */}
         {violations > 0 && (

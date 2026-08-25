@@ -18,7 +18,6 @@ const examRoutes         = require('./routes/exam.routes')
 const questionRoutes     = require('./routes/question.routes')
 const answerRoutes       = require('./routes/answer.routes')
 const resultRoutes       = require('./routes/result.routes')
-const vpnRoutes          = require('./routes/vpn.routes')
 const enrollmentRoutes   = require('./routes/enrollment.routes')
 const deviceCheckRoutes  = require('./routes/deviceCheck.routes')
 
@@ -27,10 +26,6 @@ const path = require('path')
 // ── Socket handlers ──
 const initExamSocket = require('./sockets/exam.socket')
 const initChatSocket = require('./sockets/chat.socket')
-
-// ── Jobs ──
-// VPN service is loaded but NOT started here — it will start after DB is confirmed connected
-const vpnService = require('./services/vpn.service')
 
 const app    = express()
 const server = http.createServer(app)
@@ -83,22 +78,47 @@ app.use(cors({
 
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ extended: true, limit: '50mb' }))
+const { verifyToken } = require('./utils/jwt')
 
-// ── Rate limiting ──
-const limiter = rateLimit({
+// ── Rate Limiting Strategy for Shared-NAT University Labs ──
+// In a college exam lab, 100+ concurrent student machines share a single outbound NAT gateway IP.
+// A global IP-based rate limiter causes the entire lab to share a single budget, leading to false 429 errors.
+// Strategy:
+// 1. Unauthenticated routes (/api/auth) use IP-based rate limiting (30 req / 15 min) to prevent brute-forcing.
+// 2. Authenticated exam & student routes key rate limiting by student ID (from JWT) rather than raw IP.
+// 3. The per-student budget is set to 600 req / 15 min (>6x normal 90-min exam requirements of ~85-100 req/15min).
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 600,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests, please try again later.' },
+  keyGenerator: (req) => {
+    if (req.user?.id) {
+      return `user_${req.user.id}`
+    }
+    const authHeader = req.headers.authorization
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1]
+        const decoded = verifyToken(token)
+        if (decoded?.id) return `user_${decoded.id}`
+      } catch {
+        // Token verification fail, fall through to IP
+      }
+    }
+    return req.ip
+  },
+  message: { error: 'Too many requests for this student session. Please try again shortly.' },
 })
-app.use('/api', limiter)
+app.use('/api', apiLimiter)
 
-// Stricter limiter for auth routes
+// Stricter IP-based limiter for unauthenticated login/register routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: 'Too many authentication attempts, please try again later.' },
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many authentication attempts from this IP, please try again later.' },
 })
 app.use('/api/auth', authLimiter)
 
@@ -122,7 +142,6 @@ app.use('/api/exam',         examRoutes)
 app.use('/api/question',     questionRoutes)
 app.use('/api/answer',       answerRoutes)
 app.use('/api/result',       resultRoutes)
-app.use('/api/vpn',          vpnRoutes)
 app.use('/api',              enrollmentRoutes)
 app.use('/api',              deviceCheckRoutes)
 
@@ -153,19 +172,15 @@ server.listen(PORT, async () => {
   console.log(`🔌 Socket.io initialized`)
   console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-  // Test DB connection — must succeed before starting DB-dependent jobs
+  // Test DB connection
   try {
     await prisma.$connect()
     console.log('✅ Database connection successful')
     console.log('🗄️  Prisma connected to PostgreSQL')
-
-    // Only start VPN cron AFTER database is confirmed connected
-    vpnService.startAutoRevoke()
   } catch (e) {
     console.error('❌ Database connection failed:', e.message)
     console.log('   → Make sure DATABASE_URL is set correctly in backend/.env')
     console.log('   → If using Supabase free tier, check that the project is not paused')
-    console.log('   → VPN auto-revoke cron will NOT start until DB is available')
   }
 })
 

@@ -100,7 +100,7 @@ export function ExamWaitingLobby({ exam, secsToStart, videoRef, cameraOk }) {
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle size={14} className="text-emerald-400 shrink-0" />
-                <span>YOLOv8 object & multi-person AI</span>
+                <span>Display & window integrity enforcement</span>
               </li>
             </ul>
           </div>

@@ -54,7 +54,7 @@ async function getDetailedStudentResult({ examId, studentId, facultyId }) {
     include: {
       student: true,
       exam: true,
-      results: true,
+      examResult: true,
       answers: {
         include: { question: true }
       },

@@ -76,10 +76,9 @@ export default function ExamInterface() {
     canvasRef,
     cameraOk,
     faceOk,
-    yoloStatus,
-    micLevel,
     isFullscreenLocked
   } = useProctoringMonitors({
+    examId,
     emitViolation,
     isExamActive: !isWaiting && !loading
   })
@@ -178,6 +177,46 @@ export default function ExamInterface() {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {})
   }
 
+  // ── Keyboard Shortcut & Clipboard Protection ──
+  useEffect(() => {
+    if (loading || isWaiting) return
+
+    const handleKeyDown = (e) => {
+      // Block F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (Inspect / Source)
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) ||
+        (e.ctrlKey && ['u', 's'].includes(e.key.toLowerCase()))
+      ) {
+        e.preventDefault()
+        emitViolation?.('KEYBOARD_SHORTCUT', 'HIGH', { key: e.key })
+        toast.error('Browser inspection shortcuts are prohibited during examination.')
+        return
+      }
+
+      // Block Ctrl+C / Ctrl+V / Ctrl+X outside of editable input
+      if (e.ctrlKey && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
+        const targetTag = e.target.tagName?.toLowerCase()
+        const isEditable = targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable
+        if (!isEditable) {
+          e.preventDefault()
+          emitViolation?.('COPY_ATTEMPT', 'LOW')
+        }
+      }
+    }
+
+    const handleContextMenu = (e) => {
+      e.preventDefault()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('contextmenu', handleContextMenu)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('contextmenu', handleContextMenu)
+    }
+  }, [loading, isWaiting, emitViolation])
+
   // ── Render Waiting State ──
   if (isWaiting) {
     return (
@@ -221,8 +260,6 @@ export default function ExamInterface() {
         isCritical={isCritical}
         cameraOk={cameraOk}
         faceOk={faceOk}
-        yoloStatus={yoloStatus}
-        micLevel={micLevel}
         socketConnected={socketConnected}
         violations={violations}
       />

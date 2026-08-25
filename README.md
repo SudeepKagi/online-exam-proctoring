@@ -7,13 +7,16 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC.svg?style=for-the-badge&logo=tailwindcss)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-ProctorNet is a real-time online examination proctoring system engineered for college laboratory and classroom environments. Combining **browser-side face detection**, **dual-stream Socket.io + WebRTC synchronization**, **DeepFace (ArcFace) biometric verification**, **Tesseract OCR parsing**, and **WireGuard network isolation**, ProctorNet provides continuous multi-role invigilator awareness.
+ProctorNet is a real-time online examination proctoring system engineered for college laboratory and classroom environments. Combining **browser-side face detection (`face-api.js`)**, **dual-stream Socket.io + WebRTC synchronization**, **DeepFace (ArcFace) biometric verification**, **Tesseract OCR parsing**, and **continuous kiosk & screen integrity enforcement**, ProctorNet provides continuous multi-role invigilator awareness.
+
+> [!NOTE]
+> **Network Isolation Note**: Dedicated kernel-level WireGuard VPN network isolation is planned for a future phase. Current network integrity is enforced through browser kiosk lock, client-side subnet matching, device agent audits, and secure tokenized transports.
 
 ---
 
 ## 🏗️ System Architecture & Stack
 
-ProctorNet uses a three-tier architecture:
+ProctorNet uses a multi-tier microservices architecture:
 
 ```mermaid
 graph TD
@@ -24,7 +27,6 @@ graph TD
     %% API Gateways & Servers
     NodeServer[Main Backend: Node.js + Express + Socket.io]
     AIService[AI Microservice: Python + Flask + DeepFace]
-    VPN[VPN Engine: WireGuard]
     
     %% Storage
     DB[(Supabase PostgreSQL + Prisma ORM)]
@@ -37,16 +39,14 @@ graph TD
     NodeServer -- JWT Auth & REST --> DB
     NodeServer -- REST Bridge --> AIService
     NodeServer -- Evidence & Photo Archiving --> Cloudinary
-    NodeServer -- WG Key Config --> VPN
 ```
 
 ### Stack Summary
-- **Frontend**: React 19, Vite, Tailwind CSS 4, `face-api.js` (TinyFaceDetector), Monaco Editor (`@monaco-editor/react`), Lucide React.
+- **Frontend**: React 19, Vite, Tailwind CSS, `face-api.js` (TinyFaceDetector), Monaco Editor (`@monaco-editor/react`), Lucide React.
 - **Main Backend**: Node.js (v18+), Express, Socket.io (real-time broker), Prisma ORM, JWT, Helmet, Express-Rate-Limit.
 - **Database**: PostgreSQL (Supabase cloud database with connection pooling).
 - **AI Service**: Python (v3.9+), Flask, DeepFace (ArcFace with FaceNet fallback), PyTesseract OCR, OpenCV, NumPy.
 - **Media CDN**: Cloudinary for student photo dockets, ID scans, and violation snapshots.
-- **Network Isolation**: WireGuard key allocation engine (optional per exam).
 
 ---
 

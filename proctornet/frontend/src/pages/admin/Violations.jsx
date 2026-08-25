@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
+import { toast } from 'react-hot-toast'
 import { AlertTriangle, Search, RefreshCw, Eye, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +25,6 @@ const EVENT_LABELS = {
   multiple_faces: 'Multiple Faces',
   no_face: 'No Face Detected',
   face_mismatch: 'Face Mismatch',
-  vpn_disconnected: 'VPN Disconnected',
   keyboard_shortcut: 'Keyboard Shortcut',
   copy_attempt: 'Copy Attempt',
 }
@@ -42,8 +42,9 @@ export default function AdminViolations() {
     try {
       const res = await api.get('/admin/violations')
       setViolations(res.data.violations || res.data || [])
-    } catch {
-      console.error('Failed to load violations')
+    } catch (err) {
+      console.error('Failed to load violations', err)
+      toast.error(err.response?.data?.error || 'Failed to load violations')
     } finally {
       setLoading(false)
     }

@@ -7,7 +7,6 @@ load_dotenv()
 
 from routes.face import face_bp
 from routes.ocr import ocr_bp
-from routes.detect import detect_bp
 from routes.ai_gen import ai_gen_bp
 
 app = Flask(__name__)
@@ -15,7 +14,6 @@ CORS(app)
 
 app.register_blueprint(face_bp, url_prefix='/api/face')
 app.register_blueprint(ocr_bp, url_prefix='/api/ocr')
-app.register_blueprint(detect_bp, url_prefix='/api/detect')
 app.register_blueprint(ai_gen_bp, url_prefix='/api/ai')
 
 @app.route('/health', methods=['GET'])
@@ -27,4 +25,8 @@ def health_check():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() in ('true', '1')
+    # Production recommendation:
+    # Use Gunicorn WSGI server: gunicorn app:app --workers 2 --bind 0.0.0.0:5001
+    # Tradeoff: 2 workers provide concurrent processing while fitting within 512MB-1GB RAM limits on cloud hosts.
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)

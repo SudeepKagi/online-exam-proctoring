@@ -35,7 +35,6 @@ async function seedAdmin() {
       { key: 'face_absence_warning_secs', value: '10'   },
       { key: 'face_absence_pause_secs',   value: '20'   },
       { key: 'collusion_threshold',       value: '0.85' },
-      { key: 'vpn_enabled',               value: 'true' },
       { key: 'watermark_visible',         value: 'true' },
       { key: 'face_verify_enabled',       value: 'true' },
       { key: 'collusion_enabled',         value: 'true' },

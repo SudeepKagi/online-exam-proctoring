@@ -212,7 +212,7 @@ async function getExamOversightDetails(id) {
       studentExams: {
         include: {
           student: { select: { id: true, name: true, usn: true, department: true } },
-          results: true,
+          examResult: true,
           evidenceLogs: { select: { severity: true } }
         },
       },

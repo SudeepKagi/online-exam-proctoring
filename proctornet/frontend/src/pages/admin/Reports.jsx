@@ -35,7 +35,7 @@ export default function AdminReports() {
             { name: 'Tab Switch', value: 45 },
             { name: 'Face Mismatch', value: 23 },
             { name: 'No Face', value: 31 },
-            { name: 'VPN Drop', value: 12 },
+            { name: 'Proximity Alert', value: 12 },
             { name: 'Other', value: 8 },
           ],
           scoreDistribution: [

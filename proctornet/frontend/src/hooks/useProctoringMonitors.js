@@ -4,10 +4,10 @@ import api from '@/utils/api'
 
 /**
  * useProctoringMonitors Hook
- * Orchestrates webcam stream, face presence detection, YOLO object detection polling,
- * audio volume/speech level analysis, and fullscreen / tab-switch compliance.
+ * Orchestrates webcam stream, face presence detection,
+ * and fullscreen / tab-switch compliance.
  */
-export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwitch = false }) {
+export function useProctoringMonitors({ examId, emitViolation, isExamActive, allowTabSwitch = false }) {
   const videoRef = useRef(null)
   const captureVideoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -16,18 +16,15 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
   const screenCanvasRef = useRef(null)
 
   const faceIntervalRef = useRef(null)
-  const yoloIntervalRef = useRef(null)
-  const audioIntervalRef = useRef(null)
-  const audioContextRef = useRef(null)
-  const analyserRef = useRef(null)
-  const noiseSustainRef = useRef(0)
 
   const [cameraOk, setCameraOk] = useState(false)
   const [faceOk, setFaceOk] = useState(false)
   const [modelsLoaded, setModelsLoaded] = useState(false)
-  const [yoloStatus, setYoloStatus] = useState(null) // null | 'clean' | 'threat'
-  const [micLevel, setMicLevel] = useState(0)
   const [isFullscreenLocked, setIsFullscreenLocked] = useState(true)
+
+  const notifyViolation = (type, severity, metadata) => {
+    emitViolation?.(type, severity, metadata)
+  }
 
   // ── 1. Tab switch / Window blur ──
   useEffect(() => {
@@ -35,12 +32,12 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
 
     const handleVisibility = () => {
       if (document.hidden) {
-        emitViolation?.('TAB_SWITCH', 'MEDIUM')
+        notifyViolation('TAB_SWITCH', 'MEDIUM')
       }
     }
 
     const handleBlur = () => {
-      emitViolation?.('WINDOW_BLUR', 'LOW')
+      notifyViolation('WINDOW_BLUR', 'LOW')
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
@@ -57,7 +54,7 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
       const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
       setIsFullscreenLocked(isFull)
       if (!isFull && isExamActive) {
-        emitViolation?.('FULLSCREEN_EXIT', 'HIGH')
+        notifyViolation('FULLSCREEN_EXIT', 'HIGH')
       }
     }
 
@@ -75,7 +72,7 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
     ]).then(() => setModelsLoaded(true)).catch(() => console.warn('Face models unavailable'))
 
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: true })
+    navigator.mediaDevices?.getUserMedia({ video: true, audio: false })
       .then(stream => {
         streamRef.current = stream
         setCameraOk(true)
@@ -92,43 +89,9 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
             captureVideoRef.current.play().catch(e => console.warn('Capture play error:', e))
           }
         }
-
-        // ── Initialize Audio Analysis ──
-        try {
-          const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-          audioContextRef.current = audioContext
-          const analyser = audioContext.createAnalyser()
-          analyser.fftSize = 256
-          analyserRef.current = analyser
-
-          const source = audioContext.createMediaStreamSource(stream)
-          source.connect(analyser)
-
-          const dataArray = new Uint8Array(analyser.frequencyBinCount)
-          audioIntervalRef.current = setInterval(() => {
-            if (!isExamActive) return
-            analyser.getByteFrequencyData(dataArray)
-            const sum = dataArray.reduce((a, b) => a + b, 0)
-            const avg = sum / dataArray.length
-            const normalized = Math.min(1, avg / 128)
-            setMicLevel(normalized)
-
-            if (normalized > 0.45) {
-              noiseSustainRef.current++
-              if (noiseSustainRef.current >= 3) {
-                emitViolation?.('SUSPICIOUS_AUDIO', 'MEDIUM', { noiseLevel: normalized })
-                noiseSustainRef.current = 0
-              }
-            } else {
-              noiseSustainRef.current = 0
-            }
-          }, 1000)
-        } catch (audioErr) {
-          console.warn('Audio analyser init warning:', audioErr)
-        }
       })
       .catch(err => {
-        console.warn('Camera/Mic permission error:', err)
+        console.warn('Camera permission error:', err)
         setCameraOk(false)
       })
 
@@ -136,8 +99,6 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(t => t.stop())
       }
-      if (audioIntervalRef.current) clearInterval(audioIntervalRef.current)
-      if (audioContextRef.current) audioContextRef.current.close().catch(() => {})
     }
   }, [isExamActive, emitViolation])
 
@@ -159,10 +120,10 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
           setFaceOk(true)
         } else if (detections.length === 0) {
           setFaceOk(false)
-          emitViolation?.('NO_FACE_DETECTED', 'HIGH')
+          notifyViolation('NO_FACE_DETECTED', 'HIGH')
         } else {
           setFaceOk(false)
-          emitViolation?.('MULTIPLE_FACES_DETECTED', 'HIGH', { count: detections.length })
+          notifyViolation('MULTIPLE_FACES_DETECTED', 'HIGH', { count: detections.length })
         }
       } catch (err) {
         console.warn('Face detection loop error:', err)
@@ -174,47 +135,6 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
     }
   }, [modelsLoaded, cameraOk, isExamActive, emitViolation])
 
-  // ── 5. YOLOv8n Object Detection Polling Loop ──
-  useEffect(() => {
-    if (!isExamActive || !cameraOk) return
-
-    yoloIntervalRef.current = setInterval(async () => {
-      const videoEl = captureVideoRef.current || videoRef.current
-      if (!videoEl || !canvasRef.current || videoEl.readyState < 2) return
-
-      try {
-        const canvas = canvasRef.current
-        const ctx = canvas.getContext('2d')
-        canvas.width = 320
-        canvas.height = 240
-        ctx.drawImage(videoEl, 0, 0, 320, 240)
-        const frameBase64 = canvas.toDataURL('image/jpeg', 0.5)
-
-        const res = await api.post('/student/exams/active/yolo-check', { frame: frameBase64 }, { timeout: 3000 })
-        if (res.data) {
-          if (res.data.phone_detected) {
-            setYoloStatus('threat')
-            emitViolation?.('CELL_PHONE_DETECTED', 'HIGH')
-          } else if (res.data.book_detected) {
-            setYoloStatus('threat')
-            emitViolation?.('BOOK_DETECTED', 'MEDIUM')
-          } else if (res.data.laptop_detected) {
-            setYoloStatus('threat')
-            emitViolation?.('SECOND_DEVICE_DETECTED', 'HIGH')
-          } else {
-            setYoloStatus('clean')
-          }
-        }
-      } catch (err) {
-        // Silent catch to prevent exam disruption
-      }
-    }, 8000)
-
-    return () => {
-      if (yoloIntervalRef.current) clearInterval(yoloIntervalRef.current)
-    }
-  }, [isExamActive, cameraOk, emitViolation])
-
   return {
     videoRef,
     captureVideoRef,
@@ -224,8 +144,6 @@ export function useProctoringMonitors({ emitViolation, isExamActive, allowTabSwi
     screenCanvasRef,
     cameraOk,
     faceOk,
-    yoloStatus,
-    micLevel,
     isFullscreenLocked
   }
 }

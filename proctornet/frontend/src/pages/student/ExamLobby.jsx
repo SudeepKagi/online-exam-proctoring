@@ -148,22 +148,32 @@ export default function ExamLobby() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#27272A] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/student/device-check/${examId}`)}
-              className="w-full sm:w-auto text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B]"
-            >
-              Run Pre-Exam Device Diagnostic (Recommended)
-            </Button>
-            <div className="flex flex-col sm:items-end w-full sm:w-auto gap-1">
+          <div className="pt-5 border-t border-[#27272A] space-y-4">
+            {/* Optional Pre-check Subordinate Banner */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-[#09090B] border border-[#27272A] gap-2">
+              <div className="text-xs">
+                <span className="font-semibold text-slate-300">Optional: </span>
+                <span className="text-slate-400">Test camera, display stream, and local device readiness before entering the exam room.</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/student/device-check/${examId}`)}
+                className="text-xs font-mono text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 shrink-0 h-8"
+              >
+                Run Device Diagnostic →
+              </Button>
+            </div>
+
+            {/* Primary Guided Action */}
+            <div className="flex flex-col items-center justify-center pt-1 gap-2">
               <Button
                 disabled={isOver || timeToStart > 0}
                 onClick={() => navigate(`/student/exams/${examId}/security`)}
-                className={`w-full sm:w-auto text-xs font-mono font-bold px-7 h-10 rounded-xl shadow-lg transition-all ${
+                className={`w-full sm:w-80 text-xs font-mono font-bold h-11 rounded-xl shadow-lg transition-all ${
                   isOver || timeToStart > 0
                     ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed shadow-none'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25'
                 }`}
               >
                 {isOver
@@ -174,12 +184,12 @@ export default function ExamLobby() {
                 {!isOver && timeToStart === 0 && <ArrowRight size={14} className="ml-2" />}
               </Button>
               {timeToStart > 0 && !isOver && (
-                <span className="text-[10px] font-mono text-amber-400/80 text-center sm:text-right">
-                  Security check unlocks when countdown reaches zero
+                <span className="text-[11px] font-mono text-amber-400/90 text-center">
+                  Security check unlocks automatically when countdown reaches zero
                 </span>
               )}
               {isOver && (
-                <span className="text-[10px] font-mono text-rose-400 text-center sm:text-right">
+                <span className="text-[11px] font-mono text-rose-400 text-center">
                   This examination session has ended and is closed for entry
                 </span>
               )}

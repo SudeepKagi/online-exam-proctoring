@@ -21,7 +21,6 @@ router.post('/exams/:id/autosave', ctrl.autoSaveAnswer)
 router.post('/exams/:id/evidence',    ctrl.logEvidence)
 router.post('/exams/:id/violation',   ctrl.logViolation)
 router.post('/exams/:id/acknowledge', ctrl.acknowledgeWatermark)
-router.post('/exams/:id/yolo-check',  ctrl.yoloCheck)   // YOLOv8n object detection
 
 // ── Chat ───────────────────────────────────────────────────────────
 router.get ('/exams/:id/chat',  ctrl.getChatHistory)

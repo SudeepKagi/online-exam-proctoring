@@ -3,45 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/utils/api'
-import { BookOpen, Wifi, WifiOff, User, Mail, Phone, ShieldCheck, GraduationCap, Building, CheckCircle2 } from 'lucide-react'
+import { BookOpen, User, Mail, GraduationCap, Building, CheckCircle2 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionCards } from '@/components/section-cards'
 import { ChartAreaInteractive } from '@/components/chart-area-interactive'
 import { DataTable } from '@/components/data-table'
-
-function VPNStatusAlert() {
-  const [vpn, setVpn] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    api.get('/vpn/status').then(r => setVpn(r.data)).catch(() => setVpn({ connected: false })).finally(() => setLoading(false))
-  }, [])
-
-  return (
-    <div className="p-4 rounded-2xl border border-[#27272A] bg-[#141416] text-white flex items-center justify-between transition-colors font-sans">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-[#27272A] text-white flex items-center justify-center shrink-0">
-          {vpn?.connected ? <Wifi size={15} /> : <WifiOff size={15} />}
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-slate-100">
-            {loading ? 'Checking Connection…' : vpn?.connected ? 'Secure Connection Active' : 'Secure Connection Disconnected'}
-          </p>
-          <p className="text-[11px] font-mono text-slate-400 mt-0.5">
-            {vpn?.connected ? `Assigned IP: ${vpn.assignedIp || '10.8.0.x'}` : 'Requires active connection before starting locked exam sessions.'}
-          </p>
-        </div>
-      </div>
-      {!vpn?.connected && !loading && (
-        <Button variant="outline" size="sm" className="h-7 text-xs font-mono">
-          Connect Secure Network
-        </Button>
-      )}
-    </div>
-  )
-}
 
 export default function StudentDashboard() {
   const { user } = useAuth()
@@ -139,9 +107,6 @@ export default function StudentDashboard() {
             </div>
           </CardContent>
         </Card>
-
-        {/* VPN Status Alert */}
-        <VPNStatusAlert />
 
         {/* Section Cards Block */}
         <SectionCards
