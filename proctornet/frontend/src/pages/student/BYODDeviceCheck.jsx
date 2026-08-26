@@ -96,7 +96,7 @@ export default function BYODDeviceCheck() {
     setCheckingVpn(true)
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 1500)
+      const timeoutId = setTimeout(() => controller.abort(), 4000)
       const res = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
       clearTimeout(timeoutId)
       if (res.ok) {
@@ -104,12 +104,17 @@ export default function BYODDeviceCheck() {
         setVpnConnected(Boolean(data.connected))
         if (data.connected) {
           toast.success(`VPN Tunnel Active! Assigned IP: ${data.vpnIp || vpnPeerIp || '10.0.0.x'}`)
+        } else {
+          toast.info('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.')
         }
       } else {
         setVpnConnected(false)
+        toast.info('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.')
       }
-    } catch {
+    } catch (err) {
+      console.error('VPN check failed:', err)
       setVpnConnected(false)
+      toast.error('Could not reach the device agent. Make sure the ProctorNet desktop agent is running.')
     } finally {
       setCheckingVpn(false)
     }
