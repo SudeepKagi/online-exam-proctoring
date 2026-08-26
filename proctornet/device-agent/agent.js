@@ -28,6 +28,35 @@ function getRunningProcesses() {
   })
 }
 
+/**
+ * Inspect local network interfaces for WireGuard VPN tunnel connection (10.0.0.x)
+ */
+function checkVpnNetwork() {
+  return new Promise((resolve) => {
+    const isWin = process.platform === 'win32'
+    const cmd = isWin ? 'ipconfig /all' : 'ip addr'
+
+    exec(cmd, (err, stdout) => {
+      if (err) return resolve({ connected: false, vpnIp: null, interfaceFound: false })
+
+      const lower = stdout.toLowerCase()
+      const hasWgInterface = lower.includes('wireguard') || lower.includes('wg0')
+
+      // Match IP pattern in 10.0.0.x range
+      const ipMatch = stdout.match(/10\.0\.0\.\d{1,3}/)
+      const vpnIp = ipMatch ? ipMatch[0] : null
+      const isConnected = Boolean(vpnIp || (hasWgInterface && lower.includes('10.0.0.')))
+
+      resolve({
+        connected: isConnected,
+        vpnIp,
+        interfaceFound: hasWgInterface || Boolean(vpnIp),
+        subnet: '10.0.0.0/24'
+      })
+    })
+  })
+}
+
 const server = http.createServer(async (req, res) => {
   // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -58,6 +87,22 @@ const server = http.createServer(async (req, res) => {
         platform: process.platform,
         blockedProcesses,
         virtualCams: [],
+        scannedAt: new Date().toISOString(),
+      }))
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: e.message }))
+    }
+  }
+
+  if (req.url === '/vpn-check') {
+    try {
+      const vpnResult = await checkVpnNetwork()
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({
+        agentStatus: 'HEALTHY',
+        platform: process.platform,
+        ...vpnResult,
         scannedAt: new Date().toISOString(),
       }))
     } catch (e) {

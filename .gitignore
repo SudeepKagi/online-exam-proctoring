@@ -33,7 +33,8 @@ build/
 .DS_Store
 Thumbs.db
 
-# WireGuard private keys
+# WireGuard private keys & SSH keys
+*.pem
 vpn-server/keys/
 vpn-server/*.conf
 !vpn-server/*.example.conf
