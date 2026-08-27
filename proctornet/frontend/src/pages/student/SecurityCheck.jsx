@@ -168,40 +168,63 @@ export default function SecurityCheck() {
       if (res.ok) {
         const data = await res.json()
         if (data.connected) {
-          setVpnVerified(true)
-          const ip = data.vpnIp || vpnPeerIp || assignedIp || '10.0.0.x'
-          updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${ip}) • Network Sandboxed`)
-          if (showToasts) toast.success(`✔ WireGuard VPN tunnel verified active! (IP: ${ip})`)
-          setActiveStage(1)
-          startCamera()
+          setVpnVerified(prev => {
+            if (!prev) {
+              const ip = data.vpnIp || vpnPeerIp || assignedIp || '10.0.0.x'
+              updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${ip}) • Network Sandboxed`)
+              if (showToasts) toast.success(`✔ WireGuard VPN tunnel verified active! (IP: ${ip})`)
+              setActiveStage(0)
+              setTimeout(() => {
+                setActiveStage(1)
+                startCamera()
+              }, 100)
+            }
+            return true
+          })
           return true
         } else {
-          setVpnVerified(false)
-          if (confDownloaded) {
-            updateStage('system', 'loading', 'Profile downloaded. Open WireGuard app, import this file, and click Activate. Detecting connection automatically...')
-          } else {
-            updateStage('system', 'loading', `WireGuard Gateway Assigned (${assignedIp || '10.0.0.x'}). Click "⚡ Auto-Connect VPN" or download .conf to activate.`)
-          }
+          handleVpnDisconnect()
           if (showToasts) toast.error('VPN tunnel is disconnected in WireGuard. Please activate the tunnel.')
           return false
         }
       } else {
-        setVpnVerified(false)
-        updateStage('system', 'fail', 'Desktop device agent unreachable. Please start ProctorNet Agent or activate WireGuard.')
+        handleVpnDisconnect()
         if (showToasts) toast.error('Device agent unreachable. Start ProctorNet Desktop Agent.')
         return false
       }
     } catch {
-      setVpnVerified(false)
-      updateStage('system', 'fail', 'Desktop device agent offline. Start ProctorNet Agent to detect WireGuard connection.')
+      handleVpnDisconnect()
       if (showToasts) toast.error('Desktop device agent offline on port 49152.')
       return false
     }
   }
 
-  // Automatic background polling every 3 seconds when VPN is not yet verified
+  // Handle VPN disconnection or drop across pipeline
+  const handleVpnDisconnect = () => {
+    setVpnVerified(prevVerified => {
+      if (prevVerified) {
+        toast.error('❌ WireGuard VPN tunnel disconnected! Resetting pipeline to Stage 1.')
+      }
+      return false
+    })
+
+    setActiveStage(prevStage => {
+      if (prevStage > 0) {
+        stopCamera()
+      }
+      return 0
+    })
+
+    if (confDownloaded) {
+      updateStage('system', 'fail', 'WireGuard VPN disconnected. Re-activate profile in WireGuard app to resume.')
+    } else {
+      updateStage('system', 'fail', `WireGuard VPN disconnected. Click "⚡ Auto-Connect VPN" or download .conf to activate.`)
+    }
+  }
+
+  // Continuous background polling every 3 seconds for active VPN tunnel
   useEffect(() => {
-    if (vpnVerified || !vpnConfig) return
+    if (!vpnConfig) return
 
     // Run check immediately
     checkVpnRealStatus(false)
@@ -211,7 +234,7 @@ export default function SecurityCheck() {
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [vpnConfig, vpnVerified, confDownloaded])
+  }, [vpnConfig, confDownloaded])
 
   const downloadVpnConfig = () => {
     if (!vpnConfig) {
