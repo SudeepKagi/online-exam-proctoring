@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Activity,
   Calendar,
+  Clock,
   CheckCircle2,
   Key,
   Copy,
@@ -51,6 +52,28 @@ function ExamStatusBadge({ status }) {
       {status}
     </span>
   )
+}
+
+// Format date into clean string e.g. "Aug 27, 2026"
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+// Format time into clean 12h string e.g. "10:00 AM"
+const formatTime = (dateStr) => {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  return d.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  })
 }
 
 export default function AdminExams() {
@@ -133,6 +156,7 @@ export default function AdminExams() {
       `══════════════════════════════════════════`,
       `Exam Title:      ${selectedCredentials.title} (${selectedCredentials.subject})`,
       `Faculty:         ${selectedCredentials.facultyName}`,
+      `Date & Timing:   ${formatDate(selectedCredentials.startTime)} • ${formatTime(selectedCredentials.startTime)} – ${formatTime(selectedCredentials.endTime)} (${selectedCredentials.duration} mins)`,
       `Exam ID:         ${selectedCredentials.examId}`,
       `Invigilator ID:  ${selectedCredentials.invId}`,
       `Access Password: ${selectedCredentials.password}`,
@@ -141,7 +165,7 @@ export default function AdminExams() {
       `Instructions:`,
       `1. Open the Login Portal link above.`,
       `2. Paste the Exam ID, Invigilator ID, and Access Password.`,
-      `3. Complete camera live preview to monitor the candidate grid.`
+      `3. Complete camera live preview to monitor candidate proctoring.`
     ].join('\n')
 
     navigator.clipboard.writeText(packageText)
@@ -173,7 +197,7 @@ export default function AdminExams() {
           <div>
             <h1 className="text-xl font-bold text-[#0f172a]">All Platform Exams</h1>
             <p className="text-xs text-[#64748b] mt-0.5">
-              Platform-wide exam scheduling, proctoring status, and invigilator access management
+              Platform-wide exam scheduling, live timing windows, and invigilator access management
             </p>
           </div>
           <button
@@ -271,37 +295,57 @@ export default function AdminExams() {
                     <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Faculty</TableHead>
                     <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Duration</TableHead>
                     <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Scheduled Date</TableHead>
+                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Schedule & Timing</TableHead>
                     <TableHead className="text-xs font-bold text-[#64748b] text-right pr-5 py-3.5">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-[#f1f5f9]">
                   {filtered.map((e) => (
                     <TableRow key={e.id} className="hover:bg-[#f8fafc] transition-colors">
+                      {/* Exam Title */}
                       <TableCell className="font-bold text-xs text-[#0f172a] pl-5 py-3.5">
                         {e.title}
                       </TableCell>
+
+                      {/* Subject */}
                       <TableCell className="py-3.5">
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
                           {e.subject}
                         </span>
                       </TableCell>
+
+                      {/* Faculty */}
                       <TableCell className="text-xs text-[#475569] font-medium py-3.5">
                         {e.faculty?.name || 'Faculty'}
                       </TableCell>
+
+                      {/* Duration */}
                       <TableCell className="font-mono text-xs text-[#64748b] py-3.5">
-                        {e.duration} mins
+                        <span className="font-semibold text-[#0f172a]">{e.duration}</span> mins
                       </TableCell>
+
+                      {/* Status */}
                       <TableCell className="py-3.5">
                         <ExamStatusBadge status={e.status} />
                       </TableCell>
-                      <TableCell className="font-mono text-xs text-[#64748b] py-3.5">
-                        {new Date(e.startTime).toLocaleDateString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+
+                      {/* Schedule & Timing Details */}
+                      <TableCell className="py-3.5 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-[#0f172a]">
+                            <Calendar size={13} className="text-[#2563eb] shrink-0" />
+                            <span>{formatDate(e.startTime)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#64748b]">
+                            <Clock size={11} className="text-[#94a3b8] shrink-0" />
+                            <span>
+                              {formatTime(e.startTime)} – {formatTime(e.endTime)}
+                            </span>
+                          </div>
+                        </div>
                       </TableCell>
+
+                      {/* Action Button */}
                       <TableCell className="text-right pr-5 py-3.5">
                         <button
                           onClick={() => handleViewCredentials(e)}
@@ -370,6 +414,21 @@ export default function AdminExams() {
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
                       {selectedCredentials.status}
                     </span>
+                  </div>
+
+                  {/* Timing Details Banner */}
+                  <div className="bg-[#eff6ff]/30 border border-[#dbeafe] rounded-xl p-3 flex items-center gap-2.5 text-xs">
+                    <div className="w-7 h-7 rounded-lg bg-[#eff6ff] text-[#2563eb] flex items-center justify-center shrink-0 border border-[#bfdbfe]">
+                      <Clock size={14} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-[#1e40af] block text-[11px] uppercase tracking-wide">
+                        Scheduled Time Window
+                      </span>
+                      <p className="text-xs text-[#0f172a] font-semibold mt-0.5">
+                        {formatDate(selectedCredentials.startTime)} • <span className="font-mono text-[#2563eb]">{formatTime(selectedCredentials.startTime)} – {formatTime(selectedCredentials.endTime)}</span> ({selectedCredentials.duration} mins)
+                      </p>
+                    </div>
                   </div>
 
                   {/* 3 Credential Fields */}
