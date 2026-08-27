@@ -40,25 +40,26 @@ export function CommandPalette({ open, onOpenChange }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-start justify-center pt-24 px-4 animate-in fade-in-80">
-      <div className="w-full max-w-lg bg-[#111113] border border-[#232326] rounded-xl shadow-2xl overflow-hidden text-slate-100">
-        <div className="flex items-center px-3.5 border-b border-[#232326]">
-          <Search size={14} className="text-slate-400 mr-2 shrink-0" />
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-24 px-4 animate-in fade-in-80">
+      <div className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden text-foreground">
+        <div className="flex items-center px-4 border-b border-border">
+          <Search size={15} className="text-muted-foreground mr-2.5 shrink-0" />
           <input
             autoFocus
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Type a command or search exams, students, logs..."
-            className="w-full h-11 bg-transparent text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none font-sans"
+            className="w-full h-12 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none font-sans"
+            aria-label="Command search"
           />
-          <button onClick={() => onOpenChange(false)} className="text-slate-500 hover:text-slate-300">
-            <X size={14} />
+          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Close dialog">
+            <X size={15} />
           </button>
         </div>
 
-        <div className="max-h-72 overflow-y-auto p-1.5 space-y-1">
+        <div className="max-h-72 overflow-y-auto p-2 space-y-1">
           {filtered.length === 0 ? (
-            <div className="p-6 text-center text-xs font-mono text-slate-500">No matching commands or navigation routes found.</div>
+            <div className="p-8 text-center text-xs text-muted-foreground">No matching commands or navigation routes found.</div>
           ) : (
             filtered.map((item, idx) => {
               const Icon = item.icon
@@ -66,23 +67,23 @@ export function CommandPalette({ open, onOpenChange }) {
                 <button
                   key={idx}
                   onClick={() => handleSelect(item.path)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs rounded-md text-slate-300 hover:bg-[#18181B] hover:text-white transition-colors"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold rounded-xl text-foreground hover:bg-[#eff6ff] hover:text-primary dark:hover:bg-neutral-800 transition-colors cursor-pointer"
                 >
                   <span className="flex items-center gap-2.5">
-                    <Icon size={14} className="text-slate-400" />
+                    <Icon size={15} className="text-primary shrink-0" />
                     {item.title}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500 uppercase">{item.category}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.category}</span>
                 </button>
               )
             })
           )}
         </div>
 
-        <div className="px-3.5 py-2 border-t border-[#232326] bg-[#0A0A0A] flex items-center justify-between text-[10px] font-mono text-slate-500">
-          <span>Navigate: <kbd className="px-1 bg-[#18181B] border border-[#232326] rounded text-slate-400">↑↓</kbd></span>
-          <span>Select: <kbd className="px-1 bg-[#18181B] border border-[#232326] rounded text-slate-400">↵</kbd></span>
-          <span>Close: <kbd className="px-1 bg-[#18181B] border border-[#232326] rounded text-slate-400">ESC</kbd></span>
+        <div className="px-4 py-2.5 border-t border-border bg-[#f8fafc] dark:bg-neutral-900 flex items-center justify-between text-xs text-muted-foreground">
+          <span>Navigate: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-semibold text-[10px]">↑↓</kbd></span>
+          <span>Select: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-semibold text-[10px]">↵</kbd></span>
+          <span>Close: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-semibold text-[10px]">ESC</kbd></span>
         </div>
       </div>
     </div>

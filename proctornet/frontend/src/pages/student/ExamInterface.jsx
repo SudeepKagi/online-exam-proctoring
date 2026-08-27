@@ -231,8 +231,8 @@ export default function ExamInterface() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#09090B] flex items-center justify-center font-mono text-xs text-slate-400">
-        <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2" />
+      <div className="min-h-screen bg-background flex items-center justify-center font-mono text-xs text-muted-foreground">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
         Securing proctoring session…
       </div>
     )
@@ -241,7 +241,7 @@ export default function ExamInterface() {
   const answeredCount = Object.keys(answers).length
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none">
       {/* Hidden capture elements */}
       <video ref={captureVideoRef} autoPlay muted playsInline className="hidden" />
       <canvas ref={canvasRef} className="hidden" />

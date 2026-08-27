@@ -1,115 +1,204 @@
 import React from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, AlertTriangle,
-  Megaphone, ClipboardList, BarChart2, Video, Settings, LogOut, UserCheck, Shield
+  Megaphone, ClipboardList, BarChart2, Video, Settings, LogOut, UserCheck, Shield,
+  HelpCircle
 } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ProctorNetLogo } from '@/components/ui/proctornet-logo'
 
-const NAV_ITEMS = {
+// Categorized navigation without sub-items - clean and normal
+const ROLE_NAV_GROUPS = {
   admin: [
-    { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/admin/bulk-create', icon: UserCheck, label: 'Bulk Accounts' },
-    { to: '/admin/enrollment-review', icon: Shield, label: 'Biometrics Review' },
-    { to: '/admin/faculty', icon: Users, label: 'Faculty' },
-    { to: '/admin/students', icon: GraduationCap, label: 'Students' },
-    { to: '/admin/exams', icon: BookOpen, label: 'Exams' },
-    { to: '/admin/violations', icon: AlertTriangle, label: 'Violations' },
-    { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
-    { to: '/admin/invigilators', icon: Video, label: 'Invigilators' },
-    { to: '/admin/settings', icon: Settings, label: 'Settings' },
-    { to: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
-    { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
+    {
+      section: 'ANALYTICS',
+      items: [
+        { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/admin/audit-logs', icon: ClipboardList, label: 'Audit Logs' },
+        { to: '/admin/reports', icon: BarChart2, label: 'Reports' },
+      ]
+    },
+    {
+      section: 'ACCOUNT CREATION',
+      items: [
+        { to: '/admin/create-student', icon: GraduationCap, label: 'Student Accounts' },
+        { to: '/admin/create-faculty', icon: Users, label: 'Faculty Accounts' },
+      ]
+    },
+    {
+      section: 'MANAGEMENT',
+      items: [
+        { to: '/admin/faculty', icon: Users, label: 'Faculty Roster' },
+        { to: '/admin/students', icon: GraduationCap, label: 'Student Directory' },
+        { to: '/admin/exams', icon: BookOpen, label: 'Exams' },
+        { to: '/admin/violations', icon: AlertTriangle, label: 'Violations' },
+        { to: '/admin/invigilators', icon: Video, label: 'Invigilators' },
+        { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
+      ]
+    },
+    {
+      section: 'CUSTOMIZATION',
+      items: [
+        { to: '/admin/enrollment-review', icon: Shield, label: 'Biometrics Review' },
+        { to: '/admin/settings', icon: Settings, label: 'Settings' },
+      ]
+    }
   ],
   faculty: [
-    { to: '/faculty/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/faculty/exams', icon: BookOpen, label: 'My Exams' },
-    { to: '/faculty/students', icon: GraduationCap, label: 'Students' },
-    { to: '/faculty/results', icon: BarChart2, label: 'Results' },
+    {
+      section: 'ANALYTICS',
+      items: [
+        { to: '/faculty/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/faculty/results', icon: BarChart2, label: 'Results & Scoring' },
+      ]
+    },
+    {
+      section: 'MANAGEMENT',
+      items: [
+        { to: '/faculty/exams', icon: BookOpen, label: 'My Exams' },
+        { to: '/faculty/students', icon: GraduationCap, label: 'Students' },
+      ]
+    },
+    {
+      section: 'CUSTOMIZATION',
+      items: [
+        { to: '/faculty/question-pool', icon: BookOpen, label: 'Question Pool' },
+        { to: '/faculty/settings', icon: Settings, label: 'Settings' },
+      ]
+    }
   ],
   student: [
-    { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/student/profile', icon: UserCheck, label: 'My Profile' },
-    { to: '/student/device-check/demo', icon: Shield, label: 'Device Readiness' },
-    { to: '/student/exams', icon: BookOpen, label: 'My Exams' },
-    { to: '/student/results', icon: BarChart2, label: 'Results' },
+    {
+      section: 'ANALYTICS',
+      items: [
+        { to: '/student/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/student/results', icon: BarChart2, label: 'Results & Transcripts' },
+      ]
+    },
+    {
+      section: 'MANAGEMENT',
+      items: [
+        { to: '/student/exams', icon: BookOpen, label: 'My Exams' },
+        { to: '/student/profile', icon: UserCheck, label: 'My Profile' },
+      ]
+    },
+    {
+      section: 'CUSTOMIZATION',
+      items: [
+        { to: '/student/device-check/demo', icon: Shield, label: 'Device Check' },
+        { to: '/student/support', icon: HelpCircle, label: 'Support & Rules' },
+      ]
+    }
   ],
   invigilator: [
-    { to: '/invigilator/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/invigilator/live-grid/active', icon: Video, label: 'Live Exam Grid' },
-  ],
+    {
+      section: 'ANALYTICS',
+      items: [
+        { to: '/invigilator/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/invigilator/live-grid/active', icon: Video, label: 'Live Exam Grid' },
+      ]
+    },
+    {
+      section: 'MANAGEMENT',
+      items: [
+        { to: '/invigilator/violations', icon: AlertTriangle, label: 'Violation Alerts' },
+      ]
+    },
+    {
+      section: 'CUSTOMIZATION',
+      items: [
+        { to: '/invigilator/settings', icon: Settings, label: 'Audio & Camera Config' },
+      ]
+    }
+  ]
 }
 
-export function AppSidebar({ variant = 'inset' }) {
+export function AppSidebar() {
   const { user, role, logout } = useAuth()
   const navigate = useNavigate()
   const currentRole = role || 'student'
-  const navItems = NAV_ITEMS[currentRole] || NAV_ITEMS.student
-  const initials = user?.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'U'
+  const navGroups = ROLE_NAV_GROUPS[currentRole] || ROLE_NAV_GROUPS.student
+  const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AD'
 
   return (
-    <aside className="w-64 bg-[#09090B] flex flex-col justify-between h-screen sticky top-0 z-40 text-slate-100 font-sans">
-      <div>
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-[#27272A]/50">
-          <div className="w-7 h-7 rounded-lg bg-white text-black flex items-center justify-center font-bold text-xs shrink-0">
-            <ProctorNetLogo className="w-4 h-4 text-black" />
-          </div>
+    <aside className="w-64 bg-white border-r border-[#e2e8f0] flex flex-col justify-between shrink-0 min-h-screen sticky top-0 h-screen font-sans z-30">
+      <div className="overflow-y-auto flex-1">
+        {/* Real Brand Header - Uses official /logo.png, no AI badge */}
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-[#f1f5f9]">
+          <img
+            src="/logo.png"
+            alt="ProctorNet Logo"
+            className="w-8 h-8 rounded-xl object-contain shrink-0 shadow-xs"
+          />
           <div className="min-w-0">
-            <p className="font-bold text-xs leading-none text-slate-100 tracking-tight">ProctorNet</p>
-            <p className="text-[9px] font-mono text-slate-400 mt-1 uppercase tracking-widest">{currentRole} Console</p>
+            <span className="font-bold text-base text-[#0f172a] tracking-tight block">ProctorNet</span>
+            <p className="text-[11px] font-medium text-[#64748b] capitalize leading-none mt-0.5">
+              {currentRole} Console
+            </p>
           </div>
         </div>
 
-        {/* Navigation Items */}
-        <nav className="p-2.5 space-y-1">
-          <div className="px-3 py-1.5 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
-            Navigation
-          </div>
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to.endsWith('dashboard')}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  isActive
-                    ? 'bg-[#27272A] text-white font-semibold'
-                    : 'text-slate-400 hover:bg-[#141416] hover:text-slate-200'
-                }`
-              }
-            >
-              <Icon size={16} />
-              {label}
-            </NavLink>
+        {/* Navigation Sections */}
+        <div className="px-4 py-4 space-y-6">
+          {navGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-1">
+              <p className="text-[10px] font-bold text-[#94a3b8] tracking-wider px-3 mb-1.5 uppercase">
+                {group.section}
+              </p>
+
+              {group.items.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to.endsWith('dashboard')}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs transition-all ${
+                      isActive
+                        ? 'bg-[#2f80ed] text-white font-semibold shadow-xs'
+                        : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] font-medium'
+                    }`
+                  }
+                >
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
           ))}
-        </nav>
+        </div>
       </div>
 
-      {/* User Footer */}
-      <div className="p-3 border-t border-[#27272A] bg-[#09090B]">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-[#141416] border border-[#27272A]">
+      {/* Footer User Profile & Sign Out */}
+      <div className="p-4 border-t border-[#f1f5f9]">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Avatar className="h-7 w-7 border border-[#27272A]">
-              <AvatarImage src={user?.profilePhoto} alt={user?.name} />
-              <AvatarFallback className="font-mono text-[10px] bg-[#27272A] text-white">{initials}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 leading-none">
-              <p className="text-xs font-semibold text-slate-100 truncate">{user?.name || user?.usn || user?.employeeId || 'User Session'}</p>
-              <p className="text-[10px] font-mono text-slate-400 truncate mt-0.5">{user?.email || (user?.usn ? `${user.usn.toLowerCase()}@college.edu` : user?.employeeId ? `${user.employeeId.toLowerCase()}@college.edu` : `${currentRole}@proctornet.local`)}</p>
+            {user?.facePhotoUrl ? (
+              <img
+                src={user.facePhotoUrl}
+                alt={user?.name || 'User'}
+                className="w-8 h-8 rounded-full object-cover border border-[#e2e8f0] shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#eff6ff] text-[#2563eb] font-bold text-xs flex items-center justify-center shrink-0 border border-[#dbeafe]">
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[#0f172a] truncate">{user?.name || 'System Administrator'}</p>
+              <p className="text-[10px] text-[#94a3b8] truncate">{user?.email || 'admin@proctornet.com'}</p>
             </div>
           </div>
           <button
             onClick={() => { logout(); navigate('/') }}
-            className="text-slate-400 hover:text-white p-1 transition-colors"
+            className="text-[#94a3b8] hover:text-[#ef4444] p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer"
             title="Sign Out"
+            aria-label="Sign out"
           >
-            <LogOut size={14} />
+            <LogOut size={15} />
           </button>
         </div>
       </div>
     </aside>
   )
 }
+export default AppSidebar

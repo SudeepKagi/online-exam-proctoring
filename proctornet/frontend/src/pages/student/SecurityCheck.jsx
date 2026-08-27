@@ -345,29 +345,27 @@ export default function SecurityCheck() {
   const allPassed = stageStatus.system === 'pass' && stageStatus.media === 'pass' && stageStatus.face === 'pass'
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex items-center justify-center p-4 font-sans selection:bg-indigo-500 selection:text-white relative overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 font-sans selection:bg-primary selection:text-white relative overflow-hidden">
       {/* Subtle Background Glow Spheres */}
-      <div className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-32 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
       <canvas ref={canvasRef} className="hidden" />
 
-      <div className="w-full max-w-5xl bg-[#141416] border border-[#27272A] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
+      <div className="w-full max-w-5xl bg-card border border-border rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
         
         {/* Left Sidebar: 4 Automated Security Stages */}
-        <div className="w-full md:w-80 bg-[#09090B] border-r border-[#27272A] p-6 flex flex-col justify-between shrink-0">
+        <div className="w-full md:w-80 bg-background border-r border-border p-6 flex flex-col justify-between shrink-0">
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-                <Shield size={20} />
-              </div>
+              <img src="/logo.png" alt="ProctorNet Logo" className="w-10 h-10 object-contain rounded-xl shadow-xs" />
               <div>
-                <h1 className="font-bold text-sm text-slate-100 tracking-tight">PROCTORNET SECURE</h1>
-                <p className="text-[10px] text-indigo-400 font-mono font-semibold uppercase tracking-wider">Candidate Verification</p>
+                <h1 className="font-bold text-sm text-foreground tracking-tight">PROCTORNET SECURE</h1>
+                <p className="text-[10px] text-primary font-mono font-semibold uppercase tracking-wider">Candidate Verification</p>
               </div>
             </div>
 
-            <p className="text-xs text-slate-400 font-medium mb-4">Pre-Exam Security Pipeline</p>
+            <p className="text-xs text-muted-foreground font-medium mb-4">Pre-Exam Security Pipeline</p>
 
             <div className="space-y-2">
               {STAGES.map((stage, idx) => {
@@ -379,14 +377,14 @@ export default function SecurityCheck() {
                     key={stage.id} 
                     className={`flex items-start gap-3 p-3 rounded-2xl border transition-all duration-300 ${
                       isActive 
-                        ? 'bg-indigo-500/10 border-indigo-500/40 text-white shadow-lg shadow-indigo-500/5' 
-                        : 'bg-[#141416] border-[#27272A]/70 text-slate-400'
+                        ? 'bg-primary/10 border-primary/40 text-white shadow-lg shadow-indigo-500/5' 
+                        : 'bg-card border-border/70 text-muted-foreground'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
                       {status === 'pass' && <CheckCircle2 size={18} className="text-emerald-400" />}
                       {status === 'fail' && <XCircle size={18} className="text-rose-400" />}
-                      {status === 'loading' && <Loader2 size={18} className="text-indigo-400 animate-spin" />}
+                      {status === 'loading' && <Loader2 size={18} className="text-primary animate-spin" />}
                       {status === 'pending' && (
                         <div className="w-4 h-4 rounded-full border border-slate-600 flex items-center justify-center text-[9px] font-mono font-bold text-slate-500">
                           {idx + 1}
@@ -395,10 +393,10 @@ export default function SecurityCheck() {
                     </div>
 
                     <div className="min-w-0">
-                      <p className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                      <p className={`text-xs font-semibold ${isActive ? 'text-white' : 'text-foreground/90'}`}>
                         {stage.name}
                       </p>
-                      <p className="text-[10px] text-slate-400 line-clamp-1 mt-0.5 font-mono">{stage.desc}</p>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 font-mono">{stage.desc}</p>
                     </div>
                   </div>
                 )
@@ -406,32 +404,32 @@ export default function SecurityCheck() {
             </div>
           </div>
 
-          <div className="mt-8 pt-4 border-t border-[#27272A] text-center">
-            <p className="text-[11px] text-slate-400 font-mono">
-              Candidate: <span className="text-slate-200 font-semibold">{student?.name || 'Verified User'}</span> ({student?.usn || 'USN'})
+          <div className="mt-8 pt-4 border-t border-border text-center">
+            <p className="text-[11px] text-muted-foreground font-mono">
+              Candidate: <span className="text-foreground font-semibold">{student?.name || 'Verified User'}</span> ({student?.usn || 'USN'})
             </p>
           </div>
         </div>
 
         {/* Right Content Area: Interactive Workstation */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between min-h-[520px] bg-[#141416]">
+        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between min-h-[520px] bg-card">
           <div>
             {/* Exam & Stage Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#27272A] pb-4 mb-6 gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 mb-6 gap-2">
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-indigo-400 font-bold">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-primary font-bold">
                   Stage {activeStage + 1} of 4
                 </span>
-                <h2 className="text-xl font-bold text-slate-100 mt-0.5">{STAGES[activeStage].name}</h2>
+                <h2 className="text-xl font-bold text-foreground mt-0.5">{STAGES[activeStage].name}</h2>
               </div>
-              <Badge variant="outline" className="font-mono text-xs text-indigo-400 border-indigo-500/30 bg-indigo-500/10 w-fit">
+              <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
                 {exam?.title || 'Examination Verification'}
               </Badge>
             </div>
 
             {/* Video Feed & Biometric Frame */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
-              <div className="relative rounded-2xl bg-[#09090B] border border-[#27272A] overflow-hidden aspect-video flex items-center justify-center shadow-inner">
+              <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -441,29 +439,29 @@ export default function SecurityCheck() {
                 />
                 
                 {/* Camera Overlay Guide Box */}
-                <div className="absolute inset-4 border-2 border-dashed border-indigo-500/40 rounded-xl pointer-events-none flex items-center justify-center">
+                <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
                   <div className="w-20 h-20 border border-indigo-400/60 rounded-full animate-pulse" />
                 </div>
 
                 {isFaceProcessing && (
                   <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
-                    <Loader2 size={32} className="text-indigo-400 animate-spin mb-2" />
-                    <p className="text-xs font-mono text-slate-200 font-semibold">Running Biometric Model Match...</p>
+                    <Loader2 size={32} className="text-primary animate-spin mb-2" />
+                    <p className="text-xs font-mono text-foreground font-semibold">Running Biometric Model Match...</p>
                   </div>
                 )}
               </div>
 
               {/* Status & Diagnostics Log Card */}
               <div className="space-y-4">
-                <Card className="bg-[#09090B] border-[#27272A] p-4 space-y-3">
+                <Card className="bg-background border-border p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Diagnostic Log</span>
+                    <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Diagnostic Log</span>
                     <Badge variant="secondary" className="text-[10px] font-mono">LIVE PROBE</Badge>
                   </div>
 
-                  <div className="p-3 bg-[#141416] border border-[#27272A] rounded-xl text-xs font-mono text-slate-300">
-                    <p className="text-indigo-400 font-semibold mb-1">Current Status:</p>
-                    <p className="text-slate-200">{stageDetails[STAGES[activeStage].id]}</p>
+                  <div className="p-3 bg-card border border-border rounded-xl text-xs font-mono text-foreground/90">
+                    <p className="text-primary font-semibold mb-1">Current Status:</p>
+                    <p className="text-foreground">{stageDetails[STAGES[activeStage].id]}</p>
                   </div>
 
                   {faceMatchScore !== null && (
@@ -472,20 +470,20 @@ export default function SecurityCheck() {
                         <span>Biometric Score:</span>
                         <strong className="text-sm">{(faceMatchScore * 100).toFixed(1)}%</strong>
                       </div>
-                      <div className="w-full bg-[#141416] rounded-full h-1.5 overflow-hidden border border-emerald-500/20">
+                      <div className="w-full bg-card rounded-full h-1.5 overflow-hidden border border-emerald-500/20">
                         <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${faceMatchScore * 100}%` }} />
                       </div>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-400">
-                    <div className="p-2 rounded-lg bg-[#141416] border border-[#27272A]">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
+                    <div className="p-2 rounded-lg bg-card border border-border">
                       <span className="text-slate-500">Screen Share:</span>
-                      <p className={`font-semibold mt-0.5 ${screenShared ? 'text-emerald-400' : 'text-slate-300'}`}>
+                      <p className={`font-semibold mt-0.5 ${screenShared ? 'text-emerald-400' : 'text-foreground/90'}`}>
                         {screenShared ? 'Active' : 'Pending'}
                       </p>
                     </div>
-                    <div className="p-2 rounded-lg bg-[#141416] border border-[#27272A]">
+                    <div className="p-2 rounded-lg bg-card border border-border">
                       <span className="text-slate-500">Kiosk View:</span>
                       <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-400' : 'text-amber-400'}`}>
                         {isFullscreen ? 'Locked' : 'Standard'}
@@ -498,9 +496,9 @@ export default function SecurityCheck() {
           </div>
 
           {/* Action Bar Footer */}
-          <div className="pt-4 border-t border-[#27272A] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-              <Shield size={14} className="text-indigo-400" />
+          <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+              <Shield size={14} className="text-primary" />
               <span>Anti-Cheating Kiosk Protection Enforced</span>
             </div>
 
@@ -508,7 +506,7 @@ export default function SecurityCheck() {
               {activeStage === 1 && !screenShared && (
                 <Button 
                   onClick={requestScreenShare}
-                  className="w-full sm:w-auto text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white px-6 h-10 rounded-xl"
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl"
                 >
                   <Monitor size={14} className="mr-2" /> Authorize Screen Share
                 </Button>

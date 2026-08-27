@@ -12,6 +12,7 @@ router.use(authenticate, isAdmin, auditRequest)
 router.get('/dashboard',        ctrl.getDashboardStats)
 
 // ── Faculty management ─────────────────────────────
+router.post  ('/faculty',               ctrl.createFaculty)
 router.get   ('/faculty',               ctrl.listFaculty)
 router.get   ('/faculty/pending',       ctrl.listPendingFaculty)
 router.patch ('/faculty/:id/approve',   ctrl.approveFaculty)
@@ -20,7 +21,8 @@ router.patch ('/faculty/:id/suspend',   ctrl.suspendFaculty)
 router.patch ('/faculty/:id/unsuspend', ctrl.unsuspendFaculty)
 
 // ── Student management ─────────────────────────────
-router.get   ('/students',               ctrl.listStudents)
+router.post  ('/students',              ctrl.createStudent)
+router.get   ('/students',              ctrl.listStudents)
 router.get   ('/students/pending',       ctrl.listPendingStudents)
 router.patch ('/students/:id/approve',   ctrl.approveStudent)
 router.patch ('/students/:id/reject',    ctrl.rejectStudent)

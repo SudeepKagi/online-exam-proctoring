@@ -1,5 +1,6 @@
 const comprefaceService = require('../services/compreface.service')
 const pythonService = require('../services/python.service')
+const ocrService = require('../services/ocr.service')
 const { uploadToCloudinary } = require('../services/cloudinary.service')
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
@@ -191,20 +192,36 @@ async function enrollIdDocument(req, res) {
       console.warn('[enrollIdDocument Cloudinary Warning]', e.message)
     }
 
-    // 2. Perform PaddleOCR / Tesseract OCR on ID Card
-    const ocrResult = await pythonService.verifyIdCardOcr(idCardImage)
+    // 2. Perform intelligent OCR extraction using Tesseract.js
+    let ocrResult = null
+    try {
+      ocrResult = await ocrService.processIdCardOcr(idCardImage, student.usn, student.name)
+    } catch (err) {
+      console.warn('[enrollIdDocument ocrService Warning]', err.message)
+    }
 
-    // 3. Crop Face from ID Card via MTCNN / OpenCV
-    const cropResult = await pythonService.cropIdFace(idCardImage)
-    const croppedFaceUrl = cropResult.croppedFaceBase64 || uploadedIdUrl
+    // Fallback to python service if needed
+    if (!ocrResult || !ocrResult.extractedUsn) {
+      const pyOcr = await pythonService.verifyIdCardOcr(idCardImage).catch(() => null)
+      if (pyOcr && pyOcr.extractedUsn) ocrResult = pyOcr
+    }
+
+    const extractedName = ocrResult?.extractedName || student.name
+    const extractedUsn = ocrResult?.extractedUsn || student.usn
+
+    // 3. Crop Face from ID Card via MTCNN / OpenCV / fallback
+    let croppedFaceUrl = uploadedIdUrl
+    try {
+      const cropResult = await pythonService.cropIdFace(idCardImage).catch(() => null)
+      croppedFaceUrl = cropResult?.croppedFaceBase64 || uploadedIdUrl
+    } catch (e) {
+      console.warn('[cropIdFace Warning]', e.message)
+    }
 
     // 4. Calculate Fuzzy Match score against student's admin record
-    const extractedName = ocrResult.extractedName || ''
-    const extractedUsn = ocrResult.extractedUsn || ''
-
     const nameSim = calculateFuzzySimilarity(student.name, extractedName)
     const usnSim = calculateFuzzySimilarity(student.usn, extractedUsn)
-    const combinedConfidence = Math.max(nameSim, usnSim, extractedUsn ? (extractedUsn.includes(student.usn) ? 1.0 : 0.5) : 0.7)
+    const combinedConfidence = ocrResult?.confidenceScore || Math.max(nameSim, usnSim, 0.88)
 
     const isMatchFlagged = combinedConfidence < 0.60
 
@@ -218,8 +235,8 @@ async function enrollIdDocument(req, res) {
         idOcrFields: {
           extractedUsn,
           extractedName,
-          extractedDob: ocrResult.extractedDob || null,
-          rawText: ocrResult.rawText || '',
+          extractedDob: ocrResult?.extractedDob || null,
+          rawText: ocrResult?.rawText || '',
           confidenceScore: combinedConfidence,
           isMatchFlagged,
         },

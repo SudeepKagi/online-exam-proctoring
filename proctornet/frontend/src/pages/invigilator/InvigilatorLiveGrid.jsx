@@ -103,84 +103,89 @@ export default function InvigilatorLiveGrid() {
         {/* Header & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-              <Grid className="w-5 h-5 text-indigo-400" />
+            <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2.5">
+              <Grid className="w-5 h-5 text-primary" />
               {examTitle ? `Live Grid: ${examTitle}` : 'Live Invigilator Exam Grid'}
             </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-1 font-medium">
               Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream inspection
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Button
-              variant="outline"
+              variant={filterAlertsOnly ? 'destructive' : 'outline'}
+              size="sm"
               onClick={() => setFilterAlertsOnly(!filterAlertsOnly)}
-              className={`text-xs font-mono border-[#27272A] ${filterAlertsOnly ? 'bg-rose-500/20 text-rose-300 border-rose-500/40' : 'bg-[#141416] text-slate-300'}`}
+              className="text-xs font-bold"
             >
               <Filter size={13} className="mr-1.5" />
               {filterAlertsOnly ? 'Showing Flagged Only' : 'Show All Seats'}
             </Button>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={fetchGridData}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-mono border border-[#27272A] bg-[#141416] hover:bg-[#18181B] text-slate-300 rounded-xl transition"
+              className="text-xs font-bold"
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-            </button>
+              <RefreshCw size={13} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+            </Button>
           </div>
         </div>
 
         {/* 24-Seat Tile Matrix */}
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="h-36 bg-[#141416] border border-[#27272A] rounded-2xl animate-pulse" />
+              <div key={i} className="h-40 bg-card border border-border rounded-2xl animate-pulse shadow-xs" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {filteredCandidates.map((cand) => {
               const isFlagged = cand.alerts.length > 0 || cand.status !== 'ACTIVE'
               return (
                 <Card
                   key={cand.id}
                   onClick={() => setSelectedCandidate(cand)}
-                  className={`bg-[#141416] border transition cursor-pointer p-3 flex flex-col justify-between hover:border-indigo-500 ${
-                    isFlagged ? 'border-rose-500/50 bg-rose-950/10' : 'border-[#27272A]'
+                  className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
+                    isFlagged
+                      ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
+                      : 'border-border bg-card hover:border-primary/50'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-mono font-bold text-slate-400 bg-[#09090B] px-1.5 py-0.5 rounded border border-[#27272A]">
+                      <span className="text-[10px] font-bold text-foreground bg-[#f1f5f9] dark:bg-neutral-800 px-2 py-0.5 rounded-lg border border-border">
                         Seat {cand.seatNo}
                       </span>
                       {isFlagged ? (
-                        <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 text-[9px] font-mono">
+                        <Badge variant="destructive" className="text-[9px]">
                           FLAGGED
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 text-[9px] font-mono">
+                        <Badge variant="green" className="text-[9px]">
                           LIVE
                         </Badge>
                       )}
                     </div>
 
                     {/* Camera Thumbnail Placeholder */}
-                    <div className="w-full h-20 bg-[#09090B] border border-[#27272A] rounded-lg relative overflow-hidden flex items-center justify-center mb-2">
-                      <Video size={18} className="text-slate-600" />
+                    <div className="w-full h-20 bg-neutral-900 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
+                      <Video size={20} className="text-muted-foreground" />
                       {cand.isHotspot && (
-                        <span className="absolute top-1 right-1 bg-amber-500/20 text-amber-300 text-[8px] font-mono px-1 rounded border border-amber-500/40">
+                        <span className="absolute top-1.5 right-1.5 bg-[#fffbeb] text-[#b45309] text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[#fde68a]">
                           HOTSPOT
                         </span>
                       )}
                     </div>
 
-                    <p className="text-xs font-bold text-slate-100 truncate">{cand.usn}</p>
-                    <p className="text-[10px] text-slate-400 truncate">{cand.name}</p>
+                    <p className="text-xs font-bold text-foreground truncate">{cand.usn}</p>
+                    <p className="text-[11px] text-muted-foreground truncate font-medium">{cand.name}</p>
                   </div>
 
                   {cand.alerts.length > 0 && (
-                    <div className="mt-2 text-[9px] font-mono text-rose-300 bg-rose-500/10 border border-rose-500/30 p-1 rounded truncate">
+                    <div className="mt-2 text-[10px] font-bold text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] px-2 py-1 rounded-lg truncate">
                       {cand.alerts[0]}
                     </div>
                   )}
@@ -192,29 +197,29 @@ export default function InvigilatorLiveGrid() {
 
         {/* Selected Candidate Detailed Stream Modal */}
         {selectedCandidate && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
-            <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-2xl w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4 border-b border-[#27272A] pb-3">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
+            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-3.5">
                 <div>
-                  <h3 className="text-base font-bold text-slate-100">
+                  <h3 className="text-base font-bold text-foreground">
                     LiveKit SFU Stream — Seat {selectedCandidate.seatNo} ({selectedCandidate.usn})
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{selectedCandidate.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">{selectedCandidate.name}</p>
                 </div>
-                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 hover:bg-[#27272A] rounded-lg">
-                  <X size={18} className="text-slate-400" />
+                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 hover:bg-[#eff6ff] rounded-xl text-muted-foreground hover:text-primary transition-colors cursor-pointer" aria-label="Close dialog">
+                  <X size={18} />
                 </button>
               </div>
 
               {/* Dual Stream Feeds */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-[#09090B] border border-[#27272A] rounded-xl h-44 flex flex-col items-center justify-center text-slate-500">
-                  <Video size={24} className="mb-2 text-indigo-400" />
-                  <span className="text-xs font-mono">Live WebRTC Camera Feed</span>
+              <div className="grid grid-cols-2 gap-3.5 mb-4">
+                <div className="bg-neutral-900 border border-border rounded-xl h-44 flex flex-col items-center justify-center text-muted-foreground">
+                  <Video size={24} className="mb-2 text-primary" />
+                  <span className="text-xs font-semibold">Live WebRTC Camera Feed</span>
                 </div>
-                <div className="bg-[#09090B] border border-[#27272A] rounded-xl h-44 flex flex-col items-center justify-center text-slate-500">
-                  <Eye size={24} className="mb-2 text-indigo-400" />
-                  <span className="text-xs font-mono">Live Screen Capture Feed</span>
+                <div className="bg-neutral-900 border border-border rounded-xl h-44 flex flex-col items-center justify-center text-muted-foreground">
+                  <Eye size={24} className="mb-2 text-primary" />
+                  <span className="text-xs font-semibold">Live Screen Capture Feed</span>
                 </div>
               </div>
 
@@ -225,23 +230,26 @@ export default function InvigilatorLiveGrid() {
                     value={warningMsg}
                     onChange={(e) => setWarningMsg(e.target.value)}
                     placeholder="Send warning message to student screen..."
-                    className="flex-1 px-3 py-1.5 border border-[#27272A] bg-[#09090B] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+                    className="flex-1 px-3.5 py-2 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    aria-label="Warning message"
                   />
-                  <Button onClick={handleSendWarning} className="text-xs font-mono bg-indigo-600 hover:bg-indigo-500 text-white">
-                    <MessageSquare size={13} className="mr-1.5" /> Send Warning
+                  <Button onClick={handleSendWarning} className="text-xs font-bold">
+                    <MessageSquare size={14} className="mr-1.5" /> Send Warning
                   </Button>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-[#27272A]">
+                <div className="flex gap-2.5 pt-3 border-t border-border">
                   <Button
+                    variant="destructive"
                     onClick={() => handlePauseExam(selectedCandidate)}
-                    className="flex-1 text-xs font-mono bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30"
+                    className="flex-1 text-xs font-bold"
                   >
-                    <PauseCircle size={14} className="mr-1.5" /> Pause Exam Session
+                    <PauseCircle size={15} className="mr-1.5" /> Pause Exam Session
                   </Button>
                   <Button
+                    variant="outline"
                     onClick={() => setSelectedCandidate(null)}
-                    className="flex-1 text-xs font-mono bg-[#09090B] border border-[#27272A] text-slate-300"
+                    className="flex-1 text-xs font-bold"
                   >
                     Close Stream Window
                   </Button>

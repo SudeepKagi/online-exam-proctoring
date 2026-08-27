@@ -164,37 +164,21 @@ def check_liveness_anti_spoofing(image_url_or_base64):
         if CV2_AVAILABLE:
             gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
             laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-            is_live = laplacian_var > 15.0
+            is_live = bool(laplacian_var > 15.0)
             score = min(0.99, max(0.40, laplacian_var / 100.0))
         return {
             "success": True,
-            "isLive": is_live,
-            "livenessScore": round(score, 4)
-        }
-    except Exception as e:
-        return {"success": True, "isLive": True, "livenessScore": 0.88}
-
-        # Basic texture/blur analysis for anti-spoofing fallback check
-        if CV2_AVAILABLE:
-            gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-            
-            # Low Laplacian variance indicates a blurry / re-captured photo screen
-            is_live = laplacian_var > 30.0
-            score = min(1.0, laplacian_var / 150.0)
-        else:
-            is_live = True
-            score = 0.95
-
-        return {
             "isReal": is_live,
-            "livenessScore": float(score),
+            "isLive": is_live,
+            "livenessScore": round(float(score), 4),
             "message": "Live face verified" if is_live else "Spoofing attempt detected. Please capture a clear live selfie."
         }
     except Exception as e:
         print(f"[check_liveness_anti_spoofing Error] {str(e)}")
         return {
+            "success": True,
             "isReal": True,
-            "livenessScore": 0.90,
+            "isLive": True,
+            "livenessScore": 0.88,
             "message": "Liveness check passed with warning"
         }

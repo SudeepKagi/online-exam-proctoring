@@ -15,10 +15,10 @@ function ResultDetailModal({ result, onClose }) {
 
   return (
     <Dialog open={!!result} onOpenChange={open => !open && onClose()}>
-      <DialogContent onClose={onClose} className="max-w-lg bg-[#141416] border-[#27272A] rounded-2xl text-slate-100">
+      <DialogContent onClose={onClose} className="max-w-lg bg-card border-border rounded-2xl text-foreground">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-sm font-semibold text-slate-100">{result.exam?.title || result.examTitle}</DialogTitle>
+            <DialogTitle className="text-sm font-semibold text-foreground">{result.exam?.title || result.examTitle}</DialogTitle>
             <Badge variant={isPassed ? 'default' : 'secondary'} className="font-mono text-[10px]">
               {isPassed ? 'PASSED' : 'FAILED'}
             </Badge>
@@ -26,44 +26,44 @@ function ResultDetailModal({ result, onClose }) {
         </DialogHeader>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 my-3">
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Score</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Score</p>
             <p className="font-mono font-bold text-xs text-white mt-0.5">{result.totalScore} / {result.exam?.totalMarks || result.totalMarks}</p>
           </div>
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Percentage</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Percentage</p>
             <p className="font-mono font-bold text-xs text-white mt-0.5">{result.percentage || 0}%</p>
           </div>
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Integrity Flags</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Integrity Flags</p>
             <p className="font-mono font-bold text-xs text-white mt-0.5">{result.flagCount || 0} flags</p>
           </div>
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Evaluation Date</p>
-            <p className="font-mono text-xs text-slate-200 mt-0.5">{result.gradedAt ? new Date(result.gradedAt).toLocaleDateString() : '—'}</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Evaluation Date</p>
+            <p className="font-mono text-xs text-foreground mt-0.5">{result.gradedAt ? new Date(result.gradedAt).toLocaleDateString() : '—'}</p>
           </div>
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Duration</p>
-            <p className="font-mono text-xs text-slate-200 mt-0.5">{result.timeTaken ? `${Math.round(result.timeTaken / 60)} min` : '60 min'}</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Duration</p>
+            <p className="font-mono text-xs text-foreground mt-0.5">{result.timeTaken ? `${Math.round(result.timeTaken / 60)} min` : '60 min'}</p>
           </div>
-          <div className="bg-[#1F1F22] rounded-xl p-2.5 border border-[#27272A]">
-            <p className="text-[10px] text-slate-400 font-mono uppercase">Biometrics</p>
+          <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 border border-border">
+            <p className="text-[10px] text-muted-foreground font-mono uppercase">Biometrics</p>
             <p className="font-mono text-xs text-white mt-0.5">VERIFIED</p>
           </div>
         </div>
 
         {result.answers && result.answers.length > 0 && (
           <div className="space-y-2 mt-2">
-            <h4 className="text-xs font-semibold text-slate-300">Itemized Question Breakdown</h4>
+            <h4 className="text-xs font-semibold text-foreground/90">Itemized Question Breakdown</h4>
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
               {result.answers.map((a, i) => (
-                <div key={i} className="p-2.5 rounded-xl border border-[#27272A] bg-[#1F1F22] text-xs space-y-1">
-                  <p className="font-medium text-slate-200 text-xs">Q{i + 1}. {a.question?.text?.slice(0, 75)}…</p>
+                <div key={i} className="p-2.5 rounded-xl border border-border bg-[#f8fafc] dark:bg-neutral-900 text-xs space-y-1">
+                  <p className="font-medium text-foreground text-xs">Q{i + 1}. {a.question?.text?.slice(0, 75)}…</p>
                   <div className="flex items-center justify-between text-[11px] font-mono">
                     <span className="text-white font-semibold">
                       {a.isCorrect ? `Correct (+${a.marksAwarded})` : `Incorrect (${a.marksAwarded})`}
                     </span>
-                    <span className="text-slate-400">Selected: {a.selectedOption || a.writtenText || '—'}</span>
+                    <span className="text-muted-foreground">Selected: {a.selectedOption || a.writtenText || '—'}</span>
                   </div>
                 </div>
               ))}
@@ -124,17 +124,17 @@ export default function StudentResults() {
 
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-100">Exam Results & Integrity Docket</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Automated scoring breakdown and proctoring audit log.</p>
+          <h1 className="text-lg font-bold tracking-tight text-foreground">Exam Results & Integrity Docket</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Automated scoring breakdown and proctoring audit log.</p>
         </div>
 
         {/* ── Bento Stat Section: Hero Card + Slim Secondary Row ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Primary Hero Stat Card */}
-          <Card className="lg:col-span-1 border-[#27272A] bg-[#141416] relative overflow-hidden">
+          <Card className="lg:col-span-1 border-border bg-card relative overflow-hidden">
             <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Cumulative Performance</span>
+                <span className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Cumulative Performance</span>
                 <Badge variant="secondary" className="font-mono text-[9px]">
                   {results.length} EXAMS
                 </Badge>
@@ -143,15 +143,15 @@ export default function StudentResults() {
               <div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-extrabold font-mono text-white">{avgScore}%</span>
-                  <span className="text-xs font-mono text-slate-400">average score</span>
+                  <span className="text-xs font-mono text-muted-foreground">average score</span>
                 </div>
                 {/* Progress bar visual */}
-                <div className="w-full h-2 bg-[#27272A] rounded-full mt-3 overflow-hidden">
+                <div className="w-full h-2 bg-border rounded-full mt-3 overflow-hidden">
                   <div className="h-full bg-white rounded-full transition-all" style={{ width: `${avgScore}%` }} />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs font-mono pt-2 border-t border-[#27272A] text-slate-400">
+              <div className="flex items-center justify-between text-xs font-mono pt-2 border-t border-border text-muted-foreground">
                 <span>Pass Rate: <strong className="text-white">{results.length > 0 ? Math.round((passedCount / results.length) * 100) : 0}%</strong></span>
                 <span>Highest: <strong className="text-white">{bestScore}%</strong></span>
               </div>
@@ -160,20 +160,20 @@ export default function StudentResults() {
 
           {/* Slim Secondary Metrics Row */}
           <div className="lg:col-span-2 grid grid-cols-3 gap-3">
-            <div className="bg-[#141416] border border-[#27272A] rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] text-slate-400 uppercase font-mono font-semibold">Evaluated Tests</span>
+            <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
+              <span className="text-[11px] text-muted-foreground uppercase font-mono font-semibold">Evaluated Tests</span>
               <p className="text-2xl font-bold font-mono text-white mt-2">{results.length}</p>
               <span className="text-[10px] text-slate-500 font-mono mt-1">Submitted sessions</span>
             </div>
 
-            <div className="bg-[#141416] border border-[#27272A] rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] text-slate-400 uppercase font-mono font-semibold">Passed Assessments</span>
+            <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
+              <span className="text-[11px] text-muted-foreground uppercase font-mono font-semibold">Passed Assessments</span>
               <p className="text-2xl font-bold font-mono text-white mt-2">{passedCount}</p>
               <span className="text-[10px] text-slate-500 font-mono mt-1">&ge; 40% pass criteria</span>
             </div>
 
-            <div className="bg-[#141416] border border-[#27272A] rounded-2xl p-4 flex flex-col justify-between">
-              <span className="text-[11px] text-slate-400 uppercase font-mono font-semibold">Integrity Flags</span>
+            <div className="bg-card border border-border rounded-2xl p-4 flex flex-col justify-between">
+              <span className="text-[11px] text-muted-foreground uppercase font-mono font-semibold">Integrity Flags</span>
               <p className="text-2xl font-bold font-mono text-white mt-2">{flaggedCount}</p>
               <span className="text-[10px] text-slate-500 font-mono mt-1">Camera / tab alerts</span>
             </div>
@@ -181,12 +181,12 @@ export default function StudentResults() {
         </div>
 
         {/* ── Table & Filter Header ── */}
-        <Card className="border-[#27272A] bg-[#141416]">
-          <CardHeader className="pb-3 border-b border-[#27272A]">
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-3 border-b border-border">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-sm font-semibold text-slate-100">Evaluated Candidate Dossier</CardTitle>
-                <CardDescription className="text-xs text-slate-400">Filtering and proctoring audit log.</CardDescription>
+                <CardTitle className="text-sm font-semibold text-foreground">Evaluated Candidate Dossier</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Filtering and proctoring audit log.</CardDescription>
               </div>
 
               {/* Functional Search & Filter Bar */}
@@ -197,19 +197,19 @@ export default function StudentResults() {
                     value={search}
                     onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
                     placeholder="Search title..."
-                    className="pl-8 h-7 text-xs bg-[#09090B]"
+                    className="pl-8 h-7 text-xs bg-background"
                   />
                 </div>
 
-                <div className="flex bg-[#09090B] border border-[#27272A] rounded-xl p-0.5">
+                <div className="flex bg-background border border-border rounded-xl p-0.5">
                   {['ALL', 'PASSED', 'FAILED', 'FLAGGED'].map(status => (
                     <button
                       key={status}
                       onClick={() => { setFilterStatus(status); setCurrentPage(1) }}
                       className={`px-3 py-1 text-[10px] font-mono font-bold rounded-lg transition-colors ${
                         filterStatus === status
-                          ? 'bg-[#27272A] text-white'
-                          : 'text-slate-400 hover:text-slate-200'
+                          ? 'bg-border text-white'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
                       {status}
@@ -228,13 +228,13 @@ export default function StudentResults() {
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                    <TableHead className="text-xs text-slate-400">Exam Assessment</TableHead>
-                    <TableHead className="text-xs text-slate-400">Evaluation Date</TableHead>
-                    <TableHead className="text-xs text-slate-400">Score & Percentage</TableHead>
-                    <TableHead className="text-xs text-slate-400">Proctoring Integrity</TableHead>
-                    <TableHead className="text-xs text-slate-400">Status</TableHead>
-                    <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+                  <TableRow className="border-b border-border bg-background">
+                    <TableHead className="text-xs text-muted-foreground">Exam Assessment</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Evaluation Date</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Score & Percentage</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Proctoring Integrity</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-xs text-right text-muted-foreground">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -243,12 +243,12 @@ export default function StudentResults() {
                     const flags = r.flagCount || 0
 
                     return (
-                      <TableRow key={r.id || r._id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                        <TableCell className="text-xs font-semibold text-slate-100">
+                      <TableRow key={r.id || r._id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                        <TableCell className="text-xs font-semibold text-foreground">
                           {r.exam?.title || r.examTitle}
                         </TableCell>
 
-                        <TableCell className="text-xs text-slate-400 font-mono">
+                        <TableCell className="text-xs text-muted-foreground font-mono">
                           {new Date(r.gradedAt || r.submittedAt || Date.now()).toLocaleDateString()}
                         </TableCell>
 
@@ -260,7 +260,7 @@ export default function StudentResults() {
                           </span>
                         </TableCell>
 
-                        <TableCell className="text-xs font-mono text-slate-300">
+                        <TableCell className="text-xs font-mono text-foreground/90">
                           {flags === 0 ? '0 Flags (Verified)' : `${flags} Flags Recorded`}
                         </TableCell>
 
@@ -284,7 +284,7 @@ export default function StudentResults() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between px-4 py-3 border-t border-[#27272A] text-xs font-mono text-slate-400 bg-[#09090B]">
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs font-mono text-muted-foreground bg-background">
                 <span>Page {currentPage} of {totalPages} ({filtered.length} total entries)</span>
                 <div className="flex items-center gap-1">
                   <Button

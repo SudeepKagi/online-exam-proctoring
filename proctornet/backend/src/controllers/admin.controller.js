@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs')
 const adminService = require('../services/adminService')
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
@@ -11,6 +12,102 @@ const {
  * Admin Controller
  * Thin HTTP transport adapter delegating to adminService.
  */
+
+async function createFaculty(req, res) {
+  try {
+    const { name, employeeId, email, department, phone, password } = req.body
+    if (!name || !employeeId || !email || !password) {
+      return res.status(400).json({ error: 'Name, Employee ID, Email, and Password are required.' })
+    }
+
+    const empId = employeeId.trim().toUpperCase()
+    const mail = email.trim().toLowerCase()
+
+    const existing = await global.prisma.faculty.findFirst({
+      where: { OR: [{ employeeId: empId }, { email: mail }] }
+    })
+    if (existing) {
+      return res.status(400).json({ error: 'A faculty member with this Employee ID or Email already exists.' })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const faculty = await global.prisma.faculty.create({
+      data: {
+        name: name.trim(),
+        employeeId: empId,
+        email: mail,
+        department: department?.trim() || 'Computer Science',
+        phone: phone?.trim() || null,
+        password: hashedPassword,
+        isApproved: true,
+        mustChangePassword: true,
+      }
+    })
+
+    logAudit({
+      userId: req.user.id,
+      userRole: 'admin',
+      action: 'FACULTY_CREATED_BY_ADMIN',
+      details: `${faculty.name} (${faculty.employeeId})`,
+      ipAddress: getClientIp(req),
+      facultyId: faculty.id
+    })
+
+    res.status(201).json({ message: 'Faculty account created successfully.', faculty })
+  } catch (e) {
+    console.error('[createFaculty]', e)
+    res.status(500).json({ error: e.message || 'Failed to create faculty account.' })
+  }
+}
+
+async function createStudent(req, res) {
+  try {
+    const { name, usn, email, department, semester, phone, password } = req.body
+    if (!name || !usn || !email || !password) {
+      return res.status(400).json({ error: 'Name, USN, Email, and Password are required.' })
+    }
+
+    const studentUsn = usn.trim().toUpperCase()
+    const mail = email.trim().toLowerCase()
+
+    const existing = await global.prisma.student.findFirst({
+      where: { OR: [{ usn: studentUsn }, { email: mail }] }
+    })
+    if (existing) {
+      return res.status(400).json({ error: 'A student with this USN or Email already exists.' })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    const student = await global.prisma.student.create({
+      data: {
+        name: name.trim(),
+        usn: studentUsn,
+        email: mail,
+        department: department?.trim() || 'CSE',
+        semester: parseInt(semester) || 1,
+        phone: phone?.trim() || null,
+        password: hashedPassword,
+        approvalStatus: 'APPROVED',
+        mustChangePassword: true,
+        faceMatchScore: 1.0,
+      }
+    })
+
+    logAudit({
+      userId: req.user.id,
+      userRole: 'admin',
+      action: 'STUDENT_CREATED_BY_ADMIN',
+      details: `${student.name} (${student.usn})`,
+      ipAddress: getClientIp(req),
+      studentId: student.id
+    })
+
+    res.status(201).json({ message: 'Student account created successfully.', student })
+  } catch (e) {
+    console.error('[createStudent]', e)
+    res.status(500).json({ error: e.message || 'Failed to create student account.' })
+  }
+}
 
 // ════════════════════════════════════════════════════
 // FACULTY MANAGEMENT
@@ -133,7 +230,11 @@ async function listStudents(req, res) {
 async function listPendingStudents(req, res) {
   try {
     const students = await adminService.listPendingStudentAccounts()
-    res.json({ students })
+    res.json({
+      students,
+      pending: students,
+      total: students.length
+    })
   } catch (e) {
     console.error('[listPendingStudents]', e)
     res.status(500).json({ error: 'Server error.' })
@@ -160,6 +261,7 @@ async function approveStudent(req, res) {
     sendStudentApprovedEmail(result.original).catch(() => {})
     res.json({ message: `Student "${result.original.name}" approved.`, student: result.student })
   } catch (e) {
+    console.error('[approveStudent]', e)
     res.status(e.status || 500).json({ error: e.message || 'Server error.' })
   }
 }
@@ -167,13 +269,15 @@ async function approveStudent(req, res) {
 async function rejectStudent(req, res) {
   try {
     const { id } = req.params
-    const result = await adminService.rejectStudentAccount(id)
+    const { reason } = req.body
+    const result = await adminService.rejectStudentAccount(id, reason)
     logAudit({
       userId: req.user.id,
       userRole: 'admin',
       action: 'STUDENT_REJECTED',
-      details: `${result.original.name} (${result.original.usn})`,
-      ipAddress: getClientIp(req)
+      details: `${result.original?.name} (${result.original?.usn}) - Reason: ${reason || 'None'}`,
+      ipAddress: getClientIp(req),
+      studentId: id,
     })
     res.json({ message: 'Student rejected.', student: result.student })
   } catch (e) {
@@ -332,15 +436,16 @@ async function getSettings(req, res) {
 
 async function updateSettings(req, res) {
   try {
+    const updates = req.body.settings || req.body
     await adminService.updateSettingsMap({
-      updates: req.body,
+      updates,
       updatedBy: req.user.id
     })
     logAudit({
       userId: req.user.id,
       userRole: 'admin',
       action: 'SETTINGS_UPDATED',
-      details: JSON.stringify(req.body),
+      details: JSON.stringify(updates),
       ipAddress: getClientIp(req)
     })
     res.json({ message: 'Settings updated.' })
@@ -477,4 +582,6 @@ module.exports = {
   listAnnouncements,
   deleteAnnouncement,
   getReports,
+  createFaculty,
+  createStudent,
 }

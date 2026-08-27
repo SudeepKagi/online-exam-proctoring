@@ -49,9 +49,9 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
   }
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-[#09090B]">
+    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground bg-neutral-900">
       <Video size={fallbackSize} />
-      <span className="text-[7px] font-bold uppercase tracking-tight mt-0.5 text-slate-500">Live Video</span>
+      <span className="text-[8px] font-bold uppercase tracking-tight mt-0.5 text-muted-foreground">Live Video</span>
     </div>
   )
 }
@@ -104,9 +104,9 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
   }
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-[#09090B] text-slate-600">
-      <Monitor size={fallbackSize} className="mb-1 text-slate-700 animate-pulse" />
-      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Screen Standby</span>
+    <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-muted-foreground">
+      <Monitor size={fallbackSize} className="mb-1 text-muted-foreground/70 animate-pulse" />
+      <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Screen Standby</span>
     </div>
   )
 }
@@ -126,14 +126,14 @@ export default function StudentGrid({
 
   if (filtered.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-12 text-slate-500 font-mono text-xs">
+      <div className="flex-1 flex flex-col items-center justify-center p-12 text-muted-foreground font-sans text-xs">
         No candidate feeds match the active filter.
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-4 font-sans">
       {filtered.map(student => {
         const flagCount = student.flagCount || 0
         const isCritical = flagCount >= 3
@@ -146,16 +146,16 @@ export default function StudentGrid({
               onRequestStream?.(student.id)
               onSelectStudent?.(student)
             }}
-            className={`group bg-[#141416] border rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-xl ${
+            className={`group bg-card border rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 shadow-xs hover:shadow-lg ${
               isCritical
-                ? 'border-rose-500/50 hover:border-rose-500 ring-1 ring-rose-500/20'
+                ? 'border-destructive/60 hover:border-destructive ring-2 ring-destructive/20'
                 : isWarning
-                ? 'border-amber-500/40 hover:border-amber-500'
-                : 'border-[#27272A] hover:border-indigo-500/50'
+                ? 'border-amber-400 hover:border-amber-500'
+                : 'border-border hover:border-primary/50'
             }`}
           >
             {/* Top Video Preview */}
-            <div className="relative aspect-video bg-[#09090B] overflow-hidden">
+            <div className="relative aspect-video bg-neutral-950 overflow-hidden">
               <WebcamFeed
                 studentId={student.id}
                 initialFrame={student.latestFrame}
@@ -163,31 +163,31 @@ export default function StudentGrid({
               />
 
               {/* Status Badges Overlay */}
-              <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${student.status === 'ACTIVE' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                <span className="text-[10px] font-mono font-bold text-white bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm">
+              <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                <span className={`w-2.5 h-2.5 rounded-full ${student.status === 'ACTIVE' ? 'bg-[#16a34a] animate-pulse' : 'bg-slate-500'}`} />
+                <span className="text-[10px] font-bold text-white bg-black/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
                   {student.usn || student.name}
                 </span>
               </div>
 
               {flagCount > 0 && (
-                <div className="absolute top-2 right-2">
-                  <span className={`flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${
+                <div className="absolute top-2.5 right-2.5">
+                  <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-xs ${
                     isCritical
-                      ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                      : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                      ? 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c]'
+                      : 'bg-[#fffbeb] border-[#fde68a] text-[#b45309]'
                   }`}>
-                    <AlertTriangle size={10} /> {flagCount} Flags
+                    <AlertTriangle size={11} /> {flagCount} Flags
                   </span>
                 </div>
               )}
             </div>
 
             {/* Bottom Student Metadata */}
-            <div className="p-3 flex items-center justify-between border-t border-[#27272A] bg-[#141416]">
+            <div className="p-3.5 flex items-center justify-between border-t border-border bg-card">
               <div className="min-w-0">
-                <h4 className="text-xs font-bold text-slate-100 truncate">{student.name}</h4>
-                <p className="text-[10px] font-mono text-slate-400 truncate">{student.department || 'Candidate'}</p>
+                <h4 className="text-xs font-bold text-foreground truncate">{student.name}</h4>
+                <p className="text-[10px] text-muted-foreground truncate font-medium">{student.department || 'Candidate'}</p>
               </div>
 
               <button
@@ -196,9 +196,10 @@ export default function StudentGrid({
                   onRequestStream?.(student.id)
                   onSelectStudent?.(student)
                 }}
-                className="p-1.5 rounded-lg bg-[#09090B] border border-[#27272A] text-slate-400 group-hover:text-indigo-400 group-hover:border-indigo-500/30 transition-colors shrink-0"
+                className="p-1.5 rounded-xl bg-[#eff6ff] border border-[#d5e6fb] text-primary hover:bg-primary hover:text-white transition-colors shrink-0 cursor-pointer dark:bg-neutral-800 dark:border-neutral-700"
+                aria-label={`View dossier for ${student.name}`}
               >
-                <Eye size={14} />
+                <Eye size={15} />
               </button>
             </div>
           </div>

@@ -44,12 +44,12 @@ export default function AdminAuditLogs() {
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-100">System Audit Trail</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Track all administrative, student, and security actions platform-wide</p>
+            <h1 className="text-xl font-bold text-foreground">System Audit Trail</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Track all administrative, student, and security actions platform-wide</p>
           </div>
           <button
             onClick={fetchLogs}
-            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-[#27272A] bg-[#141416] hover:bg-[#18181B] text-slate-300 rounded-xl transition"
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-border bg-card hover:bg-[#f8fafc] dark:bg-neutral-900 text-foreground/90 rounded-xl transition"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
@@ -63,7 +63,7 @@ export default function AdminAuditLogs() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search action, IP, details..."
-              className="w-full pl-9 pr-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+              className="w-full pl-9 pr-3 py-1.5 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary"
             />
           </div>
 
@@ -73,7 +73,7 @@ export default function AdminAuditLogs() {
               setFilterRole(e.target.value)
               setPage(1)
             }}
-            className="px-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            className="px-3 py-1.5 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary"
           >
             <option value="">All User Roles</option>
             {['admin', 'faculty', 'student', 'invigilator'].map((r) => (
@@ -83,43 +83,43 @@ export default function AdminAuditLogs() {
         </div>
 
         {/* Audit Log Table */}
-        <Card className="bg-[#141416] border-[#27272A] shadow-xl overflow-hidden">
+        <Card className="bg-card border-border shadow-xl overflow-hidden">
           {loading ? (
             <div className="p-8 space-y-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-10 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+                <div key={i} className="h-10 bg-background border border-border rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center">
               <ClipboardList size={36} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-300 font-semibold text-sm">No audit logs found</p>
+              <p className="text-foreground/90 font-semibold text-sm">No audit logs found</p>
               <p className="text-xs text-slate-500 mt-1">No system logs match your filter criteria.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                  <TableHead className="text-xs text-slate-400 font-mono">Timestamp</TableHead>
-                  <TableHead className="text-xs text-slate-400 font-mono">Role</TableHead>
-                  <TableHead className="text-xs text-slate-400">Action</TableHead>
-                  <TableHead className="text-xs text-slate-400">Details</TableHead>
-                  <TableHead className="text-xs text-slate-400 font-mono text-right">IP Address</TableHead>
+                <TableRow className="border-b border-border bg-background">
+                  <TableHead className="text-xs text-muted-foreground font-mono">Timestamp</TableHead>
+                  <TableHead className="text-xs text-muted-foreground font-mono">Role</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Action</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Details</TableHead>
+                  <TableHead className="text-xs text-muted-foreground font-mono text-right">IP Address</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((log, i) => (
-                  <TableRow key={log.id || i} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                    <TableCell className="font-mono text-xs text-slate-400 whitespace-nowrap">
+                  <TableRow key={log.id || i} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                    <TableCell className="font-mono text-xs text-muted-foreground whitespace-nowrap">
                       {log.createdAt ? new Date(log.createdAt).toLocaleString() : new Date().toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="font-mono text-[10px] text-indigo-400 border-indigo-500/30 bg-indigo-500/10 uppercase">
+                      <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30 bg-primary/10 uppercase">
                         {log.userRole || 'system'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="font-mono font-semibold text-xs text-slate-200">{log.action}</TableCell>
-                    <TableCell className="text-xs text-slate-400 max-w-md truncate">{log.details || '—'}</TableCell>
+                    <TableCell className="font-mono font-semibold text-xs text-foreground">{log.action}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-md truncate">{log.details || '—'}</TableCell>
                     <TableCell className="font-mono text-xs text-slate-500 text-right">{log.ipAddress || '127.0.0.1'}</TableCell>
                   </TableRow>
                 ))}

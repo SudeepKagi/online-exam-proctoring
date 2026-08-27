@@ -45,8 +45,8 @@ export default function FacultyStudents() {
       <div className="flex flex-col gap-5 py-2">
         <div className="px-4 lg:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100 font-sans">Student Registry</h1>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">Enrolled students and registered biometric status.</p>
+            <h1 className="text-lg font-bold tracking-tight text-foreground font-sans">Student Registry</h1>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">Enrolled students and registered biometric status.</p>
           </div>
 
           <div className="relative w-64">
@@ -55,16 +55,16 @@ export default function FacultyStudents() {
               value={search}
               onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
               placeholder="Search name, USN, or department..."
-              className="pl-8 h-8 text-xs bg-[#141416] border-[#27272A]"
+              className="pl-8 h-8 text-xs bg-card border-border"
             />
           </div>
         </div>
 
         <div className="px-4 lg:px-6">
-          <Card className="border-[#27272A] bg-[#141416]">
-            <CardHeader className="pb-3 border-b border-[#27272A]">
-              <CardTitle className="text-sm font-semibold text-slate-100">Enrolled Students</CardTitle>
-              <CardDescription className="text-xs text-slate-400 font-mono">Total {filtered.length} students matched.</CardDescription>
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3 border-b border-border">
+              <CardTitle className="text-sm font-semibold text-foreground">Enrolled Students</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground font-mono">Total {filtered.length} students matched.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
@@ -74,32 +74,32 @@ export default function FacultyStudents() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                      <TableHead className="text-xs text-slate-400">Student</TableHead>
-                      <TableHead className="text-xs text-slate-400">USN</TableHead>
-                      <TableHead className="text-xs text-slate-400">Department</TableHead>
-                      <TableHead className="text-xs text-slate-400">Face Verification</TableHead>
-                      <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+                    <TableRow className="border-b border-border bg-background">
+                      <TableHead className="text-xs text-muted-foreground">Student</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">USN</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Department</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Face Verification</TableHead>
+                      <TableHead className="text-xs text-right text-muted-foreground">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginated.map((student) => (
-                      <TableRow key={student.id || student._id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                        <TableCell className="text-xs font-semibold text-slate-100">
+                      <TableRow key={student.id || student._id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                        <TableCell className="text-xs font-semibold text-foreground">
                           <div className="flex items-center gap-2.5">
-                            <Avatar className="h-7 w-7 border border-[#27272A]">
-                              <AvatarFallback className="font-mono text-[10px] bg-[#27272A] text-white">
+                            <Avatar className="h-7 w-7 border border-border">
+                              <AvatarFallback className="font-mono text-[10px] bg-border text-white">
                                 {student.name?.slice(0, 2).toUpperCase()}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-xs font-semibold text-slate-100">{student.name}</p>
-                              <p className="text-[10px] font-mono text-slate-400">{student.email}</p>
+                              <p className="text-xs font-semibold text-foreground">{student.name}</p>
+                              <p className="text-[10px] font-mono text-muted-foreground">{student.email}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs text-slate-300 font-mono">{student.usn}</TableCell>
-                        <TableCell className="text-xs text-slate-300 font-mono">{student.department || 'ECE'}</TableCell>
+                        <TableCell className="text-xs text-foreground/90 font-mono">{student.usn}</TableCell>
+                        <TableCell className="text-xs text-foreground/90 font-mono">{student.department || 'ECE'}</TableCell>
                         <TableCell>
                           <Badge variant={student.verified ? 'default' : 'secondary'} className="font-mono text-[10px]">
                             {student.verified ? 'VERIFIED' : 'PENDING'}
@@ -118,7 +118,7 @@ export default function FacultyStudents() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-[#27272A] text-xs font-mono text-slate-400 bg-[#09090B]">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-border text-xs font-mono text-muted-foreground bg-background">
                   <span>Page {currentPage} of {totalPages}</span>
                   <div className="flex items-center gap-1">
                     <Button

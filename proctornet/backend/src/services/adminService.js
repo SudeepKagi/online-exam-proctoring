@@ -126,11 +126,30 @@ async function listStudentAccounts(query) {
 
 async function listPendingStudentAccounts() {
   const students = await global.prisma.student.findMany({
-    where: { approvalStatus: 'PENDING_FACULTY' },
+    where: {
+      OR: [
+        { profileStatus: 'SUBMITTED' },
+        { approvalStatus: 'PENDING' },
+        { approvalStatus: 'SUBMITTED' },
+        { approvalStatus: 'PENDING_FACULTY' }
+      ]
+    },
     select: {
-      id: true, name: true, email: true, usn: true, department: true,
-      semester: true, facePhotoUrl: true, idCardPhotoUrl: true,
-      faceMatchScore: true, approvalStatus: true, createdAt: true,
+      id: true,
+      name: true,
+      email: true,
+      usn: true,
+      department: true,
+      semester: true,
+      facePhotoUrl: true,
+      idCardPhotoUrl: true,
+      idCroppedFaceUrl: true,
+      idOcrFields: true,
+      faceMatchScore: true,
+      approvalStatus: true,
+      profileStatus: true,
+      isSuspended: true,
+      createdAt: true,
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -147,13 +166,18 @@ async function approveStudentAccount({ id, approvedBy }) {
 
   const updated = await global.prisma.student.update({
     where: { id },
-    data: { approvalStatus: 'APPROVED', approvedBy, approvedAt: new Date() },
+    data: {
+      approvalStatus: 'APPROVED',
+      profileStatus: 'VERIFIED',
+      approvedBy,
+      approvedAt: new Date()
+    },
   })
 
   return { student: updated, original: student }
 }
 
-async function rejectStudentAccount(id) {
+async function rejectStudentAccount(id, reason) {
   const student = await global.prisma.student.findUnique({ where: { id } })
   if (!student) {
     const error = new Error('Student not found.')
@@ -162,7 +186,11 @@ async function rejectStudentAccount(id) {
   }
   const updated = await global.prisma.student.update({
     where: { id },
-    data: { approvalStatus: 'REJECTED' },
+    data: {
+      approvalStatus: 'REJECTED',
+      profileStatus: 'REJECTED',
+      rejectionReason: reason || 'Biometric ID verification rejected by administration.'
+    },
   })
   return { student: updated, original: student }
 }
@@ -312,7 +340,13 @@ async function getAdminDashboardStats() {
 async function getSettingsMap() {
   const settings = await global.prisma.platformSetting.findMany({ orderBy: { key: 'asc' } })
   const map = {}
-  settings.forEach(s => { map[s.key] = s.value })
+  settings.forEach(s => {
+    let val = s.value
+    if (val === 'true') val = true
+    else if (val === 'false') val = false
+    else if (!isNaN(Number(val)) && val.trim() !== '') val = Number(val)
+    map[s.key] = val
+  })
   return map
 }
 

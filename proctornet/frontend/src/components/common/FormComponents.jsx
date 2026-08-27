@@ -102,11 +102,11 @@ export function SubmitButton({ children, loading, disabled, variant = 'primary',
       type="submit"
       disabled={loading || disabled}
       className={`btn-${variant}`}
-      style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', fontSize: '0.9375rem', ...extraStyle }}
+      style={{ width: '100%', marginTop: '1rem', padding: '0.75rem 1rem', fontSize: '0.9375rem', borderRadius: '12px', ...extraStyle }}
     >
       {loading ? (
         <>
-          <span className="spinner" style={{ width: '1rem', height: '1rem', borderWidth: 2 }} />
+          <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
           Loading…
         </>
       ) : children}
@@ -117,31 +117,29 @@ export function SubmitButton({ children, loading, disabled, variant = 'primary',
 /* ── Alert / Error Banner ── */
 export function Alert({ type = 'danger', message }) {
   if (!message) return null
+  const alertStyles = {
+    danger: 'bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c]',
+    success: 'bg-[#ecfdf5] border border-[#bbf7d0] text-[#166534]',
+    info: 'bg-[#eff6ff] border border-[#d5e6fb] text-[#1c4d8e]',
+  }
+  const currentStyle = alertStyles[type] || alertStyles.info
+
   return (
-    <div className={`alert-${type}`} style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', gap: '0.625rem' }}>
+    <div className={`p-3.5 rounded-xl text-xs font-semibold flex items-start gap-2.5 mb-4 ${currentStyle}`}>
       <Icon name={type === 'danger' ? 'error' : type === 'success' ? 'check_circle' : 'info'} size={18} />
-      <span>{message}</span>
+      <span className="leading-relaxed">{message}</span>
     </div>
   )
 }
 
-/* ── InfoBox (like the Stitch "Registration requires admin approval" box) ── */
+/* ── InfoBox ── */
 export function InfoBox({ children }) {
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '0.75rem',
-      padding: '0.875rem 1rem',
-      background: 'var(--surface-container)',
-      border: '1px solid rgba(195,198,215,0.5)',
-      borderRadius: 8,
-      marginBottom: '1rem',
-    }}>
-      <Icon name="info" size={18} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 1 }} />
-      <p style={{ fontSize: '0.8125rem', color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
+    <div className="flex items-start gap-3 p-3.5 bg-[#eff6ff] border border-[#d5e6fb] rounded-xl mb-4 text-[#1c4d8e]">
+      <Icon name="info" size={18} className="text-[#2f80ed] shrink-0 mt-0.5" />
+      <div className="text-xs font-medium leading-relaxed text-[#1c4d8e]">
         {children}
-      </p>
+      </div>
     </div>
   )
 }

@@ -223,7 +223,7 @@ export default function StudentDossier() {
           .card { border: none !important; box-shadow: none !important; }
           body { background: white !important; color: black !important; }
           .page-header { border-bottom: 2px solid black; padding-bottom: 1rem; margin-bottom: 2rem; }
-          .page-title::before { content: "CERTIFIED FORENSIC RECORD: "; font-weight: 400; font-size: 0.75rem; display: block; }
+          .page-title::before { content: "CERTIFIED EXAMINATION RECORD: "; font-weight: 400; font-size: 0.75rem; display: block; }
           .integrity-timeline { display: block !important; }
           .signature-box { display: block !important; margin-top: 4rem; border-top: 1px solid black; width: 250px; padding-top: 0.5rem; font-weight: 700; }
         }

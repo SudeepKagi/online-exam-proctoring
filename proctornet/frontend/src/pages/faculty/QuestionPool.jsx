@@ -18,17 +18,17 @@ const diffColor = { EASY: 'bg-emerald-500/10 text-emerald-400 border border-emer
 function QuestionCard({ q, index, onDelete, onEdit }) {
   const [open, setOpen] = useState(false)
   return (
-    <Card className="bg-[#141416] border-[#27272A] overflow-hidden font-sans">
+    <Card className="bg-card border-border overflow-hidden font-sans">
       <div className="flex items-center gap-3 p-4 cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
-        <span className="w-6 h-6 rounded-full bg-[#09090B] border border-[#27272A] text-slate-300 text-xs font-mono font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
-        <p className="flex-1 text-xs text-slate-100 font-semibold line-clamp-2">{q.questionText}</p>
+        <span className="w-6 h-6 rounded-full bg-background border border-border text-foreground/90 text-xs font-mono font-bold flex items-center justify-center flex-shrink-0">{index + 1}</span>
+        <p className="flex-1 text-xs text-foreground font-semibold line-clamp-2">{q.questionText}</p>
         <div className="flex items-center gap-2 flex-shrink-0 font-mono text-xs">
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${diffColor[q.difficulty] || diffColor.MEDIUM}`}>{q.difficulty}</span>
-          <span className="text-slate-400">{q.marks}m</span>
-          <Badge variant="outline" className="text-[10px] border-[#27272A] bg-[#09090B]">{q.type}</Badge>
-          <button onClick={e => { e.stopPropagation(); onEdit(q) }} className="p-1.5 hover:bg-[#27272A] rounded-lg text-indigo-400"><Edit3 size={13} /></button>
+          <span className="text-muted-foreground">{q.marks}m</span>
+          <Badge variant="outline" className="text-[10px] border-border bg-background">{q.type}</Badge>
+          <button onClick={e => { e.stopPropagation(); onEdit(q) }} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-primary"><Edit3 size={13} /></button>
           <button onClick={e => { e.stopPropagation(); onDelete(q.id) }} className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-400"><Trash2 size={13} /></button>
-          {open ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+          {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
         </div>
       </div>
       {open && q.type === 'MCQ' && Array.isArray(q.options) && q.options.length > 0 && (
@@ -37,7 +37,7 @@ function QuestionCard({ q, index, onDelete, onEdit }) {
             const text = typeof opt === 'string' ? opt : opt.text
             const correct = typeof opt === 'object' ? opt.isCorrect : text === q.correctAnswer
             return (
-              <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${correct ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold' : 'bg-[#09090B] text-slate-400 border border-[#27272A]'}`}>
+              <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${correct ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold' : 'bg-background text-muted-foreground border border-border'}`}>
                 {correct && <CheckCircle2 size={12} className="text-emerald-400 flex-shrink-0" />}
                 <span>{text}</span>
               </div>
@@ -47,8 +47,8 @@ function QuestionCard({ q, index, onDelete, onEdit }) {
       )}
       {open && q.type !== 'MCQ' && q.correctAnswer && (
         <div className="px-4 pb-4 text-xs font-sans">
-          <p className="text-[10px] font-mono text-slate-400 mb-1">Model Answer / Key Points</p>
-          <p className="text-slate-300 bg-[#09090B] border border-[#27272A] rounded-xl p-3">{q.correctAnswer}</p>
+          <p className="text-[10px] font-mono text-muted-foreground mb-1">Model Answer / Key Points</p>
+          <p className="text-foreground/90 bg-background border border-border rounded-xl p-3">{q.correctAnswer}</p>
         </div>
       )}
     </Card>
@@ -128,14 +128,14 @@ export default function QuestionPool() {
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100">{exam?.title || 'Question Pool'}</h1>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">Subject: {exam?.subject || 'CS301'} • Total Questions: {questions.length}</p>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">{exam?.title || 'Question Pool'}</h1>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">Subject: {exam?.subject || 'CS301'} • Total Questions: {questions.length}</p>
           </div>
           <div className="flex items-center gap-2 font-mono">
-            <Button size="sm" variant="outline" onClick={() => setShowAI(s => !s)} className="text-xs border-[#27272A]">
-              <Sparkles size={14} className="mr-1.5 text-indigo-400" /> AI Generator
+            <Button size="sm" variant="outline" onClick={() => setShowAI(s => !s)} className="text-xs border-border">
+              <Sparkles size={14} className="mr-1.5 text-primary" /> AI Generator
             </Button>
-            <Button size="sm" onClick={() => { setEditQ(null); setShowForm(true) }} className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
+            <Button size="sm" onClick={() => { setEditQ(null); setShowForm(true) }} className="text-xs bg-primary hover:bg-primary text-white font-bold">
               <Plus size={14} className="mr-1.5" /> Add Question
             </Button>
           </div>
@@ -146,7 +146,7 @@ export default function QuestionPool() {
           {loading ? (
             <div className="p-8 text-center text-xs font-mono text-slate-500">Loading questions…</div>
           ) : questions.length === 0 ? (
-            <Card className="bg-[#141416] border-[#27272A] p-8 text-center text-xs font-mono text-slate-500">
+            <Card className="bg-card border-border p-8 text-center text-xs font-mono text-slate-500">
               No questions found in pool. Use AI Generator or Add Question to populate this exam.
             </Card>
           ) : (

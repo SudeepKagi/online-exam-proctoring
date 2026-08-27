@@ -23,19 +23,19 @@ export default function ConfirmDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-[#141416] border-[#27272A] text-slate-100 p-6 rounded-2xl shadow-2xl">
+      <DialogContent className="max-w-md bg-card border-border text-foreground p-6 rounded-2xl shadow-2xl">
         <DialogHeader className="flex flex-col items-center sm:items-start gap-2">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${
               variant === 'destructive'
-                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400'
+                ? 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c]'
+                : 'bg-[#eff6ff] border-[#d5e6fb] text-primary'
             }`}>
               {variant === 'destructive' ? <AlertTriangle size={20} /> : <AlertCircle size={20} />}
             </div>
-            <DialogTitle className="text-base font-bold text-slate-100 font-sans">{title}</DialogTitle>
+            <DialogTitle className="text-base font-bold text-foreground font-sans">{title}</DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-slate-400 leading-relaxed font-sans mt-1">
+          <DialogDescription className="text-xs text-muted-foreground leading-relaxed font-sans mt-1">
             {description}
           </DialogDescription>
         </DialogHeader>
@@ -45,7 +45,7 @@ export default function ConfirmDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B] hover:text-white"
+            className="text-xs font-semibold"
           >
             {cancelText}
           </Button>

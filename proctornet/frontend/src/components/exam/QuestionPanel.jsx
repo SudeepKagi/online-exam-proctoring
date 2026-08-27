@@ -24,34 +24,34 @@ export default function QuestionPanel({
 
   if (!currentQ) {
     return (
-      <main className="flex-1 flex items-center justify-center bg-[#09090B] text-xs font-mono text-slate-500">
+      <main className="flex-1 flex items-center justify-center bg-background text-xs font-sans text-muted-foreground">
         No questions loaded for this exam.
       </main>
     )
   }
 
   return (
-    <main className="flex-1 flex flex-col overflow-hidden bg-[#09090B]">
-      <div className="flex-1 overflow-y-auto p-5 lg:p-6">
+    <main className="flex-1 flex flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex-1 overflow-y-auto p-5 lg:p-7">
         {/* Question Header: Number, Difficulty, Marks, Flag Button */}
-        <div className="flex items-start justify-between mb-5">
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <div className="flex items-center gap-2 mb-1.5 font-mono">
-              <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wide">
+            <div className="flex items-center gap-2.5 mb-2 font-sans">
+              <span className="text-xs font-bold text-primary uppercase tracking-wide">
                 Question {currentIdx + 1} of {questions.length}
               </span>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold border ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                 currentQ.difficulty === 'HARD'
-                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                  ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]'
                   : currentQ.difficulty === 'EASY'
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  ? 'bg-[#ecfdf5] text-[#166534] border-[#bbf7d0]'
+                  : 'bg-[#fffbeb] text-[#b45309] border-[#fde68a]'
               }`}>
                 {currentQ.difficulty || 'MEDIUM'}
               </span>
-              <span className="text-xs text-slate-500">{currentQ.marks} marks</span>
+              <span className="text-xs text-muted-foreground font-medium">{currentQ.marks} marks</span>
             </div>
-            <p className="text-base font-medium text-slate-100 leading-relaxed max-w-3xl font-sans">
+            <p className="text-base font-bold text-foreground leading-relaxed max-w-3xl font-sans">
               {currentQ.questionText}
             </p>
           </div>
@@ -59,11 +59,12 @@ export default function QuestionPanel({
           <button
             onClick={() => toggleFlag(currentQ.id)}
             title={flagged.has(currentQ.id) ? 'Remove Flag' : 'Flag Question for Review'}
-            className={`p-2.5 rounded-xl border transition-colors ${
+            className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
               flagged.has(currentQ.id)
-                ? 'bg-amber-500/20 border-amber-500/40 text-amber-400'
-                : 'bg-[#141416] border-[#27272A] hover:bg-[#18181B] text-slate-400'
+                ? 'bg-[#fffbeb] border-[#fde68a] text-[#b45309]'
+                : 'bg-card border-border hover:bg-[#eff6ff] text-muted-foreground hover:text-primary'
             }`}
+            aria-label="Flag question"
           >
             <Flag size={16} />
           </button>
@@ -71,7 +72,7 @@ export default function QuestionPanel({
 
         {/* ── Type 1: MCQ (A, B, C, D) ── */}
         {currentQ.type === 'MCQ' && (
-          <div className="space-y-2.5 max-w-3xl">
+          <div className="space-y-3 max-w-3xl">
             {['A', 'B', 'C', 'D'].map((opt, i) => {
               const optRaw = currentQ[`option${opt}`] || currentQ.options?.[i]
               if (!optRaw) return null
@@ -92,14 +93,15 @@ export default function QuestionPanel({
                 <button
                   key={opt}
                   onClick={() => setAnswer(currentQ.id, 'selected', opt)}
-                  className={`w-full text-left flex items-center gap-3.5 px-4 py-3.5 rounded-xl border transition-all ${
+                  className={`w-full text-left flex items-center gap-3.5 px-4.5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
                     selected
-                      ? 'bg-indigo-600/15 border-indigo-500 text-white shadow-sm shadow-indigo-600/10'
-                      : 'bg-[#141416] border-[#27272A] text-slate-300 hover:border-[#3F3F46] hover:bg-[#18181B]'
+                      ? 'bg-[#eff6ff] border-primary text-foreground shadow-xs font-semibold dark:bg-neutral-800'
+                      : 'bg-card border-border text-foreground hover:border-primary/50 hover:bg-[#eff6ff]/30'
                   }`}
+                  aria-pressed={selected}
                 >
-                  <span className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 font-mono ${
-                    selected ? 'bg-indigo-600 text-white' : 'bg-[#18181B] border border-[#27272A] text-slate-400'
+                  <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0 ${
+                    selected ? 'bg-primary text-white' : 'bg-[#f1f5f9] border border-border text-muted-foreground dark:bg-neutral-800'
                   }`}>
                     {opt}
                   </span>
@@ -112,15 +114,16 @@ export default function QuestionPanel({
 
         {/* ── Type 2: CODE (Monaco Editor) ── */}
         {currentQ.type === 'CODE' && (
-          <div className="rounded-2xl overflow-hidden border border-[#27272A] bg-[#141416] max-w-4xl">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#141416] border-b border-[#27272A]">
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-                <Code size={13} className="text-indigo-400" /> Embedded IDE
+          <div className="rounded-2xl overflow-hidden border border-border bg-card max-w-4xl shadow-xs">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f8fafc] dark:bg-neutral-900 border-b border-border">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                <Code size={14} className="text-primary" /> Embedded IDE
               </div>
               <select
                 value={codeLanguage}
                 onChange={e => setCodeLanguage(e.target.value)}
-                className="bg-[#09090B] text-slate-300 font-mono text-xs rounded-lg px-2.5 py-1 border border-[#27272A] outline-none"
+                className="bg-card text-foreground font-sans text-xs rounded-xl px-3 py-1 border border-border outline-none font-medium cursor-pointer"
+                aria-label="Code language"
               >
                 <option value="python">Python 3</option>
                 <option value="javascript">JavaScript (Node)</option>
@@ -153,9 +156,10 @@ export default function QuestionPanel({
               onChange={e => setAnswer(currentQ.id, 'text', e.target.value)}
               placeholder="Type your explanation or structured answer here…"
               rows={9}
-              className="w-full bg-[#141416] border border-[#27272A] rounded-2xl text-slate-100 text-sm p-4 focus:outline-none focus:border-indigo-500 resize-none font-sans leading-relaxed"
+              className="w-full bg-card border border-border rounded-2xl text-foreground text-sm p-4 focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/10 resize-none font-sans leading-relaxed transition-all shadow-xs"
+              aria-label="Subjective answer"
             />
-            <div className="flex justify-between text-[11px] font-mono text-slate-500 px-1">
+            <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium">
               <span>Word Limit: {currentQ.wordLimitMin || 0} - {currentQ.wordLimitMax || 500} words</span>
               <span>{(answers[currentQ.id]?.text || '').trim().split(/\s+/).filter(Boolean).length} words</span>
             </div>
@@ -164,26 +168,26 @@ export default function QuestionPanel({
       </div>
 
       {/* ── Navigation Footer ── */}
-      <footer className="flex items-center justify-between px-6 py-3 bg-[#141416] border-t border-[#27272A] shrink-0 font-mono">
+      <footer className="flex items-center justify-between px-6 py-3.5 bg-card border-t border-border shrink-0 font-sans shadow-xs">
         <button
           disabled={currentIdx === 0}
           onClick={() => setCurrentIdx(i => Math.max(0, i - 1))}
-          className="flex items-center gap-2 px-4 py-2 bg-[#09090B] hover:bg-[#18181B] text-slate-300 border border-[#27272A] text-xs font-medium rounded-xl disabled:opacity-40 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-neutral-50 dark:hover:bg-neutral-800 text-foreground border border-border text-xs font-bold rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
         >
           <ChevronLeft size={16} /> Previous
         </button>
 
-        <div className="flex items-center gap-1.5 text-xs text-slate-400">
-          <CheckCircle size={14} className="text-emerald-400" />
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+          <CheckCircle size={15} className="text-[#16a34a]" />
           <span>
-            <span className="text-emerald-400 font-semibold">{answeredCount}</span>/{questions.length} Answered
+            <span className="text-[#16a34a] font-bold">{answeredCount}</span>/{questions.length} Answered
           </span>
         </div>
 
         {currentIdx < questions.length - 1 ? (
           <button
             onClick={() => setCurrentIdx(i => Math.min(questions.length - 1, i + 1))}
-            className="flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-indigo-600/20"
+            className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
           >
             Next <ChevronRight size={16} />
           </button>
@@ -191,7 +195,7 @@ export default function QuestionPanel({
           <button
             disabled={submitting}
             onClick={onSubmitRequest}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl disabled:opacity-60 transition-all shadow-md shadow-emerald-600/20"
+            className="flex items-center gap-2 px-5 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold rounded-xl disabled:opacity-60 transition-all shadow-xs cursor-pointer"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -63,24 +63,24 @@ export default function AdminReports() {
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Reports & Analytics</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Platform-wide exam participation, performance metrics, and security insights</p>
+            <h1 className="text-xl font-bold text-foreground">Reports & Analytics</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Platform-wide exam participation, performance metrics, and security insights</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex bg-[#141416] border border-[#27272A] rounded-full p-1">
+            <div className="flex bg-card border border-border rounded-full p-1">
               {['7d', '30d', '90d'].map((p) => (
                 <button
                   key={p}
                   onClick={() => setPeriod(p)}
                   className={`px-3 py-1 text-xs font-mono font-bold rounded-full transition-colors ${
-                    period === p ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+                    period === p ? 'bg-white text-black' : 'text-muted-foreground hover:text-white'
                   }`}
                 >
                   {p === '7d' ? '7 Days' : p === '30d' ? '30 Days' : '90 Days'}
                 </button>
               ))}
             </div>
-            <Button className="text-xs font-mono bg-[#141416] border border-[#27272A] hover:bg-[#18181B] text-slate-300">
+            <Button className="text-xs font-mono bg-card border border-border hover:bg-[#f8fafc] dark:bg-neutral-900 text-foreground/90">
               <Download size={13} className="mr-1.5" /> Export Report
             </Button>
           </div>
@@ -89,20 +89,20 @@ export default function AdminReports() {
         {/* Summary stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {loading
-            ? [...Array(4)].map((_, i) => <div key={i} className="h-20 bg-[#141416] border border-[#27272A] rounded-2xl animate-pulse" />)
+            ? [...Array(4)].map((_, i) => <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />)
             : [
-                { label: 'Total Exams', value: summary.totalExams ?? '—', icon: BookOpen, color: 'text-indigo-400' },
+                { label: 'Total Exams', value: summary.totalExams ?? '—', icon: BookOpen, color: 'text-primary' },
                 { label: 'Total Candidates', value: summary.totalStudents ?? '—', icon: Users, color: 'text-emerald-400' },
                 { label: 'Avg Pass Score', value: summary.avgScore ? `${summary.avgScore}%` : '—', icon: TrendingUp, color: 'text-indigo-300' },
                 { label: 'Violations Flagged', value: summary.violationsThisWeek ?? '—', icon: BarChart2, color: 'text-rose-400' },
               ].map(({ label, value, icon: Icon, color }) => (
-                <Card key={label} className="bg-[#141416] border-[#27272A] p-4 flex items-center gap-3.5 shadow-xl">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                <Card key={label} className="bg-card border-border p-4 flex items-center gap-3.5 shadow-xl">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
                     <Icon size={18} className={color} />
                   </div>
                   <div>
-                    <p className="text-[11px] font-mono text-slate-400 uppercase">{label}</p>
-                    <p className="text-xl font-bold font-mono text-slate-100 mt-0.5">{value}</p>
+                    <p className="text-[11px] font-mono text-muted-foreground uppercase">{label}</p>
+                    <p className="text-xl font-bold font-mono text-foreground mt-0.5">{value}</p>
                   </div>
                 </Card>
               ))}
@@ -110,20 +110,20 @@ export default function AdminReports() {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
           {/* Exam Activity Chart */}
-          <Card className="xl:col-span-2 bg-[#141416] border-[#27272A] shadow-xl p-5">
+          <Card className="xl:col-span-2 bg-card border-border shadow-xl p-5">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-sm font-bold text-slate-100">Exam Activity & Candidate Volume</CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground">Exam Activity & Candidate Volume</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
-                <div className="h-56 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+                <div className="h-56 bg-background border border-border rounded-xl animate-pulse" />
               ) : (
                 <ResponsiveContainer width="100%" height={230}>
                   <BarChart data={data?.examActivity || []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272A" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#A1A1AA' }} />
                     <YAxis tick={{ fontSize: 11, fill: '#A1A1AA' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#09090B', borderColor: '#27272A', borderRadius: 8, color: '#F4F4F5' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 12, color: '#18181b', boxShadow: '0 4px 8px -2px rgba(16,24,40,0.08)' }} />
                     <Bar dataKey="students" name="Students" fill="#6366F1" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="exams" name="Exams" fill="#10B981" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -133,13 +133,13 @@ export default function AdminReports() {
           </Card>
 
           {/* Violation Types Pie */}
-          <Card className="bg-[#141416] border-[#27272A] shadow-xl p-5">
+          <Card className="bg-card border-border shadow-xl p-5">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-sm font-bold text-slate-100">Violation Types Breakdown</CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground">Violation Types Breakdown</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
-                <div className="h-56 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+                <div className="h-56 bg-background border border-border rounded-xl animate-pulse" />
               ) : (
                 <>
                   <ResponsiveContainer width="100%" height={160}>
@@ -149,7 +149,7 @@ export default function AdminReports() {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#09090B', borderColor: '#27272A', borderRadius: 8, color: '#F4F4F5' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 12, color: '#18181b', boxShadow: '0 4px 8px -2px rgba(16,24,40,0.08)' }} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="space-y-1.5 mt-2">
@@ -157,9 +157,9 @@ export default function AdminReports() {
                       <div key={item.name} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
-                          <span className="text-slate-400">{item.name}</span>
+                          <span className="text-muted-foreground">{item.name}</span>
                         </div>
-                        <span className="font-mono font-semibold text-slate-200">{item.value}</span>
+                        <span className="font-mono font-semibold text-foreground">{item.value}</span>
                       </div>
                     ))}
                   </div>
@@ -169,20 +169,20 @@ export default function AdminReports() {
           </Card>
 
           {/* Score Distribution */}
-          <Card className="xl:col-span-3 bg-[#141416] border-[#27272A] shadow-xl p-5">
+          <Card className="xl:col-span-3 bg-card border-border shadow-xl p-5">
             <CardHeader className="p-0 pb-4">
-              <CardTitle className="text-sm font-bold text-slate-100">Score Range Distribution (%)</CardTitle>
+              <CardTitle className="text-sm font-bold text-foreground">Score Range Distribution (%)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
-                <div className="h-48 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+                <div className="h-48 bg-background border border-border rounded-xl animate-pulse" />
               ) : (
                 <ResponsiveContainer width="100%" height={210}>
                   <BarChart data={data?.scoreDistribution || []}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272A" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="range" tick={{ fontSize: 11, fill: '#A1A1AA' }} />
                     <YAxis tick={{ fontSize: 11, fill: '#A1A1AA' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#09090B', borderColor: '#27272A', borderRadius: 8, color: '#F4F4F5' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', borderRadius: 12, color: '#18181b', boxShadow: '0 4px 8px -2px rgba(16,24,40,0.08)' }} />
                     <Bar dataKey="students" name="Students" fill="#6366F1" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>

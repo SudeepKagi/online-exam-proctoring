@@ -23,6 +23,8 @@ import AdminAuditLogs from '@/pages/admin/AuditLogs'
 import AdminReports from '@/pages/admin/Reports'
 import BulkCreateAccounts from '@/pages/admin/BulkCreateAccounts'
 import AdminEnrollmentReview from '@/pages/admin/AdminEnrollmentReview'
+import CreateStudentAccount from '@/pages/admin/CreateStudentAccount'
+import CreateFacultyAccount from '@/pages/admin/CreateFacultyAccount'
 
 // Faculty
 import FacultyDashboard from '@/pages/faculty/Dashboard'
@@ -89,6 +91,8 @@ export default function App() {
 
           {/* Admin Routes */}
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/create-student" element={<ProtectedRoute allowedRoles={['admin']}><CreateStudentAccount /></ProtectedRoute>} />
+          <Route path="/admin/create-faculty" element={<ProtectedRoute allowedRoles={['admin']}><CreateFacultyAccount /></ProtectedRoute>} />
           <Route path="/admin/bulk-create" element={<ProtectedRoute allowedRoles={['admin']}><BulkCreateAccounts /></ProtectedRoute>} />
           <Route path="/admin/enrollment-review" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentReview /></ProtectedRoute>} />
           <Route path="/admin/faculty" element={<ProtectedRoute allowedRoles={['admin']}><AdminFaculty /></ProtectedRoute>} />

@@ -281,7 +281,7 @@ function SidebarInset({
     <main
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-[#09090B] m-2.5 rounded-2xl border border-[#27272A] shadow-2xl overflow-hidden min-h-[calc(100vh-1.25rem)]",
+        "relative flex w-full flex-1 flex-col bg-background m-2.5 rounded-2xl border border-border shadow-xs overflow-hidden min-h-[calc(100vh-1.25rem)]",
         className
       )}
       {...props} />

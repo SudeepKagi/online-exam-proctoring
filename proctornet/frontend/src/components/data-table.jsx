@@ -12,15 +12,9 @@ export function DataTable({ data = [] }) {
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 5
 
-  const sampleData = data.length > 0 ? data : [
-    { id: '1', title: 'Data Structures & Algorithms', code: 'CS301', date: '2026-05-10', score: 85, maxScore: 100, percentage: 85, status: 'PASSED', flags: 0 },
-    { id: '2', title: 'Database Management Systems', code: 'CS402', date: '2026-05-12', score: 35, maxScore: 100, percentage: 35, status: 'FAILED', flags: 2 },
-    { id: '3', title: 'Computer Networks', code: 'CS405', date: '2026-05-14', score: 92, maxScore: 100, percentage: 92, status: 'PASSED', flags: 0 },
-    { id: '4', title: 'Operating Systems', code: 'CS304', date: '2026-05-18', score: 78, maxScore: 100, percentage: 78, status: 'PASSED', flags: 1 },
-    { id: '5', title: 'Software Engineering', code: 'CS501', date: '2026-05-20', score: 28, maxScore: 100, percentage: 28, status: 'FAILED', flags: 3 },
-  ]
+  const listData = Array.isArray(data) ? data : []
 
-  const filtered = sampleData.filter(item => {
+  const filtered = listData.filter(item => {
     const title = (item.title || item.name || '').toLowerCase()
     const matchSearch = !search || title.includes(search.toLowerCase())
     if (filterStatus === 'PASSED') return matchSearch && item.status === 'PASSED'
@@ -33,33 +27,37 @@ export function DataTable({ data = [] }) {
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   return (
-    <Card className="border-[#27272A] bg-[#141416] font-sans">
-      <CardHeader className="pb-3 border-b border-[#27272A]">
+    <div className="bg-white border border-[#e2e8f0] rounded-2xl shadow-2xs font-sans overflow-hidden">
+      <div className="p-5 pb-4 border-b border-[#f1f5f9]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <CardTitle className="text-sm font-semibold text-slate-100">Recent Exam Results</CardTitle>
-            <CardDescription className="text-xs text-slate-400">Detailed list of evaluated exam scores.</CardDescription>
+            <h3 className="text-sm font-bold text-[#0f172a]">Recent Exam Results</h3>
+            <p className="text-xs text-[#64748b] mt-0.5">Detailed list of evaluated exam scores and session audit flags.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-48">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="relative w-52">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={e => { setSearch(e.target.value); setCurrentPage(1) }}
                 placeholder="Search exam name..."
-                className="pl-8 h-7 text-xs bg-[#09090B]"
+                className="pl-9 h-8 text-xs bg-card"
+                aria-label="Search exam name"
               />
             </div>
 
-            <div className="flex bg-[#09090B] border border-[#27272A] rounded-xl p-0.5">
+            <div className="flex bg-[#f1f5f9] dark:bg-neutral-900 border border-border rounded-xl p-1">
               {['ALL', 'PASSED', 'FAILED', 'FLAGGED'].map(status => (
                 <button
                   key={status}
                   onClick={() => { setFilterStatus(status); setCurrentPage(1) }}
-                  className={`px-3 py-1 text-[10px] font-mono font-bold rounded-lg transition-colors ${
-                    filterStatus === status ? 'bg-[#27272A] text-white' : 'text-slate-400 hover:text-slate-200'
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    filterStatus === status
+                      ? 'bg-card text-primary shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
+                  aria-pressed={filterStatus === status}
                 >
                   {status}
                 </button>
@@ -67,52 +65,64 @@ export function DataTable({ data = [] }) {
             </div>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="p-0">
+      <div className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-              <TableHead className="text-xs text-slate-400">Exam Title</TableHead>
-              <TableHead className="text-xs text-slate-400">Course Code</TableHead>
-              <TableHead className="text-xs text-slate-400">Date</TableHead>
-              <TableHead className="text-xs text-slate-400">Score</TableHead>
-              <TableHead className="text-xs text-slate-400">Security Alerts</TableHead>
-              <TableHead className="text-xs text-slate-400">Status</TableHead>
-              <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+            <TableRow className="border-b border-[#e2e8f0] bg-[#f8fafc]">
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Exam Title</TableHead>
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Course Code</TableHead>
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Date</TableHead>
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Score</TableHead>
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Security Alerts</TableHead>
+              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b]">Status</TableHead>
+              <TableHead className="text-xs text-right font-bold uppercase tracking-wider text-[#64748b]">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginated.map((r) => (
-              <TableRow key={r.id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                <TableCell className="text-xs font-semibold text-slate-100">{r.title}</TableCell>
-                <TableCell className="text-xs text-slate-400 font-mono">{r.code || 'CS301'}</TableCell>
-                <TableCell className="text-xs text-slate-400 font-mono">{r.date}</TableCell>
-                <TableCell className="text-xs font-mono">
-                  <span className="font-bold text-white">{r.score}</span>
-                  <span className="text-slate-500"> / {r.maxScore}</span>
-                  <span className="ml-2 font-bold text-white">({r.percentage}%)</span>
-                </TableCell>
-                <TableCell className="text-xs font-mono text-slate-300">
-                  {r.flags === 0 ? 'No Alerts' : `${r.flags} Alerts`}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={r.status === 'PASSED' ? 'default' : 'secondary'} className="font-mono text-[10px]">
-                    {r.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="outline" size="sm" className="h-7 text-[11px]">
-                    View Details
-                  </Button>
+            {paginated.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-[#94a3b8] text-xs">
+                  No matching exam records found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              paginated.map((r) => (
+                <TableRow key={r.id} className="border-b border-[#f1f5f9] hover:bg-[#f8fafc] transition-colors">
+                  <TableCell className="text-xs font-bold text-[#0f172a]">{r.title}</TableCell>
+                  <TableCell className="text-xs text-[#64748b] font-semibold">{r.code || 'CS301'}</TableCell>
+                  <TableCell className="text-xs text-[#64748b]">{r.date}</TableCell>
+                  <TableCell className="text-xs">
+                    <span className="font-bold text-[#0f172a]">{r.score}</span>
+                    <span className="text-[#94a3b8]"> / {r.maxScore}</span>
+                    <span className="ml-1.5 font-bold text-[#2f80ed]">({r.percentage}%)</span>
+                  </TableCell>
+                  <TableCell className="text-xs font-medium">
+                    {r.flags === 0 ? (
+                      <span className="text-[#94a3b8]">No Alerts</span>
+                    ) : (
+                      <span className="text-[#ef4444] font-bold">{r.flags} Alerts</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={r.status === 'PASSED' ? 'green' : 'destructive'} className="text-[10px]">
+                      {r.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" className="h-7 text-xs font-semibold">
+                      View Details
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
 
         {/* Pagination Controls */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-[#27272A] text-xs font-mono text-slate-400 bg-[#09090B]">
+        <div className="flex items-center justify-between px-5 py-3.5 border-t border-[#e2e8f0] text-xs text-[#64748b] bg-[#f8fafc]">
           <span>Page {currentPage} of {totalPages} ({filtered.length} total entries)</span>
           <div className="flex items-center gap-1">
             <Button
@@ -120,22 +130,24 @@ export function DataTable({ data = [] }) {
               size="sm"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              className="h-7 px-2"
+              className="h-8 px-2.5"
+              aria-label="Previous page"
             >
-              <ChevronLeft size={13} />
+              <ChevronLeft size={14} />
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              className="h-7 px-2"
+              className="h-8 px-2.5"
+              aria-label="Next page"
             >
-              <ChevronRight size={13} />
+              <ChevronRight size={14} />
             </Button>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }

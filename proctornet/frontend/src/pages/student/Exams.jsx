@@ -24,73 +24,73 @@ function ExamCard({ exam, now }) {
       : `${start.toLocaleDateString()} at ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
 
   return (
-    <Card className={`transition-all border-[#27272A] bg-[#141416] ${isEnded ? 'opacity-70' : ''}`}>
-      <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+    <Card className={`transition-all hover:border-primary/40 hover:shadow-md ${isEnded ? 'opacity-70' : ''}`}>
+      <CardContent className="p-5 flex flex-col justify-between h-full space-y-3.5">
         <div>
-          <div className="flex items-start justify-between gap-3 mb-2.5">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-8 h-8 rounded-xl bg-[#27272A] text-white flex items-center justify-center shrink-0 border border-[#3F3F46]">
-                <BookOpen size={14} />
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#eff6ff] text-primary flex items-center justify-center shrink-0 border border-[#d5e6fb] dark:bg-neutral-800 dark:border-neutral-700">
+                <BookOpen size={16} />
               </div>
               <div className="min-w-0">
-                <h3 className="font-semibold text-xs text-slate-100 truncate">{exam.title}</h3>
-                <p className="text-[11px] font-mono text-slate-400 truncate">{exam.subject || exam.courseCode}</p>
+                <h3 className="font-bold text-sm text-foreground truncate">{exam.title}</h3>
+                <p className="text-xs text-muted-foreground truncate font-medium">{exam.subject || exam.courseCode}</p>
               </div>
             </div>
             {isActive && (
-              <Badge variant="default" className="text-[9px] font-mono">
+              <Badge variant="green" className="text-[10px]">
                 LIVE
               </Badge>
             )}
             {isEnded && (
-              <Badge variant="secondary" className="text-[9px] font-mono">ENDED</Badge>
+              <Badge variant="outline" className="text-[10px]">ENDED</Badge>
             )}
           </div>
 
-          <div className="grid grid-cols-3 gap-2 my-3">
-            <div className="bg-[#1F1F22] rounded-xl p-2 text-center border border-[#27272A]">
-              <p className="text-[9px] text-slate-400 font-mono uppercase">Duration</p>
-              <p className="text-xs font-mono font-bold text-slate-200 mt-0.5">{exam.duration} min</p>
+          <div className="grid grid-cols-3 gap-2.5 my-3.5">
+            <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 text-center border border-border">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Duration</p>
+              <p className="text-xs font-bold text-foreground mt-0.5">{exam.duration} min</p>
             </div>
-            <div className="bg-[#1F1F22] rounded-xl p-2 text-center border border-[#27272A]">
-              <p className="text-[9px] text-slate-400 font-mono uppercase">Questions</p>
-              <p className="text-xs font-mono font-bold text-slate-200 mt-0.5">{exam._count?.questions ?? exam.questionCount ?? '—'}</p>
+            <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 text-center border border-border">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Questions</p>
+              <p className="text-xs font-bold text-foreground mt-0.5">{exam._count?.questions ?? exam.questionCount ?? '—'}</p>
             </div>
-            <div className="bg-[#1F1F22] rounded-xl p-2 text-center border border-[#27272A]">
-              <p className="text-[9px] text-slate-400 font-mono uppercase">Marks</p>
-              <p className="text-xs font-mono font-bold text-slate-200 mt-0.5">{exam.totalMarks}</p>
+            <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-xl p-2.5 text-center border border-border">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Marks</p>
+              <p className="text-xs font-bold text-foreground mt-0.5">{exam.totalMarks}</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-400 mb-3">
-            <Calendar size={11} className="text-slate-500" /> {timeLabel}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3 font-medium">
+            <Calendar size={13} className="text-muted-foreground" /> {timeLabel}
           </div>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-[#27272A]">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
+          <div className="flex items-center gap-1.5">
             {exam.cameraRequired && (
-              <Badge variant="secondary" className="text-[9px] gap-1 px-2 py-0 font-mono">
-                <Camera size={9} /> Camera
+              <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                <Camera size={10} /> Camera
               </Badge>
             )}
             {exam.browserLock && (
-              <Badge variant="secondary" className="text-[9px] gap-1 px-2 py-0 font-mono">
-                <Lock size={9} /> Lock
+              <Badge variant="secondary" className="text-[10px] gap-1 px-2 py-0.5">
+                <Lock size={10} /> Lock
               </Badge>
             )}
           </div>
 
           {canJoin ? (
             <Link to={`/student/exams/${exam.id}/lobby`}>
-              <Button size="sm" className="h-7 text-[11px] font-mono">
-                <Play size={11} className="mr-1" /> {isActive ? 'Join Now' : 'Enter Lobby'}
+              <Button size="sm" className="h-8 text-xs font-bold">
+                <Play size={12} className="mr-1.5" /> {isActive ? 'Join Now' : 'Enter Lobby'}
               </Button>
             </Link>
           ) : isEnded ? (
-            <Badge variant="secondary" className="text-[9px] font-mono">Exam Over</Badge>
+            <Badge variant="secondary" className="text-[10px]">Exam Over</Badge>
           ) : (
-            <Badge variant="outline" className="text-[9px] font-mono">Not Open</Badge>
+            <Badge variant="outline" className="text-[10px]">Not Open</Badge>
           )}
         </div>
       </CardContent>
@@ -144,31 +144,33 @@ export default function StudentExams() {
     <DashboardLayout title="My Exams">
       <div className="space-y-5">
         <div>
-          <h1 className="text-lg font-bold tracking-tight text-slate-100">Assigned Examinations</h1>
-          <p className="text-xs text-slate-400 mt-0.5">Scheduled and active assessment sessions.</p>
+          <h1 className="text-xl font-extrabold tracking-tight text-foreground">Assigned Examinations</h1>
+          <p className="text-xs text-muted-foreground mt-1 font-medium">Scheduled and active assessment sessions.</p>
         </div>
 
         {/* Filter bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search exams by title or code..."
-              className="pl-8 text-xs bg-[#141416]"
+              className="pl-10 text-xs bg-card"
+              aria-label="Search exams"
             />
           </div>
-          <div className="flex gap-1 p-0.5 bg-[#141416] rounded-xl border border-[#27272A]">
+          <div className="flex gap-1 p-1 bg-[#f1f5f9] dark:bg-neutral-900 rounded-xl border border-border">
             {['', 'ACTIVE', 'SCHEDULED', 'ENDED'].map(status => (
               <button
                 key={status}
                 onClick={() => setFilterStatus(status)}
-                className={`px-3 py-1 text-[10px] font-mono font-bold rounded-lg transition-colors ${
+                className={`px-3.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   filterStatus === status
-                    ? 'bg-[#27272A] text-white'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-card text-primary shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
+                aria-pressed={filterStatus === status}
               >
                 {status || 'ALL'}
               </button>
@@ -180,14 +182,14 @@ export default function StudentExams() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-44 rounded-2xl bg-[#141416] border border-[#27272A] animate-pulse" />
+              <div key={i} className="h-44 rounded-2xl bg-card border border-border animate-pulse shadow-xs" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="p-10 text-center border-[#27272A] bg-[#141416]">
-            <BookOpen size={32} className="text-slate-500 mx-auto mb-2 opacity-50" />
-            <h3 className="text-xs font-semibold text-slate-200">No examinations found</h3>
-            <p className="text-[11px] font-mono text-slate-500 mt-1">Assessments assigned to your department will appear here.</p>
+          <Card className="p-12 text-center">
+            <BookOpen size={36} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+            <h3 className="text-sm font-bold text-foreground">No examinations found</h3>
+            <p className="text-xs text-muted-foreground mt-1">Assessments assigned to your department will appear here.</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

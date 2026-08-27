@@ -1,98 +1,165 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
-import { ArrowRight, Lock, User } from 'lucide-react'
-import { ProctorNetLogo } from '@/components/ui/proctornet-logo'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { ArrowRight, Lock, User, AlertCircle, Eye, EyeOff, WifiOff, X } from 'lucide-react'
+import AuthLayout from '@/components/common/AuthLayout'
 
 export default function StudentLogin() {
   const [usn, setUsn] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [errorState, setErrorState] = useState(null)
   const { login } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setError('')
+    setErrorState(null)
+
     try {
-      await login(usn, password, 'student')
+      const result = await login(usn.trim(), password, 'student')
+      if (result && !result.success) {
+        const errorMsg = result.error || 'Invalid USN or password. Please check your credentials.'
+        const isServer = errorMsg.toLowerCase().includes('server') || errorMsg.toLowerCase().includes('connect')
+        const isRestricted = errorMsg.toLowerCase().includes('approval') || errorMsg.toLowerCase().includes('suspended') || errorMsg.toLowerCase().includes('rejected')
+        setErrorState({
+          type: isServer ? 'server' : isRestricted ? 'forbidden' : 'credentials',
+          title: isServer ? 'Server Connection Error' : isRestricted ? 'Access Restricted' : 'Invalid Credentials',
+          message: errorMsg
+        })
+        return
+      }
       navigate('/student/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid USN or password.')
+      const isServer = !err.response || err.response.status >= 500
+      setErrorState({
+        type: isServer ? 'server' : 'credentials',
+        title: isServer ? 'Server Connection Error' : 'Invalid Credentials',
+        message: err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to server.'
+      })
     } finally {
       setLoading(false)
     }
   }
 
+  const handleUsnChange = (e) => {
+    setUsn(e.target.value)
+    if (errorState) setErrorState(null)
+  }
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value)
+    if (errorState) setErrorState(null)
+  }
+
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex items-center justify-center p-4 font-sans selection:bg-white selection:text-black">
-      <div className="w-full max-w-md">
-        <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="w-8 h-8 rounded-xl bg-white text-black flex items-center justify-center font-bold text-sm">
-            <ProctorNetLogo className="w-5 h-5 text-black" />
+    <AuthLayout
+      role="student"
+      title="Login with your USN"
+      subtitle="Enter your assigned credentials to access scheduled exams."
+      heroHeadline="Student Login"
+      heroSubtitle="Sign in to access your proctored examinations and assessments."
+      personImage="/login-student.jpg"
+      switchRoleLink={{ label: 'Faculty Login', path: '/faculty/login' }}
+      registerLink={null}
+    >
+      <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
+        {errorState && (
+          <div
+            className={`p-3.5 rounded-xl text-xs flex items-start gap-3 transition-all ${
+              errorState.type === 'server'
+                ? 'bg-[#fffbeb] border border-[#fef3c7] text-[#92400e]'
+                : 'bg-[#fef2f2] border border-[#fee2e2] text-[#991b1b]'
+            }`}
+          >
+            {errorState.type === 'server' ? (
+              <WifiOff size={17} className="text-[#d97706] shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle size={17} className="text-[#ef4444] shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <p className="font-semibold mb-0.5">{errorState.title}</p>
+              <p className="font-normal opacity-90 leading-relaxed">{errorState.message}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrorState(null)}
+              className="text-current opacity-60 hover:opacity-100 cursor-pointer p-0.5 transition-opacity"
+              aria-label="Dismiss error"
+            >
+              <X size={14} />
+            </button>
           </div>
-          <span className="font-bold text-lg tracking-tight text-white">ProctorNet</span>
+        )}
+
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-[#374151]">
+            University Seat Number (USN)
+          </label>
+          <div className="relative">
+            <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
+            <input
+              type="text"
+              name="usn"
+              value={usn}
+              onChange={handleUsnChange}
+              placeholder="e.g. 1MS21CS001"
+              required
+              autoComplete="off"
+              autoFocus
+              className={`w-full pl-10 pr-4 py-3 bg-[#f8fafc] border rounded-xl text-sm font-normal text-[#18181b] placeholder:text-[#9ca3af] focus:outline-none focus:bg-white transition-colors ${
+                errorState?.type === 'credentials'
+                  ? 'border-[#fca5a5] focus:border-[#ef4444]'
+                  : 'border-[#e5e7eb] focus:border-[#2f80ed]'
+              }`}
+              aria-label="University Seat Number"
+            />
+          </div>
         </div>
 
-        <Card className="border-[#27272A] bg-[#141416]">
-          <CardHeader className="text-center pb-4">
-            <CardTitle className="text-base font-bold text-white">Student Portal Sign In</CardTitle>
-            <CardDescription className="text-xs text-slate-400 mt-1">Enter your assigned USN and password to access exams.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
-                <div className="p-3 rounded-xl bg-[#27272A] border border-[#3F3F46] text-xs font-mono text-white">
-                  {error}
-                </div>
-              )}
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-[#374151]">
+            Password
+          </label>
+          <div className="relative">
+            <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af]" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              value={password}
+              onChange={handlePasswordChange}
+              placeholder="••••••••"
+              required
+              autoComplete="new-password"
+              className={`w-full pl-10 pr-11 py-3 bg-[#f8fafc] border rounded-xl text-sm font-normal text-[#18181b] placeholder:text-[#9ca3af] focus:outline-none focus:bg-white transition-colors ${
+                errorState?.type === 'credentials'
+                  ? 'border-[#fca5a5] focus:border-[#ef4444]'
+                  : 'border-[#e5e7eb] focus:border-[#2f80ed]'
+              }`}
+              aria-label="Password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#9ca3af] hover:text-[#4b5563] cursor-pointer transition-colors p-1"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-mono text-slate-300">University Seat Number (USN)</Label>
-                <div className="relative">
-                  <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <Input
-                    value={usn}
-                    onChange={(e) => setUsn(e.target.value)}
-                    placeholder="1MS21CS001"
-                    required
-                    className="pl-9 text-xs bg-[#09090B] border-[#27272A]"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-mono text-slate-300">Password</Label>
-                <div className="relative">
-                  <Lock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                    className="pl-9 text-xs bg-[#09090B] border-[#27272A]"
-                  />
-                </div>
-              </div>
-
-              <Button type="submit" disabled={loading} className="w-full h-9 text-xs mt-2 font-semibold">
-                {loading ? 'Signing In…' : 'Sign In to Student Portal'} <ArrowRight size={14} className="ml-1.5" />
-              </Button>
-            </form>
-          </CardContent>
-          <CardFooter className="flex justify-between border-t border-[#27272A] pt-4 text-xs font-mono text-slate-400">
-            <Link to="/" className="hover:text-white transition-colors">← Back to Home</Link>
-            <Link to="/faculty/login" className="hover:text-white transition-colors">Faculty Login →</Link>
-          </CardFooter>
-        </Card>
-      </div>
-    </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] disabled:opacity-50 text-white font-medium py-3.5 px-6 rounded-xl shadow-[0_4px_12px_rgba(47,128,237,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
+        >
+          <span>{loading ? 'Signing In…' : 'Login'}</span>
+          <ArrowRight size={16} />
+        </button>
+      </form>
+    </AuthLayout>
   )
 }

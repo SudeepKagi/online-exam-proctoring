@@ -38,3 +38,7 @@ Thumbs.db
 vpn-server/keys/
 vpn-server/*.conf
 !vpn-server/*.example.conf
+
+# OCR traineddata & scratch
+*.traineddata
+**/scripts/scratch/

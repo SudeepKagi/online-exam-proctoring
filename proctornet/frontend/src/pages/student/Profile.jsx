@@ -2,29 +2,13 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 import { useAuth } from '@/context/AuthContext'
 import {
-  User,
-  Key,
-  ShieldCheck,
-  Camera,
-  Upload,
-  Save,
-  CheckCircle2,
-  AlertCircle,
-  FileText,
-  Building,
-  GraduationCap,
-  Phone,
-  Mail,
-  RefreshCw,
-  Sparkles
+  User, Key, Camera, Upload, Save, CheckCircle2,
+  AlertCircle, GraduationCap, Phone, Mail, RefreshCw,
+  Building, ShieldCheck, Eye, EyeOff
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
 
 export default function StudentProfile() {
   const { user, refreshUser } = useAuth()
@@ -38,19 +22,21 @@ export default function StudentProfile() {
   const [usn, setUsn] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [department, setDepartment] = useState('Computer Science')
+  const [department, setDepartment] = useState('Computer Science & Engineering')
   const [semester, setSemester] = useState(6)
 
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showCurrentPass, setShowCurrentPass] = useState(false)
+  const [showNewPass, setShowNewPass] = useState(false)
 
   // Photos
   const [facePhotoUrl, setFacePhotoUrl] = useState('')
   const [idCardPhotoUrl, setIdCardPhotoUrl] = useState('')
 
-  // Camera capture modal state
+  // Webcam capture modal state
   const videoRef = useRef(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [stream, setStream] = useState(null)
@@ -63,19 +49,22 @@ export default function StudentProfile() {
     try {
       setLoading(true)
       const res = await api.get('/student/profile')
-      const s = res.data.student
+      const s = res.data?.student || res.data
       if (s) {
         setName(s.name || user?.name || '')
         setUsn(s.usn || user?.usn || '')
         setEmail(s.email || user?.email || '')
         setPhone(s.phone || '')
-        setDepartment(s.department || 'Computer Science')
+        setDepartment(s.department || 'Computer Science & Engineering')
         setSemester(s.semester || 1)
-        setFacePhotoUrl(s.facePhotoUrl || '')
-        setIdCardPhotoUrl(s.idCardPhotoUrl || '')
+        setFacePhotoUrl(s.facePhotoUrl || user?.facePhotoUrl || '')
+        setIdCardPhotoUrl(s.idCardPhotoUrl || user?.idCardPhotoUrl || '')
       }
     } catch (err) {
       console.warn('Failed to load profile details:', err)
+      setName(user?.name || '')
+      setUsn(user?.usn || '')
+      setEmail(user?.email || '')
     } finally {
       setLoading(false)
     }
@@ -96,6 +85,19 @@ export default function StudentProfile() {
     }
   }
 
+  const capturePhoto = () => {
+    if (!videoRef.current) return
+    const canvas = document.createElement('canvas')
+    canvas.width = videoRef.current.videoWidth || 640
+    canvas.height = videoRef.current.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    setFacePhotoUrl(dataUrl)
+    stopCamera()
+    toast.success('New biometric photo captured.')
+  }
+
   const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach(track => track.stop())
@@ -104,70 +106,50 @@ export default function StudentProfile() {
     setIsCameraActive(false)
   }
 
-  const capturePhoto = () => {
-    if (!videoRef.current) return
-    const canvas = document.createElement('canvas')
-    canvas.width = 400
-    canvas.height = 400
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(videoRef.current, 0, 0, 400, 400)
-    const base64 = canvas.toDataURL('image/jpeg', 0.85)
-    setFacePhotoUrl(base64)
-    stopCamera()
-    toast.success('Live face photo captured successfully!')
-  }
-
-  // Handle image file uploads
-  const handleFileUpload = (e, setUrl) => {
+  const handleIdUpload = (e) => {
     const file = e.target.files[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be under 5MB')
-      return
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setIdCardPhotoUrl(reader.result)
+        toast.success('ID card photo uploaded.')
+      }
+      reader.readAsDataURL(file)
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      setUrl(reader.result)
-      toast.success('Photo uploaded successfully!')
-    }
-    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-
     if (newPassword && newPassword !== confirmPassword) {
-      toast.error('New password and confirm password do not match.')
+      toast.error('New password and confirmation do not match.')
       return
     }
 
+    setSaving(true)
     try {
-      setSaving(true)
       const payload = {
+        name,
         usn,
-        phone,
         email,
+        phone,
         department,
         semester,
         facePhotoUrl,
-        idCardPhotoUrl,
+        idCardPhotoUrl
       }
-
       if (newPassword) {
         payload.currentPassword = currentPassword
         payload.newPassword = newPassword
       }
 
-      const res = await api.put('/student/profile', payload)
-      toast.success('Profile and Biometrics updated successfully!')
-      if (refreshUser) refreshUser()
-      
+      await api.patch('/student/profile', payload)
+      toast.success('Profile credentials updated successfully.')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
+      await refreshUser()
     } catch (err) {
-      const msg = err.response?.data?.error || 'Failed to update profile'
-      toast.error(msg)
+      toast.error(err.response?.data?.error || 'Failed to update profile.')
     } finally {
       setSaving(false)
     }
@@ -175,258 +157,340 @@ export default function StudentProfile() {
 
   if (loading) {
     return (
-      <DashboardLayout role="student" activeTab="profile">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <RefreshCw className="w-8 h-8 text-emerald-400 animate-spin" />
+      <DashboardLayout title="Student Profile">
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <RefreshCw className="w-6 h-6 text-[#2f80ed] animate-spin" />
         </div>
       </DashboardLayout>
     )
   }
 
   return (
-    <DashboardLayout role="student" activeTab="profile">
-      <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <DashboardLayout title="Student Profile">
+      <div className="max-w-5xl mx-auto space-y-6 pb-12 font-sans">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              <User className="w-6 h-6 text-emerald-400" />
-              Candidate Profile & Biometric Setup
-            </h1>
-            <p className="text-sm text-zinc-400 mt-1">
-              Update your account credentials, academic department, and pre-exam biometric verification photos.
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center border border-[#dbeafe]">
+                <User size={18} />
+              </div>
+              <h1 className="text-2xl font-bold text-[#0f172a] tracking-tight">
+                Candidate Profile & Biometrics
+              </h1>
+            </div>
+            <p className="text-xs text-[#64748b] mt-1 font-normal">
+              Manage your verified student credentials, academic department, and examination ID photos.
             </p>
           </div>
-          {user?.mustChangePassword && (
-            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 px-3 py-1 text-xs">
-              <AlertCircle className="w-3.5 h-3.5 mr-1" /> First-Login Password Change Required
-            </Badge>
-          )}
+
+          <button
+            type="button"
+            onClick={() => navigate('/student/enrollment')}
+            className="bg-white border border-[#e2e8f0] hover:bg-[#f8fafc] text-[#334155] text-xs font-semibold py-2 px-3.5 rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
+          >
+            <ShieldCheck size={14} className="text-[#10b981]" />
+            <span>Biometric Verification Portal</span>
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           {/* 1. Academic & Personal Identification */}
-          <Card className="bg-[#141416] border-zinc-800 text-zinc-100">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-indigo-400" />
-                Academic & Personal Information
-              </CardTitle>
-              <CardDescription className="text-zinc-400">
-                Ensure your USN, department, and semester match your official university enrollment.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 sm:p-7 shadow-2xs space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Candidate Full Name</label>
-                <Input value={name} disabled className="bg-zinc-900 border-zinc-700 text-zinc-300 cursor-not-allowed" />
+                <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#2563eb]" />
+                  Academic & Personal Information
+                </h3>
+                <p className="text-xs text-[#64748b] mt-0.5">
+                  Ensure your USN, department, and semester match your official university registry.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-[#ecfdf5] text-[#10b981] text-[10px] font-bold uppercase tracking-wider border border-[#dcfce7]">
+                Enrolled Candidate
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-[#334155] mb-1.5 block">Candidate Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  disabled
+                  className="w-full px-3.5 py-2.5 bg-[#f1f5f9] border border-[#e2e8f0] rounded-xl text-xs text-[#64748b] cursor-not-allowed font-medium"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">University USN / Roll No.</label>
-                <Input value={usn} onChange={e => setUsn(e.target.value)} required className="bg-zinc-900 border-zinc-700 text-white" placeholder="e.g. 1NT23CS001" />
+                <label className="text-xs font-semibold text-[#334155] mb-1.5">University USN / Roll No.</label>
+                <input
+                  type="text"
+                  value={usn}
+                  disabled
+                  className="w-full px-3.5 py-2.5 bg-[#f1f5f9] border border-[#e2e8f0] rounded-xl text-xs font-mono uppercase text-[#64748b] cursor-not-allowed font-semibold"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Email Address</label>
-                <Input value={email} onChange={e => setEmail(e.target.value)} required type="email" className="bg-zinc-900 border-zinc-700 text-white" />
+                <label className="text-xs font-semibold text-[#334155] mb-1.5">Institutional Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Phone Number</label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} className="bg-zinc-900 border-zinc-700 text-white" placeholder="e.g. +91 9876543210" />
+                <label className="text-xs font-semibold text-[#334155] mb-1.5">Contact Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="+91 9876543210"
+                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Department / Branch</label>
-                <select 
-                  value={department} 
+                <label className="text-xs font-semibold text-[#334155] mb-1.5">Department / Stream</label>
+                <select
+                  value={department}
                   onChange={e => setDepartment(e.target.value)}
-                  className="w-full h-10 px-3 rounded-md bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
                 >
-                  <option value="Computer Science">Computer Science & Engineering</option>
-                  <option value="Information Science">Information Science & Engineering</option>
-                  <option value="Electronics & Comm">Electronics & Communication</option>
-                  <option value="Mechanical Engg">Mechanical Engineering</option>
-                  <option value="Civil Engg">Civil Engineering</option>
-                  <option value="AI & Machine Learning">Artificial Intelligence & Data Science</option>
+                  <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
+                  <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
+                  <option value="Artificial Intelligence & Machine Learning">AI & Machine Learning (AIML)</option>
+                  <option value="Electronics & Communication">Electronics & Communication (ECE)</option>
+                  <option value="Electrical & Electronics">Electrical & Electronics (EEE)</option>
+                  <option value="Mechanical Engineering">Mechanical Engineering</option>
+                  <option value="Civil Engineering">Civil Engineering</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Current Semester</label>
-                <select 
-                  value={semester} 
+                <label className="text-xs font-semibold text-[#334155] mb-1.5">Current Semester</label>
+                <select
+                  value={semester}
                   onChange={e => setSemester(Number(e.target.value))}
-                  className="w-full h-10 px-3 rounded-md bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
                     <option key={s} value={s}>Semester {s}</option>
                   ))}
                 </select>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* 2. Password Change */}
-          <Card className="bg-[#141416] border-zinc-800 text-zinc-100">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-                <Key className="w-5 h-5 text-amber-400" />
+          <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 sm:p-7 shadow-2xs space-y-5">
+            <div className="pb-3 border-b border-[#f1f5f9]">
+              <h3 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                <Key className="w-4 h-4 text-[#f59e0b]" />
                 Security & Password Update
-              </CardTitle>
-              <CardDescription className="text-zinc-400">
-                Leave password fields blank if you do not wish to change your password.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Current Password</label>
-                <Input 
-                  type="password"
-                  value={currentPassword} 
-                  onChange={e => setCurrentPassword(e.target.value)} 
-                  className="bg-zinc-900 border-zinc-700 text-white" 
-                  placeholder="••••••••"
-                />
-              </div>
+              </h3>
+              <p className="text-xs text-[#64748b] mt-0.5">
+                Leave blank if you do not wish to change your existing password.
+              </p>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">New Password</label>
-                <Input 
-                  type="password"
-                  value={newPassword} 
-                  onChange={e => setNewPassword(e.target.value)} 
-                  className="bg-zinc-900 border-zinc-700 text-white" 
-                  placeholder="••••••••"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1 block">Confirm New Password</label>
-                <Input 
-                  type="password"
-                  value={confirmPassword} 
-                  onChange={e => setConfirmPassword(e.target.value)} 
-                  className="bg-zinc-900 border-zinc-700 text-white" 
-                  placeholder="••••••••"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 3. Biometric Face & Student ID Setup */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Face Photo */}
-            <Card className="bg-[#141416] border-zinc-800 text-zinc-100">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
-                  <Camera className="w-4 h-4 text-emerald-400" />
-                  Biometric Face Reference Photo
-                </CardTitle>
-                <CardDescription className="text-zinc-400 text-xs">
-                  This photo is matched against your live camera during pre-exam verification.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-center">
-                  {facePhotoUrl ? (
-                    <div className="relative w-40 h-40 rounded-xl overflow-hidden border-2 border-emerald-500/50 shadow-lg bg-zinc-950">
-                      <img src={facePhotoUrl} alt="Face Reference" className="w-full h-full object-cover" />
-                      <Badge className="absolute bottom-2 right-2 bg-emerald-500 text-black font-semibold text-[10px]">
-                        REGISTERED
-                      </Badge>
-                    </div>
-                  ) : (
-                    <div className="w-40 h-40 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900/50 flex flex-col items-center justify-center text-zinc-500">
-                      <User className="w-12 h-12 mb-2 stroke-1" />
-                      <span className="text-xs">No Face Photo</span>
-                    </div>
-                  )}
+                <label className="text-xs font-semibold text-[#334155] mb-1.5 block">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPass ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-3.5 pr-9 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+                  >
+                    {showCurrentPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
                 </div>
+              </div>
 
-                {isCameraActive && (
-                  <div className="space-y-2">
-                    <video ref={videoRef} autoPlay playsInline className="w-full h-48 rounded-lg object-cover bg-black" />
-                    <Button type="button" onClick={capturePhoto} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white">
-                      <Camera className="w-4 h-4 mr-2" /> Snap Face Photo
-                    </Button>
+              <div>
+                <label className="text-xs font-semibold text-[#334155] mb-1.5 block">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    placeholder="Minimum 6 characters"
+                    className="w-full pl-3.5 pr-9 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+                  >
+                    {showNewPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[#334155] mb-1.5 block">Confirm New Password</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter new password"
+                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl text-xs text-[#0f172a] focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Biometric Verification Reference Photos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Live Reference Face */}
+            <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 shadow-2xs flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-[#2563eb]" />
+                    Reference Facial Photo
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#10b981] text-[10px] font-bold">
+                    Registered
+                  </span>
+                </div>
+                <p className="text-xs text-[#64748b]">
+                  Matched against your live camera stream during pre-exam identity verification.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-center justify-center p-4 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                {facePhotoUrl ? (
+                  <img
+                    src={facePhotoUrl}
+                    alt="Enrolled Face"
+                    className="w-40 h-40 object-cover rounded-xl border border-[#cbd5e1] shadow-2xs"
+                  />
+                ) : (
+                  <div className="w-40 h-40 rounded-xl bg-white border border-dashed border-[#cbd5e1] flex flex-col items-center justify-center text-[#94a3b8]">
+                    <User size={36} />
+                    <span className="text-[11px] mt-2">No photo captured</span>
                   </div>
                 )}
+              </div>
 
-                <div className="flex gap-2">
-                  {!isCameraActive && (
-                    <Button type="button" variant="outline" onClick={startCamera} className="flex-1 border-zinc-700 text-zinc-200 hover:bg-zinc-800">
-                      <Camera className="w-4 h-4 mr-2 text-emerald-400" /> Webcam Capture
-                    </Button>
-                  )}
-                  <label className="flex-1 cursor-pointer">
-                    <div className="flex items-center justify-center h-10 px-4 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-sm font-medium">
-                      <Upload className="w-4 h-4 mr-2 text-indigo-400" /> Upload File
-                    </div>
-                    <input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, setFacePhotoUrl)} />
-                  </label>
+              <button
+                type="button"
+                onClick={startCamera}
+                className="w-full border border-[#2f80ed] text-[#2f80ed] hover:bg-[#eff6ff] text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Camera size={14} />
+                <span>Re-capture Live Photo</span>
+              </button>
+            </div>
+
+            {/* Institutional ID Document Card */}
+            <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 shadow-2xs flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="text-sm font-bold text-[#0f172a] flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-[#7c3aed]" />
+                    Official ID Document
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-md bg-[#ecfdf5] text-[#10b981] text-[10px] font-bold">
+                    ID Uploaded
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <p className="text-xs text-[#64748b]">
+                  Used for automated OCR extraction and candidate identity verification.
+                </p>
+              </div>
 
-            {/* Official ID Card Photo */}
-            <Card className="bg-[#141416] border-zinc-800 text-zinc-100">
-              <CardHeader>
-                <CardTitle className="text-base font-semibold text-white flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-indigo-400" />
-                  Official Student ID Card Photo
-                </CardTitle>
-                <CardDescription className="text-zinc-400 text-xs">
-                  Used for OCR USN extraction and identity authorization before tests.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-center">
-                  {idCardPhotoUrl ? (
-                    <div className="relative w-full h-40 rounded-xl overflow-hidden border-2 border-indigo-500/50 shadow-lg bg-zinc-950">
-                      <img src={idCardPhotoUrl} alt="ID Card" className="w-full h-full object-cover" />
-                      <Badge className="absolute bottom-2 right-2 bg-indigo-500 text-white font-semibold text-[10px]">
-                        ID UPLOADED
-                      </Badge>
-                    </div>
-                  ) : (
-                    <div className="w-full h-40 rounded-xl border-2 border-dashed border-zinc-700 bg-zinc-900/50 flex flex-col items-center justify-center text-zinc-500">
-                      <FileText className="w-12 h-12 mb-2 stroke-1" />
-                      <span className="text-xs">No ID Card Photo Uploaded</span>
-                    </div>
-                  )}
-                </div>
-
-                <label className="block w-full cursor-pointer">
-                  <div className="flex items-center justify-center h-10 px-4 rounded-md border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-sm font-medium">
-                    <Upload className="w-4 h-4 mr-2 text-indigo-400" /> Upload ID Card Photo
+              <div className="flex flex-col items-center justify-center p-4 bg-[#f8fafc] rounded-xl border border-[#e2e8f0]">
+                {idCardPhotoUrl ? (
+                  <img
+                    src={idCardPhotoUrl}
+                    alt="Institutional ID"
+                    className="w-48 h-32 object-cover rounded-xl border border-[#cbd5e1] shadow-2xs"
+                  />
+                ) : (
+                  <div className="w-48 h-32 rounded-xl bg-white border border-dashed border-[#cbd5e1] flex flex-col items-center justify-center text-[#94a3b8]">
+                    <Upload size={28} />
+                    <span className="text-[11px] mt-2">No ID card uploaded</span>
                   </div>
-                  <input type="file" accept="image/*" className="hidden" onChange={e => handleFileUpload(e, setIdCardPhotoUrl)} />
-                </label>
-              </CardContent>
-            </Card>
+                )}
+              </div>
+
+              <label className="w-full border border-[#7c3aed] text-[#7c3aed] hover:bg-[#faf5ff] text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 text-center">
+                <Upload size={14} />
+                <span>Upload New ID Card</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleIdUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
           </div>
 
-          {/* Submit Action */}
-          <div className="flex justify-end pt-4">
-            <Button 
-              type="submit" 
+          {/* Bottom Save Action */}
+          <div className="pt-3 flex justify-end">
+            <button
+              type="submit"
               disabled={saving}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-2.5 h-11 text-base shadow-lg shadow-emerald-950/40"
+              className="bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] disabled:opacity-50 text-white text-xs font-semibold py-2.5 px-6 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
             >
-              {saving ? (
-                <>
-                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> Saving Profile...
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5 mr-2" /> Save Profile & Biometrics
-                </>
-              )}
-            </Button>
+              {saving ? <RefreshCw size={14} className="animate-spin" /> : <Save size={14} />}
+              <span>{saving ? 'Saving Changes...' : 'Save Profile Changes'}</span>
+            </button>
           </div>
         </form>
+
+        {/* Modal for Camera Capture */}
+        {isCameraActive && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-[#0f172a]">Live Webcam Facial Capture</h3>
+                <button onClick={stopCamera} className="text-[#94a3b8] hover:text-[#0f172a] text-xs cursor-pointer">
+                  Cancel
+                </button>
+              </div>
+
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border-2 border-[#2f80ed]/40 rounded-xl pointer-events-none" />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={stopCamera}
+                  className="px-4 py-2 border border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc] text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={capturePhoto}
+                  className="px-5 py-2 bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5"
+                >
+                  <Camera size={14} />
+                  <span>Capture Photo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

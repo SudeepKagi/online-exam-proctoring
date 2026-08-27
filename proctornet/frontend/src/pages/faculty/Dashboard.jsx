@@ -30,8 +30,8 @@ export default function FacultyDashboard() {
         {/* Header Banner */}
         <div className="px-4 lg:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100 font-sans">Faculty Overview</h1>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">Manage your exams, student results, and question pools.</p>
+            <h1 className="text-lg font-bold tracking-tight text-foreground font-sans">Faculty Overview</h1>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">Manage your exams, student results, and question pools.</p>
           </div>
           <Button variant="default" onClick={() => navigate('/faculty/exams/create')}>
             <Plus size={14} className="mr-1.5" /> Create New Exam
@@ -40,45 +40,45 @@ export default function FacultyDashboard() {
 
         {/* Faculty Personal Info Card */}
         <div className="px-4 lg:px-6">
-          <Card className="border-[#27272A] bg-[#141416]">
-            <CardHeader className="pb-3 border-b border-[#27272A] flex flex-row items-center justify-between">
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-semibold text-slate-100 flex items-center gap-2">
-                  <User className="w-4 h-4 text-indigo-400" /> Personal & Professional Profile
+                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <User className="w-4 h-4 text-primary" /> Personal & Professional Profile
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-400">Institutional instructor credentials and department assignment.</CardDescription>
+                <CardDescription className="text-xs text-muted-foreground">Institutional instructor credentials and department assignment.</CardDescription>
               </div>
-              <Badge variant="outline" className="font-mono text-[10px] text-indigo-400 border-indigo-500/30 bg-indigo-500/10">
+              <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30 bg-primary/10">
                 <CheckCircle2 size={12} className="mr-1" /> FACULTY INSTRUCTOR
               </Badge>
             </CardHeader>
             <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-sans text-xs">
-              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <User size={12} className="text-slate-400" /> Full Name
+              <div className="p-3 rounded-xl bg-background border border-border/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <User size={12} className="text-muted-foreground" /> Full Name
                 </span>
-                <p className="font-semibold text-slate-100 mt-1">{user?.name || 'Faculty Member'}</p>
+                <p className="font-semibold text-foreground mt-1">{user?.name || 'Faculty Member'}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Briefcase size={12} className="text-slate-400" /> Employee ID
+              <div className="p-3 rounded-xl bg-background border border-border/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Briefcase size={12} className="text-muted-foreground" /> Employee ID
                 </span>
-                <p className="font-semibold font-mono text-slate-100 mt-1">{user?.employeeId || 'N/A'}</p>
+                <p className="font-semibold font-mono text-foreground mt-1">{user?.employeeId || 'N/A'}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Mail size={12} className="text-slate-400" /> Institutional Email
+              <div className="p-3 rounded-xl bg-background border border-border/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Mail size={12} className="text-muted-foreground" /> Institutional Email
                 </span>
-                <p className="font-semibold text-slate-100 truncate mt-1">{user?.email || 'N/A'}</p>
+                <p className="font-semibold text-foreground truncate mt-1">{user?.email || 'N/A'}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A]/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                  <Building size={12} className="text-slate-400" /> Department & Contact
+              <div className="p-3 rounded-xl bg-background border border-border/70">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Building size={12} className="text-muted-foreground" /> Department & Contact
                 </span>
-                <p className="font-semibold text-slate-100 mt-1">{user?.department || 'Faculty'} • {user?.phone || 'N/A'}</p>
+                <p className="font-semibold text-foreground mt-1">{user?.department || 'Faculty'} • {user?.phone || 'N/A'}</p>
               </div>
             </CardContent>
           </Card>
@@ -86,46 +86,46 @@ export default function FacultyDashboard() {
 
         {/* 4 Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
-          <Card className="border-[#27272A] bg-[#141416]">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Total Exams</CardDescription>
+              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Total Exams</CardDescription>
               <CardTitle className="text-3xl font-bold font-mono text-white mt-1">{exams.length}</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-slate-400">Created assessments</CardContent>
+            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Created assessments</CardContent>
           </Card>
 
-          <Card className="border-[#27272A] bg-[#141416]">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Active Exams</CardDescription>
+              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Active Exams</CardDescription>
               <CardTitle className="text-3xl font-bold font-mono text-white mt-1">{activeExams.length}</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-slate-400">Currently in progress</CardContent>
+            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Currently in progress</CardContent>
           </Card>
 
-          <Card className="border-[#27272A] bg-[#141416]">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Registered Students</CardDescription>
+              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Registered Students</CardDescription>
               <CardTitle className="text-3xl font-bold font-mono text-white mt-1">120</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-slate-400">Assigned candidates</CardContent>
+            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Assigned candidates</CardContent>
           </Card>
 
-          <Card className="border-[#27272A] bg-[#141416]">
+          <Card className="border-border bg-card">
             <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">Average Class Score</CardDescription>
+              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Average Class Score</CardDescription>
               <CardTitle className="text-3xl font-bold font-mono text-white mt-1">78%</CardTitle>
             </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-slate-400">Evaluated overall score</CardContent>
+            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Evaluated overall score</CardContent>
           </Card>
         </div>
 
         {/* Exams Table */}
         <div className="px-4 lg:px-6">
-          <Card className="border-[#27272A] bg-[#141416]">
-            <CardHeader className="pb-3 border-b border-[#27272A] flex flex-row items-center justify-between">
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-semibold text-slate-100">My Exam Roster</CardTitle>
-                <CardDescription className="text-xs text-slate-400">Recent exams created for your department.</CardDescription>
+                <CardTitle className="text-sm font-semibold text-foreground">My Exam Roster</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Recent exams created for your department.</CardDescription>
               </div>
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/faculty/exams')}>
                 View All <ChevronRight size={12} className="ml-1" />
@@ -139,20 +139,20 @@ export default function FacultyDashboard() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                      <TableHead className="text-xs text-slate-400">Exam Title</TableHead>
-                      <TableHead className="text-xs text-slate-400">Subject</TableHead>
-                      <TableHead className="text-xs text-slate-400">Duration</TableHead>
-                      <TableHead className="text-xs text-slate-400">Status</TableHead>
-                      <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+                    <TableRow className="border-b border-border bg-background">
+                      <TableHead className="text-xs text-muted-foreground">Exam Title</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Subject</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Duration</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                      <TableHead className="text-xs text-right text-muted-foreground">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {exams.slice(0, 5).map((exam) => (
-                      <TableRow key={exam.id || exam._id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                        <TableCell className="text-xs font-semibold text-slate-100">{exam.title}</TableCell>
-                        <TableCell className="text-xs text-slate-400 font-mono">{exam.subject || 'CS301'}</TableCell>
-                        <TableCell className="text-xs text-slate-400 font-mono">{exam.duration || 60} min</TableCell>
+                      <TableRow key={exam.id || exam._id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                        <TableCell className="text-xs font-semibold text-foreground">{exam.title}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">{exam.subject || 'CS301'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground font-mono">{exam.duration || 60} min</TableCell>
                         <TableCell>
                           <Badge variant={exam.status === 'ACTIVE' ? 'default' : 'secondary'} className="font-mono text-[10px]">
                             {exam.status || 'SCHEDULED'}

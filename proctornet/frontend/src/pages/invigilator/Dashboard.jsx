@@ -113,20 +113,20 @@ export default function InvDashboard() {
   })
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-slate-100 flex flex-col font-sans select-none">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none">
       {/* ── Top Header ── */}
-      <header className="h-16 border-b border-[#27272A] bg-[#141416] px-6 flex items-center justify-between shrink-0 shadow-md">
+      <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0 shadow-md">
         <div className="flex items-center gap-4">
           <ProctorNetLogo size={24} />
           <div>
-            <h1 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+            <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
               {examInfo?.title || 'Live Invigilation Terminal'}
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-semibold">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-semibold">
                 {examInfo?.subject || 'INVIGILATOR'}
               </span>
             </h1>
-            <p className="text-xs font-mono text-slate-400">
-              Exam ID: <span className="text-slate-300">{examId}</span> • Connected Candidates: <span className="text-slate-300">{students.length}</span>
+            <p className="text-xs font-mono text-muted-foreground">
+              Exam ID: <span className="text-foreground/90">{examId}</span> • Connected Candidates: <span className="text-foreground/90">{students.length}</span>
             </p>
           </div>
         </div>
@@ -134,25 +134,25 @@ export default function InvDashboard() {
         {/* Center Live Socket State & Search */}
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Filter by name or USN…"
-              className="bg-[#09090B] border border-[#27272A] rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500 w-48 lg:w-64 font-mono transition-all"
+              className="bg-background border border-border rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-foreground outline-none focus:border-primary w-48 lg:w-64 font-mono transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-1 bg-[#09090B] border border-[#27272A] p-1 rounded-xl text-xs font-mono">
+          <div className="flex items-center gap-1 bg-background border border-border p-1 rounded-xl text-xs font-mono">
             {['all', 'flagged', 'active'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
                 className={`px-3 py-1 rounded-lg capitalize font-bold transition-all ${
                   filter === tab
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {tab}
@@ -163,23 +163,23 @@ export default function InvDashboard() {
 
         {/* Right Timer & Status */}
         <div className="flex items-center gap-3 font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#27272A] bg-[#09090B] text-xs">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background text-xs">
             <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-            <span className="text-slate-300 font-bold">{connected ? 'Relay Live' : 'Connecting'}</span>
+            <span className="text-foreground/90 font-bold">{connected ? 'Relay Live' : 'Connecting'}</span>
           </div>
 
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-[#27272A] bg-[#09090B] text-slate-100 font-bold text-xs">
-            <Clock size={14} className="text-indigo-400" />
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border bg-background text-foreground font-bold text-xs">
+            <Clock size={14} className="text-primary" />
             <span>{timeRemaining}</span>
           </div>
         </div>
       </header>
 
       {/* ── Main Candidates Stream Grid ── */}
-      <main className="flex-1 overflow-y-auto p-4 bg-[#09090B]">
+      <main className="flex-1 overflow-y-auto p-4 bg-background">
         {isLoading ? (
-          <div className="h-96 flex items-center justify-center font-mono text-xs text-slate-400">
-            <div className="w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mr-2" />
+          <div className="h-96 flex items-center justify-center font-mono text-xs text-muted-foreground">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2" />
             Synchronizing live multi-feed matrix…
           </div>
         ) : (

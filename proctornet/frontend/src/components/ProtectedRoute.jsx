@@ -18,12 +18,13 @@ export default function ProtectedRoute({ children, allowedRoles, role }) {
     return <Navigate to="/change-password" replace />
   }
 
-  // Mandatory student biometric enrollment redirect
+  // Mandatory student biometric enrollment & admin verification guard
   if (
     isAuthenticated &&
     userRole === 'student' &&
     !user?.mustChangePassword &&
-    (user?.profileStatus === 'PENDING' || user?.profileStatus === 'REJECTED') &&
+    user?.profileStatus !== 'VERIFIED' &&
+    user?.profileStatus !== 'LOCKED' &&
     window.location.pathname !== '/student/enrollment'
   ) {
     return <Navigate to="/student/enrollment" replace />

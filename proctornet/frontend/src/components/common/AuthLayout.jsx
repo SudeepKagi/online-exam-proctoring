@@ -1,112 +1,93 @@
 import * as React from 'react'
-import { Shield, Check, ArrowLeft } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { ThemeToggle } from '@/components/ui/theme-toggle'
-import { Badge } from '@/components/ui/badge'
 
-const FEATURES = [
-  {
-    title: 'AI-Powered Verification',
-    desc: 'Continuous identity confirmation utilizing multimodal biometrics.',
-  },
-  {
-    title: 'Real-Time Monitoring Feed',
-    desc: 'Low-latency video and screen capture streams with automated flagging.',
-  },
-  {
-    title: 'Secure Browser Lock',
-    desc: 'Prevents unauthorized application access and systemic navigation.',
-  },
-]
-
-export default function AuthLayout({ title, subtitle, children, maxWidth = '440px' }) {
+export default function AuthLayout({
+  role = 'student',
+  title = 'Login with your USN',
+  subtitle = 'Enter your assigned credentials to access scheduled exams.',
+  heroHeadline = 'Student Login',
+  heroSubtitle = 'Sign in to access your proctored examinations and assessments.',
+  personImage = '/login-student.jpg',
+  children,
+  switchRoleLink = { label: 'Faculty Login', path: '/faculty/login' },
+  registerLink = { label: 'Create new account', path: '/student/register' }
+}) {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col lg:flex-row">
-      {/* ── Left Panel (Hero & Features - Zinc / Dark aesthetic) ── */}
-      <div className="lg:flex-1 bg-card border-r border-border p-8 lg:p-12 flex flex-col justify-between relative overflow-hidden hidden lg:flex">
-        {/* Background mesh grid effect */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] pointer-events-none" />
-        <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Top Header */}
-        <div className="relative z-10 flex items-center justify-between">
+    <div className="min-h-screen w-full bg-white text-[#18181b] flex flex-col lg:flex-row overflow-hidden font-sans">
+      {/* ── Left Column (50% Central Split Form Panel) ── */}
+      <div className="w-full lg:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-between min-h-screen bg-white">
+        {/* Top Header: Logo */}
+        <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold shadow-sm transition-transform group-hover:scale-105">
-              <Shield size={18} />
+            <img src="/logo.png" alt="ProctorNet" className="w-9 h-9 object-contain rounded-xl" />
+            <div className="flex items-center">
+              <span className="text-xl font-bold tracking-tight text-[#18181b]">Proctor</span>
+              <span className="text-xl font-bold tracking-tight text-[#2f80ed]">Net</span>
             </div>
-            <span className="font-semibold tracking-tight text-foreground text-lg">
-              ProctorNet
-            </span>
           </Link>
-          <Badge variant="outline" className="font-mono text-xs">
-            v2.0 • Enterprise
-          </Badge>
+          <Link to="/" className="text-xs font-normal text-[#6b7280] hover:text-[#18181b] transition-colors">
+            ← Back to Home
+          </Link>
         </div>
 
-        {/* Middle Feature Highlights */}
-        <div className="relative z-10 my-12 max-w-lg">
-          <Badge variant="secondary" className="mb-4">
-            Next-Gen Exam Integrity
-          </Badge>
-          <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl mb-4 leading-tight">
-            Secure, Intelligent Online Examination Platform.
-          </h2>
-          <p className="text-muted-foreground text-sm leading-relaxed mb-8">
-            Empower your organization with automated proctoring, live incident response, and end-to-end encryption.
-          </p>
-
-          <div className="space-y-4">
-            {FEATURES.map(f => (
-              <div key={f.title} className="flex items-start gap-3 p-3 rounded-lg border border-border/40 bg-background/50 backdrop-blur-sm">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-                  <Check size={14} />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">{f.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{f.desc}</p>
-                </div>
-              </div>
-            ))}
+        {/* Center: Auth Form Container */}
+        <div className="w-full max-w-md mx-auto my-auto py-6">
+          <div className="mb-8">
+            <p className="text-xs font-normal text-[#6b7280] mb-1">Welcome back</p>
+            <h1 className="text-2xl sm:text-3xl font-semibold text-[#18181b] tracking-tight">{title}</h1>
+            {subtitle && <p className="text-xs text-[#6b7280] mt-1 font-normal leading-relaxed">{subtitle}</p>}
           </div>
+
+          {children}
+
+          {registerLink && (
+            <div className="mt-6 text-center text-xs text-[#6b7280] font-normal">
+              Don't have an account?{' '}
+              <Link to={registerLink.path} className="text-[#2f80ed] font-medium hover:underline">
+                {registerLink.label}
+              </Link>
+            </div>
+          )}
+
+          {switchRoleLink && (
+            <div className="mt-3 text-center text-xs text-[#6b7280] font-normal">
+              Switch portal:{' '}
+              <Link to={switchRoleLink.path} className="text-[#1c4d8e] font-medium hover:underline">
+                {switchRoleLink.label} →
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Bottom Footer */}
-        <div className="relative z-10 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>© 2025 ProctorNet Inc.</span>
-          <span>•</span>
-          <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-          <span>•</span>
-          <a href="#" className="hover:text-foreground transition-colors">Support</a>
-        </div>
+        {/* Empty bottom spacer for balance since footer was removed */}
+        <div className="h-6" />
       </div>
 
-      {/* ── Right Panel (Auth Form) ── */}
-      <div className="flex-1 flex flex-col justify-between p-6 sm:p-12 relative bg-background">
-        {/* Top bar on form side */}
-        <div className="flex items-center justify-between mb-8">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft size={14} />
-            Back to Home
-          </Link>
-          <ThemeToggle />
-        </div>
+      {/* ── Right Column (50% Central Split Full-Bleed Photo Panel) ── */}
+      <div className="hidden lg:relative lg:flex lg:w-1/2 min-h-screen overflow-hidden bg-[#edf5ff]">
+        {/* The Photo covering the WHOLE right part */}
+        <img
+          src={personImage}
+          alt="Portal Showcase"
+          className="absolute inset-0 w-full h-full object-cover object-top select-none"
+        />
 
-        {/* Form Container */}
-        <div className="w-full max-w-md mx-auto my-auto">
-          <div className="rounded-xl border border-border bg-card p-6 sm:p-8 shadow-sm">
-            {(title || subtitle) && (
-              <div className="mb-6">
-                {title && <h2 className="text-xl font-bold tracking-tight text-foreground">{title}</h2>}
-                {subtitle && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{subtitle}</p>}
-              </div>
+        {/* Soft Vignette Gradient at Bottom for Minimal Text Legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent pointer-events-none" />
+
+        {/* Minimal Content Overlay */}
+        <div className="relative z-10 w-full h-full p-10 xl:p-14 flex flex-col justify-end text-white pointer-events-none">
+          {/* Minimal Bottom Headline */}
+          <div className="max-w-xl pb-2">
+            <h2 className="text-3xl xl:text-4xl font-bold text-white tracking-tight leading-tight">
+              {heroHeadline}
+            </h2>
+            {heroSubtitle && (
+              <p className="text-sm xl:text-base font-normal text-white/85 mt-1.5 leading-relaxed">
+                {heroSubtitle}
+              </p>
             )}
-            {children}
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center text-[11px] text-muted-foreground mt-8">
-          Need help signing in? Contact your institution administrator.
         </div>
       </div>
     </div>

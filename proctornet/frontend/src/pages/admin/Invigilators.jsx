@@ -41,12 +41,12 @@ export default function AdminInvigilators() {
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Invigilator Sessions</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Track live and past invigilator authentication sessions</p>
+            <h1 className="text-xl font-bold text-foreground">Invigilator Sessions</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Track live and past invigilator authentication sessions</p>
           </div>
           <button
             onClick={fetchAll}
-            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-[#27272A] bg-[#141416] hover:bg-[#18181B] text-slate-300 rounded-xl transition"
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-mono border border-border bg-card hover:bg-[#f8fafc] dark:bg-neutral-900 text-foreground/90 rounded-xl transition"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
@@ -59,24 +59,24 @@ export default function AdminInvigilators() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by ID or exam title..."
-            className="w-full pl-9 pr-3 py-1.5 border border-[#27272A] bg-[#141416] text-xs text-slate-200 rounded-xl focus:outline-none focus:border-indigo-500"
+            className="w-full pl-9 pr-3 py-1.5 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary"
           />
         </div>
 
         {/* Detail Modal */}
         {selected && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-            <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-md w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4 border-b border-[#27272A] pb-3">
-                <h3 className="text-base font-bold text-slate-100">Invigilator Session Details</h3>
-                <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-[#27272A] rounded-lg">
-                  <X size={18} className="text-slate-400" />
+            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+                <h3 className="text-base font-bold text-foreground">Invigilator Session Details</h3>
+                <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+                  <X size={18} className="text-muted-foreground" />
                 </button>
               </div>
 
               <div className="space-y-3 text-xs">
                 {selected.idCardPhotoUrl && selected.idCardPhotoUrl !== 'placeholder_id' && (
-                  <img src={selected.idCardPhotoUrl} alt="ID" className="w-full rounded-xl max-h-48 object-cover border border-[#27272A]" />
+                  <img src={selected.idCardPhotoUrl} alt="ID" className="w-full rounded-xl max-h-48 object-cover border border-border" />
                 )}
                 <div className="grid grid-cols-2 gap-2.5">
                   {[
@@ -87,9 +87,9 @@ export default function AdminInvigilators() {
                     ['IP Address', selected.ipAddress || '127.0.0.1'],
                     ['Status', selected.isActive ? 'Active' : 'Expired'],
                   ].map(([label, val]) => (
-                    <div key={label} className="bg-[#09090B] border border-[#27272A] rounded-xl p-2.5">
+                    <div key={label} className="bg-background border border-border rounded-xl p-2.5">
                       <p className="text-[10px] font-mono text-slate-500 uppercase">{label}</p>
-                      <p className={`font-semibold mt-0.5 font-mono ${label === 'Status' ? (selected.isActive ? 'text-emerald-400' : 'text-slate-500') : 'text-slate-200'}`}>
+                      <p className={`font-semibold mt-0.5 font-mono ${label === 'Status' ? (selected.isActive ? 'text-emerald-400' : 'text-slate-500') : 'text-foreground'}`}>
                         {val}
                       </p>
                     </div>
@@ -99,7 +99,7 @@ export default function AdminInvigilators() {
 
               <Button
                 onClick={() => setSelected(null)}
-                className="mt-5 w-full text-xs font-mono bg-[#09090B] border border-[#27272A] hover:bg-[#18181B] text-slate-300"
+                className="mt-5 w-full text-xs font-mono bg-background border border-border hover:bg-[#f8fafc] dark:bg-neutral-900 text-foreground/90"
               >
                 Close Window
               </Button>
@@ -108,43 +108,43 @@ export default function AdminInvigilators() {
         )}
 
         {/* Table */}
-        <Card className="bg-[#141416] border-[#27272A] shadow-xl overflow-hidden">
+        <Card className="bg-card border-border shadow-xl overflow-hidden">
           {loading ? (
             <div className="p-8 space-y-3">
               {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-10 bg-[#09090B] border border-[#27272A] rounded-xl animate-pulse" />
+                <div key={i} className="h-10 bg-background border border-border rounded-xl animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-12 text-center">
               <Video size={36} className="text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-300 font-semibold text-sm">No invigilator sessions found</p>
+              <p className="text-foreground/90 font-semibold text-sm">No invigilator sessions found</p>
               <p className="text-xs text-slate-500 mt-1">No active or archived invigilator login sessions.</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                  <TableHead className="text-xs text-slate-400 font-mono">Invigilator ID</TableHead>
-                  <TableHead className="text-xs text-slate-400 font-mono">Exam Session</TableHead>
-                  <TableHead className="text-xs text-slate-400">Login Time</TableHead>
-                  <TableHead className="text-xs text-slate-400">Status</TableHead>
-                  <TableHead className="text-xs text-right text-slate-400 font-mono">Actions</TableHead>
+                <TableRow className="border-b border-border bg-background">
+                  <TableHead className="text-xs text-muted-foreground font-mono">Invigilator ID</TableHead>
+                  <TableHead className="text-xs text-muted-foreground font-mono">Exam Session</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Login Time</TableHead>
+                  <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-xs text-right text-muted-foreground font-mono">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((s) => (
-                  <TableRow key={s.id} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
-                    <TableCell className="font-mono text-xs font-bold text-slate-100">{s.invId}</TableCell>
-                    <TableCell className="font-mono text-xs text-indigo-400">{s.exam?.title || 'Exam Session'}</TableCell>
-                    <TableCell className="text-xs text-slate-400 font-mono">{s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}</TableCell>
+                  <TableRow key={s.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                    <TableCell className="font-mono text-xs font-bold text-foreground">{s.invId}</TableCell>
+                    <TableCell className="font-mono text-xs text-primary">{s.exam?.title || 'Exam Session'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}</TableCell>
                     <TableCell>
                       {s.isActive ? (
                         <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">
                           ACTIVE
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-slate-400 border-[#27272A] bg-[#09090B] font-mono text-[10px]">
+                        <Badge variant="outline" className="text-muted-foreground border-border bg-background font-mono text-[10px]">
                           EXPIRED
                         </Badge>
                       )}
@@ -154,7 +154,7 @@ export default function AdminInvigilators() {
                         size="sm"
                         variant="ghost"
                         onClick={() => setSelected(s)}
-                        className="h-7 text-xs text-slate-300 hover:bg-[#27272A]"
+                        className="h-7 text-xs text-foreground/90 hover:bg-neutral-100 dark:hover:bg-neutral-800"
                       >
                         <Eye size={13} className="mr-1" /> View Details
                       </Button>

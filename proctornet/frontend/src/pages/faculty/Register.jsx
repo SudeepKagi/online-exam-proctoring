@@ -128,9 +128,7 @@ export default function FacultyRegister() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link to="/faculty/login" className="flex items-center gap-3 text-gray-600 hover:text-gray-900 transition">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center">
-              <Shield size={18} className="text-white" />
-            </div>
+            <img src="/logo.png" alt="ProctorNet Logo" className="w-9 h-9 object-contain rounded-xl shadow-xs" />
             <span className="font-bold text-gray-900 text-lg">ProctorNet</span>
           </Link>
         </div>

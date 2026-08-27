@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 const AUDIENCE_LABELS = {
-  ALL: { label: 'Everyone', icon: Users, color: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10' },
+  ALL: { label: 'Everyone', icon: Users, color: 'text-primary border-primary/30 bg-primary/10' },
   FACULTY: { label: 'Faculty Only', icon: BookOpen, color: 'text-amber-400 border-amber-500/30 bg-amber-500/10' },
   STUDENT: { label: 'Students Only', icon: GraduationCap, color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' },
 }
@@ -41,40 +41,40 @@ function CreateModal({ onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5 border-b border-[#27272A] pb-3">
-          <h3 className="text-base font-bold text-slate-100">New Platform Announcement</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-[#27272A] rounded-lg transition-colors">
-            <X size={18} className="text-slate-400" />
+      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
+          <h3 className="text-base font-bold text-foreground">New Platform Announcement</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+            <X size={18} className="text-muted-foreground" />
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Title *</label>
+            <label className="block text-xs font-semibold text-foreground/90 mb-1.5">Title *</label>
             <input
               value={form.title}
               onChange={set('title')}
               placeholder="Announcement title"
-              className="w-full px-3.5 py-2 border border-[#27272A] rounded-xl text-xs bg-[#09090B] text-slate-100 focus:outline-none focus:border-indigo-500"
+              className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-primary"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5">Message *</label>
+            <label className="block text-xs font-semibold text-foreground/90 mb-1.5">Message *</label>
             <textarea
               value={form.content}
               onChange={set('content')}
               placeholder="Write your broadcast message..."
               rows={4}
-              className="w-full px-3.5 py-2.5 border border-[#27272A] rounded-xl text-xs bg-[#09090B] text-slate-100 focus:outline-none focus:border-indigo-500 resize-none"
+              className="w-full px-3.5 py-2.5 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-primary resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Target Audience</label>
+              <label className="block text-xs font-semibold text-foreground/90 mb-1.5">Target Audience</label>
               <select
                 value={form.audience}
                 onChange={set('audience')}
-                className="w-full px-3.5 py-2 border border-[#27272A] rounded-xl text-xs bg-[#09090B] text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-primary"
               >
                 <option value="ALL">Everyone</option>
                 <option value="FACULTY">Faculty Only</option>
@@ -82,11 +82,11 @@ function CreateModal({ onClose, onCreated }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1.5">Priority</label>
+              <label className="block text-xs font-semibold text-foreground/90 mb-1.5">Priority</label>
               <select
                 value={form.priority}
                 onChange={set('priority')}
-                className="w-full px-3.5 py-2 border border-[#27272A] rounded-xl text-xs bg-[#09090B] text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3.5 py-2 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-primary"
               >
                 <option value="NORMAL">Normal</option>
                 <option value="HIGH">High</option>
@@ -94,18 +94,18 @@ function CreateModal({ onClose, onCreated }) {
               </select>
             </div>
           </div>
-          <div className="flex gap-3 pt-3 border-t border-[#27272A]">
+          <div className="flex gap-3 pt-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 border border-[#27272A] rounded-xl text-xs text-slate-300 bg-[#09090B] hover:bg-[#18181B]"
+              className="flex-1 py-2 border border-border rounded-xl text-xs text-foreground/90 bg-background hover:bg-[#f8fafc] dark:bg-neutral-900"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-xs disabled:opacity-60 flex items-center justify-center gap-2"
+              className="flex-1 py-2 bg-primary hover:bg-primary text-white font-semibold rounded-xl text-xs disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {loading ? 'Publishing...' : 'Publish Now'}
             </button>
@@ -159,7 +159,7 @@ export default function AdminAnnouncements() {
   const PRIORITY_BADGES = {
     URGENT: <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">URGENT</Badge>,
     HIGH: <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10 font-mono text-[10px]">HIGH</Badge>,
-    NORMAL: <Badge variant="outline" className="text-slate-400 border-[#27272A] bg-[#09090B] font-mono text-[10px]">NORMAL</Badge>,
+    NORMAL: <Badge variant="outline" className="text-muted-foreground border-border bg-background font-mono text-[10px]">NORMAL</Badge>,
   }
 
   return (
@@ -167,20 +167,20 @@ export default function AdminAnnouncements() {
       {showCreate && <CreateModal onClose={() => setShowCreate(false)} onCreated={fetchAll} />}
       {selected && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
-          <div className="bg-[#141416] border border-[#27272A] rounded-2xl shadow-2xl max-w-lg w-full p-6 text-slate-100 font-sans" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4 border-b border-[#27272A] pb-3">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 {PRIORITY_BADGES[selected.priority] || PRIORITY_BADGES.NORMAL}
                 <Badge variant="outline" className={`font-mono text-[10px] ${AUDIENCE_LABELS[selected.audience]?.color}`}>
                   {AUDIENCE_LABELS[selected.audience]?.label}
                 </Badge>
               </div>
-              <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-[#27272A] rounded-lg">
-                <X size={18} className="text-slate-400" />
+              <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+                <X size={18} className="text-muted-foreground" />
               </button>
             </div>
-            <h3 className="text-base font-bold text-slate-100 mb-2">{selected.title}</h3>
-            <p className="text-xs text-slate-300 leading-relaxed bg-[#09090B] p-4 rounded-xl border border-[#27272A]">{selected.content}</p>
+            <h3 className="text-base font-bold text-foreground mb-2">{selected.title}</h3>
+            <p className="text-xs text-foreground/90 leading-relaxed bg-background p-4 rounded-xl border border-border">{selected.content}</p>
             <p className="text-[11px] font-mono text-slate-500 mt-4">{selected.createdAt ? new Date(selected.createdAt).toLocaleString() : ''}</p>
           </div>
         </div>
@@ -189,12 +189,12 @@ export default function AdminAnnouncements() {
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-slate-100">Announcements</h1>
-            <p className="text-xs text-slate-400 mt-0.5">Broadcast platform-wide messages to students and faculty</p>
+            <h1 className="text-xl font-bold text-foreground">Announcements</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Broadcast platform-wide messages to students and faculty</p>
           </div>
           <Button
             onClick={() => setShowCreate(true)}
-            className="text-xs font-mono font-bold bg-indigo-600 hover:bg-indigo-500 text-white"
+            className="text-xs font-mono font-bold bg-primary hover:bg-primary text-white"
           >
             <Plus size={14} className="mr-1.5" /> New Announcement
           </Button>
@@ -203,16 +203,16 @@ export default function AdminAnnouncements() {
         {loading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-20 bg-[#141416] border border-[#27272A] rounded-2xl animate-pulse" />
+              <div key={i} className="h-20 bg-card border border-border rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : announcements.length === 0 ? (
-          <Card className="bg-[#141416] border-[#27272A] p-12 text-center shadow-xl">
+          <Card className="bg-card border-border p-12 text-center shadow-xl">
             <Megaphone size={36} className="text-slate-600 mx-auto mb-3" />
-            <p className="text-slate-300 font-semibold text-sm">No announcements yet</p>
+            <p className="text-foreground/90 font-semibold text-sm">No announcements yet</p>
             <Button
               onClick={() => setShowCreate(true)}
-              className="mt-4 text-xs font-mono bg-indigo-600 hover:bg-indigo-500 text-white"
+              className="mt-4 text-xs font-mono bg-primary hover:bg-primary text-white"
             >
               <Plus size={14} className="mr-1.5" /> Create First Announcement
             </Button>
@@ -222,24 +222,24 @@ export default function AdminAnnouncements() {
             {announcements.map((a) => {
               const aud = AUDIENCE_LABELS[a.audience] || AUDIENCE_LABELS.ALL
               return (
-                <Card key={a.id} className="bg-[#141416] border-[#27272A] shadow-xl p-5 hover:border-[#3F3F46] transition">
+                <Card key={a.id} className="bg-card border-border shadow-xl p-5 hover:border-border transition">
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 bg-primary/10 border border-primary/30 text-primary rounded-xl flex items-center justify-center shrink-0">
                       <Megaphone size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-sm text-slate-100 truncate">{a.title}</h3>
+                        <h3 className="font-bold text-sm text-foreground truncate">{a.title}</h3>
                         {a.priority !== 'NORMAL' && PRIORITY_BADGES[a.priority]}
                       </div>
-                      <p className="text-xs text-slate-400 line-clamp-2">{a.content}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{a.content}</p>
                       <div className="flex items-center gap-3 mt-2">
                         <Badge variant="outline" className={`font-mono text-[10px] ${aud.color}`}>{aud.label}</Badge>
                         <span className="text-[11px] font-mono text-slate-500">{a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => setSelected(a)} className="p-1.5 hover:bg-[#27272A] text-slate-400 hover:text-white rounded-lg transition">
+                      <button onClick={() => setSelected(a)} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-muted-foreground hover:text-white rounded-lg transition">
                         <Eye size={15} />
                       </button>
                       <button onClick={() => handleDelete(a.id)} className="p-1.5 hover:bg-rose-500/10 text-rose-400 rounded-lg transition">

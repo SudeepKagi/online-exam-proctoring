@@ -105,11 +105,11 @@ export default function BYODDeviceCheck() {
         if (data.connected) {
           toast.success(`VPN Tunnel Active! Assigned IP: ${data.vpnIp || vpnPeerIp || '10.0.0.x'}`)
         } else {
-          toast.info('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.')
+          toast('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.', { icon: 'ℹ️' })
         }
       } else {
         setVpnConnected(false)
-        toast.info('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.')
+        toast('VPN tunnel not detected. Make sure the tunnel is activated in WireGuard, then try again.', { icon: 'ℹ️' })
       }
     } catch (err) {
       console.error('VPN check failed:', err)
@@ -187,25 +187,25 @@ export default function BYODDeviceCheck() {
     <DashboardLayout title="BYOD Device Readiness Check">
       <div className="max-w-4xl mx-auto py-4 space-y-6 font-sans">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100 flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-indigo-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-primary" />
             BYOD Device & Network Diagnostic
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-muted-foreground mt-1">
             Pre-exam security, WireGuard network isolation, & hardware diagnostic scan before joining your live exam lobby.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Diagnostic Step 1: Agent & Remote Desktop Check */}
-          <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl">
+          <Card className="bg-card border-border p-5 shadow-xl">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <Terminal className="w-4 h-4 text-indigo-400" />
-                <h3 className="text-sm font-bold text-slate-100">Local Agent & Process Scan</h3>
+                <Terminal className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Local Agent & Process Scan</h3>
               </div>
               {checkingAgent ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-400" />
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
               ) : agentConnected ? (
                 <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">
                   AGENT CONNECTED
@@ -217,7 +217,7 @@ export default function BYODDeviceCheck() {
               )}
             </div>
 
-            <p className="text-xs text-slate-400 mb-4">
+            <p className="text-xs text-muted-foreground mb-4">
               Scans for banned remote access apps (AnyDesk, TeamViewer, UltraViewer, CRD) and virtual camera drivers.
             </p>
 
@@ -231,7 +231,7 @@ export default function BYODDeviceCheck() {
                 </ul>
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A] text-xs font-mono text-emerald-400 flex items-center gap-2 mb-4">
+              <div className="p-3 rounded-xl bg-background border border-border text-xs font-mono text-emerald-400 flex items-center gap-2 mb-4">
                 <CheckCircle2 size={15} />
                 <span>No prohibited background processes detected</span>
               </div>
@@ -241,7 +241,7 @@ export default function BYODDeviceCheck() {
               onClick={checkAgentHealth}
               disabled={checkingAgent}
               variant="outline"
-              className="w-full text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B]"
+              className="w-full text-xs font-mono border-border bg-background text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900"
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-2 ${checkingAgent ? 'animate-spin' : ''}`} />
               Re-Scan Background Agent
@@ -249,12 +249,12 @@ export default function BYODDeviceCheck() {
           </Card>
 
           {/* Diagnostic Step 2: WireGuard Network Isolation */}
-          <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl flex flex-col justify-between">
+          <Card className="bg-card border-border p-5 shadow-xl flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <Wifi className="w-4 h-4 text-indigo-400" />
-                  <h3 className="text-sm font-bold text-slate-100">WireGuard Network Isolation</h3>
+                  <Wifi className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">WireGuard Network Isolation</h3>
                 </div>
                 {vpnConnected ? (
                   <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">
@@ -267,15 +267,15 @@ export default function BYODDeviceCheck() {
                 )}
               </div>
 
-              <p className="text-xs text-slate-400 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 Generates a session-bound WireGuard profile (10.0.0.x) to route exam traffic through an isolated tunnel.
               </p>
 
               <div className="space-y-2 mb-4">
                 {vpnConfig ? (
-                  <div className="p-3 rounded-xl bg-[#09090B] border border-[#27272A] text-xs font-mono flex items-center justify-between">
-                    <span className="text-slate-300">Profile Assigned IP: <strong className="text-indigo-400">{vpnPeerIp}</strong></span>
-                    <Button onClick={handleDownloadConf} size="sm" variant="ghost" className="h-7 text-xs text-indigo-400 hover:text-indigo-300">
+                  <div className="p-3 rounded-xl bg-background border border-border text-xs font-mono flex items-center justify-between">
+                    <span className="text-foreground/90">Profile Assigned IP: <strong className="text-primary">{vpnPeerIp}</strong></span>
+                    <Button onClick={handleDownloadConf} size="sm" variant="ghost" className="h-7 text-xs text-primary hover:text-indigo-300">
                       <Download size={13} className="mr-1" /> .conf
                     </Button>
                   </div>
@@ -283,7 +283,7 @@ export default function BYODDeviceCheck() {
                   <Button
                     onClick={handleIssueVpn}
                     disabled={issuingVpn}
-                    className="w-full text-xs font-mono bg-indigo-600/20 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-600/30"
+                    className="w-full text-xs font-mono bg-primary/20 border border-primary/30 text-indigo-300 hover:bg-primary/30"
                   >
                     <Key size={13} className="mr-2" />
                     {issuingVpn ? 'Generating Profile...' : 'Issue WireGuard VPN Profile'}
@@ -296,7 +296,7 @@ export default function BYODDeviceCheck() {
               onClick={checkVpnNetwork}
               disabled={checkingVpn}
               variant="outline"
-              className="w-full text-xs font-mono border-[#27272A] bg-[#09090B] text-slate-300 hover:bg-[#18181B]"
+              className="w-full text-xs font-mono border-border bg-background text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900"
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-2 ${checkingVpn ? 'animate-spin' : ''}`} />
               Verify VPN Tunnel Status
@@ -305,15 +305,15 @@ export default function BYODDeviceCheck() {
         </div>
 
         {/* Diagnostic Step 3: Media Permissions */}
-        <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl">
+        <Card className="bg-card border-border p-5 shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shrink-0">
                 <Camera size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-100">Media Feeds & Screen Capture Authorization</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <h3 className="text-sm font-bold text-foreground">Media Feeds & Screen Capture Authorization</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Verifies continuous webcam video stream and entire screen share permissions for live invigilation.
                 </p>
               </div>
@@ -322,7 +322,7 @@ export default function BYODDeviceCheck() {
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 onClick={requestMediaPermissions}
-                className="w-full sm:w-auto text-xs font-mono bg-indigo-600 hover:bg-indigo-500 text-white"
+                className="w-full sm:w-auto text-xs font-mono bg-primary hover:bg-primary text-white"
               >
                 Test Camera & Screen Share
               </Button>
@@ -331,15 +331,15 @@ export default function BYODDeviceCheck() {
         </Card>
 
         {/* Evaluation Banner */}
-        <Card className="bg-[#141416] border-[#27272A] p-5 shadow-xl">
+        <Card className="bg-card border-border p-5 shadow-xl">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                 <ShieldCheck size={18} />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-100">System Integrity Diagnostic Summary</h3>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <h3 className="text-sm font-bold text-foreground">System Integrity Diagnostic Summary</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   Evaluates all hardware, software, process, and network security policies.
                 </p>
               </div>
@@ -348,7 +348,7 @@ export default function BYODDeviceCheck() {
             <Button
               onClick={handleEvaluateReadiness}
               disabled={evaluating}
-              className="w-full sm:w-auto text-xs font-mono font-bold px-6 bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20"
+              className="w-full sm:w-auto text-xs font-mono font-bold px-6 bg-primary hover:bg-primary text-white shadow-lg shadow-indigo-600/20"
             >
               {evaluating ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-2" /> : <ShieldCheck className="w-3.5 h-3.5 mr-2" />}
               {evaluating ? 'Evaluating...' : 'Run Final Evaluation'}
@@ -362,8 +362,8 @@ export default function BYODDeviceCheck() {
             <div className="flex items-center gap-3 text-xs text-emerald-300">
               <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="font-bold text-slate-100">All BYOD Device & Network Checks Passed!</p>
-                <p className="text-slate-400 mt-0.5">Your machine is verified and clear for exam security entrance.</p>
+                <p className="font-bold text-foreground">All BYOD Device & Network Checks Passed!</p>
+                <p className="text-muted-foreground mt-0.5">Your machine is verified and clear for exam security entrance.</p>
               </div>
             </div>
 

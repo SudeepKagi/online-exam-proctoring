@@ -80,86 +80,86 @@ export default function ExamLobby() {
     <DashboardLayout title="Exam Lobby">
       <div className="max-w-4xl mx-auto py-4 space-y-5 font-sans">
         {/* Header Card */}
-        <Card className="bg-[#141416] border-[#27272A] p-6 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#27272A] pb-4 mb-5">
+        <Card className="bg-card border-border p-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4 mb-5">
             <div>
-              <h1 className="text-xl font-bold text-slate-100">{exam?.title || 'Examination Lobby'}</h1>
-              <p className="text-xs font-mono text-slate-400 mt-0.5">Subject / Course: {exam?.subject || exam?.courseCode || 'CS301'}</p>
+              <h1 className="text-xl font-bold text-foreground">{exam?.title || 'Examination Lobby'}</h1>
+              <p className="text-xs font-mono text-muted-foreground mt-0.5">Subject / Course: {exam?.subject || exam?.courseCode || 'CS301'}</p>
             </div>
-            <Badge variant="outline" className="font-mono text-xs text-indigo-400 border-indigo-500/30 bg-indigo-500/10 w-fit">
+            <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
               {exam?.status || 'SCHEDULED'}
             </Badge>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Timer Block */}
-            <div className="p-5 bg-[#09090B] border border-[#27272A] rounded-2xl text-center flex flex-col items-center justify-center">
-              <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Clock size={13} className="text-indigo-400" /> {isOver ? 'Exam Status' : timeToStart === 0 ? 'Exam is Live' : 'Countdown to Exam Start'}
+            <div className="p-5 bg-background border border-border rounded-2xl text-center flex flex-col items-center justify-center">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Clock size={13} className="text-primary" /> {isOver ? 'Exam Status' : timeToStart === 0 ? 'Exam is Live' : 'Countdown to Exam Start'}
               </span>
               {isOver ? (
                 <div className="text-2xl font-mono font-bold text-rose-500">EXAM CONCLUDED</div>
               ) : timeToStart === 0 ? (
                 <div className="text-2xl font-mono font-bold text-emerald-400">EXAM IS LIVE</div>
               ) : (
-                <div className="text-3xl font-mono font-bold text-slate-100">{formatCountdown(timeToStart)}</div>
+                <div className="text-3xl font-mono font-bold text-foreground">{formatCountdown(timeToStart)}</div>
               )}
             </div>
 
             {/* Overview Details */}
-            <div className="p-4 bg-[#09090B] border border-[#27272A] rounded-2xl grid grid-cols-2 gap-3 text-xs font-mono">
+            <div className="p-4 bg-background border border-border rounded-2xl grid grid-cols-2 gap-3 text-xs font-mono">
               <div>
                 <span className="text-[10px] text-slate-500">Duration:</span>
-                <p className="font-bold text-slate-200 mt-0.5">{exam?.duration || 90} mins</p>
+                <p className="font-bold text-foreground mt-0.5">{exam?.duration || 90} mins</p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-500">Total Marks:</span>
-                <p className="font-bold text-slate-200 mt-0.5">{exam?.totalMarks || 100} pts</p>
+                <p className="font-bold text-foreground mt-0.5">{exam?.totalMarks || 100} pts</p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-500">Start Time:</span>
-                <p className="text-[11px] text-slate-300 truncate mt-0.5">{new Date(exam?.startTime).toLocaleTimeString()}</p>
+                <p className="text-[11px] text-foreground/90 truncate mt-0.5">{new Date(exam?.startTime).toLocaleTimeString()}</p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-500">End Time:</span>
-                <p className="text-[11px] text-slate-300 truncate mt-0.5">{new Date(exam?.endTime).toLocaleTimeString()}</p>
+                <p className="text-[11px] text-foreground/90 truncate mt-0.5">{new Date(exam?.endTime).toLocaleTimeString()}</p>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Security Protocol Section */}
-        <Card className="bg-[#141416] border-[#27272A] p-6 space-y-4 shadow-xl">
-          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-indigo-400" /> Automated Security Pre-Check Protocol
+        <Card className="bg-card border-border p-6 space-y-4 shadow-xl">
+          <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" /> Automated Security Pre-Check Protocol
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-            <div className="p-3.5 rounded-2xl bg-[#09090B] border border-[#27272A] flex items-center gap-2.5">
-              <Camera size={16} className="text-indigo-400 shrink-0" />
-              <span className="text-slate-300">Continuous AI Face Proctoring</span>
+            <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-2.5">
+              <Camera size={16} className="text-primary shrink-0" />
+              <span className="text-foreground/90">Continuous AI Face Proctoring</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-[#09090B] border border-[#27272A] flex items-center gap-2.5">
-              <Monitor size={16} className="text-indigo-400 shrink-0" />
-              <span className="text-slate-300">Screen Sharing & Fullscreen Kiosk</span>
+            <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-2.5">
+              <Monitor size={16} className="text-primary shrink-0" />
+              <span className="text-foreground/90">Screen Sharing & Fullscreen Kiosk</span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-[#09090B] border border-[#27272A] flex items-center gap-2.5">
-              <Wifi size={16} className="text-indigo-400 shrink-0" />
-              <span className="text-slate-300">System & Network Audit</span>
+            <div className="p-3.5 rounded-2xl bg-background border border-border flex items-center gap-2.5">
+              <Wifi size={16} className="text-primary shrink-0" />
+              <span className="text-foreground/90">System & Network Audit</span>
             </div>
           </div>
 
-          <div className="pt-5 border-t border-[#27272A] space-y-4">
+          <div className="pt-5 border-t border-border space-y-4">
             {/* Optional Pre-check Subordinate Banner */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-[#09090B] border border-[#27272A] gap-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3.5 rounded-xl bg-background border border-border gap-2">
               <div className="text-xs">
-                <span className="font-semibold text-slate-300">Optional: </span>
-                <span className="text-slate-400">Test camera, display stream, and local device readiness before entering the exam room.</span>
+                <span className="font-semibold text-foreground/90">Optional: </span>
+                <span className="text-muted-foreground">Test camera, display stream, and local device readiness before entering the exam room.</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate(`/student/device-check/${examId}`)}
-                className="text-xs font-mono text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 shrink-0 h-8"
+                className="text-xs font-mono text-primary hover:text-indigo-300 hover:bg-primary/10 shrink-0 h-8"
               >
                 Run Device Diagnostic →
               </Button>
@@ -173,7 +173,7 @@ export default function ExamLobby() {
                 className={`w-full sm:w-80 text-xs font-mono font-bold h-11 rounded-xl shadow-lg transition-all ${
                   isOver || timeToStart > 0
                     ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed shadow-none'
-                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25'
+                    : 'bg-primary hover:bg-primary text-white shadow-indigo-600/25'
                 }`}
               >
                 {isOver

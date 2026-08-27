@@ -102,7 +102,7 @@ export function AuthProvider({ children }) {
       const httpStatus = err.response?.status
 
       if (!err.response) {
-        return { success: false, error: 'Unable to connect to server. Check your internet connection.' }
+        return { success: false, error: 'Unable to connect to server. Please verify the backend server is running on port 5000.' }
       }
 
       if (status === 'PENDING_APPROVAL' || status === 'PENDING_ADMIN' || status === 'PENDING_FACULTY') {
@@ -116,8 +116,18 @@ export function AuthProvider({ children }) {
         return { success: false, error: `Registration rejected${reason ? ': ' + reason : '. Contact admin.'}` }
       }
 
-      if (httpStatus === 401) return { success: false, error: 'Incorrect password. Please try again.' }
-      if (httpStatus === 404) return { success: false, error: 'No account found with this email.' }
+      if (httpStatus === 401) {
+        return {
+          success: false,
+          error: role === 'student' ? 'Invalid USN or password. Please check your credentials.' : 'Incorrect email or password. Please try again.'
+        }
+      }
+      if (httpStatus === 404) {
+        return {
+          success: false,
+          error: role === 'student' ? 'No student account found with this USN.' : 'No account found with this email.'
+        }
+      }
       if (httpStatus === 403) return { success: false, error: err.response?.data?.error || 'Access denied.' }
 
       return {
@@ -176,7 +186,10 @@ export function AuthProvider({ children }) {
       dispatch({ type: 'LOGIN_SUCCESS', payload: { token, user, role: 'invigilator' } })
       return { success: true, session }
     } catch (err) {
-      return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Invigilator login failed.' }
+      if (!err.response) {
+        return { success: false, error: 'Unable to connect to server. Please verify the backend server is running on port 5000.' }
+      }
+      return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Invigilator authentication failed. Check your credentials.' }
     }
   }
 

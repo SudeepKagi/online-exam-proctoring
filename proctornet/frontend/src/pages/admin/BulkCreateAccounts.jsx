@@ -146,41 +146,41 @@ export default function BulkCreateAccounts() {
       {/* Export Credentials Excel Modal */}
       {credentials && (
         <Dialog open={!!credentials} onOpenChange={() => setCredentials(null)}>
-          <DialogContent className="max-w-4xl bg-[#141416] border-[#27272A] rounded-2xl text-slate-100 font-sans">
+          <DialogContent className="max-w-4xl bg-card border-border rounded-2xl text-foreground font-sans">
             <DialogHeader>
               <div className="flex items-center justify-between">
-                <DialogTitle className="text-base font-bold text-slate-100 flex items-center gap-2">
+                <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
                   <CheckCircle2 size={18} className="text-white" />
                   Created Accounts Credentials ({credentials.length})
                 </DialogTitle>
                 <Badge variant="default" className="font-mono text-[9px]">EXCEL FORMAT</Badge>
               </div>
-              <DialogDescription className="text-xs text-slate-400 mt-1">
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
                 Accounts created successfully. Download the official Excel spreadsheet (.xlsx) or copy data directly into Excel. Users will be forced to change password on first login.
               </DialogDescription>
             </DialogHeader>
 
             <div className="my-3 space-y-3">
               {/* Credentials Preview Table */}
-              <div className="border border-[#27272A] rounded-xl overflow-hidden max-h-64 overflow-y-auto bg-[#09090B]">
+              <div className="border border-border rounded-xl overflow-hidden max-h-64 overflow-y-auto bg-background">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-[#27272A] bg-[#141416]">
-                      <TableHead className="text-xs text-slate-400 font-mono">#</TableHead>
-                      <TableHead className="text-xs text-slate-400">Name</TableHead>
-                      <TableHead className="text-xs text-slate-400">{role === 'faculty' ? 'Employee ID' : 'USN'}</TableHead>
-                      <TableHead className="text-xs text-slate-400">Email</TableHead>
-                      <TableHead className="text-xs text-slate-400 font-mono">Temp Password</TableHead>
+                    <TableRow className="border-b border-border bg-card">
+                      <TableHead className="text-xs text-muted-foreground font-mono">#</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Name</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">{role === 'faculty' ? 'Employee ID' : 'USN'}</TableHead>
+                      <TableHead className="text-xs text-muted-foreground">Email</TableHead>
+                      <TableHead className="text-xs text-muted-foreground font-mono">Temp Password</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {credentials.map((c, i) => (
-                      <TableRow key={i} className="border-b border-[#27272A]/50">
+                      <TableRow key={i} className="border-b border-border/50">
                         <TableCell className="text-xs font-mono text-slate-500">{i + 1}</TableCell>
-                        <TableCell className="text-xs font-semibold text-slate-100">{c.name}</TableCell>
-                        <TableCell className="text-xs font-mono text-slate-300">{c.identifier}</TableCell>
-                        <TableCell className="text-xs font-mono text-slate-400">{c.email}</TableCell>
-                        <TableCell className="text-xs font-mono font-bold text-white bg-[#27272A]/40 rounded px-2 py-0.5 inline-block my-1">
+                        <TableCell className="text-xs font-semibold text-foreground">{c.name}</TableCell>
+                        <TableCell className="text-xs font-mono text-foreground/90">{c.identifier}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">{c.email}</TableCell>
+                        <TableCell className="text-xs font-mono font-bold text-white bg-border/40 rounded px-2 py-0.5 inline-block my-1">
                           {c.tempPassword}
                         </TableCell>
                       </TableRow>
@@ -190,7 +190,7 @@ export default function BulkCreateAccounts() {
               </div>
 
               {/* Download Excel Button Only */}
-              <div className="flex items-center justify-end pt-3 border-t border-[#27272A]">
+              <div className="flex items-center justify-end pt-3 border-t border-border">
                 <Button size="sm" onClick={handleDownloadExcel} className="w-full sm:w-auto text-xs font-mono font-bold py-2 px-5">
                   <FileSpreadsheet size={15} className="mr-2" /> Download Excel (.xlsx) File
                 </Button>
@@ -204,16 +204,16 @@ export default function BulkCreateAccounts() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-100">Bulk Create Accounts</h1>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">Upload Excel (.xlsx/.xls) or PDF roster to parse, review, and generate credentials in Excel format.</p>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">Bulk Create Accounts</h1>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">Upload Excel (.xlsx/.xls) or PDF roster to parse, review, and generate credentials in Excel format.</p>
           </div>
 
           {/* Role Toggle Selector */}
-          <div className="flex bg-[#141416] border border-[#27272A] rounded-full p-1">
+          <div className="flex bg-card border border-border rounded-full p-1">
             <button
               onClick={() => { setRole('student'); setRecords([]) }}
               className={`px-4 py-1.5 text-xs font-mono font-bold rounded-full transition-colors ${
-                role === 'student' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+                role === 'student' ? 'bg-white text-black' : 'text-muted-foreground hover:text-white'
               }`}
             >
               Student Accounts
@@ -221,7 +221,7 @@ export default function BulkCreateAccounts() {
             <button
               onClick={() => { setRole('faculty'); setRecords([]) }}
               className={`px-4 py-1.5 text-xs font-mono font-bold rounded-full transition-colors ${
-                role === 'faculty' ? 'bg-white text-black' : 'text-slate-400 hover:text-white'
+                role === 'faculty' ? 'bg-white text-black' : 'text-muted-foreground hover:text-white'
               }`}
             >
               Teacher Accounts
@@ -230,24 +230,24 @@ export default function BulkCreateAccounts() {
         </div>
 
         {error && (
-          <div className="p-3 rounded-2xl bg-[#141416] border border-[#27272A] text-xs font-mono text-white flex items-center gap-2">
+          <div className="p-3 rounded-2xl bg-card border border-border text-xs font-mono text-white flex items-center gap-2">
             <AlertTriangle size={14} className="text-white shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
         {/* Upload Card */}
-        <Card className="border-[#27272A] bg-[#141416]">
-          <CardHeader className="pb-3 border-b border-[#27272A]">
-            <CardTitle className="text-sm font-semibold text-slate-100">1. Upload Roster File</CardTitle>
-            <CardDescription className="text-xs text-slate-400 flex items-center justify-between">
+        <Card className="border-border bg-card">
+          <CardHeader className="pb-3 border-b border-border">
+            <CardTitle className="text-sm font-semibold text-foreground">1. Upload Roster File</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground flex items-center justify-between">
               <span>
                 Upload {role === 'student' ? 'Student' : 'Faculty'} roster in Excel (.xlsx/.xls) or PDF format containing Name, {role === 'faculty' ? 'Employee ID' : 'Roll No/USN'}, Department, Phone, & Email.
               </span>
               <a
                 href={role === 'student' ? '/sample_students.xlsx' : '/sample_faculty.xlsx'}
                 download
-                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono bg-[#09090B] border border-[#27272A] hover:bg-[#18181B] text-indigo-400 rounded-lg transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono bg-background border border-border hover:bg-[#f8fafc] dark:bg-neutral-900 text-primary rounded-lg transition"
               >
                 <Download size={13} />
                 Download Sample {role === 'student' ? 'Student' : 'Faculty'} Excel
@@ -255,8 +255,8 @@ export default function BulkCreateAccounts() {
             </CardDescription>
           </CardHeader>
           <CardContent className="p-5">
-            <div className="border-2 border-dashed border-[#27272A] hover:border-[#3F3F46] rounded-2xl p-6 text-center transition-colors bg-[#09090B]">
-              <div className="w-10 h-10 rounded-2xl bg-[#141416] text-white flex items-center justify-center mx-auto mb-3 border border-[#27272A]">
+            <div className="border-2 border-dashed border-border hover:border-border rounded-2xl p-6 text-center transition-colors bg-background">
+              <div className="w-10 h-10 rounded-2xl bg-card text-white flex items-center justify-center mx-auto mb-3 border border-border">
                 <Upload size={18} />
               </div>
 
@@ -270,13 +270,13 @@ export default function BulkCreateAccounts() {
 
               <label htmlFor="fileInput" className="cursor-pointer">
                 <span className="text-xs font-bold text-white hover:underline">Click to browse file</span>
-                <span className="text-xs text-slate-400"> or drag and drop</span>
+                <span className="text-xs text-muted-foreground"> or drag and drop</span>
               </label>
 
               <p className="text-[11px] font-mono text-slate-500 mt-1">Supports Excel (.xlsx, .xls) and PDF rosters</p>
 
               {file && (
-                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#141416] border border-[#27272A] text-xs font-mono text-white">
+                <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-mono text-white">
                   <FileSpreadsheet size={14} />
                   <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
                 </div>
@@ -298,11 +298,11 @@ export default function BulkCreateAccounts() {
 
         {/* 2. Interactive Preview & Correction Table */}
         {records.length > 0 && (
-          <Card className="border-[#27272A] bg-[#141416]">
-            <CardHeader className="pb-3 border-b border-[#27272A] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Card className="border-border bg-card">
+            <CardHeader className="pb-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-sm font-semibold text-slate-100">2. Review & Edit Parsed Records ({records.length})</CardTitle>
-                <CardDescription className="text-xs text-slate-400">Review parsed fields before final account creation. Edit inline if needed.</CardDescription>
+                <CardTitle className="text-sm font-semibold text-foreground">2. Review & Edit Parsed Records ({records.length})</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">Review parsed fields before final account creation. Edit inline if needed.</CardDescription>
               </div>
 
               <Button
@@ -318,53 +318,53 @@ export default function BulkCreateAccounts() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-[#27272A] bg-[#09090B]">
-                    <TableHead className="text-xs text-slate-400 w-12">#</TableHead>
-                    <TableHead className="text-xs text-slate-400">Full Name</TableHead>
-                    <TableHead className="text-xs text-slate-400">{role === 'faculty' ? 'Employee ID' : 'USN'}</TableHead>
-                    <TableHead className="text-xs text-slate-400">Department</TableHead>
-                    <TableHead className="text-xs text-slate-400">Phone</TableHead>
-                    <TableHead className="text-xs text-slate-400">Email</TableHead>
-                    <TableHead className="text-xs text-right text-slate-400">Action</TableHead>
+                  <TableRow className="border-b border-border bg-background">
+                    <TableHead className="text-xs text-muted-foreground w-12">#</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Full Name</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">{role === 'faculty' ? 'Employee ID' : 'USN'}</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Department</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Phone</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Email</TableHead>
+                    <TableHead className="text-xs text-right text-muted-foreground">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {records.map((r, i) => (
-                    <TableRow key={i} className="border-b border-[#27272A]/60 hover:bg-[#18181A]">
+                    <TableRow key={i} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
                       <TableCell className="text-xs text-slate-500 font-mono">{i + 1}</TableCell>
                       <TableCell>
                         <Input
                           value={r.name || ''}
                           onChange={e => handleRecordChange(i, 'name', e.target.value)}
-                          className="h-7 text-xs bg-[#09090B] border-[#27272A]"
+                          className="h-7 text-xs bg-background border-border"
                         />
                       </TableCell>
                       <TableCell>
                         <Input
                           value={role === 'faculty' ? (r.employeeId || '') : (r.usn || '')}
                           onChange={e => handleRecordChange(i, role === 'faculty' ? 'employeeId' : 'usn', e.target.value)}
-                          className="h-7 text-xs font-mono bg-[#09090B] border-[#27272A]"
+                          className="h-7 text-xs font-mono bg-background border-border"
                         />
                       </TableCell>
                       <TableCell>
                         <Input
                           value={r.department || ''}
                           onChange={e => handleRecordChange(i, 'department', e.target.value)}
-                          className="h-7 text-xs bg-[#09090B] border-[#27272A]"
+                          className="h-7 text-xs bg-background border-border"
                         />
                       </TableCell>
                       <TableCell>
                         <Input
                           value={r.phone || ''}
                           onChange={e => handleRecordChange(i, 'phone', e.target.value)}
-                          className="h-7 text-xs font-mono bg-[#09090B] border-[#27272A]"
+                          className="h-7 text-xs font-mono bg-background border-border"
                         />
                       </TableCell>
                       <TableCell>
                         <Input
                           value={r.email || ''}
                           onChange={e => handleRecordChange(i, 'email', e.target.value)}
-                          className="h-7 text-xs font-mono bg-[#09090B] border-[#27272A]"
+                          className="h-7 text-xs font-mono bg-background border-border"
                         />
                       </TableCell>
                       <TableCell className="text-right">
