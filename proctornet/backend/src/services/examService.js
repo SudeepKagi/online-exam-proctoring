@@ -134,7 +134,7 @@ async function getExamById({ id, facultyId }) {
   const exam = await global.prisma.exam.findFirst({
     where,
     include: {
-      questions: { orderBy: { order: 'asc' } },
+      questions: { orderBy: { createdAt: 'asc' } },
       studentExams: {
         include: {
           student: {
@@ -296,9 +296,7 @@ async function publishExamById({ id, facultyId }) {
 
   const questionCount = await global.prisma.question.count({ where: { examId: id } })
   if (questionCount === 0) {
-    const error = new Error('Cannot publish exam with zero questions. Please add questions first.')
-    error.status = 400
-    throw error
+    console.warn(`[publishExamById] Publishing exam ${id} with 0 questions currently configured.`)
   }
 
   const invId = exam.invId || `INV-${Math.floor(100 + Math.random() * 900)}`

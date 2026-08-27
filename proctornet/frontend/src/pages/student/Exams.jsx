@@ -128,13 +128,13 @@ export default function StudentExams() {
     const fifteenMinsBeforeStart = new Date(start.getTime() - 15 * 60 * 1000)
     
     const isEnded = e.status === 'ENDED' || now > end
-    const isActive = e.status === 'ACTIVE' || (now >= start && now <= end && (e.status === 'PUBLISHED' || e.status === 'SCHEDULED' || e.status === 'ACTIVE'))
-    const isUpcoming = !isEnded && now < fifteenMinsBeforeStart
+    const isActive = !isEnded && (e.status === 'ACTIVE' || (now >= start && now <= end && ['PUBLISHED', 'SCHEDULED', 'ACTIVE'].includes(e.status)))
+    const isUpcoming = !isEnded && now < start
 
-    const matchSearch = e.title.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch = (e.title || '').toLowerCase().includes(search.toLowerCase()) ||
       (e.subject || '').toLowerCase().includes(search.toLowerCase())
 
-    if (filterStatus === 'ACTIVE') return matchSearch && isActive && !isEnded
+    if (filterStatus === 'ACTIVE') return matchSearch && isActive
     if (filterStatus === 'SCHEDULED') return matchSearch && isUpcoming
     if (filterStatus === 'ENDED') return matchSearch && isEnded
     return matchSearch

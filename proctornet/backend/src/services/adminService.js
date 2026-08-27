@@ -236,7 +236,7 @@ async function getExamOversightDetails(id) {
     where: { id },
     include: {
       faculty:      { select: { id: true, name: true, email: true, department: true } },
-      questions:    { orderBy: { order: 'asc' } },
+      questions:    { orderBy: { createdAt: 'asc' } },
       studentExams: {
         include: {
           student: { select: { id: true, name: true, usn: true, department: true } },

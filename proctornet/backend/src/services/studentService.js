@@ -48,14 +48,42 @@ async function listExamsForStudent(studentId) {
     take: 100
   })
 
-  const filtered = exams.filter(e => {
-    if (!e.allowedDepartments || e.allowedDepartments.length === 0) return true
-    const depts = e.allowedDepartments.map(d => d.toLowerCase())
-    const deptMatch = depts.some(d => d === studentDept || studentDept.includes(d) || d.includes(studentDept))
-    if (!deptMatch) return false
+  const DEPT_ALIASES = {
+    ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
+    cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
+    ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
+    aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
+    mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
+    civil: ['civil', 'cv', 'civil engineering'],
+    eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
+  }
 
+  const checkDeptMatch = (allowedDepts, sDept) => {
+    if (!allowedDepts || allowedDepts.length === 0) return true
+    if (!sDept) return true
+    const s = sDept.toLowerCase().trim()
+
+    return allowedDepts.some(rawDept => {
+      const d = rawDept.toLowerCase().trim()
+      if (d === s || s.includes(d) || d.includes(s)) return true
+
+      for (const aliases of Object.values(DEPT_ALIASES)) {
+        const dMatches = aliases.some(a => a === d || d.includes(a) || a.includes(d))
+        const sMatches = aliases.some(a => a === s || s.includes(a) || a.includes(s))
+        if (dMatches && sMatches) return true
+      }
+      return false
+    })
+  }
+
+  const filtered = exams.filter(e => {
+    // 1. Department match
+    if (!checkDeptMatch(e.allowedDepartments, studentDept)) return false
+
+    // 2. Semester match
     if (!e.allowedSemesters || e.allowedSemesters.length === 0) return true
-    return e.allowedSemesters.includes(studentSem)
+    const semList = e.allowedSemesters.map(Number)
+    return semList.includes(Number(studentSem))
   })
 
   const formatted = filtered.map(e => ({
