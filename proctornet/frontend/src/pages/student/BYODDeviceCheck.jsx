@@ -203,12 +203,12 @@ export default function BYODDeviceCheck() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `proctornet-${examId || 'session'}.conf`
+    link.download = 'proctornet.conf'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    toast.success('Downloaded proctornet-exam.conf')
+    toast.success('Downloaded WireGuard profile: proctornet.conf')
   }
 
   // Manual Check of VPN Tunnel Status
