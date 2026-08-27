@@ -153,28 +153,64 @@ export default function SecurityCheck() {
     }
 
     // Check if local agent or client already has active VPN tunnel
+    checkVpnRealStatus(false)
+  }
+
+  // Real VPN connection check calling device agent (4000ms timeout matching BYODDeviceCheck.jsx)
+  const checkVpnRealStatus = async (showToasts = false) => {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 1500)
-      const agentRes = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
+      const timeoutId = setTimeout(() => controller.abort(), 4000)
+      const res = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
       clearTimeout(timeoutId)
-      if (agentRes.ok) {
-        const agentData = await agentRes.json()
-        if (agentData.connected) {
+
+      if (res.ok) {
+        const data = await res.json()
+        if (data.connected) {
           setVpnVerified(true)
-          updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${agentData.vpnIp || assignedIp}) • System Sandboxed`)
+          const ip = data.vpnIp || vpnPeerIp || assignedIp || '10.0.0.x'
+          updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${ip}) • Network Sandboxed`)
+          if (showToasts) toast.success(`✔ WireGuard VPN tunnel verified active! (IP: ${ip})`)
           setActiveStage(1)
           startCamera()
-          return
+          return true
+        } else {
+          setVpnVerified(false)
+          if (confDownloaded) {
+            updateStage('system', 'loading', 'Profile downloaded. Open WireGuard app, import this file, and click Activate. Detecting connection automatically...')
+          } else {
+            updateStage('system', 'loading', `WireGuard Gateway Assigned (${assignedIp || '10.0.0.x'}). Click "⚡ Auto-Connect VPN" or download .conf to activate.`)
+          }
+          if (showToasts) toast.error('VPN tunnel is disconnected in WireGuard. Please activate the tunnel.')
+          return false
         }
+      } else {
+        setVpnVerified(false)
+        updateStage('system', 'fail', 'Desktop device agent unreachable. Please start ProctorNet Agent or activate WireGuard.')
+        if (showToasts) toast.error('Device agent unreachable. Start ProctorNet Desktop Agent.')
+        return false
       }
     } catch {
-      // Local agent not connected, wait for student to verify tunnel
+      setVpnVerified(false)
+      updateStage('system', 'fail', 'Desktop device agent offline. Start ProctorNet Agent to detect WireGuard connection.')
+      if (showToasts) toast.error('Desktop device agent offline on port 49152.')
+      return false
     }
-
-    // Keep Stage 0 ready for candidate to connect or verify tunnel
-    updateStage('system', 'loading', `WireGuard Gateway Assigned (${assignedIp}). Click "⚡ Auto-Connect VPN (1-Click)" or download .conf to activate.`)
   }
+
+  // Automatic background polling every 3 seconds when VPN is not yet verified
+  useEffect(() => {
+    if (vpnVerified || !vpnConfig) return
+
+    // Run check immediately
+    checkVpnRealStatus(false)
+
+    const interval = setInterval(() => {
+      checkVpnRealStatus(false)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [vpnConfig, vpnVerified, confDownloaded])
 
   const downloadVpnConfig = () => {
     if (!vpnConfig) {
@@ -193,6 +229,10 @@ export default function SecurityCheck() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+
+    setConfDownloaded(true)
+    setVpnVerified(false)
+    updateStage('system', 'loading', 'Profile downloaded. Now open the WireGuard app, import this file, and click Activate. We\'ll detect your connection automatically.')
     toast.success(`Downloaded WireGuard profile: ${filename}`)
   }
 
@@ -215,17 +255,12 @@ export default function SecurityCheck() {
         // Desktop agent offline or quiet fallback
       }
 
-      setVpnVerified(true)
-      const ip = vpnPeerIp || '10.0.0.5'
-      updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${ip}) • Network Sandboxed`)
-      toast.success(`✔ WireGuard VPN tunnel activated & verified! (IP: ${ip})`)
-      setActiveStage(1)
-      startCamera()
-    } catch {
-      toast.error('Tunnel verification notice. Proceeding with secure channel.')
-      setVpnVerified(true)
-      setActiveStage(1)
-      startCamera()
+      // Re-verify real tunnel status from agent
+      await new Promise(resolve => setTimeout(resolve, 1500))
+      const isConnected = await checkVpnRealStatus(true)
+      if (!isConnected) {
+        toast.error('VPN tunnel is not active. Import .conf in WireGuard or run agent as administrator.')
+      }
     } finally {
       setVerifyingVpn(false)
     }
