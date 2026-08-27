@@ -35,7 +35,6 @@ export default function AdminAuditLogs() {
       !search ||
       (l.action || '').toLowerCase().includes(search.toLowerCase()) ||
       (l.userRole || '').toLowerCase().includes(search.toLowerCase()) ||
-      (l.ipAddress || '').includes(search) ||
       (l.details || '').toLowerCase().includes(search.toLowerCase())
   )
 
@@ -62,7 +61,7 @@ export default function AdminAuditLogs() {
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search action, IP, details..."
+              placeholder="Search action, details, user role..."
               className="w-full pl-9 pr-3 py-1.5 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary"
             />
           </div>
@@ -104,7 +103,6 @@ export default function AdminAuditLogs() {
                   <TableHead className="text-xs text-muted-foreground font-mono">Role</TableHead>
                   <TableHead className="text-xs text-muted-foreground">Action</TableHead>
                   <TableHead className="text-xs text-muted-foreground">Details</TableHead>
-                  <TableHead className="text-xs text-muted-foreground font-mono text-right">IP Address</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -120,7 +118,6 @@ export default function AdminAuditLogs() {
                     </TableCell>
                     <TableCell className="font-mono font-semibold text-xs text-foreground">{log.action}</TableCell>
                     <TableCell className="text-xs text-muted-foreground max-w-md truncate">{log.details || '—'}</TableCell>
-                    <TableCell className="font-mono text-xs text-slate-500 text-right">{log.ipAddress || '127.0.0.1'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

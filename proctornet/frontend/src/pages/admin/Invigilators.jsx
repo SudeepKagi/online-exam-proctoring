@@ -82,9 +82,8 @@ export default function AdminInvigilators() {
                   {[
                     ['Invigilator ID', selected.invId],
                     ['Exam Session', selected.exam?.title || selected.examId],
-                    ['Login Time', selected.createdAt ? new Date(selected.createdAt).toLocaleString() : '—'],
+                    ['Login Time', (selected.loginTime || selected.createdAt) ? new Date(selected.loginTime || selected.createdAt).toLocaleString() : '—'],
                     ['Session Expiry', selected.sessionExpiry ? new Date(selected.sessionExpiry).toLocaleString() : '—'],
-                    ['IP Address', selected.ipAddress || '127.0.0.1'],
                     ['Status', selected.isActive ? 'Active' : 'Expired'],
                   ].map(([label, val]) => (
                     <div key={label} className="bg-background border border-border rounded-xl p-2.5">
@@ -137,7 +136,7 @@ export default function AdminInvigilators() {
                   <TableRow key={s.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
                     <TableCell className="font-mono text-xs font-bold text-foreground">{s.invId}</TableCell>
                     <TableCell className="font-mono text-xs text-primary">{s.exam?.title || 'Exam Session'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{s.createdAt ? new Date(s.createdAt).toLocaleString() : '—'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{(s.loginTime || s.createdAt) ? new Date(s.loginTime || s.createdAt).toLocaleString() : '—'}</TableCell>
                     <TableCell>
                       {s.isActive ? (
                         <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">
