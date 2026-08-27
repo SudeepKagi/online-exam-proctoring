@@ -35,6 +35,7 @@ router.get('/results', ctrl.getMyResults)
 // ── Profile & Biometric Setup ─────────────────────────────────────
 router.get('/profile', ctrl.getProfile)
 router.put('/profile', ctrl.updateProfile)
+router.patch('/profile', ctrl.updateProfile)
 
 // ── Face & ID verification ──────────────────────────────────────────────
 router.post('/verify-face', ctrl.verifyFace)

@@ -142,7 +142,7 @@ export default function StudentProfile() {
         payload.newPassword = newPassword
       }
 
-      await api.patch('/student/profile', payload)
+      await api.put('/student/profile', payload)
       toast.success('Profile credentials updated successfully.')
       setCurrentPassword('')
       setNewPassword('')
