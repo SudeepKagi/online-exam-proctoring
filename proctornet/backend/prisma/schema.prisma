@@ -174,7 +174,9 @@ model StudentExam {
   vpnPeerIp            String?
   vpnKeyExpiry         DateTime?
   status               String                @default("PENDING")
+  flagCount            Int                   @default(0)
   startedAt            DateTime?
+
   submittedAt          DateTime?
   terminationReason    String?
   createdAt            DateTime              @default(now())
