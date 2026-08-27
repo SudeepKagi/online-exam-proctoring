@@ -377,6 +377,42 @@ async function resumeExam(req, res) {
   }
 }
 
+async function getExamInvigilatorCredentials(req, res) {
+  try {
+    const { id } = req.params
+    const credentials = await adminService.getExamInvigilatorCredentialsRecord(id)
+    logAudit({
+      userId: req.user.id,
+      userRole: 'admin',
+      action: 'INVIGILATOR_CREDENTIALS_VIEWED',
+      details: `Viewed invigilator key for exam "${credentials.title}" (${credentials.invId})`,
+      ipAddress: getClientIp(req)
+    })
+    res.json(credentials)
+  } catch (e) {
+    console.error('[getExamInvigilatorCredentials]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Server error.' })
+  }
+}
+
+async function resetExamInvigilatorCredentials(req, res) {
+  try {
+    const { id } = req.params
+    const credentials = await adminService.resetExamInvigilatorCredentialsRecord(id)
+    logAudit({
+      userId: req.user.id,
+      userRole: 'admin',
+      action: 'INVIGILATOR_CREDENTIALS_RESET',
+      details: `Reset invigilator key for exam "${credentials.title}" (${credentials.invId})`,
+      ipAddress: getClientIp(req)
+    })
+    res.json(credentials)
+  } catch (e) {
+    console.error('[resetExamInvigilatorCredentials]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Server error.' })
+  }
+}
+
 // ════════════════════════════════════════════════════
 // INVIGILATOR SESSIONS
 // ════════════════════════════════════════════════════
@@ -570,6 +606,8 @@ module.exports = {
   unsuspendStudent,
   listExams,
   getExam,
+  getExamInvigilatorCredentials,
+  resetExamInvigilatorCredentials,
   pauseExam,
   resumeExam,
   listInvigilatorSessions,

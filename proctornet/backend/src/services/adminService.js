@@ -4,6 +4,7 @@
  * exam oversight, platform stats, audit logs, violations, and system configuration.
  */
 const { paginate } = require('../utils/helpers')
+const bcrypt = require('bcryptjs')
 
 async function listFacultyAccounts(query) {
   const { status, department, search, page = 1, limit = 20 } = query
@@ -620,6 +621,58 @@ async function revokeInvigilatorSessionRecord(id) {
   return updated
 }
 
+async function getExamInvigilatorCredentialsRecord(id) {
+  const exam = await global.prisma.exam.findUnique({
+    where: { id },
+    include: {
+      faculty: { select: { name: true, email: true, department: true } }
+    }
+  })
+
+  if (!exam) {
+    const error = new Error('Exam not found.')
+    error.status = 404
+    throw error
+  }
+
+  // Ensure invId exists
+  let invId = exam.invId
+  if (!invId) {
+    const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
+    invId = `INV-${randomSuffix}`
+  }
+
+  // Generate a clean, memorable 8-char password
+  const newPassword = Math.random().toString(36).substring(2, 8).toUpperCase() + Math.floor(10 + Math.random() * 90)
+  const newHash = await bcrypt.hash(newPassword, 10)
+
+  await global.prisma.exam.update({
+    where: { id: exam.id },
+    data: {
+      invId,
+      invPasswordHash: newHash
+    }
+  })
+
+  return {
+    examId: exam.id,
+    title: exam.title,
+    subject: exam.subject,
+    facultyName: exam.faculty?.name || 'Faculty',
+    invId,
+    password: newPassword,
+    duration: exam.duration,
+    startTime: exam.startTime,
+    endTime: exam.endTime,
+    status: exam.status,
+    loginUrl: '/invigilator/login'
+  }
+}
+
+async function resetExamInvigilatorCredentialsRecord(id) {
+  return getExamInvigilatorCredentialsRecord(id)
+}
+
 module.exports = {
   listFacultyAccounts,
   listPendingFacultyAccounts,
@@ -634,6 +687,8 @@ module.exports = {
   listExamsOversight,
   getExamOversightDetails,
   updateExamStatus,
+  getExamInvigilatorCredentialsRecord,
+  resetExamInvigilatorCredentialsRecord,
   listInvigilatorSessionRecords,
   revokeInvigilatorSessionRecord,
   getAdminDashboardStats,

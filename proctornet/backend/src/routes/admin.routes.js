@@ -32,6 +32,8 @@ router.patch ('/students/:id/unsuspend', ctrl.unsuspendStudent)
 router.get   ('/exams',            ctrl.listExams)
 router.get   ('/exams/all',        ctrl.listExams)   // alias
 router.get   ('/exams/:id',        ctrl.getExam)
+router.get   ('/exams/:id/invigilator-credentials', ctrl.getExamInvigilatorCredentials)
+router.post  ('/exams/:id/invigilator-credentials/reset', ctrl.resetExamInvigilatorCredentials)
 router.patch ('/exams/:id/pause',  ctrl.pauseExam)
 router.patch ('/exams/:id/resume', ctrl.resumeExam)
 
