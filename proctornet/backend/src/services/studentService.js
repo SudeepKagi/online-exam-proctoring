@@ -822,6 +822,74 @@ async function saveStudentChatMessage({ examId, studentId, message }) {
   return { success: true }
 }
 
+async function createSupportTicket({ studentId, examId, category, priority, subject, description }) {
+  if (!subject?.trim() || !description?.trim()) {
+    const error = new Error('Subject and description are required')
+    error.status = 400
+    throw error
+  }
+
+  const detailsObj = {
+    examId: examId || 'GENERAL',
+    category: category || 'TECHNICAL',
+    priority: priority || 'NORMAL',
+    subject: subject.trim(),
+    description: description.trim(),
+    status: 'OPEN',
+    ticketId: `TICK-${Date.now().toString().slice(-6)}`
+  }
+
+  const log = await global.prisma.auditLog.create({
+    data: {
+      userId: studentId,
+      studentId: studentId,
+      userRole: 'STUDENT',
+      action: 'SUPPORT_TICKET_SUBMITTED',
+      details: JSON.stringify(detailsObj)
+    }
+  })
+
+  return {
+    success: true,
+    ticket: {
+      id: log.id,
+      ...detailsObj,
+      createdAt: log.timestamp
+    }
+  }
+}
+
+async function listSupportTickets({ studentId }) {
+  const logs = await global.prisma.auditLog.findMany({
+    where: {
+      studentId,
+      action: 'SUPPORT_TICKET_SUBMITTED'
+    },
+    orderBy: { timestamp: 'desc' },
+    take: 20
+  })
+
+  return logs.map(l => {
+    let parsed = {}
+    try {
+      parsed = JSON.parse(l.details || '{}')
+    } catch {
+      parsed = { subject: l.details }
+    }
+    return {
+      id: l.id,
+      ticketId: parsed.ticketId || `TICK-${l.id.slice(0, 6)}`,
+      examId: parsed.examId || 'GENERAL',
+      category: parsed.category || 'TECHNICAL',
+      priority: parsed.priority || 'NORMAL',
+      subject: parsed.subject || 'Support Inquiry',
+      description: parsed.description || '',
+      status: parsed.status || 'OPEN',
+      createdAt: l.timestamp
+    }
+  })
+}
+
 module.exports = {
   listExamsForStudent,
   getExamDetailsForStudent,
@@ -838,6 +906,8 @@ module.exports = {
   approveStudentByFaculty,
   acknowledgeWatermarkSession,
   getStudentChatHistory,
-  saveStudentChatMessage
+  saveStudentChatMessage,
+  createSupportTicket,
+  listSupportTickets
 }
 

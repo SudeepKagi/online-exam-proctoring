@@ -41,4 +41,8 @@ router.post('/verify-face', ctrl.verifyFace)
 router.post('/verify-id',   ctrl.verifyIdCard)
 router.post('/exams/:id/identity-verify', ctrl.saveIdentityVerification)
 
+// ── Support & Inquiries ───────────────────────────────────────────
+router.post('/support/ticket',  ctrl.createSupportTicket)
+router.get ('/support/tickets', ctrl.listSupportTickets)
+
 module.exports = router
