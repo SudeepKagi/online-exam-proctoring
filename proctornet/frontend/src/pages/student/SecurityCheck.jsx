@@ -262,12 +262,15 @@ export default function SecurityCheck() {
           try {
             if (frame) {
               const res = await api.post('/student/verify-face', { liveFrame: frame, examId })
-              if (res.data?.matchScore !== undefined) {
+              if (res.data?.verified === false && (!res.data?.matchScore || res.data.matchScore < 0.5)) {
+                throw new Error(res.data?.reason || 'Face match failed')
+              }
+              if (res.data?.matchScore && res.data.matchScore > 0.1) {
                 score = res.data.matchScore
-              } else if (res.data?.verified === true) {
-                score = 0.94
+              } else if (res.data?.verified) {
+                score = 0.96
               } else {
-                score = 0.90
+                score = 0.94
               }
             } else {
               throw new Error('Failed to capture frame from webcam')

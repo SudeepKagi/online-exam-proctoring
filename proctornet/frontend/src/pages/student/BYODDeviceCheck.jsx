@@ -130,7 +130,7 @@ export default function BYODDeviceCheck() {
     setCheckingNetwork(true)
     const start = performance.now()
     try {
-      await fetch('/api/health', { cache: 'no-store' })
+      await api.get('/health')
       const ms = Math.max(12, Math.round(performance.now() - start))
       setPingLatency(ms)
       if (showToast) toast.success(`Network Latency: ${ms}ms (Excellent)`)

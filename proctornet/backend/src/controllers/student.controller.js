@@ -321,27 +321,6 @@ async function updateProfile(req, res) {
   }
 }
 
-async function createSupportTicket(req, res) {
-  try {
-    const result = await studentService.createSupportTicket({
-      studentId: req.user.id,
-      ...req.body
-    })
-    res.status(201).json(result)
-  } catch (e) {
-    res.status(e.status || 500).json({ error: e.message || 'Failed to submit support ticket' })
-  }
-}
-
-async function listSupportTickets(req, res) {
-  try {
-    const tickets = await studentService.listSupportTickets({ studentId: req.user.id })
-    res.json({ tickets })
-  } catch (e) {
-    res.status(e.status || 500).json({ error: e.message || 'Failed to fetch tickets' })
-  }
-}
-
 module.exports = {
   listMyExams,
   getExamDetails,
@@ -361,6 +340,4 @@ module.exports = {
   getMyResults,
   getProfile,
   updateProfile,
-  createSupportTicket,
-  listSupportTickets
 }
