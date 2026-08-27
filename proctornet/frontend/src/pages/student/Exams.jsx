@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { BookOpen, Calendar, Search, Play, Camera, Lock } from 'lucide-react'
+import { useAuth } from '@/context/AuthContext'
+import { BookOpen, Calendar, Search, Play, Camera, Lock, Building, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,8 +63,18 @@ function ExamCard({ exam, now }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3 font-medium">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 font-medium">
             <Calendar size={13} className="text-muted-foreground" /> {timeLabel}
+          </div>
+
+          {/* Allotted Eligibility Tags */}
+          <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[10px]">
+            <span className="px-2 py-0.5 rounded-md bg-[#f1f5f9] border border-[#e2e8f0] font-semibold text-[#0f172a]">
+              Dept: {exam.allowedDepartments && exam.allowedDepartments.length > 0 ? exam.allowedDepartments.join(', ') : 'All'}
+            </span>
+            <span className="px-2 py-0.5 rounded-md bg-[#eff6ff] border border-[#dbeafe] font-semibold text-[#2563eb]">
+              Sem: {exam.allowedSemesters && exam.allowedSemesters.length > 0 ? exam.allowedSemesters.map(s => `Sem ${s}`).join(', ') : 'All'}
+            </span>
           </div>
         </div>
 
@@ -99,6 +110,7 @@ function ExamCard({ exam, now }) {
 }
 
 export default function StudentExams() {
+  const { user } = useAuth()
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -143,9 +155,19 @@ export default function StudentExams() {
   return (
     <DashboardLayout title="My Exams">
       <div className="space-y-5">
-        <div>
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground">Assigned Examinations</h1>
-          <p className="text-xs text-muted-foreground mt-1 font-medium">Scheduled and active assessment sessions.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight text-foreground">Assigned Examinations</h1>
+            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+              Assessments specifically allotted to your academic stream.
+            </p>
+          </div>
+          {user && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#eff6ff] border border-[#dbeafe] text-[#2563eb] rounded-xl text-xs font-bold w-fit">
+              <Building size={14} className="shrink-0" />
+              <span>{user.department || 'Department'} • Semester {user.semester || 1}</span>
+            </div>
+          )}
         </div>
 
         {/* Filter bar */}

@@ -5,6 +5,44 @@ const bcrypt = require('bcryptjs')
  * Encapsulates candidate exam discovery, session lifecycle, answer autosave, auto-grading, and profile management.
  */
 
+const DEPT_ALIASES = {
+  ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
+  cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
+  ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
+  aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
+  mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
+  civil: ['civil', 'cv', 'civil engineering'],
+  eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
+}
+
+const checkDeptMatch = (allowedDepts, sDept) => {
+  if (!allowedDepts || allowedDepts.length === 0) return false
+  if (allowedDepts.some(d => String(d).toUpperCase() === 'ALL')) return true
+  if (!sDept) return false
+  const s = sDept.toLowerCase().trim()
+
+  return allowedDepts.some(rawDept => {
+    const d = String(rawDept).toLowerCase().trim()
+    if (d === 'all') return true
+    if (d === s) return true
+
+    for (const aliases of Object.values(DEPT_ALIASES)) {
+      const dMatches = aliases.some(a => a === d)
+      const sMatches = aliases.some(a => a === s)
+      if (dMatches && sMatches) return true
+    }
+    return false
+  })
+}
+
+const checkSemMatch = (allowedSems, sSem) => {
+  if (!allowedSems || allowedSems.length === 0) return false
+  if (allowedSems.some(s => s === 0 || String(s).toUpperCase() === 'ALL')) return true
+  if (!sSem) return false
+  const semNum = Number(sSem)
+  return allowedSems.map(Number).includes(semNum)
+}
+
 async function listExamsForStudent(studentId) {
   const student = await global.prisma.student.findUnique({
     where: { id: studentId },
@@ -16,7 +54,7 @@ async function listExamsForStudent(studentId) {
     throw error
   }
 
-  const studentDept = (student.department || '').toLowerCase()
+  const studentDept = (student.department || '').toLowerCase().trim()
   const studentSem = student.semester
 
   const exams = await global.prisma.exam.findMany({
@@ -48,42 +86,18 @@ async function listExamsForStudent(studentId) {
     take: 100
   })
 
-  const DEPT_ALIASES = {
-    ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
-    cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
-    ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
-    aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
-    mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
-    civil: ['civil', 'cv', 'civil engineering'],
-    eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
-  }
-
-  const checkDeptMatch = (allowedDepts, sDept) => {
-    if (!allowedDepts || allowedDepts.length === 0) return true
-    if (!sDept) return true
-    const s = sDept.toLowerCase().trim()
-
-    return allowedDepts.some(rawDept => {
-      const d = rawDept.toLowerCase().trim()
-      if (d === s || s.includes(d) || d.includes(s)) return true
-
-      for (const aliases of Object.values(DEPT_ALIASES)) {
-        const dMatches = aliases.some(a => a === d || d.includes(a) || a.includes(d))
-        const sMatches = aliases.some(a => a === s || s.includes(a) || a.includes(s))
-        if (dMatches && sMatches) return true
-      }
-      return false
-    })
-  }
-
   const filtered = exams.filter(e => {
-    // 1. Department match
+    // If student was specifically enrolled in studentExams table, grant access
+    const isExplicitlyEnrolled = e.studentExams && e.studentExams.length > 0
+    if (isExplicitlyEnrolled) return true
+
+    // 1. Department match: Student's department must be in allowedDepartments (or ALL)
     if (!checkDeptMatch(e.allowedDepartments, studentDept)) return false
 
-    // 2. Semester match
-    if (!e.allowedSemesters || e.allowedSemesters.length === 0) return true
-    const semList = e.allowedSemesters.map(Number)
-    return semList.includes(Number(studentSem))
+    // 2. Semester match: Student's semester must be in allowedSemesters (or ALL)
+    if (!checkSemMatch(e.allowedSemesters, studentSem)) return false
+
+    return true
   })
 
   const formatted = filtered.map(e => ({
@@ -98,6 +112,8 @@ async function listExamsForStudent(studentId) {
     status: e.status,
     cameraRequired: e.cameraRequired,
     browserLock: e.browserLock,
+    allowedDepartments: e.allowedDepartments,
+    allowedSemesters: e.allowedSemesters,
     faculty: e.faculty,
     questionCount: e._count?.questions || 0,
     _count: e._count,
@@ -132,9 +148,10 @@ async function getExamLobbyData({ examId, studentId }) {
   }
 
   const student = await global.prisma.student.findUnique({ where: { id: studentId } })
-  const isEligible = exam.allowedDepartments && exam.allowedDepartments.length > 0
-    ? exam.allowedDepartments.includes(student?.department)
-    : true
+  const isDirectlyEnrolled = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+  const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
+  const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
+  const isEligible = !!isDirectlyEnrolled || (isDeptEligible && isSemEligible)
 
   const chatMessagesRaw = await global.prisma.chatMessage.findMany({
     where: { examId, studentId },
@@ -210,6 +227,20 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
     where: { studentId, examId },
     include: { answers: true }
   })
+
+  if (!studentExam) {
+    const student = await global.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { department: true, semester: true }
+    })
+    const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
+    const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
+    if (!isDeptEligible || !isSemEligible) {
+      const error = new Error('You are not eligible for this examination. This assessment is allotted specifically to other departments or semesters.')
+      error.status = 403
+      throw error
+    }
+  }
 
   if (studentExam) {
     if (studentExam.status === 'SUBMITTED') {

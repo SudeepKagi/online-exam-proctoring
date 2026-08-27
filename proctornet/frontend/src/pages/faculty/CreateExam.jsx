@@ -8,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
-const DEPARTMENTS = ['CS', 'ECE', 'ME', 'CV', 'IS', 'EE']
+const DEPARTMENTS = ['CSE', 'ECE', 'ISE', 'AIML', 'MECH', 'CIVIL', 'EEE']
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 // ── AI Generator Panel for Wizard ─────────────────────────────
@@ -718,48 +718,119 @@ export default function CreateExam() {
                 </div>
               </Card>
 
-              <Card className="bg-card border-border p-5">
-                <h2 className="text-sm font-bold text-foreground mb-4 border-b border-border pb-3">Candidate Eligibility</h2>
-                
-                <div className="space-y-4">
+              <Card className="bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5">
+                <div className="flex items-center justify-between mb-4 border-b border-[#f1f5f9] pb-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-foreground/90 mb-2">Allowed Departments</label>
-                    <div className="flex flex-wrap gap-2 font-mono">
-                      {DEPARTMENTS.map(dept => (
+                    <h2 className="text-sm font-bold text-[#0f172a]">Candidate Eligibility & Allotment</h2>
+                    <p className="text-[11px] text-[#64748b] mt-0.5">Control which academic departments and semesters can see and attempt this exam.</p>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    Targeted Allotment
+                  </Badge>
+                </div>
+                
+                <div className="space-y-5">
+                  {/* Department Selection */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#0f172a]">
+                        Target Academic Departments <span className="text-[#ef4444]">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
                         <button
-                          key={dept}
                           type="button"
-                          onClick={() => toggleSelection('allowedDepartments', dept)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                            formData.allowedDepartments.includes(dept)
-                              ? 'bg-white text-black'
-                              : 'bg-background text-muted-foreground border border-border hover:text-white'
-                          }`}
+                          onClick={() => setFormData(p => ({ ...p, allowedDepartments: [...DEPARTMENTS] }))}
+                          className="text-[11px] text-[#2563eb] font-semibold hover:underline cursor-pointer"
                         >
-                          {dept}
+                          Select All
                         </button>
-                      ))}
+                        <span className="text-[#cbd5e1] text-xs">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, allowedDepartments: [] }))}
+                          className="text-[11px] text-[#64748b] font-semibold hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      {DEPARTMENTS.map(dept => {
+                        const isSelected = formData.allowedDepartments.includes(dept)
+                        return (
+                          <button
+                            key={dept}
+                            type="button"
+                            onClick={() => toggleSelection('allowedDepartments', dept)}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-[#eff6ff] text-[#2563eb] border-2 border-[#2563eb] shadow-xs'
+                                : 'bg-white text-[#64748b] border border-[#e2e8f0] hover:border-[#94a3b8] hover:text-[#0f172a]'
+                            }`}
+                          >
+                            {isSelected && <CheckCircle size={12} className="text-[#2563eb]" />}
+                            <span>{dept}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {errors.allowedDepartments && (
+                      <p className="text-[#ef4444] text-xs font-medium mt-1.5">{errors.allowedDepartments}</p>
+                    )}
+                    <p className="text-[11px] text-[#94a3b8] mt-1.5">
+                      Only candidates matching these departments will see this exam on their dashboard.
+                    </p>
                   </div>
 
+                  {/* Semester Selection */}
                   <div>
-                    <label className="block text-[11px] font-semibold text-foreground/90 mb-2">Target Semesters</label>
-                    <div className="flex flex-wrap gap-2 font-mono">
-                      {SEMESTERS.map(sem => (
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-bold text-[#0f172a]">
+                        Target Semesters <span className="text-[#ef4444]">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
                         <button
-                          key={sem}
                           type="button"
-                          onClick={() => toggleSelection('allowedSemesters', sem)}
-                          className={`w-8 h-8 rounded-xl text-xs font-bold transition-all ${
-                            formData.allowedSemesters.includes(sem)
-                              ? 'bg-white text-black'
-                              : 'bg-background text-muted-foreground border border-border hover:text-white'
-                          }`}
+                          onClick={() => setFormData(p => ({ ...p, allowedSemesters: [...SEMESTERS] }))}
+                          className="text-[11px] text-[#2563eb] font-semibold hover:underline cursor-pointer"
                         >
-                          {sem}
+                          All Semesters
                         </button>
-                      ))}
+                        <span className="text-[#cbd5e1] text-xs">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(p => ({ ...p, allowedSemesters: [] }))}
+                          className="text-[11px] text-[#64748b] font-semibold hover:underline cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      {SEMESTERS.map(sem => {
+                        const isSelected = formData.allowedSemesters.includes(sem)
+                        return (
+                          <button
+                            key={sem}
+                            type="button"
+                            onClick={() => toggleSelection('allowedSemesters', sem)}
+                            className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                              isSelected
+                                ? 'bg-[#eff6ff] text-[#2563eb] border-2 border-[#2563eb] shadow-xs'
+                                : 'bg-white text-[#64748b] border border-[#e2e8f0] hover:border-[#94a3b8] hover:text-[#0f172a]'
+                            }`}
+                          >
+                            Sem {sem}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {errors.allowedSemesters && (
+                      <p className="text-[#ef4444] text-xs font-medium mt-1.5">{errors.allowedSemesters}</p>
+                    )}
+                    <p className="text-[11px] text-[#94a3b8] mt-1.5">
+                      Only students studying in the selected semesters will be granted entry.
+                    </p>
                   </div>
                 </div>
               </Card>

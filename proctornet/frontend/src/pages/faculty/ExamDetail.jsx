@@ -57,6 +57,9 @@ function getTestCases(q) {
   return Array.isArray(cases) ? cases : [];
 }
 
+const DEPARTMENTS = ['CSE', 'ECE', 'ISE', 'AIML', 'MECH', 'CIVIL', 'EEE']
+const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8]
+
 const navItems = [
   { to: '/faculty/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { to: '/faculty/exams', icon: 'assignment', label: 'My Exams' },
@@ -112,6 +115,8 @@ export default function ExamDetail() {
         endTime: exam.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
         duration: exam.duration || 60,
         tabSwitchLimit: exam.tabSwitchLimit ?? 3,
+        allowedDepartments: exam.allowedDepartments || ['CSE'],
+        allowedSemesters: exam.allowedSemesters || [5],
         cameraRequired: exam.cameraRequired ?? true,
         browserLock: exam.browserLock ?? true,
         fullScreenMode: exam.fullScreenMode ?? true,
@@ -172,6 +177,8 @@ export default function ExamDetail() {
     try {
       await api.patch(`/faculty/exams/${id}`, {
         ...settingsForm,
+        allowedDepartments: settingsForm.allowedDepartments,
+        allowedSemesters: settingsForm.allowedSemesters,
         startTime: settingsForm.startTime ? new Date(settingsForm.startTime).toISOString() : undefined,
         endTime: settingsForm.endTime ? new Date(settingsForm.endTime).toISOString() : undefined,
         duration: parseInt(settingsForm.duration),
@@ -833,6 +840,120 @@ export default function ExamDetail() {
                     onChange={e => setSettingsForm(f => ({ ...f, tabSwitchLimit: e.target.value }))}
                     disabled={!['DRAFT','SCHEDULED'].includes(exam.status)}
                   />
+                </div>
+
+                <div style={{ background: 'var(--surface-container-low)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.25rem' }}>Candidate Eligibility & Allotment</h4>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--on-surface-variant)', marginBottom: '1rem' }}>
+                    Only candidates studying in the selected departments and semesters will see and access this exam.
+                  </p>
+
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--on-surface)' }}>Allotted Departments</label>
+                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsForm(f => ({ ...f, allowedDepartments: [...DEPARTMENTS] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Select All
+                        </button>
+                        <span style={{ color: 'var(--outline-variant)' }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsForm(f => ({ ...f, allowedDepartments: [] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--on-surface-variant)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {DEPARTMENTS.map(dept => {
+                        const isSelected = (settingsForm.allowedDepartments || []).includes(dept)
+                        return (
+                          <button
+                            key={dept}
+                            type="button"
+                            onClick={() => {
+                              const current = settingsForm.allowedDepartments || []
+                              const updated = current.includes(dept)
+                                ? current.filter(d => d !== dept)
+                                : [...current, dept]
+                              setSettingsForm(f => ({ ...f, allowedDepartments: updated }))
+                            }}
+                            style={{
+                              padding: '0.4rem 0.85rem',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: isSelected ? '2px solid var(--primary)' : '1px solid var(--outline-variant)',
+                              background: isSelected ? 'rgba(79, 70, 229, 0.1)' : 'var(--surface)',
+                              color: isSelected ? 'var(--primary)' : 'var(--on-surface-variant)'
+                            }}
+                          >
+                            {isSelected ? '✓ ' : ''}{dept}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--on-surface)' }}>Allotted Semesters</label>
+                      <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsForm(f => ({ ...f, allowedSemesters: [...SEMESTERS] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          All Semesters
+                        </button>
+                        <span style={{ color: 'var(--outline-variant)' }}>|</span>
+                        <button
+                          type="button"
+                          onClick={() => setSettingsForm(f => ({ ...f, allowedSemesters: [] }))}
+                          style={{ background: 'none', border: 'none', color: 'var(--on-surface-variant)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      {SEMESTERS.map(sem => {
+                        const isSelected = (settingsForm.allowedSemesters || []).includes(sem)
+                        return (
+                          <button
+                            key={sem}
+                            type="button"
+                            onClick={() => {
+                              const current = settingsForm.allowedSemesters || []
+                              const updated = current.includes(sem)
+                                ? current.filter(s => s !== sem)
+                                : [...current, sem]
+                              setSettingsForm(f => ({ ...f, allowedSemesters: updated }))
+                            }}
+                            style={{
+                              width: '48px',
+                              height: '34px',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: isSelected ? '2px solid var(--primary)' : '1px solid var(--outline-variant)',
+                              background: isSelected ? 'rgba(79, 70, 229, 0.1)' : 'var(--surface)',
+                              color: isSelected ? 'var(--primary)' : 'var(--on-surface-variant)'
+                            }}
+                          >
+                            Sem {sem}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 <div style={{ background: 'var(--surface-container-low)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem' }}>
