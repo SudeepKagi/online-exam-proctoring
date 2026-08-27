@@ -545,6 +545,7 @@ async function getStudentResultsHistory(studentId) {
         include: {
           exam: {
             select: {
+              id: true,
               title: true,
               subject: true,
               totalMarks: true,
@@ -560,17 +561,42 @@ async function getStudentResultsHistory(studentId) {
     orderBy: { createdAt: 'desc' }
   })
 
-  const formatted = results.map(r => ({
-    id: r.id,
-    exam: r.studentExam?.exam,
-    totalScore: r.totalScore,
-    totalMarks: r.totalMarks,
-    percentage: r.percentage,
-    timeTaken: r.timeTaken,
-    finalStatus: r.finalStatus,
-    createdAt: r.createdAt,
-    gradedAt: r.createdAt
-  }))
+  const formatted = results.map(r => {
+    const exam = r.studentExam?.exam || {}
+    const title = exam.title || 'Assessment'
+    const subject = exam.subject || 'General'
+    const score = r.totalScore ?? r.autoScore ?? 0
+    const maxScore = r.totalMarks ?? exam.totalMarks ?? 100
+    const percentage = Math.round(r.percentage ?? ((score / (maxScore || 1)) * 100))
+    const flags = r.flagCount ?? 0
+    const status = percentage >= 40 ? 'PASSED' : 'FAILED'
+
+    return {
+      id: r.id,
+      title,
+      examTitle: title,
+      subject,
+      code: subject,
+      score,
+      totalScore: score,
+      maxScore,
+      totalMarks: maxScore,
+      percentage,
+      flags,
+      flagCount: flags,
+      status,
+      finalStatus: r.finalStatus || status,
+      date: new Date(r.createdAt).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+      timeTaken: r.timeTaken,
+      createdAt: r.createdAt,
+      gradedAt: r.createdAt,
+      exam
+    }
+  })
 
   return formatted
 }
