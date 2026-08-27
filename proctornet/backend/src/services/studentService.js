@@ -5,6 +5,44 @@ const bcrypt = require('bcryptjs')
  * Encapsulates candidate exam discovery, session lifecycle, answer autosave, auto-grading, and profile management.
  */
 
+const DEPT_ALIASES = {
+  ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
+  cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
+  ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
+  aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
+  mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
+  civil: ['civil', 'cv', 'civil engineering'],
+  eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
+}
+
+const checkDeptMatch = (allowedDepts, sDept) => {
+  if (!allowedDepts || allowedDepts.length === 0) return false
+  if (allowedDepts.some(d => String(d).toUpperCase() === 'ALL')) return true
+  if (!sDept) return false
+  const s = sDept.toLowerCase().trim()
+
+  return allowedDepts.some(rawDept => {
+    const d = String(rawDept).toLowerCase().trim()
+    if (d === 'all') return true
+    if (d === s) return true
+
+    for (const aliases of Object.values(DEPT_ALIASES)) {
+      const dMatches = aliases.some(a => a === d)
+      const sMatches = aliases.some(a => a === s)
+      if (dMatches && sMatches) return true
+    }
+    return false
+  })
+}
+
+const checkSemMatch = (allowedSems, sSem) => {
+  if (!allowedSems || allowedSems.length === 0) return false
+  if (allowedSems.some(s => s === 0 || String(s).toUpperCase() === 'ALL')) return true
+  if (!sSem) return false
+  const semNum = Number(sSem)
+  return allowedSems.map(Number).includes(semNum)
+}
+
 async function listExamsForStudent(studentId) {
   const student = await global.prisma.student.findUnique({
     where: { id: studentId },
@@ -16,7 +54,7 @@ async function listExamsForStudent(studentId) {
     throw error
   }
 
-  const studentDept = (student.department || '').toLowerCase()
+  const studentDept = (student.department || '').toLowerCase().trim()
   const studentSem = student.semester
 
   const exams = await global.prisma.exam.findMany({
@@ -48,42 +86,18 @@ async function listExamsForStudent(studentId) {
     take: 100
   })
 
-  const DEPT_ALIASES = {
-    ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
-    cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
-    ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
-    aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
-    mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
-    civil: ['civil', 'cv', 'civil engineering'],
-    eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
-  }
-
-  const checkDeptMatch = (allowedDepts, sDept) => {
-    if (!allowedDepts || allowedDepts.length === 0) return true
-    if (!sDept) return true
-    const s = sDept.toLowerCase().trim()
-
-    return allowedDepts.some(rawDept => {
-      const d = rawDept.toLowerCase().trim()
-      if (d === s || s.includes(d) || d.includes(s)) return true
-
-      for (const aliases of Object.values(DEPT_ALIASES)) {
-        const dMatches = aliases.some(a => a === d || d.includes(a) || a.includes(d))
-        const sMatches = aliases.some(a => a === s || s.includes(a) || a.includes(s))
-        if (dMatches && sMatches) return true
-      }
-      return false
-    })
-  }
-
   const filtered = exams.filter(e => {
-    // 1. Department match
+    // If student was specifically enrolled in studentExams table, grant access
+    const isExplicitlyEnrolled = e.studentExams && e.studentExams.length > 0
+    if (isExplicitlyEnrolled) return true
+
+    // 1. Department match: Student's department must be in allowedDepartments (or ALL)
     if (!checkDeptMatch(e.allowedDepartments, studentDept)) return false
 
-    // 2. Semester match
-    if (!e.allowedSemesters || e.allowedSemesters.length === 0) return true
-    const semList = e.allowedSemesters.map(Number)
-    return semList.includes(Number(studentSem))
+    // 2. Semester match: Student's semester must be in allowedSemesters (or ALL)
+    if (!checkSemMatch(e.allowedSemesters, studentSem)) return false
+
+    return true
   })
 
   const formatted = filtered.map(e => ({
@@ -98,6 +112,8 @@ async function listExamsForStudent(studentId) {
     status: e.status,
     cameraRequired: e.cameraRequired,
     browserLock: e.browserLock,
+    allowedDepartments: e.allowedDepartments,
+    allowedSemesters: e.allowedSemesters,
     faculty: e.faculty,
     questionCount: e._count?.questions || 0,
     _count: e._count,
@@ -107,7 +123,7 @@ async function listExamsForStudent(studentId) {
   return formatted
 }
 
-async function getExamDetailsForStudent(examId) {
+async function getExamDetailsForStudent(examId, studentId = null) {
   const exam = await global.prisma.exam.findUnique({
     where: { id: examId },
     include: { faculty: { select: { name: true } } }
@@ -117,7 +133,16 @@ async function getExamDetailsForStudent(examId) {
     error.status = 404
     throw error
   }
-  return exam
+  let studentStatus = 'NOT_JOINED'
+  if (studentId) {
+    const se = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+    if (se) studentStatus = se.status
+  }
+  return {
+    ...exam,
+    studentStatus,
+    isSubmitted: studentStatus === 'SUBMITTED'
+  }
 }
 
 async function getExamLobbyData({ examId, studentId }) {
@@ -132,9 +157,12 @@ async function getExamLobbyData({ examId, studentId }) {
   }
 
   const student = await global.prisma.student.findUnique({ where: { id: studentId } })
-  const isEligible = exam.allowedDepartments && exam.allowedDepartments.length > 0
-    ? exam.allowedDepartments.includes(student?.department)
-    : true
+  const studentExam = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+  const isDirectlyEnrolled = !!studentExam
+  const isSubmitted = studentExam?.status === 'SUBMITTED'
+  const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
+  const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
+  const isEligible = isDirectlyEnrolled || (isDeptEligible && isSemEligible)
 
   const chatMessagesRaw = await global.prisma.chatMessage.findMany({
     where: { examId, studentId },
@@ -161,9 +189,13 @@ async function getExamLobbyData({ examId, studentId }) {
       status: exam.status,
       faculty: exam.faculty,
       cameraRequired: exam.cameraRequired,
-      fullScreenMode: exam.fullScreenMode
+      fullScreenMode: exam.fullScreenMode,
+      isSubmitted,
+      studentStatus: studentExam?.status || 'NOT_JOINED'
     },
     isEligible,
+    isSubmitted,
+    studentStatus: studentExam?.status || 'NOT_JOINED',
     chatMessages
   }
 }
@@ -210,6 +242,20 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
     where: { studentId, examId },
     include: { answers: true }
   })
+
+  if (!studentExam) {
+    const student = await global.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { department: true, semester: true }
+    })
+    const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
+    const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
+    if (!isDeptEligible || !isSemEligible) {
+      const error = new Error('You are not eligible for this examination. This assessment is allotted specifically to other departments or semesters.')
+      error.status = 403
+      throw error
+    }
+  }
 
   if (studentExam) {
     if (studentExam.status === 'SUBMITTED') {
@@ -545,6 +591,7 @@ async function getStudentResultsHistory(studentId) {
         include: {
           exam: {
             select: {
+              id: true,
               title: true,
               subject: true,
               totalMarks: true,
@@ -560,17 +607,42 @@ async function getStudentResultsHistory(studentId) {
     orderBy: { createdAt: 'desc' }
   })
 
-  const formatted = results.map(r => ({
-    id: r.id,
-    exam: r.studentExam?.exam,
-    totalScore: r.totalScore,
-    totalMarks: r.totalMarks,
-    percentage: r.percentage,
-    timeTaken: r.timeTaken,
-    finalStatus: r.finalStatus,
-    createdAt: r.createdAt,
-    gradedAt: r.createdAt
-  }))
+  const formatted = results.map(r => {
+    const exam = r.studentExam?.exam || {}
+    const title = exam.title || 'Assessment'
+    const subject = exam.subject || 'General'
+    const score = r.totalScore ?? r.autoScore ?? 0
+    const maxScore = r.totalMarks ?? exam.totalMarks ?? 100
+    const percentage = Math.round(r.percentage ?? ((score / (maxScore || 1)) * 100))
+    const flags = r.flagCount ?? 0
+    const status = percentage >= 40 ? 'PASSED' : 'FAILED'
+
+    return {
+      id: r.id,
+      title,
+      examTitle: title,
+      subject,
+      code: subject,
+      score,
+      totalScore: score,
+      maxScore,
+      totalMarks: maxScore,
+      percentage,
+      flags,
+      flagCount: flags,
+      status,
+      finalStatus: r.finalStatus || status,
+      date: new Date(r.createdAt).toLocaleDateString([], {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }),
+      timeTaken: r.timeTaken,
+      createdAt: r.createdAt,
+      gradedAt: r.createdAt,
+      exam
+    }
+  })
 
   return formatted
 }
@@ -765,6 +837,74 @@ async function saveStudentChatMessage({ examId, studentId, message }) {
   return { success: true }
 }
 
+async function createSupportTicket({ studentId, examId, category, priority, subject, description }) {
+  if (!subject?.trim() || !description?.trim()) {
+    const error = new Error('Subject and description are required')
+    error.status = 400
+    throw error
+  }
+
+  const detailsObj = {
+    examId: examId || 'GENERAL',
+    category: category || 'TECHNICAL',
+    priority: priority || 'NORMAL',
+    subject: subject.trim(),
+    description: description.trim(),
+    status: 'OPEN',
+    ticketId: `TICK-${Date.now().toString().slice(-6)}`
+  }
+
+  const log = await global.prisma.auditLog.create({
+    data: {
+      userId: studentId,
+      studentId: studentId,
+      userRole: 'STUDENT',
+      action: 'SUPPORT_TICKET_SUBMITTED',
+      details: JSON.stringify(detailsObj)
+    }
+  })
+
+  return {
+    success: true,
+    ticket: {
+      id: log.id,
+      ...detailsObj,
+      createdAt: log.timestamp
+    }
+  }
+}
+
+async function listSupportTickets({ studentId }) {
+  const logs = await global.prisma.auditLog.findMany({
+    where: {
+      studentId,
+      action: 'SUPPORT_TICKET_SUBMITTED'
+    },
+    orderBy: { timestamp: 'desc' },
+    take: 20
+  })
+
+  return logs.map(l => {
+    let parsed = {}
+    try {
+      parsed = JSON.parse(l.details || '{}')
+    } catch {
+      parsed = { subject: l.details }
+    }
+    return {
+      id: l.id,
+      ticketId: parsed.ticketId || `TICK-${l.id.slice(0, 6)}`,
+      examId: parsed.examId || 'GENERAL',
+      category: parsed.category || 'TECHNICAL',
+      priority: parsed.priority || 'NORMAL',
+      subject: parsed.subject || 'Support Inquiry',
+      description: parsed.description || '',
+      status: parsed.status || 'OPEN',
+      createdAt: l.timestamp
+    }
+  })
+}
+
 module.exports = {
   listExamsForStudent,
   getExamDetailsForStudent,
@@ -781,6 +921,8 @@ module.exports = {
   approveStudentByFaculty,
   acknowledgeWatermarkSession,
   getStudentChatHistory,
-  saveStudentChatMessage
+  saveStudentChatMessage,
+  createSupportTicket,
+  listSupportTickets
 }
 

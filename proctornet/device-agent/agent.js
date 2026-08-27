@@ -29,9 +29,18 @@ function getRunningProcesses() {
 }
 
 /**
+ * Automatically ensure Windows Network Setup Service is active without requiring student manual commands
+ */
+function ensureWindowsNetworkReadiness() {
+  if (process.platform !== 'win32') return
+  exec('powershell -NoProfile -Command "if ((Get-Service NetSetupSvc -ErrorAction SilentlyContinue).Status -ne \'Running\') { Start-Service NetSetupSvc -ErrorAction SilentlyContinue }"', () => {})
+}
+
+/**
  * Inspect local network interfaces for WireGuard VPN tunnel connection (10.0.0.x)
  */
 function checkVpnNetwork() {
+  ensureWindowsNetworkReadiness()
   return new Promise((resolve) => {
     const isWin = process.platform === 'win32'
     const cmd = isWin ? 'ipconfig /all' : 'ip addr'
@@ -116,5 +125,6 @@ const server = http.createServer(async (req, res) => {
 })
 
 server.listen(PORT, '127.0.0.1', () => {
+  ensureWindowsNetworkReadiness()
   console.log(`🔒 ProctorNet BYOD Companion Agent running on http://127.0.0.1:${PORT}`)
 })

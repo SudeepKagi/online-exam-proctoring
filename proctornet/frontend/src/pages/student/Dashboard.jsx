@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/utils/api'
-import { BookOpen, User, Mail, GraduationCap, Building, CheckCircle2, ShieldCheck, Clock } from 'lucide-react'
+import {
+  BookOpen, User, Mail, GraduationCap, Building, CheckCircle2,
+  ShieldCheck, Clock
+} from 'lucide-react'
 import { SectionCards } from '@/components/section-cards'
 import { ChartAreaInteractive } from '@/components/chart-area-interactive'
 import { DataTable } from '@/components/data-table'
@@ -48,38 +51,66 @@ export default function StudentDashboard() {
 
   const isVerified = user?.profileStatus === 'VERIFIED' || user?.profileStatus === 'LOCKED'
 
+  // Calculate exam stats for the metric cards
+  const now = new Date()
+  const activeCount = exams.filter(e => {
+    const start = new Date(e.startTime)
+    const end = new Date(e.endTime)
+    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    return now >= start && now <= end && !isSubmitted && e.status !== 'ENDED'
+  }).length
+
+  const scheduledCount = exams.filter(e => {
+    const start = new Date(e.startTime)
+    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    return now < start && !isSubmitted && e.status !== 'ENDED'
+  }).length
+
+  const completedCount = exams.filter(e => {
+    return e.studentStatus === 'SUBMITTED' || e.isSubmitted
+  }).length
+
   return (
     <DashboardLayout title="Student Console">
-      <div className="space-y-6 font-sans">
+      <div className="space-y-6 font-sans text-[#0f172a]">
+        
         {/* Welcome Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-[#0f172a] tracking-tight">
-              {greeting()}, {user?.name?.split(' ')[0] || 'Student'}
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-[#0f172a] tracking-tight">
+                {greeting()}, {user?.name?.split(' ')[0] || 'Student'}
+              </h1>
+              {isVerified && (
+                <span className="px-2 py-0.5 rounded-full bg-[#ecfdf5] text-[#10b981] text-[10px] font-extrabold border border-[#a7f3d0] flex items-center gap-1">
+                  <CheckCircle2 size={11} /> VERIFIED
+                </span>
+              )}
+            </div>
             <p className="text-xs text-[#64748b] mt-1 font-normal">
-              USN: <span className="font-mono font-semibold text-[#0f172a]">{user?.usn || user?.rollNo || 'N/A'}</span> • {user?.department || 'Engineering'}
+              USN: <span className="font-mono font-semibold text-[#0f172a]">{user?.usn || user?.rollNo || 'N/A'}</span> • {user?.department || 'Engineering'} • Semester {user?.semester || 1}
             </p>
           </div>
+
           <div className="flex items-center gap-2.5">
             <button
-              onClick={() => navigate('/student/enrollment')}
+              onClick={() => navigate('/student/device-check')}
               className="bg-white border border-[#e2e8f0] hover:bg-[#f8fafc] text-[#334155] text-xs font-semibold py-2 px-3.5 rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              <ShieldCheck size={15} className={isVerified ? 'text-[#10b981]' : 'text-[#f59e0b]'} />
-              <span>Biometric Status</span>
+              <ShieldCheck size={15} className="text-[#2563eb]" />
+              <span>BYOD Diagnostic</span>
             </button>
             <button
               onClick={() => navigate('/student/exams')}
-              className="bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-[0_4px_12px_rgba(47,128,237,0.25)] transition-all cursor-pointer flex items-center gap-1.5"
+              className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold py-2 px-3.5 rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
             >
               <BookOpen size={15} />
-              <span>View My Exams</span>
+              <span>All Examinations</span>
             </button>
           </div>
         </div>
 
-        {/* Candidate Personal Info Card */}
+        {/* Candidate Personal & Academic Profile Card */}
         <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 shadow-2xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
             <div>
@@ -135,15 +166,15 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* 4 Clean Metric Cards */}
+        {/* 4 Stat Metric Cards */}
         <SectionCards
           avgScore={avgScore}
-          activeCount={exams.filter(e => e.status === 'ACTIVE').length}
-          scheduledCount={exams.filter(e => e.status === 'SCHEDULED' || e.status === 'PUBLISHED').length}
-          completedCount={results.length}
+          activeCount={activeCount}
+          scheduledCount={scheduledCount}
+          completedCount={completedCount}
         />
 
-        {/* Sleek Interactive Chart Block */}
+        {/* Interactive Chart Block */}
         <ChartAreaInteractive results={results} />
 
         {/* Data Table Block */}

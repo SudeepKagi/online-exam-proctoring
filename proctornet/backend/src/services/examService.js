@@ -177,12 +177,24 @@ async function updateExamById({ id, facultyId, data }) {
     'title', 'description', 'subject', 'courseCode', 'status',
     'securityLevel', 'browserLockdown', 'tabLockdown', 'fullScreen',
     'faceTrack', 'aiObjectDetection', 'screenShareMonitoring',
-    'ipCheck', 'negativeMarking', 'allowRetake'
+    'ipCheck', 'negativeMarking', 'allowRetake', 'cameraRequired', 'browserLock',
+    'fullScreenMode', 'randomiseQuestions', 'randomiseOptions'
   ]
 
   fields.forEach(f => {
     if (data[f] !== undefined) updateData[f] = data[f]
   })
+
+  if (data.allowedDepartments !== undefined) {
+    updateData.allowedDepartments = Array.isArray(data.allowedDepartments)
+      ? data.allowedDepartments
+      : [data.allowedDepartments]
+  }
+  if (data.allowedSemesters !== undefined) {
+    updateData.allowedSemesters = Array.isArray(data.allowedSemesters)
+      ? data.allowedSemesters.map(s => parseInt(s, 10))
+      : [parseInt(data.allowedSemesters, 10)]
+  }
 
   if (data.duration !== undefined) updateData.duration = parseInt(data.duration)
   if (data.startTime !== undefined) updateData.startTime = new Date(data.startTime)

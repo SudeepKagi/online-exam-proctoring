@@ -45,6 +45,7 @@ import StudentResults from '@/pages/student/Results'
 import StudentEnrollment from '@/pages/student/StudentEnrollment'
 import BYODDeviceCheck from '@/pages/student/BYODDeviceCheck'
 import StudentProfile from '@/pages/student/Profile'
+import SupportAndRules from '@/pages/student/SupportAndRules'
 
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
@@ -118,12 +119,15 @@ export default function App() {
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
           <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
+          <Route path="/student/device-check" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
           <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
           <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
           <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
           <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
+          <Route path="/student/support" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
+          <Route path="/student/rules" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
 
           {/* Invigilator Routes */}
           <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
