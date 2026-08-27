@@ -173,7 +173,7 @@ export default function SecurityCheck() {
     }
 
     // Keep Stage 0 ready for candidate to connect or verify tunnel
-    updateStage('system', 'loading', `WireGuard Gateway Assigned (${assignedIp}). Import profile or click "Verify & Connect Tunnel".`)
+    updateStage('system', 'loading', `WireGuard Gateway Assigned (${assignedIp}). Click "⚡ Auto-Connect VPN (1-Click)" or download .conf to activate.`)
   }
 
   const downloadVpnConfig = () => {
@@ -641,10 +641,10 @@ export default function SecurityCheck() {
                   <Button 
                     onClick={verifyVpnTunnel}
                     disabled={verifyingVpn}
-                    className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer shadow-md"
+                    className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                   >
-                    <RefreshCw size={14} className={`mr-2 ${verifyingVpn ? 'animate-spin' : ''}`} />
-                    {verifyingVpn ? 'Verifying...' : 'Verify WireGuard Tunnel'}
+                    <RefreshCw size={14} className={`mr-1.5 ${verifyingVpn ? 'animate-spin' : ''}`} />
+                    {verifyingVpn ? 'Connecting Tunnel...' : '⚡ Auto-Connect VPN (1-Click)'}
                   </Button>
                 </div>
               )}
