@@ -400,43 +400,129 @@ export default function CreateExam() {
   if (successData) {
     return (
       <DashboardLayout title="Faculty Console">
-        <div className="max-w-2xl mx-auto py-8 text-center font-sans">
-          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 size={36} />
+        <div className="max-w-3xl mx-auto py-10 px-4 font-sans">
+          {/* Header Hero Banner */}
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xs">
+              <CheckCircle2 size={40} className="text-[#10b981]" />
+            </div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+              Exam Deployed Successfully!
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md mx-auto">
+              Assessment <span className="font-extrabold text-slate-800">"{successData.exam.title}"</span> is scheduled, published, and live in the system registry.
+            </p>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 mb-1">Exam Deployed Successfully!</h1>
-          <p className="text-xs text-slate-500 mb-6">
-            Exam "<span className="font-bold text-slate-800">{successData.exam.title}</span>" is now scheduled and published.
-          </p>
 
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 text-left space-y-4 shadow-sm">
-            <h3 className="text-xs font-extrabold text-[#2f80ed] uppercase tracking-wider flex items-center gap-2">
-              <Shield size={16} /> Invigilator Access Credentials
-            </h3>
-            <div className="space-y-3 text-xs">
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase font-extrabold">Exam ID</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex-1 bg-slate-50 border border-slate-200 px-3 py-2 rounded-lg text-slate-900 font-bold break-all">{successData.exam.id}</div>
-                  <button onClick={() => { navigator.clipboard.writeText(successData.exam.id); toast.success('Exam ID Copied!') }} className="px-3 py-2 text-xs font-bold bg-blue-50 text-[#2f80ed] rounded-lg">Copy</button>
+          {/* Invigilator Access Credentials Card */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm text-left space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 text-[#2f80ed] flex items-center justify-center shrink-0">
+                  <Shield size={20} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-[#2f80ed] uppercase tracking-wider">
+                    Invigilator Access Credentials
+                  </h3>
+                  <p className="text-xs font-bold text-slate-800">
+                    Live Monitoring Portal Passkey & Credentials
+                  </p>
                 </div>
               </div>
+              <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                ACTIVE GATEWAY
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              {/* Exam ID Row */}
               <div>
-                <label className="text-[10px] text-slate-500 uppercase font-extrabold">Invigilator ID</label>
-                <div className="text-lg font-extrabold text-slate-900 mt-0.5">{successData.invCredentials?.invId || 'INV-101'}</div>
+                <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">
+                  Exam Unique Identifier (ID)
+                </label>
+                <div className="flex items-center gap-2.5 bg-[#f8fafc] border border-slate-200 p-2 rounded-2xl">
+                  <div className="flex-1 font-mono text-xs font-bold text-slate-900 px-3 break-all select-all">
+                    {successData.exam.id}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(successData.exam.id)
+                      toast.success('Exam ID Copied to Clipboard!')
+                    }}
+                    className="px-4 py-2 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                  >
+                    Copy
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-[10px] text-slate-500 uppercase font-extrabold">Access Password</label>
-                <div className="text-base font-extrabold text-[#2f80ed] bg-blue-50 border border-blue-200 px-3 py-1 rounded inline-block mt-0.5">
-                  {successData.invCredentials?.password || 'Pass123!'}
+
+              {/* Grid: Invigilator ID & Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                {/* Invigilator ID Card */}
+                <div className="bg-[#f8fafc] border border-slate-200 p-4 rounded-2xl">
+                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                    Invigilator ID
+                  </label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl font-extrabold text-slate-900 font-mono tracking-wide">
+                      {successData.invCredentials?.invId || 'INV-101'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(successData.invCredentials?.invId || 'INV-101')
+                        toast.success('Invigilator ID Copied!')
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg cursor-pointer"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+
+                {/* Access Password Card */}
+                <div className="bg-blue-50/70 border border-blue-200/80 p-4 rounded-2xl">
+                  <label className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block mb-1">
+                    Access Password
+                  </label>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xl font-extrabold text-[#2f80ed] font-mono tracking-widest bg-white px-3 py-1 rounded-xl border border-blue-200 shadow-2xs">
+                      {successData.invCredentials?.password || 'Pass123!'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(successData.invCredentials?.password || 'Pass123!')
+                        toast.success('Access Password Copied!')
+                      }}
+                      className="px-2.5 py-1 text-[11px] font-bold text-[#2f80ed] bg-white border border-blue-200 rounded-lg cursor-pointer"
+                    >
+                      Copy
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex gap-3 justify-center">
-            <button onClick={() => navigate('/faculty/exams')} className="px-5 py-2.5 text-xs font-extrabold border border-slate-200 bg-white text-slate-700 rounded-xl">View All Exams</button>
-            <button onClick={() => navigate(`/faculty/exams/${successData.exam.id}`)} className="px-5 py-2.5 text-xs font-extrabold bg-[#2f80ed] text-white rounded-xl shadow-md">View Details →</button>
+          {/* Action Navigation Buttons */}
+          <div className="mt-8 flex flex-col sm:flex-row gap-3.5 justify-center">
+            <button
+              type="button"
+              onClick={() => navigate('/faculty/exams')}
+              className="px-6 py-3 text-xs font-extrabold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl shadow-2xs transition-all cursor-pointer"
+            >
+              View All Exams
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`/faculty/exams/${successData.exam.id}`)}
+              className="px-7 py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer"
+            >
+              View Exam Details →
+            </button>
           </div>
         </div>
       </DashboardLayout>
