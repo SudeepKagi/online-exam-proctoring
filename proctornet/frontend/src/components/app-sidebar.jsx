@@ -74,13 +74,6 @@ const ROLE_NAV_GROUPS = {
         { to: '/student/exams', icon: BookOpen, label: 'My Exams' },
         { to: '/student/profile', icon: UserCheck, label: 'My Profile' },
       ]
-    },
-    {
-      section: 'CUSTOMIZATION',
-      items: [
-        { to: '/student/device-check/demo', icon: Shield, label: 'Device Check' },
-        { to: '/student/support', icon: HelpCircle, label: 'Support & Rules' },
-      ]
     }
   ],
   invigilator: [
