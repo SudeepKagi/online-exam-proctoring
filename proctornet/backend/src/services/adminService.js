@@ -536,6 +536,60 @@ async function deleteAnnouncementRecord(id) {
   return { success: true }
 }
 
+async function listInvigilatorSessionRecords(query = {}) {
+  const { search, isActive } = query
+  const where = {}
+
+  if (isActive !== undefined) {
+    where.isActive = isActive === 'true' || isActive === true
+  }
+
+  if (search) {
+    where.OR = [
+      { invId: { contains: search, mode: 'insensitive' } },
+      { exam: { title: { contains: search, mode: 'insensitive' } } }
+    ]
+  }
+
+  const sessions = await global.prisma.invigilatorSession.findMany({
+    where,
+    include: {
+      exam: {
+        select: {
+          id: true,
+          title: true,
+          subject: true,
+          startTime: true,
+          endTime: true,
+          status: true
+        }
+      }
+    },
+    orderBy: { loginTime: 'desc' },
+    take: 100
+  })
+
+  return { sessions, total: sessions.length }
+}
+
+async function revokeInvigilatorSessionRecord(id) {
+  const session = await global.prisma.invigilatorSession.findUnique({
+    where: { id }
+  })
+  if (!session) {
+    const error = new Error('Invigilator session not found.')
+    error.status = 404
+    throw error
+  }
+
+  const updated = await global.prisma.invigilatorSession.update({
+    where: { id },
+    data: { isActive: false }
+  })
+
+  return updated
+}
+
 module.exports = {
   listFacultyAccounts,
   listPendingFacultyAccounts,

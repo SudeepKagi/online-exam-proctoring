@@ -386,6 +386,7 @@ async function listInvigilatorSessions(req, res) {
     const result = await adminService.listInvigilatorSessionRecords(req.query)
     res.json(result)
   } catch (e) {
+    console.error('[listInvigilatorSessions]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
@@ -403,6 +404,7 @@ async function revokeInvigilatorSession(req, res) {
     })
     res.json({ message: 'Invigilator session revoked.', session })
   } catch (e) {
+    console.error('[revokeInvigilatorSession]', e)
     res.status(500).json({ error: 'Server error.' })
   }
 }
