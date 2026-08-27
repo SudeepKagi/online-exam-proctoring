@@ -56,7 +56,7 @@ async function addQuestionToExam({ examId, facultyId, data }) {
 async function listQuestionsForExam(examId) {
   const questions = await global.prisma.question.findMany({
     where: { examId },
-    orderBy: { order: 'asc' }
+    orderBy: { createdAt: 'asc' }
   })
   return questions
 }
@@ -91,13 +91,14 @@ async function updateQuestionById({ id, facultyId, data }) {
       questionText: questionText !== undefined ? questionText : (text !== undefined ? text : question.questionText),
       marks: newMarks,
       negativeMarks: negativeMarks !== undefined ? parseFloat(negativeMarks) : question.negativeMarks,
-      difficulty: difficulty || question.difficulty,
+      difficulty: difficulty ? difficulty.toUpperCase() : question.difficulty,
       options: options !== undefined ? options : question.options,
       correctAnswer: correctAnswer !== undefined ? String(correctAnswer) : question.correctAnswer,
-      sampleInput: sampleInput !== undefined ? sampleInput : question.sampleInput,
-      sampleOutput: sampleOutput !== undefined ? sampleOutput : question.sampleOutput,
       testCases: testCases !== undefined ? testCases : question.testCases,
-      order: order !== undefined ? parseInt(order) : question.order
+      codeTemplate: data.codeTemplate !== undefined ? data.codeTemplate : question.codeTemplate,
+      codeLanguage: data.codeLanguage !== undefined ? data.codeLanguage : question.codeLanguage,
+      wordLimitMin: data.wordLimitMin !== undefined ? (data.wordLimitMin ? parseInt(data.wordLimitMin) : null) : question.wordLimitMin,
+      wordLimitMax: data.wordLimitMax !== undefined ? (data.wordLimitMax ? parseInt(data.wordLimitMax) : null) : question.wordLimitMax
     }
   })
 
