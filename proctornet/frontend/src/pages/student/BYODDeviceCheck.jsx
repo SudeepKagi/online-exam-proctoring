@@ -199,16 +199,19 @@ export default function BYODDeviceCheck() {
   // Download WireGuard .conf file
   const handleDownloadConf = () => {
     if (!vpnConfig) return
+    // WireGuard interface name must be <= 15 chars and contain only alphanumeric/underscore
+    const uniqueId = Math.floor(1000 + Math.random() * 9000)
+    const filename = `proctor_${uniqueId}.conf`
     const blob = new Blob([vpnConfig], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'proctornet.conf'
+    link.download = filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    toast.success('Downloaded WireGuard profile: proctornet.conf')
+    toast.success(`Downloaded WireGuard profile: ${filename}`)
   }
 
   // Manual Check of VPN Tunnel Status
