@@ -49,6 +49,7 @@ export default function SecurityCheck() {
   const [vpnConfig, setVpnConfig] = useState('')
   const [vpnVerified, setVpnVerified] = useState(false)
   const [verifyingVpn, setVerifyingVpn] = useState(false)
+  const [confDownloaded, setConfDownloaded] = useState(false)
 
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
