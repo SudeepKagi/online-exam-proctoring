@@ -223,7 +223,7 @@ function generateWireGuardClientConf({ clientPrivateKey, clientIp }) {
   const serverIp = process.env.VPN_SERVER_IP || '20.198.83.12'
   const serverPort = process.env.VPN_SERVER_PORT || '51820'
   const dnsIp = process.env.VPN_DNS || '1.1.1.1, 8.8.8.8'
-  const allowedIps = process.env.VPN_ALLOWED_IPS || '10.0.0.0/24'
+  const allowedIps = process.env.VPN_ALLOWED_IPS || '0.0.0.0/0'
 
   return `[Interface]
 PrivateKey = ${clientPrivateKey}
