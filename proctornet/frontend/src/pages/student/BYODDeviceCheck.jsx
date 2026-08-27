@@ -67,6 +67,7 @@ export default function BYODDeviceCheck() {
   const [vpnConnected, setVpnConnected] = useState(false)
   const [checkingVpn, setCheckingVpn] = useState(false)
   const [issuingVpn, setIssuingVpn] = useState(false)
+  const [activatingVpn, setActivatingVpn] = useState(false)
 
   // Evaluation & Final Readiness
   const [evaluating, setEvaluating] = useState(false)
