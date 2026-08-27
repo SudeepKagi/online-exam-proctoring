@@ -173,11 +173,6 @@ export default function SecurityCheck() {
               const ip = data.vpnIp || vpnPeerIp || assignedIp || '10.0.0.x'
               updateStage('system', 'pass', `WireGuard VPN Tunnel Active (${ip}) • Network Sandboxed`)
               if (showToasts) toast.success(`✔ WireGuard VPN tunnel verified active! (IP: ${ip})`)
-              setActiveStage(0)
-              setTimeout(() => {
-                setActiveStage(1)
-                startCamera()
-              }, 100)
             }
             return true
           })
@@ -199,27 +194,34 @@ export default function SecurityCheck() {
     }
   }
 
-  // Handle VPN disconnection or drop across pipeline
+  // Handle VPN disconnection or drop across pipeline — RESET ENTIRELY TO STAGE 1
   const handleVpnDisconnect = () => {
     setVpnVerified(prevVerified => {
       if (prevVerified) {
-        toast.error('❌ WireGuard VPN tunnel disconnected! Resetting pipeline to Stage 1.')
+        toast.error('❌ WireGuard VPN disconnected! Resetting pipeline to Stage 1 from the beginning.')
       }
       return false
     })
 
-    setActiveStage(prevStage => {
-      if (prevStage > 0) {
-        stopCamera()
-      }
-      return 0
-    })
-
-    if (confDownloaded) {
-      updateStage('system', 'fail', 'WireGuard VPN disconnected. Re-activate profile in WireGuard app to resume.')
-    } else {
-      updateStage('system', 'fail', `WireGuard VPN disconnected. Click "⚡ Auto-Connect VPN" or download .conf to activate.`)
+    // Stop active camera & screen share
+    stopCamera()
+    if (window.screenShareStream) {
+      try {
+        window.screenShareStream.getTracks().forEach(t => t.stop())
+      } catch (_e) {}
+      window.screenShareStream = null
     }
+    setScreenShared(false)
+    setFaceMatchScore(null)
+    setActiveStage(0)
+
+    // Reset all pipeline stages to idle/fail
+    setStageStatus({
+      system: { status: 'fail', message: 'WireGuard VPN disconnected. Re-activate profile in WireGuard to restart security check.' },
+      media: { status: 'idle', message: 'Webcam feed mapping & mandatory screen share' },
+      face: { status: 'idle', message: 'Matching live biometric stream against database' },
+      kiosk: { status: 'idle', message: 'Viewport locking & candidate identity audit' }
+    })
   }
 
   // Continuous background polling every 3 seconds for active VPN tunnel
@@ -692,6 +694,18 @@ export default function SecurityCheck() {
                     {verifyingVpn ? 'Connecting Tunnel...' : '⚡ Auto-Connect VPN (1-Click)'}
                   </Button>
                 </div>
+              )}
+
+              {activeStage === 0 && vpnVerified && (
+                <Button 
+                  onClick={() => {
+                    setActiveStage(1)
+                    startCamera()
+                  }}
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                >
+                  Proceed to Hardware & Media Check →
+                </Button>
               )}
 
               {activeStage === 1 && !screenShared && (
