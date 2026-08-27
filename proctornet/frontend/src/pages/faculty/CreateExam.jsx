@@ -934,48 +934,152 @@ export default function CreateExam() {
 
         {/* STEP 3: FINAL REVIEW & DEPLOY */}
         {step === 3 && (
-          <div className="max-w-3xl mx-auto space-y-4 font-sans text-xs">
-            <div className="bg-white border border-slate-200 rounded-2xl p-7 shadow-sm">
-              <h2 className="text-lg font-extrabold text-slate-900 mb-4 pb-3 border-b border-slate-100">Review & Publish Examination</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div className="space-y-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Exam Details</span>
-                  <div className="p-4 bg-[#f8fafc] rounded-xl border border-slate-200 space-y-2 text-xs font-bold text-slate-800">
-                    <p><strong className="text-slate-900">Title:</strong> {formData.title}</p>
-                    <p><strong className="text-slate-900">Subject:</strong> {formData.subject}</p>
-                    <p><strong className="text-slate-900">Duration:</strong> {formData.duration} mins</p>
-                    <p><strong className="text-slate-900">Total Marks:</strong> {formData.totalMarks}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans text-xs">
+            {/* Left Column (2 Cols): Comprehensive Assessment Summary */}
+            <div className="lg:col-span-2 space-y-5">
+              {/* Primary Details Card */}
+              <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-[#2f80ed] border border-blue-100 uppercase tracking-wider">
+                      FINAL EXAMINATION AUDIT
+                    </span>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-2">
+                      {formData.title || 'Untitled Assessment'}
+                    </h2>
+                    <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                      Subject Code: <span className="font-extrabold text-slate-800">{formData.subject || 'N/A'}</span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setStep(1)}
+                      className="px-3.5 py-2 text-xs font-extrabold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
+                    >
+                      Edit Questions
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStep(2)}
+                      className="px-3.5 py-2 text-xs font-extrabold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
+                    >
+                      Edit Schedule
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Target Roster</span>
-                  <div className="p-4 bg-[#f8fafc] rounded-xl border border-slate-200 space-y-2 text-xs font-bold text-slate-800">
-                    <p><strong className="text-slate-900">Depts:</strong> {formData.allowedDepartments.join(', ')}</p>
-                    <p><strong className="text-slate-900">Semesters:</strong> Sem {formData.allowedSemesters.join(', ')}</p>
-                    <p><strong className="text-slate-900">Questions:</strong> {questions.length} items</p>
+                {/* 4 Metric Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Items</p>
+                    <p className="text-2xl font-extrabold text-slate-900">{questions.length}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Question Pool</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Marks</p>
+                    <p className="text-2xl font-extrabold text-[#2f80ed]">{formData.totalMarks}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Maximum Points</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
+                    <p className="text-2xl font-extrabold text-slate-900">{formData.duration}</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Minutes Allocated</p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
+                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Proctoring</p>
+                    <p className="text-2xl font-extrabold text-[#10b981]">STRICT</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">WireGuard AI Active</p>
+                  </div>
+                </div>
+
+                {/* Timing & Target Audience Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 space-y-2">
+                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1">
+                      Schedule & Time Windows
+                    </h4>
+                    <div className="space-y-1.5 text-xs text-slate-700 font-medium">
+                      <p><strong className="text-slate-900">Start Time:</strong> {formData.startTime ? new Date(formData.startTime).toLocaleString() : 'Not Set'}</p>
+                      <p><strong className="text-slate-900">End Time:</strong> {formData.endTime ? new Date(formData.endTime).toLocaleString() : 'Not Set'}</p>
+                      <p><strong className="text-slate-900">Time Window:</strong> {formData.duration} Minutes</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 space-y-2">
+                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1">
+                      Target Student Eligibility
+                    </h4>
+                    <div className="space-y-1.5 text-xs text-slate-700 font-medium">
+                      <p><strong className="text-slate-900">Allowed Departments:</strong> {formData.allowedDepartments?.join(', ') || 'All'}</p>
+                      <p><strong className="text-slate-900">Target Semesters:</strong> {formData.allowedSemesters?.map(s => `Sem ${s}`).join(', ') || 'All'}</p>
+                      <p><strong className="text-slate-900">Student Access:</strong> Explicit Dept/Sem Enforcement</p>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="flex gap-4 pt-4 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  className="flex-1 py-3 text-xs font-extrabold border border-slate-200 bg-[#f8fafc] text-slate-700 rounded-xl"
-                >
-                  ← Edit Rules
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeployExam}
-                  disabled={isSubmitting}
-                  className="flex-1 py-3 text-xs font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md flex items-center justify-center gap-2"
-                >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Deploy & Publish Exam
-                </button>
+            {/* Right Column (1 Col): Security Profile & Deployment Action */}
+            <div className="space-y-5">
+              <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-5">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#10b981] border border-emerald-100 flex items-center justify-center">
+                    <Shield size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-extrabold text-slate-900">Security Audit Summary</h3>
+                    <p className="text-[11px] text-slate-500 font-semibold">Active Integrity Controls</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs font-bold text-slate-800">
+                  {[
+                    { label: 'Continuous Face AI & Camera', active: formData.cameraRequired },
+                    { label: 'Browser Multi-Tab Lockdown', active: formData.browserLock },
+                    { label: 'Kiosk Fullscreen Enforcement', active: formData.fullScreenMode },
+                    { label: 'Dynamic USN Anti-Leak Watermark', active: formData.watermarkRequired },
+                    { label: 'WireGuard Network Isolation VPN', active: true },
+                    { label: 'Shuffled Questions & Options', active: formData.randomiseQuestions || formData.randomiseOptions }
+                  ].map(sec => (
+                    <div key={sec.label} className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-slate-200">
+                      <span className="text-slate-700 text-xs font-extrabold flex items-center gap-2">
+                        <CheckCircle2 size={15} className={sec.active ? 'text-[#10b981]' : 'text-slate-300'} />
+                        {sec.label}
+                      </span>
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                        sec.active ? 'bg-emerald-50 text-[#10b981]' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        {sec.active ? 'ACTIVE' : 'OFF'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main Action Buttons */}
+                <div className="space-y-3 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={handleDeployExam}
+                    disabled={isSubmitting}
+                    className="w-full py-4 text-xs font-extrabold bg-[#10b981] hover:bg-[#059669] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <CheckCircle2 size={18} />
+                    )}
+                    {isSubmitting ? 'Deploying Examination...' : 'Deploy & Publish Exam'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep(2)}
+                    className="w-full py-3 text-xs font-extrabold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl transition-all cursor-pointer text-center"
+                  >
+                    ← Edit Rules & Schedules
+                  </button>
+                </div>
               </div>
             </div>
           </div>
