@@ -222,17 +222,17 @@ function generateWireGuardClientConf({ clientPrivateKey, clientIp }) {
   const serverPubKey = process.env.VPN_SERVER_PUBLIC_KEY || 'wmESrH5SWn6ES7dV/sVtKsZkifBJcjHjwXy5EBc4pVc='
   const serverIp = process.env.VPN_SERVER_IP || '20.198.83.12'
   const serverPort = process.env.VPN_SERVER_PORT || '51820'
-  const dnsIp = process.env.VPN_DNS || '10.0.0.1'
+  const dnsIp = process.env.VPN_DNS || '1.1.1.1, 8.8.8.8'
 
   return `[Interface]
 PrivateKey = ${clientPrivateKey}
-Address = ${clientIp}/32
+Address = ${clientIp}/24
 DNS = ${dnsIp}
 
 [Peer]
 PublicKey = ${serverPubKey}
 Endpoint = ${serverIp}:${serverPort}
-AllowedIPs = 0.0.0.0/0, ::/0
+AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 `
 }
