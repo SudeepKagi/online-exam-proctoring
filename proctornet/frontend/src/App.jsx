@@ -118,6 +118,7 @@ export default function App() {
           <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
           <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
+          <Route path="/student/device-check" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
           <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
           <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
