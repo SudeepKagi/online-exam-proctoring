@@ -3,10 +3,9 @@ const router  = express.Router()
 const ctrl    = require('../controllers/faculty.controller')
 const { authenticate } = require('../middleware/auth.middleware')
 const { isFaculty }    = require('../middleware/role.middleware')
-const { auditRequest } = require('../middleware/audit.middleware')
 
-// All faculty routes require JWT + faculty role + audit logging
-router.use(authenticate, isFaculty, auditRequest)
+// All faculty routes require JWT + faculty role
+router.use(authenticate, isFaculty)
 
 // ── Dashboard ─────────────────────────────────────────
 router.get   ('/dashboard',  ctrl.getDashboardStats)

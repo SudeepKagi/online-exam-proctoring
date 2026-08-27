@@ -365,16 +365,46 @@ async function updateSettingsMap({ updates, updatedBy }) {
 async function getAuditLogRecords(query) {
   const { userRole, action, page = 1, limit = 50 } = query
   const { skip, take } = paginate(page, limit)
-  const where = {}
-  if (userRole) where.userRole = userRole
-  if (action)   where.action   = { contains: action, mode: 'insensitive' }
+  const where = {
+    AND: [
+      { NOT: { action: { startsWith: 'POST /' } } },
+      { NOT: { action: { startsWith: 'PATCH /' } } },
+      { NOT: { action: { startsWith: 'PUT /' } } },
+      { NOT: { action: { startsWith: 'DELETE /' } } },
+      { NOT: { action: { startsWith: 'GET /' } } },
+    ]
+  }
+  if (userRole) where.AND.push({ userRole })
+  if (action)   where.AND.push({ action: { contains: action, mode: 'insensitive' } })
 
   const [logs, total] = await Promise.all([
     global.prisma.auditLog.findMany({ where, skip, take, orderBy: { timestamp: 'desc' } }),
     global.prisma.auditLog.count({ where }),
   ])
 
-  return { logs, total, page: parseInt(page), totalPages: Math.ceil(total / take) }
+  // Format any raw or null details cleanly
+  const formattedLogs = logs.map(l => {
+    let cleanDetails = l.details
+    if (!cleanDetails || cleanDetails === 'null') {
+      cleanDetails = 'Operational event completed.'
+    } else if (cleanDetails.startsWith('{') || cleanDetails.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(cleanDetails)
+        if (parsed.body && Object.keys(parsed.body).length === 0 && (!parsed.params || Object.keys(parsed.params).length === 0)) {
+          cleanDetails = 'Action authorized and recorded.'
+        } else if (parsed.title) {
+          cleanDetails = `Title: ${parsed.title}`
+        } else if (parsed.name || parsed.usn) {
+          cleanDetails = `Candidate: ${parsed.name || ''} (${parsed.usn || ''})`
+        } else if (parsed.questions) {
+          cleanDetails = `${parsed.questions.length} questions uploaded.`
+        }
+      } catch {}
+    }
+    return { ...l, details: cleanDetails }
+  })
+
+  return { logs: formattedLogs, total, page: parseInt(page), totalPages: Math.ceil(total / take) }
 }
 
 async function getViolationsSummaryRecords(query) {

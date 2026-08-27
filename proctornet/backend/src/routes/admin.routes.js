@@ -3,10 +3,9 @@ const router   = express.Router()
 const ctrl     = require('../controllers/admin.controller')
 const { authenticate }  = require('../middleware/auth.middleware')
 const { isAdmin }       = require('../middleware/role.middleware')
-const { auditRequest }  = require('../middleware/audit.middleware')
 
-// All admin routes require JWT + admin role + audit logging
-router.use(authenticate, isAdmin, auditRequest)
+// All admin routes require JWT + admin role
+router.use(authenticate, isAdmin)
 
 // ── Dashboard ──────────────────────────────────────
 router.get('/dashboard',        ctrl.getDashboardStats)
