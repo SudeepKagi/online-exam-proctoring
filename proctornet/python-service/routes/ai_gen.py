@@ -8,7 +8,40 @@ import os
 import json
 import random
 
+import re
+
 ai_gen_bp = Blueprint('ai_gen', __name__)
+
+def sanitize_topic(raw_topic: str) -> str:
+    """
+    Cleans and truncates topic text to ensure fallback templates never embed
+    unbounded raw PDF dumps or garbled non-printable glyphs.
+    """
+    if not raw_topic or not isinstance(raw_topic, str):
+        return "the specified subject"
+
+    # Strip non-ASCII and non-printable characters (e.g., garbled PDF bullet boxes)
+    cleaned = re.sub(r'[^\x20-\x7E]', ' ', raw_topic)
+    # Collapse multiple spaces and newlines into a single space
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    # Strip repetitive question prefixes if input text starts with one
+    for prefix in ["what is a fundamental core concept of", "what is a core concept of", "what is"]:
+        if cleaned.lower().startswith(prefix):
+            cleaned = cleaned[len(prefix):].strip()
+            break
+
+    if not cleaned:
+        return "the specified subject"
+
+    # If topic is long (e.g. full PDF dump), cleanly truncate to ~70 chars at word boundary
+    if len(cleaned) > 80:
+        truncated = cleaned[:70].strip()
+        if ' ' in truncated:
+            truncated = truncated.rsplit(' ', 1)[0]
+        return f"{truncated}..."
+
+    return cleaned
 
 # Sample question templates for fallback intelligent generator
 TOPIC_BANK = {
@@ -94,6 +127,7 @@ def generate_questions():
                 print(f"[AIGen] OpenAI fallback triggered: {e}")
 
         # Fallback intelligent question builder
+        clean_topic = sanitize_topic(topic)
         topic_lower = topic.lower()
         matched_bank = None
         for key in TOPIC_BANK:
@@ -104,22 +138,22 @@ def generate_questions():
         if not matched_bank:
             matched_bank = [
                 {
-                    "questionText": f"What is a fundamental core concept of {topic}?",
-                    "options": [f"Core Principle of {topic}", f"Secondary Rule", f"Deprecated Method", f"External Dependency"],
+                    "questionText": f"What is a fundamental core concept of {clean_topic}?",
+                    "options": [f"Core Principle of {clean_topic}", "Secondary Rule", "Deprecated Method", "External Dependency"],
                     "correctOption": 0,
-                    "explanation": f"Core Principle is fundamental to {topic}."
+                    "explanation": f"Core Principle is fundamental to {clean_topic}."
                 },
                 {
-                    "questionText": f"Which of the following best describes optimal performance in {topic}?",
+                    "questionText": f"Which of the following best describes optimal performance in {clean_topic}?",
                     "options": ["High efficiency & accuracy", "Random execution", "Linear slowdown", "Unbounded memory usage"],
                     "correctOption": 0,
-                    "explanation": f"High efficiency & accuracy are key quality metrics for {topic}."
+                    "explanation": f"High efficiency & accuracy are key quality metrics for {clean_topic}."
                 },
                 {
-                    "questionText": f"What is a common best practice when designing solutions in {topic}?",
+                    "questionText": f"What is a common best practice when designing solutions in {clean_topic}?",
                     "options": ["Modular and structured design", "Hardcoding parameters", "Ignoring error handling", "Global mutable state"],
                     "correctOption": 0,
-                    "explanation": f"Modular design enhances maintainability and scalability in {topic}."
+                    "explanation": f"Modular design enhances maintainability and scalability in {clean_topic}."
                 }
             ]
 
@@ -139,3 +173,4 @@ def generate_questions():
 
     except Exception as err:
         return jsonify({"success": False, "error": str(err)}), 500
+

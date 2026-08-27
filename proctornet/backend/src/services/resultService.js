@@ -72,18 +72,25 @@ async function getDetailedStudentResult({ examId, studentId, facultyId }) {
 }
 
 async function exportExamResultsToCSV({ examId, facultyId }) {
-  const exam = await global.prisma.exam.findFirst({
-    where: { id: examId, facultyId }
-  })
-  if (!exam) {
-    const error = new Error('Exam not found.')
-    error.status = 404
-    throw error
+  let where = {}
+  if (examId && examId !== 'all') {
+    const exam = await global.prisma.exam.findFirst({
+      where: { id: examId, facultyId }
+    })
+    if (!exam) {
+      const error = new Error('Exam not found.')
+      error.status = 404
+      throw error
+    }
+    where.examId = examId
+  } else {
+    where = { exam: { facultyId } }
   }
 
   const results = await global.prisma.examResult.findMany({
-    where: { examId },
+    where,
     include: {
+      exam: { select: { title: true, subject: true } },
       studentExam: {
         include: {
           student: { select: { name: true, usn: true, department: true } },
@@ -94,10 +101,11 @@ async function exportExamResultsToCSV({ examId, facultyId }) {
     orderBy: { percentage: 'desc' }
   })
 
-  let csv = 'Student Name,USN,Department,Score,Percentage,High Violations,Medium Violations,Low Violations,Proctor Status\n'
+  let csv = 'Exam Title,Subject,Student Name,USN,Department,Score,Percentage,High Violations,Medium Violations,Low Violations,Proctor Status\n'
 
   results.forEach(r => {
-    const student = r.studentExam?.student || {}
+    const student = r.studentExam?.student || r.student || {}
+    const exam = r.exam || {}
     const logs = r.studentExam?.evidenceLogs || []
     const highCount = logs.filter(l => l.severity === 'HIGH' || l.severity === 'CRITICAL').length
     const medCount = logs.filter(l => l.severity === 'MEDIUM').length
@@ -108,6 +116,8 @@ async function exportExamResultsToCSV({ examId, facultyId }) {
     else if (highCount > 0 || medCount > 3) status = 'SUSPICIOUS'
 
     const row = [
+      `"${(exam.title || 'Assessment').replace(/"/g, '""')}"`,
+      `"${(exam.subject || 'N/A').replace(/"/g, '""')}"`,
       `"${(student.name || 'Unknown').replace(/"/g, '""')}"`,
       `"${(student.usn || 'N/A').replace(/"/g, '""')}"`,
       `"${(student.department || 'N/A').replace(/"/g, '""')}"`,

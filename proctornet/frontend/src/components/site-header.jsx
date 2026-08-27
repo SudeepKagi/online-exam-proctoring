@@ -194,12 +194,12 @@ export function SiteHeader({ title = 'Console' }) {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-84 sm:w-96 bg-white border border-[#e2e8f0] rounded-2xl shadow-xl z-50 p-4 font-sans animate-in fade-in zoom-in-95 duration-100">
-              <div className="flex items-center justify-between pb-2.5 border-b border-[#f1f5f9]">
+            <div className="absolute right-0 mt-2 w-88 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 font-sans animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#0f172a]">Live Notifications</span>
+                  <span className="text-xs font-extrabold text-slate-900">Live Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-[#fef2f2] text-[#ef4444] text-[10px] font-bold border border-[#fee2e2]">
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2f80ed] text-[11px] font-extrabold border border-blue-200">
                       {unreadCount} new
                     </span>
                   )}
@@ -207,14 +207,14 @@ export function SiteHeader({ title = 'Console' }) {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-[11px] font-semibold text-[#2563eb] hover:underline cursor-pointer"
+                    className="text-xs font-extrabold text-[#2f80ed] hover:underline cursor-pointer"
                   >
                     Mark all read
                   </button>
                 )}
               </div>
 
-              <div className="divide-y divide-[#f8fafc] my-2 max-h-80 overflow-y-auto pr-1">
+              <div className="space-y-2.5 my-3 max-h-80 overflow-y-auto pr-1">
                 {rawNotifications.length > 0 ? (
                   rawNotifications.map((n) => {
                     const isRead = readIds.includes(n.id)
@@ -222,24 +222,26 @@ export function SiteHeader({ title = 'Console' }) {
                       <div
                         key={n.id}
                         onClick={() => handleNotificationClick(n)}
-                        className={`py-3 px-2 rounded-xl flex items-start gap-3 transition-colors cursor-pointer ${
-                          isRead ? 'hover:bg-[#f8fafc] opacity-80' : 'bg-[#f0f9ff]/50 hover:bg-[#e0f2fe]/60'
+                        className={`p-3 rounded-xl flex items-start gap-3 transition-all cursor-pointer ${
+                          isRead 
+                            ? 'bg-white border border-slate-100 opacity-75 hover:opacity-100' 
+                            : 'bg-[#f8fafc] border border-slate-200 border-l-4 border-l-[#2f80ed] shadow-xs'
                         }`}
                       >
                         {renderIcon(n.type)}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
-                            <p className={`text-xs font-bold truncate ${isRead ? 'text-[#334155]' : 'text-[#0f172a]'}`}>
+                            <p className="text-xs font-extrabold text-slate-900 truncate">
                               {n.title}
                             </p>
                             {!isRead && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#2563eb] shrink-0" />
+                              <span className="w-2 h-2 rounded-full bg-[#2f80ed] shrink-0" />
                             )}
                           </div>
-                          <p className="text-[11px] text-[#64748b] leading-tight mt-0.5 line-clamp-2">
+                          <p className="text-[11px] font-semibold text-slate-700 leading-snug mt-1 line-clamp-2">
                             {n.desc}
                           </p>
-                          <span className="text-[9px] font-semibold text-[#94a3b8] mt-1 block">
+                          <span className="text-[10px] font-bold text-slate-400 mt-1.5 block">
                             {formatTime(n.time)}
                           </span>
                         </div>
@@ -248,24 +250,24 @@ export function SiteHeader({ title = 'Console' }) {
                   })
                 ) : (
                   <div className="py-8 text-center">
-                    <div className="w-10 h-10 rounded-xl bg-[#f8fafc] text-[#94a3b8] flex items-center justify-center mx-auto mb-2 border border-[#e2e8f0]">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2 border border-slate-200">
                       <BellOff size={18} />
                     </div>
-                    <p className="text-xs font-bold text-[#0f172a]">No Pending Notifications</p>
-                    <p className="text-[11px] text-[#94a3b8] mt-0.5">
+                    <p className="text-xs font-extrabold text-slate-900">No Pending Notifications</p>
+                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
                       You're all caught up! New approvals and assessment events will appear here.
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="pt-2.5 border-t border-[#f1f5f9] text-center">
+              <div className="pt-2 border-t border-slate-100 text-center">
                 <button
                   onClick={() => {
                     setShowNotifications(false)
                     navigate(footerAction.path)
                   }}
-                  className="text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8] cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <span>{footerAction.label}</span>
                 </button>
@@ -280,70 +282,90 @@ export function SiteHeader({ title = 'Console' }) {
         <div className="relative" ref={accountRef}>
           <button
             onClick={() => setShowAccountMenu(!showAccountMenu)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full hover:bg-[#f8fafc] border border-transparent hover:border-[#e2e8f0] transition-all cursor-pointer"
+            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#f8fafc] hover:bg-white border border-slate-200 shadow-xs transition-all cursor-pointer"
             aria-label="User menu"
           >
             {user?.facePhotoUrl ? (
               <img
                 src={user.facePhotoUrl}
                 alt="Profile"
-                className="w-7 h-7 rounded-full object-cover border border-[#e2e8f0]"
+                className="w-7 h-7 rounded-full object-cover border border-slate-200"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-[#eff6ff] text-[#2563eb] font-bold text-xs flex items-center justify-center border border-[#dbeafe]">
+              <div className="w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-extrabold text-xs flex items-center justify-center border border-blue-200">
                 {initials}
               </div>
             )}
-            <span className="text-xs font-semibold text-[#0f172a]">
+            <span className="text-xs font-extrabold text-slate-900">
               {user?.name || (currentRole === 'admin' ? 'Administrator' : 'User')}
             </span>
-            <ChevronDown size={13} className="text-[#94a3b8]" />
+            <ChevronDown size={14} className="text-slate-400" />
           </button>
 
           {showAccountMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-[#e2e8f0] rounded-2xl shadow-xl z-50 p-2 font-sans animate-in fade-in zoom-in-95 duration-100">
-              <div className="px-3 py-2.5 border-b border-[#f1f5f9] mb-1">
-                <p className="text-xs font-bold text-[#0f172a] truncate">{user?.name || 'Authorized Account'}</p>
-                <p className="text-[11px] text-[#64748b] truncate mt-0.5">{user?.email || 'user@proctornet.com'}</p>
-                <span className="inline-block px-1.5 py-0.5 rounded bg-[#eff6ff] text-[#2563eb] text-[9px] font-bold mt-1.5 uppercase tracking-wider">
-                  {currentRole}
-                </span>
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-3 font-sans animate-in fade-in zoom-in-95 duration-100">
+              {/* Header Profile Box */}
+              <div className="p-3 bg-gradient-to-br from-blue-50/80 to-slate-50 rounded-xl border border-blue-100 mb-2 space-y-2">
+                <div className="flex items-center gap-3">
+                  {user?.facePhotoUrl ? (
+                    <img
+                      src={user.facePhotoUrl}
+                      alt="Profile"
+                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs shrink-0"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-white text-[#2f80ed] font-extrabold text-sm flex items-center justify-center border border-blue-200 shadow-xs shrink-0">
+                      {initials}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-extrabold text-slate-900 truncate">{user?.name || 'Authorized Account'}</p>
+                    <p className="text-[11px] font-semibold text-slate-600 truncate mt-0.5">{user?.email || 'user@proctornet.com'}</p>
+                  </div>
+                </div>
+
+                <div className="pt-1 flex justify-start">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#2f80ed] text-white text-[10px] font-extrabold tracking-wider uppercase shadow-xs">
+                    {currentRole}
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-0.5 text-xs">
+              {/* Menu Items */}
+              <div className="space-y-1">
                 {currentRole === 'admin' && (
                   <button
                     onClick={() => { setShowAccountMenu(false); navigate('/admin/settings') }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[#475569] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-xl transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                   >
-                    <Settings size={14} className="text-[#94a3b8]" />
+                    <Settings size={16} className="text-[#2f80ed]" />
                     <span>System Settings</span>
                   </button>
                 )}
                 {currentRole === 'student' && (
                   <button
                     onClick={() => { setShowAccountMenu(false); navigate('/student/profile') }}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 text-[#475569] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-xl transition-colors cursor-pointer text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                   >
-                    <User size={14} className="text-[#94a3b8]" />
+                    <User size={16} className="text-[#2f80ed]" />
                     <span>Candidate Profile</span>
                   </button>
                 )}
                 <button
                   onClick={() => { setShowAccountMenu(false); navigate('/change-password') }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[#475569] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-xl transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                 >
-                  <ShieldCheck size={14} className="text-[#94a3b8]" />
+                  <ShieldCheck size={16} className="text-[#2f80ed]" />
                   <span>Change Password</span>
                 </button>
               </div>
 
-              <div className="pt-1.5 border-t border-[#f1f5f9] mt-1">
+              <div className="pt-2 border-t border-slate-100 mt-2">
                 <button
                   onClick={() => { setShowAccountMenu(false); logout() }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[#ef4444] hover:bg-[#fef2f2] rounded-xl transition-colors cursor-pointer text-left font-semibold"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all cursor-pointer text-left"
                 >
-                  <LogOut size={14} className="text-[#ef4444]" />
+                  <LogOut size={16} className="text-rose-500" />
                   <span>Sign Out</span>
                 </button>
               </div>

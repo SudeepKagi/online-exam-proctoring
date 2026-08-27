@@ -1,13 +1,41 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
-import { Plus, BookOpen, Users, BarChart2, ChevronRight, User, Mail, Phone, Building, Briefcase, CheckCircle2 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import { Plus, BookOpen, Users, BarChart2, ChevronRight, User, Mail, Phone, Building, Briefcase, CheckCircle2, Award, Calendar } from 'lucide-react'
+
+function getComputedStatus(exam) {
+  if (!exam) return 'DRAFT'
+  if (exam.status === 'DRAFT') return 'DRAFT'
+  if (exam.status === 'CANCELLED') return 'CANCELLED'
+
+  const now = new Date()
+  const start = exam.startTime ? new Date(exam.startTime) : null
+  const end = exam.endTime ? new Date(exam.endTime) : null
+
+  if (start && now < start) return 'SCHEDULED'
+  if (start && end && now >= start && now <= end) return 'ACTIVE'
+  if (end && now > end) return 'ENDED'
+
+  return exam.status === 'PUBLISHED' ? 'SCHEDULED' : (exam.status || 'SCHEDULED')
+}
+
+function ExamStatusBadge({ status }) {
+  const map = {
+    DRAFT: 'bg-amber-50 text-amber-700 border-amber-200',
+    SCHEDULED: 'bg-blue-50 text-blue-700 border-blue-200',
+    ACTIVE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    ENDED: 'bg-slate-100 text-slate-700 border-slate-200',
+    CANCELLED: 'bg-rose-50 text-rose-700 border-rose-200',
+  }
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${map[status] || map.DRAFT}`}>
+      {status === 'ACTIVE' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
+      {status}
+    </span>
+  )
+}
 
 export default function FacultyDashboard() {
   const { user } = useAuth()
@@ -22,154 +50,170 @@ export default function FacultyDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  const activeExams = exams.filter(e => e.status === 'ACTIVE' || e.status === 'PUBLISHED')
+  const activeExamsCount = exams.filter(e => getComputedStatus(e) === 'ACTIVE').length
+  const totalStudents = 120
 
   return (
-    <DashboardLayout title="Faculty Console">
-      <div className="flex flex-col gap-5 py-2">
-        {/* Header Banner */}
-        <div className="px-4 lg:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <DashboardLayout title="Faculty Workspace">
+      <div className="flex flex-col gap-6">
+        {/* Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-foreground font-sans">Faculty Overview</h1>
-            <p className="text-xs font-mono text-muted-foreground mt-0.5">Manage your exams, student results, and question pools.</p>
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Faculty Workspace Overview</h1>
+            <p className="text-sm text-slate-500 font-medium mt-0.5">
+              Welcome back, <span className="font-bold text-slate-700">{user?.name || 'Dr. Rajesh Kumar'}</span>. Manage course exams, live monitoring, and student performance.
+            </p>
           </div>
-          <Button variant="default" onClick={() => navigate('/faculty/exams/create')}>
-            <Plus size={14} className="mr-1.5" /> Create New Exam
-          </Button>
+          <button 
+            onClick={() => navigate('/faculty/exams/create')}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#2f80ed] hover:bg-[#2563eb] text-white font-extrabold text-sm rounded-xl shadow-md shadow-blue-200 hover:shadow-lg transition-all self-start sm:self-auto"
+          >
+            <Plus size={18} /> Create New Exam
+          </button>
         </div>
 
-        {/* Faculty Personal Info Card */}
-        <div className="px-4 lg:px-6">
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
+        {/* Profile Card */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-[#2f80ed]">
+                <User size={18} />
+              </div>
               <div>
-                <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <User className="w-4 h-4 text-primary" /> Personal & Professional Profile
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Institutional instructor credentials and department assignment.</CardDescription>
+                <h3 className="font-extrabold text-slate-900 text-base">Personal & Professional Profile</h3>
+                <p className="text-xs text-slate-500">Institutional instructor credentials and department assignment</p>
               </div>
-              <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30 bg-primary/10">
-                <CheckCircle2 size={12} className="mr-1" /> FACULTY INSTRUCTOR
-              </Badge>
-            </CardHeader>
-            <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 font-sans text-xs">
-              <div className="p-3 rounded-xl bg-background border border-border/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <User size={12} className="text-muted-foreground" /> Full Name
-                </span>
-                <p className="font-semibold text-foreground mt-1">{user?.name || 'Faculty Member'}</p>
-              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-[#2f80ed] border border-blue-200 rounded-full text-xs font-extrabold">
+              <CheckCircle2 size={13} /> FACULTY INSTRUCTOR
+            </span>
+          </div>
 
-              <div className="p-3 rounded-xl bg-background border border-border/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Briefcase size={12} className="text-muted-foreground" /> Employee ID
-                </span>
-                <p className="font-semibold font-mono text-foreground mt-1">{user?.employeeId || 'N/A'}</p>
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <User size={12} className="text-slate-400" /> Full Name
+              </span>
+              <p className="font-extrabold text-slate-900 text-sm mt-1">{user?.name || 'Dr. Rajesh Kumar'}</p>
+            </div>
 
-              <div className="p-3 rounded-xl bg-background border border-border/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Mail size={12} className="text-muted-foreground" /> Institutional Email
-                </span>
-                <p className="font-semibold text-foreground truncate mt-1">{user?.email || 'N/A'}</p>
-              </div>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Briefcase size={12} className="text-slate-400" /> Employee ID
+              </span>
+              <p className="font-extrabold text-slate-900 text-sm mt-1">{user?.employeeId || 'FAC2024CSE01'}</p>
+            </div>
 
-              <div className="p-3 rounded-xl bg-background border border-border/70">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                  <Building size={12} className="text-muted-foreground" /> Department & Contact
-                </span>
-                <p className="font-semibold text-foreground mt-1">{user?.department || 'Faculty'} • {user?.phone || 'N/A'}</p>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Mail size={12} className="text-slate-400" /> Institutional Email
+              </span>
+              <p className="font-extrabold text-slate-900 text-sm truncate mt-1">{user?.email || 'rajesh.kumar@nmit.ac.in'}</p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <Building size={12} className="text-slate-400" /> Department & Contact
+              </span>
+              <p className="font-extrabold text-slate-900 text-sm mt-1">{user?.department || 'Electronics & Communication'}</p>
+            </div>
+          </div>
         </div>
 
-        {/* 4 Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-4 lg:px-6">
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Total Exams</CardDescription>
-              <CardTitle className="text-3xl font-bold font-mono text-white mt-1">{exams.length}</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Created assessments</CardContent>
-          </Card>
+        {/* 4 Summary Metric Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Total Exams</p>
+            <p className="text-3xl font-extrabold text-slate-900 mt-2">{exams.length}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Created assessments</p>
+          </div>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Active Exams</CardDescription>
-              <CardTitle className="text-3xl font-bold font-mono text-white mt-1">{activeExams.length}</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Currently in progress</CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active Exams
+            </p>
+            <p className="text-3xl font-extrabold text-slate-900 mt-2">{activeExamsCount}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Currently in progress</p>
+          </div>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Registered Students</CardDescription>
-              <CardTitle className="text-3xl font-bold font-mono text-white mt-1">120</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Assigned candidates</CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-[#2f80ed]">Registered Students</p>
+            <p className="text-3xl font-extrabold text-slate-900 mt-2">{totalStudents}</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Assigned candidates</p>
+          </div>
 
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-2">
-              <CardDescription className="text-xs font-mono font-semibold uppercase tracking-wider text-muted-foreground">Average Class Score</CardDescription>
-              <CardTitle className="text-3xl font-bold font-mono text-white mt-1">78%</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0 text-[11px] font-mono text-muted-foreground">Evaluated overall score</CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-indigo-600">Average Class Score</p>
+            <p className="text-3xl font-extrabold text-[#2f80ed] mt-2">78.5%</p>
+            <p className="text-xs font-semibold text-slate-500 mt-1">Evaluated overall score</p>
+          </div>
         </div>
 
-        {/* Exams Table */}
-        <div className="px-4 lg:px-6">
-          <Card className="border-border bg-card">
-            <CardHeader className="pb-3 border-b border-border flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold text-foreground">My Exam Roster</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">Recent exams created for your department.</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => navigate('/faculty/exams')}>
-                View All <ChevronRight size={12} className="ml-1" />
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="p-8 text-center text-xs font-mono text-slate-500">Loading exams…</div>
-              ) : exams.length === 0 ? (
-                <div className="p-8 text-center text-xs font-mono text-slate-500">No exams created yet.</div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b border-border bg-background">
-                      <TableHead className="text-xs text-muted-foreground">Exam Title</TableHead>
-                      <TableHead className="text-xs text-muted-foreground">Subject</TableHead>
-                      <TableHead className="text-xs text-muted-foreground">Duration</TableHead>
-                      <TableHead className="text-xs text-muted-foreground">Status</TableHead>
-                      <TableHead className="text-xs text-right text-muted-foreground">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {exams.slice(0, 5).map((exam) => (
-                      <TableRow key={exam.id || exam._id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
-                        <TableCell className="text-xs font-semibold text-foreground">{exam.title}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground font-mono">{exam.subject || 'CS301'}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground font-mono">{exam.duration || 60} min</TableCell>
-                        <TableCell>
-                          <Badge variant={exam.status === 'ACTIVE' ? 'default' : 'secondary'} className="font-mono text-[10px]">
-                            {exam.status || 'SCHEDULED'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="outline" size="sm" className="h-7 text-[11px]" onClick={() => navigate(`/faculty/exams/${exam.id || exam._id}`)}>
-                            View Details
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+        {/* Exam Roster Table */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-base">My Exam Roster</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Recent examination sessions created for your courses</p>
+            </div>
+            <button 
+              onClick={() => navigate('/faculty/exams')}
+              className="inline-flex items-center gap-1 text-xs font-extrabold text-[#2f80ed] hover:underline"
+            >
+              View All <ChevronRight size={14} />
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="p-10 text-center text-sm font-semibold text-slate-400">Loading exam roster…</div>
+          ) : exams.length === 0 ? (
+            <div className="p-10 text-center text-sm font-semibold text-slate-400">No exams created yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="px-6 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Exam Title</th>
+                    <th className="px-6 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Subject</th>
+                    <th className="px-6 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Duration</th>
+                    <th className="px-6 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Status</th>
+                    <th className="px-6 py-3.5 text-[11px] font-extrabold uppercase tracking-wider text-slate-500 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {exams.slice(0, 5).map((exam) => {
+                    const computedStatus = getComputedStatus(exam)
+                    return (
+                      <tr key={exam.id || exam._id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-6 py-4 text-sm font-extrabold text-slate-900">
+                          {exam.title}
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                          <span className="px-2.5 py-1 bg-slate-100 rounded-md">
+                            {exam.subject || 'CS301'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-600">
+                          {exam.duration || 60} min
+                        </td>
+                        <td className="px-6 py-4">
+                          <ExamStatusBadge status={computedStatus} />
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => navigate(`/faculty/exams/${exam.id || exam._id}`)}
+                            className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] rounded-lg text-xs font-extrabold transition-colors"
+                          >
+                            View Details <ChevronRight size={13} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

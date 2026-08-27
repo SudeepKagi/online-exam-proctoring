@@ -139,7 +139,8 @@ async function getExamById({ id, facultyId }) {
         include: {
           student: {
             select: { id: true, name: true, email: true, usn: true, department: true }
-          }
+          },
+          examResult: true
         }
       },
       _count: {
