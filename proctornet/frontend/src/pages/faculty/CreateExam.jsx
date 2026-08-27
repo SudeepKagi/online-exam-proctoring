@@ -62,7 +62,7 @@ function AIGeneratorPanel({ onGenerated }) {
     setStep('generating')
     try {
       const res = await api.post(`/faculty/exams/ai-generate-preview`, {
-        text, numMCQ: parseInt(numMCQ), numEssay: parseInt(numEssay),
+        topic: text, numMCQ: parseInt(numMCQ), numEssay: parseInt(numEssay),
         difficulty, marksPerMCQ: parseFloat(marksPerMCQ), marksPerEssay: parseFloat(marksPerEssay)
       })
       

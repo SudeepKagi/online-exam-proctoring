@@ -253,8 +253,9 @@ async function deleteQuestion(req, res) {
 
 async function bulkAddQuestions(req, res) {
   try {
+    const examId = req.params.examId || req.body.examId
     const questions = await questionService.bulkAddQuestionsToExam({
-      examId: req.params.examId,
+      examId,
       facultyId: req.user.id,
       questions: req.body.questions
     })
@@ -262,7 +263,7 @@ async function bulkAddQuestions(req, res) {
       userId: req.user.id,
       userRole: 'faculty',
       action: 'QUESTIONS_BULK_ADDED',
-      details: `${questions.length} questions to exam ${req.params.examId}`,
+      details: `${questions.length} questions to exam ${examId}`,
       ipAddress: getClientIp(req)
     })
     res.status(201).json({ message: `${questions.length} questions added.`, count: questions.length, questions })

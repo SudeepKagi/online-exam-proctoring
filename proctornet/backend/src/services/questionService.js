@@ -141,6 +141,12 @@ async function deleteQuestionById({ id, facultyId }) {
 }
 
 async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
+  if (!examId) {
+    const error = new Error('Exam ID is required.')
+    error.status = 400
+    throw error
+  }
+
   const exam = await global.prisma.exam.findFirst({
     where: { id: examId, facultyId }
   })
@@ -169,13 +175,14 @@ async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
         questionText: q.questionText || q.text || `Question ${i + 1}`,
         marks: parsedMarks,
         negativeMarks: q.negativeMarks ? parseFloat(q.negativeMarks) : 0,
-        difficulty: q.difficulty || 'MEDIUM',
+        difficulty: (q.difficulty || 'MEDIUM').toUpperCase(),
         options: q.options || [],
         correctAnswer: q.correctAnswer ? String(q.correctAnswer) : null,
-        sampleInput: q.sampleInput || null,
-        sampleOutput: q.sampleOutput || null,
+        codeTemplate: q.codeTemplate || null,
+        codeLanguage: q.codeLanguage || null,
         testCases: q.testCases || [],
-        order: q.order !== undefined ? parseInt(q.order) : i + 1
+        wordLimitMin: q.wordLimitMin ? parseInt(q.wordLimitMin) : null,
+        wordLimitMax: q.wordLimitMax ? parseInt(q.wordLimitMax) : null
       }
     })
     totalAddedMarks += parsedMarks
