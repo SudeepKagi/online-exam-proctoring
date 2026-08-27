@@ -167,31 +167,55 @@ export default function ExamLobby() {
 
             {/* Primary Guided Action */}
             <div className="flex flex-col items-center justify-center pt-1 gap-2">
-              <Button
-                disabled={isOver || timeToStart > 0}
-                onClick={() => navigate(`/student/exams/${examId}/security`)}
-                className={`w-full sm:w-80 text-xs font-mono font-bold h-11 rounded-xl shadow-lg transition-all ${
-                  isOver || timeToStart > 0
-                    ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed shadow-none'
-                    : 'bg-primary hover:bg-primary text-white shadow-indigo-600/25'
-                }`}
-              >
-                {isOver
-                  ? 'Exam Concluded'
-                  : timeToStart > 0
-                  ? `Waiting for Start Window (${formatCountdown(timeToStart)})`
-                  : 'Start Automated Security Check'}
-                {!isOver && timeToStart === 0 && <ArrowRight size={14} className="ml-2" />}
-              </Button>
-              {timeToStart > 0 && !isOver && (
-                <span className="text-[11px] font-mono text-amber-400/90 text-center">
-                  Security check unlocks automatically when countdown reaches zero
-                </span>
-              )}
-              {isOver && (
-                <span className="text-[11px] font-mono text-rose-400 text-center">
-                  This examination session has ended and is closed for entry
-                </span>
+              {exam?.isSubmitted || exam?.studentStatus === 'SUBMITTED' ? (
+                <div className="w-full p-6 rounded-2xl bg-[#ecfdf5] border-2 border-[#a7f3d0] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm text-center sm:text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-xl bg-[#10b981] text-white flex items-center justify-center shrink-0 shadow-xs">
+                      <CheckCircle2 size={22} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-[#0f172a]">Examination Already Submitted</h3>
+                      <p className="text-xs text-[#64748b] mt-0.5">
+                        You have already attended and finalized this examination. Re-entry is strictly prohibited.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => navigate('/student/results')}
+                    className="w-full sm:w-auto text-xs font-bold px-6 bg-[#10b981] hover:bg-[#059669] text-white h-10 rounded-xl cursor-pointer shadow-xs"
+                  >
+                    View My Results <ArrowRight size={14} className="ml-1.5" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    disabled={isOver || timeToStart > 0}
+                    onClick={() => navigate(`/student/exams/${examId}/security`)}
+                    className={`w-full sm:w-80 text-xs font-mono font-bold h-11 rounded-xl shadow-lg transition-all cursor-pointer ${
+                      isOver || timeToStart > 0
+                        ? 'bg-zinc-800 text-zinc-500 border border-zinc-700/50 cursor-not-allowed shadow-none'
+                        : 'bg-primary hover:bg-primary text-white shadow-indigo-600/25'
+                    }`}
+                  >
+                    {isOver
+                      ? 'Exam Concluded'
+                      : timeToStart > 0
+                      ? `Waiting for Start Window (${formatCountdown(timeToStart)})`
+                      : 'Start Automated Security Check'}
+                    {!isOver && timeToStart === 0 && <ArrowRight size={14} className="ml-2" />}
+                  </Button>
+                  {timeToStart > 0 && !isOver && (
+                    <span className="text-[11px] font-mono text-amber-400/90 text-center">
+                      Security check unlocks automatically when countdown reaches zero
+                    </span>
+                  )}
+                  {isOver && (
+                    <span className="text-[11px] font-mono text-rose-400 text-center">
+                      This examination session has ended and is closed for entry
+                    </span>
+                  )}
+                </>
               )}
             </div>
           </div>

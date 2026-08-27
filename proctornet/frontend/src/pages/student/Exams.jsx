@@ -15,8 +15,9 @@ function ExamCard({ exam, now }) {
 
   const fifteenMinsBeforeStart = new Date(start.getTime() - 15 * 60 * 1000)
   const isEnded = exam.status === 'ENDED' || now > end
-  const isActive = exam.status === 'ACTIVE' || (now >= start && now <= end && (exam.status === 'PUBLISHED' || exam.status === 'SCHEDULED' || exam.status === 'ACTIVE'))
-  const canJoin = !isEnded && now >= fifteenMinsBeforeStart && now <= end
+  const isSubmitted = exam.studentStatus === 'SUBMITTED' || exam.isSubmitted
+  const isActive = !isEnded && (exam.status === 'ACTIVE' || (now >= start && now <= end && (exam.status === 'PUBLISHED' || exam.status === 'SCHEDULED' || exam.status === 'ACTIVE')))
+  const canJoin = !isEnded && !isSubmitted && now >= fifteenMinsBeforeStart && now <= end
 
   const timeLabel = isActive
     ? `Ends ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -38,13 +39,18 @@ function ExamCard({ exam, now }) {
                 <p className="text-xs text-muted-foreground truncate font-medium">{exam.subject || exam.courseCode}</p>
               </div>
             </div>
-            {isActive && (
+            {isSubmitted ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#10b981] border border-[#a7f3d0] flex items-center gap-1">
+                <CheckCircle2 size={11} /> SUBMITTED
+              </span>
+            ) : isActive ? (
               <Badge variant="green" className="text-[10px]">
                 LIVE
               </Badge>
-            )}
-            {isEnded && (
+            ) : isEnded ? (
               <Badge variant="outline" className="text-[10px]">ENDED</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-[10px]">SCHEDULED</Badge>
             )}
           </div>
 
@@ -92,9 +98,15 @@ function ExamCard({ exam, now }) {
             )}
           </div>
 
-          {canJoin ? (
+          {isSubmitted ? (
+            <Link to="/student/results">
+              <Button size="sm" variant="outline" className="h-8 text-xs font-bold text-[#10b981] border-[#a7f3d0] bg-[#ecfdf5] hover:bg-[#d1fae5] cursor-pointer">
+                <CheckCircle2 size={12} className="mr-1.5" /> View Result
+              </Button>
+            </Link>
+          ) : canJoin ? (
             <Link to={`/student/exams/${exam.id}/lobby`}>
-              <Button size="sm" className="h-8 text-xs font-bold">
+              <Button size="sm" className="h-8 text-xs font-bold bg-[#2563eb] hover:bg-[#1d4ed8] text-white cursor-pointer">
                 <Play size={12} className="mr-1.5" /> {isActive ? 'Join Now' : 'Enter Lobby'}
               </Button>
             </Link>

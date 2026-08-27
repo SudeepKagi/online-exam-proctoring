@@ -27,7 +27,7 @@ async function listMyExams(req, res) {
  */
 async function getExamDetails(req, res) {
   try {
-    const exam = await studentService.getExamDetailsForStudent(req.params.id)
+    const exam = await studentService.getExamDetailsForStudent(req.params.id, req.user?.id)
     res.json({ exam, serverTime: new Date() })
   } catch (e) {
     res.status(e.status || 500).json({ error: e.message || 'Failed to fetch details' })

@@ -123,7 +123,7 @@ async function listExamsForStudent(studentId) {
   return formatted
 }
 
-async function getExamDetailsForStudent(examId) {
+async function getExamDetailsForStudent(examId, studentId = null) {
   const exam = await global.prisma.exam.findUnique({
     where: { id: examId },
     include: { faculty: { select: { name: true } } }
@@ -133,7 +133,16 @@ async function getExamDetailsForStudent(examId) {
     error.status = 404
     throw error
   }
-  return exam
+  let studentStatus = 'NOT_JOINED'
+  if (studentId) {
+    const se = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+    if (se) studentStatus = se.status
+  }
+  return {
+    ...exam,
+    studentStatus,
+    isSubmitted: studentStatus === 'SUBMITTED'
+  }
 }
 
 async function getExamLobbyData({ examId, studentId }) {
@@ -148,10 +157,12 @@ async function getExamLobbyData({ examId, studentId }) {
   }
 
   const student = await global.prisma.student.findUnique({ where: { id: studentId } })
-  const isDirectlyEnrolled = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+  const studentExam = await global.prisma.studentExam.findFirst({ where: { examId, studentId } })
+  const isDirectlyEnrolled = !!studentExam
+  const isSubmitted = studentExam?.status === 'SUBMITTED'
   const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
   const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
-  const isEligible = !!isDirectlyEnrolled || (isDeptEligible && isSemEligible)
+  const isEligible = isDirectlyEnrolled || (isDeptEligible && isSemEligible)
 
   const chatMessagesRaw = await global.prisma.chatMessage.findMany({
     where: { examId, studentId },
@@ -178,9 +189,13 @@ async function getExamLobbyData({ examId, studentId }) {
       status: exam.status,
       faculty: exam.faculty,
       cameraRequired: exam.cameraRequired,
-      fullScreenMode: exam.fullScreenMode
+      fullScreenMode: exam.fullScreenMode,
+      isSubmitted,
+      studentStatus: studentExam?.status || 'NOT_JOINED'
     },
     isEligible,
+    isSubmitted,
+    studentStatus: studentExam?.status || 'NOT_JOINED',
     chatMessages
   }
 }
