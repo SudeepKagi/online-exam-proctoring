@@ -6,19 +6,16 @@ import {
   Shield, Bell, AlertTriangle, Search, RefreshCw,
   Clock, Filter, Users, Radio, LogOut, CheckCircle2, Archive
 } from 'lucide-react'
-import { ProctorNetLogo } from '@/components/ui/proctornet-logo'
-
+import DashboardLayout from '@/components/common/DashboardLayout'
 import { useInvigilatorSocket } from '@/hooks/useInvigilatorSocket'
 import StudentGrid from '@/components/invigilator/StudentGrid'
 import StudentDossierModal from '@/components/invigilator/StudentDossierModal'
 import EvidenceLightbox from '@/components/invigilator/EvidenceLightbox'
-
 import { useAuth } from '@/context/AuthContext'
 
 export default function InvDashboard() {
   const { examId } = useParams()
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
 
   const effectiveExamId = examId || user?.examId || localStorage.getItem('inv_examId') || 'active'
 
@@ -39,11 +36,6 @@ export default function InvDashboard() {
     (examInfo?.endTime && new Date() > new Date(examInfo.endTime)) ||
     timeRemaining === '00:00:00'
   )
-
-  const handleLogout = () => {
-    logout()
-    navigate('/invigilator/login')
-  }
 
   // ── Hook: Invigilator Socket & WebRTC ──
   const {
@@ -88,7 +80,10 @@ export default function InvDashboard() {
         status: s.status || 'ACTIVE',
         progress: s.progress || { answered: 0, total: 0 },
         flagCount: s.flagCount || 0,
-        events: s.events || []
+        events: s.events || [],
+        facePhotoUrl: s.facePhotoUrl || s.lastSnapshot || s.latestFrame || null,
+        latestFrame: s.latestFrame || s.facePhotoUrl || s.lastSnapshot || null,
+        lastSnapshot: s.lastSnapshot || s.facePhotoUrl || null
       }))
       setStudents(initialStudents)
 
@@ -148,225 +143,206 @@ export default function InvDashboard() {
   })
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none">
-      {/* ── Top Header ── */}
-      <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0 shadow-md">
-        <div className="flex items-center gap-4">
-          <ProctorNetLogo size={24} />
-          <div>
-            <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
-              {examInfo?.title || 'Live Invigilation Terminal'}
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary font-semibold">
-                {examInfo?.subject || 'INVIGILATOR'}
+    <DashboardLayout title="Exam History & Violations">
+      <div className="flex flex-col gap-6 font-sans py-2">
+        {/* Top Exam Header & Filter Control Card */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                {examInfo?.title || 'Examination Log & History'}
+              </h1>
+              {examInfo?.subject && (
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2f80ed] text-xs font-semibold border border-blue-200">
+                  {examInfo.subject}
+                </span>
+              )}
+              <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold ${
+                isExamEnded
+                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                  : connected
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${isExamEnded ? 'bg-amber-500' : connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                {isExamEnded ? 'Concluded' : connected ? 'Live Monitoring' : 'Connecting'}
               </span>
-            </h1>
-            <p className="text-xs font-mono text-muted-foreground">
-              Exam ID: <span className="text-foreground/90">{examInfo?.id || effectiveExamId}</span> • Connected Candidates: <span className="text-foreground/90">{students.length}</span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium flex items-center gap-3">
+              <span>Exam ID: <code className="text-slate-700 font-semibold">{examInfo?.id || effectiveExamId}</code></span>
+              <span>•</span>
+              <span>Connected Candidates: <strong className="text-slate-900">{students.length}</strong></span>
+              <span>•</span>
+              <span>Time Remaining: <strong className="text-slate-900">{timeRemaining}</strong></span>
             </p>
           </div>
+
+          {/* Controls: Search Input & Filter Tabs */}
+          <div className="flex items-center gap-3 flex-wrap w-full md:w-auto">
+            <div className="relative flex-1 md:w-56">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Filter by name or USN…"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#2f80ed] focus:bg-white transition-all font-medium"
+              />
+            </div>
+
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs">
+              {['all', 'flagged', 'active'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setFilter(tab)}
+                  className={`px-3 py-1.5 rounded-lg capitalize font-semibold transition-all cursor-pointer ${
+                    filter === tab
+                      ? 'bg-[#2f80ed] text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={fetchExamData}
+              className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition cursor-pointer"
+              title="Refresh Data"
+            >
+              <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
-        {/* Center Live Socket State & Search */}
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Filter by name or USN…"
-              className="bg-background border border-border rounded-xl pl-9 pr-3.5 py-1.5 text-xs text-foreground outline-none focus:border-primary w-48 lg:w-64 font-mono transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 bg-background border border-border p-1 rounded-xl text-xs font-mono">
-            {['all', 'flagged', 'active'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setFilter(tab)}
-                className={`px-3 py-1 rounded-lg capitalize font-bold transition-all ${
-                  filter === tab
-                    ? 'bg-primary text-white shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Right Timer & Status & Logout */}
-        <div className="flex items-center gap-3 font-mono">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-background text-xs">
-            <span className={`w-2 h-2 rounded-full ${isExamEnded ? 'bg-slate-400' : connected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
-            <span className="text-foreground/90 font-bold">
-              {isExamEnded ? 'Concluded' : connected ? 'Relay Live' : 'Connecting'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border bg-background text-foreground font-bold text-xs">
-            <Clock size={14} className={isExamEnded ? 'text-muted-foreground' : 'text-primary'} />
-            <span>{timeRemaining}</span>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-bold transition cursor-pointer"
-            title="Logout Invigilator Session"
-          >
-            <LogOut size={13} />
-            <span>Logout</span>
-          </button>
-        </div>
-      </header>
-
-      {/* ── Main Candidates Stream Grid ── */}
-      <main className="flex-1 overflow-y-auto p-4 bg-background">
-        {isLoading ? (
-          <div className="h-96 flex flex-col items-center justify-center font-mono text-xs text-muted-foreground space-y-3">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p>Synchronizing live multi-feed matrix…</p>
-          </div>
-        ) : errorState ? (
-          <div className="h-96 flex flex-col items-center justify-center p-8 text-center bg-card border border-destructive/30 rounded-3xl shadow-sm max-w-lg mx-auto space-y-4 my-8">
-            <div className="w-14 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
-              <Shield size={28} />
+        {/* Content Section */}
+        <div>
+          {isLoading ? (
+            <div className="h-80 flex flex-col items-center justify-center text-xs text-slate-500 space-y-3 bg-white border border-slate-200 rounded-2xl shadow-xs">
+              <div className="w-8 h-8 border-2 border-[#2f80ed] border-t-transparent rounded-full animate-spin" />
+              <p className="font-semibold text-slate-700">Synchronizing candidate history matrix…</p>
             </div>
-            <div>
-              <div className="flex items-center justify-center gap-2 mb-1.5">
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/20">
-                  HTTP {errorState.status || 500}
-                </span>
-                <h3 className="text-base font-bold text-foreground">{errorState.title}</h3>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-medium">
-                {errorState.message}
-              </p>
-            </div>
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={fetchExamData}
-                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold font-mono transition flex items-center gap-2 cursor-pointer shadow-xs"
-              >
-                <RefreshCw size={13} /> Retry Synchronization
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-background hover:bg-muted border border-border text-foreground rounded-xl text-xs font-bold font-mono transition cursor-pointer flex items-center gap-1.5"
-              >
-                <LogOut size={13} /> Invigilator Logout
-              </button>
-            </div>
-          </div>
-        ) : isExamEnded && !showArchivedGrid ? (
-          <div className="h-full py-12 flex flex-col items-center justify-center">
-            <div className="bg-card border border-border rounded-3xl shadow-xl max-w-xl w-full p-8 text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500 mx-auto">
-                <CheckCircle2 size={32} />
+          ) : errorState ? (
+            <div className="py-12 flex flex-col items-center justify-center p-8 text-center bg-white border border-rose-200 rounded-2xl shadow-xs max-w-lg mx-auto space-y-4 my-4">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                <Shield size={24} />
               </div>
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 mb-2">
-                  EXAMINATION WINDOW CLOSED
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200">
+                    HTTP {errorState.status || 500}
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900">{errorState.title}</h3>
                 </div>
-                <h2 className="text-xl font-bold text-foreground tracking-tight">
-                  Examination Concluded
-                </h2>
-                <p className="text-xs text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed font-normal">
-                  The scheduled window for <strong className="text-foreground font-medium">{examInfo?.title || 'this examination'}</strong> ended at{' '}
-                  {examInfo?.endTime ? new Date(examInfo.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'the designated time'}.
-                  Live video streaming and candidate telemetry relays have terminated.
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed font-medium">
+                  {errorState.message}
                 </p>
               </div>
-
-              {/* Summary Stats Grid */}
-              <div className="grid grid-cols-3 gap-3 text-left">
-                <div className="p-3.5 bg-background border border-border rounded-2xl">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Candidates</p>
-                  <p className="text-base font-semibold text-foreground mt-0.5">{students.length}</p>
-                </div>
-                <div className="p-3.5 bg-background border border-border rounded-2xl">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Flags</p>
-                  <p className="text-base font-semibold text-amber-500 mt-0.5">
-                    {students.reduce((acc, s) => acc + (s.flagCount || 0), 0)}
-                  </p>
-                </div>
-                <div className="p-3.5 bg-background border border-border rounded-2xl">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Duration</p>
-                  <p className="text-base font-semibold text-foreground mt-0.5">{examInfo?.duration || '—'} Mins</p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-2">
                 <button
-                  onClick={handleLogout}
-                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs font-mono"
+                  onClick={fetchExamData}
+                  className="px-4 py-2 bg-[#2f80ed] hover:bg-blue-600 text-white rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs"
                 >
-                  <LogOut size={14} /> End Session & Logout
-                </button>
-                <button
-                  onClick={() => setShowArchivedGrid(true)}
-                  className="px-4 py-2.5 bg-background hover:bg-muted border border-border text-foreground rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer font-mono"
-                >
-                  <Archive size={14} /> Review Candidate Feeds
+                  <RefreshCw size={13} /> Retry Sync
                 </button>
               </div>
             </div>
-          </div>
-        ) : (
-          <>
-            {isExamEnded && (
-              <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between font-sans">
-                <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 font-bold">
-                  <Archive size={16} />
-                  <span>Viewing Archived Session Feeds (Examination Concluded)</span>
+          ) : isExamEnded && !showArchivedGrid ? (
+            <div className="py-8 flex flex-col items-center justify-center">
+              <div className="bg-white border border-slate-200 rounded-3xl shadow-sm max-w-xl w-full p-8 text-center space-y-6">
+                <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 mx-auto">
+                  <CheckCircle2 size={28} />
                 </div>
-                <div className="flex items-center gap-2">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 mb-2">
+                    EXAMINATION WINDOW CLOSED
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                    Examination Concluded
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-2 max-w-md mx-auto leading-relaxed font-medium">
+                    The scheduled window for <strong className="text-slate-800 font-semibold">{examInfo?.title || 'this examination'}</strong> ended at{' '}
+                    {examInfo?.endTime ? new Date(examInfo.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'the designated time'}.
+                    Live video streaming and candidate telemetry relays have terminated.
+                  </p>
+                </div>
+
+                {/* Summary Stats Grid */}
+                <div className="grid grid-cols-3 gap-3 text-left">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Candidates</p>
+                    <p className="text-lg font-bold text-slate-900 mt-0.5">{students.length}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Total Flags</p>
+                    <p className="text-lg font-bold text-amber-600 mt-0.5">
+                      {students.reduce((acc, s) => acc + (s.flagCount || 0), 0)}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                    <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">Duration</p>
+                    <p className="text-lg font-bold text-slate-900 mt-0.5">{examInfo?.duration || '—'} Mins</p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <button
+                    onClick={() => setShowArchivedGrid(true)}
+                    className="px-5 py-2.5 bg-[#2f80ed] hover:bg-blue-600 text-white rounded-xl text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs"
+                  >
+                    <Archive size={15} /> Review Candidate Feeds
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              {isExamEnded && (
+                <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between font-sans">
+                  <div className="flex items-center gap-2 text-xs text-amber-800 font-bold">
+                    <Archive size={16} />
+                    <span>Viewing Archived Session Feeds & Violations (Examination Concluded)</span>
+                  </div>
                   <button
                     onClick={() => setShowArchivedGrid(false)}
-                    className="text-xs px-3 py-1.5 bg-background hover:bg-muted border border-border rounded-xl text-foreground font-bold font-mono cursor-pointer"
+                    className="text-xs px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-semibold cursor-pointer transition-colors"
                   >
                     Back to Summary
                   </button>
-                  <button
-                    onClick={handleLogout}
-                    className="text-xs px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold font-mono flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <LogOut size={13} /> Logout
-                  </button>
                 </div>
-              </div>
-            )}
-            <StudentGrid
-              students={filteredStudents}
-              filter={filter}
-              onSelectStudent={setSelectedStudent}
-              onRequestStream={requestStudentStream}
-            />
-          </>
+              )}
+              <StudentGrid
+                students={filteredStudents}
+                filter={filter}
+                onSelectStudent={setSelectedStudent}
+                onRequestStream={requestStudentStream}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Modal 1: Student Dossier Deep Inspection */}
+        {selectedStudent && (
+          <StudentDossierModal
+            student={selectedStudent}
+            onClose={() => setSelectedStudent(null)}
+            onWarn={sendWarning}
+            onTerminate={terminateStudentExam}
+            onOpenLightbox={setActiveLightbox}
+            chats={chats}
+          />
         )}
-      </main>
 
-      {/* ── Modal 1: Student Dossier Deep Inspection ── */}
-      {selectedStudent && (
-        <StudentDossierModal
-          student={selectedStudent}
-          onClose={() => setSelectedStudent(null)}
-          onWarn={sendWarning}
-          onTerminate={terminateStudentExam}
-          onOpenLightbox={setActiveLightbox}
-          chats={chats}
-        />
-      )}
-
-      {/* ── Modal 2: Evidence Lightbox ── */}
-      {activeLightbox && (
-        <EvidenceLightbox
-          snapshot={activeLightbox}
-          onClose={() => setActiveLightbox(null)}
-        />
-      )}
-    </div>
+        {/* Modal 2: Evidence Lightbox */}
+        {activeLightbox && (
+          <EvidenceLightbox
+            snapshot={activeLightbox}
+            onClose={() => setActiveLightbox(null)}
+          />
+        )}
+      </div>
+    </DashboardLayout>
   )
 }

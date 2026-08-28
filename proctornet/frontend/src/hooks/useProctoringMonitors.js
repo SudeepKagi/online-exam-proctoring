@@ -72,8 +72,10 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
     ]).then(() => setModelsLoaded(true)).catch(() => console.warn('Face models unavailable'))
 
-    if (streamRef.current && streamRef.current.active && streamRef.current.getVideoTracks().some(t => t.readyState === 'live')) {
-      if (externalStreamRef) externalStreamRef.current = streamRef.current
+    const activeStream = externalStreamRef?.current || streamRef.current
+    if (activeStream && activeStream.active && activeStream.getVideoTracks().some(t => t.readyState === 'live')) {
+      streamRef.current = activeStream
+      if (externalStreamRef) externalStreamRef.current = activeStream
       setCameraOk(true)
       return
     }
@@ -83,19 +85,6 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
         streamRef.current = stream
         if (externalStreamRef) externalStreamRef.current = stream
         setCameraOk(true)
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          videoRef.current.onloadedmetadata = () => {
-            videoRef.current.play().catch(e => console.warn('Video play error:', e))
-          }
-        }
-        if (captureVideoRef.current) {
-          captureVideoRef.current.srcObject = stream
-          captureVideoRef.current.onloadedmetadata = () => {
-            captureVideoRef.current.play().catch(e => console.warn('Capture play error:', e))
-          }
-        }
       })
       .catch(err => {
         console.warn('Camera permission error:', err)
@@ -105,7 +94,24 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
     return () => {
       // Stream teardown is managed by ExamInterface on terminal state
     }
-  }, [])
+  }, [externalStreamRef])
+
+  // ── 3b. Bind Active Stream to PIP Video Elements ──
+  useEffect(() => {
+    const activeStream = externalStreamRef?.current || streamRef.current
+    if (!activeStream || !activeStream.active) return
+
+    const attachStream = (videoEl) => {
+      if (!videoEl) return
+      if (videoEl.srcObject !== activeStream) {
+        videoEl.srcObject = activeStream
+      }
+      videoEl.play().catch(e => console.warn('Video play notice:', e))
+    }
+
+    attachStream(videoRef.current)
+    attachStream(captureVideoRef.current)
+  }, [cameraOk, externalStreamRef?.current, videoRef.current])
 
   // ── 4. Face-API Presence Polling Loop ──
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, BookOpen, AlertTriangle,
   Megaphone, ClipboardList, BarChart2, Video, Settings, LogOut, UserCheck, Shield,
-  HelpCircle
+  HelpCircle, History
 } from 'lucide-react'
 
 // Categorized navigation without sub-items - clean and normal
@@ -80,7 +80,7 @@ const ROLE_NAV_GROUPS = {
     {
       section: 'ANALYTICS',
       items: [
-        { to: '/invigilator/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/invigilator/history', icon: History, label: 'History' },
         { to: '/invigilator/live-grid/active', icon: Video, label: 'Live Exam Grid' },
       ]
     },
@@ -104,7 +104,21 @@ export function AppSidebar() {
   const navigate = useNavigate()
   const currentRole = role || 'student'
   const navGroups = ROLE_NAV_GROUPS[currentRole] || ROLE_NAV_GROUPS.student
-  const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AD'
+  
+  let initials = 'AD'
+  if (user?.name) {
+    const cleanName = user.name.trim()
+    const parts = cleanName.split(/\s+/)
+    if (parts[0].toLowerCase().includes('invigilator')) {
+      initials = 'IV'
+    } else if (parts[0].toLowerCase().includes('faculty') || parts[0].toLowerCase().includes('dr')) {
+      initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : 'FC'
+    } else {
+      initials = parts.map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    }
+  }
+  if (!user?.name && currentRole === 'invigilator') initials = 'IV'
+  if (initials === 'II') initials = 'IV'
 
   return (
     <aside className="w-64 bg-white border-r border-[#e2e8f0] flex flex-col justify-between shrink-0 min-h-screen sticky top-0 h-screen font-sans z-30">

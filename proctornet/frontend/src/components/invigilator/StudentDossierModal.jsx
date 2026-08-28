@@ -10,7 +10,8 @@ export default function StudentDossierModal({
   onTerminate,
   onOpenLightbox,
   chats = {},
-  onSendChat
+  onSendChat,
+  readOnly = false
 }) {
   const [customWarning, setCustomWarning] = useState('')
   const [chatInput, setChatInput] = useState('')
@@ -23,6 +24,13 @@ export default function StudentDossierModal({
   }, [chats, student?.studentId])
 
   if (!student) return null
+
+  const isTerminatedOrEnded = Boolean(
+    readOnly ||
+    student.status === 'TERMINATED' ||
+    student.status === 'SUBMITTED' ||
+    student.status === 'COMPLETED'
+  )
 
   const handleCustomWarningSend = () => {
     if (!customWarning.trim()) return
@@ -40,7 +48,7 @@ export default function StudentDossierModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 bg-black/70 backdrop-blur-xs font-sans">
-      <div className="bg-card border border-border w-full max-w-6xl h-full max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden text-foreground">
+      <div className={`bg-card border border-border w-full ${isTerminatedOrEnded ? 'max-w-4xl' : 'max-w-6xl'} h-full max-h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden text-foreground`}>
         {/* Header */}
         <header className="px-8 py-5 border-b border-border flex justify-between items-center bg-[#f8fafc] dark:bg-neutral-900">
           <div className="flex items-center gap-4">
@@ -81,14 +89,16 @@ export default function StudentDossierModal({
 
         {/* Main Body */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Left Column: Webcam, Screen Feed, Timeline */}
-          <div className="w-full md:w-2/3 p-6 md:p-8 overflow-y-auto space-y-6 border-b md:border-b-0 md:border-r border-border bg-background">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Left / Main Column */}
+          <div className={`w-full ${isTerminatedOrEnded ? 'md:w-full' : 'md:w-2/3'} p-6 md:p-8 overflow-y-auto space-y-6 bg-background ${!isTerminatedOrEnded ? 'border-b md:border-b-0 md:border-r border-border' : ''}`}>
+            {/* Top Video / Photo Section */}
+            <div className={isTerminatedOrEnded ? 'max-w-md mx-auto' : 'grid grid-cols-1 sm:grid-cols-2 gap-4'}>
               {/* Webcam Feed */}
               <div className="aspect-video bg-neutral-950 rounded-2xl shadow-md overflow-hidden border border-border relative">
                 <WebcamFeed
                   studentId={student.studentId || student.id}
-                  initialFrame={student.latestFrame}
+                  initialFrame={student.latestFrame || student.facePhotoUrl || student.lastSnapshot}
+                  fallbackPhoto={student.facePhotoUrl || student.lastSnapshot}
                   className="w-full h-full object-cover"
                   fallbackSize={48}
                 />
@@ -97,21 +107,23 @@ export default function StudentDossierModal({
                 </div>
               </div>
 
-              {/* Screen Feed */}
-              <div className="aspect-video bg-neutral-950 rounded-2xl shadow-md overflow-hidden border border-border relative">
-                <ScreenFeed
-                  studentId={student.studentId || student.id}
-                  initialFrame={student.latestScreen || student.latestScreenFrame}
-                  className="w-full h-full object-cover"
-                  fallbackSize={48}
-                />
-                <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
-                  Screen Capture
+              {/* Screen Feed - Only shown if active exam */}
+              {!isTerminatedOrEnded && (
+                <div className="aspect-video bg-neutral-950 rounded-2xl shadow-md overflow-hidden border border-border relative">
+                  <ScreenFeed
+                    studentId={student.studentId || student.id}
+                    initialFrame={student.latestScreen || student.latestScreenFrame}
+                    className="w-full h-full object-cover"
+                    fallbackSize={48}
+                  />
+                  <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold text-white uppercase tracking-wider border border-white/10">
+                    Screen Capture
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* Violation Timeline & Stats */}
+            {/* Violation Timeline & Session Metrics */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-card rounded-2xl p-5 border border-border shadow-xs">
                 <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">
@@ -130,10 +142,10 @@ export default function StudentDossierModal({
                                 ? 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c]'
                                 : 'bg-[#fffbeb] border-[#fde68a] text-[#b45309]'
                             }`}>
-                              {ev.eventType}
+                              {ev.eventType || ev.type || 'Violation'}
                             </span>
                             <span className="text-[10px] text-muted-foreground">
-                              {new Date(ev.timestamp).toLocaleTimeString()}
+                              {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : ''}
                             </span>
                           </div>
                           <p className="text-xs text-foreground font-sans mb-2">
@@ -174,7 +186,7 @@ export default function StudentDossierModal({
                 </div>
               </div>
 
-              {/* Progress & Actions */}
+              {/* Session Metrics & Actions */}
               <div className="space-y-4">
                 <div className="bg-[#eff6ff] border border-[#d5e6fb] rounded-2xl p-5 text-foreground dark:bg-neutral-900 dark:border-neutral-800">
                   <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-3">Session Metrics</h3>
@@ -186,113 +198,117 @@ export default function StudentDossierModal({
                       <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Answered</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-destructive">{student.flagCount || 0}</div>
+                      <div className="text-2xl font-bold text-destructive">{student.flagCount || (student.events || []).length || 0}</div>
                       <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Total Flags</div>
                     </div>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => setShowTerminateConfirm(true)}
-                  className="w-full py-3.5 bg-destructive hover:bg-destructive/90 text-white rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <StopCircle size={18} /> Terminate Student Exam
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Warnings & Live Chat */}
-          <div className="w-full md:w-1/3 flex flex-col bg-card border-l border-border">
-            {/* Warning dispatch */}
-            <div className="p-6 border-b border-border">
-              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
-                Send Candidate Warning
-              </h3>
-              <div className="space-y-2">
-                {['Adjust your camera angle', 'No talking or sound permitted', 'Return to fullscreen immediately', 'Identity verification re-check needed'].map(msg => (
+                {!isTerminatedOrEnded && (
                   <button
-                    key={msg}
-                    onClick={() => onWarn?.(student.studentId || student.id, msg)}
-                    className="w-full text-left px-3.5 py-2.5 bg-[#f8fafc] dark:bg-neutral-900 border border-border rounded-xl text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-[#eff6ff] hover:text-primary transition cursor-pointer"
+                    onClick={() => setShowTerminateConfirm(true)}
+                    className="w-full py-3.5 bg-destructive hover:bg-destructive/90 text-white rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {msg}
+                    <StopCircle size={18} /> Terminate Student Exam
                   </button>
-                ))}
-                <div className="relative pt-2">
-                  <input
-                    type="text"
-                    value={customWarning}
-                    onChange={(e) => setCustomWarning(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleCustomWarningSend() }}
-                    placeholder="Custom warning notice…"
-                    className="w-full bg-card border border-border rounded-xl py-2 pl-3.5 pr-10 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                    aria-label="Custom warning text"
-                  />
-                  <button
-                    onClick={handleCustomWarningSend}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 mt-1 p-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer"
-                    aria-label="Send warning"
-                  >
-                    <Send size={13} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Chat Timeline */}
-            <div className="flex-1 flex flex-col min-h-0 bg-card">
-              <div className="px-6 py-3 border-b border-border bg-[#f8fafc] dark:bg-neutral-900">
-                <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <MessageSquare size={14} className="text-primary" /> Live Chat Support
-                </h4>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 font-sans">
-                {studentMessages.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-8 font-medium">No chat messages</p>
-                ) : (
-                  studentMessages.map((msg, idx) => {
-                    const isInv = msg.sender === 'invigilator'
-                    return (
-                      <div key={idx} className={`flex ${isInv ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-xs ${
-                          isInv ? 'bg-primary text-white rounded-br-none' : 'bg-[#f1f5f9] dark:bg-neutral-800 border border-border text-foreground rounded-bl-none'
-                        }`}>
-                          <p>{msg.message}</p>
-                          <span className={`text-[9px] block mt-1 text-right font-medium ${isInv ? 'text-white/80' : 'text-muted-foreground'}`}>
-                            {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })
                 )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <div className="p-3 border-t border-border bg-[#f8fafc] dark:bg-neutral-900">
-                <div className="relative flex items-center">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleChatSend() }}
-                    placeholder="Reply to candidate…"
-                    className="w-full bg-card border border-border rounded-xl py-2 pl-3.5 pr-10 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                    aria-label="Chat reply message"
-                  />
-                  <button
-                    onClick={handleChatSend}
-                    className="absolute right-1.5 p-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer"
-                    aria-label="Send reply"
-                  >
-                    <Send size={13} />
-                  </button>
-                </div>
               </div>
             </div>
           </div>
+
+          {/* Right Column: Warnings & Live Chat (Only for Active Exam Sessions) */}
+          {!isTerminatedOrEnded && (
+            <div className="w-full md:w-1/3 flex flex-col bg-card border-l border-border">
+              {/* Warning dispatch */}
+              <div className="p-6 border-b border-border">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
+                  Send Candidate Warning
+                </h3>
+                <div className="space-y-2">
+                  {['Adjust your camera angle', 'No talking or sound permitted', 'Return to fullscreen immediately', 'Identity verification re-check needed'].map(msg => (
+                    <button
+                      key={msg}
+                      onClick={() => onWarn?.(student.studentId || student.id, msg)}
+                      className="w-full text-left px-3.5 py-2.5 bg-[#f8fafc] dark:bg-neutral-900 border border-border rounded-xl text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-[#eff6ff] hover:text-primary transition cursor-pointer"
+                    >
+                      {msg}
+                    </button>
+                  ))}
+                  <div className="relative pt-2">
+                    <input
+                      type="text"
+                      value={customWarning}
+                      onChange={(e) => setCustomWarning(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleCustomWarningSend() }}
+                      placeholder="Custom warning notice…"
+                      className="w-full bg-card border border-border rounded-xl py-2 pl-3.5 pr-10 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      aria-label="Custom warning text"
+                    />
+                    <button
+                      onClick={handleCustomWarningSend}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 mt-1 p-1.5 bg-primary text-white rounded-lg hover:bg-primary/90 cursor-pointer"
+                      aria-label="Send warning"
+                    >
+                      <Send size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chat Timeline */}
+              <div className="flex-1 flex flex-col min-h-0 bg-card">
+                <div className="px-6 py-3 border-b border-border bg-[#f8fafc] dark:bg-neutral-900">
+                  <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                    <MessageSquare size={14} className="text-primary" /> Live Chat Support
+                  </h4>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4 space-y-2.5 min-h-0 font-sans">
+                  {studentMessages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-8 font-medium">No chat messages</p>
+                  ) : (
+                    studentMessages.map((msg, idx) => {
+                      const isInv = msg.sender === 'invigilator'
+                      return (
+                        <div key={idx} className={`flex ${isInv ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[85%] rounded-2xl p-3 text-xs shadow-xs ${
+                            isInv ? 'bg-primary text-white rounded-br-none' : 'bg-[#f1f5f9] dark:bg-neutral-800 border border-border text-foreground rounded-bl-none'
+                          }`}>
+                            <p>{msg.message}</p>
+                            <span className={`text-[9px] block mt-1 text-right font-medium ${isInv ? 'text-white/80' : 'text-muted-foreground'}`}>
+                              {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+
+                <div className="p-3 border-t border-border bg-[#f8fafc] dark:bg-neutral-900">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleChatSend() }}
+                      placeholder="Reply to candidate…"
+                      className="w-full bg-card border border-border rounded-xl py-2 pl-3.5 pr-10 text-xs text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      aria-label="Chat reply message"
+                    />
+                    <button
+                      onClick={handleChatSend}
+                      className="absolute right-1.5 p-1.5 bg-primary hover:bg-primary/90 text-white rounded-lg cursor-pointer"
+                      aria-label="Send reply"
+                    >
+                      <Send size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

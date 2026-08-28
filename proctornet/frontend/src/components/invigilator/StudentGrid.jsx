@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Video, Monitor, AlertTriangle, Eye, ShieldAlert, CheckCircle2 } from 'lucide-react'
 
-export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 14 }) {
+export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, fallbackSize = 14 }) {
   const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.camera || null)
   const [stream, setStream] = useState(null)
   const [lastSeen, setLastSeen] = useState(Date.now())
@@ -83,12 +83,14 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
     )
   }
 
-  if (frame) {
+  const activePhoto = frame || fallbackPhoto || initialFrame
+  if (activePhoto) {
+    const isRegisteredPhoto = Boolean(!frame && (fallbackPhoto || initialFrame))
     return (
       <div className="relative w-full h-full">
-        <img src={frame} className={className} alt="Webcam" />
+        <img src={activePhoto} className={className} alt="Student" />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 border border-white/10 text-[8px] font-bold text-white/80 uppercase tracking-tight">
-          Adaptive Feed
+          {isRegisteredPhoto ? 'Registered Photo' : 'Adaptive Feed'}
         </span>
       </div>
     )
@@ -274,7 +276,8 @@ export default function StudentGrid({
             <div className="relative aspect-video bg-neutral-950 overflow-hidden">
               <WebcamFeed
                 studentId={student.id}
-                initialFrame={student.latestFrame}
+                initialFrame={student.latestFrame || student.facePhotoUrl || student.lastSnapshot}
+                fallbackPhoto={student.facePhotoUrl || student.lastSnapshot}
                 className="w-full h-full object-cover"
               />
 

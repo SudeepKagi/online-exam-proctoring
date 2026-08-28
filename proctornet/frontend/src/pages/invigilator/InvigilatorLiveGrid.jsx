@@ -33,6 +33,7 @@ export default function InvigilatorLiveGrid() {
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [warningMsg, setWarningMsg] = useState('')
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)
+  const [showExited, setShowExited] = useState(false)
   const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
   const [activeLightboxImage, setActiveLightboxImage] = useState(null)
 
@@ -247,9 +248,16 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
-  const filteredCandidates = filterAlertsOnly
-    ? candidates.filter((c) => c.alerts.length > 0 || c.status !== 'ACTIVE')
-    : candidates
+  const filteredCandidates = candidates.filter((c) => {
+    // By default, exclude candidates who have exited/terminated/submitted from active Live Grid
+    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
+    if (!showExited && isExited) return false
+
+    if (filterAlertsOnly) {
+      return c.alerts.length > 0 || c.status === 'SUSPENDED'
+    }
+    return true
+  })
 
   return (
     <DashboardLayout title="Live Invigilator Grid">
@@ -274,7 +282,16 @@ export default function InvigilatorLiveGrid() {
               className="text-xs font-bold"
             >
               <Filter size={13} className="mr-1.5" />
-              {filterAlertsOnly ? 'Showing Flagged Only' : 'Show All Seats'}
+              {filterAlertsOnly ? 'Showing Flagged Only' : 'Show Flagged'}
+            </Button>
+            <Button
+              variant={showExited ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setShowExited(!showExited)}
+              className="text-xs font-bold"
+            >
+              <UserCheck size={13} className="mr-1.5" />
+              {showExited ? 'Hide Exited Workstations' : 'Show Exited Workstations'}
             </Button>
             <Button
               variant="outline"
@@ -350,33 +367,58 @@ export default function InvigilatorLiveGrid() {
         ) : filteredCandidates.length === 0 ? (
           <div className="h-72 flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs space-y-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-              <AlertTriangle size={20} />
+              <UserCheck size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">No Flagged Candidates</h3>
+              <h3 className="text-sm font-bold text-foreground">
+                {candidates.some(c => c.status === 'TERMINATED' || c.status === 'SUBMITTED')
+                  ? 'All Candidates Have Exited / Finished Session'
+                  : 'No Workstations Matching Active Filter'}
+              </h3>
               <p className="text-xs text-muted-foreground max-w-sm mt-1 font-medium">
-                All candidates in this session are currently verified and operating normally without flags.
+                {candidates.some(c => c.status === 'TERMINATED' || c.status === 'SUBMITTED')
+                  ? 'Terminated and submitted candidates are hidden from active live monitoring.'
+                  : 'All candidates in this session are currently operating normally without flags.'}
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFilterAlertsOnly(false)}
-              className="text-xs font-bold mt-2"
-            >
-              Show All Seats
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              {filterAlertsOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFilterAlertsOnly(false)}
+                  className="text-xs font-bold"
+                >
+                  Clear Flagged Filter
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExited(true)}
+                className="text-xs font-bold"
+              >
+                Include Exited & Terminated Workstations
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {filteredCandidates.map((cand) => {
-              const isFlagged = cand.alerts.length > 0 || cand.status !== 'ACTIVE'
+              const isTerminated = cand.status === 'TERMINATED'
+              const isSuspended = cand.status === 'SUSPENDED'
+              const isFlagged = cand.alerts.length > 0 || isTerminated || isSuspended
+
               return (
                 <Card
                   key={cand.id}
                   onClick={() => handleSelectCandidate(cand)}
                   className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
-                    isFlagged
+                    isTerminated
+                      ? 'border-rose-300 bg-rose-50/20 dark:bg-rose-950/20 hover:border-rose-500'
+                      : isSuspended
+                      ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20 hover:border-amber-500'
+                      : isFlagged
                       ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
                       : 'border-border bg-card hover:border-primary/50'
                   }`}
@@ -386,12 +428,20 @@ export default function InvigilatorLiveGrid() {
                       <span className="text-[10px] font-bold text-foreground bg-[#f1f5f9] dark:bg-neutral-800 px-2 py-0.5 rounded-lg border border-border">
                         Seat {cand.seatNo}
                       </span>
-                      {isFlagged ? (
-                        <Badge variant="destructive" className="text-[9px]">
+                      {isTerminated ? (
+                        <Badge variant="destructive" className="text-[9px] uppercase tracking-wider font-bold">
+                          TERMINATED
+                        </Badge>
+                      ) : isSuspended ? (
+                        <Badge className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider">
+                          SUSPENDED
+                        </Badge>
+                      ) : isFlagged ? (
+                        <Badge variant="destructive" className="text-[9px] font-bold uppercase tracking-wider">
                           FLAGGED
                         </Badge>
                       ) : (
-                        <Badge variant="green" className="text-[9px]">
+                        <Badge variant="green" className="text-[9px] font-bold uppercase tracking-wider">
                           LIVE
                         </Badge>
                       )}

@@ -145,6 +145,7 @@ export default function App() {
 
             {/* Invigilator Routes */}
             <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
+            <Route path="/invigilator/history" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
             <Route path="/invigilator/live-grid/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
             <Route path="/invigilator/exam/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
 

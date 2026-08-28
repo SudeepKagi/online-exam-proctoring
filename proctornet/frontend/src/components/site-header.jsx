@@ -11,7 +11,21 @@ export function SiteHeader({ title = 'Console' }) {
   const { user, role, logout } = useAuth()
   const navigate = useNavigate()
   const currentRole = role || 'admin'
-  const initials = user?.name ? user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : 'AD'
+
+  let initials = 'AD'
+  if (user?.name) {
+    const cleanName = user.name.trim()
+    const parts = cleanName.split(/\s+/)
+    if (parts[0].toLowerCase().includes('invigilator')) {
+      initials = 'IV'
+    } else if (parts[0].toLowerCase().includes('faculty') || parts[0].toLowerCase().includes('dr')) {
+      initials = parts.length > 1 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : 'FC'
+    } else {
+      initials = parts.map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    }
+  }
+  if (!user?.name && currentRole === 'invigilator') initials = 'IV'
+  if (initials === 'II') initials = 'IV'
 
   const [showNotifications, setShowNotifications] = useState(false)
   const [showAccountMenu, setShowAccountMenu] = useState(false)
