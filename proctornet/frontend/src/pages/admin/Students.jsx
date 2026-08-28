@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 function StatusBadge({ status, isSuspended }) {
   if (isSuspended) return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">Suspended</Badge>
@@ -23,40 +24,38 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
-          <h3 className="text-base font-bold text-foreground">Student ID — {student.name}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors">
+          <h3 className="text-base font-bold text-foreground">Student ID Card — {student.name}</h3>
+          <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer">
             <X size={18} className="text-muted-foreground" />
           </button>
         </div>
 
         <div className="bg-background border border-border rounded-xl overflow-hidden mb-4 flex items-center justify-center min-h-[160px]">
           {student.idCardPhotoUrl && student.idCardPhotoUrl !== 'placeholder_id' ? (
-            <img src={student.idCardPhotoUrl} alt="ID" className="w-full object-contain max-h-60" />
+            <img src={student.idCardPhotoUrl} alt="ID Card" className="w-full object-contain max-h-60" />
           ) : (
             <div className="h-40 flex items-center justify-center text-slate-500 text-xs font-mono">No ID card photo uploaded</div>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5 text-xs">
-          {[
-            ['USN', student.usn],
-            ['Department', student.department],
-            ['Semester', `Semester ${student.semester}`],
-            ['Submitted', new Date(student.createdAt).toLocaleDateString()],
-          ].map(([label, val]) => (
-            <div key={label} className="bg-background border border-border rounded-xl p-3">
-              <p className="text-[10px] font-mono text-slate-500 uppercase">{label}</p>
-              <p className="font-semibold text-foreground mt-0.5 font-mono">{val}</p>
-            </div>
-          ))}
-        </div>
-
-        {student.faceMatchScore !== undefined && (
-          <div className={`mb-4 p-3 rounded-xl text-xs font-mono ${student.faceMatchScore >= 0.8 ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'}`}>
-            Face Match Score: <strong>{Math.round(student.faceMatchScore * 100)}%</strong>
-            {student.faceMatchScore < 0.8 && ' — Manual review recommended'}
+          <div className="bg-background border border-border rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">USN</p>
+            <p className="font-semibold text-foreground mt-0.5 font-mono">{student.usn}</p>
           </div>
-        )}
+          <div className="bg-background border border-border rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Department</p>
+            <p className="font-semibold text-foreground mt-0.5">{student.department}</p>
+          </div>
+          <div className="bg-background border border-border rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Semester</p>
+            <p className="font-semibold text-foreground/90 mt-0.5">Semester {student.semester}</p>
+          </div>
+          <div className="bg-background border border-border rounded-xl p-3">
+            <p className="text-[10px] font-mono text-slate-500 uppercase">Submitted</p>
+            <p className="font-semibold text-foreground/90 mt-0.5">{new Date(student.createdAt).toLocaleDateString()}</p>
+          </div>
+        </div>
 
         {showReject && (
           <div className="mb-4">
@@ -76,13 +75,13 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
             <>
               <button
                 onClick={() => onApprove(student.id)}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <CheckCircle size={15} /> Approve Account
               </button>
               <button
                 onClick={() => setShowReject(true)}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <XCircle size={15} /> Reject
               </button>
@@ -94,14 +93,14 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
                   setShowReject(false)
                   setRejectReason('')
                 }}
-                className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900"
+                className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={() => onReject(student.id, rejectReason)}
                 disabled={!rejectReason.trim()}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Confirm Rejection
               </button>
@@ -121,6 +120,7 @@ export default function AdminStudents() {
   const [search, setSearch] = useState('')
   const [filterDept, setFilterDept] = useState('')
   const [selected, setSelected] = useState(null)
+  const [confirmAction, setConfirmAction] = useState({ open: false, student: null, type: null, loading: false })
 
   const fetchAll = async () => {
     setLoading(true)
@@ -164,23 +164,41 @@ export default function AdminStudents() {
     }
   }
 
-  const handleSuspend = async (id) => {
-    try {
-      await api.patch(`/admin/students/${id}/suspend`)
-      toast.success('Student account suspended')
-      fetchAll()
-    } catch {
-      toast.error('Failed to suspend student')
-    }
+  const handleRequestSuspend = (student) => {
+    setConfirmAction({
+      open: true,
+      student,
+      type: 'suspend',
+      loading: false
+    })
   }
 
-  const handleUnsuspend = async (id) => {
+  const handleRequestUnsuspend = (student) => {
+    setConfirmAction({
+      open: true,
+      student,
+      type: 'unsuspend',
+      loading: false
+    })
+  }
+
+  const handleExecuteAction = async () => {
+    const { student, type } = confirmAction
+    if (!student) return
+    setConfirmAction(prev => ({ ...prev, loading: true }))
     try {
-      await api.patch(`/admin/students/${id}/unsuspend`)
-      toast.success('Student account reactivated')
+      if (type === 'suspend') {
+        await api.patch(`/admin/students/${student.id}/suspend`)
+        toast.success(`Student ${student.name} suspended`)
+      } else {
+        await api.patch(`/admin/students/${student.id}/unsuspend`)
+        toast.success(`Student ${student.name} reactivated`)
+      }
       fetchAll()
     } catch {
-      toast.error('Failed to reactivate student')
+      toast.error(`Failed to ${type} student`)
+    } finally {
+      setConfirmAction({ open: false, student: null, type: null, loading: false })
     }
   }
 
@@ -269,15 +287,31 @@ export default function AdminStudents() {
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Pending Approval View */}
+        </div>        {/* Pending Approval View */}
         {tab === 'pending' && !loading && (
           filtered.length === 0 ? (
             <Card className="bg-card border-border p-12 text-center shadow-xl">
-              <CheckCircle size={36} className="text-emerald-400 mx-auto mb-3" />
-              <p className="text-foreground font-semibold text-sm">No pending approvals</p>
-              <p className="text-xs text-slate-500 mt-1">All student account applications have been processed.</p>
+              {search || filterDept ? (
+                <div>
+                  <Users size={36} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-foreground font-semibold text-sm">No pending students match your filter</p>
+                  <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or department selection.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setSearch(''); setFilterDept('') }}
+                    className="mt-4 text-xs cursor-pointer"
+                  >
+                    Clear Search & Filters
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <CheckCircle size={36} className="text-emerald-400 mx-auto mb-3" />
+                  <p className="text-foreground font-semibold text-sm">No pending registrations</p>
+                  <p className="text-xs text-slate-500 mt-1">All student registration requests have been reviewed.</p>
+                </div>
+              )}
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -314,7 +348,7 @@ export default function AdminStudents() {
                     <Button
                       size="sm"
                       onClick={() => setSelected(s)}
-                      className="w-full text-xs font-mono bg-primary hover:bg-primary text-white"
+                      className="w-full text-xs font-mono bg-primary hover:bg-primary text-white cursor-pointer"
                     >
                       <Eye size={13} className="mr-1.5" /> Review Application
                     </Button>
@@ -327,43 +361,78 @@ export default function AdminStudents() {
 
         {/* All Students Table View */}
         {tab === 'all' && !loading && (
-          <Card className="bg-card border-border shadow-xl overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-border bg-background">
-                  <TableHead className="text-xs text-muted-foreground font-mono">Student Name</TableHead>
-                  <TableHead className="text-xs text-muted-foreground font-mono">USN</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Department</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Semester</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-xs text-right text-muted-foreground">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((s) => (
-                  <TableRow key={s.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
-                    <TableCell className="font-semibold text-xs text-foreground">{s.name}</TableCell>
-                    <TableCell className="font-mono text-xs text-foreground/90">{s.usn}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs text-foreground/90 border-border bg-background">{s.department}</Badge></TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">Semester {s.semester}</TableCell>
-                    <TableCell><StatusBadge status={s.approvalStatus} isSuspended={s.isSuspended} /></TableCell>
-                    <TableCell className="text-right">
-                      {s.isSuspended ? (
-                        <Button size="sm" variant="ghost" onClick={() => handleUnsuspend(s.id)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10">
-                          <UserCheck size={13} className="mr-1" /> Reactivate
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="ghost" onClick={() => handleSuspend(s.id)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10">
-                          <UserMinus size={13} className="mr-1" /> Suspend
-                        </Button>
-                      )}
-                    </TableCell>
+          filtered.length === 0 ? (
+            <Card className="bg-card border-border p-12 text-center shadow-xl">
+              <Users size={36} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-foreground font-semibold text-sm">No students found matching your criteria</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {search || filterDept ? 'Try clearing your search query or department filter.' : 'No student accounts exist yet in the registry.'}
+              </p>
+              {(search || filterDept) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setSearch(''); setFilterDept('') }}
+                  className="mt-4 text-xs cursor-pointer"
+                >
+                  Clear Search & Filters
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <Card className="bg-card border-border shadow-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-background">
+                    <TableHead className="text-xs text-muted-foreground font-mono">Student Name</TableHead>
+                    <TableHead className="text-xs text-muted-foreground font-mono">USN</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Department</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Semester</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-xs text-right text-muted-foreground">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((s) => (
+                    <TableRow key={s.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                      <TableCell className="font-semibold text-xs text-foreground">{s.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-foreground/90">{s.usn}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs text-foreground/90 border-border bg-background">{s.department}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">Semester {s.semester}</TableCell>
+                      <TableCell><StatusBadge status={s.approvalStatus} isSuspended={s.isSuspended} /></TableCell>
+                      <TableCell className="text-right">
+                        {s.isSuspended ? (
+                          <Button size="sm" variant="ghost" onClick={() => handleRequestUnsuspend(s)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
+                            <UserCheck size={13} className="mr-1" /> Reactivate
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => handleRequestSuspend(s)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10 cursor-pointer">
+                            <UserMinus size={13} className="mr-1" /> Suspend
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )
         )}
+
+        {/* Confirmation Dialog for Destructive Suspend/Reactivate Actions */}
+        <ConfirmDialog
+          isOpen={confirmAction.open}
+          title={confirmAction.type === 'suspend' ? `Suspend Student: ${confirmAction.student?.name}?` : `Reactivate Student: ${confirmAction.student?.name}?`}
+          description={confirmAction.type === 'suspend'
+            ? `Suspending candidate ${confirmAction.student?.name} (USN ${confirmAction.student?.usn}) will prevent them from logging into ProctorNet or participating in examinations.`
+            : `Reactivating this student account will restore normal exam participation and lobby access.`}
+          confirmText={confirmAction.type === 'suspend' ? 'Yes, Suspend Student' : 'Yes, Reactivate Student'}
+          cancelText="Cancel"
+          variant={confirmAction.type === 'suspend' ? 'destructive' : 'primary'}
+          loading={confirmAction.loading}
+          onConfirm={handleExecuteAction}
+          onClose={() => setConfirmAction({ open: false, student: null, type: null, loading: false })}
+        />
       </div>
     </DashboardLayout>
   )

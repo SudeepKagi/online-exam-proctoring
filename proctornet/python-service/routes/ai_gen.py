@@ -1,91 +1,279 @@
 """
 ai_gen.py — AI Question Generator microservice endpoint.
-Inspired by CBIT-AiExam-plus item generation engine.
+Enhanced with domain-rich intelligent question banks, NLP text extraction cleaner,
+and OpenAI GPT integration fallback.
 """
 
 from flask import Blueprint, request, jsonify
 import os
 import json
 import random
-
 import re
 
 ai_gen_bp = Blueprint('ai_gen', __name__)
 
+def clean_extracted_text(raw_text: str) -> str:
+    """
+    Cleans extracted PDF text by repairing glyph-spaced words
+    (e.g., 't i t l e :   N a m a s t e   J a v a S c r i p t' -> 'title: Namaste JavaScript')
+    and stripping PDF formatting artifacts.
+    """
+    if not raw_text or not isinstance(raw_text, str):
+        return "General Subject"
+
+    # Strip PDF binary junk and non-printable control characters
+    text = re.sub(r'[^\x20-\x7E\n\t]', ' ', raw_text)
+
+    # Repair single spaced characters: \b([a-zA-Z])\s+([a-zA-Z])\b
+    # e.g., 'J a v a S c r i p t' -> 'JavaScript'
+    for _ in range(5):
+        text = re.sub(r'(?<=\b[a-zA-Z])\s+(?=[a-zA-Z]\b)', '', text)
+
+    # Normalize multiple whitespace and line breaks
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n\n', text)
+    return text.strip()
+
 def sanitize_topic(raw_topic: str) -> str:
     """
-    Cleans and truncates topic text to ensure fallback templates never embed
-    unbounded raw PDF dumps or garbled non-printable glyphs.
+    Extracts a concise, clean subject title from the input text.
     """
-    if not raw_topic or not isinstance(raw_topic, str):
-        return "the specified subject"
-
-    # Strip non-ASCII and non-printable characters (e.g., garbled PDF bullet boxes)
-    cleaned = re.sub(r'[^\x20-\x7E]', ' ', raw_topic)
-    # Collapse multiple spaces and newlines into a single space
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
-
-    # Strip repetitive question prefixes if input text starts with one
-    for prefix in ["what is a fundamental core concept of", "what is a core concept of", "what is"]:
+    cleaned = clean_extracted_text(raw_topic)
+    
+    # Strip common repetitive prefixes
+    for prefix in ["what is a fundamental core concept of", "what is a core concept of", "what is", "title:", "topic:"]:
         if cleaned.lower().startswith(prefix):
             cleaned = cleaned[len(prefix):].strip()
-            break
 
     if not cleaned:
-        return "the specified subject"
+        return "Computer Science & Engineering"
 
-    # If topic is long (e.g. full PDF dump), cleanly truncate to ~70 chars at word boundary
-    if len(cleaned) > 80:
-        truncated = cleaned[:70].strip()
-        if ' ' in truncated:
-            truncated = truncated.rsplit(' ', 1)[0]
-        return f"{truncated}..."
+    # Extract first non-empty line or truncate cleanly
+    first_line = cleaned.split('\n')[0].strip()
+    if len(first_line) > 60:
+        first_line = first_line[:55].rsplit(' ', 1)[0] + "..."
+    return first_line
 
-    return cleaned
-
-# Sample question templates for fallback intelligent generator
+# ── EXPANSIVE TOPIC QUESTION BANKS ─────────────────────────────────────────
 TOPIC_BANK = {
-    "computer science": [
+    "javascript": [
         {
-            "questionText": "Which data structure uses LIFO (Last In First Out) principle?",
-            "options": ["Queue", "Stack", "Array", "Linked List"],
-            "correctOption": 1,
-            "explanation": "Stack follows Last In First Out (LIFO) order."
-        },
-        {
-            "questionText": "What is the worst-case time complexity of QuickSort?",
-            "options": ["O(N log N)", "O(N)", "O(N^2)", "O(1)"],
-            "correctOption": 2,
-            "explanation": "QuickSort worst case is O(N^2) when pivot selection is poor."
-        },
-        {
-            "questionText": "Which protocol is used for secure encrypted web traffic?",
-            "options": ["HTTP", "HTTPS", "FTP", "SMTP"],
-            "correctOption": 1,
-            "explanation": "HTTPS uses SSL/TLS to encrypt HTTP communications."
-        },
-        {
-            "questionText": "What does SQL stand for?",
-            "options": ["Structured Query Language", "Sequential Query Logic", "Simple System Language", "Server Query Link"],
+            "questionText": "What is created when a JavaScript function is invoked in the Execution Context?",
+            "options": ["A new Variable Environment and Scope Chain", "A global DOM window", "A separate thread in the OS", "A static prototype class"],
             "correctOption": 0,
-            "explanation": "SQL stands for Structured Query Language."
+            "explanation": "Every function invocation in JS creates a new Execution Context with its own Variable Environment and Lexical Environment."
+        },
+        {
+            "questionText": "What is the Temporal Dead Zone (TDZ) in JavaScript?",
+            "options": [
+                "The state between entering scope and variable declaration using let or const",
+                "The time taken by Garbage Collection to free heap memory",
+                "The delay before setTimeout callback is pushed to call stack",
+                "The duration when Event Loop pauses for microtasks"
+            ],
+            "correctOption": 0,
+            "explanation": "Variables declared with let and const are in the Temporal Dead Zone from the start of the block until the declaration is evaluated."
+        },
+        {
+            "questionText": "Which of the following describes a Closure in JavaScript?",
+            "options": [
+                "A function bundled together with references to its lexical environment",
+                "A syntax error caused by unclosed parentheses",
+                "A built-in method to terminate asynchronous Web Workers",
+                "A mechanism to seal objects against property modification"
+            ],
+            "correctOption": 0,
+            "explanation": "A closure gives a function access to its outer scope even after the outer function has finished executing."
+        },
+        {
+            "questionText": "How does the JavaScript Event Loop prioritize Task Queues?",
+            "options": [
+                "Microtasks (Promises, MutationObserver) take precedence over Macrotasks (setTimeout)",
+                "Macrotasks take priority over Microtasks",
+                "Tasks are executed randomly based on memory availability",
+                "The call stack only executes setTimeout callbacks directly"
+            ],
+            "correctOption": 0,
+            "explanation": "The Microtask queue has higher priority than the Callback (Macrotask) queue in the JavaScript runtime event loop."
+        },
+        {
+            "questionText": "What is the default value of variables declared with 'var' during the Creation Phase of execution context?",
+            "options": ["undefined", "null", "ReferenceError", "0"],
+            "correctOption": 0,
+            "explanation": "During the memory allocation phase, 'var' variables are hoisted and initialized to undefined."
+        },
+        {
+            "questionText": "Which statement correctly describes Higher-Order Functions in JavaScript?",
+            "options": [
+                "Functions that take other functions as arguments or return a function",
+                "Functions with high CPU execution overhead",
+                "Functions only available in the Global Window scope",
+                "Functions that run asynchronously using multi-threading"
+            ],
+            "correctOption": 0,
+            "explanation": "A Higher-Order function is a function that accepts another function as an argument, returns a function, or both."
+        }
+    ],
+    "web": [
+        {
+            "questionText": "Which HTTP status code signifies that a requested resource was not found on the server?",
+            "options": ["404 Not Found", "200 OK", "500 Internal Server Error", "403 Forbidden"],
+            "correctOption": 0,
+            "explanation": "HTTP 404 indicates that the origin server did not find a current representation for the target resource."
+        },
+        {
+            "questionText": "What is the primary purpose of Cross-Origin Resource Sharing (CORS)?",
+            "options": [
+                "To allow servers to specify which origins are permitted to access their resources",
+                "To compress image assets transferred over HTTP",
+                "To enforce client-side password hashing",
+                "To speed up DNS lookups for third-party scripts"
+            ],
+            "correctOption": 0,
+            "explanation": "CORS uses HTTP headers to tell browsers whether a web application running at one origin can request resources from a different origin."
+        },
+        {
+            "questionText": "Which protocol provides real-time, bidirectional full-duplex communication between client and server?",
+            "options": ["WebSocket", "HTTP/1.0", "RESTful Polling", "SMTP"],
+            "correctOption": 0,
+            "explanation": "WebSocket provides a persistent full-duplex TCP connection for real-time messaging."
+        }
+    ],
+    "data structures": [
+        {
+            "questionText": "Which data structure follows the Last In, First Out (LIFO) order?",
+            "options": ["Stack", "Queue", "Priority Queue", "Circular Buffer"],
+            "correctOption": 0,
+            "explanation": "A Stack operates on a LIFO (Last In First Out) basis, where the last element inserted is the first removed."
+        },
+        {
+            "questionText": "What is the average and worst-case time complexity of searching in a Balanced Binary Search Tree (AVL / Red-Black)?",
+            "options": ["O(log N)", "O(N)", "O(1)", "O(N^2)"],
+            "correctOption": 0,
+            "explanation": "Self-balancing binary search trees maintain height bounded by O(log N), guaranteeing O(log N) search."
+        },
+        {
+            "questionText": "Which sorting algorithm has a guaranteed worst-case time complexity of O(N log N)?",
+            "options": ["Merge Sort", "Quick Sort", "Bubble Sort", "Insertion Sort"],
+            "correctOption": 0,
+            "explanation": "Merge Sort consistently divides the array and combines sorted halves in O(N log N) time in all cases."
+        },
+        {
+            "questionText": "Which data structure uses key-value hashing to provide amortized O(1) average lookup time?",
+            "options": ["Hash Table / HashMap", "Linked List", "Binary Heap", "Trie"],
+            "correctOption": 0,
+            "explanation": "Hash Tables use a hash function to map keys to bucket indices, achieving average O(1) lookup."
+        }
+    ],
+    "database": [
+        {
+            "questionText": "In relational databases, what does the 'I' in the ACID transaction model stand for?",
+            "options": ["Isolation", "Integrity", "Iteration", "Indexing"],
+            "correctOption": 0,
+            "explanation": "ACID stands for Atomicity, Consistency, Isolation, and Durability."
+        },
+        {
+            "questionText": "Which SQL statement is used to combine rows from two or more tables based on a related column?",
+            "options": ["JOIN", "UNION", "GROUP BY", "WHERE"],
+            "correctOption": 0,
+            "explanation": "JOIN clauses are used in SQL to combine rows from multiple tables based on common relational keys."
+        },
+        {
+            "questionText": "What is the primary benefit of adding a B-Tree Index to a database table column?",
+            "options": [
+                "Accelerates SELECT query lookups from O(N) full-table scan to O(log N)",
+                "Reduces disk space required by the database",
+                "Encrypts data rows against unauthorized reading",
+                "Automatically resolves duplicate records"
+            ],
+            "correctOption": 0,
+            "explanation": "Indexes speed up data retrieval queries by creating balanced hierarchical lookup trees."
         }
     ],
     "operating systems": [
         {
-            "questionText": "What is a deadlock condition where processes wait infinitely?",
-            "options": ["Mutual Exclusion", "Circular Wait", "Starvation", "Context Switch"],
-            "correctOption": 1,
-            "explanation": "Circular wait is one of Coffman's 4 conditions for deadlock."
+            "questionText": "Which of the following is NOT one of Coffman's four necessary conditions for Deadlock?",
+            "options": ["Preemption Allowed", "Mutual Exclusion", "Hold and Wait", "Circular Wait"],
+            "correctOption": 0,
+            "explanation": "Deadlock requires No Preemption. If preemption is allowed, deadlock cannot occur."
         },
         {
-            "questionText": "Which scheduling algorithm gives priority to shortest job?",
-            "options": ["FCFS", "SJF", "Round Robin", "Multilevel Queue"],
-            "correctOption": 1,
-            "explanation": "SJF (Shortest Job First) selects the process with smallest CPU burst time."
+            "questionText": "What mechanism allows an operating system to allocate more memory to processes than physically available in RAM?",
+            "options": ["Virtual Memory & Paging", "Context Switching", "DMA Controller", "Bus Mastering"],
+            "correctOption": 0,
+            "explanation": "Virtual Memory maps secondary storage (page files/swap) into physical address space via paging."
+        },
+        {
+            "questionText": "Which CPU scheduling algorithm prevents starvation by allocating fixed time quantum slices to each process?",
+            "options": ["Round Robin", "First-Come First-Served", "Shortest Job First", "Priority Non-Preemptive"],
+            "correctOption": 0,
+            "explanation": "Round Robin ensures fair CPU sharing across all ready processes using cyclical time quanta."
+        }
+    ],
+    "computer science": [
+        {
+            "questionText": "Which layer of the OSI model is responsible for end-to-end reliable transmission and flow control?",
+            "options": ["Transport Layer", "Network Layer", "Data Link Layer", "Session Layer"],
+            "correctOption": 0,
+            "explanation": "The Transport Layer (Layer 4) handles reliable data transfer, flow control, and error recovery (e.g., TCP)."
+        },
+        {
+            "questionText": "What does the Principle of Least Privilege dictate in software security architecture?",
+            "options": [
+                "Every module or user must be granted only the minimal permissions necessary to perform its job",
+                "All users should have administrative privileges by default",
+                "Passwords must never exceed 8 characters",
+                "Network ports should remain open for maximum interoperability"
+            ],
+            "correctOption": 0,
+            "explanation": "Least Privilege minimizes potential exploit damage by restricting access rights to essential resources only."
         }
     ]
 }
+
+def generate_topic_questions(clean_topic: str, difficulty: str, count: int):
+    """
+    Synthesizes contextual questions matching keywords in the clean topic,
+    or constructs professional conceptual questions without broken placeholder strings.
+    """
+    topic_lower = clean_topic.lower()
+    matched_questions = []
+
+    # 1. Match specific topic banks
+    if any(k in topic_lower for k in ["javascript", "js", "namaste", "script", "node", "ecma", "frontend"]):
+        matched_questions.extend(TOPIC_BANK["javascript"])
+    if any(k in topic_lower for k in ["web", "http", "api", "html", "css", "cors", "rest", "browser"]):
+        matched_questions.extend(TOPIC_BANK["web"])
+    if any(k in topic_lower for k in ["data structure", "algorithm", "dsa", "tree", "sort", "stack", "queue", "array", "graph", "search"]):
+        matched_questions.extend(TOPIC_BANK["data structures"])
+    if any(k in topic_lower for k in ["db", "database", "sql", "relational", "query", "schema", "table", "acid"]):
+        matched_questions.extend(TOPIC_BANK["database"])
+    if any(k in topic_lower for k in ["os", "operating system", "process", "thread", "memory", "deadlock", "scheduling", "paging"]):
+        matched_questions.extend(TOPIC_BANK["operating systems"])
+
+    # Fallback to computer science bank
+    if not matched_questions:
+        matched_questions.extend(TOPIC_BANK["computer science"])
+        matched_questions.extend(TOPIC_BANK["data structures"])
+        matched_questions.extend(TOPIC_BANK["javascript"])
+
+    # Shuffle to provide variety
+    random.seed(hash(clean_topic) % 10000)
+    pool = list(matched_questions)
+    random.shuffle(pool)
+
+    output = []
+    for i in range(count):
+        base_q = pool[i % len(pool)]
+        q_item = {
+            "questionText": base_q["questionText"],
+            "options": list(base_q["options"]),
+            "correctOption": base_q.get("correctOption", 0),
+            "explanation": base_q.get("explanation", "Standard core concept.")
+        }
+        output.append(q_item)
+
+    return output
 
 @ai_gen_bp.route('/generate-questions', methods=['POST'])
 def generate_questions():
@@ -95,23 +283,31 @@ def generate_questions():
     """
     try:
         data = request.get_json() or {}
-        topic = data.get('topic', 'General Knowledge').strip()
+        raw_topic = data.get('topic', 'Computer Science').strip()
         difficulty = data.get('difficulty', 'Medium')
         count = int(data.get('count', 5))
         q_type = data.get('type', 'MCQ')
 
-        # Check if OpenAI API key is present in environment
+        # Clean and repair any spaced text
+        cleaned_topic = clean_extracted_text(raw_topic)
+        topic_title = sanitize_topic(cleaned_topic)
+
+        # Check OpenAI key in environment
         openai_key = os.environ.get('OPENAI_API_KEY')
-        
         if openai_key:
             try:
                 import openai
                 client = openai.OpenAI(api_key=openai_key)
                 prompt = (
-                    f"Generate {count} multiple choice questions (MCQ) on the topic: '{topic}' at difficulty level '{difficulty}'. "
-                    f"Format output as a valid JSON array of objects. Each object must have: "
-                    f"'questionText' (str), 'options' (array of 4 strings), 'correctOption' (integer 0-3), and 'explanation' (str). "
-                    f"Return ONLY raw JSON, no markdown formatting."
+                    f"You are an academic examination question author. "
+                    f"Generate {count} multiple choice questions (MCQ) for the subject/syllabus material below at difficulty level '{difficulty}'.\n\n"
+                    f"Topic Material:\n{cleaned_topic[:2000]}\n\n"
+                    f"Format output as a valid JSON array of objects. Each object must have:\n"
+                    f"- 'questionText' (string with clear, grammatically correct question)\n"
+                    f"- 'options' (array of 4 distinct, plausible string choices)\n"
+                    f"- 'correctOption' (integer index 0-3 indicating the correct choice)\n"
+                    f"- 'explanation' (string explanation)\n"
+                    f"Return ONLY valid raw JSON."
                 )
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
@@ -124,53 +320,17 @@ def generate_questions():
                 questions = json.loads(raw_content)
                 return jsonify({"success": True, "source": "openai", "questions": questions})
             except Exception as e:
-                print(f"[AIGen] OpenAI fallback triggered: {e}")
+                print(f"[AIGen] OpenAI API notice: {e}")
 
-        # Fallback intelligent question builder
-        clean_topic = sanitize_topic(topic)
-        topic_lower = topic.lower()
-        matched_bank = None
-        for key in TOPIC_BANK:
-            if key in topic_lower or topic_lower in key:
-                matched_bank = TOPIC_BANK[key]
-                break
-
-        if not matched_bank:
-            matched_bank = [
-                {
-                    "questionText": f"What is a fundamental core concept of {clean_topic}?",
-                    "options": [f"Core Principle of {clean_topic}", "Secondary Rule", "Deprecated Method", "External Dependency"],
-                    "correctOption": 0,
-                    "explanation": f"Core Principle is fundamental to {clean_topic}."
-                },
-                {
-                    "questionText": f"Which of the following best describes optimal performance in {clean_topic}?",
-                    "options": ["High efficiency & accuracy", "Random execution", "Linear slowdown", "Unbounded memory usage"],
-                    "correctOption": 0,
-                    "explanation": f"High efficiency & accuracy are key quality metrics for {clean_topic}."
-                },
-                {
-                    "questionText": f"What is a common best practice when designing solutions in {clean_topic}?",
-                    "options": ["Modular and structured design", "Hardcoding parameters", "Ignoring error handling", "Global mutable state"],
-                    "correctOption": 0,
-                    "explanation": f"Modular design enhances maintainability and scalability in {clean_topic}."
-                }
-            ]
-
-        selected = []
-        for i in range(count):
-            base_q = matched_bank[i % len(matched_bank)]
-            q_copy = dict(base_q)
-            if i >= len(matched_bank):
-                q_copy["questionText"] = f"[{difficulty}] {q_copy['questionText']} (Variant {i+1})"
-            selected.append(q_copy)
-
+        # Intelligent Fallback Engine
+        questions = generate_topic_questions(topic_title, difficulty, count)
         return jsonify({
             "success": True,
-            "source": "smart_template",
-            "questions": selected
+            "source": "smart_curated_bank",
+            "topic": topic_title,
+            "questions": questions
         })
 
     except Exception as err:
+        print(f"[AIGen] Error: {err}")
         return jsonify({"success": False, "error": str(err)}), 500
-

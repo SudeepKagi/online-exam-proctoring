@@ -126,64 +126,64 @@ export function DataTable({ data = [] }) {
       <div className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-[#e2e8f0] bg-[#f8fafc]">
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] pl-5 py-3.5">
+            <TableRow className="border-b border-slate-200 bg-slate-50/75">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 pl-5 py-3.5">
                 Exam Title
               </TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] py-3.5">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                 Course Code
               </TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] py-3.5">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                 Date
               </TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] py-3.5">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                 Score
               </TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] py-3.5">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                 Security Alerts
               </TableHead>
-              <TableHead className="text-xs font-bold uppercase tracking-wider text-[#64748b] py-3.5">
+              <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                 Status
               </TableHead>
-              <TableHead className="text-xs text-right font-bold uppercase tracking-wider text-[#64748b] pr-5 py-3.5">
+              <TableHead className="text-xs text-right font-semibold uppercase tracking-wider text-slate-500 pr-5 py-3.5">
                 Action
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-[#f1f5f9]">
+          <TableBody className="divide-y divide-slate-100">
             {paginated.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-[#94a3b8] text-xs font-medium">
+                <TableCell colSpan={7} className="text-center py-12 text-slate-400 text-xs font-normal">
                   No matching exam records found.
                 </TableCell>
               </TableRow>
             ) : (
               paginated.map((r) => (
-                <TableRow key={r.id} className="hover:bg-[#f8fafc] transition-colors">
+                <TableRow key={r.id} className="hover:bg-slate-50/70 transition-colors">
                   {/* Exam Title */}
-                  <TableCell className="text-xs font-bold text-[#0f172a] pl-5 py-3.5">
+                  <TableCell className="text-xs font-semibold text-slate-900 pl-5 py-3.5">
                     {r.title}
                   </TableCell>
 
                   {/* Course Code / Subject */}
                   <TableCell className="py-3.5">
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
                       {r.code}
                     </span>
                   </TableCell>
 
                   {/* Date */}
-                  <TableCell className="text-xs text-[#64748b] font-medium py-3.5">
+                  <TableCell className="text-xs text-slate-500 font-normal py-3.5">
                     {r.date}
                   </TableCell>
 
                   {/* Score */}
                   <TableCell className="text-xs py-3.5">
-                    <span className="font-bold text-[#0f172a]">{r.score}</span>
-                    <span className="text-[#94a3b8]"> / {r.maxScore}</span>
+                    <span className="font-semibold text-slate-900">{r.score}</span>
+                    <span className="text-slate-400"> / {r.maxScore}</span>
                     <span
-                      className={`ml-1.5 font-bold ${
-                        r.isPassed ? 'text-[#10b981]' : 'text-[#ef4444]'
+                      className={`ml-1.5 font-semibold ${
+                        r.isPassed ? 'text-emerald-600' : 'text-destructive'
                       }`}
                     >
                       ({r.percentage}%)
@@ -193,11 +193,11 @@ export function DataTable({ data = [] }) {
                   {/* Security Alerts */}
                   <TableCell className="text-xs py-3.5">
                     {r.flags === 0 ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#10b981] bg-[#ecfdf5] border border-[#a7f3d0] px-2.5 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                         <CheckCircle size={11} /> Clean Session
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ef4444] bg-[#fef2f2] border border-[#fecaca] px-2.5 py-0.5 rounded-full">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-2.5 py-0.5 rounded-full">
                         <AlertTriangle size={11} /> {r.flags} Flagged
                       </span>
                     )}
@@ -206,10 +206,10 @@ export function DataTable({ data = [] }) {
                   {/* Status Badge */}
                   <TableCell className="py-3.5">
                     <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider ${
                         r.isPassed
-                          ? 'bg-[#ecfdf5] text-[#10b981] border border-[#a7f3d0]'
-                          : 'bg-[#fef2f2] text-[#ef4444] border border-[#fecaca]'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-destructive/10 text-destructive border border-destructive/20'
                       }`}
                     >
                       {r.status}

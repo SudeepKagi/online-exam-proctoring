@@ -18,6 +18,8 @@ router.get('/exams/:examId/students', ctrl.getExamStudents) // legacy alias
 // Actions
 router.post('/send-warning', ctrl.sendWarningGeneral)
 router.post('/pause-student/:studentId', ctrl.pauseStudentGeneral)
+router.post('/resume-student/:studentId', ctrl.resumeStudentGeneral)
+router.post('/terminate-student/:studentId', ctrl.terminateStudentGeneral)
 router.post('/exam/:examId/warn/:studentId', ctrl.warnStudent)
 router.post('/exam/:examId/terminate/:studentId', ctrl.terminateStudent)
 

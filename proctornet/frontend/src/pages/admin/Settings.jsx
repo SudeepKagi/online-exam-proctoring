@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 import {
   Save, RefreshCw, Camera, Shield, Monitor, Key,
   CheckCircle2, Sliders, AlertTriangle, Eye, Lock, Volume2

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
@@ -31,23 +31,42 @@ function AIGeneratorPanel({ onGenerated }) {
     toast.loading('Extracting text from PDF…', { id: 'pdf' })
     try {
       const arrayBuffer = await f.arrayBuffer()
+      let fullText = ''
       if (window.pdfjsLib) {
         const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise
-        let fullText = ''
         for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
           const page = await pdf.getPage(i)
           const content = await page.getTextContent()
-          fullText += content.items.map(item => item.str).join(' ') + '\n'
+          let lastY
+          let pageText = ''
+          for (const item of content.items) {
+            if (lastY === undefined || Math.abs(item.transform[5] - lastY) < 5) {
+              pageText += (item.hasEOL ? '\n' : ' ') + item.str
+            } else {
+              pageText += '\n' + item.str
+            }
+            lastY = item.transform[5]
+          }
+          fullText += pageText + '\n'
         }
-        setExtractedText(fullText.trim())
       } else {
         const text = await f.text().catch(() => '')
-        setExtractedText(text.replace(/[^\x20-\x7E\n]/g, ' ').trim())
+        fullText = text.replace(/[^\x20-\x7E\n]/g, ' ')
       }
-      toast.success('Text extracted!', { id: 'pdf' })
+
+      // Repair single spaced letters: 't i t l e' -> 'title'
+      let cleaned = fullText
+      for (let pass = 0; pass < 5; pass++) {
+        cleaned = cleaned.replace(/(?<=\b[a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '')
+      }
+      cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n\n').trim()
+
+      setExtractedText(cleaned)
+      toast.success('Text extracted successfully!', { id: 'pdf' })
       setStep('preview')
-    } catch {
-      toast.error('Could not read PDF. Try pasting text below.', { id: 'pdf' })
+    } catch (err) {
+      console.warn('PDF extraction notice:', err)
+      toast.error('Could not read PDF cleanly. You can paste notes directly.', { id: 'pdf' })
       setStep('preview')
     }
   }
@@ -84,7 +103,7 @@ function AIGeneratorPanel({ onGenerated }) {
           <Sparkles size={18} />
         </div>
         <div>
-          <h3 className="font-extrabold text-slate-900 text-sm">AI Question Generator</h3>
+          <h3 className="font-semibold text-slate-900 text-sm">AI Question Generator</h3>
           <p className="text-xs text-slate-500">Upload a PDF or paste notes — Gemini AI will generate your question pool</p>
         </div>
       </div>
@@ -102,7 +121,7 @@ function AIGeneratorPanel({ onGenerated }) {
         ) : (
           <>
             <Upload size={24} className="text-[#2f80ed] mx-auto mb-2" />
-            <p className="text-xs text-slate-800 font-extrabold">Click to upload PDF</p>
+            <p className="text-xs text-slate-800 font-semibold">Click to upload PDF</p>
             <p className="text-[11px] text-slate-400 font-semibold mt-0.5">or paste text content below</p>
           </>
         )}
@@ -110,7 +129,7 @@ function AIGeneratorPanel({ onGenerated }) {
 
       {/* Extracted / pasted text */}
       <div>
-        <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1 block">
+        <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">
           Content Text <span className="text-slate-400 font-normal">(auto-filled from PDF, or paste manually)</span>
         </label>
         <textarea value={extractedText} onChange={e => setExtractedText(e.target.value)} rows={4}
@@ -128,13 +147,13 @@ function AIGeneratorPanel({ onGenerated }) {
           { label: 'Marks / Essay', value: marksPerEssay, set: setMarksPerEssay, min: 1 },
         ].map(({ label, value, set, min = 1, max, step = 1 }) => (
           <div key={label}>
-            <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
+            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
             <input type="number" min={min} max={max} step={step} value={value} onChange={e => set(e.target.value)}
               className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]" />
           </div>
         ))}
         <div>
-          <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1 block">Difficulty</label>
+          <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">Difficulty</label>
           <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
             className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]">
             <option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option>
@@ -145,13 +164,13 @@ function AIGeneratorPanel({ onGenerated }) {
       {step === 'done' ? (
         <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
           <CheckCircle2 size={18} className="text-emerald-600" />
-          <p className="text-xs text-emerald-800 font-extrabold flex-1">Questions added to your local pool!</p>
+          <p className="text-xs text-emerald-800 font-semibold flex-1">Questions added to your local pool!</p>
           <button onClick={() => { setStep('upload'); setFile(null); setExtractedText('') }}
             className="text-xs text-[#2f80ed] hover:underline flex items-center gap-1 font-bold"><RefreshCw size={12} /> Generate more</button>
         </div>
       ) : (
         <button onClick={handleGenerate} disabled={generating || extractedText.trim().length < 50}
-          className="w-full py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+          className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
           {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {generating ? 'Generating with Gemini AI…' : `Generate ${numMCQ} MCQ + ${numEssay} Essay Questions`}
         </button>
@@ -192,46 +211,46 @@ export default function CreateExam() {
     questionsPerStudent: 0,
     negativeMarking: false,
     negativeValue: 0.25,
-    cameraRequired: true,
-    browserLock: true,
-    fullScreenMode: true,
-    watermarkRequired: true,
-    randomiseQuestions: true,
-    randomiseOptions: true,
-    allowedDepartments: ['CSE'],
-    allowedSemesters: [5]
-  })
+      cameraRequired: true,
+      browserLock: true,
+      fullScreenMode: true,
+      watermarkRequired: true,
+      randomiseQuestions: true,
+      randomiseOptions: true,
+      allowedDepartments: ['CSE'],
+      allowedSemesters: [5]
+    })
 
-  const handleChange = (field, val) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: val }
-      // Auto compute endTime if startTime or duration changed
-      if ((field === 'startTime' || field === 'duration') && next.startTime && next.duration) {
-        const start = new Date(next.startTime)
-        if (!isNaN(start.getTime())) {
-          const end = new Date(start.getTime() + Number(next.duration) * 60000)
-          const year = end.getFullYear()
-          const month = String(end.getMonth() + 1).padStart(2, '0')
-          const day = String(end.getDate()).padStart(2, '0')
-          const hours = String(end.getHours()).padStart(2, '0')
-          const mins = String(end.getMinutes()).padStart(2, '0')
-          next.endTime = `${year}-${month}-${day}T${hours}:${mins}`
+    const handleChange = (field, val) => {
+      setFormData(prev => {
+        const next = { ...prev, [field]: val }
+        // Auto compute endTime if startTime or duration changed
+        if ((field === 'startTime' || field === 'duration') && next.startTime && next.duration) {
+          const start = new Date(next.startTime)
+          if (!isNaN(start.getTime())) {
+            const end = new Date(start.getTime() + Number(next.duration) * 60000)
+            const year = end.getFullYear()
+            const month = String(end.getMonth() + 1).padStart(2, '0')
+            const day = String(end.getDate()).padStart(2, '0')
+            const hours = String(end.getHours()).padStart(2, '0')
+            const mins = String(end.getMinutes()).padStart(2, '0')
+            next.endTime = `${year}-${month}-${day}T${hours}:${mins}`
+          }
         }
-      }
-      return next
-    })
-  }
+        return next
+      })
+    }
 
-  const toggleSelection = (field, val) => {
-    setFormData(prev => {
-      const arr = prev[field] || []
-      const exists = arr.includes(val)
-      const updated = exists ? arr.filter(x => x !== val) : [...arr, val]
-      return { ...prev, [field]: updated }
-    })
-  }
+    const toggleSelection = (field, val) => {
+      setFormData(prev => {
+        const arr = prev[field] || []
+        const exists = arr.includes(val)
+        const updated = exists ? arr.filter(x => x !== val) : [...arr, val]
+        return { ...prev, [field]: updated }
+      })
+    }
 
-  const validateStep2 = () => {
+    const validateStep2 = () => {
     if (!formData.title.trim()) { toast.error('Exam title is required'); return false }
     if (!formData.subject.trim()) { toast.error('Subject code is required'); return false }
     if (!formData.startTime) { toast.error('Start time is required'); return false }
@@ -406,11 +425,11 @@ export default function CreateExam() {
             <div className="w-20 h-20 bg-emerald-500/10 border-2 border-emerald-500/30 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-xs">
               <CheckCircle2 size={40} className="text-[#10b981]" />
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight mb-2">
               Exam Deployed Successfully!
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md mx-auto">
-              Assessment <span className="font-extrabold text-slate-800">"{successData.exam.title}"</span> is scheduled, published, and live in the system registry.
+              Assessment <span className="font-semibold text-slate-800">"{successData.exam.title}"</span> is scheduled, published, and live in the system registry.
             </p>
           </div>
 
@@ -422,7 +441,7 @@ export default function CreateExam() {
                   <Shield size={20} />
                 </div>
                 <div>
-                  <h3 className="text-xs font-extrabold text-[#2f80ed] uppercase tracking-wider">
+                  <h3 className="text-xs font-semibold text-[#2f80ed] uppercase tracking-wider">
                     Invigilator Access Credentials
                   </h3>
                   <p className="text-xs font-bold text-slate-800">
@@ -430,7 +449,7 @@ export default function CreateExam() {
                   </p>
                 </div>
               </div>
-              <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 ACTIVE GATEWAY
               </span>
             </div>
@@ -438,7 +457,7 @@ export default function CreateExam() {
             <div className="space-y-4">
               {/* Exam ID Row */}
               <div>
-                <label className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1.5">
                   Exam Unique Identifier (ID)
                 </label>
                 <div className="flex items-center gap-2.5 bg-[#f8fafc] border border-slate-200 p-2 rounded-2xl">
@@ -451,7 +470,7 @@ export default function CreateExam() {
                       navigator.clipboard.writeText(successData.exam.id)
                       toast.success('Exam ID Copied to Clipboard!')
                     }}
-                    className="px-4 py-2 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                    className="px-4 py-2 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                   >
                     Copy
                   </button>
@@ -462,11 +481,11 @@ export default function CreateExam() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                 {/* Invigilator ID Card */}
                 <div className="bg-[#f8fafc] border border-slate-200 p-4 rounded-2xl">
-                  <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">
                     Invigilator ID
                   </label>
                   <div className="flex items-center justify-between">
-                    <span className="text-xl font-extrabold text-slate-900 font-mono tracking-wide">
+                    <span className="text-xl font-bold text-slate-900 font-mono tracking-wide">
                       {successData.invCredentials?.invId || 'INV-101'}
                     </span>
                     <button
@@ -484,11 +503,11 @@ export default function CreateExam() {
 
                 {/* Access Password Card */}
                 <div className="bg-blue-50/70 border border-blue-200/80 p-4 rounded-2xl">
-                  <label className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block mb-1">
+                  <label className="text-[10px] font-semibold text-blue-600 uppercase tracking-wider block mb-1">
                     Access Password
                   </label>
                   <div className="flex items-center justify-between">
-                    <span className="text-xl font-extrabold text-[#2f80ed] font-mono tracking-widest bg-white px-3 py-1 rounded-xl border border-blue-200 shadow-2xs">
+                    <span className="text-xl font-bold text-[#2f80ed] font-mono tracking-widest bg-white px-3 py-1 rounded-xl border border-blue-200 shadow-2xs">
                       {successData.invCredentials?.password || 'Pass123!'}
                     </span>
                     <button
@@ -512,14 +531,14 @@ export default function CreateExam() {
             <button
               type="button"
               onClick={() => navigate('/faculty/exams')}
-              className="px-6 py-3 text-xs font-extrabold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl shadow-2xs transition-all cursor-pointer"
+              className="px-6 py-3 text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl shadow-2xs transition-all cursor-pointer"
             >
               View All Exams
             </button>
             <button
               type="button"
               onClick={() => navigate(`/faculty/exams/${successData.exam.id}`)}
-              className="px-7 py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer"
+              className="px-7 py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer"
             >
               View Exam Details →
             </button>
@@ -534,10 +553,10 @@ export default function CreateExam() {
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Link to="/faculty/exams" className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#2f80ed] hover:underline mb-1">
+            <Link to="/faculty/exams" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2f80ed] hover:underline mb-1">
               <ArrowLeft size={15} /> Back to Exams
             </Link>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Create New Examination Wizard</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create New Examination Wizard</h1>
             <p className="text-sm text-slate-500 font-medium mt-0.5">3-step builder to design questions, security rules, and publish your exam.</p>
           </div>
         </div>
@@ -560,13 +579,13 @@ export default function CreateExam() {
                     : 'bg-[#f8fafc] border-slate-200 text-slate-600 hover:border-slate-300'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-extrabold text-xs shrink-0 ${
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-semibold text-xs shrink-0 ${
                   step === s.step ? 'bg-[#2f80ed] text-white' : step > s.step ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'
                 }`}>
                   {step > s.step ? '✓' : s.step}
                 </div>
                 <div className="min-w-0 hidden sm:block">
-                  <div className={`text-xs font-extrabold ${step === s.step ? 'text-[#2f80ed]' : 'text-slate-900'}`}>{s.label}</div>
+                  <div className={`text-xs font-semibold ${step === s.step ? 'text-[#2f80ed]' : 'text-slate-900'}`}>{s.label}</div>
                   <div className="text-[11px] text-slate-500 font-semibold truncate">{s.desc}</div>
                 </div>
               </button>
@@ -580,14 +599,14 @@ export default function CreateExam() {
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-5">
-                  <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <h2 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                     <Sparkles className="w-5 h-5 text-[#2f80ed]" /> Question Editor
                   </h2>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setActiveTab('manual')}
-                      className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                         activeTab === 'manual'
                           ? 'bg-[#2f80ed] text-white shadow-xs'
                           : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -598,7 +617,7 @@ export default function CreateExam() {
                     <button
                       type="button"
                       onClick={() => setActiveTab('ai')}
-                      className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 ${
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
                         activeTab === 'ai'
                           ? 'bg-[#2f80ed] text-white shadow-xs'
                           : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
@@ -612,7 +631,7 @@ export default function CreateExam() {
                 {activeTab === 'manual' ? (
                   <div className="space-y-5 text-xs font-sans">
                     <div>
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">Question Type</label>
+                      <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Question Type</label>
                       <div className="grid grid-cols-3 gap-2.5">
                         {[
                           { type: 'MCQ', label: 'Multiple Choice' },
@@ -623,7 +642,7 @@ export default function CreateExam() {
                             key={t.type}
                             type="button"
                             onClick={() => setQForm(prev => ({ ...prev, type: t.type }))}
-                            className={`py-2.5 px-3 rounded-xl border text-xs font-extrabold transition-all ${
+                            className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all ${
                               qForm.type === t.type 
                                 ? 'bg-[#2f80ed] text-white border-[#2f80ed] shadow-xs'
                                 : 'bg-[#f8fafc] border-slate-200 text-slate-600 hover:text-slate-900'
@@ -636,7 +655,7 @@ export default function CreateExam() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Question Prompt</label>
+                      <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Question Prompt</label>
                       <textarea
                         value={qForm.questionText}
                         onChange={(e) => setQForm(prev => ({ ...prev, questionText: e.target.value }))}
@@ -648,13 +667,13 @@ export default function CreateExam() {
 
                     {qForm.type === 'MCQ' && (
                       <div className="space-y-3 p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
-                        <label className="block text-xs font-extrabold text-slate-900">MCQ Options & Correct Choice</label>
+                        <label className="block text-xs font-semibold text-slate-900">MCQ Options & Correct Choice</label>
                         {['A', 'B', 'C', 'D'].map((opt, i) => (
                           <div key={opt} className="flex gap-2.5 items-center">
                             <button
                               type="button"
                               onClick={() => setQForm(prev => ({ ...prev, correctAnswer: opt }))}
-                              className={`w-9 h-9 rounded-xl font-extrabold text-xs flex items-center justify-center transition-all ${
+                              className={`w-9 h-9 rounded-xl font-semibold text-xs flex items-center justify-center transition-all ${
                                 qForm.correctAnswer === opt 
                                   ? 'bg-[#10b981] text-white shadow-xs' 
                                   : 'bg-[#475569] text-white'
@@ -680,7 +699,7 @@ export default function CreateExam() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Marks</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Marks</label>
                         <input
                           type="number"
                           value={qForm.marks}
@@ -689,7 +708,7 @@ export default function CreateExam() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Difficulty</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Difficulty</label>
                         <select
                           value={qForm.difficulty}
                           onChange={(e) => setQForm(prev => ({ ...prev, difficulty: e.target.value }))}
@@ -705,7 +724,7 @@ export default function CreateExam() {
                     <button
                       type="button"
                       onClick={handleAddQuestionLocal}
-                      className="w-full py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 flex items-center justify-center gap-2 mt-2"
+                      className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 flex items-center justify-center gap-2 mt-2"
                     >
                       <Plus size={16} /> Add Question to Exam Pool
                     </button>
@@ -718,18 +737,18 @@ export default function CreateExam() {
 
             {/* Question pool side tracker */}
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-fit">
-              <h3 className="text-base font-extrabold text-slate-900 mb-4 flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center justify-between pb-3 border-b border-slate-100">
                 <span>Question Pool</span>
-                <span className="px-2.5 py-0.5 bg-blue-50 text-[#2f80ed] rounded-md text-xs font-extrabold">{questions.length}</span>
+                <span className="px-2.5 py-0.5 bg-blue-50 text-[#2f80ed] rounded-md text-xs font-semibold">{questions.length}</span>
               </h3>
               
               <div className="max-h-[320px] overflow-y-auto space-y-2.5 mb-4 pr-1 text-xs">
                 {questions.map((q, idx) => (
                   <div key={q.id} className="p-3.5 bg-[#f8fafc] border border-slate-200 rounded-xl flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="font-extrabold text-slate-900 truncate">Q{idx + 1} • {q.type}</div>
+                      <div className="font-semibold text-slate-900 truncate">Q{idx + 1} • {q.type}</div>
                       <p className="text-xs text-slate-600 truncate mt-0.5 font-semibold">{q.questionText}</p>
-                      <div className="flex gap-2 mt-1.5 text-[11px] text-[#2f80ed] font-extrabold">
+                      <div className="flex gap-2 mt-1.5 text-[11px] text-[#2f80ed] font-semibold">
                         <span>{q.marks} Marks</span> • <span>{q.difficulty}</span>
                       </div>
                     </div>
@@ -751,15 +770,15 @@ export default function CreateExam() {
               </div>
 
               <div className="border-t border-slate-100 pt-4 space-y-4">
-                <div className="flex justify-between text-xs font-extrabold text-slate-900">
+                <div className="flex justify-between text-xs font-semibold text-slate-900">
                   <span>Total Marks:</span>
-                  <span className="text-[#2f80ed] font-extrabold text-sm">{formData.totalMarks} Marks</span>
+                  <span className="text-[#2f80ed] font-semibold text-sm">{formData.totalMarks} Marks</span>
                 </div>
                 <button
                   type="button"
                   disabled={questions.length === 0}
                   onClick={() => setStep(2)}
-                  className="w-full py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 disabled:opacity-50"
+                  className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 disabled:opacity-50"
                 >
                   Configure Rules & Schedules →
                 </button>
@@ -773,11 +792,11 @@ export default function CreateExam() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-extrabold text-slate-900 pb-3 border-b border-slate-100">Basic Information</h2>
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Basic Information</h2>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Exam Title *</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Exam Title *</label>
                     <input 
                       type="text"
                       value={formData.title} 
@@ -787,7 +806,7 @@ export default function CreateExam() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Subject Code *</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Subject Code *</label>
                     <input 
                       type="text"
                       value={formData.subject} 
@@ -799,7 +818,7 @@ export default function CreateExam() {
                 </div>
 
                 <div className="mt-3">
-                  <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Instructions for Students</label>
+                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Instructions for Students</label>
                   <textarea 
                     value={formData.description} 
                     onChange={(e) => handleChange('description', e.target.value)} 
@@ -811,11 +830,11 @@ export default function CreateExam() {
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-extrabold text-slate-900 pb-3 border-b border-slate-100">Timing & Duration</h2>
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Timing & Duration</h2>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Start Time *</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Start Time *</label>
                     <input 
                       type="datetime-local" 
                       value={formData.startTime} 
@@ -824,7 +843,7 @@ export default function CreateExam() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Duration (Minutes) *</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Duration (Minutes) *</label>
                     <input 
                       type="number" 
                       value={formData.duration} 
@@ -833,7 +852,7 @@ export default function CreateExam() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">End Time *</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">End Time *</label>
                     <input 
                       type="datetime-local" 
                       value={formData.endTime} 
@@ -845,18 +864,18 @@ export default function CreateExam() {
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-extrabold text-slate-900 pb-3 border-b border-slate-100">Candidate Eligibility</h2>
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Candidate Eligibility</h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">Allowed Departments</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Allowed Departments</label>
                     <div className="flex flex-wrap gap-2">
                       {DEPARTMENTS.map(dept => (
                         <button
                           key={dept}
                           type="button"
                           onClick={() => toggleSelection('allowedDepartments', dept)}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all ${
+                          className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                             formData.allowedDepartments.includes(dept)
                               ? 'bg-[#2f80ed] text-white shadow-xs'
                               : 'bg-[#f8fafc] text-slate-600 border border-slate-200 hover:text-slate-900'
@@ -869,14 +888,14 @@ export default function CreateExam() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-2">Target Semesters</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Target Semesters</label>
                     <div className="flex flex-wrap gap-2">
                       {SEMESTERS.map(sem => (
                         <button
                           key={sem}
                           type="button"
                           onClick={() => toggleSelection('allowedSemesters', sem)}
-                          className={`w-9 h-9 rounded-xl text-xs font-extrabold transition-all ${
+                          className={`w-9 h-9 rounded-xl text-xs font-semibold transition-all ${
                             formData.allowedSemesters.includes(sem)
                               ? 'bg-[#2f80ed] text-white shadow-xs'
                               : 'bg-[#f8fafc] text-slate-600 border border-slate-200 hover:text-slate-900'
@@ -892,7 +911,7 @@ export default function CreateExam() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-fit space-y-4">
-              <h2 className="text-base font-extrabold text-slate-900 pb-3 border-b border-slate-100">Security Profile</h2>
+              <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Security Profile</h2>
               
               <div className="space-y-2.5">
                 {[
@@ -911,7 +930,7 @@ export default function CreateExam() {
                       onChange={(e) => handleChange(item.key, e.target.checked)}
                     />
                     <div>
-                      <div className="text-xs font-extrabold text-slate-900">{item.label}</div>
+                      <div className="text-xs font-semibold text-slate-900">{item.label}</div>
                       <div className="text-[11px] text-slate-500 font-semibold">{item.desc}</div>
                     </div>
                   </label>
@@ -924,7 +943,7 @@ export default function CreateExam() {
                   if (validateStep2()) setStep(3)
                   else toast.error('Please fill required fields')
                 }}
-                className="w-full py-3 text-xs font-extrabold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 mt-4"
+                className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 mt-4"
               >
                 Proceed to Review →
               </button>
@@ -941,28 +960,28 @@ export default function CreateExam() {
               <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div>
-                    <span className="px-3 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-[#2f80ed] border border-blue-100 uppercase tracking-wider">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-blue-50 text-[#2f80ed] border border-blue-100 uppercase tracking-wider">
                       FINAL EXAMINATION AUDIT
                     </span>
-                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight mt-2">
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight mt-2">
                       {formData.title || 'Untitled Assessment'}
                     </h2>
                     <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                      Subject Code: <span className="font-extrabold text-slate-800">{formData.subject || 'N/A'}</span>
+                      Subject Code: <span className="font-semibold text-slate-800">{formData.subject || 'N/A'}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="px-3.5 py-2 text-xs font-extrabold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
+                      className="px-3.5 py-2 text-xs font-semibold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
                     >
                       Edit Questions
                     </button>
                     <button
                       type="button"
                       onClick={() => setStep(2)}
-                      className="px-3.5 py-2 text-xs font-extrabold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
+                      className="px-3.5 py-2 text-xs font-semibold bg-[#f8fafc] hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl cursor-pointer"
                     >
                       Edit Schedule
                     </button>
@@ -972,23 +991,23 @@ export default function CreateExam() {
                 {/* 4 Metric Summary Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Items</p>
-                    <p className="text-2xl font-extrabold text-slate-900">{questions.length}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Items</p>
+                    <p className="text-2xl font-bold text-slate-900">{questions.length}</p>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Question Pool</p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Total Marks</p>
-                    <p className="text-2xl font-extrabold text-[#2f80ed]">{formData.totalMarks}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Marks</p>
+                    <p className="text-2xl font-bold text-[#2f80ed]">{formData.totalMarks}</p>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Maximum Points</p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
-                    <p className="text-2xl font-extrabold text-slate-900">{formData.duration}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
+                    <p className="text-2xl font-bold text-slate-900">{formData.duration}</p>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Minutes Allocated</p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1">Proctoring</p>
-                    <p className="text-2xl font-extrabold text-[#10b981]">STRICT</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Proctoring</p>
+                    <p className="text-2xl font-bold text-[#10b981]">STRICT</p>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">WireGuard AI Active</p>
                   </div>
                 </div>
@@ -996,7 +1015,7 @@ export default function CreateExam() {
                 {/* Timing & Target Audience Details */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 space-y-2">
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1">
+                    <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1">
                       Schedule & Time Windows
                     </h4>
                     <div className="space-y-1.5 text-xs text-slate-700 font-medium">
@@ -1007,7 +1026,7 @@ export default function CreateExam() {
                   </div>
 
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 space-y-2">
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-1">
+                    <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider mb-1">
                       Target Student Eligibility
                     </h4>
                     <div className="space-y-1.5 text-xs text-slate-700 font-medium">
@@ -1028,7 +1047,7 @@ export default function CreateExam() {
                     <Shield size={16} />
                   </div>
                   <div>
-                    <h3 className="text-xs font-extrabold text-slate-900">Security Audit Summary</h3>
+                    <h3 className="text-xs font-semibold text-slate-900">Security Audit Summary</h3>
                     <p className="text-[11px] text-slate-500 font-semibold">Active Integrity Controls</p>
                   </div>
                 </div>
@@ -1043,11 +1062,11 @@ export default function CreateExam() {
                     { label: 'Shuffled Questions & Options', active: formData.randomiseQuestions || formData.randomiseOptions }
                   ].map(sec => (
                     <div key={sec.label} className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-slate-200">
-                      <span className="text-slate-700 text-xs font-extrabold flex items-center gap-2">
+                      <span className="text-slate-700 text-xs font-semibold flex items-center gap-2">
                         <CheckCircle2 size={15} className={sec.active ? 'text-[#10b981]' : 'text-slate-300'} />
                         {sec.label}
                       </span>
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
                         sec.active ? 'bg-emerald-50 text-[#10b981]' : 'bg-slate-100 text-slate-400'
                       }`}>
                         {sec.active ? 'ACTIVE' : 'OFF'}
@@ -1062,7 +1081,7 @@ export default function CreateExam() {
                     type="button"
                     onClick={handleDeployExam}
                     disabled={isSubmitting}
-                    className="w-full py-4 text-xs font-extrabold bg-[#10b981] hover:bg-[#059669] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                    className="w-full py-4 text-xs font-semibold bg-[#10b981] hover:bg-[#059669] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
                   >
                     {isSubmitting ? (
                       <Loader2 size={18} className="animate-spin" />
@@ -1075,7 +1094,7 @@ export default function CreateExam() {
                   <button
                     type="button"
                     onClick={() => setStep(2)}
-                    className="w-full py-3 text-xs font-extrabold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl transition-all cursor-pointer text-center"
+                    className="w-full py-3 text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-2xl transition-all cursor-pointer text-center"
                   >
                     ← Edit Rules & Schedules
                   </button>

@@ -58,4 +58,46 @@ describe('Architectural & Regression Guardrails', () => {
       assert.ok(lines < 550, `${file} is too long (${lines} lines). Keep below 500 lines.`)
     })
   })
+
+  it('render.yaml startCommand must point to an existing backend entry point (src/app.js)', () => {
+    const renderPath = path.join(__dirname, '../../render.yaml')
+    if (fs.existsSync(renderPath)) {
+      const renderContent = fs.readFileSync(renderPath, 'utf8')
+      assert.ok(
+        renderContent.includes('node src/app.js'),
+        'render.yaml must use node src/app.js matching package.json entry point'
+      )
+      assert.ok(
+        !renderContent.includes('node src/server.js'),
+        'render.yaml must not reference obsolete src/server.js'
+      )
+    }
+  })
+
+  it('VITE_VPN_ENABLED must not exist in any configuration template or frontend source', () => {
+    const frontendEnvPath = path.join(__dirname, '../../frontend/.env.example')
+    if (fs.existsSync(frontendEnvPath)) {
+      const content = fs.readFileSync(frontendEnvPath, 'utf8')
+      assert.ok(
+        !content.includes('VITE_VPN_ENABLED'),
+        'frontend/.env.example must not contain VITE_VPN_ENABLED flag'
+      )
+    }
+  })
+
+  it('SecurityCheck.jsx must enforce mandatory WireGuard tunnel verification with zero bypass', () => {
+    const secCheckPath = path.join(__dirname, '../../frontend/src/pages/student/SecurityCheck.jsx')
+    if (fs.existsSync(secCheckPath)) {
+      const content = fs.readFileSync(secCheckPath, 'utf8')
+      assert.ok(
+        content.includes('if (!vpnVerified)'),
+        'SecurityCheck.jsx must gate exam start on vpnVerified'
+      )
+      assert.ok(
+        content.includes('/vpn-check'),
+        'SecurityCheck.jsx must query device agent for real VPN tunnel status'
+      )
+    }
+  })
 })
+

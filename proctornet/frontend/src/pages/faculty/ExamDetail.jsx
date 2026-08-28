@@ -264,8 +264,39 @@ export default function ExamDetail() {
     }
   }
 
-  if (loading) return <div className="loading-screen"><div className="spinner"></div></div>
-  if (!exam) return <div style={{ padding: '2rem' }}><Alert type="error" message="Exam not found." /></div>
+  if (loading) {
+    return (
+      <DashboardLayout navItems={navItems}>
+        <div className="max-w-6xl mx-auto py-12 px-4 space-y-6">
+          <div className="h-10 w-48 bg-slate-100 rounded-xl animate-pulse" />
+          <div className="h-44 bg-slate-100 rounded-2xl animate-pulse" />
+          <div className="h-96 bg-slate-100 rounded-2xl animate-pulse" />
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (!exam) {
+    return (
+      <DashboardLayout navItems={navItems}>
+        <div className="max-w-md mx-auto py-20 px-4 text-center">
+          <div className="w-16 h-16 bg-rose-50 border border-rose-200 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={32} />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Examination Not Found</h2>
+          <p className="text-xs text-slate-500 mt-2 mb-6">
+            The assessment session you requested could not be located or you may not have authorization to manage it.
+          </p>
+          <Link
+            to="/faculty/exams"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+          >
+            <ArrowLeft size={16} /> Return to Examination Registry
+          </Link>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout navItems={navItems}>

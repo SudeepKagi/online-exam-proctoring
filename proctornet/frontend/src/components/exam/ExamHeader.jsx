@@ -22,7 +22,8 @@ export default function ExamHeader({
   cameraOk,
   faceOk,
   socketConnected,
-  violations
+  violations,
+  saveStatus = 'saved'
 }) {
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0 font-sans shadow-xs">
@@ -32,7 +33,7 @@ export default function ExamHeader({
         <div>
           <h1 className="text-sm font-bold text-foreground flex items-center gap-2">
             {exam?.title || 'Exam in Progress'}
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] text-primary">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] text-primary">
               {exam?.subject || 'PROCTOR'}
             </span>
           </h1>
@@ -42,13 +43,28 @@ export default function ExamHeader({
         </div>
       </div>
 
-      {/* Center: Proctoring Status Pills */}
+      {/* Center: Proctoring Status Pills & Autosave Status */}
       <div className="hidden md:flex items-center gap-2.5">
+        {/* Autosave Badge */}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-colors ${
+          saveStatus === 'saving'
+            ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
+            : saveStatus === 'error'
+            ? 'bg-destructive/10 border-destructive/20 text-destructive'
+            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+        }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${
+            saveStatus === 'saving' ? 'bg-amber-500 animate-pulse' :
+            saveStatus === 'error' ? 'bg-destructive' : 'bg-emerald-500'
+          }`} />
+          {saveStatus === 'saving' ? 'Autosaving…' : saveStatus === 'error' ? 'Retrying Save' : 'Answers Saved'}
+        </span>
+
         <StatusPill ok={cameraOk && faceOk} label={cameraOk && faceOk ? 'Face Verified' : 'Face Alert'} />
 
         {/* Violations count */}
         {violations > 0 && (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c]">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#fef2f2] border border-[#fecaca] text-[#b91c1c]">
             <ShieldAlert size={14} /> {violations} Flags
           </span>
         )}
@@ -56,7 +72,7 @@ export default function ExamHeader({
 
       {/* Right: Timer Countdown */}
       <div className="flex items-center gap-3">
-        <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-bold text-sm ${
+        <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-mono font-bold text-sm ${
           isCritical
             ? 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c] animate-pulse'
             : isUrgent

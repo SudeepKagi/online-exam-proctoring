@@ -48,19 +48,50 @@ async function listAllResultsForFaculty(facultyId) {
   return results
 }
 
-async function getDetailedStudentResult({ examId, studentId, facultyId }) {
-  const studentExam = await global.prisma.studentExam.findFirst({
-    where: { examId, studentId, exam: { facultyId } },
-    include: {
-      student: true,
-      exam: true,
-      examResult: true,
-      answers: {
-        include: { question: true }
+async function getDetailedStudentResult({ id, examId, studentId, facultyId }) {
+  const where = {}
+  if (facultyId) {
+    where.exam = { facultyId }
+  }
+
+  let studentExam = null
+  if (id) {
+    studentExam = await global.prisma.studentExam.findFirst({
+      where: {
+        ...where,
+        OR: [
+          { id },
+          { examResult: { id } }
+        ]
       },
-      evidenceLogs: { orderBy: { timestamp: 'desc' } }
-    }
-  })
+      include: {
+        student: true,
+        exam: true,
+        examResult: true,
+        answers: {
+          include: { question: true }
+        },
+        evidenceLogs: { orderBy: { timestamp: 'desc' } }
+      }
+    })
+  } else if (examId && studentId) {
+    studentExam = await global.prisma.studentExam.findFirst({
+      where: {
+        ...where,
+        examId,
+        studentId
+      },
+      include: {
+        student: true,
+        exam: true,
+        examResult: true,
+        answers: {
+          include: { question: true }
+        },
+        evidenceLogs: { orderBy: { timestamp: 'desc' } }
+      }
+    })
+  }
 
   if (!studentExam) {
     const error = new Error('Student exam result not found.')

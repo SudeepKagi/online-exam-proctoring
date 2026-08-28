@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs')
+const { transitionExamSession, SESSION_STATES } = require('./sessionStateMachine')
 
 /**
  * Student Service
@@ -75,6 +76,7 @@ async function listExamsForStudent(studentId) {
       browserLock: true,
       allowedDepartments: true,
       allowedSemesters: true,
+      createdAt: true,
       faculty: { select: { name: true } },
       _count: { select: { questions: true } },
       studentExams: {
@@ -82,7 +84,10 @@ async function listExamsForStudent(studentId) {
         select: { status: true }
       }
     },
-    orderBy: { startTime: 'asc' },
+    orderBy: [
+      { createdAt: 'desc' },
+      { startTime: 'desc' }
+    ],
     take: 100
   })
 
@@ -114,6 +119,7 @@ async function listExamsForStudent(studentId) {
     browserLock: e.browserLock,
     allowedDepartments: e.allowedDepartments,
     allowedSemesters: e.allowedSemesters,
+    createdAt: e.createdAt,
     faculty: e.faculty,
     questionCount: e._count?.questions || 0,
     _count: e._count,
@@ -200,7 +206,7 @@ async function getExamLobbyData({ examId, studentId }) {
   }
 }
 
-async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _userAgent = 'Unknown' }) {
+async function startOrResumeExam({ examId, studentId, clientIp = '127.0.0.1', userAgent = 'Unknown' }) {
   const exam = await global.prisma.exam.findUnique({
     where: { id: examId },
     include: { questions: true }
@@ -209,6 +215,12 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
   if (!exam) {
     const error = new Error('Exam not found')
     error.status = 404
+    throw error
+  }
+
+  if (!exam.questions || exam.questions.length === 0) {
+    const error = new Error('This examination has no questions configured.')
+    error.status = 503
     throw error
   }
 
@@ -233,13 +245,13 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
   }
 
   if (now > new Date(exam.endTime)) {
-    const error = new Error('Exam has ended')
+    const error = new Error('Examination window has closed.')
     error.status = 403
     throw error
   }
 
-  let studentExam = await global.prisma.studentExam.findFirst({
-    where: { studentId, examId },
+  let studentExam = await global.prisma.studentExam.findUnique({
+    where: { studentId_examId: { studentId, examId } },
     include: { answers: true }
   })
 
@@ -255,44 +267,7 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
       error.status = 403
       throw error
     }
-  }
 
-  if (studentExam) {
-    if (studentExam.status === 'SUBMITTED') {
-      const error = new Error('Exam already submitted')
-      error.status = 403
-      throw error
-    }
-    if (studentExam.status === 'TERMINATED') {
-      const error = new Error('Exam has been terminated by an invigilator')
-      error.status = 403
-      throw error
-    }
-
-    let assignedIds = studentExam.assignedQuestionIds || []
-    if (!assignedIds || assignedIds.length === 0) {
-      const pool = exam.questions
-      const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
-        ? pool.length
-        : Math.min(exam.questionsPerStudent, pool.length)
-
-      assignedIds = pool
-        .slice()
-        .sort(() => Math.random() - 0.5)
-        .slice(0, count)
-        .map(q => q.id)
-    }
-
-    studentExam = await global.prisma.studentExam.update({
-      where: { id: studentExam.id },
-      data: {
-        status: 'ACTIVE',
-        assignedQuestionIds: assignedIds,
-        startedAt: studentExam.startedAt || new Date()
-      },
-      include: { answers: true }
-    })
-  } else {
     const pool = exam.questions
     const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
       ? pool.length
@@ -304,26 +279,91 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
       .slice(0, count)
       .map(q => q.id)
 
-    studentExam = await global.prisma.studentExam.create({
-      data: {
+    studentExam = await global.prisma.studentExam.upsert({
+      where: { studentId_examId: { studentId, examId } },
+      update: {},
+      create: {
         studentId,
         examId,
         assignedQuestionIds: assignedIds,
         watermarkSeed: Math.random().toString(36).substring(2, 10).toUpperCase(),
-        status: 'ACTIVE',
-        startedAt: new Date()
+        status: 'PENDING'
       },
       include: { answers: true }
     })
   }
 
+  if (studentExam.status === 'SUBMITTED') {
+    const res = await global.prisma.examResult.findFirst({ where: { studentExamId: studentExam.id } })
+    return {
+      sessionState: 'SUBMITTED',
+      isSubmitted: true,
+      score: res ? res.totalScore : 0,
+      totalMarks: res ? res.totalMarks : (exam.totalMarks || 100),
+      percentage: res ? res.percentage : 0,
+      message: 'This examination has already been completed and submitted.'
+    }
+  }
+
+  if (studentExam.status === 'TERMINATED') {
+    return {
+      sessionState: 'TERMINATED',
+      isTerminated: true,
+      terminationReason: studentExam.terminationReason || 'Terminated by Invigilator for academic dishonesty.',
+      message: 'This examination was terminated by an invigilator.'
+    }
+  }
+
+  if (studentExam.status === 'SUSPENDED') {
+    return {
+      sessionState: 'SUSPENDED',
+      isSuspended: true,
+      suspensionReason: studentExam.terminationReason || 'Examination temporarily suspended by proctor or VPN drop.',
+      message: 'Your examination session is currently suspended.'
+    }
+  }
+
+  let assignedIds = studentExam.assignedQuestionIds || []
+  if (!assignedIds || assignedIds.length === 0) {
+    const pool = exam.questions
+    const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
+      ? pool.length
+      : Math.min(exam.questionsPerStudent, pool.length)
+
+    assignedIds = pool
+      .slice()
+      .sort(() => Math.random() - 0.5)
+      .slice(0, count)
+      .map(q => q.id)
+
+    await global.prisma.studentExam.update({
+      where: { id: studentExam.id },
+      data: { assignedQuestionIds: assignedIds }
+    })
+    studentExam.assignedQuestionIds = assignedIds
+  }
+
+  const transitionResult = await transitionExamSession({
+    studentExamId: studentExam.id,
+    targetStatus: SESSION_STATES.ACTIVE,
+    reqUser: { id: studentId, role: 'student' },
+    reason: 'Candidate entered active examination interface.'
+  })
+
+  studentExam = transitionResult.session || await global.prisma.studentExam.findUnique({
+    where: { id: studentExam.id },
+    include: { answers: true }
+  })
+
   const questions = await global.prisma.question.findMany({
-    where: { id: { in: studentExam.assignedQuestionIds } },
+    where: { id: { in: studentExam.assignedQuestionIds }, examId: exam.id },
     select: {
       id: true, type: true, questionText: true,
       options: true, marks: true,
       codeLanguage: true, codeTemplate: true,
-      wordLimitMin: true, wordLimitMax: true
+      sampleInput: true, sampleOutput: true,
+      wordLimitMin: true, wordLimitMax: true,
+      order: true
     }
   })
 
@@ -344,24 +384,40 @@ async function startOrResumeExam({ examId, studentId, _clientIp = '127.0.0.1', _
       watermarkRequired: exam.watermarkRequired
     },
     questions: orderedQuestions,
-    answers: studentExam.answers,
-    sessionId: studentExam.id
+    answers: studentExam.answers || [],
+    sessionId: studentExam.id,
+    sessionState: studentExam.status || 'ACTIVE',
+    serverTime: new Date()
   }
 }
 
 async function saveStudentAnswer({ examId, studentId, questionId, answerData }) {
-  const session = await global.prisma.studentExam.findFirst({
-    where: { studentId, examId, status: 'ACTIVE' }
+  if (!examId || !studentId || !questionId) {
+    const error = new Error('examId, studentId, and questionId are required.')
+    error.status = 400
+    throw error
+  }
+
+  const session = await global.prisma.studentExam.findUnique({
+    where: { studentId_examId: { studentId, examId } }
   })
-  if (!session) {
-    const error = new Error('No active session found')
+  if (!session || session.status !== 'ACTIVE') {
+    const error = new Error('No active examination session found.')
     error.status = 403
     throw error
   }
 
-  const question = await global.prisma.question.findUnique({ where: { id: questionId } })
+  if (!Array.isArray(session.assignedQuestionIds) || !session.assignedQuestionIds.includes(questionId)) {
+    const error = new Error('Question is not assigned to this candidate session.')
+    error.status = 403
+    throw error
+  }
+
+  const question = await global.prisma.question.findFirst({
+    where: { id: questionId, examId: session.examId }
+  })
   if (!question) {
-    const error = new Error('Question not found')
+    const error = new Error('Question not found or does not belong to this exam.')
     error.status = 404
     throw error
   }
@@ -383,7 +439,7 @@ async function saveStudentAnswer({ examId, studentId, questionId, answerData }) 
     where: {
       studentExamId_questionId: { studentExamId: session.id, questionId }
     },
-    update: { ...updateData },
+    update: { ...updateData, changedCount: { increment: 1 } },
     create: { studentExamId: session.id, questionId, questionType: question.type, ...updateData }
   })
 
@@ -391,11 +447,11 @@ async function saveStudentAnswer({ examId, studentId, questionId, answerData }) 
 }
 
 async function autoSaveStudentAnswers({ examId, studentId, questionId, answer, answers }) {
-  const session = await global.prisma.studentExam.findFirst({
-    where: { studentId, examId, status: 'ACTIVE' }
+  const session = await global.prisma.studentExam.findUnique({
+    where: { studentId_examId: { studentId, examId } }
   })
-  if (!session) {
-    const error = new Error('No active session')
+  if (!session || session.status !== 'ACTIVE') {
+    const error = new Error('No active examination session found.')
     error.status = 403
     throw error
   }
@@ -405,15 +461,18 @@ async function autoSaveStudentAnswers({ examId, studentId, questionId, answer, a
   }
 
   if (answers && typeof answers === 'object') {
-    const questionIds = Object.keys(answers)
-    const questions = await global.prisma.question.findMany({
-      where: { id: { in: questionIds } }
-    })
+    const rawIds = Object.keys(answers)
+    const assignedSet = new Set(session.assignedQuestionIds || [])
+    const validQuestionIds = rawIds.filter(qid => assignedSet.has(qid))
 
-    await Promise.allSettled(
-      questions.map(async (question) => {
+    if (validQuestionIds.length > 0) {
+      const questions = await global.prisma.question.findMany({
+        where: { id: { in: validQuestionIds }, examId: session.examId }
+      })
+
+      for (const question of questions) {
         const ans = answers[question.id]
-        if (!ans) return
+        if (!ans) continue
 
         const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
         const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
@@ -424,13 +483,13 @@ async function autoSaveStudentAnswers({ examId, studentId, questionId, answer, a
         else if (question.type === 'CODE') updateData.codeAnswer = codeVal
         else updateData.writtenText = writtenVal
 
-        return global.prisma.answer.upsert({
+        await global.prisma.answer.upsert({
           where: { studentExamId_questionId: { studentExamId: session.id, questionId: question.id } },
-          update: { ...updateData },
+          update: { ...updateData, changedCount: { increment: 1 } },
           create: { studentExamId: session.id, questionId: question.id, questionType: question.type, ...updateData }
         })
-      })
-    )
+      }
+    }
   }
 
   return { success: true }
@@ -468,35 +527,89 @@ async function logStudentEvidence({ examId, studentId, data }) {
 }
 
 async function submitStudentExam({ examId, studentId, answers }) {
-  const session = await global.prisma.studentExam.findFirst({
-    where: { studentId, examId, status: 'ACTIVE' },
+  const session = await global.prisma.studentExam.findUnique({
+    where: { studentId_examId: { studentId, examId } },
     include: {
       answers: { include: { question: true } },
-      exam: true
+      exam: true,
+      examResult: true
     }
   })
 
   if (!session) {
-    const error = new Error('Nothing to submit or session not active')
+    const error = new Error('No examination session found for this student.')
+    error.status = 404
+    throw error
+  }
+
+  if (session.status === 'SUBMITTED') {
+    const res = session.examResult || await global.prisma.examResult.findFirst({ where: { studentExamId: session.id } })
+    return {
+      alreadySubmitted: true,
+      score: res ? res.totalScore : 0,
+      totalMarks: res ? res.totalMarks : (session.exam?.totalMarks || 100),
+      percentage: res ? res.percentage : 0,
+      message: 'Exam was already submitted successfully.'
+    }
+  }
+
+  if (session.status === 'TERMINATED') {
+    const error = new Error('This exam session was terminated by an invigilator.')
     error.status = 403
     throw error
   }
 
   if (answers && typeof answers === 'object') {
-    await autoSaveStudentAnswers({ examId, studentId, answers })
+    const rawIds = Object.keys(answers)
+    const assignedSet = new Set(session.assignedQuestionIds || [])
+    const validQuestionIds = rawIds.filter(qid => assignedSet.has(qid))
+
+    if (validQuestionIds.length > 0) {
+      const questions = await global.prisma.question.findMany({
+        where: { id: { in: validQuestionIds }, examId: session.examId }
+      })
+
+      await Promise.all(
+        questions.map(async (question) => {
+          const ans = answers[question.id]
+          if (!ans) return
+
+          const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
+          const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
+          const writtenVal = ans.writtenText ?? ans.text ?? ans.subjectiveAnswer ?? (typeof ans === 'string' ? ans : null)
+
+          const updateData = {}
+          if (question.type === 'MCQ') updateData.selectedOption = selectedVal
+          else if (question.type === 'CODE') updateData.codeAnswer = codeVal
+          else updateData.writtenText = writtenVal
+
+          return global.prisma.answer.upsert({
+            where: { studentExamId_questionId: { studentExamId: session.id, questionId: question.id } },
+            update: { ...updateData, changedCount: { increment: 1 } },
+            create: { studentExamId: session.id, questionId: question.id, questionType: question.type, ...updateData }
+          })
+        })
+      )
+    }
   }
 
+  const assignedQuestions = await global.prisma.question.findMany({
+    where: { id: { in: session.assignedQuestionIds || [] }, examId: session.examId }
+  })
+  const calculatedTotalMarks = assignedQuestions.reduce((acc, q) => acc + (q.marks || 0), 0) || session.exam?.totalMarks || 100
+
   const finalAnswers = await global.prisma.answer.findMany({
-    where: { studentExamId: session.id },
+    where: {
+      studentExamId: session.id,
+      questionId: { in: session.assignedQuestionIds || [] }
+    },
     include: { question: true }
   })
 
   let totalScore = 0
-  let totalMarks = 0
 
   for (const ans of finalAnswers) {
     if (!ans.question) continue
-    totalMarks += ans.question.marks
 
     if (ans.question.type === 'MCQ') {
       const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }
@@ -538,7 +651,20 @@ async function submitStudentExam({ examId, studentId, answers }) {
         }
       }
 
-      const marksAwarded = isCorrect ? ans.question.marks : 0
+      let marksAwarded = 0
+      if (isCorrect) {
+        marksAwarded = ans.question.marks || 0
+      } else if (session.exam?.negativeMarking && ans.selectedOption && String(ans.selectedOption).trim().length > 0) {
+        // H-1 Precedence: Question-level negativeMarks (if > 0) -> Exam-level negativeValue -> 0
+        let penalty = 0
+        if (ans.question.negativeMarks !== null && ans.question.negativeMarks !== undefined && ans.question.negativeMarks > 0) {
+          penalty = Number(ans.question.negativeMarks)
+        } else if (session.exam?.negativeValue !== null && session.exam?.negativeValue !== undefined && session.exam?.negativeValue > 0) {
+          penalty = Number(session.exam.negativeValue)
+        }
+        marksAwarded = -penalty
+      }
+
       totalScore += marksAwarded
 
       await global.prisma.answer.update({
@@ -548,17 +674,28 @@ async function submitStudentExam({ examId, studentId, answers }) {
     }
   }
 
-  const existingResult = await global.prisma.examResult.findFirst({
-    where: { studentExamId: session.id }
-  })
-
-  const calculatedTotalMarks = totalMarks || session.exam.totalMarks || 100
+  // H-1: Only clamp to 0 if negative marking is disabled.
+  // When negativeMarking is enabled, the final score may legitimately be negative.
+  if (!session.exam?.negativeMarking) {
+    totalScore = Math.max(0, totalScore)
+  }
   const percentage = calculatedTotalMarks > 0 ? (totalScore / calculatedTotalMarks) * 100 : 0
-  const timeTaken = Math.floor((new Date() - new Date(session.startedAt || session.createdAt)) / 1000)
+  const timeTaken = Math.max(0, Math.floor((new Date() - new Date(session.startedAt || session.createdAt || Date.now())) / 1000))
 
-  if (!existingResult) {
-    await global.prisma.examResult.create({
-      data: {
+  await global.prisma.$transaction(async (tx) => {
+    await tx.examResult.upsert({
+      where: { studentExamId: session.id },
+      update: {
+        autoScore: totalScore,
+        totalScore,
+        totalMarks: calculatedTotalMarks,
+        percentage,
+        timeTaken,
+        isReleased: Boolean(session.exam?.resultsReleased),
+        releasedAt: session.exam?.resultsReleased ? new Date() : null,
+        finalStatus: 'COMPLETED'
+      },
+      create: {
         studentExamId: session.id,
         examId,
         autoScore: totalScore,
@@ -566,15 +703,26 @@ async function submitStudentExam({ examId, studentId, answers }) {
         totalMarks: calculatedTotalMarks,
         percentage,
         timeTaken,
+        isReleased: Boolean(session.exam?.resultsReleased),
+        releasedAt: session.exam?.resultsReleased ? new Date() : null,
         finalStatus: 'COMPLETED'
       }
     })
-  }
 
-  await global.prisma.studentExam.update({
-    where: { id: session.id },
-    data: { status: 'SUBMITTED', submittedAt: new Date() }
+    await tx.studentExam.update({
+      where: { id: session.id },
+      data: { status: 'SUBMITTED', submittedAt: new Date() }
+    })
   })
+
+  if (session.vpnKey) {
+    try {
+      const { syncWireGuardRemovePeer } = require('./vpnService')
+      syncWireGuardRemovePeer(session.vpnKey)
+    } catch (e) {
+      console.warn('[submitStudentExam] VPN cleanup note:', e.message)
+    }
+  }
 
   return {
     score: totalScore,
@@ -585,7 +733,12 @@ async function submitStudentExam({ examId, studentId, answers }) {
 
 async function getStudentResultsHistory(studentId) {
   const results = await global.prisma.examResult.findMany({
-    where: { studentExam: { studentId } },
+    where: {
+      studentExam: {
+        studentId,
+        exam: { resultsReleased: true }
+      }
+    },
     include: {
       studentExam: {
         include: {
@@ -596,6 +749,7 @@ async function getStudentResultsHistory(studentId) {
               subject: true,
               totalMarks: true,
               duration: true,
+              resultsReleased: true,
               _count: {
                 select: { questions: true }
               }
@@ -792,16 +946,28 @@ async function approveStudentByFaculty({ studentId, facultyId }) {
 }
 
 async function acknowledgeWatermarkSession({ studentId, examId }) {
-  const session = await global.prisma.studentExam.findFirst({
-    where: { studentId, examId }
-  })
-  if (session) {
-    await global.prisma.studentExam.update({
-      where: { id: session.id },
-      data: { acknowledgedAt: new Date() }
-    }).catch(() => {})
+  if (!studentId || !examId) {
+    const error = new Error('studentId and examId are required.')
+    error.status = 400
+    throw error
   }
-  return { success: true }
+
+  const session = await global.prisma.studentExam.findUnique({
+    where: { studentId_examId: { studentId, examId } }
+  })
+  if (!session) {
+    const error = new Error('Examination session record not found.')
+    error.status = 404
+    throw error
+  }
+
+  const now = new Date()
+  const updated = await global.prisma.studentExam.update({
+    where: { id: session.id },
+    data: { acknowledgedAt: now }
+  })
+
+  return { success: true, acknowledgedAt: updated.acknowledgedAt }
 }
 
 async function getStudentChatHistory({ examId, studentId }) {

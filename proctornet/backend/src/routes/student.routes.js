@@ -11,7 +11,8 @@ router.use(authenticate, isStudent)
 router.get('/exams',               ctrl.listMyExams)
 router.get('/exams/:id',           ctrl.getExamDetails)
 router.get('/exams/:id/lobby',     ctrl.getExamLobby)
-router.get('/exams/:id/start',     ctrl.startExam)
+router.get ('/exams/:id/start',     ctrl.startExam)
+router.post('/exams/:id/start',     ctrl.startExam)
 
 // ── Answer management ──────────────────────────────────────────────
 router.post('/exams/:id/answer',   ctrl.saveAnswer)

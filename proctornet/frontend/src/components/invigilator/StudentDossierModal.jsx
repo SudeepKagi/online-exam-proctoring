@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { X, Send, StopCircle, MessageSquare, AlertTriangle } from 'lucide-react'
+import { X, Send, StopCircle, MessageSquare, AlertTriangle, ShieldAlert } from 'lucide-react'
 import { WebcamFeed, ScreenFeed } from './StudentGrid'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 export default function StudentDossierModal({
   student,
@@ -13,6 +14,8 @@ export default function StudentDossierModal({
 }) {
   const [customWarning, setCustomWarning] = useState('')
   const [chatInput, setChatInput] = useState('')
+  const [showTerminateConfirm, setShowTerminateConfirm] = useState(false)
+  const [terminateReason, setTerminateReason] = useState('')
   const chatEndRef = useRef(null)
 
   useEffect(() => {
@@ -56,10 +59,10 @@ export default function StudentDossierModal({
                   }`}>
                     <span>{student.faceMatchScore < 0.6 ? '⚠' : '✓'}</span>
                     <span>Face Match:</span>
-                    <span className="tabular-nums font-extrabold">{(student.faceMatchScore * 100).toFixed(1)}%</span>
+                    <span className="tabular-nums font-semibold">{(student.faceMatchScore * 100).toFixed(1)}%</span>
                   </div>
                   {student.faceMatchScore < 0.6 && (
-                    <span className="text-[10px] text-[#b91c1c] font-bold uppercase tracking-wider">
+                    <span className="text-[10px] text-[#b91c1c] font-semibold uppercase tracking-wider">
                       Flagged for Review
                     </span>
                   )}
@@ -177,20 +180,20 @@ export default function StudentDossierModal({
                   <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-3">Session Metrics</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <div className="text-2xl font-extrabold text-foreground">
+                      <div className="text-2xl font-bold text-foreground">
                         {student.progress?.answered || 0}/{student.progress?.total || 0}
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Answered</div>
+                      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Answered</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-extrabold text-destructive">{student.flagCount || 0}</div>
-                      <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mt-0.5">Total Flags</div>
+                      <div className="text-2xl font-bold text-destructive">{student.flagCount || 0}</div>
+                      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider mt-0.5">Total Flags</div>
                     </div>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => onTerminate?.(student.studentId || student.id)}
+                  onClick={() => setShowTerminateConfirm(true)}
                   className="w-full py-3.5 bg-destructive hover:bg-destructive/90 text-white rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <StopCircle size={18} /> Terminate Student Exam
@@ -292,6 +295,38 @@ export default function StudentDossierModal({
           </div>
         </div>
       </div>
+
+      {/* Confirmation Dialog for Destructive Candidate Termination */}
+      <ConfirmDialog
+        isOpen={showTerminateConfirm}
+        title={`Terminate Exam for ${student.name || 'Candidate'}?`}
+        description={`Are you certain you wish to terminate candidate USN ${student.usn}? Their active exam interface will be immediately locked and misconduct logged.`}
+        confirmText="Yes, Terminate Session"
+        cancelText="Keep Candidate Active"
+        variant="destructive"
+        onConfirm={() => {
+          const reason = terminateReason.trim() || 'Exam session terminated by proctor for integrity violation.'
+          onTerminate?.(student.studentId || student.id, reason)
+          setShowTerminateConfirm(false)
+          setTerminateReason('')
+        }}
+        onClose={() => {
+          setShowTerminateConfirm(false)
+          setTerminateReason('')
+        }}
+      >
+        <div className="space-y-1.5 mt-2">
+          <label className="text-[11px] font-semibold text-slate-700 uppercase tracking-wider">
+            Termination Reason (Logged to university records)
+          </label>
+          <input
+            value={terminateReason}
+            onChange={(e) => setTerminateReason(e.target.value)}
+            placeholder="e.g., Unauthorised secondary device, multiple face alerts..."
+            className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-rose-500 transition"
+          />
+        </div>
+      </ConfirmDialog>
     </div>
   )
 }

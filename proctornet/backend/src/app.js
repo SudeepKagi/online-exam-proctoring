@@ -33,8 +33,28 @@ const app    = express()
 const server = http.createServer(app)
 const prisma = new PrismaClient()
 
-// Static uploads folder for snapshots & evidence clips
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
+const { verifyToken } = require('./utils/jwt')
+const { authenticate } = require('./middleware/auth.middleware')
+
+// ── Environment-Aware CORS Configuration (D-9) ──
+const isProd = process.env.NODE_ENV === 'production'
+const allowedOrigins = isProd
+  ? [process.env.FRONTEND_URL].filter(Boolean)
+  : [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:3000',
+    ]
+
+// Protected static uploads folder for snapshots & evidence clips (D-8)
+app.use('/uploads', (req, res, next) => {
+  if (req.query.token && !req.headers.authorization) {
+    req.headers.authorization = `Bearer ${req.query.token}`
+  }
+  next()
+}, authenticate, express.static(path.join(__dirname, '../uploads')))
 
 // ── Make prisma globally available ──
 global.prisma = prisma
@@ -42,13 +62,7 @@ global.prisma = prisma
 // ── Socket.io ──
 const io = new Server(server, {
   cors: {
-    origin: [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://localhost:3000',
-    ],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -67,20 +81,15 @@ app.use(helmet({
 app.use(compression())
 
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:3000',
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 
-app.use(express.json({ limit: '50mb' }))
-app.use(express.urlencoded({ extended: true, limit: '50mb' }))
-const { verifyToken } = require('./utils/jwt')
+// Controlled Payload Limits: 2MB standard API (D-6)
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // ── Rate Limiting Strategy for Shared-NAT University Labs ──
 // In a college exam lab, 100+ concurrent student machines share a single outbound NAT gateway IP.
@@ -158,9 +167,20 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message, err.stack)
   const status = err.status || err.statusCode || 500
+
+  // Sanitize database internal details
+  let clientMessage = err.message || 'Internal Server Error'
+  if (err.code === 'P2002') {
+    clientMessage = 'A record with these unique details already exists.'
+  } else if (err.code === 'P2025') {
+    clientMessage = 'The requested database record could not be found.'
+  } else if (err.name === 'PrismaClientKnownRequestError' || err.name === 'PrismaClientValidationError') {
+    clientMessage = 'Database operation failed validation.'
+  }
+
   res.status(status).json({
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    error: clientMessage,
+    ...(process.env.NODE_ENV === 'development' && { rawError: err.message, code: err.code }),
   })
 })
 

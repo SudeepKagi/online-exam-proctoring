@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Video, Monitor, AlertTriangle, Eye, ShieldAlert, CheckCircle2 } from 'lucide-react'
 
 export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 14 }) {
-  const [frame, setFrame] = useState(initialFrame)
+  const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.camera || null)
   const [stream, setStream] = useState(null)
   const videoRef = useRef(null)
 
@@ -22,6 +22,8 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
 
     if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.camera) {
       setStream(window.activeWebRTCStreams[studentId].camera)
+    } else if (window.latestStudentFrames?.[studentId]?.camera) {
+      setFrame(window.latestStudentFrames[studentId].camera)
     }
 
     return () => {
@@ -31,7 +33,7 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
   }, [studentId])
 
   useEffect(() => {
-    setFrame(initialFrame)
+    if (initialFrame) setFrame(initialFrame)
   }, [initialFrame])
 
   useEffect(() => {
@@ -57,7 +59,7 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
 }
 
 export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 32 }) {
-  const [frame, setFrame] = useState(initialFrame)
+  const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.screen || null)
   const [stream, setStream] = useState(null)
   const videoRef = useRef(null)
 
@@ -77,6 +79,8 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
 
     if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.screen) {
       setStream(window.activeWebRTCStreams[studentId].screen)
+    } else if (window.latestStudentFrames?.[studentId]?.screen) {
+      setFrame(window.latestStudentFrames[studentId].screen)
     }
 
     return () => {
@@ -86,7 +90,7 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
   }, [studentId])
 
   useEffect(() => {
-    setFrame(initialFrame)
+    if (initialFrame) setFrame(initialFrame)
   }, [initialFrame])
 
   useEffect(() => {
@@ -124,10 +128,34 @@ export default function StudentGrid({
     return true
   })
 
+  if (students.length === 0) {
+    return (
+      <div className="h-96 flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs space-y-3 font-sans">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+          <Users size={24} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">Waiting for Candidates to Connect</h3>
+          <p className="text-xs text-muted-foreground max-w-md mt-1 font-medium leading-relaxed">
+            No candidates have entered this examination room yet. Live webcam tiles will stream here as students complete the pre-exam verification.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   if (filtered.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-12 text-muted-foreground font-sans text-xs">
-        No candidate feeds match the active filter.
+      <div className="h-72 flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs space-y-3 font-sans">
+        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+          <AlertTriangle size={20} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-foreground">No Candidates Matching "{filter}" Filter</h3>
+          <p className="text-xs text-muted-foreground max-w-sm mt-1 font-medium">
+            There are currently no candidate streams flagged under this category.
+          </p>
+        </div>
       </div>
     )
   }
@@ -164,15 +192,39 @@ export default function StudentGrid({
 
               {/* Status Badges Overlay */}
               <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                <span className={`w-2.5 h-2.5 rounded-full ${student.status === 'ACTIVE' ? 'bg-[#16a34a] animate-pulse' : 'bg-slate-500'}`} />
-                <span className="text-[10px] font-bold text-white bg-black/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                {student.status === 'TERMINATED' ? (
+                  <span className="text-[10px] font-semibold text-white bg-destructive/90 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    TERMINATED
+                  </span>
+                ) : student.status === 'SUSPENDED' ? (
+                  <span className="text-[10px] font-semibold text-white bg-amber-600/90 px-2 py-0.5 rounded-md backdrop-blur-xs animate-pulse">
+                    SUSPENDED
+                  </span>
+                ) : student.status === 'SUBMITTED' ? (
+                  <span className="text-[10px] font-semibold text-white bg-emerald-600/90 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    SUBMITTED
+                  </span>
+                ) : student.isOffline ? (
+                  <span className="text-[10px] font-semibold text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    OFFLINE
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-black/75 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] font-semibold text-emerald-300">
+                      LIVE
+                    </span>
+                  </div>
+                )}
+
+                <span className="text-[10px] font-semibold text-white bg-black/70 px-2 py-0.5 rounded-md backdrop-blur-xs">
                   {student.usn || student.name}
                 </span>
               </div>
 
               {flagCount > 0 && (
                 <div className="absolute top-2.5 right-2.5">
-                  <span className={`flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border backdrop-blur-xs ${
+                  <span className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border backdrop-blur-xs ${
                     isCritical
                       ? 'bg-[#fef2f2] border-[#fecaca] text-[#b91c1c]'
                       : 'bg-[#fffbeb] border-[#fde68a] text-[#b45309]'
@@ -186,8 +238,8 @@ export default function StudentGrid({
             {/* Bottom Student Metadata */}
             <div className="p-3.5 flex items-center justify-between border-t border-border bg-card">
               <div className="min-w-0">
-                <h4 className="text-xs font-bold text-foreground truncate">{student.name}</h4>
-                <p className="text-[10px] text-muted-foreground truncate font-medium">{student.department || 'Candidate'}</p>
+                <h4 className="text-xs font-semibold text-foreground truncate">{student.name}</h4>
+                <p className="text-[11px] text-muted-foreground truncate font-normal">{student.department || 'Candidate'}</p>
               </div>
 
               <button

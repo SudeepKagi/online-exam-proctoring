@@ -159,7 +159,8 @@ async function acknowledgeWatermark(req, res) {
     })
     res.json(result)
   } catch (e) {
-    res.json({ success: true })
+    console.error('[acknowledgeWatermark]', e.message)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to acknowledge watermark.' })
   }
 }
 

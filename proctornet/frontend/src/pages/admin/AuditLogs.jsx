@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
+import ErrorState from '@/components/common/ErrorState'
+import { getErrorMessage } from '@/utils/errorUtils'
 import {
   ClipboardList,
   Search,
@@ -22,6 +24,7 @@ export default function AdminAuditLogs() {
   const [total, setTotal] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [page, setPage] = useState(1)
@@ -29,6 +32,7 @@ export default function AdminAuditLogs() {
 
   const fetchLogs = async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get('/admin/audit-logs', {
         params: { page, limit: PER_PAGE, search, userRole: filterRole || undefined }
@@ -36,8 +40,9 @@ export default function AdminAuditLogs() {
       setLogs(res.data.logs || [])
       setTotal(res.data.total || 0)
       setTotalPages(res.data.totalPages || 1)
-    } catch {
-      console.error('Failed to load audit logs')
+    } catch (err) {
+      console.error('[AdminAuditLogs] Fetch error:', err)
+      setError(getErrorMessage(err, 'Failed to load system audit trails.'))
     } finally {
       setLoading(false)
     }
@@ -178,14 +183,14 @@ export default function AdminAuditLogs() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-[#0f172a]">System Audit Trail</h1>
-            <p className="text-xs text-[#64748b] mt-0.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">System Audit Trail</h1>
+            <p className="text-sm text-slate-500 font-normal mt-0.5">
               Verified chronological record of administrative, faculty, and student security actions
             </p>
           </div>
           <button
             onClick={fetchLogs}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -195,69 +200,91 @@ export default function AdminAuditLogs() {
         {/* Search & Filter Toolbar */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="relative w-full sm:w-80">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search action, details, user role..."
-              className="w-full pl-9 pr-3.5 py-2 border border-[#e2e8f0] bg-white text-xs text-[#0f172a] placeholder-[#94a3b8] rounded-xl focus:outline-none focus:border-[#2563eb] transition-colors"
+              className="w-full pl-9 pr-3.5 py-2 border border-slate-200 bg-white text-xs text-slate-900 placeholder-slate-400 rounded-xl focus:outline-none focus:border-[#2f80ed] transition-colors"
             />
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-[#64748b]">Filter by Role:</label>
+            <label className="text-xs font-medium text-slate-500">Filter by Role:</label>
             <select
               value={filterRole}
               onChange={(e) => {
                 setFilterRole(e.target.value)
                 setPage(1)
               }}
-              className="px-3 py-2 border border-[#e2e8f0] bg-white text-xs font-semibold text-[#0f172a] rounded-xl focus:outline-none focus:border-[#2563eb] cursor-pointer"
+              className="px-3 py-2 border border-slate-200 bg-white text-xs font-semibold text-slate-900 rounded-xl focus:outline-none focus:border-[#2f80ed] cursor-pointer"
             >
-              <option value="">All User Roles</option>
+              <option value="">All Roles</option>
               <option value="admin">Administrator</option>
               <option value="faculty">Faculty</option>
               <option value="student">Student</option>
-              <option value="invigilator">Invigilator</option>
+              <option value="system">System</option>
             </select>
           </div>
         </div>
 
-        {/* Audit Log Table */}
-        <Card className="bg-white border border-[#e2e8f0] rounded-2xl shadow-xs overflow-hidden">
+        {/* Audit Table */}
+        <Card className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
           {loading ? (
             <div className="p-8 space-y-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-10 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl animate-pulse" />
+                <div key={i} className="h-12 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
               ))}
+            </div>
+          ) : error ? (
+            <div className="p-6">
+              <ErrorState
+                title="Unable to Retrieve Audit Logs"
+                message={error}
+                onRetry={fetchLogs}
+              />
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center">
-              <ClipboardList size={36} className="text-[#94a3b8] mx-auto mb-2" />
-              <p className="text-[#0f172a] font-bold text-sm">No audit records found</p>
-              <p className="text-xs text-[#64748b] mt-1">No system logs match your filter criteria.</p>
+              <ClipboardList size={36} className="text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-900 font-semibold text-sm">
+                {search ? 'No audit records match your search' : 'No audit records found'}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                {search ? 'Try adjusting your search keyword or clearing the filter.' : 'No system logs recorded yet.'}
+              </p>
+              {search && (
+                <div>
+                  <button
+                    onClick={() => setSearch('')}
+                    className="mt-4 px-4 py-2 border border-[#e2e8f0] bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
+                  >
+                    Clear Search Filter
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-[#f1f5f9] bg-[#f8fafc]/70">
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5 pl-5">Timestamp</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Role</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Action</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5 pr-5">Event Details</TableHead>
+                  <TableRow className="border-b border-slate-200 bg-slate-50/75">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5 pl-5">Timestamp</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Role</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Action</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5 pr-5">Event Details</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-[#f1f5f9]">
+                <TableBody className="divide-y divide-slate-100">
                   {filtered.map((log, i) => {
                     const actionInfo = formatAction(log.action)
                     const detailsStr = formatDetails(log)
                     const role = (log.userRole || 'system').toLowerCase()
 
                     return (
-                      <TableRow key={log.id || i} className="hover:bg-[#f8fafc] transition-colors">
+                      <TableRow key={log.id || i} className="hover:bg-slate-50/70 transition-colors">
                         {/* Timestamp */}
-                        <TableCell className="font-mono text-xs text-[#64748b] whitespace-nowrap pl-5 py-3.5">
+                        <TableCell className="font-mono text-xs text-slate-500 whitespace-nowrap pl-5 py-3.5">
                           {log.createdAt
                             ? new Date(log.createdAt).toLocaleString([], {
                                 year: 'numeric',
@@ -273,14 +300,14 @@ export default function AdminAuditLogs() {
                         {/* Role Badge */}
                         <TableCell className="py-3.5">
                           <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider ${
                               role === 'admin'
-                                ? 'bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]'
+                                ? 'bg-blue-50 text-[#2f80ed] border border-blue-200'
                                 : role === 'faculty'
-                                ? 'bg-[#f5f3ff] text-[#7c3aed] border border-[#ede9fe]'
+                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
                                 : role === 'student'
-                                ? 'bg-[#ecfdf5] text-[#10b981] border border-[#d1fae5]'
-                                : 'bg-[#fffbeb] text-[#d97706] border border-[#fef3c7]'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
                             }`}
                           >
                             {role}
@@ -289,7 +316,7 @@ export default function AdminAuditLogs() {
 
                         {/* Action Label */}
                         <TableCell className="py-3.5">
-                          <span className="font-bold text-xs text-[#0f172a]">
+                          <span className="font-semibold text-xs text-slate-900">
                             {actionInfo.label}
                           </span>
                         </TableCell>

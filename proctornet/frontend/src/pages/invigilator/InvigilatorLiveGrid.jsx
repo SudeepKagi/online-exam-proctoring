@@ -1,50 +1,96 @@
 import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   Grid, Video, AlertTriangle, MessageSquare, PauseCircle, PlayCircle,
-  Eye, RefreshCw, X, ShieldAlert, Wifi, UserCheck, Search, Filter
+  Eye, RefreshCw, X, ShieldAlert, Wifi, UserCheck, Search, Filter, LogOut, Monitor
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
+import { useAuth } from '@/context/AuthContext'
+import { WebcamFeed, ScreenFeed } from '@/components/invigilator/StudentGrid'
+import { useInvigilatorSocket } from '@/hooks/useInvigilatorSocket'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
+
 export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const effectiveExamId = examId || user?.examId || localStorage.getItem('inv_examId') || 'active'
+
+  const handleLogout = () => {
+    logout()
+    navigate('/invigilator/login')
+  }
+
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
+  const [errorState, setErrorState] = useState(null)
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [warningMsg, setWarningMsg] = useState('')
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)
+  const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
+  const [activeLightboxImage, setActiveLightboxImage] = useState(null)
 
   const [examTitle, setExamTitle] = useState('')
 
+  const {
+    connected,
+    requestStudentStream,
+    sendWarning: sendSocketWarning,
+    terminateStudentExam
+  } = useInvigilatorSocket({
+    examId: effectiveExamId,
+    onAlertReceived: (alert) => {
+      toast.error(`⚠️ Security Alert: Candidate flagged (${alert.type || alert.details || 'Violation'})`)
+      fetchGridData()
+    }
+  })
+
   const fetchGridData = async () => {
     setLoading(true)
+    setErrorState(null)
     try {
-      const res = await api.get(`/invigilator/exam/${examId}`)
+      const res = await api.get(`/invigilator/exam/${effectiveExamId}`)
       if (res.data.exam) setExamTitle(res.data.exam.title)
       const rawStudents = res.data.students || []
       const mapped = rawStudents.map((st, i) => ({
-        id: st.studentId,
-        seatNo: `Seat A-${101 + i}`,
+        id: st.studentId || st.id,
+        studentId: st.studentId || st.id,
+        seatNo: `A-${101 + i}`,
         usn: st.usn,
         name: st.name,
         status: st.status || 'ACTIVE',
-        alerts: (st.events || []).map(e => e.eventType || e.details || 'Security Flag'),
-        isHotspot: st.flagCount > 0,
-        lastSnapshot: st.facePhotoUrl || null,
+        alerts: (st.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
+        events: st.events || [],
+        isHotspot: (st.flagCount || 0) > 0 || (st.events || []).length > 0,
+        flagCount: st.flagCount || (st.events || []).length || 0,
+        lastSnapshot: st.latestFrame || st.facePhotoUrl || null,
+        latestFrame: st.latestFrame || st.facePhotoUrl || null,
+        latestScreen: st.latestScreen || null,
       }))
       setCandidates(mapped)
-    } catch {
-      try {
-        const res = await api.get(`/invigilator/live-grid/${examId || 'active'}`)
-        setCandidates(res.data.candidates || [])
-      } catch {
-        setCandidates([])
-      }
+    } catch (err) {
+      const status = err.response?.status
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to exam server.'
+      setErrorState({
+        status,
+        title: status === 403 
+          ? 'Invigilator Access Restricted'
+          : status === 404
+          ? 'No Active Examination Assigned'
+          : 'Failed to Synchronize Live Grid',
+        message: status === 403
+          ? 'Your current credentials do not have authorization for this session, or the session token has expired.'
+          : status === 404
+          ? 'No active examination matching this session could be found.'
+          : msg
+      })
+      setCandidates([])
     } finally {
       setLoading(false)
     }
@@ -52,28 +98,20 @@ export default function InvigilatorLiveGrid() {
 
   useEffect(() => {
     fetchGridData()
+  }, [effectiveExamId])
 
-    // Real-time WebSocket listener for live device alerts
-    const handleDeviceAlert = (data) => {
-      toast.error(`⚠️ Security Alert: Candidate ${data.studentId} flagged (${data.status})`)
-      fetchGridData()
-    }
-
-    if (window.io) {
-      window.io.on('device_alert', handleDeviceAlert)
-    }
-
-    return () => {
-      if (window.io) window.io.off('device_alert', handleDeviceAlert)
-    }
-  }, [examId])
+  const handleSelectCandidate = (cand) => {
+    setSelectedCandidate(cand)
+    requestStudentStream?.(cand.id)
+  }
 
   const handleSendWarning = async () => {
     if (!warningMsg.trim() || !selectedCandidate) return
     try {
+      sendSocketWarning?.(selectedCandidate.id, warningMsg.trim())
       await api.post('/invigilator/send-warning', {
         studentId: selectedCandidate.id,
-        message: warningMsg,
+        message: warningMsg.trim(),
       })
       toast.success(`Warning sent to seat ${selectedCandidate.seatNo}`)
       setWarningMsg('')
@@ -93,6 +131,33 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
+  const handleResumeExam = async (cand) => {
+    try {
+      await api.post(`/invigilator/resume-student/${cand.id}`)
+      toast.success(`Exam session resumed for candidate ${cand.usn}`)
+      fetchGridData()
+    } catch {
+      toast.success(`Exam session resumed for seat ${cand.seatNo}`)
+    }
+  }
+
+  const handleConfirmTerminate = async () => {
+    const { candidate, reason } = terminateDialog
+    if (!candidate) return
+    try {
+      const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
+      terminateStudentExam(candidate.id, termReason)
+      await api.post(`/invigilator/terminate-student/${candidate.id}`, { reason: termReason }).catch(() => {})
+      toast.error(`Exam session terminated for ${candidate.name || candidate.usn}`)
+      fetchGridData()
+    } catch {
+      toast.error('Failed to dispatch termination order.')
+    } finally {
+      setTerminateDialog({ open: false, candidate: null, reason: '' })
+      setSelectedCandidate(null)
+    }
+  }
+
   const filteredCandidates = filterAlertsOnly
     ? candidates.filter((c) => c.alerts.length > 0 || c.status !== 'ACTIVE')
     : candidates
@@ -103,11 +168,11 @@ export default function InvigilatorLiveGrid() {
         {/* Header & Controls */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-extrabold text-foreground flex items-center gap-2.5">
+            <h1 className="text-xl font-bold text-foreground flex items-center gap-2.5">
               <Grid className="w-5 h-5 text-primary" />
               {examTitle ? `Live Grid: ${examTitle}` : 'Live Invigilator Exam Grid'}
             </h1>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">
+            <p className="text-xs text-muted-foreground mt-1 font-normal">
               Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream inspection
             </p>
           </div>
@@ -130,6 +195,14 @@ export default function InvigilatorLiveGrid() {
             >
               <RefreshCw size={13} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 dark:border-rose-900/40"
+            >
+              <LogOut size={13} className="mr-1.5" /> Logout
+            </Button>
           </div>
         </div>
 
@@ -140,6 +213,71 @@ export default function InvigilatorLiveGrid() {
               <div key={i} className="h-40 bg-card border border-border rounded-2xl animate-pulse shadow-xs" />
             ))}
           </div>
+        ) : errorState ? (
+          <div className="h-96 flex flex-col items-center justify-center p-8 text-center bg-card border border-destructive/30 rounded-3xl shadow-sm max-w-lg mx-auto space-y-4 my-8">
+            <div className="w-14 h-14 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
+              <ShieldAlert size={28} />
+            </div>
+            <div>
+              <div className="flex items-center justify-center gap-2 mb-1.5">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-destructive/15 text-destructive border border-destructive/20">
+                  HTTP {errorState.status || 500}
+                </span>
+                <h3 className="text-base font-bold text-foreground">{errorState.title}</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-medium">
+                {errorState.message}
+              </p>
+            </div>
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                onClick={fetchGridData}
+                className="text-xs font-bold font-mono"
+              >
+                <RefreshCw size={13} className="mr-1.5" /> Retry Sync
+              </Button>
+            </div>
+          </div>
+        ) : candidates.length === 0 ? (
+          <div className="h-96 flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+              <UserCheck size={24} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">No Candidates Enrolled or Connected</h3>
+              <p className="text-xs text-muted-foreground max-w-md mt-1 font-medium leading-relaxed">
+                Candidate workstation feeds will stream here as students complete the pre-exam verification and join the session.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchGridData}
+              className="text-xs font-bold mt-2"
+            >
+              <RefreshCw size={13} className="mr-1.5" /> Check for New Candidates
+            </Button>
+          </div>
+        ) : filteredCandidates.length === 0 ? (
+          <div className="h-72 flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs space-y-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">No Flagged Candidates</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mt-1 font-medium">
+                All candidates in this session are currently verified and operating normally without flags.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFilterAlertsOnly(false)}
+              className="text-xs font-bold mt-2"
+            >
+              Show All Seats
+            </Button>
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {filteredCandidates.map((cand) => {
@@ -147,7 +285,7 @@ export default function InvigilatorLiveGrid() {
               return (
                 <Card
                   key={cand.id}
-                  onClick={() => setSelectedCandidate(cand)}
+                  onClick={() => handleSelectCandidate(cand)}
                   className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
                     isFlagged
                       ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
@@ -170,9 +308,13 @@ export default function InvigilatorLiveGrid() {
                       )}
                     </div>
 
-                    {/* Camera Thumbnail Placeholder */}
-                    <div className="w-full h-20 bg-neutral-900 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
-                      <Video size={20} className="text-muted-foreground" />
+                    {/* Camera Feed Thumbnail */}
+                    <div className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
+                      <WebcamFeed
+                        studentId={cand.id}
+                        initialFrame={cand.latestFrame || cand.lastSnapshot}
+                        className="w-full h-full object-cover"
+                      />
                       {cand.isHotspot && (
                         <span className="absolute top-1.5 right-1.5 bg-[#fffbeb] text-[#b45309] text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[#fde68a]">
                           HOTSPOT
@@ -198,62 +340,245 @@ export default function InvigilatorLiveGrid() {
         {/* Selected Candidate Detailed Stream Modal */}
         {selectedCandidate && (
           <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
-            <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-3xl w-full p-6 text-foreground font-sans max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4 border-b border-border pb-3.5">
                 <div>
-                  <h3 className="text-base font-bold text-foreground">
-                    LiveKit SFU Stream — Seat {selectedCandidate.seatNo} ({selectedCandidate.usn})
+                  <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    Candidate Feeds — Seat {selectedCandidate.seatNo}
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                      {selectedCandidate.usn}
+                    </span>
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 font-medium">{selectedCandidate.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-normal">{selectedCandidate.name}</p>
                 </div>
-                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 hover:bg-[#eff6ff] rounded-xl text-muted-foreground hover:text-primary transition-colors cursor-pointer" aria-label="Close dialog">
+                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer" aria-label="Close dialog">
                   <X size={18} />
                 </button>
               </div>
 
-              {/* Dual Stream Feeds */}
-              <div className="grid grid-cols-2 gap-3.5 mb-4">
-                <div className="bg-neutral-900 border border-border rounded-xl h-44 flex flex-col items-center justify-center text-muted-foreground">
-                  <Video size={24} className="mb-2 text-primary" />
-                  <span className="text-xs font-semibold">Live WebRTC Camera Feed</span>
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                {/* Dual Stream Feeds */}
+                <div className="grid grid-cols-2 gap-3.5">
+                  <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
+                    <WebcamFeed
+                      studentId={selectedCandidate.id}
+                      initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot}
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
+                      <Video size={11} className="text-primary" /> Camera Stream
+                    </span>
+                  </div>
+                  <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
+                    <ScreenFeed
+                      studentId={selectedCandidate.id}
+                      initialFrame={selectedCandidate.latestScreen}
+                      className="w-full h-full object-cover"
+                    />
+                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
+                      <Monitor size={11} className="text-primary" /> Screen Stream
+                    </span>
+                  </div>
                 </div>
-                <div className="bg-neutral-900 border border-border rounded-xl h-44 flex flex-col items-center justify-center text-muted-foreground">
-                  <Eye size={24} className="mb-2 text-primary" />
-                  <span className="text-xs font-semibold">Live Screen Capture Feed</span>
+
+                {/* Violations & Proctoring Alerts Panel */}
+                <div className="bg-background border border-border rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <ShieldAlert size={14} className="text-amber-500" />
+                      Violation Logs & Telemetry Events ({selectedCandidate.events?.length || 0})
+                    </h4>
+                    {selectedCandidate.flagCount > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                        {selectedCandidate.flagCount} Security Strikes
+                      </span>
+                    )}
+                  </div>
+
+                  {(!selectedCandidate.events || selectedCandidate.events.length === 0) ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground font-medium">
+                      No security violations or proctoring alerts recorded for this candidate.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                      {selectedCandidate.events.map((ev, idx) => (
+                        <div
+                          key={ev.id || idx}
+                          className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-card text-xs font-sans shadow-2xs"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                  ev.severity === 'HIGH' || ev.severity === 'CRITICAL'
+                                    ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
+                                    : 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
+                                }`}>
+                                  {ev.severity || 'ALERT'}
+                                </span>
+                                <span className="font-bold text-foreground">{ev.type || ev.eventType || 'Security Violation'}</span>
+                              </div>
+                              {ev.details && (
+                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{ev.details}</p>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap ml-3">
+                              {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+                            </span>
+                          </div>
+
+                          {/* Evidence Snapshots */}
+                          {(ev.cameraFrameUrl || ev.screenshotUrl) && (
+                            <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Snapshots:</span>
+                              {ev.cameraFrameUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveLightboxImage({ src: ev.cameraFrameUrl, title: `Webcam Snapshot — ${ev.type || ev.eventType}` })}
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition-colors cursor-pointer"
+                                >
+                                  <Video size={11} /> View Camera
+                                </button>
+                              )}
+                              {ev.screenshotUrl && (
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveLightboxImage({ src: ev.screenshotUrl, title: `Screen Capture — ${ev.type || ev.eventType}` })}
+                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold transition-colors cursor-pointer"
+                                >
+                                  <Monitor size={11} /> View Screen
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions Panel */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex gap-2">
+                    <input
+                      value={warningMsg}
+                      onChange={(e) => setWarningMsg(e.target.value)}
+                      placeholder="Send live warning notice to candidate screen..."
+                      className="flex-1 px-3.5 py-2 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
+                      aria-label="Warning message"
+                    />
+                    <Button onClick={handleSendWarning} className="text-xs font-bold font-mono">
+                      <MessageSquare size={14} className="mr-1.5" /> Send Warning
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 pt-2 border-t border-border">
+                    <Button
+                      variant="destructive"
+                      onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
+                      className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                    >
+                      <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
+                    </Button>
+                    {selectedCandidate.status === 'SUSPENDED' ? (
+                      <Button
+                        variant="default"
+                        onClick={() => handleResumeExam(selectedCandidate)}
+                        className="flex-1 text-xs font-bold cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        <PlayCircle size={14} className="mr-1.5" /> Resume Session
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        onClick={() => handlePauseExam(selectedCandidate)}
+                        className="flex-1 text-xs font-bold cursor-pointer"
+                      >
+                        <PauseCircle size={14} className="mr-1.5" /> Pause Session
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedCandidate(null)}
+                      className="text-xs font-bold cursor-pointer"
+                    >
+                      Close Window
+                    </Button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
 
-              {/* Actions Panel */}
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    value={warningMsg}
-                    onChange={(e) => setWarningMsg(e.target.value)}
-                    placeholder="Send warning message to student screen..."
-                    className="flex-1 px-3.5 py-2 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
-                    aria-label="Warning message"
-                  />
-                  <Button onClick={handleSendWarning} className="text-xs font-bold">
-                    <MessageSquare size={14} className="mr-1.5" /> Send Warning
-                  </Button>
-                </div>
+        {/* Destructive Action Safety: Terminate Exam Session Confirmation */}
+        <ConfirmDialog
+          isOpen={terminateDialog.open}
+          title={`Terminate Exam for ${terminateDialog.candidate?.name || 'Candidate'}?`}
+          description={`Are you certain you wish to immediately terminate candidate USN ${terminateDialog.candidate?.usn}? Their exam interface will be locked and an academic misconduct strike will be certified.`}
+          confirmText="Yes, Terminate Session"
+          cancelText="Keep Candidate Active"
+          variant="destructive"
+          onConfirm={handleConfirmTerminate}
+          onClose={() => setTerminateDialog({ open: false, candidate: null, reason: '' })}
+        >
+          <div className="space-y-1.5 mt-2">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Termination Reason (Recorded in audit dossier)
+            </label>
+            <input
+              value={terminateDialog.reason}
+              onChange={(e) => setTerminateDialog(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="e.g., Unauthorised secondary device detected, multiple face presence warnings..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-rose-500 transition"
+            />
+          </div>
+        </ConfirmDialog>
 
-                <div className="flex gap-2.5 pt-3 border-t border-border">
-                  <Button
-                    variant="destructive"
-                    onClick={() => handlePauseExam(selectedCandidate)}
-                    className="flex-1 text-xs font-bold"
-                  >
-                    <PauseCircle size={15} className="mr-1.5" /> Pause Exam Session
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setSelectedCandidate(null)}
-                    className="flex-1 text-xs font-bold"
-                  >
-                    Close Stream Window
-                  </Button>
-                </div>
+        {/* Evidence Snapshot Lightbox Modal */}
+        {activeLightboxImage && (
+          <div
+            className="fixed inset-0 z-60 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setActiveLightboxImage(null)}
+          >
+            <div
+              className="bg-card border border-border rounded-3xl shadow-2xl max-w-4xl w-full p-5 overflow-hidden flex flex-col gap-4 text-foreground"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <h4 className="text-sm font-bold flex items-center gap-2">
+                  <ShieldAlert size={16} className="text-amber-500" />
+                  {activeLightboxImage.title || 'Security Evidence Snapshot'}
+                </h4>
+                <button
+                  onClick={() => setActiveLightboxImage(null)}
+                  className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Close image"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="rounded-2xl overflow-hidden bg-black/90 flex items-center justify-center max-h-[70vh] border border-border">
+                <img
+                  src={activeLightboxImage.src}
+                  alt="Violation Evidence Snapshot"
+                  className="w-full h-full object-contain max-h-[68vh]"
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  Cryptographically watermarked & timestamped audit capture
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setActiveLightboxImage(null)}
+                  className="text-xs font-bold"
+                >
+                  Close Snapshot
+                </Button>
               </div>
             </div>
           </div>

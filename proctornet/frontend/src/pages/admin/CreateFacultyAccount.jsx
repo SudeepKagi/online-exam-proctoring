@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertCircle, Copy, Check, Eye, EyeOff, RefreshCw,
   Trash2, ArrowRight, ShieldCheck, Briefcase
 } from 'lucide-react'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 
 export default function CreateFacultyAccount() {
   const navigate = useNavigate()

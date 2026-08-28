@@ -5,7 +5,8 @@ import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import { 
   Shield, Camera, Wifi, Monitor, CheckCircle2, XCircle, 
-  Loader2, ArrowRight, Lock, Key, Cpu, RefreshCw, AlertTriangle, Play, Sparkles, Check, Download
+  Loader2, ArrowRight, Lock, Key, Cpu, RefreshCw, AlertTriangle, Play, Sparkles, Check, Download,
+  ExternalLink, Clock, FileDown, CheckCircle, Info
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -50,12 +51,35 @@ export default function SecurityCheck() {
   const [vpnVerified, setVpnVerified] = useState(false)
   const [verifyingVpn, setVerifyingVpn] = useState(false)
   const [confDownloaded, setConfDownloaded] = useState(false)
+  const [timeToExamStart, setTimeToExamStart] = useState(0)
 
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
   const [isFaceProcessing, setIsFaceProcessing] = useState(false)
   const [faceMatchScore, setFaceMatchScore] = useState(null)
   const [vmRenderer, setVmRenderer] = useState('')
+
+  const formatCountdown = (seconds) => {
+    if (seconds <= 0) return '00:00'
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  // Real-time countdown timer for exam start
+  useEffect(() => {
+    if (timeToExamStart <= 0) return
+    const timer = setInterval(() => {
+      setTimeToExamStart(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [timeToExamStart])
 
   useEffect(() => {
     return () => {
@@ -91,12 +115,26 @@ export default function SecurityCheck() {
         }
 
         const serverTime = examRes.data.serverTime ? new Date(examRes.data.serverTime) : new Date()
+        const startTime = new Date(examData.startTime)
         const endTime = new Date(examData.endTime)
+
+        // Block if exam has already ended
         if (serverTime > endTime) {
-          toast.error('This exam has already ended.')
+          toast.error('This examination session has already ended.')
           navigate('/student/exams')
           return
         }
+
+        // 5-minute pre-check gate: must be within 5 minutes (300 seconds) of start
+        const earlyCheckWindowMs = 5 * 60 * 1000 // 5 minutes
+        if (serverTime.getTime() < startTime.getTime() - earlyCheckWindowMs) {
+          toast.error('Pre-exam security checkup unlocks 5 minutes before scheduled start time.')
+          navigate(`/student/exams/${examId}/lobby`)
+          return
+        }
+
+        const remainingSecs = Math.max(0, Math.floor((startTime.getTime() - serverTime.getTime()) / 1000))
+        setTimeToExamStart(remainingSecs)
 
         setExam(examData)
         const userRes = await api.get('/auth/me')
@@ -322,6 +360,22 @@ export default function SecurityCheck() {
     }
   }
 
+  // Cleanup media streams on component unmount if not entering exam
+  useEffect(() => {
+    return () => {
+      const isEnteringExam = window.location.pathname.includes('/exam') || window.location.pathname.includes('/student/exam')
+      if (!isEnteringExam) {
+        stopCamera()
+        if (window.screenShareStream) {
+          try {
+            window.screenShareStream.getTracks().forEach(t => t.stop())
+          } catch (_e) {}
+          window.screenShareStream = null
+        }
+      }
+    }
+  }, [])
+
   // Authorize Screen Share
   const requestScreenShare = async () => {
     updateStage('media', 'loading', 'Requesting screen sharing authorization...')
@@ -488,7 +542,11 @@ export default function SecurityCheck() {
         throw new Error('Fullscreen request was not granted by the browser.')
       }
       updateStage('kiosk', 'pass', 'Entering proctored examination interface...')
-      toast.success('Security check complete! Entering exam...')
+      if (timeToExamStart > 0) {
+        toast.success(`Security check passed! Holding in kiosk until exam starts (${formatCountdown(timeToExamStart)}).`)
+      } else {
+        toast.success('Security check complete! Entering exam...')
+      }
       setTimeout(() => {
         navigate(`/student/exams/${examId}/exam`)
       }, 400)
@@ -568,103 +626,279 @@ export default function SecurityCheck() {
         </div>
 
         {/* Right Content Area: Interactive Workstation */}
-        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between min-h-[520px] bg-card">
-          <div>
-            {/* Exam & Stage Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 mb-6 gap-2">
+        <div className="flex-1 p-6 md:p-8 flex flex-col justify-between min-h-[540px] bg-card">
+          {/* View A: Post-Check Waiting Lobby (when all 4 checks passed and start time is in future) */}
+          {allPassed && timeToExamStart > 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 bg-card animate-in fade-in duration-300">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-md">
+                <CheckCircle2 size={36} />
+              </div>
+
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-primary font-bold">
-                  Stage {activeStage + 1} of 4
+                <span className="px-3.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+                  ALL 4 SECURITY STAGES 100% VERIFIED
                 </span>
-                <h2 className="text-xl font-bold text-foreground mt-0.5">{STAGES[activeStage].name}</h2>
+                <h2 className="text-2xl font-bold text-foreground mt-2.5">{exam?.title}</h2>
+                <p className="text-xs text-muted-foreground mt-1 font-normal max-w-lg mx-auto">
+                  Your WireGuard VPN tunnel, webcam, screen share, and biometric identity are fully cleared. Please remain in place until the exam session opens.
+                </p>
               </div>
-              <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
-                {exam?.title || 'Examination Verification'}
-              </Badge>
-            </div>
 
-            {/* Video Feed & Biometric Frame */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
-              <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Camera Overlay Guide Box */}
-                <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
-                  <div className="w-20 h-20 border border-indigo-400/60 rounded-full animate-pulse" />
+              {/* Countdown Holding Card */}
+              <div className="bg-background border border-border rounded-2xl p-6 max-w-sm w-full shadow-inner space-y-1.5">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center justify-center gap-1.5">
+                  <Clock size={13} className="text-primary animate-pulse" /> Official Exam Begins In
+                </p>
+                <div className="font-mono text-4xl font-bold tracking-tight text-primary">
+                  {formatCountdown(timeToExamStart)}
                 </div>
-
-                {isFaceProcessing && (
-                  <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
-                    <Loader2 size={32} className="text-primary animate-spin mb-2" />
-                    <p className="text-xs font-mono text-foreground font-semibold">Running Biometric Model Match...</p>
-                  </div>
-                )}
+                <p className="text-xs text-muted-foreground font-mono">
+                  Scheduled Start: {exam?.startTime ? new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live Soon'}
+                </p>
               </div>
 
-              {/* Status & Diagnostics Log Card */}
-              <div className="space-y-4">
-                <Card className="bg-background border-border p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Diagnostic Log</span>
-                    <Badge variant="secondary" className="text-[10px] font-mono">LIVE PROBE</Badge>
-                  </div>
-
-                  <div className="p-3 bg-card border border-border rounded-xl text-xs font-mono text-foreground/90">
-                    <p className="text-primary font-semibold mb-1">Current Status:</p>
-                    <p className="text-foreground">{stageDetails[STAGES[activeStage].id]}</p>
-                  </div>
-
-                  {activeStage === 0 && (
-                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs font-mono space-y-1.5">
-                      <div className="flex justify-between items-center text-primary">
-                        <span>WireGuard Peer IP:</span>
-                        <strong className="text-foreground">{vpnPeerIp || '10.0.0.5'}</strong>
-                      </div>
-                      <div className="flex justify-between items-center text-primary">
-                        <span>Tunnel Status:</span>
-                        <strong className={vpnVerified ? 'text-emerald-400' : 'text-amber-400'}>
-                          {vpnVerified ? 'ACTIVE & VERIFIED' : 'ACTIVATION MANDATORY'}
-                        </strong>
-                      </div>
-                    </div>
-                  )}
-
-                  {faceMatchScore !== null && (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs font-mono">
-                      <div className="flex justify-between items-center text-emerald-300 mb-1">
-                        <span>Biometric Score:</span>
-                        <strong className="text-sm">{(faceMatchScore * 100).toFixed(1)}%</strong>
-                      </div>
-                      <div className="w-full bg-card rounded-full h-1.5 overflow-hidden border border-emerald-500/20">
-                        <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${faceMatchScore * 100}%` }} />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
-                    <div className="p-2 rounded-lg bg-card border border-border">
-                      <span className="text-slate-500">Screen Share:</span>
-                      <p className={`font-semibold mt-0.5 ${screenShared ? 'text-emerald-400' : 'text-foreground/90'}`}>
-                        {screenShared ? 'Active' : 'Pending'}
-                      </p>
-                    </div>
-                    <div className="p-2 rounded-lg bg-card border border-border">
-                      <span className="text-slate-500">Kiosk View:</span>
-                      <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {isFullscreen ? 'Locked' : 'Standard'}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+              {/* Active Monitoring Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full max-w-xl text-xs font-mono">
+                <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="truncate text-foreground/90 font-medium">VPN: {vpnPeerIp || '10.0.0.x'}</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="truncate text-foreground/90 font-medium">Webcam: Streaming</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="truncate text-foreground/90 font-medium">Screen: Active</span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="truncate text-foreground/90 font-medium">Face: Verified</span>
+                </div>
               </div>
+
+              <p className="text-xs text-muted-foreground font-normal max-w-md">
+                You can enter the fullscreen holding kiosk now to lock your exam environment while the remaining countdown completes.
+              </p>
             </div>
-          </div>
+          ) : (
+            /* View B: Standard Step-by-Step Security Workstation */
+            <div>
+              {/* Exam & Stage Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border pb-4 mb-6 gap-2">
+                <div>
+                  <span className="text-xs uppercase tracking-wider text-primary font-semibold">
+                    Stage {activeStage + 1} of 4
+                  </span>
+                  <h2 className="text-xl font-bold text-foreground mt-0.5">{STAGES[activeStage].name}</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                  {timeToExamStart > 0 && (
+                    <Badge variant="outline" className="font-mono text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
+                      <Clock size={12} className="mr-1 inline" /> Starts in {formatCountdown(timeToExamStart)}
+                    </Badge>
+                  )}
+                  <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
+                    {exam?.title || 'Examination Verification'}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* STAGE 0 SPECIFIC: Comprehensive WireGuard Setup Workstation */}
+              {activeStage === 0 && !vpnVerified ? (
+                <div className="space-y-4 mb-6">
+                  {/* Top Guide Banner */}
+                  <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0 mt-0.5">
+                      <Wifi size={18} />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-xs font-bold text-foreground tracking-wide uppercase font-mono">
+                        WireGuard Network Sandboxing Setup (Safe Split-Tunneling)
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Only examination traffic (10.0.0.0/24) is sandboxed. Your normal internet, Wi-Fi, and cloud connections remain fully active and undisturbed.
+                        Follow the simple 4-step GUI instructions below. <strong>No command lines or scripts required!</strong>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Downloads Row */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    {/* Software Download */}
+                    <div className="p-4 rounded-2xl bg-background border border-border flex flex-col justify-between space-y-3">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-primary uppercase tracking-wider block mb-1">
+                          Step 1 • Required Software
+                        </span>
+                        <h4 className="text-xs font-bold text-foreground">Official WireGuard App</h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Download and install the official WireGuard client for your operating system.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <a
+                          href="https://download.wireguard.com/windows-client/wireguard-installer.exe"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold font-mono transition shadow-xs"
+                        >
+                          <Download size={13} /> Download WireGuard for Windows (.msi)
+                        </a>
+                        <a
+                          href="https://www.wireguard.com/install/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-center text-[10px] text-primary hover:underline font-mono flex items-center justify-center gap-1"
+                        >
+                          Other Platforms (macOS, Linux) <ExternalLink size={10} />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Profile Download */}
+                    <div className="p-4 rounded-2xl bg-background border border-border flex flex-col justify-between space-y-3">
+                      <div>
+                        <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                          Step 2 • Your Exam Profile
+                        </span>
+                        <h4 className="text-xs font-bold text-foreground">WireGuard Security Profile (.conf)</h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Cryptographic peer configuration (Assigned IP: <strong className="text-foreground">{vpnPeerIp || '10.0.0.5'}</strong>).
+                        </p>
+                      </div>
+                      <Button
+                        onClick={downloadVpnConfig}
+                        variant="outline"
+                        className="w-full text-xs font-mono font-bold border-primary text-primary hover:bg-primary/10 h-10 rounded-xl cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Download size={13} />
+                        {confDownloaded ? 'Re-Download .conf File' : 'Download .conf Profile'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 4-Step Visual Activation Guide */}
+                  <div className="p-4 rounded-2xl bg-background border border-border space-y-3">
+                    <div className="flex items-center justify-between border-b border-border/70 pb-2">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Info size={12} className="text-primary" /> Step-by-Step Activation Guide
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400">100% GUI • Zero Commands</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
+                      <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-1">
+                        <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold flex items-center justify-center">1</span>
+                        <p className="font-bold text-foreground text-[11px]">Install WireGuard</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">Run the official installer once on your machine.</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-1">
+                        <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold flex items-center justify-center">2</span>
+                        <p className="font-bold text-foreground text-[11px]">Download Config</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">Save your exam .conf file from the button above.</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-1">
+                        <span className="w-5 h-5 rounded-full bg-primary/20 text-primary text-[10px] font-mono font-bold flex items-center justify-center">3</span>
+                        <p className="font-bold text-foreground text-[11px]">Import & Activate</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">In WireGuard: click "Add Tunnel" $\rightarrow$ choose .conf $\rightarrow$ "Activate".</p>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-card border border-border/70 space-y-1">
+                        <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold flex items-center justify-center">4</span>
+                        <p className="font-bold text-foreground text-[11px]">Auto Verification</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">ProctorNet automatically detects the tunnel in ~3 seconds.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* STAGES 1, 2, 3 OR STAGE 0 VERIFIED: Video Feed & Biometric Frame */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
+                  <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover"
+                    />
+                    
+                    {/* Camera Overlay Guide Box */}
+                    <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
+                      <div className="w-20 h-20 border border-indigo-400/60 rounded-full animate-pulse" />
+                    </div>
+
+                    {isFaceProcessing && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
+                        <Loader2 size={32} className="text-primary animate-spin mb-2" />
+                        <p className="text-xs font-mono text-foreground font-semibold">Running Biometric Model Match...</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Status & Diagnostics Log Card */}
+                  <div className="space-y-4">
+                    <Card className="bg-background border-border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Diagnostic Log</span>
+                        <Badge variant="secondary" className="text-[10px] font-mono">LIVE PROBE</Badge>
+                      </div>
+
+                      <div className="p-3 bg-card border border-border rounded-xl text-xs font-mono text-foreground/90">
+                        <p className="text-primary font-semibold mb-1">Current Status:</p>
+                        <p className="text-foreground">{stageDetails[STAGES[activeStage].id]}</p>
+                      </div>
+
+                      {activeStage === 0 && (
+                        <div className="p-3 bg-primary/10 border border-primary/30 rounded-xl text-xs font-mono space-y-1.5">
+                          <div className="flex justify-between items-center text-primary">
+                            <span>WireGuard Peer IP:</span>
+                            <strong className="text-foreground">{vpnPeerIp || '10.0.0.5'}</strong>
+                          </div>
+                          <div className="flex justify-between items-center text-primary">
+                            <span>Tunnel Status:</span>
+                            <strong className={vpnVerified ? 'text-emerald-400' : 'text-amber-400'}>
+                              {vpnVerified ? 'ACTIVE & VERIFIED' : 'ACTIVATION MANDATORY'}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {faceMatchScore !== null && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs font-mono">
+                          <div className="flex justify-between items-center text-emerald-300 mb-1">
+                            <span>Biometric Score:</span>
+                            <strong className="text-sm">{(faceMatchScore * 100).toFixed(1)}%</strong>
+                          </div>
+                          <div className="w-full bg-card rounded-full h-1.5 overflow-hidden border border-emerald-500/20">
+                            <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${faceMatchScore * 100}%` }} />
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
+                        <div className="p-2 rounded-lg bg-card border border-border">
+                          <span className="text-slate-500">Screen Share:</span>
+                          <p className={`font-semibold mt-0.5 ${screenShared ? 'text-emerald-400' : 'text-foreground/90'}`}>
+                            {screenShared ? 'Active' : 'Pending'}
+                          </p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-card border border-border">
+                          <span className="text-slate-500">Kiosk View:</span>
+                          <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {isFullscreen ? 'Locked' : 'Standard'}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Action Bar Footer */}
           <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -676,22 +910,13 @@ export default function SecurityCheck() {
             <div className="flex items-center gap-3 w-full sm:w-auto">
               {activeStage === 0 && !vpnVerified && (
                 <div className="flex items-center gap-2 w-full sm:w-auto">
-                  {vpnConfig && (
-                    <Button 
-                      onClick={downloadVpnConfig}
-                      variant="outline"
-                      className="w-full sm:w-auto text-xs font-mono font-bold border-primary text-primary hover:bg-primary/10 px-4 h-10 rounded-xl cursor-pointer"
-                    >
-                      <Download size={14} className="mr-2" /> Download .conf
-                    </Button>
-                  )}
                   <Button 
                     onClick={verifyVpnTunnel}
                     disabled={verifyingVpn}
-                    className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+                    className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-5 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                   >
                     <RefreshCw size={14} className={`mr-1.5 ${verifyingVpn ? 'animate-spin' : ''}`} />
-                    {verifyingVpn ? 'Connecting Tunnel...' : '⚡ Auto-Connect VPN (1-Click)'}
+                    {verifyingVpn ? 'Checking Tunnel Status...' : 'Verify Tunnel Status'}
                   </Button>
                 </div>
               )}
@@ -729,9 +954,17 @@ export default function SecurityCheck() {
               {allPassed && (
                 <Button
                   onClick={handleLockAndStartExam}
-                  className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-10 rounded-xl shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-10 rounded-xl shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
                 >
-                  <Play size={14} className="mr-2 fill-current" /> Enter Exam Environment
+                  {timeToExamStart > 0 ? (
+                    <>
+                      <Lock size={14} /> Enter Fullscreen Holding Kiosk ({formatCountdown(timeToExamStart)}) →
+                    </>
+                  ) : (
+                    <>
+                      <Play size={14} className="fill-current" /> Enter Exam Environment (Live Now) →
+                    </>
+                  )}
                 </Button>
               )}
             </div>

@@ -19,7 +19,7 @@ export default function ExamSidebar({
     <aside className="w-64 bg-card border-l border-border flex flex-col shrink-0 hidden lg:flex font-sans select-none">
       {/* Live Camera PIP Box */}
       <div className="p-3.5 border-b border-border">
-        <p className="text-[11px] text-muted-foreground font-bold mb-2 uppercase tracking-wider flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wider flex items-center gap-1.5">
           <Camera size={13} className="text-primary" /> Active Video Stream
         </p>
         <div className="relative bg-neutral-900 rounded-xl overflow-hidden aspect-video border border-border shadow-inner">
@@ -34,7 +34,7 @@ export default function ExamSidebar({
             <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/90">
               <div className="text-center">
                 <CameraOff size={20} className="text-destructive mx-auto mb-1 animate-pulse" />
-                <p className="text-[11px] text-destructive font-bold">Stream Paused</p>
+                <p className="text-xs text-destructive font-semibold">Stream Paused</p>
               </div>
             </div>
           )}
@@ -43,7 +43,7 @@ export default function ExamSidebar({
 
       {/* Question Palette Matrix */}
       <div className="flex-1 overflow-y-auto p-3.5">
-        <p className="text-[11px] text-muted-foreground font-bold mb-2.5 uppercase tracking-wider flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground font-semibold mb-2.5 uppercase tracking-wider flex items-center gap-1.5">
           <List size={13} className="text-primary" /> Question Palette
         </p>
         <div className="grid grid-cols-5 gap-1.5">
@@ -56,7 +56,7 @@ export default function ExamSidebar({
               <button
                 key={q.id || i}
                 onClick={() => setCurrentIdx(i)}
-                className={`w-full aspect-square rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`w-full aspect-square rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isCurrent
                     ? 'bg-primary text-white ring-2 ring-primary/40 shadow-xs'
                     : isFlagged
@@ -77,19 +77,19 @@ export default function ExamSidebar({
         <div className="mt-5 space-y-2 text-xs border-t border-border pt-4 text-muted-foreground">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-primary shrink-0" />
-            <span className="font-medium">Current Item</span>
+            <span className="font-normal">Current Item</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-[#ecfdf5] border border-[#bbf7d0] text-[#166534] shrink-0" />
-            <span className="font-medium">Answered</span>
+            <span className="font-normal">Answered</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-[#fffbeb] border border-[#fde68a] text-[#b45309] shrink-0" />
-            <span className="font-medium">Flagged for Review</span>
+            <span className="font-normal">Flagged for Review</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-card border border-border shrink-0" />
-            <span className="font-medium">Unanswered</span>
+            <span className="font-normal">Unanswered</span>
           </div>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function ExamSidebar({
         <button
           disabled={submitting}
           onClick={onSubmitRequest}
-          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl disabled:opacity-60 transition-all shadow-xs font-sans cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-semibold rounded-xl disabled:opacity-60 transition-all shadow-xs font-sans cursor-pointer"
         >
           <Send size={14} /> Finish Exam
         </button>

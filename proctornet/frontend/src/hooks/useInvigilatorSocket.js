@@ -7,28 +7,41 @@ import { toast } from 'react-hot-toast'
  * Manages socket connection for invigilators, multi-candidate WebRTC peer connections,
  * and live proctoring alerts.
  */
-export function useInvigilatorSocket({ examId, onAlertReceived }) {
+export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }) {
   const socketRef = useRef(null)
   const pcsRef = useRef({})
+  const onAlertRef = useRef(onAlertReceived)
+  onAlertRef.current = onAlertReceived
+
   const [connected, setConnected] = useState(false)
   const [alerts, setAlerts] = useState([])
   const [chats, setChats] = useState({})
 
   useEffect(() => {
-    const token = localStorage.getItem('proctornet_inv_token') || localStorage.getItem('proctornet_token')
+    if (!enabled || !examId) {
+      if (socketRef.current) {
+        socketRef.current.disconnect()
+        socketRef.current = null
+        setConnected(false)
+      }
+      return
+    }
+
+    const token = localStorage.getItem('inv_token') || localStorage.getItem('proctornet_inv_token') || localStorage.getItem('proctornet_token')
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
 
     const socket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     })
     socketRef.current = socket
 
     socket.on('connect', () => {
       setConnected(true)
+      socket.emit('inv:join', { examId, role: 'invigilator' })
       socket.emit('exam:join', { examId, role: 'invigilator' })
     })
 
@@ -42,10 +55,51 @@ export function useInvigilatorSocket({ examId, onAlertReceived }) {
         timestamp: alertData.timestamp || new Date().toISOString()
       }
       setAlerts(prev => [alert, ...prev.slice(0, 99)])
-      onAlertReceived?.(alert)
+      onAlertRef.current?.(alert)
+
+      if (alertData.cameraFrameUrl) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: alertData.studentId, frame: alertData.cameraFrameUrl, type: 'camera' }
+        }))
+      }
+      if (alertData.screenshotUrl) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: alertData.studentId, frame: alertData.screenshotUrl, type: 'screen' }
+        }))
+      }
 
       if (alert.severity === 'HIGH' || alert.severity === 'CRITICAL') {
         toast.error(`🚨 High Risk Alert: ${alert.studentName} (${alert.type})`, { duration: 5000 })
+      }
+    })
+
+    socket.on('student:flag', (alertData) => {
+      if (alertData?.cameraFrameUrl) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: alertData.studentId, frame: alertData.cameraFrameUrl, type: 'camera' }
+        }))
+      }
+      if (alertData?.screenshotUrl) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: alertData.studentId, frame: alertData.screenshotUrl, type: 'screen' }
+        }))
+      }
+    })
+
+    // ── Periodic Live Stream Feeds (Camera & Screen) ──
+    socket.on('student:cameraFrame', (data) => {
+      if (data?.studentId && data?.frame) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: data.studentId, frame: data.frame, type: 'camera' }
+        }))
+      }
+    })
+
+    socket.on('student:screenFrame', (data) => {
+      if (data?.studentId && data?.frame) {
+        window.dispatchEvent(new CustomEvent('student-frame-update', {
+          detail: { studentId: data.studentId, frame: data.frame, type: 'screen' }
+        }))
       }
     })
 
@@ -63,12 +117,17 @@ export function useInvigilatorSocket({ examId, onAlertReceived }) {
 
         pc.ontrack = (event) => {
           if (event.streams && event.streams[0]) {
+            const track = event.track
+            const isScreen = track.label?.toLowerCase().includes('screen') || track.label?.toLowerCase().includes('display') || (window.activeWebRTCStreams?.[studentId]?.camera && window.activeWebRTCStreams[studentId].camera !== event.streams[0])
+            const streamType = isScreen ? 'screen' : 'camera'
+
             window.activeWebRTCStreams = window.activeWebRTCStreams || {}
             window.activeWebRTCStreams[studentId] = {
-              camera: event.streams[0]
+              ...(window.activeWebRTCStreams[studentId] || {}),
+              [streamType]: event.streams[0]
             }
             window.dispatchEvent(new CustomEvent('student-stream-update', {
-              detail: { studentId, stream: event.streams[0], type: 'camera' }
+              detail: { studentId, stream: event.streams[0], type: streamType }
             }))
           }
         }
@@ -115,7 +174,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived }) {
       })
       pcsRef.current = {}
     }
-  }, [examId, onAlertReceived])
+  }, [examId, enabled])
 
   const requestStudentStream = useCallback((studentId) => {
     socketRef.current?.emit('webrtc:request-stream', {
@@ -125,20 +184,16 @@ export function useInvigilatorSocket({ examId, onAlertReceived }) {
   }, [])
 
   const sendWarning = useCallback((studentId, message) => {
-    socketRef.current?.emit('exam:warning', {
-      examId,
-      studentId,
-      message
-    })
+    const payload = { examId, studentId, message }
+    socketRef.current?.emit('exam:warning', payload)
+    socketRef.current?.emit('inv:warn', payload)
     toast.success('Warning dispatched to student')
   }, [examId])
 
   const terminateStudentExam = useCallback((studentId, reason) => {
-    socketRef.current?.emit('exam:terminate', {
-      examId,
-      studentId,
-      reason
-    })
+    const payload = { examId, studentId, reason }
+    socketRef.current?.emit('exam:terminate', payload)
+    socketRef.current?.emit('inv:terminate', payload)
     toast.error('Termination order dispatched to student')
   }, [examId])
 

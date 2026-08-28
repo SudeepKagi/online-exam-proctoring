@@ -167,10 +167,10 @@ export function SiteHeader({ title = 'Console' }) {
   const footerAction = getFooterAction()
 
   return (
-    <header className="h-16 border-b border-[#e2e8f0] flex items-center justify-between px-6 md:px-8 bg-white/95 backdrop-blur sticky top-0 z-20 font-sans">
+    <header className="h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/95 backdrop-blur sticky top-0 z-20 font-sans">
       {/* Title / Breadcrumb context */}
       <div className="flex items-center gap-2">
-        <h2 className="text-sm font-bold text-[#0f172a] capitalize">{currentRole} Workspace</h2>
+        <h2 className="text-sm font-semibold text-slate-900 capitalize">{currentRole} Workspace</h2>
       </div>
 
       {/* Right Controls: Real Notifications & Functional User Dropdown */}
@@ -182,12 +182,12 @@ export function SiteHeader({ title = 'Console' }) {
               setShowNotifications(!showNotifications)
               if (!showNotifications) fetchNotifications()
             }}
-            className="relative p-2 text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc] rounded-xl transition-colors cursor-pointer border border-transparent hover:border-[#e2e8f0]"
+            className="relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-200"
             aria-label="View notifications"
           >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-[#ef4444] text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white animate-in zoom-in">
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-rose-600 text-white text-[10px] font-semibold rounded-full flex items-center justify-center ring-2 ring-white animate-in zoom-in">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -197,9 +197,9 @@ export function SiteHeader({ title = 'Console' }) {
             <div className="absolute right-0 mt-2 w-88 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 font-sans animate-in fade-in zoom-in-95 duration-100">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold text-slate-900">Live Notifications</span>
+                  <span className="text-xs font-semibold text-slate-900">Live Notifications</span>
                   {unreadCount > 0 && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2f80ed] text-[11px] font-extrabold border border-blue-200">
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2f80ed] text-[11px] font-semibold border border-blue-200">
                       {unreadCount} new
                     </span>
                   )}
@@ -207,7 +207,7 @@ export function SiteHeader({ title = 'Console' }) {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-xs font-extrabold text-[#2f80ed] hover:underline cursor-pointer"
+                    className="text-xs font-semibold text-[#2f80ed] hover:underline cursor-pointer"
                   >
                     Mark all read
                   </button>
@@ -225,23 +225,23 @@ export function SiteHeader({ title = 'Console' }) {
                         className={`p-3 rounded-xl flex items-start gap-3 transition-all cursor-pointer ${
                           isRead 
                             ? 'bg-white border border-slate-100 opacity-75 hover:opacity-100' 
-                            : 'bg-[#f8fafc] border border-slate-200 border-l-4 border-l-[#2f80ed] shadow-xs'
+                            : 'bg-slate-50 border border-slate-200 border-l-4 border-l-[#2f80ed] shadow-xs'
                         }`}
                       >
                         {renderIcon(n.type)}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
-                            <p className="text-xs font-extrabold text-slate-900 truncate">
+                            <p className="text-xs font-semibold text-slate-900 truncate">
                               {n.title}
                             </p>
                             {!isRead && (
                               <span className="w-2 h-2 rounded-full bg-[#2f80ed] shrink-0" />
                             )}
                           </div>
-                          <p className="text-[11px] font-semibold text-slate-700 leading-snug mt-1 line-clamp-2">
+                          <p className="text-xs font-normal text-slate-600 leading-snug mt-1 line-clamp-2">
                             {n.desc}
                           </p>
-                          <span className="text-[10px] font-bold text-slate-400 mt-1.5 block">
+                          <span className="text-[11px] font-normal text-slate-400 mt-1.5 block">
                             {formatTime(n.time)}
                           </span>
                         </div>
@@ -253,8 +253,8 @@ export function SiteHeader({ title = 'Console' }) {
                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2 border border-slate-200">
                       <BellOff size={18} />
                     </div>
-                    <p className="text-xs font-extrabold text-slate-900">No Pending Notifications</p>
-                    <p className="text-[11px] font-semibold text-slate-500 mt-0.5">
+                    <p className="text-xs font-semibold text-slate-900">No Pending Notifications</p>
+                    <p className="text-xs font-normal text-slate-500 mt-0.5">
                       You're all caught up! New approvals and assessment events will appear here.
                     </p>
                   </div>
@@ -267,7 +267,7 @@ export function SiteHeader({ title = 'Console' }) {
                     setShowNotifications(false)
                     navigate(footerAction.path)
                   }}
-                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  className="w-full py-2.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] font-semibold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <span>{footerAction.label}</span>
                 </button>
@@ -292,11 +292,11 @@ export function SiteHeader({ title = 'Console' }) {
                 className="w-7 h-7 rounded-full object-cover border border-slate-200"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-extrabold text-xs flex items-center justify-center border border-blue-200">
+              <div className="w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center border border-blue-200">
                 {initials}
               </div>
             )}
-            <span className="text-xs font-extrabold text-slate-900">
+            <span className="text-xs font-semibold text-slate-900">
               {user?.name || (currentRole === 'admin' ? 'Administrator' : 'User')}
             </span>
             <ChevronDown size={14} className="text-slate-400" />
@@ -314,18 +314,18 @@ export function SiteHeader({ title = 'Console' }) {
                       className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs shrink-0"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-white text-[#2f80ed] font-extrabold text-sm flex items-center justify-center border border-blue-200 shadow-xs shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-white text-[#2f80ed] font-bold text-sm flex items-center justify-center border border-blue-200 shadow-xs shrink-0">
                       {initials}
                     </div>
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-extrabold text-slate-900 truncate">{user?.name || 'Authorized Account'}</p>
-                    <p className="text-[11px] font-semibold text-slate-600 truncate mt-0.5">{user?.email || 'user@proctornet.com'}</p>
+                    <p className="text-xs font-semibold text-slate-900 truncate">{user?.name || 'Authorized Account'}</p>
+                    <p className="text-xs font-normal text-slate-500 truncate mt-0.5">{user?.email || 'user@proctornet.com'}</p>
                   </div>
                 </div>
 
                 <div className="pt-1 flex justify-start">
-                  <span className="px-2.5 py-0.5 rounded-md bg-[#2f80ed] text-white text-[10px] font-extrabold tracking-wider uppercase shadow-xs">
+                  <span className="px-2.5 py-0.5 rounded-md bg-[#2f80ed] text-white text-[11px] font-semibold tracking-wider uppercase shadow-xs">
                     {currentRole}
                   </span>
                 </div>
@@ -336,7 +336,7 @@ export function SiteHeader({ title = 'Console' }) {
                 {currentRole === 'admin' && (
                   <button
                     onClick={() => { setShowAccountMenu(false); navigate('/admin/settings') }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                   >
                     <Settings size={16} className="text-[#2f80ed]" />
                     <span>System Settings</span>
@@ -345,7 +345,7 @@ export function SiteHeader({ title = 'Console' }) {
                 {currentRole === 'student' && (
                   <button
                     onClick={() => { setShowAccountMenu(false); navigate('/student/profile') }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                   >
                     <User size={16} className="text-[#2f80ed]" />
                     <span>Candidate Profile</span>
@@ -353,7 +353,7 @@ export function SiteHeader({ title = 'Console' }) {
                 )}
                 <button
                   onClick={() => { setShowAccountMenu(false); navigate('/change-password') }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-700 hover:text-[#2f80ed] hover:bg-blue-50 transition-all cursor-pointer text-left"
                 >
                   <ShieldCheck size={16} className="text-[#2f80ed]" />
                   <span>Change Password</span>
@@ -363,7 +363,7 @@ export function SiteHeader({ title = 'Console' }) {
               <div className="pt-2 border-t border-slate-100 mt-2">
                 <button
                   onClick={() => { setShowAccountMenu(false); logout() }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-extrabold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all cursor-pointer text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all cursor-pointer text-left"
                 >
                   <LogOut size={16} className="text-rose-500" />
                   <span>Sign Out</span>

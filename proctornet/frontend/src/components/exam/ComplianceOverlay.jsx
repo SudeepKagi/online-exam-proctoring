@@ -51,13 +51,13 @@ export function ExamWaitingLobby({ exam, secsToStart, videoRef, cameraOk }) {
           </div>
         </div>
 
-        <h2 className="text-2xl font-extrabold text-foreground mb-1">{exam?.title}</h2>
-        <p className="text-xs text-muted-foreground mb-6 font-medium">{exam?.subject} • Prof. {exam?.faculty?.name || 'Faculty'}</p>
+        <h2 className="text-2xl font-bold text-foreground mb-1">{exam?.title}</h2>
+        <p className="text-sm text-muted-foreground mb-6 font-normal">{exam?.subject || exam?.courseCode}</p>
 
         {/* Countdown timer */}
-        <div className="bg-[#f8fafc] dark:bg-neutral-900 rounded-2xl p-6 border border-border mb-6 max-w-sm mx-auto shadow-xs">
-          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">Exam Starts In</p>
-          <div className={`font-mono text-4xl font-extrabold tracking-wider ${timerColor}`}>
+        <div className="bg-muted/40 rounded-2xl p-6 border border-border/50 mb-6 max-w-sm mx-auto shadow-xs">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">REMAINING TIME TO COMPLIANCE</p>
+          <div className={`font-mono text-4xl font-bold tracking-wider ${timerColor}`}>
             {formatTime(secsToStart)}
           </div>
         </div>

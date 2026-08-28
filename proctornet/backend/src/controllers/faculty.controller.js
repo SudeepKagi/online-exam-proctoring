@@ -169,14 +169,15 @@ async function getExamCredentials(req, res) {
 
 async function releaseResults(req, res) {
   try {
+    const isFaculty = req.user.role === 'faculty'
     const exam = await examService.toggleReleaseResults({
       id: req.params.id,
-      facultyId: req.user.id,
+      facultyId: isFaculty ? req.user.id : null,
       release: req.body.release
     })
     logAudit({
       userId: req.user.id,
-      userRole: 'faculty',
+      userRole: req.user.role || 'faculty',
       action: 'RESULTS_RELEASE_TOGGLED',
       details: `Exam ${req.params.id}: resultsReleased=${exam.resultsReleased}`,
       ipAddress: getClientIp(req)
@@ -212,7 +213,21 @@ async function addQuestion(req, res) {
 
 async function listQuestions(req, res) {
   try {
-    const questions = await questionService.listQuestionsForExam(req.params.examId)
+    // H-8: examId must be present either from the route param (/:examId/questions)
+    // or from the query string. Never allow an unscoped question query.
+    const examId = req.params.examId || req.query.examId
+    if (!examId) {
+      return res.status(400).json({ error: 'examId is required to list questions.' })
+    }
+    // Verify faculty owns this exam
+    const exam = await require('../services/examService').getExamById({
+      id: examId,
+      facultyId: req.user.role === 'admin' ? undefined : req.user.id
+    }).catch(() => null)
+    if (!exam) {
+      return res.status(404).json({ error: 'Exam not found or access denied.' })
+    }
+    const questions = await questionService.listQuestionsForExam(examId)
     res.json({ questions })
   } catch (e) {
     console.error('[listQuestions]', e)
@@ -406,13 +421,14 @@ async function listAllResults(req, res) {
 
 async function getStudentResult(req, res) {
   try {
-    const { examId, studentId } = req.params
+    const { id, examId, studentId } = req.params
     const result = await resultService.getDetailedStudentResult({
-      examId,
-      studentId,
-      facultyId: req.user.id
+      id: id || req.query.id,
+      examId: examId || req.query.examId,
+      studentId: studentId || req.query.studentId,
+      facultyId: req.user.role === 'faculty' ? req.user.id : null
     })
-    res.json(result)
+    res.json({ result, ...result })
   } catch (e) {
     console.error('[getStudentResult]', e)
     res.status(e.status || 500).json({ error: e.message || 'Server error.' })

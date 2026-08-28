@@ -4,8 +4,13 @@ const { exec } = require('child_process')
 const PORT = 49152 // BYOD Agent Port
 
 const BANNED_PROCESS_PATTERNS = [
+  // Remote Desktop & Screen Sharing
   'anydesk', 'teamviewer', 'ultraviewer', 'chrome-remote-desktop',
-  'vnc', 'vncserver', 'rdp', 'mstsc', 'remotedesktop', 'logmein'
+  'vnc', 'vncserver', 'rdp', 'mstsc', 'remotedesktop', 'logmein',
+  // AI Assistive Tools & Desktop Clients
+  'copilot', 'chatgpt', 'claude', 'cursor', 'ollama', 'lmstudio',
+  // Virtual / Injected Cameras & Stream Hijackers
+  'obs64', 'obs32', 'camtasia', 'bandicam'
 ]
 
 const VIRTUAL_CAM_PATTERNS = [
@@ -29,11 +34,10 @@ function getRunningProcesses() {
 }
 
 /**
- * Automatically ensure Windows Network Setup Service is active without requiring student manual commands
+ * Passive network check (Read-Only)
  */
 function ensureWindowsNetworkReadiness() {
-  if (process.platform !== 'win32') return
-  exec('powershell -NoProfile -Command "if ((Get-Service NetSetupSvc -ErrorAction SilentlyContinue).Status -ne \'Running\') { Start-Service NetSetupSvc -ErrorAction SilentlyContinue }"', () => {})
+  // Purely passive - do not alter Windows network services
 }
 
 /**
@@ -66,11 +70,30 @@ function checkVpnNetwork() {
   })
 }
 
+const ALLOWED_AGENT_ORIGINS = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000',
+  process.env.FRONTEND_ORIGIN,
+  process.env.FRONTEND_URL
+].filter(Boolean)
+
 const server = http.createServer(async (req, res) => {
-  // CORS Headers
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin
+
+  // D-10: Origin Security Gate - Reject unauthorized 3rd-party web origins
+  if (origin && !ALLOWED_AGENT_ORIGINS.includes(origin)) {
+    res.writeHead(403, { 'Content-Type': 'application/json' })
+    return res.end(JSON.stringify({ error: 'Origin forbidden. BYOD agent only accepts requests from ProctorNet applications.' }))
+  }
+
+  // Set specific permitted origin (or * for direct non-browser tools)
+  res.setHeader('Access-Control-Allow-Origin', origin || '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204)
@@ -120,6 +143,18 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+function isValidWireGuardConfig(configText) {
+  if (!configText || typeof configText !== 'string') return false
+  if (configText.length > 4096) return false
+  // Reject dangerous directives (PostUp, PreUp, PostDown, PreDown, SaveConfig, command injection)
+  const dangerousPatterns = [/postup/i, /preup/i, /postdown/i, /predown/i, /saveconfig/i, /[;&|`$]/]
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(configText)) return false
+  }
+  // Must contain standard sections
+  return configText.includes('[Interface]') && configText.includes('[Peer]')
+}
+
   if (req.url === '/vpn-activate' && req.method === 'POST') {
     let bodyStr = ''
     req.on('data', chunk => { bodyStr += chunk })
@@ -127,50 +162,70 @@ const server = http.createServer(async (req, res) => {
       try {
         const data = JSON.parse(bodyStr || '{}')
         const configText = data.config || ''
-        const targetIp = data.vpnPeerIp || '10.0.0.6'
+        const targetIp = data.vpnPeerIp || null
         const fs = require('fs')
         const path = require('path')
         const os = require('os')
+
+        if (!isValidWireGuardConfig(configText)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          return res.end(JSON.stringify({
+            success: false,
+            connected: false,
+            error: 'Invalid or unsupported WireGuard configuration.'
+          }))
+        }
 
         if (process.platform === 'win32' && configText) {
           const tempConfPath = path.join(os.tmpdir(), 'proctornet_tunnel.conf')
           fs.writeFileSync(tempConfPath, configText, 'utf8')
 
-          // Attempt 1: Try WireGuard CLI if installed
-          exec(`wireguard.exe /installtunnelservice "${tempConfPath}"`, (err) => {
-            if (err) {
-              // Attempt 2: Auto-configure split-tunnel adapter / loopback IP for Windows
-              const psCmd = `powershell -NoProfile -Command "
-                $addr = '${targetIp}';
-                $adapter = Get-NetAdapter | Where-Object { $_.Name -like '*wireguard*' -or $_.Name -like '*proctor*' -or $_.InterfaceDescription -like '*wintun*' } | Select-Object -First 1;
-                if (!\$adapter) {
-                  New-NetIPAddress -InterfaceAlias 'Loopback Pseudo-Interface 1' -IPAddress \$addr -PrefixLength 24 -ErrorAction SilentlyContinue | Out-Null
+          // Attempt WireGuard CLI service installation if supported
+          try {
+            await new Promise((resolve) => {
+              exec(`wireguard.exe /installtunnelservice "${tempConfPath}"`, (err) => {
+                if (err) {
+                  console.warn('[agent] WireGuard CLI execution note:', err.message)
                 }
-              "`
-              exec(psCmd, () => {})
-            }
-          })
+                resolve()
+              })
+            })
+          } catch (execErr) {
+            console.warn('[agent] WireGuard exec error:', execErr.message)
+          }
         }
 
         // Wait brief moment for interface initialization
-        await new Promise(r => setTimeout(r, 600))
+        await new Promise(r => setTimeout(r, 1200))
         const vpnResult = await checkVpnNetwork()
 
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        return res.end(JSON.stringify({
-          success: true,
-          connected: true,
-          vpnIp: targetIp,
-          message: 'WireGuard VPN tunnel activated successfully!',
-          ...vpnResult
-        }))
+        if (vpnResult && vpnResult.connected) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          return res.end(JSON.stringify({
+            success: true,
+            connected: true,
+            vpnIp: vpnResult.vpnIp || targetIp,
+            message: 'WireGuard VPN tunnel verified and active.',
+            ...vpnResult
+          }))
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          return res.end(JSON.stringify({
+            success: false,
+            connected: false,
+            vpnIp: null,
+            message: 'WireGuard VPN tunnel is not active. Please import your assigned .conf file into WireGuard and click Activate.',
+            ...vpnResult
+          }))
+        }
       } catch (e) {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
+        console.error('[agent] /vpn-activate error:', e.message)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
         return res.end(JSON.stringify({
-          success: true,
-          connected: true,
-          vpnIp: '10.0.0.6',
-          message: 'Standard proctoring security tunnel active.'
+          success: false,
+          connected: false,
+          vpnIp: null,
+          error: 'Failed to activate WireGuard VPN tunnel.'
         }))
       }
     })

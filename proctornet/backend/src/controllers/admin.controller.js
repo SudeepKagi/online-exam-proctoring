@@ -1,4 +1,3 @@
-const bcrypt = require('bcryptjs')
 const adminService = require('../services/adminService')
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
@@ -8,41 +7,9 @@ const {
   sendStudentApprovedEmail,
 } = require('../services/email.service')
 
-/**
- * Admin Controller
- * Thin HTTP transport adapter delegating to adminService.
- */
-
 async function createFaculty(req, res) {
   try {
-    const { name, employeeId, email, department, phone, password } = req.body
-    if (!name || !employeeId || !email || !password) {
-      return res.status(400).json({ error: 'Name, Employee ID, Email, and Password are required.' })
-    }
-
-    const empId = employeeId.trim().toUpperCase()
-    const mail = email.trim().toLowerCase()
-
-    const existing = await global.prisma.faculty.findFirst({
-      where: { OR: [{ employeeId: empId }, { email: mail }] }
-    })
-    if (existing) {
-      return res.status(400).json({ error: 'A faculty member with this Employee ID or Email already exists.' })
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10)
-    const faculty = await global.prisma.faculty.create({
-      data: {
-        name: name.trim(),
-        employeeId: empId,
-        email: mail,
-        department: department?.trim() || 'Computer Science',
-        phone: phone?.trim() || null,
-        password: hashedPassword,
-        isApproved: true,
-        mustChangePassword: true,
-      }
-    })
+    const faculty = await adminService.createFacultyAccount(req.body)
 
     logAudit({
       userId: req.user.id,
@@ -56,42 +23,13 @@ async function createFaculty(req, res) {
     res.status(201).json({ message: 'Faculty account created successfully.', faculty })
   } catch (e) {
     console.error('[createFaculty]', e)
-    res.status(500).json({ error: e.message || 'Failed to create faculty account.' })
+    res.status(e.status || 500).json({ error: e.message || 'Failed to create faculty account.' })
   }
 }
 
 async function createStudent(req, res) {
   try {
-    const { name, usn, email, department, semester, phone, password } = req.body
-    if (!name || !usn || !email || !password) {
-      return res.status(400).json({ error: 'Name, USN, Email, and Password are required.' })
-    }
-
-    const studentUsn = usn.trim().toUpperCase()
-    const mail = email.trim().toLowerCase()
-
-    const existing = await global.prisma.student.findFirst({
-      where: { OR: [{ usn: studentUsn }, { email: mail }] }
-    })
-    if (existing) {
-      return res.status(400).json({ error: 'A student with this USN or Email already exists.' })
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10)
-    const student = await global.prisma.student.create({
-      data: {
-        name: name.trim(),
-        usn: studentUsn,
-        email: mail,
-        department: department?.trim() || 'CSE',
-        semester: parseInt(semester) || 1,
-        phone: phone?.trim() || null,
-        password: hashedPassword,
-        approvalStatus: 'APPROVED',
-        mustChangePassword: true,
-        faceMatchScore: 1.0,
-      }
-    })
+    const student = await adminService.createStudentAccount(req.body)
 
     logAudit({
       userId: req.user.id,
@@ -105,13 +43,11 @@ async function createStudent(req, res) {
     res.status(201).json({ message: 'Student account created successfully.', student })
   } catch (e) {
     console.error('[createStudent]', e)
-    res.status(500).json({ error: e.message || 'Failed to create student account.' })
+    res.status(e.status || 500).json({ error: e.message || 'Failed to create student account.' })
   }
 }
 
-// ════════════════════════════════════════════════════
-// FACULTY MANAGEMENT
-// ════════════════════════════════════════════════════
+// ─── Faculty Management ───
 
 async function listFaculty(req, res) {
   try {
@@ -213,9 +149,7 @@ async function unsuspendFaculty(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// STUDENT MANAGEMENT
-// ════════════════════════════════════════════════════
+// ─── Student Management ───
 
 async function listStudents(req, res) {
   try {
@@ -320,9 +254,7 @@ async function unsuspendStudent(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// EXAM OVERSIGHT
-// ════════════════════════════════════════════════════
+// ─── Exam Oversight ───
 
 async function listExams(req, res) {
   try {
@@ -413,9 +345,7 @@ async function resetExamInvigilatorCredentials(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// INVIGILATOR SESSIONS
-// ════════════════════════════════════════════════════
+// ─── Invigilator Sessions ───
 
 async function listInvigilatorSessions(req, res) {
   try {
@@ -445,9 +375,7 @@ async function revokeInvigilatorSession(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// DASHBOARD STATS
-// ════════════════════════════════════════════════════
+// ─── Dashboard Stats ───
 
 async function getDashboardStats(req, res) {
   try {
@@ -459,9 +387,7 @@ async function getDashboardStats(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// PLATFORM SETTINGS
-// ════════════════════════════════════════════════════
+// ─── Platform Settings ───
 
 async function getSettings(req, res) {
   try {
@@ -492,9 +418,7 @@ async function updateSettings(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// AUDIT LOGS & VIOLATIONS
-// ════════════════════════════════════════════════════
+// ─── Audit Logs & Violations ───
 
 async function getAuditLogs(req, res) {
   try {
@@ -525,9 +449,7 @@ async function getViolations(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// REPORTS
-// ════════════════════════════════════════════════════
+// ─── Reports ───
 
 async function getReports(req, res) {
   try {
@@ -539,9 +461,7 @@ async function getReports(req, res) {
   }
 }
 
-// ════════════════════════════════════════════════════
-// ANNOUNCEMENTS
-// ════════════════════════════════════════════════════
+// ─── Announcements ───
 
 async function createAnnouncement(req, res) {
   try {

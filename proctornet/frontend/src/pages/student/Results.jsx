@@ -247,10 +247,10 @@ export default function StudentResults() {
 
       <div className="space-y-6 font-sans text-slate-900">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
             Exam Results & Integrity Docket
           </h1>
-          <p className="text-sm text-slate-500 font-semibold mt-0.5">
+          <p className="text-sm text-slate-500 font-normal mt-0.5">
             Automated scoring breakdown and proctoring audit log.
           </p>
         </div>
@@ -258,26 +258,26 @@ export default function StudentResults() {
         {/* ── Bento Stat Section: Hero Card + Slim Secondary Row ── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Primary Hero Stat Card */}
-          <Card className="lg:col-span-1 border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden">
+          <Card className="lg:col-span-1 border border-slate-200 bg-white rounded-2xl shadow-xs overflow-hidden">
             <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                <span className="text-xs font-medium uppercase tracking-wider text-slate-400">
                   Cumulative Performance
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-[#2f80ed] border border-blue-200">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-[#2f80ed] border border-blue-200">
                   {formattedResults.length} EXAMS
                 </span>
               </div>
 
               <div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-extrabold font-mono text-slate-900">
+                  <span className="text-3xl font-bold tracking-tight text-slate-900">
                     {avgScore}%
                   </span>
-                  <span className="text-xs font-semibold text-slate-500">average score</span>
+                  <span className="text-xs font-normal text-slate-500">average score</span>
                 </div>
                 {/* Progress bar visual */}
-                <div className="w-full h-2.5 bg-slate-100 rounded-full mt-3 overflow-hidden border border-slate-200">
+                <div className="w-full h-2 bg-slate-100 rounded-full mt-3 overflow-hidden border border-slate-200">
                   <div
                     className="h-full bg-[#2f80ed] rounded-full transition-all"
                     style={{ width: `${Math.min(Math.max(avgScore, 4), 100)}%` }}
@@ -285,12 +285,12 @@ export default function StudentResults() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100 text-slate-500 font-semibold">
+              <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100 text-slate-500 font-normal">
                 <span>
-                  Pass Rate: <strong className="text-slate-900 font-extrabold">{passRate}%</strong>
+                  Pass Rate: <strong className="text-slate-900 font-semibold">{passRate}%</strong>
                 </span>
                 <span>
-                  Highest: <strong className="text-emerald-600 font-extrabold">{bestScore}%</strong>
+                  Highest: <strong className="text-emerald-600 font-semibold">{bestScore}%</strong>
                 </span>
               </div>
             </CardContent>
@@ -298,45 +298,45 @@ export default function StudentResults() {
 
           {/* Slim Secondary Metrics Row */}
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Evaluated Tests
               </span>
-              <p className="text-3xl font-extrabold font-mono text-slate-900 mt-2">
+              <p className="text-3xl font-bold text-slate-900 mt-2 tracking-tight">
                 {formattedResults.length}
               </p>
-              <span className="text-xs text-slate-500 font-semibold mt-1">Submitted sessions</span>
+              <span className="text-xs text-slate-500 font-normal mt-1">Submitted sessions</span>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Passed Assessments
               </span>
-              <p className="text-3xl font-extrabold font-mono text-emerald-600 mt-2">
+              <p className="text-3xl font-bold text-emerald-600 mt-2 tracking-tight">
                 {passedCount}
               </p>
-              <span className="text-xs text-slate-500 font-semibold mt-1">≥ 40% pass criteria</span>
+              <span className="text-xs text-slate-500 font-normal mt-1">≥ 40% pass criteria</span>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
-              <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col justify-between shadow-xs">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">
                 Integrity Flags
               </span>
-              <p className="text-3xl font-extrabold font-mono text-rose-600 mt-2">
+              <p className="text-3xl font-bold text-rose-600 mt-2 tracking-tight">
                 {flaggedCount}
               </p>
-              <span className="text-xs text-slate-500 font-semibold mt-1">Camera / tab alerts</span>
+              <span className="text-xs text-slate-500 font-normal mt-1">Camera / tab alerts</span>
             </div>
           </div>
         </div>
 
         {/* ── Table & Filter Header ── */}
-        <Card className="border border-slate-200 bg-white rounded-2xl shadow-sm overflow-hidden">
+        <Card className="border border-slate-200 bg-white rounded-2xl shadow-xs overflow-hidden">
           <div className="p-5 pb-4 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">Evaluated Candidate Dossier</h3>
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">Filtering and proctoring audit log.</p>
+                <h3 className="text-base font-semibold text-slate-900">Evaluated Candidate Dossier</h3>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">Filtering and proctoring audit log.</p>
               </div>
 
               {/* Functional Search & Filter Bar */}
@@ -350,7 +350,7 @@ export default function StudentResults() {
                       setCurrentPage(1)
                     }}
                     placeholder="Search title or code..."
-                    className="w-full pl-9 pr-3 py-1.5 border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 bg-[#f8fafc] focus:bg-white focus:outline-none focus:border-[#2f80ed] transition"
+                    className="w-full pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-[#2f80ed] transition"
                   />
                 </div>
 
@@ -362,7 +362,7 @@ export default function StudentResults() {
                         setFilterStatus(status)
                         setCurrentPage(1)
                       }}
-                      className={`px-3 py-1 text-xs font-extrabold rounded-lg transition-all cursor-pointer ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                         filterStatus === status
                           ? 'bg-[#2f80ed] text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
@@ -380,59 +380,75 @@ export default function StudentResults() {
             {loading ? (
               <div className="p-8 space-y-3">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="h-10 bg-[#f8fafc] border border-slate-200 rounded-xl animate-pulse" />
+                  <div key={i} className="h-10 bg-slate-50 border border-slate-100 rounded-xl animate-pulse" />
                 ))}
               </div>
             ) : paginated.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 text-xs font-bold">
-                No matching evaluated exams found.
+              <div className="p-12 text-center">
+                <FileText size={36} className="text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-800">
+                  {search || filterStatus !== 'ALL' ? 'No matching evaluation records' : 'No evaluated exams yet'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  {search || filterStatus !== 'ALL'
+                    ? 'Try clearing your search keyword or selecting "ALL" status tab.'
+                    : 'Results will be published here once your assessments are graded.'}
+                </p>
+                {(search || filterStatus !== 'ALL') && (
+                  <button
+                    onClick={() => { setSearch(''); setFilterStatus('ALL') }}
+                    className="mt-4 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
+                  >
+                    Clear Search & Filters
+                  </button>
+                )}
               </div>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-slate-200 bg-[#f8fafc]">
-                    <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-500 pl-5 py-3.5">
+                  <TableRow className="border-b border-slate-200 bg-slate-50/75">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 pl-5 py-3.5">
                       Exam Assessment
                     </TableHead>
-                    <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-500 py-3.5">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                       Evaluation Date
                     </TableHead>
-                    <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-500 py-3.5">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                       Score & Percentage
                     </TableHead>
-                    <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-500 py-3.5">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                       Proctoring Integrity
                     </TableHead>
-                    <TableHead className="text-xs font-extrabold uppercase tracking-wider text-slate-500 py-3.5">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">
                       Status
                     </TableHead>
-                    <TableHead className="text-xs text-right font-extrabold uppercase tracking-wider text-slate-500 pr-5 py-3.5">
+                    <TableHead className="text-xs text-right font-semibold uppercase tracking-wider text-slate-500 pr-5 py-3.5">
                       Action
                     </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100">
                   {paginated.map((r) => (
-                    <TableRow key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                    <TableRow key={r.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Exam Title */}
-                      <TableCell className="text-xs font-extrabold text-slate-900 pl-5 py-3.5">
+                      <TableCell className="text-xs font-medium text-slate-900 pl-5 py-3.5">
                         <div className="flex flex-col">
-                          <span>{r.title}</span>
-                          <span className="text-[10px] text-slate-500 font-semibold mt-0.5">{r.code}</span>
+                          <span className="font-semibold">{r.title}</span>
+                          <span className="text-[11px] text-slate-500 font-normal mt-0.5">{r.code}</span>
                         </div>
                       </TableCell>
 
                       {/* Evaluation Date */}
-                      <TableCell className="text-xs text-slate-500 font-semibold py-3.5">
+                      <TableCell className="text-xs text-slate-500 font-normal py-3.5">
                         {r.date}
                       </TableCell>
 
                       {/* Score & Percentage */}
                       <TableCell className="text-xs py-3.5">
-                        <span className="font-extrabold text-slate-900">{r.score}</span>
-                        <span className="text-slate-400 font-semibold"> / {r.maxScore}</span>
+                        <span className="font-semibold text-slate-900">{r.score}</span>
+                        <span className="text-slate-400 font-normal"> / {r.maxScore}</span>
                         <span
-                          className={`ml-2 font-extrabold ${
+                          className={`ml-2 font-semibold ${
                             r.isPassed ? 'text-emerald-600' : 'text-rose-600'
                           }`}
                         >
@@ -443,11 +459,11 @@ export default function StudentResults() {
                       {/* Proctoring Integrity */}
                       <TableCell className="text-xs py-3.5">
                         {r.flags === 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
                             <CheckCircle size={11} /> 0 Flags (Verified)
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-full">
                             <AlertTriangle size={11} /> {r.flags} Flags Recorded
                           </span>
                         )}
@@ -456,7 +472,7 @@ export default function StudentResults() {
                       {/* Status */}
                       <TableCell className="py-3.5">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider ${
                             r.isPassed
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : 'bg-rose-50 text-rose-700 border border-rose-200'
@@ -470,7 +486,7 @@ export default function StudentResults() {
                       <TableCell className="text-right pr-5 py-3.5">
                         <button
                           onClick={() => setSelected(r)}
-                          className="px-3.5 py-1.5 text-xs font-extrabold rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] transition-all cursor-pointer inline-flex items-center gap-1.5"
                         >
                           <Eye size={13} />
                           <span>Inspect</span>

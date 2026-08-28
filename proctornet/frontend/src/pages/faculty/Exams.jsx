@@ -34,7 +34,7 @@ function ExamStatusBadge({ status }) {
     CANCELLED: 'bg-rose-50 text-rose-700 border-rose-200',
   }
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${map[status] || map.DRAFT}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border ${map[status] || map.DRAFT}`}>
       {status === 'ACTIVE' && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
       {status}
     </span>
@@ -58,8 +58,8 @@ function ExamCard({ exam, onDelete, onCopy }) {
               <BookOpen size={20} className="text-[#2f80ed]" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-extrabold text-slate-900 text-base truncate">{exam.title}</h3>
-              <span className="inline-block mt-1 px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md text-xs font-bold">
+              <h3 className="font-semibold text-slate-900 text-base truncate">{exam.title}</h3>
+              <span className="inline-block mt-1 px-2.5 py-0.5 bg-slate-100 text-slate-600 rounded-md text-xs font-medium">
                 {exam.subject}
               </span>
             </div>
@@ -97,23 +97,23 @@ function ExamCard({ exam, onDelete, onCopy }) {
 
         <div className="grid grid-cols-3 gap-2.5 mb-4">
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Duration</p>
-            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{exam.duration}<span className="text-xs font-semibold text-slate-500"> m</span></p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Duration</p>
+            <p className="text-xs font-semibold text-slate-900 mt-0.5">{exam.duration}<span className="text-xs font-normal text-slate-500"> m</span></p>
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Questions</p>
-            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{exam._count?.questions ?? exam.questionCount ?? (exam.questions ? exam.questions.length : 0)}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Questions</p>
+            <p className="text-xs font-semibold text-slate-900 mt-0.5">{exam._count?.questions ?? exam.questionCount ?? (exam.questions ? exam.questions.length : 0)}</p>
           </div>
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Marks</p>
-            <p className="text-sm font-extrabold text-slate-900 mt-0.5">{exam.totalMarks}</p>
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Marks</p>
+            <p className="text-xs font-semibold text-slate-900 mt-0.5">{exam.totalMarks}</p>
           </div>
         </div>
 
         {startTime && (
           <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600 flex items-center gap-2 mb-4">
             <Calendar size={14} className="text-[#2f80ed] flex-shrink-0" />
-            <span className="font-semibold truncate">
+            <span className="font-normal truncate">
               {startTime.toLocaleDateString()} {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               {endTime && ` → ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
             </span>
@@ -124,7 +124,7 @@ function ExamCard({ exam, onDelete, onCopy }) {
       <div className="flex items-center justify-between pt-3 border-t border-slate-100">
         <ExamStatusBadge status={computedStatus} />
         <button onClick={() => navigate(`/faculty/exams/${exam.id}`)}
-          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] rounded-lg text-xs font-extrabold transition-colors">
+          className="inline-flex items-center gap-1 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#2f80ed] rounded-lg text-xs font-semibold transition-colors cursor-pointer">
           {computedStatus === 'ACTIVE' ? 'Monitor Live' : 'View Details'} <ChevronRight size={13} />
         </button>
       </div>
@@ -206,11 +206,11 @@ export default function FacultyExams() {
       {/* Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">My Exams</h1>
-          <p className="text-sm text-slate-500 font-medium mt-0.5">Manage, schedule, and monitor online examination sessions</p>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">My Exams</h1>
+          <p className="text-sm text-slate-500 font-normal mt-0.5">Manage, schedule, and monitor online examination sessions</p>
         </div>
         <Link to="/faculty/exams/create"
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#2f80ed] hover:bg-[#2563eb] text-white font-extrabold text-sm rounded-xl shadow-md shadow-blue-200 hover:shadow-lg transition-all">
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#2f80ed] hover:bg-[#2563eb] text-white font-semibold text-sm rounded-xl shadow-xs transition-all">
           <Plus size={18} /> Create New Exam
         </Link>
       </div>
@@ -218,22 +218,22 @@ export default function FacultyExams() {
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Total Exams</p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{totalCount}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Total Exams</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{totalCount}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+          <p className="text-xs font-medium uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Active Live
           </p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{activeCount}</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{activeCount}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-[#2f80ed]">Scheduled</p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{scheduledCount}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-[#2f80ed]">Scheduled</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{scheduledCount}</p>
         </div>
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-          <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Ended / Completed</p>
-          <p className="text-2xl font-extrabold text-slate-900 mt-1">{endedCount}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">Ended / Completed</p>
+          <p className="text-2xl font-bold text-slate-900 mt-1">{endedCount}</p>
         </div>
       </div>
 
@@ -245,7 +245,7 @@ export default function FacultyExams() {
             value={search} 
             onChange={e => setSearch(e.target.value)} 
             placeholder="Search exams by title or course subject..."
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f80ed] transition" 
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm font-normal text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2f80ed] transition" 
           />
         </div>
         <div className="flex gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto">
@@ -253,7 +253,7 @@ export default function FacultyExams() {
             <button 
               key={status} 
               onClick={() => setFilterStatus(status)}
-              className={`px-4 py-2 text-xs font-extrabold rounded-lg whitespace-nowrap transition-all ${filterStatus === status ? 'bg-[#2f80ed] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+              className={`px-4 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${filterStatus === status ? 'bg-[#2f80ed] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
             >
               {status || 'All'}
             </button>
@@ -266,15 +266,22 @@ export default function FacultyExams() {
           {[...Array(6)].map((_, i) => <div key={i} className="h-60 bg-slate-100 rounded-2xl animate-pulse" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-sm">
+        <div className="bg-white rounded-2xl border border-slate-200 p-14 text-center shadow-xs">
           <BookOpen size={48} className="text-slate-300 mx-auto mb-3" />
-          <h3 className="text-base font-extrabold text-slate-800">No exams match your criteria</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          <h3 className="text-base font-semibold text-slate-800">No exams match your criteria</h3>
+          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto font-normal">
             {search || filterStatus ? 'Try adjusting your search query or status tab filter.' : 'You have not created any exam sessions yet.'}
           </p>
-          {!search && !filterStatus && (
+          {search || filterStatus ? (
+            <button
+              onClick={() => { setSearch(''); setFilterStatus('') }}
+              className="inline-flex items-center gap-1.5 mt-4 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors shadow-2xs cursor-pointer"
+            >
+              Clear Search & Filters
+            </button>
+          ) : (
             <Link to="/faculty/exams/create"
-              className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-[#2f80ed] text-white font-extrabold text-xs rounded-xl hover:bg-[#2563eb] transition-colors shadow-md shadow-blue-100">
+              className="inline-flex items-center gap-2 mt-5 px-5 py-2.5 bg-[#2f80ed] text-white font-semibold text-xs rounded-xl hover:bg-[#2563eb] transition-colors shadow-xs">
               <Plus size={16} /> Create your first exam
             </Link>
           )}

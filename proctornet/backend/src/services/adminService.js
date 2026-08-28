@@ -673,7 +673,83 @@ async function resetExamInvigilatorCredentialsRecord(id) {
   return getExamInvigilatorCredentialsRecord(id)
 }
 
+async function createFacultyAccount(data) {
+  const { name, employeeId, email, department, phone, password } = data
+  if (!name || !employeeId || !email || !password) {
+    const error = new Error('Name, Employee ID, Email, and Password are required.')
+    error.status = 400
+    throw error
+  }
+
+  const empId = employeeId.trim().toUpperCase()
+  const mail = email.trim().toLowerCase()
+
+  const existing = await global.prisma.faculty.findFirst({
+    where: { OR: [{ employeeId: empId }, { email: mail }] }
+  })
+  if (existing) {
+    const error = new Error('A faculty member with this Employee ID or Email already exists.')
+    error.status = 400
+    throw error
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+  const faculty = await global.prisma.faculty.create({
+    data: {
+      name: name.trim(),
+      employeeId: empId,
+      email: mail,
+      department: department?.trim() || 'Computer Science',
+      phone: phone?.trim() || null,
+      password: hashedPassword,
+      isApproved: true,
+      mustChangePassword: true,
+    }
+  })
+  return faculty
+}
+
+async function createStudentAccount(data) {
+  const { name, usn, email, department, semester, phone, password } = data
+  if (!name || !usn || !email || !password) {
+    const error = new Error('Name, USN, Email, and Password are required.')
+    error.status = 400
+    throw error
+  }
+
+  const studentUsn = usn.trim().toUpperCase()
+  const mail = email.trim().toLowerCase()
+
+  const existing = await global.prisma.student.findFirst({
+    where: { OR: [{ usn: studentUsn }, { email: mail }] }
+  })
+  if (existing) {
+    const error = new Error('A student with this USN or Email already exists.')
+    error.status = 400
+    throw error
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10)
+  const student = await global.prisma.student.create({
+    data: {
+      name: name.trim(),
+      usn: studentUsn,
+      email: mail,
+      department: department?.trim() || 'Computer Science',
+      semester: semester ? parseInt(semester, 10) : 1,
+      phone: phone?.trim() || null,
+      password: hashedPassword,
+      approvalStatus: 'APPROVED',
+      profileStatus: 'VERIFIED',
+      mustChangePassword: true,
+    }
+  })
+  return student
+}
+
 module.exports = {
+  createFacultyAccount,
+  createStudentAccount,
   listFacultyAccounts,
   listPendingFacultyAccounts,
   approveFacultyAccount,

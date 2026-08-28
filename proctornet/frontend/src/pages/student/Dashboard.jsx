@@ -26,7 +26,10 @@ export default function StudentDashboard() {
           api.get('/student/results').catch(() => ({ data: { results: [] } })),
         ])
         const allExams = examRes.data?.exams || examRes.data || []
-        setExams(Array.isArray(allExams) ? allExams : [])
+        const sortedExams = (Array.isArray(allExams) ? allExams : []).sort(
+          (a, b) => new Date(b.createdAt || b.startTime).getTime() - new Date(a.createdAt || a.startTime).getTime()
+        )
+        setExams(sortedExams)
         const allResults = resultsRes.data?.results || resultsRes.data || []
         setResults(Array.isArray(allResults) ? allResults : [])
       } catch (err) {
@@ -78,31 +81,31 @@ export default function StudentDashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                 {greeting()}, {user?.name?.split(' ')[0] || 'Student'}
               </h1>
               {isVerified && (
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold border border-emerald-200 flex items-center gap-1.5">
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200 flex items-center gap-1.5">
                   <CheckCircle2 size={13} /> VERIFIED
                 </span>
               )}
             </div>
-            <p className="text-sm text-slate-500 font-semibold mt-1">
-              USN: <span className="font-mono font-extrabold text-slate-900">{user?.usn || user?.rollNo || 'N/A'}</span> • {user?.department || 'Electronics & Communication'} • Semester {user?.semester || 6}
+            <p className="text-sm text-slate-500 font-normal mt-1">
+              USN: <span className="font-mono font-semibold text-slate-900">{user?.usn || user?.rollNo || 'N/A'}</span> • {user?.department || 'Electronics & Communication'} • Semester {user?.semester || 6}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/student/device-check')}
-              className="bg-blue-50 hover:bg-blue-100 text-[#2f80ed] text-xs font-extrabold py-2.5 px-4 rounded-xl border border-blue-200 transition-colors cursor-pointer flex items-center gap-2"
+              className="bg-blue-50 hover:bg-blue-100 text-[#2f80ed] text-xs font-semibold py-2.5 px-4 rounded-xl border border-blue-200 transition-colors cursor-pointer flex items-center gap-2"
             >
               <ShieldCheck size={16} />
               <span>BYOD Diagnostic</span>
             </button>
             <button
               onClick={() => navigate('/student/exams')}
-              className="bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-extrabold py-2.5 px-5 rounded-xl shadow-md shadow-blue-200 transition-all cursor-pointer flex items-center gap-2"
+              className="bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-semibold py-2.5 px-5 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
             >
               <BookOpen size={16} />
               <span>All Examinations</span>
@@ -114,21 +117,21 @@ export default function StudentDashboard() {
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                 <User className="w-5 h-5 text-[#2f80ed]" />
                 Personal & Academic Profile
               </h3>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
                 Verified candidate credentials and institutional enrollment details.
               </p>
             </div>
             {isVerified ? (
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold uppercase tracking-wider border border-emerald-200 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold uppercase tracking-wider border border-emerald-200 flex items-center gap-1.5">
                 <CheckCircle2 size={13} />
                 VERIFIED CANDIDATE
               </span>
             ) : (
-              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-extrabold uppercase tracking-wider border border-amber-200 flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold uppercase tracking-wider border border-amber-200 flex items-center gap-1.5">
                 <Clock size={13} />
                 UNDER ADMIN REVIEW
               </span>
@@ -136,32 +139,32 @@ export default function StudentDashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-            <div className="p-4 rounded-xl bg-[#f8fafc] border border-slate-200">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <User size={14} className="text-slate-400" /> Full Name
               </span>
-              <p className="font-extrabold text-slate-900 mt-1 text-sm">{user?.name || 'Candidate'}</p>
+              <p className="font-semibold text-slate-900 mt-1 text-sm">{user?.name || 'Candidate'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#f8fafc] border border-slate-200">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <GraduationCap size={14} className="text-slate-400" /> Roll No / USN
               </span>
-              <p className="font-extrabold text-slate-900 font-mono mt-1 text-sm">{user?.usn || user?.rollNo || 'N/A'}</p>
+              <p className="font-semibold text-slate-900 font-mono mt-1 text-sm">{user?.usn || user?.rollNo || 'N/A'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#f8fafc] border border-slate-200">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Mail size={14} className="text-slate-400" /> Institutional Email
               </span>
-              <p className="font-extrabold text-slate-900 truncate mt-1 text-sm">{user?.email || 'N/A'}</p>
+              <p className="font-semibold text-slate-900 truncate mt-1 text-sm">{user?.email || 'N/A'}</p>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#f8fafc] border border-slate-200">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                 <Building size={14} className="text-slate-400" /> Department & Semester
               </span>
-              <p className="font-extrabold text-slate-900 truncate mt-1 text-sm">{user?.department || 'Electronics & Communication'} • Sem {user?.semester || 6}</p>
+              <p className="font-semibold text-slate-900 truncate mt-1 text-sm">{user?.department || 'Electronics & Communication'} • Sem {user?.semester || 6}</p>
             </div>
           </div>
         </div>

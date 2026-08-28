@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/context/AuthContext'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 // Pages
 import LandingPage from '@/pages/LandingPage'
@@ -34,6 +35,7 @@ import CreateExam from '@/pages/faculty/CreateExam'
 import ExamDetail from '@/pages/faculty/ExamDetail'
 import QuestionPool from '@/pages/faculty/QuestionPool'
 import FacultyResults from '@/pages/faculty/Results'
+import StudentDossier from '@/pages/faculty/StudentDossier'
 
 // Student
 import StudentDashboard from '@/pages/student/Dashboard'
@@ -62,81 +64,94 @@ export default function App() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#333',
-              color: '#fff',
+              background: '#091a2f',
+              color: '#ffffff',
+              borderRadius: '12px',
+              border: '1px solid #13335f',
+              fontSize: '13px',
+              fontWeight: 600,
+              fontFamily: 'Satoshi, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+              boxShadow: '0 4px 12px -2px rgba(9, 26, 47, 0.15)'
             },
             success: {
-              style: {
-                background: '#10B981',
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#ffffff',
               },
             },
             error: {
-              style: {
-                background: '#EF4444',
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#ffffff',
               },
             },
           }}
         />
-        <Routes>
-          {/* Landing / Redirect based on role */}
-          <Route path="/" element={<LandingPage />} />
-          
-          {/* Auth */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/faculty/login" element={<FacultyLogin />} />
-          <Route path="/student/login" element={<StudentLogin />} />
-          <Route path="/invigilator-login" element={<InvLogin />} />
+        <ErrorBoundary>
+          <Routes>
+            {/* Landing / Redirect based on role */}
+            <Route path="/" element={<LandingPage />} />
+            
+            {/* Auth */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/faculty/login" element={<FacultyLogin />} />
+            <Route path="/student/login" element={<StudentLogin />} />
+            <Route path="/invigilator-login" element={<InvLogin />} />
+            <Route path="/invigilator/login" element={<InvLogin />} />
 
-          {/* Forced Password Change */}
-          <Route path="/change-password" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><ChangePassword /></ProtectedRoute>} />
+            {/* Forced Password Change */}
+            <Route path="/change-password" element={<ProtectedRoute allowedRoles={['student', 'faculty', 'admin']}><ChangePassword /></ProtectedRoute>} />
 
-          {/* Admin Routes */}
-          <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/create-student" element={<ProtectedRoute allowedRoles={['admin']}><CreateStudentAccount /></ProtectedRoute>} />
-          <Route path="/admin/create-faculty" element={<ProtectedRoute allowedRoles={['admin']}><CreateFacultyAccount /></ProtectedRoute>} />
-          <Route path="/admin/bulk-create" element={<ProtectedRoute allowedRoles={['admin']}><BulkCreateAccounts /></ProtectedRoute>} />
-          <Route path="/admin/enrollment-review" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentReview /></ProtectedRoute>} />
-          <Route path="/admin/faculty" element={<ProtectedRoute allowedRoles={['admin']}><AdminFaculty /></ProtectedRoute>} />
-          <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudents /></ProtectedRoute>} />
-          <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['admin']}><AdminExams /></ProtectedRoute>} />
-          <Route path="/admin/invigilators" element={<ProtectedRoute allowedRoles={['admin']}><AdminInvigilators /></ProtectedRoute>} />
-          <Route path="/admin/violations" element={<ProtectedRoute allowedRoles={['admin']}><AdminViolations /></ProtectedRoute>} />
-          <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnnouncements /></ProtectedRoute>} />
-          <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
-          <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><AdminAuditLogs /></ProtectedRoute>} />
-          <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><AdminReports /></ProtectedRoute>} />
+            {/* Admin Routes */}
+            <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/create-student" element={<ProtectedRoute allowedRoles={['admin']}><CreateStudentAccount /></ProtectedRoute>} />
+            <Route path="/admin/create-faculty" element={<ProtectedRoute allowedRoles={['admin']}><CreateFacultyAccount /></ProtectedRoute>} />
+            <Route path="/admin/bulk-create" element={<ProtectedRoute allowedRoles={['admin']}><BulkCreateAccounts /></ProtectedRoute>} />
+            <Route path="/admin/enrollment-review" element={<ProtectedRoute allowedRoles={['admin']}><AdminEnrollmentReview /></ProtectedRoute>} />
+            <Route path="/admin/faculty" element={<ProtectedRoute allowedRoles={['admin']}><AdminFaculty /></ProtectedRoute>} />
+            <Route path="/admin/students" element={<ProtectedRoute allowedRoles={['admin']}><AdminStudents /></ProtectedRoute>} />
+            <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['admin']}><AdminExams /></ProtectedRoute>} />
+            <Route path="/admin/invigilators" element={<ProtectedRoute allowedRoles={['admin']}><AdminInvigilators /></ProtectedRoute>} />
+            <Route path="/admin/violations" element={<ProtectedRoute allowedRoles={['admin']}><AdminViolations /></ProtectedRoute>} />
+            <Route path="/admin/announcements" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnnouncements /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute allowedRoles={['admin']}><AdminSettings /></ProtectedRoute>} />
+            <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['admin']}><AdminAuditLogs /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={['admin']}><AdminReports /></ProtectedRoute>} />
 
-          {/* Faculty Routes */}
-          <Route path="/faculty/dashboard" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyDashboard /></ProtectedRoute>} />
-          <Route path="/faculty/students" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyStudents /></ProtectedRoute>} />
-          <Route path="/faculty/exams" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyExams /></ProtectedRoute>} />
-          <Route path="/faculty/exams/create" element={<ProtectedRoute allowedRoles={['faculty']}><CreateExam /></ProtectedRoute>} />
-          <Route path="/faculty/exams/:id" element={<ProtectedRoute allowedRoles={['faculty']}><ExamDetail /></ProtectedRoute>} />
-          <Route path="/faculty/exams/:id/questions" element={<ProtectedRoute allowedRoles={['faculty']}><QuestionPool /></ProtectedRoute>} />
-          <Route path="/faculty/results" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyResults /></ProtectedRoute>} />
+            {/* Faculty Routes */}
+            <Route path="/faculty/dashboard" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyDashboard /></ProtectedRoute>} />
+            <Route path="/faculty/students" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyStudents /></ProtectedRoute>} />
+            <Route path="/faculty/exams" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyExams /></ProtectedRoute>} />
+            <Route path="/faculty/exams/create" element={<ProtectedRoute allowedRoles={['faculty']}><CreateExam /></ProtectedRoute>} />
+            <Route path="/faculty/exams/:id" element={<ProtectedRoute allowedRoles={['faculty']}><ExamDetail /></ProtectedRoute>} />
+            <Route path="/faculty/exams/:id/edit" element={<ProtectedRoute allowedRoles={['faculty']}><ExamDetail /></ProtectedRoute>} />
+            <Route path="/faculty/exams/:id/questions" element={<ProtectedRoute allowedRoles={['faculty']}><QuestionPool /></ProtectedRoute>} />
+            <Route path="/faculty/results" element={<ProtectedRoute allowedRoles={['faculty']}><FacultyResults /></ProtectedRoute>} />
+            <Route path="/faculty/results/:id" element={<ProtectedRoute allowedRoles={['faculty']}><StudentDossier /></ProtectedRoute>} />
 
-          {/* Student Routes */}
-          <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
-          <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
-          <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
-          <Route path="/student/device-check" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
-          <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
-          <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
-          <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
-          <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
-          <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
-          <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
-          <Route path="/student/support" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
-          <Route path="/student/rules" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
+            {/* Student Routes */}
+            <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['student']}><StudentDashboard /></ProtectedRoute>} />
+            <Route path="/student/profile" element={<ProtectedRoute allowedRoles={['student']}><StudentProfile /></ProtectedRoute>} />
+            <Route path="/student/enrollment" element={<ProtectedRoute allowedRoles={['student']}><StudentEnrollment /></ProtectedRoute>} />
+            <Route path="/student/device-check" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
+            <Route path="/student/device-check/:examId" element={<ProtectedRoute allowedRoles={['student']}><BYODDeviceCheck /></ProtectedRoute>} />
+            <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['student']}><StudentExams /></ProtectedRoute>} />
+            <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['student']}><ExamLobby /></ProtectedRoute>} />
+            <Route path="/student/exams/:id/security" element={<ProtectedRoute allowedRoles={['student']}><SecurityCheck /></ProtectedRoute>} />
+            <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['student']}><ExamInterface /></ProtectedRoute>} />
+            <Route path="/student/results" element={<ProtectedRoute allowedRoles={['student']}><StudentResults /></ProtectedRoute>} />
+            <Route path="/student/support" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
+            <Route path="/student/rules" element={<ProtectedRoute allowedRoles={['student']}><SupportAndRules /></ProtectedRoute>} />
 
-          {/* Invigilator Routes */}
-          <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
-          <Route path="/invigilator/live-grid/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
-          <Route path="/invigilator/exam/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
+            {/* Invigilator Routes */}
+            <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
+            <Route path="/invigilator/live-grid/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
+            <Route path="/invigilator/exam/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
 
-          {/* Catch-all redirect to Landing */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Catch-all redirect to Landing */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   )

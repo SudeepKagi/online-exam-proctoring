@@ -49,9 +49,35 @@ server:
     local-zone: "socket.$EXAM_DOMAIN" transparent
     local-data: "socket.$EXAM_DOMAIN A $EXAM_IP"
 
+    # Whitelist Exam Infrastructure Dependencies
+    local-zone: "supabase.co." transparent
+    local-zone: "supabase.com." transparent
+    local-zone: "cloudinary.com." transparent
+    local-zone: "livekit.cloud." transparent
+
 forward-zone:
     name: "$EXAM_DOMAIN"
     forward-addr: $EXAM_IP
+
+forward-zone:
+    name: "supabase.co"
+    forward-addr: 1.1.1.1
+    forward-addr: 8.8.8.8
+
+forward-zone:
+    name: "supabase.com"
+    forward-addr: 1.1.1.1
+    forward-addr: 8.8.8.8
+
+forward-zone:
+    name: "cloudinary.com"
+    forward-addr: 1.1.1.1
+    forward-addr: 8.8.8.8
+
+forward-zone:
+    name: "livekit.cloud"
+    forward-addr: 1.1.1.1
+    forward-addr: 8.8.8.8
 EOF
 
 # Restart Unbound

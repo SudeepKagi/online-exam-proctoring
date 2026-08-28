@@ -129,6 +129,7 @@ model Exam {
   isPaused            Boolean              @default(false)
   pausedBy            String?
   pauseReason         String?
+  resultsReleased     Boolean              @default(false)
   createdAt           DateTime             @default(now())
   questions           Question[]
   studentExams        StudentExam[]
@@ -152,9 +153,12 @@ model Question {
   difficulty    String    @default("MEDIUM")
   codeTemplate  String?
   codeLanguage  String?
+  sampleInput   String?
+  sampleOutput  String?
   testCases     Json?
   wordLimitMin  Int?
   wordLimitMax  Int?
+  order         Int       @default(0)
   tags          String[]
   createdAt     DateTime  @default(now())
   answers       Answer[]
@@ -176,8 +180,8 @@ model StudentExam {
   status               String                @default("PENDING")
   flagCount            Int                   @default(0)
   startedAt            DateTime?
-
   submittedAt          DateTime?
+  acknowledgedAt       DateTime?
   terminationReason    String?
   createdAt            DateTime              @default(now())
   answers              Answer[]

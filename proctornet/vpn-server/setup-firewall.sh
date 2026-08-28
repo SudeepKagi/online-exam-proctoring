@@ -35,22 +35,18 @@ iptables -A INPUT -p tcp --dport 22 -j ACCEPT
 iptables -A INPUT -i wg0 -p udp --dport 53 -j ACCEPT
 iptables -A INPUT -i wg0 -p tcp --dport 53 -j ACCEPT
 
-# VPN clients: ONLY allow traffic to exam server
-iptables -A FORWARD -i wg0 \
-  -d $EXAM_SERVER_IP -p tcp \
-  --dport 443 -j ACCEPT
+# VPN clients: Allow HTTPS (web & APIs), HTTP, and Supabase Database ports
+iptables -A FORWARD -i wg0 -p tcp --dport 443 -j ACCEPT
+iptables -A FORWARD -i wg0 -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -i wg0 -p tcp --dport 6543 -j ACCEPT
+iptables -A FORWARD -i wg0 -p tcp --dport 5432 -j ACCEPT
 
-iptables -A FORWARD -i wg0 \
-  -d $EXAM_SERVER_IP -p tcp \
-  --dport 80 -j ACCEPT
-
-# Block ALL other outbound traffic from VPN
+# Block ALL other outbound traffic from VPN (Blocks non-whitelisted ports & protocols)
 iptables -A FORWARD -i wg0 -j DROP
 
-# NAT for VPN traffic to exam server
+# NAT for VPN traffic to whitelisted endpoints
 iptables -t nat -A POSTROUTING \
-  -o eth0 -s 10.0.0.0/24 \
-  -d $EXAM_SERVER_IP -j MASQUERADE
+  -o eth0 -s 10.0.0.0/24 -j MASQUERADE
 
 # Save rules
 iptables-save > /etc/iptables/rules.v4

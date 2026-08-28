@@ -117,8 +117,8 @@ export function AppSidebar() {
             className="w-8 h-8 rounded-xl object-contain shrink-0 shadow-xs"
           />
           <div className="min-w-0">
-            <span className="font-extrabold text-base text-[#0f172a] tracking-tight block">ProctorNet</span>
-            <p className="text-[11px] font-bold text-[#64748b] capitalize leading-none mt-1">
+            <span className="font-bold text-base text-slate-900 tracking-tight block">ProctorNet</span>
+            <p className="text-xs font-medium text-slate-500 capitalize leading-none mt-1">
               {currentRole} Console
             </p>
           </div>
@@ -128,7 +128,7 @@ export function AppSidebar() {
         <div className="px-4 py-4 space-y-6">
           {navGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-1">
-              <p className="text-[11px] font-extrabold text-[#64748b] tracking-wider px-3 mb-2 uppercase">
+              <p className="text-[11px] font-semibold text-slate-400 tracking-wider px-3 mb-2 uppercase">
                 {group.section}
               </p>
 
@@ -138,10 +138,10 @@ export function AppSidebar() {
                   to={to}
                   end={to.endsWith('dashboard')}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] transition-all ${
+                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all ${
                       isActive
-                        ? 'bg-[#2f80ed] text-white font-extrabold shadow-sm'
-                        : 'text-[#475569] hover:text-[#0f172a] hover:bg-[#f1f5f9] font-bold'
+                        ? 'bg-[#2f80ed] text-white font-semibold shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
                     }`
                   }
                 >
@@ -155,28 +155,28 @@ export function AppSidebar() {
       </div>
 
       {/* Footer User Profile & Sign Out */}
-      <div className="p-4 border-t border-[#f1f5f9]">
-        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
+      <div className="p-4 border-t border-slate-100">
+        <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
           <div className="flex items-center gap-2.5 min-w-0">
             {user?.facePhotoUrl ? (
               <img
                 src={user.facePhotoUrl}
                 alt={user?.name || 'User'}
-                className="w-8 h-8 rounded-full object-cover border border-[#e2e8f0] shrink-0"
+                className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-[#eff6ff] text-[#2f80ed] font-extrabold text-xs flex items-center justify-center shrink-0 border border-[#dbeafe]">
+              <div className="w-8 h-8 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center shrink-0 border border-blue-100">
                 {initials}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-xs font-extrabold text-[#0f172a] truncate">{user?.name || 'System Administrator'}</p>
-              <p className="text-[11px] font-semibold text-[#64748b] truncate">{user?.email || 'admin@proctornet.com'}</p>
+              <p className="text-xs font-semibold text-slate-900 truncate">{user?.name || 'System Administrator'}</p>
+              <p className="text-xs font-normal text-slate-500 truncate">{user?.email || 'admin@proctornet.com'}</p>
             </div>
           </div>
           <button
             onClick={() => { logout(); navigate('/') }}
-            className="text-[#64748b] hover:text-[#ef4444] p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-destructive p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer"
             title="Sign Out"
             aria-label="Sign out"
           >

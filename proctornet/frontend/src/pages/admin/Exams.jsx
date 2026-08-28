@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import ErrorState from '@/components/common/ErrorState'
+import { getErrorMessage } from '@/utils/errorUtils'
 import {
   BookOpen,
   Search,
@@ -27,28 +29,28 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 function ExamStatusBadge({ status }) {
   if (status === 'ACTIVE' || status === 'IN_PROGRESS') {
     return (
-      <span className="px-2.5 py-0.5 rounded-full bg-[#ecfdf5] text-[#10b981] border border-[#a7f3d0] font-mono text-[10px] font-bold flex items-center gap-1.5 w-fit">
-        <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full animate-pulse" />
+      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold flex items-center gap-1.5 w-fit">
+        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
         ACTIVE NOW
       </span>
     )
   }
   if (status === 'SCHEDULED' || status === 'PUBLISHED') {
     return (
-      <span className="px-2.5 py-0.5 rounded-full bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] font-mono text-[10px] font-bold">
+      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-[#2f80ed] border border-blue-200 text-[11px] font-semibold">
         SCHEDULED
       </span>
     )
   }
   if (status === 'ENDED' || status === 'COMPLETED') {
     return (
-      <span className="px-2.5 py-0.5 rounded-full bg-[#f1f5f9] text-[#64748b] border border-[#e2e8f0] font-mono text-[10px] font-bold">
+      <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold">
         ENDED
       </span>
     )
   }
   return (
-    <span className="px-2.5 py-0.5 rounded-full bg-[#fffbeb] text-[#d97706] border border-[#fde68a] font-mono text-[10px] font-bold">
+    <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-semibold">
       {status}
     </span>
   )
@@ -81,6 +83,7 @@ export default function AdminExams() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [error, setError] = useState(null)
 
   // Credentials Modal State
   const [credentialsModalOpen, setCredentialsModalOpen] = useState(false)
@@ -92,11 +95,13 @@ export default function AdminExams() {
 
   const fetchAll = async () => {
     setLoading(true)
+    setError(null)
     try {
       const res = await api.get('/admin/exams')
       setExams(res.data.exams || res.data || [])
-    } catch {
-      console.error('Failed to load exams')
+    } catch (err) {
+      console.error('[AdminExams] Fetch error:', err)
+      setError(getErrorMessage(err, 'Failed to load examination registry.'))
     } finally {
       setLoading(false)
     }
@@ -195,14 +200,14 @@ export default function AdminExams() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-[#0f172a]">All Platform Exams</h1>
-            <p className="text-xs text-[#64748b] mt-0.5">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">All Platform Exams</h1>
+            <p className="text-sm text-slate-500 font-normal mt-0.5">
               Platform-wide exam scheduling, live timing windows, and invigilator access management
             </p>
           </div>
           <button
             onClick={fetchAll}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold border border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] rounded-xl shadow-xs transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold border border-slate-200 bg-white hover:bg-slate-50 text-slate-900 rounded-xl shadow-xs transition-colors cursor-pointer"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             <span>Refresh</span>
@@ -279,37 +284,61 @@ export default function AdminExams() {
                 <div key={i} className="h-12 bg-[#f8fafc] border border-[#e2e8f0] rounded-xl animate-pulse" />
               ))}
             </div>
+          ) : error ? (
+            <div className="p-6">
+              <ErrorState
+                title="Unable to Retrieve Exam Records"
+                message={error}
+                onRetry={fetchAll}
+              />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="p-16 text-center">
-              <BookOpen size={36} className="text-[#94a3b8] mx-auto mb-2" />
-              <p className="text-[#0f172a] font-bold text-sm">No exams found</p>
-              <p className="text-xs text-[#64748b] mt-1">No exam sessions match your filter criteria.</p>
+              <BookOpen size={36} className="text-[#94a3b8] mx-auto mb-2 opacity-50" />
+              <p className="text-[#0f172a] font-bold text-sm">
+                {search || filterStatus ? 'No exams match your search or filter' : 'No exams found'}
+              </p>
+              <p className="text-xs text-[#64748b] mt-1">
+                {search || filterStatus
+                  ? 'Try clearing your search query or switching to the "All Exams" tab.'
+                  : 'No exam sessions exist in the system yet.'}
+              </p>
+              {(search || filterStatus) && (
+                <div>
+                  <button
+                    onClick={() => { setSearch(''); setFilterStatus('') }}
+                    className="mt-4 px-4 py-2 border border-[#e2e8f0] bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
+                  >
+                    Clear Search & Filters
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-[#f1f5f9] bg-[#f8fafc]/70">
-                    <TableHead className="text-xs font-bold text-[#64748b] pl-5 py-3.5">Exam Title</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Subject</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Faculty</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Duration</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Status</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] py-3.5">Schedule & Timing</TableHead>
-                    <TableHead className="text-xs font-bold text-[#64748b] text-right pr-5 py-3.5">Actions</TableHead>
+                  <TableRow className="border-b border-slate-200 bg-slate-50/75">
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 pl-5 py-3.5">Exam Title</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Subject</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Faculty</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Duration</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Status</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 py-3.5">Schedule & Timing</TableHead>
+                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 text-right pr-5 py-3.5">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-[#f1f5f9]">
+                <TableBody className="divide-y divide-slate-100">
                   {filtered.map((e) => (
-                    <TableRow key={e.id} className="hover:bg-[#f8fafc] transition-colors">
+                    <TableRow key={e.id} className="hover:bg-slate-50/70 transition-colors">
                       {/* Exam Title */}
-                      <TableCell className="font-bold text-xs text-[#0f172a] pl-5 py-3.5">
+                      <TableCell className="font-semibold text-xs text-slate-900 pl-5 py-3.5">
                         {e.title}
                       </TableCell>
 
                       {/* Subject */}
                       <TableCell className="py-3.5">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
                           {e.subject}
                         </span>
                       </TableCell>

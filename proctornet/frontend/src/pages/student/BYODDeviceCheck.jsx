@@ -472,7 +472,7 @@ export default function BYODDeviceCheck() {
               <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider block">
                 System Readiness
               </span>
-              <span className="text-sm font-extrabold font-mono text-[#0f172a]">
+              <span className="text-sm font-semibold font-mono text-[#0f172a]">
                 {readinessPercent}% Ready ({checksPassedCount}/4 Passed)
               </span>
             </div>

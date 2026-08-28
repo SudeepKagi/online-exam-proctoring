@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
+import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 function StatusBadge({ isApproved, isSuspended }) {
   if (isSuspended) return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">Suspended</Badge>
@@ -31,58 +32,50 @@ function IDCardModal({ faculty, onClose, onApprove, onReject }) {
           </button>
         </div>
 
-        <div className="bg-background border border-border rounded-xl overflow-hidden mb-4 flex items-center justify-center min-h-[160px]">
-          {faculty.idCardPhotoUrl && faculty.idCardPhotoUrl !== 'placeholder_id' ? (
-            <img src={faculty.idCardPhotoUrl} alt="ID Card" className="w-full object-contain max-h-60" />
-          ) : (
-            <div className="h-40 flex items-center justify-center text-slate-500 text-xs font-mono">No ID card photo uploaded</div>
+        <div className="space-y-4">
+          <div className="bg-neutral-900 rounded-xl overflow-hidden aspect-[16/10] border border-border flex items-center justify-center">
+            {faculty.idCardPhotoUrl ? (
+              <img src={faculty.idCardPhotoUrl} alt="ID Card" className="w-full h-full object-contain" />
+            ) : (
+              <div className="text-center text-muted-foreground">
+                <AlertTriangle size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-xs">No ID Card uploaded</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div><span className="text-muted-foreground">Name:</span> <strong className="text-foreground">{faculty.name}</strong></div>
+            <div><span className="text-muted-foreground">Emp ID:</span> <strong className="text-foreground font-mono">{faculty.employeeId}</strong></div>
+            <div><span className="text-muted-foreground">Dept:</span> <strong className="text-foreground">{faculty.department}</strong></div>
+            <div><span className="text-muted-foreground">Email:</span> <strong className="text-foreground font-mono text-[11px]">{faculty.email}</strong></div>
+          </div>
+
+          {showReject && (
+            <div className="pt-2">
+              <label className="text-xs text-muted-foreground block mb-1">Rejection Reason</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Explain why this registration is being rejected..."
+                className="w-full h-20 p-2.5 text-xs bg-background border border-border rounded-xl resize-none text-foreground outline-none focus:border-rose-500"
+              />
+            </div>
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-5 text-xs">
-          <div className="bg-background border border-border rounded-xl p-3">
-            <p className="text-[10px] font-mono text-slate-500 uppercase">Employee ID</p>
-            <p className="font-semibold text-foreground mt-0.5 font-mono">{faculty.employeeId}</p>
-          </div>
-          <div className="bg-background border border-border rounded-xl p-3">
-            <p className="text-[10px] font-mono text-slate-500 uppercase">Department</p>
-            <p className="font-semibold text-foreground mt-0.5">{faculty.department}</p>
-          </div>
-          <div className="bg-background border border-border rounded-xl p-3">
-            <p className="text-[10px] font-mono text-slate-500 uppercase">Email</p>
-            <p className="font-semibold text-foreground/90 truncate mt-0.5">{faculty.email}</p>
-          </div>
-          <div className="bg-background border border-border rounded-xl p-3">
-            <p className="text-[10px] font-mono text-slate-500 uppercase">Submitted</p>
-            <p className="font-semibold text-foreground/90 mt-0.5">{new Date(faculty.createdAt).toLocaleDateString()}</p>
-          </div>
-        </div>
-
-        {showReject && (
-          <div className="mb-4">
-            <label className="block text-xs font-semibold text-foreground/90 mb-1.5">Rejection Reason</label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Provide a reason for rejection..."
-              className="w-full px-3.5 py-2.5 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-rose-500 resize-none"
-              rows={3}
-            />
-          </div>
-        )}
-
-        <div className="flex gap-3">
+        <div className="flex gap-3 mt-6 pt-4 border-t border-border">
           {!showReject ? (
             <>
               <button
                 onClick={() => onApprove(faculty.id)}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-600/20"
+                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <CheckCircle size={15} /> Approve Account
               </button>
               <button
                 onClick={() => setShowReject(true)}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <XCircle size={15} /> Reject
               </button>
@@ -94,14 +87,14 @@ function IDCardModal({ faculty, onClose, onApprove, onReject }) {
                   setShowReject(false)
                   setRejectReason('')
                 }}
-                className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900 transition-colors"
+                className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={() => onReject(faculty.id, rejectReason)}
                 disabled={!rejectReason.trim()}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50"
+                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50 cursor-pointer"
               >
                 Confirm Rejection
               </button>
@@ -121,6 +114,7 @@ export default function AdminFaculty() {
   const [search, setSearch] = useState('')
   const [filterDept, setFilterDept] = useState('')
   const [selectedFaculty, setSelectedFaculty] = useState(null)
+  const [confirmAction, setConfirmAction] = useState({ open: false, faculty: null, type: null, loading: false })
 
   const fetchAll = async () => {
     setLoading(true)
@@ -164,23 +158,41 @@ export default function AdminFaculty() {
     }
   }
 
-  const handleSuspend = async (id) => {
-    try {
-      await api.patch(`/admin/faculty/${id}/suspend`)
-      toast.success('Faculty suspended')
-      fetchAll()
-    } catch {
-      toast.error('Failed to suspend faculty')
-    }
+  const handleRequestSuspend = (faculty) => {
+    setConfirmAction({
+      open: true,
+      faculty,
+      type: 'suspend',
+      loading: false
+    })
   }
 
-  const handleUnsuspend = async (id) => {
+  const handleRequestUnsuspend = (faculty) => {
+    setConfirmAction({
+      open: true,
+      faculty,
+      type: 'unsuspend',
+      loading: false
+    })
+  }
+
+  const handleExecuteAction = async () => {
+    const { faculty, type } = confirmAction
+    if (!faculty) return
+    setConfirmAction(prev => ({ ...prev, loading: true }))
     try {
-      await api.patch(`/admin/faculty/${id}/unsuspend`)
-      toast.success('Faculty reactivated')
+      if (type === 'suspend') {
+        await api.patch(`/admin/faculty/${faculty.id}/suspend`)
+        toast.success(`Faculty ${faculty.name} suspended`)
+      } else {
+        await api.patch(`/admin/faculty/${faculty.id}/unsuspend`)
+        toast.success(`Faculty ${faculty.name} reactivated`)
+      }
       fetchAll()
     } catch {
-      toast.error('Failed to reactivate faculty')
+      toast.error(`Failed to ${type} faculty`)
+    } finally {
+      setConfirmAction({ open: false, faculty: null, type: null, loading: false })
     }
   }
 
@@ -271,9 +283,27 @@ export default function AdminFaculty() {
         {tab === 'pending' && !loading && (
           filtered.length === 0 ? (
             <Card className="bg-card border-border p-12 text-center shadow-xl">
-              <CheckCircle size={36} className="text-emerald-400 mx-auto mb-3" />
-              <p className="text-foreground font-semibold text-sm">No pending approvals</p>
-              <p className="text-xs text-slate-500 mt-1">All faculty applications have been processed.</p>
+              {search || filterDept ? (
+                <div>
+                  <Users size={36} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-foreground font-semibold text-sm">No pending faculty match your filter</p>
+                  <p className="text-xs text-slate-500 mt-1">Try adjusting your search terms or department selection.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setSearch(''); setFilterDept('') }}
+                    className="mt-4 text-xs"
+                  >
+                    Clear Search & Filters
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <CheckCircle size={36} className="text-emerald-400 mx-auto mb-3" />
+                  <p className="text-foreground font-semibold text-sm">No pending approvals</p>
+                  <p className="text-xs text-slate-500 mt-1">All faculty applications have been processed.</p>
+                </div>
+              )}
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -310,7 +340,7 @@ export default function AdminFaculty() {
                     <Button
                       size="sm"
                       onClick={() => setSelectedFaculty(f)}
-                      className="w-full text-xs font-mono bg-primary hover:bg-primary text-white"
+                      className="w-full text-xs font-mono bg-primary hover:bg-primary text-white cursor-pointer"
                     >
                       <Eye size={13} className="mr-1.5" /> Review Application
                     </Button>
@@ -323,43 +353,78 @@ export default function AdminFaculty() {
 
         {/* All Faculty Table View */}
         {tab === 'all' && !loading && (
-          <Card className="bg-card border-border shadow-xl overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-border bg-background">
-                  <TableHead className="text-xs text-muted-foreground font-mono">Faculty Name</TableHead>
-                  <TableHead className="text-xs text-muted-foreground font-mono">Employee ID</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Department</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Email</TableHead>
-                  <TableHead className="text-xs text-muted-foreground">Status</TableHead>
-                  <TableHead className="text-xs text-right text-muted-foreground">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((f) => (
-                  <TableRow key={f.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
-                    <TableCell className="font-semibold text-xs text-foreground">{f.name}</TableCell>
-                    <TableCell className="font-mono text-xs text-foreground/90">{f.employeeId}</TableCell>
-                    <TableCell><Badge variant="outline" className="text-xs text-foreground/90 border-border bg-background">{f.department}</Badge></TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">{f.email}</TableCell>
-                    <TableCell><StatusBadge isApproved={f.isApproved} isSuspended={f.isSuspended} /></TableCell>
-                    <TableCell className="text-right">
-                      {f.isSuspended ? (
-                        <Button size="sm" variant="ghost" onClick={() => handleUnsuspend(f.id)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10">
-                          <UserCheck size={13} className="mr-1" /> Reactivate
-                        </Button>
-                      ) : (
-                        <Button size="sm" variant="ghost" onClick={() => handleSuspend(f.id)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10">
-                          <UserMinus size={13} className="mr-1" /> Suspend
-                        </Button>
-                      )}
-                    </TableCell>
+          filtered.length === 0 ? (
+            <Card className="bg-card border-border p-12 text-center shadow-xl">
+              <Users size={36} className="text-muted-foreground mx-auto mb-3 opacity-50" />
+              <p className="text-foreground font-semibold text-sm">No faculty records match your criteria</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {search || filterDept ? 'Try clearing your search keyword or department filter.' : 'No faculty records exist yet in the database.'}
+              </p>
+              {(search || filterDept) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => { setSearch(''); setFilterDept('') }}
+                  className="mt-4 text-xs cursor-pointer"
+                >
+                  Clear Search & Filters
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <Card className="bg-card border-border shadow-xl overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-background">
+                    <TableHead className="text-xs text-muted-foreground font-mono">Faculty Name</TableHead>
+                    <TableHead className="text-xs text-muted-foreground font-mono">Employee ID</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Department</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Email</TableHead>
+                    <TableHead className="text-xs text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-xs text-right text-muted-foreground">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Card>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((f) => (
+                    <TableRow key={f.id} className="border-b border-border/60 hover:bg-neutral-50 dark:bg-neutral-800">
+                      <TableCell className="font-semibold text-xs text-foreground">{f.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-foreground/90">{f.employeeId}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-xs text-foreground/90 border-border bg-background">{f.department}</Badge></TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{f.email}</TableCell>
+                      <TableCell><StatusBadge isApproved={f.isApproved} isSuspended={f.isSuspended} /></TableCell>
+                      <TableCell className="text-right">
+                        {f.isSuspended ? (
+                          <Button size="sm" variant="ghost" onClick={() => handleRequestUnsuspend(f)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
+                            <UserCheck size={13} className="mr-1" /> Reactivate
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="ghost" onClick={() => handleRequestSuspend(f)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10 cursor-pointer">
+                            <UserMinus size={13} className="mr-1" /> Suspend
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Card>
+          )
         )}
+
+        {/* Confirmation Dialog for Destructive Suspend/Reactivate Actions */}
+        <ConfirmDialog
+          isOpen={confirmAction.open}
+          title={confirmAction.type === 'suspend' ? `Suspend Faculty Account: ${confirmAction.faculty?.name}?` : `Reactivate Faculty Account: ${confirmAction.faculty?.name}?`}
+          description={confirmAction.type === 'suspend'
+            ? `Suspending this faculty account (${confirmAction.faculty?.employeeId}) will immediately revoke their access to create, publish, and evaluate examinations.`
+            : `Reactivating this account will restore full faculty examination management privileges.`}
+          confirmText={confirmAction.type === 'suspend' ? 'Yes, Suspend Account' : 'Yes, Reactivate Account'}
+          cancelText="Cancel"
+          variant={confirmAction.type === 'suspend' ? 'destructive' : 'primary'}
+          loading={confirmAction.loading}
+          onConfirm={handleExecuteAction}
+          onClose={() => setConfirmAction({ open: false, faculty: null, type: null, loading: false })}
+        />
       </div>
     </DashboardLayout>
   )

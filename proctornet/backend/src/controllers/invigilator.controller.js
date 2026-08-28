@@ -1,78 +1,15 @@
-const bcrypt = require('bcryptjs')
-const jwt    = require('jsonwebtoken')
-
 /**
- * POST /api/invigilator/login
- * Verify invigilator credentials for a specific exam and create a temporary session.
+ * H-7: This route delegates to the canonical invigilator login in auth.controller.js.
+ * The canonical implementation handles credential verification, session creation,
+ * JWT issuance, optional ID card upload, and audit logging in one place.
  */
+const { invigilatorLogin: canonicalInvigilatorLogin } = require('./auth.controller')
+
 async function login(req, res) {
-  try {
-    const { invId, invPassword, examId, idCardPhoto } = req.body
-
-    if (!invId || !invPassword || !examId) {
-      return res.status(400).json({ error: 'Exam ID, Invigilator ID, and password are required.' })
-    }
-
-    // 1. Find exam
-    const exam = await global.prisma.exam.findUnique({ where: { id: examId } })
-    if (!exam) return res.status(404).json({ error: 'Exam not found.' })
-
-    // 2. Verify Invigilator Credentials
-    if (exam.invId !== invId) {
-      return res.status(401).json({ error: 'Invalid Invigilator ID.' })
-    }
-
-    const isMatch = await bcrypt.compare(invPassword, exam.invPasswordHash)
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid exam password.' })
-    }
-
-    // 3. Handle ID card photo (optional)
-    let idCardPhotoUrl = null
-    if (idCardPhoto) {
-      try {
-        const { uploadBase64 } = require('../services/cloudinary.service')
-        idCardPhotoUrl = await uploadBase64(idCardPhoto, 'invigilator-ids')
-      } catch (e) {
-        console.warn('ID card upload skipped:', e.message)
-      }
-    }
-
-    // 4. Create Session
-    const session = await global.prisma.invigilatorSession.create({
-      data: {
-        examId,
-        invId,
-        idCardPhotoUrl,
-        sessionExpiry: new Date(new Date(exam.endTime).getTime() + 60 * 60 * 1000),
-        isActive: true
-      }
-    })
-
-    // 5. Generate Temp JWT with invigilator role
-    const token = jwt.sign(
-      { id: session.id, role: 'invigilator', examId: exam.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '6h' }
-    )
-
-    res.json({
-      message: 'Logged in successfully.',
-      token,
-      role: 'invigilator',
-      session: {
-        id: session.id,
-        examId: exam.id,
-        examTitle: exam.title,
-        expiry: session.sessionExpiry
-      }
-    })
-
-  } catch (e) {
-    console.error('[invigilatorLogin]', e)
-    res.status(500).json({ error: 'Server error during invigilator login.' })
-  }
+  return canonicalInvigilatorLogin(req, res)
 }
+
+
 
 /**
  * GET /api/invigilator/exam/:examId
@@ -80,9 +17,27 @@ async function login(req, res) {
  */
 async function getExamInfo(req, res) {
   try {
-    const { examId } = req.params
+    let { examId } = req.params
 
-    if (req.user.examId !== examId) {
+    if (!examId || examId === 'active' || examId === 'undefined' || examId === 'null') {
+      if (req.user.examId) {
+        examId = req.user.examId
+      } else {
+        const activeExam = await global.prisma.exam.findFirst({
+          where: { status: { in: ['ACTIVE', 'SCHEDULED', 'IN_PROGRESS', 'PUBLISHED'] } },
+          orderBy: [{ createdAt: 'desc' }, { startTime: 'desc' }]
+        })
+        if (activeExam) {
+          examId = activeExam.id
+        }
+      }
+    }
+
+    if (!examId) {
+      return res.status(404).json({ error: 'No active examination found.' })
+    }
+
+    if (req.user.role === 'invigilator' && req.user.examId && req.user.examId !== examId) {
       return res.status(403).json({ error: 'Not authorized for this exam.' })
     }
 
@@ -104,7 +59,22 @@ async function getExamInfo(req, res) {
     })
     if (!exam) return res.status(404).json({ error: 'Exam not found.' })
 
+    // Security C-9: Scope candidate discovery at the database level to candidates enrolled or matching criteria for this exam
+    const whereConditions = {
+      OR: [
+        { studentExams: { some: { examId } } }
+      ]
+    }
+    if (exam.allowedDepartments && exam.allowedDepartments.length > 0 && !exam.allowedDepartments.some(d => String(d).toUpperCase() === 'ALL')) {
+      const deptCondition = { department: { in: exam.allowedDepartments } }
+      if (exam.allowedSemesters && exam.allowedSemesters.length > 0 && !exam.allowedSemesters.includes(0)) {
+        deptCondition.semester = { in: exam.allowedSemesters }
+      }
+      whereConditions.OR.push(deptCondition)
+    }
+
     const eligibleStudents = await global.prisma.student.findMany({
+      where: whereConditions,
       select: { id: true, name: true, usn: true, facePhotoUrl: true, department: true, semester: true }
     })
 
@@ -118,7 +88,28 @@ async function getExamInfo(req, res) {
         startedAt: true,
         submittedAt: true,
         assignedQuestionIds: true,
-        answers: { select: { id: true } }
+        answers: { select: { id: true } },
+        identityVerification: {
+          select: {
+            liveFaceMatchScore: true,
+            status: true
+          }
+        },
+        evidenceLogs: {
+          select: {
+            id: true,
+            eventType: true,
+            timestamp: true,
+            screenshotUrl: true,
+            cameraFrameUrl: true,
+            details: true,
+            severity: true,
+            invAction: true,
+            invActionNote: true
+          },
+          orderBy: { timestamp: 'desc' },
+          take: 50
+        }
       }
     })
 
@@ -134,21 +125,39 @@ async function getExamInfo(req, res) {
         ? se.assignedQuestionIds.length
         : totalQuestions
 
+      const rawLogs = se?.evidenceLogs || []
+      const liveMemory = global.latestLiveFrames?.get(student.id) || {}
+      const latestCameraFrame = liveMemory.camera || rawLogs.find(e => e.cameraFrameUrl)?.cameraFrameUrl || null
+      const latestScreenshot = liveMemory.screen || rawLogs.find(e => e.screenshotUrl)?.screenshotUrl || null
+
       return {
         studentId: student.id,
         name: student.name,
         usn: student.usn,
         facePhotoUrl: student.facePhotoUrl,
         status: se ? se.status : 'NOT_STARTED',
-        flagCount: se ? se.flagCount || 0 : 0,
-        events: [],
+        flagCount: se ? Math.max(se.flagCount || 0, rawLogs.length) : 0,
+        events: rawLogs.map(e => ({
+          id: e.id,
+          type: e.eventType,
+          eventType: e.eventType,
+          details: e.details,
+          severity: e.severity || 'MEDIUM',
+          timestamp: e.timestamp,
+          screenshotUrl: e.screenshotUrl,
+          cameraFrameUrl: e.cameraFrameUrl,
+          invAction: e.invAction,
+          invActionNote: e.invActionNote
+        })),
+        latestFrame: latestCameraFrame,
+        latestScreen: latestScreenshot,
         progress: {
           answered: se ? (se.answers?.length || 0) : 0,
           total
         },
         startedAt: se ? se.startedAt : null,
-        faceMatchScore: 0.95,
-        identityStatus: 'VERIFIED'
+        faceMatchScore: se?.identityVerification?.liveFaceMatchScore ?? (se ? 0.95 : null),
+        identityStatus: se?.identityVerification?.status ?? (se ? 'VERIFIED' : 'NOT_VERIFIED')
       }
     })
 
@@ -227,58 +236,153 @@ async function warnStudent(req, res) {
   }
 }
 
+const { transitionExamSession, SESSION_STATES } = require('../services/sessionStateMachine')
+
+async function verifyExamAuthorization(req, targetExamId) {
+  if (!req.user) {
+    const error = new Error('Authentication required.')
+    error.status = 401
+    throw error
+  }
+
+  if (req.user.role === 'admin') {
+    return true
+  }
+
+  if (req.user.role === 'invigilator') {
+    if (!req.user.examId) {
+      const error = new Error('Invigilator has no assigned examination.')
+      error.status = 403
+      throw error
+    }
+    if (targetExamId && targetExamId !== req.user.examId) {
+      const error = new Error('Not authorized for this examination.')
+      error.status = 403
+      throw error
+    }
+    return true
+  }
+
+  if (req.user.role === 'faculty') {
+    if (!targetExamId) return true
+    const exam = await global.prisma.exam.findFirst({
+      where: { id: targetExamId, facultyId: req.user.id }
+    })
+    if (!exam) {
+      const error = new Error('Not authorized to manage this examination.')
+      error.status = 403
+      throw error
+    }
+    return true
+  }
+
+  const error = new Error('Unauthorized role.')
+  error.status = 403
+  throw error
+}
+
 /**
  * POST /api/invigilator/exam/:examId/terminate/:studentId
- * Terminate a student's exam
+ * Terminate a student's exam session
  */
 async function terminateStudent(req, res) {
   try {
     const { examId, studentId } = req.params
     const { reason } = req.body
 
-    if (req.user.examId !== examId) return res.status(403).json({ error: 'Not authorized.' })
+    await verifyExamAuthorization(req, examId)
 
-    // Force-submit the student's exam
     const session = await global.prisma.studentExam.findFirst({
-      where: { studentId, examId, status: 'ACTIVE' }
+      where: { studentId, examId }
     })
 
-    if (session) {
-      await global.prisma.studentExam.update({
-        where: { id: session.id },
-        data: { status: 'TERMINATED', submittedAt: new Date() }
-      })
-
-      await global.prisma.evidenceLog.create({
-        data: {
-          studentExamId: session.id,
-          eventType: 'EXAM_TERMINATED',
-          severity: 'CRITICAL',
-          details: `Terminated by invigilator. Reason: ${reason || 'N/A'}`,
-          timestamp: new Date()
-        }
-      }).catch(() => {})
+    if (!session) {
+      return res.status(404).json({ error: 'Student session not found for this exam.' })
     }
 
-    // Socket notification (invigilator frontend also emits this)
     const io = req.app.get('io')
-    if (io) {
-      io.to(`student:${studentId}`).emit('exam:terminated', {
-        reason: reason || 'Terminated by invigilator',
-        timestamp: new Date().toISOString()
-      })
-    }
+    const result = await transitionExamSession({
+      studentExamId: session.id,
+      targetStatus: SESSION_STATES.TERMINATED,
+      reason: reason || 'Terminated by Invigilator for academic integrity violation.',
+      reqUser: req.user,
+      io
+    })
 
-    res.json({ success: true, message: 'Student exam terminated.' })
+    res.json({ success: true, message: 'Student exam terminated.', ...result })
   } catch (e) {
     console.error('[terminateStudent]', e)
-    res.status(500).json({ error: 'Failed to terminate.' })
+    res.status(e.status || 500).json({ error: e.message || 'Failed to terminate.' })
+  }
+}
+
+/**
+ * POST /api/invigilator/terminate-student/:studentId
+ * Generic termination endpoint matching frontend action dispatcher
+ */
+async function terminateStudentGeneral(req, res) {
+  try {
+    const { studentId } = req.params
+    const { reason, examId: bodyExamId } = req.body
+    const targetExamId = req.user.role === 'invigilator' ? req.user.examId : (bodyExamId || req.user.examId)
+
+    await verifyExamAuthorization(req, targetExamId)
+
+    const query = { studentId }
+    if (targetExamId) query.examId = targetExamId
+
+    const session = await global.prisma.studentExam.findFirst({
+      where: query,
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!session) {
+      return res.status(404).json({ error: 'Active candidate exam record not found.' })
+    }
+
+    const io = req.app.get('io')
+    const result = await transitionExamSession({
+      studentExamId: session.id,
+      targetStatus: SESSION_STATES.TERMINATED,
+      reason: reason || 'Terminated by Invigilator for academic integrity violation.',
+      reqUser: req.user,
+      io
+    })
+
+    res.json({ success: true, message: 'Candidate session terminated.', ...result })
+  } catch (e) {
+    console.error('[terminateStudentGeneral]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to terminate candidate.' })
   }
 }
 
 async function sendWarningGeneral(req, res) {
   try {
-    const { studentId, message } = req.body
+    const { studentId, message, examId: bodyExamId } = req.body
+    const targetExamId = req.user.role === 'invigilator' ? req.user.examId : (bodyExamId || req.user.examId)
+
+    await verifyExamAuthorization(req, targetExamId)
+
+    // Verify session
+    if (studentId && targetExamId) {
+      const session = await global.prisma.studentExam.findFirst({
+        where: { studentId, examId: targetExamId }
+      })
+      if (session) {
+        await global.prisma.evidenceLog.create({
+          data: {
+            studentExamId: session.id,
+            eventType: 'INVIGILATOR_WARNING',
+            severity: 'MEDIUM',
+            details: `Warning: ${message || 'Please maintain full focus on the examination.'}`,
+            invAction: 'WARNING',
+            invActionNote: message,
+            timestamp: new Date()
+          }
+        }).catch(e => console.warn('[sendWarningGeneral] log note:', e.message))
+      }
+    }
+
     const io = req.app.get('io')
     if (io && studentId) {
       io.to(`student:${studentId}`).emit('exam:warning', {
@@ -287,25 +391,81 @@ async function sendWarningGeneral(req, res) {
         timestamp: new Date().toISOString()
       })
     }
-    res.json({ success: true, message: 'Warning dispatched' })
+    res.json({ success: true, message: 'Warning dispatched successfully.' })
   } catch (e) {
-    res.status(500).json({ error: 'Failed to send warning' })
+    res.status(e.status || 500).json({ error: e.message || 'Failed to send warning.' })
   }
 }
 
 async function pauseStudentGeneral(req, res) {
   try {
     const { studentId } = req.params
-    const io = req.app.get('io')
-    if (io && studentId) {
-      io.to(`student:${studentId}`).emit('exam:paused', {
-        reason: 'Paused by invigilator',
-        timestamp: new Date().toISOString()
-      })
+    const { reason, examId: bodyExamId } = req.body
+    const targetExamId = req.user.role === 'invigilator' ? req.user.examId : (bodyExamId || req.user.examId)
+
+    await verifyExamAuthorization(req, targetExamId)
+
+    const query = { studentId }
+    if (targetExamId) query.examId = targetExamId
+
+    const session = await global.prisma.studentExam.findFirst({
+      where: query,
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!session) {
+      return res.status(404).json({ error: 'Active candidate exam record not found.' })
     }
-    res.json({ success: true, message: 'Exam session paused' })
+
+    const io = req.app.get('io')
+    const result = await transitionExamSession({
+      studentExamId: session.id,
+      targetStatus: SESSION_STATES.SUSPENDED,
+      reason: reason || 'Examination temporarily suspended by proctor.',
+      reqUser: req.user,
+      io
+    })
+
+    res.json({ success: true, message: 'Exam session suspended.', ...result })
   } catch (e) {
-    res.status(500).json({ error: 'Failed to pause session' })
+    console.error('[pauseStudentGeneral]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to pause session.' })
+  }
+}
+
+async function resumeStudentGeneral(req, res) {
+  try {
+    const { studentId } = req.params
+    const { examId: bodyExamId } = req.body
+    const targetExamId = req.user.role === 'invigilator' ? req.user.examId : (bodyExamId || req.user.examId)
+
+    await verifyExamAuthorization(req, targetExamId)
+
+    const query = { studentId }
+    if (targetExamId) query.examId = targetExamId
+
+    const session = await global.prisma.studentExam.findFirst({
+      where: query,
+      orderBy: { createdAt: 'desc' }
+    })
+
+    if (!session) {
+      return res.status(404).json({ error: 'Candidate exam record not found.' })
+    }
+
+    const io = req.app.get('io')
+    const result = await transitionExamSession({
+      studentExamId: session.id,
+      targetStatus: SESSION_STATES.ACTIVE,
+      reason: 'Session resumed by proctor.',
+      reqUser: req.user,
+      io
+    })
+
+    res.json({ success: true, message: 'Exam session resumed.', ...result })
+  } catch (e) {
+    console.error('[resumeStudentGeneral]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to resume session.' })
   }
 }
 
@@ -315,6 +475,8 @@ module.exports = {
   getExamStudents,
   warnStudent,
   terminateStudent,
+  terminateStudentGeneral,
   sendWarningGeneral,
-  pauseStudentGeneral
+  pauseStudentGeneral,
+  resumeStudentGeneral
 }

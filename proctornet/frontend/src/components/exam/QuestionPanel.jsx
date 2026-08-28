@@ -37,10 +37,10 @@ export default function QuestionPanel({
         <div className="flex items-start justify-between mb-6">
           <div>
             <div className="flex items-center gap-2.5 mb-2 font-sans">
-              <span className="text-xs font-bold text-primary uppercase tracking-wide">
+              <span className="text-xs font-semibold text-primary uppercase tracking-wide">
                 Question {currentIdx + 1} of {questions.length}
               </span>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+              <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-semibold border ${
                 currentQ.difficulty === 'HARD'
                   ? 'bg-[#fef2f2] text-[#b91c1c] border-[#fecaca]'
                   : currentQ.difficulty === 'EASY'
@@ -49,11 +49,11 @@ export default function QuestionPanel({
               }`}>
                 {currentQ.difficulty || 'MEDIUM'}
               </span>
-              <span className="text-xs text-muted-foreground font-medium">{currentQ.marks} marks</span>
+              <span className="text-xs text-muted-foreground font-normal">{currentQ.marks} marks</span>
             </div>
-            <p className="text-base font-bold text-foreground leading-relaxed max-w-3xl font-sans">
+            <h2 className="text-lg font-bold text-foreground leading-relaxed max-w-3xl font-sans">
               {currentQ.questionText}
-            </p>
+            </h2>
           </div>
 
           <button
@@ -220,22 +220,22 @@ export default function QuestionPanel({
         <button
           disabled={currentIdx === 0}
           onClick={() => setCurrentIdx(i => Math.max(0, i - 1))}
-          className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-neutral-50 dark:hover:bg-neutral-800 text-foreground border border-border text-xs font-bold rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 bg-card hover:bg-neutral-50 dark:hover:bg-neutral-800 text-foreground border border-border text-xs font-semibold rounded-xl disabled:opacity-40 transition-colors cursor-pointer"
         >
           <ChevronLeft size={16} /> Previous
         </button>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
           <CheckCircle size={15} className="text-[#16a34a]" />
           <span>
-            <span className="text-[#16a34a] font-bold">{answeredCount}</span>/{questions.length} Answered
+            <span className="text-[#16a34a] font-semibold">{answeredCount}</span>/{questions.length} Answered
           </span>
         </div>
 
         {currentIdx < questions.length - 1 ? (
           <button
             onClick={() => setCurrentIdx(i => Math.min(questions.length - 1, i + 1))}
-            className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer"
           >
             Next <ChevronRight size={16} />
           </button>
@@ -243,7 +243,7 @@ export default function QuestionPanel({
           <button
             disabled={submitting}
             onClick={onSubmitRequest}
-            className="flex items-center gap-2 px-5 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-bold rounded-xl disabled:opacity-60 transition-all shadow-xs cursor-pointer"
+            className="flex items-center gap-2 px-5 py-2 bg-[#16a34a] hover:bg-[#15803d] text-white text-xs font-semibold rounded-xl disabled:opacity-60 transition-all shadow-xs cursor-pointer"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

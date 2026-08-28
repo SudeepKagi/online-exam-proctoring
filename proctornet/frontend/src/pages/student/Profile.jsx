@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import { toast } from 'sonner'
+import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import {
   User, Key, Camera, Upload, Save, CheckCircle2,
@@ -175,11 +175,11 @@ export default function StudentProfile() {
               <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#2f80ed] flex items-center justify-center border border-blue-100">
                 <User size={18} />
               </div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                 Candidate Profile & Biometrics
               </h1>
             </div>
-            <p className="text-sm text-slate-500 font-semibold mt-1">
+            <p className="text-sm text-slate-500 font-normal mt-1">
               Manage your verified student credentials, academic department, and examination ID photos.
             </p>
           </div>
@@ -187,7 +187,7 @@ export default function StudentProfile() {
           <button
             type="button"
             onClick={() => navigate('/student/enrollment')}
-            className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] text-xs font-extrabold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center gap-2 shrink-0"
+            className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center gap-2 shrink-0"
           >
             <ShieldCheck size={16} className="text-emerald-600" />
             <span>Biometric Verification Portal</span>
@@ -196,71 +196,71 @@ export default function StudentProfile() {
 
         <form onSubmit={handleSubmit} className="space-y-6 text-xs">
           {/* 1. Academic & Personal Identification */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-sm space-y-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                   <GraduationCap className="w-5 h-5 text-[#2f80ed]" />
                   Academic & Personal Information
                 </h3>
-                <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
                   Ensure your USN, department, and semester match your official university registry.
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold uppercase tracking-wider border border-emerald-200">
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold uppercase tracking-wider border border-emerald-200">
                 Enrolled Candidate
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Candidate Full Name</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Candidate Full Name</label>
                 <input
                   type="text"
                   value={name}
                   disabled
-                  className="w-full px-3.5 py-2.5 bg-slate-100 border-1.5 border-slate-300 rounded-xl text-xs text-slate-700 font-extrabold cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">University USN / Roll No.</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">University USN / Roll No.</label>
                 <input
                   type="text"
                   value={usn}
                   disabled
-                  className="w-full px-3.5 py-2.5 bg-slate-100 border-1.5 border-slate-300 rounded-xl text-xs font-mono uppercase text-slate-700 font-extrabold cursor-not-allowed"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-700 font-medium cursor-not-allowed"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Institutional Email Address</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Institutional Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Contact Phone Number</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Contact Phone Number</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                   placeholder="+91 9876543210"
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Department / Stream</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Department / Stream</label>
                 <select
                   value={department}
                   onChange={e => setDepartment(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
                 >
                   <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
                   <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
@@ -273,11 +273,11 @@ export default function StudentProfile() {
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Current Semester</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Current Semester</label>
                 <select
                   value={semester}
                   onChange={e => setSemester(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
                     <option key={s} value={s}>Semester {s}</option>
@@ -288,27 +288,27 @@ export default function StudentProfile() {
           </div>
 
           {/* 2. Password Change */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-sm space-y-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
             <div className="pb-3 border-b border-slate-100">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                 <Key className="w-5 h-5 text-amber-500" />
                 Security & Password Update
               </h3>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
                 Leave blank if you do not wish to change your existing password.
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Current Password</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Current Password</label>
                 <div className="relative">
                   <input
                     type={showCurrentPass ? 'text' : 'password'}
                     value={currentPassword}
                     onChange={e => setCurrentPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-3.5 pr-9 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                    className="w-full pl-3.5 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                   />
                   <button
                     type="button"
@@ -321,14 +321,14 @@ export default function StudentProfile() {
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">New Password</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">New Password</label>
                 <div className="relative">
                   <input
                     type={showNewPass ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     placeholder="Minimum 6 characters"
-                    className="w-full pl-3.5 pr-9 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                    className="w-full pl-3.5 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                   />
                   <button
                     type="button"
@@ -341,13 +341,13 @@ export default function StudentProfile() {
               </div>
 
               <div>
-                <label className="text-xs font-extrabold uppercase tracking-wider text-slate-600 mb-1.5 block">Confirm New Password</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Confirm New Password</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Re-enter new password"
-                  className="w-full px-3.5 py-2.5 bg-[#f8fafc] border-1.5 border-slate-300 rounded-xl text-xs font-bold text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -356,33 +356,33 @@ export default function StudentProfile() {
           {/* 3. Biometric Verification Reference Photos */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Live Reference Face */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                     <Camera className="w-5 h-5 text-[#2f80ed]" />
                     Reference Facial Photo
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-extrabold border border-emerald-200">
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
                     Registered
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-semibold">
+                <p className="text-xs text-slate-500 font-normal">
                   Matched against your live camera stream during pre-exam identity verification.
                 </p>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50/75 rounded-xl border border-slate-200">
                 {facePhotoUrl ? (
                   <img
                     src={facePhotoUrl}
                     alt="Enrolled Face"
-                    className="w-40 h-40 object-cover rounded-xl border border-slate-300 shadow-xs"
+                    className="w-40 h-40 object-cover rounded-xl border border-slate-200 shadow-xs"
                   />
                 ) : (
                   <div className="w-40 h-40 rounded-xl bg-white border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
                     <User size={36} />
-                    <span className="text-xs font-bold mt-2">No photo captured</span>
+                    <span className="text-xs font-medium mt-2">No photo captured</span>
                   </div>
                 )}
               </div>
@@ -390,7 +390,7 @@ export default function StudentProfile() {
               <button
                 type="button"
                 onClick={startCamera}
-                className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] text-xs font-extrabold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 <Camera size={15} />
                 <span>Re-capture Live Photo</span>
@@ -398,38 +398,38 @@ export default function StudentProfile() {
             </div>
 
             {/* Institutional ID Document Card */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <h4 className="text-base font-semibold text-slate-900 flex items-center gap-2">
                     <ShieldCheck className="w-5 h-5 text-purple-600" />
                     Official ID Document
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-extrabold border border-emerald-200">
+                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
                     ID Uploaded
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 font-semibold">
+                <p className="text-xs text-slate-500 font-normal">
                   Used for automated OCR extraction and candidate identity verification.
                 </p>
               </div>
 
-              <div className="flex flex-col items-center justify-center p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
+              <div className="flex flex-col items-center justify-center p-4 bg-slate-50/75 rounded-xl border border-slate-200">
                 {idCardPhotoUrl ? (
                   <img
                     src={idCardPhotoUrl}
                     alt="Institutional ID"
-                    className="w-48 h-32 object-cover rounded-xl border border-slate-300 shadow-xs"
+                    className="w-48 h-32 object-cover rounded-xl border border-slate-200 shadow-xs"
                   />
                 ) : (
                   <div className="w-48 h-32 rounded-xl bg-white border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
                     <Upload size={28} />
-                    <span className="text-xs font-bold mt-2">No ID card uploaded</span>
+                    <span className="text-xs font-medium mt-2">No ID card uploaded</span>
                   </div>
                 )}
               </div>
 
-              <label className="w-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-extrabold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-center">
+              <label className="w-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-center">
                 <Upload size={15} />
                 <span>Upload New ID Card</span>
                 <input
@@ -447,7 +447,7 @@ export default function StudentProfile() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] disabled:opacity-50 text-white text-xs font-extrabold py-2.5 px-6 rounded-xl shadow-md shadow-blue-200 transition-all cursor-pointer flex items-center gap-2"
+              className="bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] disabled:opacity-50 text-white text-xs font-semibold py-2.5 px-6 rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-2"
             >
               {saving ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
               <span>{saving ? 'Saving Changes...' : 'Save Profile Changes'}</span>

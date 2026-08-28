@@ -364,19 +364,34 @@ async function getExamCredentialsById({ id, facultyId }) {
 }
 
 async function toggleReleaseResults({ id, facultyId, release }) {
+  const where = { id }
+  if (facultyId) {
+    where.facultyId = facultyId
+  }
   const exam = await global.prisma.exam.findFirst({
-    where: { id, facultyId }
+    where
   })
   if (!exam) {
-    const error = new Error('Exam not found.')
+    const error = new Error('Exam not found or access denied.')
     error.status = 404
     throw error
   }
 
-  const updated = await global.prisma.exam.update({
-    where: { id },
-    data: { resultsReleased: release !== undefined ? Boolean(release) : !exam.resultsReleased }
-  })
+  const targetRelease = release !== undefined ? Boolean(release) : !exam.resultsReleased
+
+  const [updated] = await global.prisma.$transaction([
+    global.prisma.exam.update({
+      where: { id },
+      data: { resultsReleased: targetRelease }
+    }),
+    global.prisma.examResult.updateMany({
+      where: { examId: id },
+      data: {
+        isReleased: targetRelease,
+        releasedAt: targetRelease ? new Date() : null
+      }
+    })
+  ])
 
   return updated
 }

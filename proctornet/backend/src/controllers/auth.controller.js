@@ -10,13 +10,23 @@ const { getClientIp } = require('../utils/helpers')
 function handleAuthError(res, err, context) {
   console.error(`[${context}]`, err.message || err)
   const msg = err.message || ''
-  if (msg.includes('tenant') || msg.includes('ENOTFOUND') || msg.includes('PrismaClientInitializationError') || msg.includes('connect')) {
+  const isDbConnectionError =
+    err.code === 'P1001' ||
+    err.code === 'P1002' ||
+    err.name === 'PrismaClientInitializationError' ||
+    msg.includes('tenant') ||
+    msg.includes('ENOTFOUND') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('connection timed out') ||
+    msg.includes('Can\'t reach database server')
+
+  if (isDbConnectionError) {
     return res.status(503).json({
       error: 'Database is currently unreachable. If using Supabase free tier, please unpause your project in the Supabase dashboard.',
       details: msg
     })
   }
-  return res.status(500).json({ error: 'Authentication service encountered an error. Please try again.' })
+  return res.status(500).json({ error: 'Authentication service encountered an error: ' + (err.message || 'Please try again.') })
 }
 
 /**
@@ -317,7 +327,7 @@ async function changePassword(req, res) {
  */
 async function invigilatorLogin(req, res) {
   try {
-    const { invId, invPassword, examId } = req.body
+    const { invId, invPassword, examId, idCardPhoto } = req.body
     if (!invId || !invPassword || !examId)
       return res.status(400).json({ error: 'invId, invPassword and examId are required.' })
 
@@ -332,13 +342,26 @@ async function invigilatorLogin(req, res) {
     if (!valid)
       return res.status(401).json({ error: 'Invalid invigilator credentials.' })
 
+    // H-5: Handle optional ID card photo — upload if provided, null otherwise. Never persist placeholder strings.
+    let idCardPhotoUrl = null
+    if (idCardPhoto) {
+      try {
+        const { uploadBase64 } = require('../services/cloudinary.service')
+        idCardPhotoUrl = await uploadBase64(idCardPhoto, 'invigilator-ids')
+      } catch (uploadErr) {
+        console.warn('[invigilatorLogin] ID card upload skipped:', uploadErr.message)
+        // Upload failure is non-fatal; proceed with null rather than a placeholder
+        idCardPhotoUrl = null
+      }
+    }
+
     const sessionExpiry = new Date(exam.endTime.getTime() + 30 * 60 * 1000)
 
     const session = await global.prisma.invigilatorSession.create({
       data: {
-        examId,
+        exam: { connect: { id: examId } },
         invId,
-        idCardPhotoUrl: 'placeholder_id',
+        idCardPhotoUrl: idCardPhotoUrl || '',
         idCardOcrResult: null,
         sessionExpiry,
         ipAddress: getClientIp(req),

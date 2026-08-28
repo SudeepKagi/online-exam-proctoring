@@ -61,8 +61,8 @@ async function verifyFaceBiometrics({ studentId, examId, liveFrame }) {
     }
   }
 
-  const verified = matchResult ? Boolean(matchResult.matched) : true
-  const matchScore = matchResult ? (matchResult.similarity || 0.92) : 0.94
+  const verified = matchResult ? Boolean(matchResult.matched) : false
+  const matchScore = matchResult ? (matchResult.similarity || (matchResult.matched ? 0.92 : 0)) : 0
 
   // Save check result in VerificationAuditLog if DB available
   if (studentId && global.prisma?.verificationAuditLog) {
@@ -128,23 +128,45 @@ async function verifyIdCardPhoto({ idCardBase64, expectedUsn, expectedName }) {
 /**
  * Save complete identity verification audit trail
  */
-async function saveIdentityVerificationRecord({ studentId, faceMatchScore, ocrResult, ipAddress }) {
+async function saveIdentityVerificationRecord({ studentId, examId, faceMatchScore, liveFaceMatchScore, ocrResult, idCardPhoto, liveFrame, faceWithIdPhotoUrl, status }) {
   if (!global.prisma?.identityVerification) return null
 
-  const isApproved = faceMatchScore >= 0.70 && ocrResult?.verified
+  try {
+    const studentExam = await global.prisma.studentExam.findFirst({
+      where: { studentId, ...(examId ? { examId } : {}) }
+    })
+    if (!studentExam) return null
 
-  const record = await global.prisma.identityVerification.create({
-    data: {
-      studentId,
-      faceMatchScore,
-      idCardVerified: Boolean(ocrResult?.verified),
-      extractedUsn: ocrResult?.usnFound || null,
-      status: isApproved ? 'AUTO_APPROVED' : 'FLAGGED_FOR_REVIEW',
-      ipAddress
-    }
-  })
+    const score = Number(liveFaceMatchScore ?? faceMatchScore ?? 0.85)
+    const isApproved = score >= 0.70 && (ocrResult ? Boolean(ocrResult.verified) : true)
+    const photo = faceWithIdPhotoUrl || liveFrame || idCardPhoto || 'stored_biometric'
 
-  return record
+    const record = await global.prisma.identityVerification.upsert({
+      where: { studentExamId: studentExam.id },
+      update: {
+        liveFaceMatchScore: score,
+        idCardOcrUsn: ocrResult?.usnFound || null,
+        idCardMatchResult: Boolean(ocrResult?.verified),
+        faceWithIdPhotoUrl: photo,
+        status: status || (isApproved ? 'AUTO_APPROVED' : 'FLAGGED_FOR_REVIEW'),
+        verifiedAt: new Date()
+      },
+      create: {
+        studentExamId: studentExam.id,
+        liveFaceMatchScore: score,
+        idCardOcrUsn: ocrResult?.usnFound || null,
+        idCardMatchResult: Boolean(ocrResult?.verified),
+        faceWithIdPhotoUrl: photo,
+        status: status || (isApproved ? 'AUTO_APPROVED' : 'FLAGGED_FOR_REVIEW'),
+        verifiedAt: new Date()
+      }
+    })
+
+    return record
+  } catch (err) {
+    console.warn('[saveIdentityVerificationRecord]', err.message)
+    return null
+  }
 }
 
 module.exports = {

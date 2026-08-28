@@ -7,7 +7,7 @@ import api from '@/utils/api'
  * Orchestrates webcam stream, face presence detection,
  * and fullscreen / tab-switch compliance.
  */
-export function useProctoringMonitors({ examId, emitViolation, isExamActive, allowTabSwitch = false }) {
+export function useProctoringMonitors({ examId, emitViolation, isExamActive, allowTabSwitch = false, externalStreamRef }) {
   const videoRef = useRef(null)
   const captureVideoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -75,6 +75,7 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
     navigator.mediaDevices?.getUserMedia({ video: true, audio: false })
       .then(stream => {
         streamRef.current = stream
+        if (externalStreamRef) externalStreamRef.current = stream
         setCameraOk(true)
 
         if (videoRef.current) {

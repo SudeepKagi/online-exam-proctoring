@@ -173,25 +173,25 @@ export default function SupportAndRules() {
     <DashboardLayout title="Security Policies & Student Support">
       <div className="max-w-5xl mx-auto space-y-6 font-sans text-[#0f172a]">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#f1f5f9]">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-[#0f172a] flex items-center gap-2">
-              <Shield className="w-6 h-6 text-[#2563eb]" />
+            <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <Shield className="w-6 h-6 text-[#2f80ed]" />
               Security Policies & Student Support Center
             </h1>
-            <p className="text-xs text-[#64748b] mt-0.5">
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
               Official university examination code of conduct, proctoring guidelines, and live candidate assistance.
             </p>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-[#eff6ff] border border-[#dbeafe] text-[#2563eb] rounded-xl text-xs font-bold w-fit">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 border border-blue-100 text-[#2f80ed] rounded-xl text-xs font-semibold w-fit">
             <Building size={14} />
             <span>{user?.department || 'Engineering'} • Semester {user?.semester || 1}</span>
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-[#e2e8f0]">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-200">
           {[
             { id: 'rules', label: 'Proctoring Rules', icon: Shield },
             { id: 'violations', label: 'Violations & Penalties', icon: AlertTriangle },
@@ -205,13 +205,13 @@ export default function SupportAndRules() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                className={`px-4 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#0f172a] text-white shadow-xs'
-                    : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f8fafc]'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }`}
               >
-                <IconComponent size={14} className={isActive ? 'text-[#38bdf8]' : 'text-[#64748b]'} />
+                <IconComponent size={14} className={isActive ? 'text-sky-400' : 'text-slate-400'} />
                 <span>{tab.label}</span>
               </button>
             )

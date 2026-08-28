@@ -27,13 +27,24 @@ router.get   ('/exams/:id/results',          ctrl.listExamResults)
 router.get   ('/exams/:id/export-csv',       ctrl.exportExamResultsCSV)
 router.patch ('/exams/:id/results/release',  ctrl.releaseResults)
 router.get   ('/exams/:id/collusion',        ctrl.runCollusionCheck)
-router.get   ('/results/:id',                ctrl.getStudentResult)
+router.get   ('/results/:id',                          ctrl.getStudentResult)
+router.get   ('/exams/:examId/results/:studentId',     ctrl.getStudentResult)
+
+const rateLimit = require('express-rate-limit')
+
+const aiLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many AI generation requests. Please wait before generating again.' },
+})
 
 // ── Question Management ───────────────────────────────
 router.post  ('/exams/:examId/questions',     ctrl.addQuestion)
 router.get   ('/exams/:examId/questions',     ctrl.listExamQuestions)
-router.post  ('/exams/:examId/ai-generate',   ctrl.generateQuestionsFromAI)
-router.post  ('/exams/ai-generate-preview',   ctrl.generateQuestionsPreview)
+router.post  ('/exams/:examId/ai-generate',   aiLimiter, ctrl.generateQuestionsFromAI)
+router.post  ('/exams/ai-generate-preview',   aiLimiter, ctrl.generateQuestionsPreview)
 router.put   ('/questions/:id',               ctrl.updateQuestion)
 router.delete('/questions/:id',               ctrl.deleteQuestion)
 router.post  ('/questions/bulk',              ctrl.bulkAddQuestions)

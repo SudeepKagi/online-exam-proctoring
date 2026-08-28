@@ -250,8 +250,8 @@ export default function LandingPage() {
             <img src="/logo.png" alt="ProctorNet" className="w-9 h-9 object-contain rounded-xl" />
             <div>
               <div className="flex items-center">
-                <span className="text-xl font-extrabold tracking-tight text-[#18181b]">Proctor</span>
-                <span className="text-xl font-extrabold tracking-tight text-[#2f80ed]">Net</span>
+                <span className="text-xl font-bold tracking-tight text-[#18181b]">Proctor</span>
+                <span className="text-xl font-bold tracking-tight text-[#2f80ed]">Net</span>
               </div>
               <p className="text-[10px] text-[#71717a] font-medium leading-none mt-0.5">Online Exam Proctoring</p>
             </div>
@@ -363,7 +363,7 @@ export default function LandingPage() {
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           {/* Left Column: Headline, Subtitle, Trust Strip */}
           <div className="lg:col-span-6 space-y-6 text-left">
-            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-[#18181b] leading-[1.12]">
+            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold tracking-tight text-[#18181b] leading-[1.12]">
               Launch Your Exams with <br />
               <span className="text-[#2f80ed]">AI-Powered Proctoring</span> & <br />
               <span className="text-[#1c4d8e]">Gated Integrity</span>
@@ -434,7 +434,7 @@ export default function LandingPage() {
       <section id="specs" className="w-full py-10 px-6 lg:px-12">
         <div className="text-center mb-6">
           <div className="inline-block">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#18181b]">SYSTEM SPECIFICATIONS</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#18181b]">SYSTEM SPECIFICATIONS</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
         </div>
@@ -443,25 +443,25 @@ export default function LandingPage() {
         <div className="w-full relative bg-[#0d2847] text-white rounded-3xl overflow-hidden shadow-xl">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 py-9 px-6 text-center">
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-black text-white tracking-tight">4-Stage</div>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">4-Stage</div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Pre-Flight Security</div>
               <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Hardware, camera & biometrics</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-black text-white tracking-tight">Dual Stream</div>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Dual Stream</div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Webcam & Screen</div>
               <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Concurrent 1080p feeds</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-black text-white tracking-tight">3 Formats</div>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">3 Formats</div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Question Engine</div>
               <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">MCQ, Subjective & Monaco IDE</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-black text-white tracking-tight">4 Portals</div>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">4 Portals</div>
               <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Role Consoles</div>
               <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Candidate, Faculty, Proctor & Admin</p>
             </div>
@@ -475,10 +475,10 @@ export default function LandingPage() {
           {/* Section Header */}
           <div className="text-center mb-12">
           <div className="inline-block">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#1c4d8e]">PORTALS</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PORTALS</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
-          <h2 className="text-3xl sm:text-4xl font-black text-[#18181b] tracking-tight mt-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
             <span className="text-[#2f80ed]">Candidate</span>, Faculty, and Invigilator Consoles
           </h2>
           <p className="text-sm text-[#52525b] mt-2 font-medium max-w-2xl mx-auto">
@@ -603,10 +603,10 @@ export default function LandingPage() {
       <section id="pipeline" className="relative w-full py-20 px-6 lg:px-12 bg-white border-b border-[#e5e7eb] overflow-hidden">
         <div className="text-center mb-16">
           <div className="inline-block">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#1c4d8e]">PRE-FLIGHT GATEWAY</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PRE-FLIGHT GATEWAY</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18181b] tracking-tight mt-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
             4-Stage Security Check Pipeline
           </h2>
           <p className="text-sm text-[#52525b] mt-3 font-medium max-w-2xl mx-auto">
@@ -621,7 +621,7 @@ export default function LandingPage() {
               className="bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all flex flex-col justify-between"
             >
               <div>
-                <div className="text-3xl font-black text-[#2f80ed] mb-4">{stage.step}</div>
+                <div className="text-3xl font-bold text-[#2f80ed] mb-4">{stage.step}</div>
                 <h3 className="text-base font-bold text-[#18181b] mb-2.5">{stage.title}</h3>
                 <p className="text-xs text-[#52525b] leading-relaxed font-medium">{stage.desc}</p>
               </div>
@@ -634,10 +634,10 @@ export default function LandingPage() {
       <section id="features" className="relative w-full py-20 px-6 lg:px-12 bg-[#f8f9fa] border-b border-[#e5e7eb] overflow-hidden">
         <div className="text-center mb-16">
           <div className="inline-block">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#1c4d8e]">INTEGRITY ENGINES</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">INTEGRITY ENGINES</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18181b] tracking-tight mt-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
             Built-in Proctoring Engines
           </h2>
           <p className="text-sm text-[#52525b] mt-3 font-medium">
@@ -668,10 +668,10 @@ export default function LandingPage() {
       <section id="faqs" className="py-20 px-6 max-w-4xl mx-auto border-t border-[#e5e7eb]">
         <div className="text-center mb-16">
           <div className="inline-block">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-[#1c4d8e]">FREQUENTLY ASKED QUESTIONS</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">FREQUENTLY ASKED QUESTIONS</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#18181b] tracking-tight mt-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
             Frequently Asked Questions
           </h2>
         </div>
