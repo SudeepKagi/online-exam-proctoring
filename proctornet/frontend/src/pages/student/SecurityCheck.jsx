@@ -114,12 +114,12 @@ export default function SecurityCheck() {
           return
         }
 
-        const serverTime = examRes.data.serverTime ? new Date(examRes.data.serverTime) : new Date()
-        const startTime = new Date(examData.startTime)
-        const endTime = new Date(examData.endTime)
+        const serverTime = examRes.data?.serverTime ? new Date(examRes.data.serverTime) : new Date()
+        const startTime = new Date(examData?.startTime || Date.now())
+        const endTime = new Date(examData?.endTime || (Date.now() + 3600000))
 
         // Block if exam has already ended
-        if (serverTime > endTime) {
+        if (examData?.endTime && serverTime > endTime) {
           toast.error('This examination session has already ended.')
           navigate('/student/exams')
           return
@@ -127,7 +127,7 @@ export default function SecurityCheck() {
 
         // 5-minute pre-check gate: must be within 5 minutes (300 seconds) of start
         const earlyCheckWindowMs = 5 * 60 * 1000 // 5 minutes
-        if (serverTime.getTime() < startTime.getTime() - earlyCheckWindowMs) {
+        if (examData?.startTime && serverTime.getTime() < startTime.getTime() - earlyCheckWindowMs) {
           toast.error('Pre-exam security checkup unlocks 5 minutes before scheduled start time.')
           navigate(`/student/exams/${examId}/lobby`)
           return

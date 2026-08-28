@@ -224,7 +224,7 @@ export default function ExamInterface() {
         if (res.data.waiting) {
           setIsWaiting(true)
           setExam(res.data.exam)
-          const startMs = new Date(res.data.exam.startTime).getTime()
+          const startMs = new Date(res.data.exam?.startTime || res.data.startTime || Date.now()).getTime()
           const calcSecs = () => Math.max(0, Math.floor((startMs - Date.now()) / 1000))
           setSecsToStart(calcSecs())
 

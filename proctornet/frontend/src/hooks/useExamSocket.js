@@ -109,10 +109,10 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
     const socket = io(socketUrl, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     })
     socketRef.current = socket
 
