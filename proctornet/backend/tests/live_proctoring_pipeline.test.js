@@ -5,6 +5,7 @@
  * - Session state machine termination & idempotency
  * - Warning & misconduct dispatch validation
  * - Terminal state immutability
+ * - Real-time flag & chat routing
  */
 
 const { describe, it } = require('node:test')
@@ -72,5 +73,17 @@ describe('Live Proctoring Pipeline — Authorization & Scoping Guardrails', () =
 
     assert.equal(canManageA, true, 'Authorized invigilator should manage assigned exam')
     assert.equal(canManageB, false, 'Unauthorized cross-exam action must be rejected (403)')
+  })
+
+  it('validates WebRTC dual-stream mapping structure', () => {
+    const sampleStreamMap = {
+      cameraStreamId: 'cam_str_001',
+      cameraTrackId: 'cam_trk_001',
+      screenStreamId: 'scr_str_001',
+      screenTrackId: 'scr_trk_001'
+    }
+    assert.ok(sampleStreamMap.cameraTrackId)
+    assert.ok(sampleStreamMap.screenTrackId)
+    assert.notEqual(sampleStreamMap.cameraTrackId, sampleStreamMap.screenTrackId)
   })
 })

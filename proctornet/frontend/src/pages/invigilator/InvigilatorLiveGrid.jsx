@@ -48,8 +48,48 @@ export default function InvigilatorLiveGrid() {
   } = useInvigilatorSocket({
     examId: effectiveExamId,
     onAlertReceived: (alert) => {
-      toast.error(`⚠️ Security Alert: Candidate flagged (${alert.type || alert.details || 'Violation'})`)
-      fetchGridData()
+      toast.error(`⚠️ Security Alert: Candidate ${alert.studentName || alert.studentUsn || ''} flagged (${alert.type || alert.details || 'Violation'})`)
+      const formattedEv = {
+        id: alert.id || `ev_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        type: alert.type || alert.eventType || 'Security Violation',
+        eventType: alert.eventType || alert.type || 'Security Violation',
+        details: alert.details,
+        severity: alert.severity || 'MEDIUM',
+        timestamp: alert.timestamp || new Date().toISOString(),
+        screenshotUrl: alert.screenshotUrl,
+        cameraFrameUrl: alert.cameraFrameUrl,
+        invAction: alert.invAction,
+        invActionNote: alert.invActionNote
+      }
+      setCandidates(prev => prev.map(c => {
+        if (c.id === alert.studentId || c.studentId === alert.studentId) {
+          const updatedEvents = [formattedEv, ...(c.events || [])]
+          return {
+            ...c,
+            flagCount: (c.flagCount || 0) + 1,
+            isHotspot: true,
+            alerts: [formattedEv.type, ...(c.alerts || [])],
+            events: updatedEvents,
+            latestFrame: alert.cameraFrameUrl || c.latestFrame,
+            latestScreen: alert.screenshotUrl || c.latestScreen
+          }
+        }
+        return c
+      }))
+      setSelectedCandidate(prev => {
+        if (prev && (prev.id === alert.studentId || prev.studentId === alert.studentId)) {
+          return {
+            ...prev,
+            flagCount: (prev.flagCount || 0) + 1,
+            isHotspot: true,
+            alerts: [formattedEv.type, ...(prev.alerts || [])],
+            events: [formattedEv, ...(prev.events || [])],
+            latestFrame: alert.cameraFrameUrl || prev.latestFrame,
+            latestScreen: alert.screenshotUrl || prev.latestScreen
+          }
+        }
+        return prev
+      })
     }
   })
 

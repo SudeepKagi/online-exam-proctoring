@@ -101,7 +101,7 @@ export default function StudentDossierModal({
               <div className="aspect-video bg-neutral-950 rounded-2xl shadow-md overflow-hidden border border-border relative">
                 <ScreenFeed
                   studentId={student.studentId || student.id}
-                  initialFrame={student.latestScreenFrame}
+                  initialFrame={student.latestScreen || student.latestScreenFrame}
                   className="w-full h-full object-cover"
                   fallbackSize={48}
                 />

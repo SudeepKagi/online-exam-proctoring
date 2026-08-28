@@ -72,7 +72,13 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
     ]).then(() => setModelsLoaded(true)).catch(() => console.warn('Face models unavailable'))
 
-    navigator.mediaDevices?.getUserMedia({ video: true, audio: false })
+    if (streamRef.current && streamRef.current.active && streamRef.current.getVideoTracks().some(t => t.readyState === 'live')) {
+      if (externalStreamRef) externalStreamRef.current = streamRef.current
+      setCameraOk(true)
+      return
+    }
+
+    navigator.mediaDevices?.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
       .then(stream => {
         streamRef.current = stream
         if (externalStreamRef) externalStreamRef.current = stream
@@ -97,11 +103,9 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
       })
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(t => t.stop())
-      }
+      // Stream teardown is managed by ExamInterface on terminal state
     }
-  }, [isExamActive, emitViolation])
+  }, [])
 
   // ── 4. Face-API Presence Polling Loop ──
   useEffect(() => {

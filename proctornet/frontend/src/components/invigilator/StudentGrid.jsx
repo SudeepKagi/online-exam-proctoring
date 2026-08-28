@@ -5,7 +5,17 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
   const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.camera || null)
   const [stream, setStream] = useState(null)
   const [lastSeen, setLastSeen] = useState(Date.now())
-  const videoRef = useRef(null)
+  const videoNodeRef = useRef(null)
+
+  const attachVideo = (node) => {
+    videoNodeRef.current = node
+    if (node && stream) {
+      if (node.srcObject !== stream) {
+        node.srcObject = stream
+      }
+      node.play().catch(() => {})
+    }
+  }
 
   useEffect(() => {
     const handleFrameUpdate = (e) => {
@@ -45,9 +55,11 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
   }, [initialFrame])
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream
-      videoRef.current.play().catch(() => {})
+    if (videoNodeRef.current && stream) {
+      if (videoNodeRef.current.srcObject !== stream) {
+        videoNodeRef.current.srcObject = stream
+      }
+      videoNodeRef.current.play().catch(() => {})
 
       const tracks = stream.getTracks()
       const handleEnded = () => {
@@ -63,7 +75,7 @@ export function WebcamFeed({ studentId, initialFrame, className, fallbackSize = 
   if (stream && stream.active) {
     return (
       <div className="relative w-full h-full">
-        <video ref={videoRef} autoPlay playsInline muted className={className} />
+        <video ref={attachVideo} autoPlay playsInline muted className={className} />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-[8px] font-bold text-emerald-400 uppercase tracking-tight">
           Live WebRTC
         </span>
@@ -94,7 +106,17 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
   const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.screen || null)
   const [stream, setStream] = useState(null)
   const [lastSeen, setLastSeen] = useState(Date.now())
-  const videoRef = useRef(null)
+  const videoNodeRef = useRef(null)
+
+  const attachVideo = (node) => {
+    videoNodeRef.current = node
+    if (node && stream) {
+      if (node.srcObject !== stream) {
+        node.srcObject = stream
+      }
+      node.play().catch(() => {})
+    }
+  }
 
   useEffect(() => {
     const handleFrameUpdate = (e) => {
@@ -134,9 +156,11 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
   }, [initialFrame])
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream
-      videoRef.current.play().catch(() => {})
+    if (videoNodeRef.current && stream) {
+      if (videoNodeRef.current.srcObject !== stream) {
+        videoNodeRef.current.srcObject = stream
+      }
+      videoNodeRef.current.play().catch(() => {})
 
       const tracks = stream.getTracks()
       const handleEnded = () => {
@@ -152,7 +176,7 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
   if (stream && stream.active) {
     return (
       <div className="relative w-full h-full">
-        <video ref={videoRef} autoPlay playsInline muted className={className} />
+        <video ref={attachVideo} autoPlay playsInline muted className={className} />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-[8px] font-bold text-emerald-400 uppercase tracking-tight">
           Live Screen
         </span>

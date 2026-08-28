@@ -20,10 +20,16 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
   const screenCanvasRef = useRef(null)
 
   useEffect(() => {
+    const hiddenContainer = document.createElement('div')
+    hiddenContainer.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;'
+    document.body.appendChild(hiddenContainer)
+
     const camVideo = document.createElement('video')
     camVideo.autoplay = true
     camVideo.muted = true
     camVideo.playsInline = true
+    camVideo.style.cssText = 'width:320px;height:240px;'
+    hiddenContainer.appendChild(camVideo)
     camVideoRef.current = camVideo
 
     const camCanvas = document.createElement('canvas')
@@ -35,6 +41,8 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     screenVideo.autoplay = true
     screenVideo.muted = true
     screenVideo.playsInline = true
+    screenVideo.style.cssText = 'width:320px;height:240px;'
+    hiddenContainer.appendChild(screenVideo)
     screenVideoRef.current = screenVideo
 
     const screenCanvas = document.createElement('canvas')
@@ -49,6 +57,9 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       camCanvasRef.current = null
       screenVideoRef.current = null
       screenCanvasRef.current = null
+      if (document.body.contains(hiddenContainer)) {
+        document.body.removeChild(hiddenContainer)
+      }
     }
   }, [])
 
@@ -78,7 +89,7 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
   const emitViolation = useCallback((type, severity, metadata = {}) => {
     const now = Date.now()
     const lastTime = lastViolationTimeRef.current[type] || 0
-    if (now - lastTime < 8000) return // Throttle 8s per violation type
+    if (now - lastTime < 5000) return // Throttle 5s per violation type
 
     lastViolationTimeRef.current[type] = now
     setViolations(v => v + 1)
@@ -111,8 +122,8 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       auth: { token },
       transports: ['polling', 'websocket'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     })
     socketRef.current = socket
 
@@ -201,7 +212,13 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
         socket.emit('webrtc:offer', {
           offer,
           invId,
-          studentId: user?.id
+          studentId: user?.id,
+          streamMap: {
+            cameraStreamId: streamRef?.current?.id,
+            cameraTrackId: streamRef?.current?.getVideoTracks()[0]?.id,
+            screenStreamId: window.screenShareStream?.id,
+            screenTrackId: window.screenShareStream?.getVideoTracks()[0]?.id
+          }
         })
       } catch (err) {
         console.error('Failed to create WebRTC offer:', err)

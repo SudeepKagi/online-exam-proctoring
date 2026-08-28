@@ -133,32 +133,45 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     })
 
     // ── WebRTC Signaling from Students ──
-    socket.on('webrtc:offer', async ({ offer, studentId }) => {
+    socket.on('webrtc:offer', async ({ offer, studentId, streamMap }) => {
       try {
         if (pcsRef.current[studentId]) {
           try { pcsRef.current[studentId].close() } catch (e) {}
         }
 
         const pc = new RTCPeerConnection({
-          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
         })
         pcsRef.current[studentId] = pc
 
         pc.ontrack = (event) => {
-          if (event.streams && event.streams[0]) {
-            const track = event.track
-            const isScreen = track.label?.toLowerCase().includes('screen') || track.label?.toLowerCase().includes('display') || (window.activeWebRTCStreams?.[studentId]?.camera && window.activeWebRTCStreams[studentId].camera !== event.streams[0])
-            const streamType = isScreen ? 'screen' : 'camera'
+          const stream = event.streams[0] || new MediaStream([event.track])
+          const track = event.track
 
-            window.activeWebRTCStreams = window.activeWebRTCStreams || {}
-            window.activeWebRTCStreams[studentId] = {
-              ...(window.activeWebRTCStreams[studentId] || {}),
-              [streamType]: event.streams[0]
-            }
-            window.dispatchEvent(new CustomEvent('student-stream-update', {
-              detail: { studentId, stream: event.streams[0], type: streamType }
-            }))
+          let streamType = 'camera'
+          if (streamMap?.screenTrackId && track.id === streamMap.screenTrackId) {
+            streamType = 'screen'
+          } else if (streamMap?.screenStreamId && stream.id === streamMap.screenStreamId) {
+            streamType = 'screen'
+          } else if (streamMap?.cameraTrackId && track.id === streamMap.cameraTrackId) {
+            streamType = 'camera'
+          } else if (streamMap?.cameraStreamId && stream.id === streamMap.cameraStreamId) {
+            streamType = 'camera'
+          } else if (window.activeWebRTCStreams?.[studentId]?.camera && window.activeWebRTCStreams[studentId].camera !== stream) {
+            streamType = 'screen'
           }
+
+          window.activeWebRTCStreams = window.activeWebRTCStreams || {}
+          window.activeWebRTCStreams[studentId] = {
+            ...(window.activeWebRTCStreams[studentId] || {}),
+            [streamType]: stream
+          }
+          window.dispatchEvent(new CustomEvent('student-stream-update', {
+            detail: { studentId, stream, type: streamType }
+          }))
         }
 
         pc.onicecandidate = (event) => {
@@ -208,9 +221,10 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
   const requestStudentStream = useCallback((studentId) => {
     socketRef.current?.emit('webrtc:request-stream', {
       studentId,
+      examId,
       invId: socketRef.current?.id
     })
-  }, [])
+  }, [examId])
 
   const sendWarning = useCallback((studentId, message) => {
     const payload = { examId, studentId, message }

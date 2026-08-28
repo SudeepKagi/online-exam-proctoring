@@ -198,23 +198,25 @@ module.exports = (io) => {
     // ── WebRTC Signaling Events ──
     socket.on('webrtc:request-stream', (data) => {
       const { studentId, examId } = data || {}
+      const targetExamId = examId || socket.data?.examId || socket.user?.examId
       if (!studentId) return
-      if (!requireStaffAuth(socket, examId)) return
+      if (!requireStaffAuth(socket, targetExamId)) return
 
       io.to(`student:${studentId}`).emit('webrtc:request-stream', {
         invId: socket.id,
-        examId
+        examId: targetExamId
       })
     })
 
     socket.on('webrtc:offer', (data) => {
-      const { offer, invId, studentId } = data || {}
+      const { offer, invId, studentId, streamMap } = data || {}
       if (!socket.user || !invId || !offer) return
 
       io.to(invId).emit('webrtc:offer', {
         offer,
         studentId: studentId || socket.user.id,
-        senderId: socket.id
+        senderId: socket.id,
+        streamMap
       })
     })
 
