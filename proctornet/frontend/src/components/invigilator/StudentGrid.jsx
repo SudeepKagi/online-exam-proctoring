@@ -13,7 +13,9 @@ export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, 
       if (node.srcObject !== stream) {
         node.srcObject = stream
       }
-      node.play().catch(() => {})
+      if (node.paused) {
+        node.play().catch(() => {})
+      }
     }
   }
 
@@ -63,7 +65,9 @@ export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, 
       if (videoNodeRef.current.srcObject !== stream) {
         videoNodeRef.current.srcObject = stream
       }
-      videoNodeRef.current.play().catch(() => {})
+      if (videoNodeRef.current.paused) {
+        videoNodeRef.current.play().catch(() => {})
+      }
 
       const tracks = stream.getTracks()
       const handleEnded = () => {
@@ -120,7 +124,9 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
       if (node.srcObject !== stream) {
         node.srcObject = stream
       }
-      node.play().catch(() => {})
+      if (node.paused) {
+        node.play().catch(() => {})
+      }
     }
   }
 
@@ -170,7 +176,9 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
       if (videoNodeRef.current.srcObject !== stream) {
         videoNodeRef.current.srcObject = stream
       }
-      videoNodeRef.current.play().catch(() => {})
+      if (videoNodeRef.current.paused) {
+        videoNodeRef.current.play().catch(() => {})
+      }
 
       const tracks = stream.getTracks()
       const handleEnded = () => {
