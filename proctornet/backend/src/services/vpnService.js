@@ -324,5 +324,6 @@ module.exports = {
   generateWireGuardClientConf,
   issueVpnConfig,
   getVpnStatus,
-  revokeVpnPeer
+  revokeVpnPeer,
+  syncWireGuardRemovePeer
 }

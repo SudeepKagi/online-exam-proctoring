@@ -42,7 +42,9 @@ export default function InvigilatorLiveGrid() {
     connected,
     requestStudentStream,
     sendWarning: sendSocketWarning,
-    terminateStudentExam
+    terminateStudentExam,
+    sendChat,
+    chats
   } = useInvigilatorSocket({
     examId: effectiveExamId,
     onAlertReceived: (alert) => {
@@ -74,6 +76,13 @@ export default function InvigilatorLiveGrid() {
         latestScreen: st.latestScreen || null,
       }))
       setCandidates(mapped)
+
+      // Auto-subscribe to WebRTC live streams for active candidates
+      mapped.forEach(cand => {
+        if (cand.status === 'ACTIVE') {
+          requestStudentStream?.(cand.id)
+        }
+      })
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to exam server.'
@@ -100,6 +109,31 @@ export default function InvigilatorLiveGrid() {
     fetchGridData()
   }, [effectiveExamId])
 
+  // ── Real-Time Candidate State Listener ──
+  useEffect(() => {
+    const handleStateUpdate = (e) => {
+      const stateData = e.detail
+      if (!stateData?.studentId) return
+      setCandidates(prev => prev.map(c => {
+        if (c.id === stateData.studentId || c.studentId === stateData.studentId) {
+          return {
+            ...c,
+            status: stateData.currentStatus || c.status
+          }
+        }
+        return c
+      }))
+      setSelectedCandidate(prev => {
+        if (prev && (prev.id === stateData.studentId || prev.studentId === stateData.studentId)) {
+          return { ...prev, status: stateData.currentStatus || prev.status }
+        }
+        return prev
+      })
+    }
+    window.addEventListener('student-state-update', handleStateUpdate)
+    return () => window.removeEventListener('student-state-update', handleStateUpdate)
+  }, [])
+
   const handleSelectCandidate = (cand) => {
     setSelectedCandidate(cand)
     requestStudentStream?.(cand.id)
@@ -107,13 +141,14 @@ export default function InvigilatorLiveGrid() {
 
   const handleSendWarning = async () => {
     if (!warningMsg.trim() || !selectedCandidate) return
+    const msg = warningMsg.trim()
     try {
-      sendSocketWarning?.(selectedCandidate.id, warningMsg.trim())
+      sendSocketWarning?.(selectedCandidate.id, msg)
       await api.post('/invigilator/send-warning', {
         studentId: selectedCandidate.id,
-        message: warningMsg.trim(),
+        message: msg,
       })
-      toast.success(`Warning sent to seat ${selectedCandidate.seatNo}`)
+      toast.success(`Warning dispatched to seat ${selectedCandidate.seatNo}`)
       setWarningMsg('')
     } catch {
       toast.success(`Warning dispatched to ${selectedCandidate.name}`)
@@ -144,11 +179,12 @@ export default function InvigilatorLiveGrid() {
   const handleConfirmTerminate = async () => {
     const { candidate, reason } = terminateDialog
     if (!candidate) return
+    const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
     try {
-      const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
       terminateStudentExam(candidate.id, termReason)
       await api.post(`/invigilator/terminate-student/${candidate.id}`, { reason: termReason }).catch(() => {})
       toast.error(`Exam session terminated for ${candidate.name || candidate.usn}`)
+      setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'TERMINATED' } : c))
       fetchGridData()
     } catch {
       toast.error('Failed to dispatch termination order.')

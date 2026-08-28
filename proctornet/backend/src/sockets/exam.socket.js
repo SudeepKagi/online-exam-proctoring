@@ -444,6 +444,39 @@ module.exports = (io) => {
       }
     })
 
+    // ── STUDENT: Send Chat to Invigilator ──
+    socket.on('student:chat', async (data) => {
+      const { examId, message } = data || {}
+      if (!message?.trim() || !socket.user) return
+
+      const targetExamId = examId || socket.data?.examId
+      if (!requireStudentAuth(socket, socket.user.id)) return
+
+      io.to(`inv:${targetExamId}`).emit('student:chat', {
+        studentId: socket.user.id,
+        studentName: socket.user.name,
+        studentUsn: socket.user.usn,
+        message: message.trim(),
+        timestamp: new Date().toISOString()
+      })
+
+      try {
+        const prisma = global.prisma
+        if (prisma && targetExamId) {
+          await prisma.chatMessage.create({
+            data: {
+              examId: targetExamId,
+              studentId: socket.user.id,
+              senderRole: 'student',
+              message: message.trim()
+            }
+          }).catch(() => {})
+        }
+      } catch (err) {
+        console.warn('[exam.socket] student:chat note:', err.message)
+      }
+    })
+
     // ── Clean Disconnect Handling ──
     socket.on('disconnect', () => {
       const { studentId, examId, role } = socket.data || {}

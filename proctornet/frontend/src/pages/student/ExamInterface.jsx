@@ -174,13 +174,28 @@ export default function ExamInterface() {
           })
           window.screenShareStream = screenStream
           screenStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-            toast.error('Screen sharing was disconnected. Please re-enable screen sharing.')
+            emitViolation('SCREEN_RECORDING', 'CRITICAL', { details: 'Screen sharing was stopped by candidate.' })
+            toast.error('Screen sharing was disconnected. Please re-enable screen sharing immediately.', { duration: 8000 })
           })
         } catch (_e) {}
       }
       initScreen()
     }
-  }, [loading, isWaiting, terminalState])
+  }, [loading, isWaiting, terminalState, emitViolation])
+
+  // ── Aggressive Hardware & Stream Teardown on Terminal State ──
+  useEffect(() => {
+    if (terminalState) {
+      if (streamRef.current) {
+        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        streamRef.current = null
+      }
+      if (window.screenShareStream) {
+        try { window.screenShareStream.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        window.screenShareStream = null
+      }
+    }
+  }, [terminalState])
 
   // ── 1. Fetch Exam Initialization & Authoritative State Recovery ──
   useEffect(() => {

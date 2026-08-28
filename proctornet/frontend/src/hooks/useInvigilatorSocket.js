@@ -103,6 +103,35 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
       }
     })
 
+    // ── Student Joined: Initiate WebRTC Stream ──
+    socket.on('student:joined', ({ studentId }) => {
+      if (studentId) {
+        socket.emit('webrtc:request-stream', {
+          studentId,
+          invId: socket.id,
+          examId
+        })
+      }
+    })
+
+    // ── Real-Time Student Session State Transitions ──
+    socket.on('student:stateChange', (stateData) => {
+      window.dispatchEvent(new CustomEvent('student-state-update', { detail: stateData }))
+    })
+
+    // ── Student In-Exam Chat Messages ──
+    socket.on('student:chat', (data) => {
+      if (data?.studentId) {
+        setChats(prev => ({
+          ...prev,
+          [data.studentId]: [
+            ...(prev[data.studentId] || []),
+            { sender: 'student', studentName: data.studentName, message: data.message, timestamp: data.timestamp || new Date().toISOString() }
+          ]
+        }))
+      }
+    })
+
     // ── WebRTC Signaling from Students ──
     socket.on('webrtc:offer', async ({ offer, studentId }) => {
       try {
@@ -197,6 +226,19 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     toast.error('Termination order dispatched to student')
   }, [examId])
 
+  const sendChat = useCallback((studentId, message) => {
+    if (!studentId || !message?.trim()) return
+    const payload = { examId, studentId, message: message.trim() }
+    socketRef.current?.emit('inv:chat', payload)
+    setChats(prev => ({
+      ...prev,
+      [studentId]: [
+        ...(prev[studentId] || []),
+        { sender: 'invigilator', message: message.trim(), timestamp: new Date().toISOString() }
+      ]
+    }))
+  }, [examId])
+
   return {
     socket: socketRef.current,
     connected,
@@ -204,6 +246,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     chats,
     requestStudentStream,
     sendWarning,
-    terminateStudentExam
+    terminateStudentExam,
+    sendChat
   }
 }

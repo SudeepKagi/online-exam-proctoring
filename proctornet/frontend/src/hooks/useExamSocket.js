@@ -137,12 +137,25 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     })
 
     socket.on('exam:warning', ({ message }) => {
-      toast.error(`⚠️ ${message}`, { duration: 6000 })
+      toast.error(`⚠️ Notice from Invigilator: ${message}`, { duration: 8000 })
     })
 
-    socket.on('exam:terminated', () => {
-      toast.error('Exam terminated by invigilator')
-      onTerminated?.()
+    socket.on('exam:terminated', (payload) => {
+      // Aggressive hardware and media teardown
+      if (streamRef?.current) {
+        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+      }
+      if (window.screenShareStream) {
+        try { window.screenShareStream.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        window.screenShareStream = null
+      }
+      Object.values(pcsRef.current).forEach(pc => {
+        try { pc.close() } catch (e) {}
+      })
+      pcsRef.current = {}
+
+      toast.error(`🚨 Exam Terminated: ${payload?.reason || 'Academic integrity violation'}`, { duration: 10000 })
+      onTerminated?.(payload)
     })
 
     // ── WebRTC Live Streaming to Invigilators ──
@@ -152,18 +165,21 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       }
 
       const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' }
+        ]
       })
       pcsRef.current[invId] = pc
 
       if (streamRef?.current) {
         streamRef.current.getTracks().forEach(track => {
-          pc.addTrack(track, streamRef.current)
+          try { pc.addTrack(track, streamRef.current) } catch (_e) {}
         })
       }
       if (window.screenShareStream) {
         window.screenShareStream.getTracks().forEach(track => {
-          pc.addTrack(track, window.screenShareStream)
+          try { pc.addTrack(track, window.screenShareStream) } catch (_e) {}
         })
       }
 
@@ -177,7 +193,10 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       }
 
       try {
-        const offer = await pc.createOffer()
+        const offer = await pc.createOffer({
+          offerToReceiveAudio: false,
+          offerToReceiveVideo: false
+        })
         await pc.setLocalDescription(offer)
         socket.emit('webrtc:offer', {
           offer,
