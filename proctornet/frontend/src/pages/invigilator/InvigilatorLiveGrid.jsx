@@ -173,6 +173,28 @@ export default function InvigilatorLiveGrid() {
     return () => window.removeEventListener('student-state-update', handleStateUpdate)
   }, [])
 
+  // ── Re-Subscribe to streams on socket connection / candidate list sync ──
+  useEffect(() => {
+    if (connected && candidates.length > 0) {
+      candidates.forEach(cand => {
+        if (cand.status === 'ACTIVE' || cand.status === 'IN_PROGRESS') {
+          requestStudentStream?.(cand.id)
+        }
+      })
+    }
+  }, [connected, candidates.length, requestStudentStream])
+
+  // ── Keep selected candidate stream active ──
+  useEffect(() => {
+    if (selectedCandidate?.id && connected) {
+      requestStudentStream?.(selectedCandidate.id)
+      const streamTimer = setInterval(() => {
+        requestStudentStream?.(selectedCandidate.id)
+      }, 5000)
+      return () => clearInterval(streamTimer)
+    }
+  }, [selectedCandidate?.id, connected, requestStudentStream])
+
   const handleSelectCandidate = (cand) => {
     setSelectedCandidate(cand)
     requestStudentStream?.(cand.id)

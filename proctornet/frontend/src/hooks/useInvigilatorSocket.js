@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast'
 export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }) {
   const socketRef = useRef(null)
   const pcsRef = useRef({})
+  const requestedStreamsRef = useRef(new Set())
   const onAlertRef = useRef(onAlertReceived)
   onAlertRef.current = onAlertReceived
 
@@ -41,7 +42,16 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
 
     socket.on('connect', () => {
       setConnected(true)
-      socket.emit('inv:join', { examId, role: 'invigilator' })
+      socket.emit('inv:join', { examId, role: 'invigilator' }, () => {
+        // Automatically request streams for candidates registered prior to socket connect
+        requestedStreamsRef.current.forEach((studentId) => {
+          socket.emit('webrtc:request-stream', {
+            studentId,
+            invId: socket.id,
+            examId
+          })
+        })
+      })
       socket.emit('exam:join', { examId, role: 'invigilator' })
     })
 
@@ -57,12 +67,21 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
       setAlerts(prev => [alert, ...prev.slice(0, 99)])
       onAlertRef.current?.(alert)
 
-      if (alertData.cameraFrameUrl) {
+      window.latestStudentFrames = window.latestStudentFrames || {}
+      if (alertData.cameraFrameUrl && alertData.studentId) {
+        window.latestStudentFrames[alertData.studentId] = {
+          ...(window.latestStudentFrames[alertData.studentId] || {}),
+          camera: alertData.cameraFrameUrl
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: alertData.studentId, frame: alertData.cameraFrameUrl, type: 'camera' }
         }))
       }
-      if (alertData.screenshotUrl) {
+      if (alertData.screenshotUrl && alertData.studentId) {
+        window.latestStudentFrames[alertData.studentId] = {
+          ...(window.latestStudentFrames[alertData.studentId] || {}),
+          screen: alertData.screenshotUrl
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: alertData.studentId, frame: alertData.screenshotUrl, type: 'screen' }
         }))
@@ -74,12 +93,21 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     })
 
     socket.on('student:flag', (alertData) => {
-      if (alertData?.cameraFrameUrl) {
+      window.latestStudentFrames = window.latestStudentFrames || {}
+      if (alertData?.cameraFrameUrl && alertData?.studentId) {
+        window.latestStudentFrames[alertData.studentId] = {
+          ...(window.latestStudentFrames[alertData.studentId] || {}),
+          camera: alertData.cameraFrameUrl
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: alertData.studentId, frame: alertData.cameraFrameUrl, type: 'camera' }
         }))
       }
-      if (alertData?.screenshotUrl) {
+      if (alertData?.screenshotUrl && alertData?.studentId) {
+        window.latestStudentFrames[alertData.studentId] = {
+          ...(window.latestStudentFrames[alertData.studentId] || {}),
+          screen: alertData.screenshotUrl
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: alertData.studentId, frame: alertData.screenshotUrl, type: 'screen' }
         }))
@@ -89,6 +117,11 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     // ── Periodic Live Stream Feeds (Camera & Screen) ──
     socket.on('student:cameraFrame', (data) => {
       if (data?.studentId && data?.frame) {
+        window.latestStudentFrames = window.latestStudentFrames || {}
+        window.latestStudentFrames[data.studentId] = {
+          ...(window.latestStudentFrames[data.studentId] || {}),
+          camera: data.frame
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: data.studentId, frame: data.frame, type: 'camera' }
         }))
@@ -97,6 +130,11 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
 
     socket.on('student:screenFrame', (data) => {
       if (data?.studentId && data?.frame) {
+        window.latestStudentFrames = window.latestStudentFrames || {}
+        window.latestStudentFrames[data.studentId] = {
+          ...(window.latestStudentFrames[data.studentId] || {}),
+          screen: data.frame
+        }
         window.dispatchEvent(new CustomEvent('student-frame-update', {
           detail: { studentId: data.studentId, frame: data.frame, type: 'screen' }
         }))
@@ -106,6 +144,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     // ── Student Joined: Initiate WebRTC Stream ──
     socket.on('student:joined', ({ studentId }) => {
       if (studentId) {
+        requestedStreamsRef.current.add(studentId)
         socket.emit('webrtc:request-stream', {
           studentId,
           invId: socket.id,
@@ -215,15 +254,22 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
         try { pc.close() } catch (e) {}
       })
       pcsRef.current = {}
+      if (window.activeWebRTCStreams) {
+        window.activeWebRTCStreams = {}
+      }
     }
   }, [examId, enabled])
 
   const requestStudentStream = useCallback((studentId) => {
-    socketRef.current?.emit('webrtc:request-stream', {
-      studentId,
-      examId,
-      invId: socketRef.current?.id
-    })
+    if (!studentId) return
+    requestedStreamsRef.current.add(studentId)
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('webrtc:request-stream', {
+        studentId,
+        examId,
+        invId: socketRef.current.id
+      })
+    }
   }, [examId])
 
   const sendWarning = useCallback((studentId, message) => {

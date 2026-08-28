@@ -34,9 +34,13 @@ export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, 
     window.addEventListener('student-stream-update', handleStreamUpdate)
 
     if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.camera) {
-      setStream(window.activeWebRTCStreams[studentId].camera)
-      setLastSeen(Date.now())
-    } else if (window.latestStudentFrames?.[studentId]?.camera) {
+      const activeSt = window.activeWebRTCStreams[studentId].camera
+      if (activeSt && activeSt.active) {
+        setStream(activeSt)
+        setLastSeen(Date.now())
+      }
+    }
+    if (window.latestStudentFrames?.[studentId]?.camera) {
       setFrame(window.latestStudentFrames[studentId].camera)
       setLastSeen(Date.now())
     }
@@ -137,9 +141,13 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
     window.addEventListener('student-stream-update', handleStreamUpdate)
 
     if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.screen) {
-      setStream(window.activeWebRTCStreams[studentId].screen)
-      setLastSeen(Date.now())
-    } else if (window.latestStudentFrames?.[studentId]?.screen) {
+      const activeSt = window.activeWebRTCStreams[studentId].screen
+      if (activeSt && activeSt.active) {
+        setStream(activeSt)
+        setLastSeen(Date.now())
+      }
+    }
+    if (window.latestStudentFrames?.[studentId]?.screen) {
       setFrame(window.latestStudentFrames[studentId].screen)
       setLastSeen(Date.now())
     }
