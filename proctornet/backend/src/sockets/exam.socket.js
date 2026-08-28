@@ -364,38 +364,154 @@ module.exports = (io) => {
     })
 
     // ── INVIGILATOR: Join Dashboard Room (Gated) ──
-    socket.on('inv:join', (data) => {
+    socket.on('inv:join', (data, ack) => {
       const { examId } = data || {}
-      if (!examId) return
+      if (!examId) {
+        ack?.({ ok: false, message: 'Missing examId' })
+        return
+      }
 
-      if (!requireStaffAuth(socket, examId)) return
+      if (!requireStaffAuth(socket, examId)) {
+        ack?.({ ok: false, message: 'Unauthorized for this examination' })
+        return
+      }
 
       socket.join(`inv:${examId}`)
       socket.data = { examId, role: socket.user.role || 'invigilator' }
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[SOCKET:INV] Invigilator joined room inv:${examId} (socket: ${socket.id})`)
+      }
+      ack?.({ ok: true, examId })
     })
 
-    // ── INVIGILATOR: Warn Student (Gated) ──
-    const handleWarn = async (data) => {
-      if (!data?.studentId) return
+    // ── INVIGILATOR: Warn Student (Gated with Ack) ──
+    const handleWarn = async (data, ack) => {
+      if (!data?.studentId) {
+        ack?.({ ok: false, message: 'Missing studentId' })
+        return
+      }
 
       const examId = data.examId || socket.data?.examId || socket.user?.examId
-      if (!requireStaffAuth(socket, examId)) return
+      if (!requireStaffAuth(socket, examId)) {
+        ack?.({ ok: false, message: 'Unauthorized' })
+        return
+      }
 
-      io.to(`student:${data.studentId}`).emit('exam:warning', {
+      const warnPayload = {
         message: data.message || 'Please maintain focus on the examination.',
         from: 'Invigilator',
         timestamp: new Date().toISOString()
-      })
+      }
+
+      io.to(`student:${data.studentId}`).emit('exam:warning', warnPayload)
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[CONTROL:WARN] Warning sent to student:${data.studentId} in exam:${examId}`)
+      }
+      ack?.({ ok: true, message: 'Warning dispatched' })
     }
     socket.on('inv:warn', handleWarn)
     socket.on('exam:warning', handleWarn)
 
-    // ── INVIGILATOR: Terminate Student (Gated & Atomic State Transition) ──
-    const handleTerminate = async (data) => {
-      if (!data?.studentId) return
+    // ── INVIGILATOR: Pause Student Session (Gated with Ack) ──
+    const handlePause = async (data, ack) => {
+      if (!data?.studentId) {
+        ack?.({ ok: false, message: 'Missing studentId' })
+        return
+      }
 
       const examId = data.examId || socket.data?.examId || socket.user?.examId
-      if (!requireStaffAuth(socket, examId)) return
+      if (!requireStaffAuth(socket, examId)) {
+        ack?.({ ok: false, message: 'Unauthorized' })
+        return
+      }
+
+      try {
+        const prisma = global.prisma
+        if (prisma && examId) {
+          const session = await prisma.studentExam.findFirst({
+            where: { studentId: data.studentId, examId }
+          })
+
+          if (session) {
+            await transitionExamSession({
+              studentExamId: session.id,
+              targetStatus: SESSION_STATES.SUSPENDED,
+              reason: data.reason || 'Session paused by proctor.',
+              reqUser: socket.user,
+              io
+            })
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[CONTROL:PAUSE] Student ${data.studentId} paused in exam:${examId}`)
+            }
+            ack?.({ ok: true, message: 'Session paused' })
+            return
+          }
+        }
+        ack?.({ ok: false, message: 'Candidate session not found' })
+      } catch (err) {
+        console.warn('[exam.socket] Pause transition error:', err.message)
+        ack?.({ ok: false, message: err.message })
+      }
+    }
+    socket.on('inv:pause', handlePause)
+    socket.on('exam:pause', handlePause)
+
+    // ── INVIGILATOR: Resume Student Session (Gated with Ack) ──
+    const handleResume = async (data, ack) => {
+      if (!data?.studentId) {
+        ack?.({ ok: false, message: 'Missing studentId' })
+        return
+      }
+
+      const examId = data.examId || socket.data?.examId || socket.user?.examId
+      if (!requireStaffAuth(socket, examId)) {
+        ack?.({ ok: false, message: 'Unauthorized' })
+        return
+      }
+
+      try {
+        const prisma = global.prisma
+        if (prisma && examId) {
+          const session = await prisma.studentExam.findFirst({
+            where: { studentId: data.studentId, examId }
+          })
+
+          if (session) {
+            await transitionExamSession({
+              studentExamId: session.id,
+              targetStatus: SESSION_STATES.ACTIVE,
+              reason: 'Session resumed by proctor.',
+              reqUser: socket.user,
+              io
+            })
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[CONTROL:RESUME] Student ${data.studentId} resumed in exam:${examId}`)
+            }
+            ack?.({ ok: true, message: 'Session resumed' })
+            return
+          }
+        }
+        ack?.({ ok: false, message: 'Candidate session not found' })
+      } catch (err) {
+        console.warn('[exam.socket] Resume transition error:', err.message)
+        ack?.({ ok: false, message: err.message })
+      }
+    }
+    socket.on('inv:resume', handleResume)
+    socket.on('exam:resume', handleResume)
+
+    // ── INVIGILATOR: Terminate Student (Gated & Atomic State Transition) ──
+    const handleTerminate = async (data, ack) => {
+      if (!data?.studentId) {
+        ack?.({ ok: false, message: 'Missing studentId' })
+        return
+      }
+
+      const examId = data.examId || socket.data?.examId || socket.user?.examId
+      if (!requireStaffAuth(socket, examId)) {
+        ack?.({ ok: false, message: 'Unauthorized' })
+        return
+      }
 
       try {
         const prisma = global.prisma
@@ -412,10 +528,17 @@ module.exports = (io) => {
               reqUser: socket.user,
               io
             })
+            if (process.env.NODE_ENV !== 'production') {
+              console.log(`[CONTROL:TERMINATE] Student ${data.studentId} terminated in exam:${examId}`)
+            }
+            ack?.({ ok: true, message: 'Termination completed' })
+            return
           }
         }
+        ack?.({ ok: false, message: 'Candidate session not found' })
       } catch (err) {
         console.warn('[exam.socket] Terminate transition error:', err.message)
+        ack?.({ ok: false, message: err.message })
       }
     }
     socket.on('inv:terminate', handleTerminate)

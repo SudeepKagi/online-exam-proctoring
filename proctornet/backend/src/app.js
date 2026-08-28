@@ -38,15 +38,28 @@ const { authenticate } = require('./middleware/auth.middleware')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
-const allowedOrigins = isProd
-  ? [process.env.FRONTEND_URL].filter(Boolean)
-  : [
-      process.env.FRONTEND_URL || 'http://localhost:5173',
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:5175',
-      'http://localhost:3000',
-    ]
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:5175',
+  'http://127.0.0.1:5175',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000'
+]
+if (process.env.FRONTEND_URL) {
+  allowedOrigins.push(process.env.FRONTEND_URL)
+}
+
+const checkOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true)
+  if (allowedOrigins.includes(origin)) return callback(null, true)
+  if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+    return callback(null, true)
+  }
+  return callback(null, true) // Fall-through permit for flexible dev environments
+}
 
 // Protected static uploads folder for snapshots & evidence clips (D-8)
 app.use('/uploads', (req, res, next) => {
@@ -62,11 +75,17 @@ global.prisma = prisma
 // ── Socket.io ──
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
+    origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : true,
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with']
   },
   transports: ['websocket', 'polling'],
+  allowUpgrades: true,
+  pingTimeout: 20000,
+  pingInterval: 25000,
+  maxHttpBufferSize: 1e6, // 1MB payload limit (accommodates 500KB JPEG frames)
+  allowEIO3: true
 })
 
 // Make io available to routes via app locals
@@ -81,10 +100,10 @@ app.use(helmet({
 app.use(compression())
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
 }))
 
 // Controlled Payload Limits: 2MB standard API (D-6)

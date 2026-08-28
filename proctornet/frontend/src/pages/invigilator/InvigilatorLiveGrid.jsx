@@ -42,6 +42,8 @@ export default function InvigilatorLiveGrid() {
     connected,
     requestStudentStream,
     sendWarning: sendSocketWarning,
+    pauseStudentExam,
+    resumeStudentExam,
     terminateStudentExam,
     sendChat,
     chats
@@ -111,8 +113,8 @@ export default function InvigilatorLiveGrid() {
         events: st.events || [],
         isHotspot: (st.flagCount || 0) > 0 || (st.events || []).length > 0,
         flagCount: st.flagCount || (st.events || []).length || 0,
-        lastSnapshot: st.latestFrame || st.facePhotoUrl || null,
-        latestFrame: st.latestFrame || st.facePhotoUrl || null,
+        lastSnapshot: st.latestFrame || null,
+        latestFrame: st.latestFrame || null,
         latestScreen: st.latestScreen || null,
       }))
       setCandidates(mapped)
@@ -133,11 +135,7 @@ export default function InvigilatorLiveGrid() {
           : status === 404
           ? 'No Active Examination Assigned'
           : 'Failed to Synchronize Live Grid',
-        message: status === 403
-          ? 'Your current credentials do not have authorization for this session, or the session token has expired.'
-          : status === 404
-          ? 'No active examination matching this session could be found.'
-          : msg
+        message: msg
       })
       setCandidates([])
     } finally {
@@ -145,27 +143,27 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
+  // ── Periodic reconciliation sync: Re-sync every 15s to catch persisted db records ──
   useEffect(() => {
     fetchGridData()
+    const interval = setInterval(fetchGridData, 15000)
+    return () => clearInterval(interval)
   }, [effectiveExamId])
 
-  // ── Real-Time Candidate State Listener ──
+  // ── Candidate State Updates (Real-Time from Socket) ──
   useEffect(() => {
     const handleStateUpdate = (e) => {
-      const stateData = e.detail
-      if (!stateData?.studentId) return
+      const { studentId, currentStatus } = e.detail || {}
+      if (!studentId || !currentStatus) return
       setCandidates(prev => prev.map(c => {
-        if (c.id === stateData.studentId || c.studentId === stateData.studentId) {
-          return {
-            ...c,
-            status: stateData.currentStatus || c.status
-          }
+        if (c.id === studentId || c.studentId === studentId) {
+          return { ...c, status: currentStatus }
         }
         return c
       }))
       setSelectedCandidate(prev => {
-        if (prev && (prev.id === stateData.studentId || prev.studentId === stateData.studentId)) {
-          return { ...prev, status: stateData.currentStatus || prev.status }
+        if (prev && (prev.id === studentId || prev.studentId === studentId)) {
+          return { ...prev, status: currentStatus }
         }
         return prev
       })
@@ -180,39 +178,51 @@ export default function InvigilatorLiveGrid() {
   }
 
   const handleSendWarning = async () => {
-    if (!warningMsg.trim() || !selectedCandidate) return
-    const msg = warningMsg.trim()
+    if (!selectedCandidate || !warningMsg.trim()) return
     try {
-      sendSocketWarning?.(selectedCandidate.id, msg)
+      await sendSocketWarning(selectedCandidate.id, warningMsg.trim())
       await api.post('/invigilator/send-warning', {
+        examId: effectiveExamId,
         studentId: selectedCandidate.id,
-        message: msg,
-      })
-      toast.success(`Warning dispatched to seat ${selectedCandidate.seatNo}`)
+        message: warningMsg.trim(),
+      }).catch(() => {})
+      toast.success(`Warning dispatched to candidate ${selectedCandidate.name || selectedCandidate.usn}`)
       setWarningMsg('')
     } catch {
-      toast.success(`Warning dispatched to ${selectedCandidate.name}`)
+      toast.success(`Warning dispatched to ${selectedCandidate.name || selectedCandidate.usn}`)
       setWarningMsg('')
     }
   }
 
   const handlePauseExam = async (cand) => {
+    if (!cand) return
     try {
-      await api.post(`/invigilator/pause-student/${cand.id}`)
-      toast.success(`Exam session paused for candidate ${cand.usn}`)
+      await pauseStudentExam(cand.id || cand.studentId, 'Session paused by proctor.')
+      await api.post(`/invigilator/pause-student/${cand.id || cand.studentId}`, { examId: effectiveExamId }).catch(() => {})
+      toast.success(`Exam session paused for candidate ${cand.name || cand.usn}`)
+      setCandidates(prev => prev.map(c => (c.id === cand.id ? { ...c, status: 'SUSPENDED' } : c)))
+      if (selectedCandidate?.id === cand.id) {
+        setSelectedCandidate(prev => ({ ...prev, status: 'SUSPENDED' }))
+      }
       fetchGridData()
     } catch {
-      toast.success(`Exam session paused for seat ${cand.seatNo}`)
+      toast.error(`Failed to pause session for candidate ${cand.usn}`)
     }
   }
 
   const handleResumeExam = async (cand) => {
+    if (!cand) return
     try {
-      await api.post(`/invigilator/resume-student/${cand.id}`)
-      toast.success(`Exam session resumed for candidate ${cand.usn}`)
+      await resumeStudentExam(cand.id || cand.studentId)
+      await api.post(`/invigilator/resume-student/${cand.id || cand.studentId}`, { examId: effectiveExamId }).catch(() => {})
+      toast.success(`Exam session resumed for candidate ${cand.name || cand.usn}`)
+      setCandidates(prev => prev.map(c => (c.id === cand.id ? { ...c, status: 'ACTIVE' } : c)))
+      if (selectedCandidate?.id === cand.id) {
+        setSelectedCandidate(prev => ({ ...prev, status: 'ACTIVE' }))
+      }
       fetchGridData()
     } catch {
-      toast.success(`Exam session resumed for seat ${cand.seatNo}`)
+      toast.error(`Failed to resume session for candidate ${cand.usn}`)
     }
   }
 
@@ -221,8 +231,11 @@ export default function InvigilatorLiveGrid() {
     if (!candidate) return
     const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
     try {
-      terminateStudentExam(candidate.id, termReason)
-      await api.post(`/invigilator/terminate-student/${candidate.id}`, { reason: termReason }).catch(() => {})
+      await terminateStudentExam(candidate.id || candidate.studentId, termReason)
+      await api.post(`/invigilator/terminate-student/${candidate.id || candidate.studentId}`, {
+        examId: effectiveExamId,
+        reason: termReason
+      }).catch(() => {})
       toast.error(`Exam session terminated for ${candidate.name || candidate.usn}`)
       setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'TERMINATED' } : c))
       fetchGridData()

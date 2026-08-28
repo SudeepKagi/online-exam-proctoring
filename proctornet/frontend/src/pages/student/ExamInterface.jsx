@@ -140,6 +140,16 @@ export default function ExamInterface() {
         type: 'TERMINATED',
         reason: payload?.reason || 'Terminated by invigilator for academic integrity violation.'
       })
+    },
+    onSuspended: (payload) => {
+      setSuspendedState({
+        active: true,
+        reason: payload?.reason || 'Session temporarily paused by proctor.',
+        isVpn: false
+      })
+    },
+    onResumed: () => {
+      setSuspendedState(null)
     }
   })
 

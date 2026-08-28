@@ -4,15 +4,41 @@ import toast from 'react-hot-toast'
 
 /**
  * useExamSocket Hook
- * Manages real-time Socket.io lifecycle, room subscriptions, WebRTC streaming to invigilator,
+ * Manages authoritative real-time Socket.io lifecycle, room subscriptions, WebRTC streaming to invigilator,
  * and throttled violation reporting.
  */
-export function useExamSocket({ examId, user, streamRef, onTerminated }) {
+export function useExamSocket({
+  examId,
+  user,
+  streamRef,
+  onTerminated,
+  onSuspended,
+  onResumed,
+  onStateChange
+}) {
   const socketRef = useRef(null)
   const pcsRef = useRef({})
   const lastViolationTimeRef = useRef({})
   const [socketConnected, setSocketConnected] = useState(false)
   const [violations, setViolations] = useState(0)
+
+  const onTerminatedRef = useRef(onTerminated)
+  onTerminatedRef.current = onTerminated
+
+  const onSuspendedRef = useRef(onSuspended)
+  onSuspendedRef.current = onSuspended
+
+  const onResumedRef = useRef(onResumed)
+  onResumedRef.current = onResumed
+
+  const onStateChangeRef = useRef(onStateChange)
+  onStateChangeRef.current = onStateChange
+
+  const userRef = useRef(user)
+  userRef.current = user
+
+  const streamRefRef = useRef(streamRef)
+  streamRefRef.current = streamRef
 
   const camVideoRef = useRef(null)
   const camCanvasRef = useRef(null)
@@ -85,6 +111,9 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     return null
   }, [])
 
+  const captureFrameRef = useRef(captureFrame)
+  captureFrameRef.current = captureFrame
+
   // ── Throttled Violation Emitter ──
   const emitViolation = useCallback((type, severity, metadata = {}) => {
     const now = Date.now()
@@ -94,14 +123,16 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     lastViolationTimeRef.current[type] = now
     setViolations(v => v + 1)
 
-    const cameraFrameUrl = metadata.cameraFrameUrl || captureFrame(streamRef?.current, 'camera') || null
-    const screenshotUrl = metadata.screenshotUrl || (window.screenShareStream ? captureFrame(window.screenShareStream, 'screen') : null)
+    const currentUser = userRef.current
+    const currentStream = streamRefRef.current?.current
+    const cameraFrameUrl = metadata.cameraFrameUrl || captureFrameRef.current(currentStream, 'camera') || null
+    const screenshotUrl = metadata.screenshotUrl || (window.screenShareStream ? captureFrameRef.current(window.screenShareStream, 'screen') : null)
 
     socketRef.current?.emit('exam:flag', {
       examId,
-      studentId: user?.id,
-      studentName: user?.name,
-      usn: user?.usn,
+      studentId: currentUser?.id,
+      studentName: currentUser?.name,
+      usn: currentUser?.usn,
       type,
       eventType: type,
       severity: severity || 'MEDIUM',
@@ -111,16 +142,17 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       timestamp: new Date().toISOString(),
       ...metadata
     })
-  }, [examId, user, streamRef, captureFrame])
+  }, [examId])
 
   useEffect(() => {
-    if (!user || !examId) return
+    const studentId = user?.id
+    if (!studentId || !examId) return
 
     const token = localStorage.getItem('proctornet_token')
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
     const socket = io(socketUrl, {
       auth: { token },
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
@@ -128,11 +160,12 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
     socketRef.current = socket
 
     const joinRoom = () => {
+      const u = userRef.current
       socket.emit('exam:join', {
         examId,
-        studentId: user?.id,
-        name: user?.name,
-        usn: user?.usn
+        studentId: u?.id,
+        name: u?.name,
+        usn: u?.usn
       })
     }
 
@@ -151,10 +184,23 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       toast.error(`⚠️ Notice from Invigilator: ${message}`, { duration: 8000 })
     })
 
+    socket.on('exam:suspended', (payload) => {
+      toast.error(`⏸️ Exam Suspended: ${payload?.reason || 'Session temporarily paused by proctor'}`, { duration: 8000 })
+      onSuspendedRef.current?.(payload)
+    })
+
+    socket.on('exam:state', (payload) => {
+      if (payload?.currentStatus === 'ACTIVE' && payload?.previousStatus === 'SUSPENDED') {
+        toast.success('▶️ Exam Session Resumed by proctor.')
+        onResumedRef.current?.()
+      }
+      onStateChangeRef.current?.(payload)
+    })
+
     socket.on('exam:terminated', (payload) => {
       // Aggressive hardware and media teardown
-      if (streamRef?.current) {
-        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+      if (streamRefRef.current?.current) {
+        try { streamRefRef.current.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
       }
       if (window.screenShareStream) {
         try { window.screenShareStream.getTracks().forEach(t => t.stop()) } catch (_e) {}
@@ -166,7 +212,7 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       pcsRef.current = {}
 
       toast.error(`🚨 Exam Terminated: ${payload?.reason || 'Academic integrity violation'}`, { duration: 10000 })
-      onTerminated?.(payload)
+      onTerminatedRef.current?.(payload)
     })
 
     // ── WebRTC Live Streaming to Invigilators ──
@@ -183,9 +229,10 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       })
       pcsRef.current[invId] = pc
 
-      if (streamRef?.current) {
-        streamRef.current.getTracks().forEach(track => {
-          try { pc.addTrack(track, streamRef.current) } catch (_e) {}
+      const camStream = streamRefRef.current?.current
+      if (camStream) {
+        camStream.getTracks().forEach(track => {
+          try { pc.addTrack(track, camStream) } catch (_e) {}
         })
       }
       if (window.screenShareStream) {
@@ -212,10 +259,10 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
         socket.emit('webrtc:offer', {
           offer,
           invId,
-          studentId: user?.id,
+          studentId: userRef.current?.id,
           streamMap: {
-            cameraStreamId: streamRef?.current?.id,
-            cameraTrackId: streamRef?.current?.getVideoTracks()[0]?.id,
+            cameraStreamId: camStream?.id,
+            cameraTrackId: camStream?.getVideoTracks()[0]?.id,
             screenStreamId: window.screenShareStream?.id,
             screenTrackId: window.screenShareStream?.getVideoTracks()[0]?.id
           }
@@ -264,23 +311,24 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
         return
       }
 
-      if (streamRef?.current) {
-        const frame = captureFrame(streamRef.current, 'camera')
+      const activeCamStream = streamRefRef.current?.current
+      if (activeCamStream) {
+        const frame = captureFrameRef.current(activeCamStream, 'camera')
         if (frame) {
           socketRef.current.emit('exam:frame', {
             examId,
-            studentId: user?.id,
+            studentId: userRef.current?.id,
             frame
           })
         }
       }
 
       if (window.screenShareStream) {
-        const screenFrame = captureFrame(window.screenShareStream, 'screen')
+        const screenFrame = captureFrameRef.current(window.screenShareStream, 'screen')
         if (screenFrame) {
           socketRef.current.emit('exam:screenFrame', {
             examId,
-            studentId: user?.id,
+            studentId: userRef.current?.id,
             frame: screenFrame
           })
         }
@@ -297,7 +345,7 @@ export function useExamSocket({ examId, user, streamRef, onTerminated }) {
       })
       pcsRef.current = {}
     }
-  }, [examId, user, streamRef, onTerminated, captureFrame])
+  }, [examId, user?.id])
 
   return {
     socket: socketRef.current,

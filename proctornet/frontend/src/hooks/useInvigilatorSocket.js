@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast'
 /**
  * useInvigilatorSocket Hook
  * Manages socket connection for invigilators, multi-candidate WebRTC peer connections,
- * and live proctoring alerts.
+ * and live proctoring alerts and actions.
  */
 export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }) {
   const socketRef = useRef(null)
@@ -32,10 +32,10 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
 
     const socket = io(socketUrl, {
       auth: { token },
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 3000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     })
     socketRef.current = socket
 
@@ -227,17 +227,41 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
   }, [examId])
 
   const sendWarning = useCallback((studentId, message) => {
-    const payload = { examId, studentId, message }
-    socketRef.current?.emit('exam:warning', payload)
-    socketRef.current?.emit('inv:warn', payload)
-    toast.success('Warning dispatched to student')
+    return new Promise((resolve) => {
+      const payload = { examId, studentId, message }
+      socketRef.current?.emit('inv:warn', payload, (ack) => {
+        resolve(ack || { ok: true })
+      })
+      socketRef.current?.emit('exam:warning', payload)
+    })
+  }, [examId])
+
+  const pauseStudentExam = useCallback((studentId, reason = 'Session paused by proctor') => {
+    return new Promise((resolve) => {
+      const payload = { examId, studentId, reason }
+      socketRef.current?.emit('inv:pause', payload, (ack) => {
+        resolve(ack || { ok: true })
+      })
+    })
+  }, [examId])
+
+  const resumeStudentExam = useCallback((studentId) => {
+    return new Promise((resolve) => {
+      const payload = { examId, studentId }
+      socketRef.current?.emit('inv:resume', payload, (ack) => {
+        resolve(ack || { ok: true })
+      })
+    })
   }, [examId])
 
   const terminateStudentExam = useCallback((studentId, reason) => {
-    const payload = { examId, studentId, reason }
-    socketRef.current?.emit('exam:terminate', payload)
-    socketRef.current?.emit('inv:terminate', payload)
-    toast.error('Termination order dispatched to student')
+    return new Promise((resolve) => {
+      const payload = { examId, studentId, reason }
+      socketRef.current?.emit('inv:terminate', payload, (ack) => {
+        resolve(ack || { ok: true })
+      })
+      socketRef.current?.emit('exam:terminate', payload)
+    })
   }, [examId])
 
   const sendChat = useCallback((studentId, message) => {
@@ -260,6 +284,8 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
     chats,
     requestStudentStream,
     sendWarning,
+    pauseStudentExam,
+    resumeStudentExam,
     terminateStudentExam,
     sendChat
   }

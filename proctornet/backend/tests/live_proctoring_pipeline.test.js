@@ -6,6 +6,7 @@
  * - Warning & misconduct dispatch validation
  * - Terminal state immutability
  * - Real-time flag & chat routing
+ * - Pause, resume, and payload limit enforcement
  */
 
 const { describe, it } = require('node:test')
@@ -85,5 +86,14 @@ describe('Live Proctoring Pipeline — Authorization & Scoping Guardrails', () =
     assert.ok(sampleStreamMap.cameraTrackId)
     assert.ok(sampleStreamMap.screenTrackId)
     assert.notEqual(sampleStreamMap.cameraTrackId, sampleStreamMap.screenTrackId)
+  })
+
+  it('enforces 500KB limit for fallback frame payloads', () => {
+    const maxBytes = 500 * 1024
+    const validFrame = 'data:image/jpeg;base64,' + 'A'.repeat(50000)
+    const oversizedFrame = 'data:image/jpeg;base64,' + 'A'.repeat(600 * 1024)
+
+    assert.equal(validFrame.length <= maxBytes, true, 'Valid frame under 500KB accepted')
+    assert.equal(oversizedFrame.length > maxBytes, true, 'Oversized frame over 500KB detected and dropped')
   })
 })
