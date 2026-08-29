@@ -89,12 +89,6 @@ const ROLE_NAV_GROUPS = {
       items: [
         { to: '/invigilator/violations', icon: AlertTriangle, label: 'Violation Alerts' },
       ]
-    },
-    {
-      section: 'CUSTOMIZATION',
-      items: [
-        { to: '/invigilator/settings', icon: Settings, label: 'Audio & Camera Config' },
-      ]
     }
   ]
 }

@@ -98,9 +98,12 @@ export function useExamSocket({
     try {
       if (video.srcObject !== stream) {
         video.srcObject = stream
+        video.onloadedmetadata = () => {
+          video.play().catch(() => {})
+        }
         video.play().catch(() => {})
       }
-      if (video.readyState >= 2) {
+      if (video.readyState >= 2 || video.videoWidth > 0) {
         const ctx = canvas.getContext('2d')
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
         return canvas.toDataURL('image/jpeg', 0.5)
@@ -190,8 +193,10 @@ export function useExamSocket({
     })
 
     socket.on('exam:state', (payload) => {
-      if (payload?.currentStatus === 'ACTIVE' && payload?.previousStatus === 'SUSPENDED') {
-        toast.success('▶️ Exam Session Resumed by proctor.')
+      if (payload?.currentStatus === 'ACTIVE') {
+        if (payload?.previousStatus === 'SUSPENDED' || payload?.previousStatus === 'TERMINATED') {
+          toast.success('▶️ Exam Session Resumed by proctor.')
+        }
         onResumedRef.current?.()
       }
       onStateChangeRef.current?.(payload)
@@ -333,7 +338,7 @@ export function useExamSocket({
           })
         }
       }
-    }, 2500)
+    }, 1500)
 
     return () => {
       clearInterval(frameInterval)

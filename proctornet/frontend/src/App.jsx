@@ -52,6 +52,7 @@ import SupportAndRules from '@/pages/student/SupportAndRules'
 // Invigilator
 import InvDashboard from '@/pages/invigilator/Dashboard'
 import InvigilatorLiveGrid from '@/pages/invigilator/InvigilatorLiveGrid'
+import InvigilatorViolations from '@/pages/invigilator/Violations'
 
 import ProtectedRoute from '@/components/ProtectedRoute'
 
@@ -146,6 +147,7 @@ export default function App() {
             {/* Invigilator Routes */}
             <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
             <Route path="/invigilator/history" element={<ProtectedRoute allowedRoles={['invigilator']}><InvDashboard /></ProtectedRoute>} />
+            <Route path="/invigilator/violations" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorViolations /></ProtectedRoute>} />
             <Route path="/invigilator/live-grid/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
             <Route path="/invigilator/exam/:examId" element={<ProtectedRoute allowedRoles={['invigilator']}><InvigilatorLiveGrid /></ProtectedRoute>} />
 

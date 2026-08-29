@@ -68,7 +68,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
       onAlertRef.current?.(alert)
 
       window.latestStudentFrames = window.latestStudentFrames || {}
-      if (alertData.cameraFrameUrl && alertData.studentId) {
+      if (alertData?.cameraFrameUrl && alertData?.studentId) {
         window.latestStudentFrames[alertData.studentId] = {
           ...(window.latestStudentFrames[alertData.studentId] || {}),
           camera: alertData.cameraFrameUrl
@@ -77,7 +77,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
           detail: { studentId: alertData.studentId, frame: alertData.cameraFrameUrl, type: 'camera' }
         }))
       }
-      if (alertData.screenshotUrl && alertData.studentId) {
+      if (alertData?.screenshotUrl && alertData?.studentId) {
         window.latestStudentFrames[alertData.studentId] = {
           ...(window.latestStudentFrames[alertData.studentId] || {}),
           screen: alertData.screenshotUrl

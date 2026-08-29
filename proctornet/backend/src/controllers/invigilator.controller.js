@@ -469,6 +469,225 @@ async function resumeStudentGeneral(req, res) {
   }
 }
 
+/**
+ * GET /api/invigilator/violations
+ * Retrieve violations/evidence logs scoped to the invigilator's exam or filtered by examId
+ */
+async function getViolations(req, res) {
+  try {
+    let { examId, severity, eventType, status, search, page = 1, limit = 50 } = req.query
+
+    if (req.user.role === 'invigilator' && req.user.examId) {
+      examId = req.user.examId
+    }
+
+    const where = {}
+    if (examId && examId !== 'all') {
+      where.studentExam = { examId }
+    }
+    if (severity && severity !== 'ALL') {
+      where.severity = severity
+    }
+    if (eventType && eventType !== 'ALL') {
+      where.eventType = eventType
+    }
+    if (status && status !== 'ALL') {
+      if (status === 'PENDING') {
+        where.invAction = null
+      } else if (status === 'ACTIONED') {
+        where.invAction = { not: null }
+      } else {
+        where.invAction = status
+      }
+    }
+
+    if (search && search.trim()) {
+      const s = search.trim()
+      where.OR = [
+        { details: { contains: s, mode: 'insensitive' } },
+        { eventType: { contains: s, mode: 'insensitive' } },
+        {
+          studentExam: {
+            student: {
+              OR: [
+                { name: { contains: s, mode: 'insensitive' } },
+                { usn: { contains: s, mode: 'insensitive' } }
+              ]
+            }
+          }
+        },
+        {
+          studentExam: {
+            exam: {
+              title: { contains: s, mode: 'insensitive' }
+            }
+          }
+        }
+      ]
+    }
+
+    const pageNum = parseInt(page) || 1
+    const take = parseInt(limit) || 50
+    const skip = (pageNum - 1) * take
+
+    const [total, logs] = await Promise.all([
+      global.prisma.evidenceLog.count({ where }),
+      global.prisma.evidenceLog.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { timestamp: 'desc' },
+        include: {
+          studentExam: {
+            include: {
+              student: {
+                select: { id: true, name: true, usn: true, facePhotoUrl: true, department: true, semester: true }
+              },
+              exam: {
+                select: { id: true, title: true, subject: true, duration: true }
+              },
+              identityVerification: {
+                select: { liveFaceMatchScore: true, status: true }
+              }
+            }
+          }
+        }
+      })
+    ])
+
+    const violations = logs.map(v => ({
+      id: v.id,
+      studentExamId: v.studentExamId,
+      studentId: v.studentExam?.student?.id,
+      studentName: v.studentExam?.student?.name || 'Candidate',
+      studentUsn: v.studentExam?.student?.usn || 'N/A',
+      studentPhoto: v.studentExam?.student?.facePhotoUrl,
+      department: v.studentExam?.student?.department,
+      semester: v.studentExam?.student?.semester,
+      examId: v.studentExam?.exam?.id,
+      examTitle: v.studentExam?.exam?.title || 'Examination',
+      studentStatus: v.studentExam?.status || 'ACTIVE',
+      faceMatchScore: v.studentExam?.identityVerification?.liveFaceMatchScore ?? null,
+      eventType: v.eventType,
+      severity: v.severity || 'MEDIUM',
+      details: v.details,
+      timestamp: v.timestamp,
+      cameraFrameUrl: v.cameraFrameUrl,
+      screenshotUrl: v.screenshotUrl,
+      invAction: v.invAction,
+      invActionNote: v.invActionNote
+    }))
+
+    // Summary counts
+    const [criticalCount, highCount, mediumCount, lowCount, pendingCount] = await Promise.all([
+      global.prisma.evidenceLog.count({ where: { ...(examId && examId !== 'all' ? { studentExam: { examId } } : {}), severity: 'CRITICAL' } }).catch(() => 0),
+      global.prisma.evidenceLog.count({ where: { ...(examId && examId !== 'all' ? { studentExam: { examId } } : {}), severity: 'HIGH' } }).catch(() => 0),
+      global.prisma.evidenceLog.count({ where: { ...(examId && examId !== 'all' ? { studentExam: { examId } } : {}), severity: 'MEDIUM' } }).catch(() => 0),
+      global.prisma.evidenceLog.count({ where: { ...(examId && examId !== 'all' ? { studentExam: { examId } } : {}), severity: 'LOW' } }).catch(() => 0),
+      global.prisma.evidenceLog.count({ where: { ...(examId && examId !== 'all' ? { studentExam: { examId } } : {}), invAction: null } }).catch(() => 0),
+    ])
+
+    res.json({
+      violations,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / take) || 1,
+      summary: {
+        total,
+        critical: criticalCount,
+        high: highCount,
+        medium: mediumCount,
+        low: lowCount,
+        pending: pendingCount,
+        actioned: total - pendingCount
+      }
+    })
+  } catch (e) {
+    console.error('[getViolations]', e)
+    res.status(500).json({ error: 'Failed to retrieve violation alerts.' })
+  }
+}
+
+/**
+ * POST /api/invigilator/violations/:id/action
+ * Update status/action note on an evidence log record and optionally trigger session state changes
+ */
+async function updateViolationAction(req, res) {
+  try {
+    const { id } = req.params
+    const { action, note, dispatchAction, warningMessage, pauseReason, terminateReason } = req.body
+
+    const log = await global.prisma.evidenceLog.findUnique({
+      where: { id },
+      include: {
+        studentExam: {
+          include: { student: true, exam: true }
+        }
+      }
+    })
+
+    if (!log) {
+      return res.status(404).json({ error: 'Violation evidence record not found.' })
+    }
+
+    await verifyExamAuthorization(req, log.studentExam?.examId)
+
+    const updatedLog = await global.prisma.evidenceLog.update({
+      where: { id },
+      data: {
+        invAction: action || 'ACKNOWLEDGED',
+        invActionNote: note || null
+      }
+    })
+
+    const studentId = log.studentExam?.studentId
+    const io = req.app.get('io')
+
+    if (dispatchAction === 'WARN' && studentId) {
+      if (io) {
+        io.to(`student:${studentId}`).emit('exam:warning', {
+          message: warningMessage || 'Invigilator security warning: Maintain exam integrity.',
+          from: 'Invigilator',
+          timestamp: new Date().toISOString()
+        })
+      }
+    } else if (dispatchAction === 'PAUSE' && log.studentExamId) {
+      await transitionExamSession({
+        studentExamId: log.studentExamId,
+        targetStatus: SESSION_STATES.SUSPENDED,
+        reason: pauseReason || 'Examination temporarily suspended due to flagged violation.',
+        reqUser: req.user,
+        io
+      })
+    } else if (dispatchAction === 'RESUME' && log.studentExamId) {
+      await transitionExamSession({
+        studentExamId: log.studentExamId,
+        targetStatus: SESSION_STATES.ACTIVE,
+        reason: 'Session resumed following violation review.',
+        reqUser: req.user,
+        io
+      })
+    } else if (dispatchAction === 'TERMINATE' && log.studentExamId) {
+      await transitionExamSession({
+        studentExamId: log.studentExamId,
+        targetStatus: SESSION_STATES.TERMINATED,
+        reason: terminateReason || 'Session permanently terminated for confirmed academic integrity breach.',
+        reqUser: req.user,
+        io
+      })
+    }
+
+    res.json({
+      success: true,
+      message: 'Violation action recorded successfully.',
+      violation: updatedLog
+    })
+  } catch (e) {
+    console.error('[updateViolationAction]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to update violation action.' })
+  }
+}
+
 module.exports = {
   login,
   getExamInfo,
@@ -478,5 +697,7 @@ module.exports = {
   terminateStudentGeneral,
   sendWarningGeneral,
   pauseStudentGeneral,
-  resumeStudentGeneral
+  resumeStudentGeneral,
+  getViolations,
+  updateViolationAction
 }

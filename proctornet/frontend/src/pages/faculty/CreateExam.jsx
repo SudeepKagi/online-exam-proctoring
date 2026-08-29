@@ -77,9 +77,18 @@ function AIGeneratorPanel({ onGenerated }) {
     setGenerating(true)
     setStep('generating')
     try {
+      const mcqCount = parseInt(numMCQ) || 5
+      const essayCount = parseInt(numEssay) || 0
+      const totalCount = mcqCount + essayCount
+
       const res = await api.post(`/faculty/exams/ai-generate-preview`, {
-        topic: text, numMCQ: parseInt(numMCQ), numEssay: parseInt(numEssay),
-        difficulty, marksPerMCQ: parseFloat(marksPerMCQ), marksPerEssay: parseFloat(marksPerEssay)
+        topic: text,
+        count: totalCount,
+        numMCQ: mcqCount,
+        numEssay: essayCount,
+        difficulty,
+        marksPerMCQ: parseFloat(marksPerMCQ),
+        marksPerEssay: parseFloat(marksPerEssay)
       })
       
       const newQuestions = res.data.questions || []
@@ -305,6 +314,7 @@ export default function CreateExam() {
 
     const formattedQuestions = newQuestionsRaw.map(q => {
       const parsedMarks = parseFloat(q.marks || 2)
+      const qType = (q.type || 'MCQ').toUpperCase()
       
       let correctIdx = 0
       if (typeof q.correctOption === 'number') correctIdx = q.correctOption
@@ -316,12 +326,12 @@ export default function CreateExam() {
       const rawCorrectAnswer = q.correctAnswer || correctLetter
 
       let formattedOptions = []
-      if (q.type === 'MCQ') {
-        const rawOpts = Array.isArray(q.options) && q.options.length > 0 ? q.options : [
-          'Core Principle of topic',
-          'Secondary Rule',
-          'Deprecated Method',
-          'External Dependency'
+      if (qType === 'MCQ' || Array.isArray(q.options)) {
+        const rawOpts = (Array.isArray(q.options) && q.options.length > 0) ? q.options : [
+          'Option A',
+          'Option B',
+          'Option C',
+          'Option D'
         ]
         formattedOptions = rawOpts.map((opt, idx) => {
           const letter = String.fromCharCode(65 + idx)
@@ -338,7 +348,7 @@ export default function CreateExam() {
 
       return {
         id: Math.random().toString(36).substr(2, 9),
-        type: (q.type || 'MCQ').toUpperCase(),
+        type: qType,
         questionText: q.questionText || '',
         marks: parsedMarks,
         difficulty: (q.difficulty || 'MEDIUM').toUpperCase(),
@@ -346,7 +356,7 @@ export default function CreateExam() {
         options: formattedOptions,
         correctAnswer: rawCorrectAnswer,
         codeTemplate: q.codeTemplate || '',
-        wordLimitMax: q.type === 'SUBJECTIVE' ? Number(q.wordLimitMax || 250) : null
+        wordLimitMax: qType === 'SUBJECTIVE' ? Number(q.wordLimitMax || 250) : null
       }
     })
 

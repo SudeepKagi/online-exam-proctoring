@@ -219,12 +219,13 @@ export default function InvigilatorLiveGrid() {
 
   const handlePauseExam = async (cand) => {
     if (!cand) return
+    const candidateId = cand.id || cand.studentId
     try {
-      await pauseStudentExam(cand.id || cand.studentId, 'Session paused by proctor.')
-      await api.post(`/invigilator/pause-student/${cand.id || cand.studentId}`, { examId: effectiveExamId }).catch(() => {})
+      await pauseStudentExam(candidateId, 'Session paused by proctor.')
+      await api.post(`/invigilator/pause-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
       toast.success(`Exam session paused for candidate ${cand.name || cand.usn}`)
-      setCandidates(prev => prev.map(c => (c.id === cand.id ? { ...c, status: 'SUSPENDED' } : c)))
-      if (selectedCandidate?.id === cand.id) {
+      setCandidates(prev => prev.map(c => ((c.id === candidateId || c.studentId === candidateId) ? { ...c, status: 'SUSPENDED' } : c)))
+      if (selectedCandidate?.id === candidateId || selectedCandidate?.studentId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'SUSPENDED' }))
       }
       fetchGridData()
@@ -235,14 +236,16 @@ export default function InvigilatorLiveGrid() {
 
   const handleResumeExam = async (cand) => {
     if (!cand) return
+    const candidateId = cand.id || cand.studentId
     try {
-      await resumeStudentExam(cand.id || cand.studentId)
-      await api.post(`/invigilator/resume-student/${cand.id || cand.studentId}`, { examId: effectiveExamId }).catch(() => {})
+      await resumeStudentExam(candidateId)
+      await api.post(`/invigilator/resume-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
       toast.success(`Exam session resumed for candidate ${cand.name || cand.usn}`)
-      setCandidates(prev => prev.map(c => (c.id === cand.id ? { ...c, status: 'ACTIVE' } : c)))
-      if (selectedCandidate?.id === cand.id) {
+      setCandidates(prev => prev.map(c => ((c.id === candidateId || c.studentId === candidateId) ? { ...c, status: 'ACTIVE' } : c)))
+      if (selectedCandidate?.id === candidateId || selectedCandidate?.studentId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'ACTIVE' }))
       }
+      requestStudentStream?.(candidateId)
       fetchGridData()
     } catch {
       toast.error(`Failed to resume session for candidate ${cand.usn}`)
@@ -634,29 +637,46 @@ export default function InvigilatorLiveGrid() {
                   </div>
 
                   <div className="flex flex-wrap gap-2.5 pt-2 border-t border-border">
-                    <Button
-                      variant="destructive"
-                      onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
-                      className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
-                    >
-                      <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
-                    </Button>
-                    {selectedCandidate.status === 'SUSPENDED' ? (
-                      <Button
-                        variant="default"
-                        onClick={() => handleResumeExam(selectedCandidate)}
-                        className="flex-1 text-xs font-bold cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        <PlayCircle size={14} className="mr-1.5" /> Resume Session
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        onClick={() => handlePauseExam(selectedCandidate)}
-                        className="flex-1 text-xs font-bold cursor-pointer"
-                      >
-                        <PauseCircle size={14} className="mr-1.5" /> Pause Session
-                      </Button>
+                    {selectedCandidate.status === 'ACTIVE' && (
+                      <>
+                        <Button
+                          variant="destructive"
+                          onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
+                          className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                        >
+                          <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handlePauseExam(selectedCandidate)}
+                          className="flex-1 text-xs font-bold cursor-pointer"
+                        >
+                          <PauseCircle size={14} className="mr-1.5" /> Pause Session
+                        </Button>
+                      </>
+                    )}
+                    {selectedCandidate.status === 'SUSPENDED' && (
+                      <>
+                        <Button
+                          variant="destructive"
+                          onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
+                          className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
+                        >
+                          <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
+                        </Button>
+                        <Button
+                          variant="default"
+                          onClick={() => handleResumeExam(selectedCandidate)}
+                          className="flex-1 text-xs font-bold cursor-pointer bg-emerald-600 hover:bg-emerald-700 text-white"
+                        >
+                          <PlayCircle size={14} className="mr-1.5" /> Resume Session
+                        </Button>
+                      </>
+                    )}
+                    {selectedCandidate.status === 'TERMINATED' && (
+                      <div className="flex-1 py-2 px-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold text-center flex items-center justify-center gap-1.5">
+                        <ShieldAlert size={14} /> Session Permanently Terminated
+                      </div>
                     )}
                     <Button
                       variant="outline"

@@ -15,6 +15,10 @@ router.get('/exam/:examId', ctrl.getExamInfo)
 router.get('/live-grid/:examId', ctrl.getExamInfo)
 router.get('/exams/:examId/students', ctrl.getExamStudents) // legacy alias
 
+// Violations & Alerts
+router.get('/violations', ctrl.getViolations)
+router.post('/violations/:id/action', ctrl.updateViolationAction)
+
 // Actions
 router.post('/send-warning', ctrl.sendWarningGeneral)
 router.post('/pause-student/:studentId', ctrl.pauseStudentGeneral)

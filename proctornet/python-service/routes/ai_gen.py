@@ -228,6 +228,102 @@ TOPIC_BANK = {
             "correctOption": 0,
             "explanation": "Least Privilege minimizes potential exploit damage by restricting access rights to essential resources only."
         }
+    ],
+    "networking": [
+        {
+            "questionText": "In TCP congestion control, which algorithm is triggered immediately when three duplicate ACKs are received?",
+            "options": ["Fast Retransmit & Fast Recovery", "Slow Start Threshold Reset", "Exponential Backoff Wait", "Random Early Detection"],
+            "correctOption": 0,
+            "explanation": "Three duplicate ACKs indicate packet loss without timeout, triggering Fast Retransmit and transitioning to Fast Recovery."
+        },
+        {
+            "questionText": "What is the primary function of the Address Resolution Protocol (ARP)?",
+            "options": [
+                "Map a known 32-bit IPv4 address to a 48-bit physical MAC address",
+                "Translate domain names into routable public IP addresses",
+                "Encrypt payloads at the Transport layer using TLS certificates",
+                "Assign dynamic IP leases to host interfaces via DHCP"
+            ],
+            "correctOption": 0,
+            "explanation": "ARP resolves IP addresses to physical MAC addresses on local broadcast network segments."
+        },
+        {
+            "questionText": "Which protocol operates over UDP port 53 to provide hierarchical name resolution?",
+            "options": ["DNS (Domain Name System)", "HTTP", "SNMP", "BGP"],
+            "correctOption": 0,
+            "explanation": "DNS uses UDP port 53 for standard recursive and iterative query lookups."
+        },
+        {
+            "questionText": "What distinguishes symmetric encryption from asymmetric encryption in network security protocols?",
+            "options": [
+                "Symmetric uses a single shared secret key, while asymmetric uses a mathematically linked public-private key pair",
+                "Symmetric is only used for analog data transmission",
+                "Asymmetric encryption requires no key exchange mechanism",
+                "Symmetric encryption is significantly slower than asymmetric algorithms like RSA"
+            ],
+            "correctOption": 0,
+            "explanation": "Symmetric algorithms (like AES) utilize one shared key for encryption/decryption, whereas asymmetric (RSA/ECC) uses keypairs."
+        }
+    ],
+    "software engineering": [
+        {
+            "questionText": "Which architectural pattern decouples presentation, business logic, and database persistence layers?",
+            "options": ["Model-View-Controller (MVC)", "Monolithic Scripting", "Direct Hardware Binding", "Single-Page Spaghetti"],
+            "correctOption": 0,
+            "explanation": "MVC isolates data models, user interface views, and input controllers into distinct decoupled components."
+        },
+        {
+            "questionText": "What does the 'S' represent in the SOLID principles of Object-Oriented Design?",
+            "options": [
+                "Single Responsibility Principle — A class should have one, and only one, reason to change",
+                "State Isolation Principle",
+                "Static Binding Rule",
+                "Synchronous Execution Requirement"
+            ],
+            "correctOption": 0,
+            "explanation": "Single Responsibility Principle dictates that each module, class, or function should hold responsibility over a single part of software functionality."
+        },
+        {
+            "questionText": "In software testing, what is the primary objective of Regression Testing?",
+            "options": [
+                "Verifying that recent code changes or bug fixes have not adversely affected existing functional features",
+                "Benchmarking peak load capacity under DDOS conditions",
+                "Checking syntactic code style against linter rules",
+                "Compiling source binaries across target CPU architectures"
+            ],
+            "correctOption": 0,
+            "explanation": "Regression testing ensures previously tested and deployed software continues to perform correctly after updates."
+        },
+        {
+            "questionText": "Which Git workflow command creates an isolated, atomic commit that reverts the exact changes made in a previous commit?",
+            "options": ["git revert <commit-hash>", "git reset --hard", "git purge", "git branch -D"],
+            "correctOption": 0,
+            "explanation": "git revert creates a new forward commit that inverses the changes of the specified commit without rewriting history."
+        }
+    ],
+    "python": [
+        {
+            "questionText": "What is the key difference between a Python List and a Python Tuple?",
+            "options": [
+                "Lists are mutable and dynamically resizable, whereas Tuples are immutable",
+                "Tuples cannot contain heterogeneous data types",
+                "Lists use parentheses () while tuples use brackets []",
+                "Tuples consume more memory than lists for identical elements"
+            ],
+            "correctOption": 0,
+            "explanation": "Lists are mutable sequences, while Tuples cannot be modified after instantiation, making them hashable and memory-efficient."
+        },
+        {
+            "questionText": "How does the Python Global Interpreter Lock (GIL) affect multi-threaded CPU-bound programs?",
+            "options": [
+                "It restricts bytecode execution to one native thread at a time, limiting true parallel CPU scaling",
+                "It automatically distributes loops across GPU tensor cores",
+                "It disables memory garbage collection permanently",
+                "It forces all I/O network operations to run synchronously"
+            ],
+            "correctOption": 0,
+            "explanation": "CPython's GIL prevents multiple threads from executing Python bytecodes concurrently on multi-core processors."
+        }
     ]
 }
 
@@ -250,25 +346,41 @@ def generate_topic_questions(clean_topic: str, difficulty: str, count: int):
         matched_questions.extend(TOPIC_BANK["database"])
     if any(k in topic_lower for k in ["os", "operating system", "process", "thread", "memory", "deadlock", "scheduling", "paging"]):
         matched_questions.extend(TOPIC_BANK["operating systems"])
+    if any(k in topic_lower for k in ["network", "osi", "tcp", "udp", "ip", "dns", "arp", "packet"]):
+        matched_questions.extend(TOPIC_BANK.get("networking", []))
+    if any(k in topic_lower for k in ["software", "engineering", "mvc", "solid", "git", "test", "agile", "architecture"]):
+        matched_questions.extend(TOPIC_BANK.get("software engineering", []))
+    if any(k in topic_lower for k in ["python", "py", "gil", "tuple", "list", "dict"]):
+        matched_questions.extend(TOPIC_BANK.get("python", []))
 
-    # Fallback to computer science bank
-    if not matched_questions:
-        matched_questions.extend(TOPIC_BANK["computer science"])
-        matched_questions.extend(TOPIC_BANK["data structures"])
-        matched_questions.extend(TOPIC_BANK["javascript"])
+    # Fallback / aggregation to ensure at least 30 diverse questions available
+    all_banks = []
+    for bank in TOPIC_BANK.values():
+        all_banks.extend(bank)
+
+    if not matched_questions or len(matched_questions) < count:
+        matched_questions.extend([q for q in all_banks if q not in matched_questions])
 
     # Shuffle to provide variety
-    random.seed(hash(clean_topic) % 10000)
+    random.seed((hash(clean_topic) + hash(difficulty)) % 100000)
     pool = list(matched_questions)
     random.shuffle(pool)
+
+    diff_str = str(difficulty).upper() if difficulty else 'MEDIUM'
+    marks = 3 if diff_str == 'HARD' else (2 if diff_str == 'MEDIUM' else 1)
 
     output = []
     for i in range(count):
         base_q = pool[i % len(pool)]
+        correct_idx = base_q.get("correctOption", 0)
         q_item = {
+            "type": "MCQ",
             "questionText": base_q["questionText"],
             "options": list(base_q["options"]),
-            "correctOption": base_q.get("correctOption", 0),
+            "correctOption": correct_idx,
+            "correctAnswer": chr(65 + correct_idx),
+            "difficulty": diff_str,
+            "marks": marks,
             "explanation": base_q.get("explanation", "Standard core concept.")
         }
         output.append(q_item)
@@ -283,10 +395,10 @@ def generate_questions():
     """
     try:
         data = request.get_json() or {}
-        raw_topic = data.get('topic', 'Computer Science').strip()
-        difficulty = data.get('difficulty', 'Medium')
-        count = int(data.get('count', 5))
-        q_type = data.get('type', 'MCQ')
+        raw_topic = str(data.get('topic', 'Computer Science')).strip()
+        difficulty = str(data.get('difficulty', 'Medium'))
+        count = int(data.get('count') or data.get('numMCQ') or 5)
+        q_type = str(data.get('type', 'MCQ')).upper()
 
         # Clean and repair any spaced text
         cleaned_topic = clean_extracted_text(raw_topic)
@@ -304,8 +416,11 @@ def generate_questions():
                     f"Topic Material:\n{cleaned_topic[:2000]}\n\n"
                     f"Format output as a valid JSON array of objects. Each object must have:\n"
                     f"- 'questionText' (string with clear, grammatically correct question)\n"
+                    f"- 'type' ('MCQ')\n"
                     f"- 'options' (array of 4 distinct, plausible string choices)\n"
                     f"- 'correctOption' (integer index 0-3 indicating the correct choice)\n"
+                    f"- 'correctAnswer' (string 'A', 'B', 'C', or 'D')\n"
+                    f"- 'difficulty' ('{difficulty}')\n"
                     f"- 'explanation' (string explanation)\n"
                     f"Return ONLY valid raw JSON."
                 )
@@ -318,6 +433,10 @@ def generate_questions():
                 if raw_content.startswith("```"):
                     raw_content = raw_content.split("\n", 1)[1].rsplit("\n", 1)[0]
                 questions = json.loads(raw_content)
+                for q in questions:
+                    q['type'] = q.get('type', 'MCQ')
+                    if 'correctOption' in q and 'correctAnswer' not in q:
+                        q['correctAnswer'] = chr(65 + int(q['correctOption']))
                 return jsonify({"success": True, "source": "openai", "questions": questions})
             except Exception as e:
                 print(f"[AIGen] OpenAI API notice: {e}")

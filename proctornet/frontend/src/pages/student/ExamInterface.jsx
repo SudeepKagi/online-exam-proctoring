@@ -150,6 +150,24 @@ export default function ExamInterface() {
     },
     onResumed: () => {
       setSuspendedState(null)
+      setTerminalState(null)
+    },
+    onStateChange: (payload) => {
+      if (payload?.currentStatus === 'ACTIVE') {
+        setSuspendedState(null)
+        setTerminalState(null)
+      } else if (payload?.currentStatus === 'SUSPENDED') {
+        setSuspendedState({
+          active: true,
+          reason: payload?.reason || 'Session temporarily paused by proctor.',
+          isVpn: false
+        })
+      } else if (payload?.currentStatus === 'TERMINATED') {
+        setTerminalState({
+          type: 'TERMINATED',
+          reason: payload?.reason || 'Terminated by invigilator for academic integrity violation.'
+        })
+      }
     }
   })
 

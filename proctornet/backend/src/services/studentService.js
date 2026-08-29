@@ -612,50 +612,67 @@ async function submitStudentExam({ examId, studentId, answers }) {
     if (!ans.question) continue
 
     if (ans.question.type === 'MCQ') {
-      const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3 }
-      const selectedIdx = letterToIndex[ans.selectedOption?.toUpperCase()]
-      let isCorrect = false
+      const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, '0': 0, '1': 1, '2': 2, '3': 3 }
+      const rawSelected = ans.selectedOption !== null && ans.selectedOption !== undefined ? String(ans.selectedOption).trim() : ''
+      const rawCorrect = ans.question.correctAnswer !== null && ans.question.correctAnswer !== undefined ? String(ans.question.correctAnswer).trim() : ''
 
-      if (ans.question.correctAnswer && ans.selectedOption &&
-          ans.selectedOption.trim().toUpperCase() === ans.question.correctAnswer.trim().toUpperCase()) {
-        isCorrect = true
+      let selectedIdx = letterToIndex[rawSelected.toUpperCase()]
+      let correctIdx = letterToIndex[rawCorrect.toUpperCase()]
+
+      let parsedOptions = ans.question.options
+      if (typeof parsedOptions === 'string') {
+        try { parsedOptions = JSON.parse(parsedOptions) } catch { parsedOptions = [] }
+      }
+      if (!Array.isArray(parsedOptions)) parsedOptions = []
+
+      // If correctOption is explicitly on question
+      if (correctIdx === undefined && typeof ans.question.correctOption === 'number') {
+        correctIdx = ans.question.correctOption
       }
 
-      if (!isCorrect && Array.isArray(ans.question.options) && ans.question.options.length > 0) {
-        const correctOptIdx = ans.question.options.findIndex(o => o && typeof o === 'object' && o.isCorrect)
-        if (correctOptIdx !== -1) {
-          if (selectedIdx === correctOptIdx) {
-            isCorrect = true
-          } else {
-            const correctOpt = ans.question.options[correctOptIdx]
-            if (correctOpt && correctOpt.text && ans.selectedOption === correctOpt.text) {
-              isCorrect = true
-            }
-          }
-        } else {
-          const qCorrect = ans.question.correctAnswer
-          if (qCorrect) {
-            const correctIdxFromAnswer = letterToIndex[qCorrect.toUpperCase()]
-            if (correctIdxFromAnswer !== undefined && selectedIdx === correctIdxFromAnswer) {
-              isCorrect = true
-            } else {
-              const correctTextIdx = ans.question.options.findIndex(o => {
-                const text = typeof o === 'string' ? o : o?.text
-                return text && text.trim().toLowerCase() === qCorrect.trim().toLowerCase()
-              })
-              if (correctTextIdx !== -1 && selectedIdx === correctTextIdx) {
-                isCorrect = true
-              }
-            }
-          }
+      // Check if options array has isCorrect: true
+      if (correctIdx === undefined && parsedOptions.length > 0) {
+        const foundCorrect = parsedOptions.findIndex(o => o && typeof o === 'object' && o.isCorrect)
+        if (foundCorrect !== -1) correctIdx = foundCorrect
+      }
+
+      // If selectedOption is the full text of an option
+      if (selectedIdx === undefined && parsedOptions.length > 0) {
+        const foundSel = parsedOptions.findIndex(o => {
+          const t = typeof o === 'string' ? o : o?.text
+          return t && t.trim().toLowerCase() === rawSelected.toLowerCase()
+        })
+        if (foundSel !== -1) selectedIdx = foundSel
+      }
+
+      // If correctAnswer is the full text of an option
+      if (correctIdx === undefined && parsedOptions.length > 0) {
+        const foundCorr = parsedOptions.findIndex(o => {
+          const t = typeof o === 'string' ? o : o?.text
+          return t && t.trim().toLowerCase() === rawCorrect.toLowerCase()
+        })
+        if (foundCorr !== -1) correctIdx = foundCorr
+      }
+
+      // Default correctIdx to 0 (Option A) if completely unspecified
+      if (correctIdx === undefined) correctIdx = 0
+
+      let isCorrect = false
+      if (rawSelected && rawCorrect && rawSelected.toLowerCase() === rawCorrect.toLowerCase()) {
+        isCorrect = true
+      } else if (selectedIdx !== undefined && correctIdx !== undefined && selectedIdx === correctIdx) {
+        isCorrect = true
+      } else if (parsedOptions.length > 0 && selectedIdx !== undefined && parsedOptions[selectedIdx]) {
+        const selOpt = parsedOptions[selectedIdx]
+        if (typeof selOpt === 'object' && selOpt.isCorrect) {
+          isCorrect = true
         }
       }
 
       let marksAwarded = 0
       if (isCorrect) {
-        marksAwarded = ans.question.marks || 0
-      } else if (session.exam?.negativeMarking && ans.selectedOption && String(ans.selectedOption).trim().length > 0) {
-        // H-1 Precedence: Question-level negativeMarks (if > 0) -> Exam-level negativeValue -> 0
+        marksAwarded = ans.question.marks || 1
+      } else if (session.exam?.negativeMarking && rawSelected.length > 0) {
         let penalty = 0
         if (ans.question.negativeMarks !== null && ans.question.negativeMarks !== undefined && ans.question.negativeMarks > 0) {
           penalty = Number(ans.question.negativeMarks)

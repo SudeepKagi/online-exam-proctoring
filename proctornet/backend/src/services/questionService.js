@@ -257,14 +257,15 @@ async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
   return createdQuestions
 }
 
-async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count = 5, type = 'MCQ' }) {
+async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count, numMCQ, numEssay, type = 'MCQ' }) {
   if (!topic || !String(topic).trim()) {
     const error = new Error('Topic is required.')
     error.status = 400
     throw error
   }
 
-  const sanitizedCount = Math.max(1, Math.min(parseInt(count, 10) || 5, 30))
+  const requestedCount = count || numMCQ || (numEssay ? parseInt(numEssay, 10) : 5)
+  const sanitizedCount = Math.max(1, Math.min(parseInt(requestedCount, 10) || 5, 30))
   const sanitizedTopic = String(topic).trim().substring(0, 200)
   const sanitizedType = ['MCQ', 'CODE', 'SUBJECTIVE'].includes(String(type).toUpperCase()) ? String(type).toUpperCase() : 'MCQ'
 
@@ -280,13 +281,35 @@ async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count 
     throw error
   }
 
+  const formattedQuestions = (result.questions || []).map((q, idx) => {
+    const correctIdx = typeof q.correctOption === 'number' ? q.correctOption : 0
+    const correctLetter = String.fromCharCode(65 + correctIdx)
+    const rawOptions = Array.isArray(q.options) && q.options.length > 0 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D']
+    const optionsObj = rawOptions.map((opt, i) => {
+      const isCorrect = i === correctIdx
+      if (typeof opt === 'string') return { text: opt, isCorrect }
+      return { text: opt.text || String(opt), isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCorrect }
+    })
+
+    return {
+      type: (q.type || 'MCQ').toUpperCase(),
+      questionText: q.questionText || `Question ${idx + 1}`,
+      options: optionsObj,
+      correctOption: correctIdx,
+      correctAnswer: q.correctAnswer || correctLetter,
+      marks: q.marks || (difficulty.toUpperCase() === 'HARD' ? 3 : difficulty.toUpperCase() === 'MEDIUM' ? 2 : 1),
+      difficulty: q.difficulty || difficulty,
+      explanation: q.explanation || ''
+    }
+  })
+
   return {
-    questions: result.questions,
+    questions: formattedQuestions,
     source: result.source
   }
 }
 
-async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty = 'Medium', count = 5, type = 'MCQ' }) {
+async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty = 'Medium', count, numMCQ, numEssay, type = 'MCQ' }) {
   const where = { id: examId }
   if (facultyId) where.facultyId = facultyId
 
@@ -297,7 +320,8 @@ async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty
     throw error
   }
 
-  const sanitizedCount = Math.max(1, Math.min(parseInt(count, 10) || 5, 30))
+  const requestedCount = count || numMCQ || (numEssay ? parseInt(numEssay, 10) : 5)
+  const sanitizedCount = Math.max(1, Math.min(parseInt(requestedCount, 10) || 5, 30))
   const sanitizedTopic = String(topic || exam.title || 'General Subject').trim().substring(0, 200)
   const sanitizedType = ['MCQ', 'CODE', 'SUBJECTIVE'].includes(String(type).toUpperCase()) ? String(type).toUpperCase() : 'MCQ'
 
@@ -314,21 +338,29 @@ async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty
     throw error
   }
 
-
   const createdQuestions = await global.prisma.$transaction(async (tx) => {
     const list = []
     let totalAddedMarks = 0
 
     for (let i = 0; i < result.questions.length; i++) {
       const q = result.questions[i]
-      const marks = q.marks ? parseFloat(q.marks) : 1
+      const correctIdx = typeof q.correctOption === 'number' ? q.correctOption : 0
+      const correctLetter = String.fromCharCode(65 + correctIdx)
+      const rawOptions = Array.isArray(q.options) && q.options.length > 0 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D']
+      const optionsObj = rawOptions.map((opt, optIdx) => {
+        const isCorrect = optIdx === correctIdx
+        if (typeof opt === 'string') return { text: opt, isCorrect }
+        return { text: opt.text || String(opt), isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCorrect }
+      })
+
+      const marks = q.marks ? parseFloat(q.marks) : (difficulty.toUpperCase() === 'HARD' ? 3 : difficulty.toUpperCase() === 'MEDIUM' ? 2 : 1)
       const created = await tx.question.create({
         data: {
           examId,
           questionText: q.questionText || q.text || 'AI Generated Question',
           type: (q.type || 'MCQ').toUpperCase(),
-          options: q.options || [],
-          correctAnswer: String(q.correctOption !== undefined ? q.correctOption : (q.correctAnswer || 0)),
+          options: optionsObj,
+          correctAnswer: q.correctAnswer || correctLetter,
           sampleInput: q.sampleInput || null,
           sampleOutput: q.sampleOutput || null,
           marks,

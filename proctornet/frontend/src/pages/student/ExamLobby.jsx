@@ -208,18 +208,22 @@ export default function ExamLobby() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Camera size={18} className="text-[#2f80ed] shrink-0" />
-              <span>Continuous AI Face Proctoring</span>
+              <span>AI Face Biometrics</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Monitor size={18} className="text-[#2f80ed] shrink-0" />
-              <span>Screen Sharing & Kiosk Lock</span>
+              <span>Screen Share & Kiosk</span>
+            </div>
+            <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
+              <Cpu size={18} className="text-[#2f80ed] shrink-0" />
+              <span>BYOD Agent Check</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Wifi size={18} className="text-[#2f80ed] shrink-0" />
-              <span>WireGuard System Audit</span>
+              <span>WireGuard Sandboxing</span>
             </div>
           </div>
 

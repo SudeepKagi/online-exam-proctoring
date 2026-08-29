@@ -146,6 +146,9 @@ async function transitionExamSession({
       if (!session.startedAt) {
         updateData.startedAt = now
       }
+      updateData.terminationReason = null
+    } else if (targetStatus === SESSION_STATES.SUSPENDED) {
+      updateData.terminationReason = null
     } else if (targetStatus === SESSION_STATES.SUBMITTED) {
       updateData.submittedAt = session.submittedAt || now
     } else if (targetStatus === SESSION_STATES.TERMINATED) {
