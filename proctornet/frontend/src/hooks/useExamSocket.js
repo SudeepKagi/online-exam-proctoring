@@ -151,10 +151,9 @@ export function useExamSocket({
     const studentId = user?.id
     if (!studentId || !examId) return
 
-    const token = localStorage.getItem('proctornet_token')
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
     const socket = io(socketUrl, {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

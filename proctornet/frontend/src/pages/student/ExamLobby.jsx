@@ -5,7 +5,7 @@ import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   Clock, Shield, Camera, Wifi, CheckCircle2, AlertTriangle,
-  ArrowRight, ArrowLeft, RefreshCw, UserCheck, BookOpen, Monitor
+  ArrowRight, ArrowLeft, RefreshCw, UserCheck, BookOpen, Monitor, Cpu
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

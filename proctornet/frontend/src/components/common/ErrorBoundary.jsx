@@ -25,8 +25,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   handleGoDashboard = () => {
-    const role = localStorage.getItem('proctornet_role') || 'student'
-    window.location.href = `/${role}/dashboard`
+    window.location.href = '/'
   }
 
   render() {

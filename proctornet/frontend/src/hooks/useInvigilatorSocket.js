@@ -28,11 +28,10 @@ export function useInvigilatorSocket({ examId, onAlertReceived, enabled = true }
       return
     }
 
-    const token = localStorage.getItem('inv_token') || localStorage.getItem('proctornet_inv_token') || localStorage.getItem('proctornet_token')
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
 
     const socket = io(socketUrl, {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 10,

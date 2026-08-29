@@ -1,26 +1,23 @@
 const { verifyToken } = require('../utils/jwt')
+const { extractTokenFromReq } = require('../utils/cookies')
 
 /**
  * auth.middleware.js
- * Verifies the JWT token from the Authorization header.
+ * Verifies authentication JWT from secure HttpOnly cookie (or Bearer header fallback).
  * Attaches decoded payload to req.user.
  */
 function authenticate(req, res, next) {
   try {
-    const header = req.headers.authorization
-    if (!header || !header.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided. Please login.' })
+    const token = extractTokenFromReq(req)
+    if (!token) {
+      return res.status(401).json({ error: 'Your session has expired. Please sign in again.' })
     }
 
-    const token   = header.split(' ')[1]
     const decoded = verifyToken(token)
     req.user = decoded   // { id, role, examId?, iat, exp }
     next()
   } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Session expired. Please login again.' })
-    }
-    return res.status(401).json({ error: 'Invalid token. Please login.' })
+    return res.status(401).json({ error: 'Your session has expired. Please sign in again.' })
   }
 }
 
@@ -30,12 +27,13 @@ function authenticate(req, res, next) {
  */
 function optionalAuth(req, res, next) {
   try {
-    const header = req.headers.authorization
-    if (header && header.startsWith('Bearer ')) {
-      req.user = verifyToken(header.split(' ')[1])
+    const token = extractTokenFromReq(req)
+    if (token) {
+      req.user = verifyToken(token)
     }
   } catch { /* ignore */ }
   next()
 }
 
 module.exports = { authenticate, optionalAuth }
+

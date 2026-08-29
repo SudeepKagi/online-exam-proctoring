@@ -5,7 +5,6 @@ const AuthContext = createContext()
 
 const initialState = {
   user: null,
-  token: null,
   role: null,
   isLoading: true,
   isAuthenticated: false,
@@ -17,8 +16,7 @@ function authReducer(state, action) {
       return {
         ...state,
         user: action.payload.user,
-        token: action.payload.token,
-        role: action.payload.role,
+        role: action.payload.role || action.payload.user?.role,
         isAuthenticated: true,
         isLoading: false,
       }
@@ -36,34 +34,38 @@ function authReducer(state, action) {
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Restore session from localStorage on mount
+  // Restore authenticated session from HttpOnly cookie on mount
   useEffect(() => {
-    const token = localStorage.getItem('proctornet_token')
-    const user = localStorage.getItem('proctornet_user')
-    const role = localStorage.getItem('proctornet_role')
+    let isMounted = true
 
-    if (token && user) {
+    const restoreSession = async () => {
       try {
-        // Keep token in sync with api interceptor
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: { token, user: JSON.parse(user), role },
-        })
-      } catch {
-        localStorage.removeItem('proctornet_token')
-        localStorage.removeItem('proctornet_user')
-        localStorage.removeItem('proctornet_role')
-        dispatch({ type: 'SET_LOADING', payload: false })
+        const res = await api.get('/auth/me')
+        if (res.data?.user && isMounted) {
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: { user: res.data.user, role: res.data.user.role },
+          })
+        } else if (isMounted) {
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
+      } catch (_err) {
+        if (isMounted) {
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
       }
-    } else {
-      dispatch({ type: 'SET_LOADING', payload: false })
+    }
+
+    restoreSession()
+    return () => {
+      isMounted = false
     }
   }, [])
 
   /**
    * login(credentials, role)
    * Calls the correct auth endpoint based on role.
-   * api.js interceptor attaches the token automatically on subsequent requests.
+   * Server establishes the secure HttpOnly cookie.
    */
   const login = async (arg1, arg2, arg3) => {
     let credentials = {}
@@ -89,13 +91,9 @@ export function AuthProvider({ children }) {
 
     try {
       const res = await api.post(endpoints[role], credentials)
-      const { token, user } = res.data
+      const { user } = res.data
 
-      localStorage.setItem('proctornet_token', token)
-      localStorage.setItem('proctornet_user', JSON.stringify(user))
-      localStorage.setItem('proctornet_role', role)
-
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { token, user, role } })
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { user, role } })
       return { success: true }
     } catch (err) {
       const status     = err.response?.data?.status
@@ -137,19 +135,16 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('proctornet_token')
-    localStorage.removeItem('proctornet_user')
-    localStorage.removeItem('proctornet_role')
-    localStorage.removeItem('inv_token')
-    localStorage.removeItem('inv_examId')
-    localStorage.removeItem('inv_session')
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch (_err) {
+      // Non-critical, proceed with client teardown
+    }
     dispatch({ type: 'LOGOUT' })
   }
 
   const updateUser = (data) => {
-    const updated = { ...state.user, ...data }
-    localStorage.setItem('proctornet_user', JSON.stringify(updated))
     dispatch({ type: 'UPDATE_USER', payload: data })
   }
 
@@ -174,16 +169,10 @@ export function AuthProvider({ children }) {
   const loginInvigilator = async (examId, invId, invPassword) => {
     try {
       const res = await api.post('/auth/invigilator/login', { examId, invId, invPassword })
-      const { token, session } = res.data
-      const user = { id: session.invId, name: `Invigilator ${session.invId}`, examId: session.examId, role: 'invigilator' }
-      
-      localStorage.setItem('proctornet_token', token)
-      localStorage.setItem('proctornet_user', JSON.stringify(user))
-      localStorage.setItem('proctornet_role', 'invigilator')
-      localStorage.setItem('inv_token', token)
-      localStorage.setItem('inv_examId', session.examId)
+      const { session, user } = res.data
+      const invUser = user || { id: session.invId, name: `Invigilator ${session.invId}`, examId: session.examId, role: 'invigilator' }
 
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { token, user, role: 'invigilator' } })
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: invUser, role: 'invigilator' } })
       return { success: true, session }
     } catch (err) {
       if (!err.response) {
@@ -205,3 +194,4 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }
+

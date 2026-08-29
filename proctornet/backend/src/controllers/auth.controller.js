@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { signToken } = require('../utils/jwt')
+const { setAuthCookie, clearAuthCookie } = require('../utils/cookies')
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
 
@@ -47,11 +48,12 @@ async function adminLogin(req, res) {
       return res.status(401).json({ error: 'Invalid credentials.' })
 
     const token = signToken({ id: admin.id, role: 'admin' })
+    setAuthCookie(res, token)
 
     logAudit({ userId: admin.id, userRole: 'admin', action: 'ADMIN_LOGIN', ipAddress: getClientIp(req) })
 
     res.json({
-      token,
+      authenticated: true,
       user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin', mustChangePassword: false },
     })
   } catch (e) {
@@ -96,11 +98,12 @@ async function facultyLogin(req, res) {
       return res.status(401).json({ error: 'Invalid credentials.' })
 
     const token = signToken({ id: faculty.id, role: 'faculty' })
+    setAuthCookie(res, token)
 
     logAudit({ userId: faculty.id, userRole: 'faculty', action: 'FACULTY_LOGIN', ipAddress: getClientIp(req), facultyId: faculty.id })
 
     res.json({
-      token,
+      authenticated: true,
       user: {
         id: faculty.id,
         name: faculty.name,
@@ -158,11 +161,12 @@ async function studentLogin(req, res) {
       return res.status(401).json({ error: 'Invalid credentials.' })
 
     const token = signToken({ id: student.id, role: 'student' })
+    setAuthCookie(res, token)
 
     logAudit({ userId: student.id, userRole: 'student', action: 'STUDENT_LOGIN', ipAddress: getClientIp(req), studentId: student.id })
 
     res.json({
-      token,
+      authenticated: true,
       user: {
         id: student.id,
         name: student.name,
@@ -192,6 +196,7 @@ async function getMe(req, res) {
       const student = await global.prisma.student.findUnique({ where: { id } })
       if (!student) return res.status(404).json({ error: 'Student not found.' })
       return res.json({
+        authenticated: true,
         user: {
           id: student.id,
           name: student.name,
@@ -211,6 +216,7 @@ async function getMe(req, res) {
       const faculty = await global.prisma.faculty.findUnique({ where: { id } })
       if (!faculty) return res.status(404).json({ error: 'Faculty not found.' })
       return res.json({
+        authenticated: true,
         user: {
           id: faculty.id,
           name: faculty.name,
@@ -225,6 +231,7 @@ async function getMe(req, res) {
       const admin = await global.prisma.admin.findUnique({ where: { id } })
       if (!admin) return res.status(404).json({ error: 'Admin not found.' })
       return res.json({
+        authenticated: true,
         user: {
           id: admin.id,
           name: admin.name,
@@ -233,9 +240,27 @@ async function getMe(req, res) {
           mustChangePassword: false,
         }
       })
+    } else if (role === 'invigilator') {
+      const session = await global.prisma.invigilatorSession.findUnique({
+        where: { id },
+        include: { exam: { select: { id: true, title: true, subject: true } } }
+      })
+      if (!session || !session.isActive) return res.status(401).json({ error: 'Invigilator session has expired or is invalid.' })
+      return res.json({
+        authenticated: true,
+        user: {
+          id: session.invId,
+          name: `Invigilator ${session.invId}`,
+          role: 'invigilator',
+          examId: session.examId,
+          exam: session.exam,
+          sessionId: session.id,
+          sessionExpiry: session.sessionExpiry,
+        }
+      })
     }
 
-    return res.json({ user: req.user })
+    return res.json({ authenticated: true, user: req.user })
   } catch (err) {
     console.error('[getMe]', err)
     return res.status(500).json({ error: 'Server error.' })
@@ -374,19 +399,52 @@ async function invigilatorLogin(req, res) {
       { id: session.id, role: 'invigilator', examId },
       `${secondsUntilExpiry}s`
     )
+    setAuthCookie(res, token, secondsUntilExpiry * 1000)
 
     logAudit({ userId: session.id, userRole: 'invigilator', action: 'INVIGILATOR_LOGIN',
       details: `examId=${examId} invId=${invId}`, ipAddress: getClientIp(req) })
 
     res.json({
-      token,
+      authenticated: true,
       session: {
         id: session.id, examId, invId,
         sessionExpiry, exam: { title: exam.title, subject: exam.subject },
       },
+      user: {
+        id: session.invId,
+        name: `Invigilator ${session.invId}`,
+        role: 'invigilator',
+        examId,
+        exam: { title: exam.title, subject: exam.subject },
+        sessionId: session.id,
+        sessionExpiry,
+      },
     })
   } catch (e) {
     handleAuthError(res, e, 'invigilatorLogin')
+  }
+}
+
+/**
+ * POST /api/auth/logout
+ * Revokes the authentication cookie and logs the audit event.
+ */
+async function logout(req, res) {
+  try {
+    clearAuthCookie(res)
+    if (req.user?.id) {
+      logAudit({
+        userId: req.user.id,
+        userRole: req.user.role || 'user',
+        action: 'USER_LOGOUT',
+        ipAddress: getClientIp(req),
+      })
+    }
+    return res.json({ success: true, message: 'Logged out successfully.' })
+  } catch (e) {
+    console.error('[logout]', e)
+    clearAuthCookie(res)
+    return res.json({ success: true, message: 'Logged out.' })
   }
 }
 
@@ -399,4 +457,5 @@ module.exports = {
   changePassword,
   invigilatorLogin,
   getMe,
+  logout,
 }

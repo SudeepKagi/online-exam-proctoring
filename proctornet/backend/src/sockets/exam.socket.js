@@ -5,6 +5,7 @@
  */
 
 const { verifyToken } = require('../utils/jwt')
+const { extractTokenFromSocket } = require('../utils/cookies')
 const { transitionExamSession, SESSION_STATES } = require('../services/sessionStateMachine')
 
 const CANONICAL_SEVERITY = {
@@ -87,7 +88,7 @@ module.exports = (io) => {
   // ── Cryptographic Socket Authentication Middleware ──
   io.use((socket, next) => {
     try {
-      const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.split(' ')[1]
+      const token = extractTokenFromSocket(socket)
       if (token) {
         const decoded = verifyToken(token)
         socket.user = decoded // { id, role, examId? }

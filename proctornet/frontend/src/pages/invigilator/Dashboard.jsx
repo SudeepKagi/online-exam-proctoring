@@ -15,9 +15,7 @@ import { useAuth } from '@/context/AuthContext'
 
 export default function InvDashboard() {
   const { examId } = useParams()
-  const { user, logout } = useAuth()
-
-  const effectiveExamId = examId || user?.examId || localStorage.getItem('inv_examId') || 'active'
+  const effectiveExamId = examId || user?.examId || 'active'
 
   // ── Local State ──
   const [examInfo, setExamInfo] = useState(null)

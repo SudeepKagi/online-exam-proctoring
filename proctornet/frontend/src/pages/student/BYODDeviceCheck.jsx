@@ -576,8 +576,8 @@ export default function BYODDeviceCheck() {
                     <Wifi size={16} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[#0f172a]">Network Latency & Isolation</h3>
-                    <p className="text-[11px] text-[#64748b]">Proctoring telemetry & tunnel connectivity</p>
+                    <h3 className="text-sm font-bold text-[#0f172a]">Network Latency & Security</h3>
+                    <p className="text-[11px] text-[#64748b]">Proctoring telemetry & encryption channel</p>
                   </div>
                 </div>
                 {vpnConnected ? (
@@ -586,7 +586,7 @@ export default function BYODDeviceCheck() {
                   </span>
                 ) : (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
-                    HTTPS SECURED
+                    HTTPS SECURED (VPN PAUSED)
                   </span>
                 )}
               </div>
@@ -634,27 +634,16 @@ export default function BYODDeviceCheck() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="p-2.5 rounded-xl bg-[#fff1f2] border border-[#fecdd3] flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#f43f5e]" />
-                        <span className="text-[#9f1239] text-[11px] font-semibold">
-                          VPN Tunnel Disconnected — Connection Required
-                        </span>
+                  <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#dbeafe] text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
+                      <div>
+                        <p className="font-bold text-[#1e40af] flex items-center gap-1">
+                          <CheckCircle2 size={13} className="text-[#2563eb]" /> HTTPS/TLS Proctoring Active
+                        </p>
+                        <p className="text-[10px] text-[#3b82f6]">WireGuard VPN check is temporarily paused for maintenance.</p>
                       </div>
                     </div>
-                    <Button
-                      onClick={handleAutoConnectVpn}
-                      disabled={activatingVpn}
-                      className="w-full h-9 text-xs font-bold bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      {activatingVpn ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <ShieldCheck className="w-3.5 h-3.5 text-white" />
-                      )}
-                      {activatingVpn ? 'Connecting WireGuard Tunnel...' : '⚡ Auto-Connect VPN (1-Click)'}
-                    </Button>
                   </div>
                 )}
               </div>

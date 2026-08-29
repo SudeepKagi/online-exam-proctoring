@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
 const STAGES = [
-  { id: 'system', name: 'BYOD Agent & VPN Integrity Audit', icon: Cpu, desc: 'Companion agent scan, prohibited app check & WireGuard tunnel verification' },
+  { id: 'system', name: 'BYOD Agent & System Integrity Audit', icon: Cpu, desc: 'Companion agent scan & prohibited application integrity check' },
   { id: 'media', name: 'Hardware Media Feeds', icon: Camera, desc: 'Webcam feed mapping & mandatory screen share authorization' },
   { id: 'face', name: 'AI Face Verification', icon: Shield, desc: 'Matching live biometric stream against student profile' },
   { id: 'kiosk', name: 'Fullscreen Kiosk & Terms', icon: Lock, desc: 'Viewport locking & candidate integrity agreement' }
@@ -161,10 +161,10 @@ export default function SecurityCheck() {
     setStageDetails(prev => ({ ...prev, [key]: detail }))
   }
 
-  // 1. Stage 0: BYOD Companion Agent & WireGuard VPN Audit
+  // 1. Stage 0: BYOD Companion Agent & System Audit (VPN check paused)
   const runSystemAudit = async () => {
     setActiveStage(0)
-    updateStage('system', 'loading', 'Auditing BYOD companion agent, processes, and WireGuard VPN tunnel...')
+    updateStage('system', 'loading', 'Auditing BYOD companion agent and system processes...')
 
     let assignedIp = '10.0.0.x'
     let conf = ''
@@ -197,7 +197,7 @@ export default function SecurityCheck() {
       setVmRenderer('Standard Display')
     }
 
-    // Check BYOD Agent and VPN status
+    // Check BYOD Agent and system status
     await scanByodAgent(false)
   }
 
@@ -224,16 +224,10 @@ export default function SecurityCheck() {
           return false
         }
 
-        // Now check VPN status via agent
-        const vpnOk = await checkVpnRealStatus(showToast)
-        if (vpnOk) {
-          updateStage('system', 'pass', `BYOD Agent Active • 0 Prohibited Apps • WireGuard VPN Tunnel Active (${vpnPeerIp || '10.0.0.5'})`)
-          if (showToast) toast.success('BYOD Agent & VPN audit cleared!')
-          return true
-        } else {
-          updateStage('system', 'loading', 'BYOD Agent Active (Clean) • Activate WireGuard VPN profile to proceed')
-          return false
-        }
+        // VPN feature is temporarily paused for maintenance — pass Stage 0 once BYOD agent is clean
+        updateStage('system', 'pass', 'BYOD Agent Active • 0 Prohibited Apps • Clean Integrity (VPN Paused)')
+        if (showToast) toast.success('BYOD Agent & System audit cleared!')
+        return true
       } else {
         setAgentConnected(false)
         updateStage('system', 'fail', 'BYOD Companion Agent offline on port 49152. Launch desktop companion to proceed.')
@@ -528,10 +522,14 @@ export default function SecurityCheck() {
       setActiveStage(0)
       return
     }
+    // VPN feature is temporarily paused for maintenance
+    const VPN_FEATURE_PAUSED = true
     if (!vpnVerified) {
-      toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
-      setActiveStage(0)
-      return
+      if (!VPN_FEATURE_PAUSED) {
+        toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
+        setActiveStage(0)
+        return
+      }
     }
 
     try {
@@ -556,7 +554,7 @@ export default function SecurityCheck() {
     }
   }
 
-  const stage0Passed = agentConnected && blockedProcesses.length === 0 && vpnVerified
+  const stage0Passed = agentConnected && blockedProcesses.length === 0
   const allPassed = stage0Passed && stageStatus.media === 'pass' && stageStatus.face === 'pass'
 
   return (
@@ -640,7 +638,7 @@ export default function SecurityCheck() {
                 </span>
                 <h2 className="text-2xl font-bold text-foreground mt-2.5">{exam?.title}</h2>
                 <p className="text-xs text-muted-foreground mt-1 font-normal max-w-lg mx-auto">
-                  Your BYOD Agent, WireGuard VPN tunnel, webcam, screen share, and biometric identity are fully cleared. Please remain in place until the exam session opens.
+                  Your BYOD Agent, webcam, screen share, and biometric identity are fully cleared. Please remain in place until the exam session opens.
                 </p>
               </div>
 
@@ -665,7 +663,7 @@ export default function SecurityCheck() {
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="truncate text-foreground/90 font-medium">VPN: {vpnPeerIp || '10.0.0.5'}</span>
+                  <span className="truncate text-foreground/90 font-medium">Network: HTTPS Secure</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -700,7 +698,7 @@ export default function SecurityCheck() {
                 </div>
               </div>
 
-              {/* STAGE 0: BYOD Companion Agent & WireGuard VPN Audit */}
+              {/* STAGE 0: BYOD Companion Agent & System Audit */}
               {activeStage === 0 && !stage0Passed ? (
                 <div className="space-y-4 mb-6">
                   {/* BYOD Agent Diagnostic Card (MANDATORY) */}
@@ -782,7 +780,7 @@ export default function SecurityCheck() {
                     )}
                   </div>
 
-                  {/* WireGuard VPN Tunnel Workstation */}
+                  {/* Network Transport Notice (VPN Paused) */}
                   <div className="p-4.5 rounded-2xl bg-background border border-border space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -790,35 +788,34 @@ export default function SecurityCheck() {
                           <Wifi size={16} />
                         </div>
                         <div>
-                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono">
-                            2. WireGuard Network Tunnel (Safe Split-Tunnel)
+                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono flex items-center gap-2">
+                            2. Network Security & Encryption
+                            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-mono text-[10px]">
+                              VPN PAUSED (MAINTENANCE)
+                            </Badge>
                           </h3>
-                          <p className="text-[11px] text-muted-foreground">Only exam data is sandboxed; your general internet remains active.</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            WireGuard VPN check is temporarily paused. Communication is fully secured via HTTPS/WSS encryption.
+                          </p>
                         </div>
                       </div>
-                      <Badge className={vpnVerified ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 font-mono text-[10px]' : 'bg-amber-500/10 text-amber-600 border-amber-500/30 font-mono text-[10px]'}>
-                        {vpnVerified ? `ACTIVE (${vpnPeerIp || '10.0.0.5'})` : 'ACTIVATION MANDATORY'}
-                      </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <Button
-                        onClick={downloadVpnConfig}
-                        variant="outline"
-                        className="w-full text-xs font-mono font-bold border-primary text-primary hover:bg-primary/10 h-10 rounded-xl flex items-center justify-center gap-1.5"
-                      >
-                        <Download size={13} />
-                        {confDownloaded ? 'Re-Download .conf Profile' : 'Download WireGuard .conf'}
-                      </Button>
-
-                      <Button
-                        onClick={verifyVpnTunnel}
-                        disabled={verifyingVpn}
-                        className="w-full text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white h-10 rounded-xl flex items-center justify-center gap-1.5"
-                      >
-                        <RefreshCw size={13} className={verifyingVpn ? 'animate-spin' : ''} />
-                        {verifyingVpn ? 'Verifying Tunnel…' : '1-Click Activate & Verify Tunnel'}
-                      </Button>
+                    <div className="p-3 bg-card border border-border/70 rounded-xl flex items-center justify-between text-xs font-mono text-muted-foreground">
+                      <div className="flex items-center gap-2 text-foreground/90">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span>Encrypted Proctored Transport: Active</span>
+                      </div>
+                      {vpnConfig && (
+                        <Button
+                          onClick={downloadVpnConfig}
+                          variant="ghost"
+                          size="sm"
+                          className="text-[11px] font-mono h-7 text-primary hover:bg-primary/10"
+                        >
+                          <Download size={12} className="mr-1" /> Optional .conf
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -867,9 +864,9 @@ export default function SecurityCheck() {
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
-                          <span className="text-muted-foreground">WireGuard VPN:</span>
-                          <p className={`font-semibold mt-0.5 ${vpnVerified ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {vpnVerified ? (vpnPeerIp || 'Connected') : 'Pending'}
+                          <span className="text-muted-foreground">Network Security:</span>
+                          <p className="font-semibold mt-0.5 text-emerald-500">
+                            HTTPS Secure (VPN Paused)
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
@@ -919,7 +916,7 @@ export default function SecurityCheck() {
                   className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-5 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
                 >
                   <RefreshCw size={14} className={`mr-1.5 ${agentScanning ? 'animate-spin' : ''}`} />
-                  {agentScanning ? 'Auditing Environment...' : 'Re-Check BYOD Agent & VPN'}
+                  {agentScanning ? 'Auditing Environment...' : 'Re-Check BYOD Agent'}
                 </Button>
               )}
 

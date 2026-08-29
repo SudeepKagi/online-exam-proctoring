@@ -2,14 +2,14 @@ import { io } from 'socket.io-client'
 
 let socket = null
 
-export const connectSocket = (token) => {
-  if(socket?.connected) return socket
+export const connectSocket = () => {
+  if (socket?.connected) return socket
   
   socket = io(
     import.meta.env.VITE_SOCKET_URL 
     || 'http://localhost:5000',
     {
-      auth: { token },
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,

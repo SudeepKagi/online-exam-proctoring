@@ -18,9 +18,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog'
 
 export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-  const effectiveExamId = examId || user?.examId || localStorage.getItem('inv_examId') || 'active'
+  const effectiveExamId = examId || user?.examId || 'active'
 
   const handleLogout = () => {
     logout()

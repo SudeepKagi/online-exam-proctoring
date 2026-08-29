@@ -140,7 +140,7 @@ function ActionStatusPill({ action }) {
 export default function InvigilatorViolations() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const effectiveExamId = user?.examId || localStorage.getItem('inv_examId') || 'active'
+  const effectiveExamId = user?.examId || 'active'
 
   // ── Component State ──
   const [violations, setViolations] = useState([])

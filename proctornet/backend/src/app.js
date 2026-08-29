@@ -33,8 +33,10 @@ const app    = express()
 const server = http.createServer(app)
 const prisma = new PrismaClient()
 
+const cookieParser = require('cookie-parser')
 const { verifyToken } = require('./utils/jwt')
 const { authenticate } = require('./middleware/auth.middleware')
+const { extractTokenFromReq } = require('./utils/cookies')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
@@ -52,33 +54,16 @@ if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL)
 }
 
-const checkOrigin = (origin, callback) => {
-  if (!origin) return callback(null, true)
-  if (allowedOrigins.includes(origin)) return callback(null, true)
-  if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
-    return callback(null, true)
-  }
-  return callback(null, true) // Fall-through permit for flexible dev environments
-}
-
-// Protected static uploads folder for snapshots & evidence clips (D-8)
-app.use('/uploads', (req, res, next) => {
-  if (req.query.token && !req.headers.authorization) {
-    req.headers.authorization = `Bearer ${req.query.token}`
-  }
-  next()
-}, authenticate, express.static(path.join(__dirname, '../uploads')))
-
 // ── Make prisma globally available ──
 global.prisma = prisma
 
 // ── Socket.io ──
 const io = new Server(server, {
   cors: {
-    origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : true,
+    origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : allowedOrigins,
     methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with']
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie']
   },
   transports: ['websocket', 'polling'],
   allowUpgrades: true,
@@ -98,25 +83,50 @@ app.use(helmet({
 }))
 
 app.use(compression())
+app.use(cookieParser())
 
-app.use(cors({
-  origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : true,
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true)
+    if (allowedOrigins.includes(origin)) return callback(null, true)
+    if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+      return callback(null, true)
+    }
+    return callback(null, false)
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
-}))
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie'],
+}
+app.use(cors(corsOptions))
 
-// Controlled Payload Limits: 2MB standard API (D-6)
+// Controlled Payload Limits: 10MB standard API (D-6)
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// Protected static uploads folder for snapshots & evidence clips (D-8)
+app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads')))
+
+// ── CSRF Defense for Cookie-Authenticated State-Changing Requests ──
+function csrfProtection(req, res, next) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next()
+  }
+
+  const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
+  if (origin) {
+    const isAllowed = allowedOrigins.includes(origin) ||
+      (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')))
+    if (!isAllowed) {
+      return res.status(403).json({ error: 'Forbidden origin: Cross-site request rejected.' })
+    }
+  }
+
+  next()
+}
+app.use('/api', csrfProtection)
+
 // ── Rate Limiting Strategy for Shared-NAT University Labs ──
-// In a college exam lab, 100+ concurrent student machines share a single outbound NAT gateway IP.
-// A global IP-based rate limiter causes the entire lab to share a single budget, leading to false 429 errors.
-// Strategy:
-// 1. Unauthenticated routes (/api/auth) use IP-based rate limiting (30 req / 15 min) to prevent brute-forcing.
-// 2. Authenticated exam & student routes key rate limiting by student ID (from JWT) rather than raw IP.
-// 3. The per-student budget is set to 600 req / 15 min (>6x normal 90-min exam requirements of ~85-100 req/15min).
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 600,
@@ -126,10 +136,9 @@ const apiLimiter = rateLimit({
     if (req.user?.id) {
       return `user_${req.user.id}`
     }
-    const authHeader = req.headers.authorization
-    if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = extractTokenFromReq(req)
+    if (token) {
       try {
-        const token = authHeader.split(' ')[1]
         const decoded = verifyToken(token)
         if (decoded?.id) return `user_${decoded.id}`
       } catch {

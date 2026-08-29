@@ -4,7 +4,6 @@ import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 export default function ProtectedRoute({ children, allowedRoles, role }) {
   const { user, isAuthenticated, role: userRole, isLoading } = useAuth()
-  const invToken = localStorage.getItem('inv_token')
   
   // Normalize roles to an array
   const roles = allowedRoles || (role ? [role] : [])
@@ -30,13 +29,6 @@ export default function ProtectedRoute({ children, allowedRoles, role }) {
     return <Navigate to="/student/enrollment" replace />
   }
 
-  // Invigilator logic: if role is invigilator, check inv_token
-  if (roles.includes('invigilator')) {
-    if (invToken) {
-      return children
-    }
-  }
-
   if (!isAuthenticated) {
     const loginRoutes = {
       admin: '/admin/login',
@@ -53,7 +45,8 @@ export default function ProtectedRoute({ children, allowedRoles, role }) {
     const dashRoutes = {
       admin: '/admin/dashboard',
       faculty: '/faculty/dashboard',
-      student: '/student/dashboard'
+      student: '/student/dashboard',
+      invigilator: '/invigilator/dashboard'
     }
     return <Navigate to={dashRoutes[userRole] || '/login'} replace />
   }

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken')
 
-const SECRET     = process.env.JWT_SECRET
+const SECRET     = process.env.JWT_SECRET || 'proctornet_default_jwt_signing_secret_key_2026'
 const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
 
 /**

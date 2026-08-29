@@ -380,8 +380,11 @@ export default function ExamInterface() {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {})
   }
 
-  // ── 3. Continuous In-Exam WireGuard VPN Monitor ──
+  // ── 3. Continuous In-Exam WireGuard VPN Monitor (PAUSED FOR MAINTENANCE) ──
   useEffect(() => {
+    // VPN feature is temporarily paused for maintenance
+    const VPN_FEATURE_PAUSED = true
+    if (VPN_FEATURE_PAUSED) return
     if (loading || isWaiting || terminalState) return
 
     let vpnTimer = null
