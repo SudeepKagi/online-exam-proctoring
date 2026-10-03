@@ -1,0 +1,8 @@
+# Ignore raw large fixture and output dumps
+*.json
+!students.json.sample
+
+# Keep summary reports, top-10 SQL table, and flamegraph diagrams
+!summary.md
+!top10_sql.md
+!*.svg

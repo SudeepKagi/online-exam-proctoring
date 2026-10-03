@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.git/
+.vscode/
+package-lock.json
+*.min.js
+*.log
+docs/assets/*.docx
+docs/samples/*.xlsx
+uploads/
+coverage/
+reports/load/baseline/*.json
+reports/load/baseline/*.bin

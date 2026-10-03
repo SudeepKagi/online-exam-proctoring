@@ -1,32 +1,44 @@
-# ProctorNet Engineering Interview Notes & Architectural Rationale
+# ProctorNet Re-Architecture — System Design Interview Notes
 
-This document captures the principal engineering reasoning behind each phase of the single-node scalability and reliability re-architecture. Use this for technical interview discussions, architecture reviews, and design defense.
+## Core Philosophy: Empirical Engineering vs. Intuition
+
+> *"I didn't optimise on intuition — I produced a baseline, found the breaking point at 50 concurrent users (first SLO breach) and 100 concurrent users (system collapse), and identified the limiting resource as PostgreSQL connection pool starvation and interactive transaction timeouts compounded by sequential unindexed WAN round-trips."*
 
 ---
 
-## Phase P0: Baseline & Safety Setup
+## 1. Phase P0: The Baseline & Measurement Harness
 
-### 1. The Problem
-Scaling an existing full-stack application (React, Node/Express, Socket.IO, Prisma, WebRTC) cannot begin with arbitrary performance optimizations. Without establishing a deterministic baseline, identifying existing architectural defects, and putting strict regression guardrails in place, optimizations risk introducing silent regressions, breaking data integrity, or fixing non-existent bottlenecks while ignoring severe structural failures.
+### Interview Question: *"How did you know what to optimize first in an existing production codebase?"*
 
-### 2. Options Considered
-- **Option A (Ad-hoc refactoring)**: Immediately rewrite queries and start rewriting Socket.IO code.
-  - *Drawback*: High risk of breaking the existing 65 passing end-to-end tests, no baseline numbers to measure speedup against, and no clear audit of security flaws (such as the answer key leak in `options`).
-- **Option B (Comprehensive Architectural Baseline & ADR Framework — Chosen)**:
-  - Establish a formal Git baseline tag (`baseline-pre-scalability`).
-  - Formulate 12 Architecture Decision Records (ADRs) to lock in key trade-offs before code changes.
-  - Perform an evidence-based line-by-line codebase audit of all 35 claimed bottlenecks.
-  - Establish an automated experiment log and findings dispute register.
+**Answer:**
+1. **Safety Net First**: Before touching a single line of business logic, we established a reproducible safety net:
+   - Tagged `baseline-pre-scalability` so any regression was instantly diffable and reversible.
+   - Pinned Node 22 LTS, standardized code formatting and linting (Prettier, ESLint, EditorConfig), and enforced Conventional Commits.
+   - Audited the entire codebase systematically into an `AUDIT_REGISTER.md` cataloging 35 architectural flaws across data access, real-time media, security, and VPN.
+2. **Measurement Harness**:
+   - Instrumented production observability using `pino` structured JSON logging with `AsyncLocalStorage` request-id propagation, `prom-client` exposing `/metrics` with custom gauges for `nodejs_eventloop_delay_seconds`, HTTP duration histograms, and Prisma engine metrics (`prisma_pool_connections_busy`, `idle`, `wait_histogram_ms`).
+   - Provisioned Prometheus and Grafana dashboards under `docker compose --profile observability`.
+3. **The Empirical Baseline**:
+   - Built a deterministic load fixture generator seeding 1 exam, 50 MCQs, and 100 student accounts.
+   - Executed a realistic k6 test simulating the complete candidate journey: Login → Exam Discovery → Burst Start → Periodic Autosave every 5s → Final Exam Submission.
+   - At **50 concurrent users**, autosave latency p95 exploded to **5,628 ms** (11.2× over our 500 ms SLO), and start exam p95 climbed to **9,920 ms**.
+   - At **100 concurrent users**, the system suffered a catastrophic failure: **10.65% HTTP request failure rate** and **15.19% candidate session failure rate**.
+   - **The Limiting Resource**: We proved through live Prometheus metrics and Postgres `pg_stat_statements` that the bottleneck was **PostgreSQL connection pool exhaustion** (17/17 connections saturated, 82 queries queued, 4,342 seconds of total pool wait time) and interactive Prisma `$transaction` blocks throwing **`P2028: Unable to start a transaction in the given time`**.
+   - This baseline directed our engineering priorities: Phase P1 targets schema indexes and query consolidation; Phase P2 implements an in-memory/Redis write buffer for autosaves to decouple database I/O from the request loop; Phase P3 optimizes connection pooling and clustering.
 
-### 3. Why This Option?
-Engineering at scale requires empirical measurement: *Measure -> Change -> Re-measure*. Verifying findings against code prevented wasting time on false assumptions (e.g., finding that `prisma/migrations` actually existed on disk and was merely excluded by `.gitignore`) while highlighting urgent vulnerabilities (e.g., `isCorrect` serialized into student JSON payloads).
+---
 
-### 4. Trade-offs
-- Setting up the documentation, ADRs, and verification took upfront planning time before writing functional code.
-- *Payoff*: Unambiguous boundaries, zero debate on subsequent phase scopes, and complete traceability.
+## 2. Key Architecture Decision Records (ADRs) Snapshot
 
-### 5. Metric that Proves It
-- **100% test pass rate** (65/65 tests across 17 suites in 15.68 seconds).
-- **35 findings audited** with exact file line citations.
-- **1 finding disputed/refined** (`prisma/migrations` discovered and un-ignored).
-- Zero downtime or regressions introduced to the existing test suite.
+- **ADR 001**: Single-Node Topology with Horizontal-Ready Boundaries (vertical scale on single 8-core host node first).
+- **ADR 002**: Scope Restriction to MCQ-Only (eliminates complex code runner / heavy sandbox overhead from exam critical path).
+- **ADR 003**: Preservation of 3-Role Access Model (`admin`, `faculty`, `student`).
+- **ADR 004**: Retention of Strict `SUSPENDED` Security State Machine.
+- **ADR 005**: Camera and Screen Retention via SFU Media Gateway (deprecates full-mesh WebRTC P2P; introduces forward-looking media routing).
+- **ADR 006**: One-Time Destructive Schema Reset (replaces haphazard migrations with a unified, index-complete, audited schema).
+- **ADR 007**: Ephemeral Session State in Redis with Event-Driven Sync.
+- **ADR 008**: Outbox Pattern for Audit Logs and Security Evidence.
+- **ADR 009**: Hot Paths Use Parameterized Raw SQL with Strict Connection Budget.
+- **ADR 010**: VPN Service Default-Off with Non-Blocking Worker Isolation.
+- **ADR 011**: Store S3 Keys Never Presigned URLs (resolves 7-day expiration link rot).
+- **ADR 012**: Domain Entity Realignment (`StudentExam` to `ExamAttempt` with `/api/v1` versioned routing).

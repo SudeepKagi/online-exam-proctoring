@@ -166,6 +166,47 @@ services:
       - proctornet-net
     restart: always
 
+  # -------------------------------------------------------------
+  # Observability Stack (Prometheus + Grafana Dashboards)
+  # Run via: docker compose --profile observability up -d
+  # -------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: proctornet-prometheus
+    profiles:
+      - observability
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      - proctornet-net
+    restart: always
+
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: proctornet-grafana
+    profiles:
+      - observability
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - proctornet-net
+    restart: always
+
 networks:
   proctornet-net:
     driver: bridge
@@ -174,3 +215,5 @@ volumes:
   compreface-db-data:
   proctornet-db-data:
   minio-storage:
+  prometheus-data:
+  grafana-data:

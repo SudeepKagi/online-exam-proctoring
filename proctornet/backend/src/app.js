@@ -38,6 +38,8 @@ const cookieParser = require('cookie-parser')
 const { verifyToken } = require('./utils/jwt')
 const { authenticate } = require('./middleware/auth.middleware')
 const { extractTokenFromReq } = require('./utils/cookies')
+const { requestContextMiddleware, logger } = require('./observability/logger')
+const { metricsMiddleware, metricsHandler } = require('./observability/metrics')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
@@ -84,6 +86,8 @@ app.use(helmet({
 }))
 
 app.use(compression())
+app.use(requestContextMiddleware)
+app.use(metricsMiddleware)
 app.use(cookieParser())
 
 const corsOptions = {
@@ -128,9 +132,11 @@ function csrfProtection(req, res, next) {
 app.use('/api', csrfProtection)
 
 // ── Rate Limiting Strategy for Shared-NAT University Labs ──
+const isLoadTest = process.env.LOADTEST_ALLOW === '1'
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 600,
+  max: isLoadTest ? 100000 : 600,
+  skip: () => isLoadTest,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
@@ -155,12 +161,14 @@ app.use('/api', apiLimiter)
 // Stricter IP-based limiter for unauthenticated login/register routes
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: isLoadTest ? 100000 : 30,
+  skip: () => isLoadTest,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many authentication attempts from this IP, please try again later.' },
 })
 app.use('/api/auth', authLimiter)
+
 
 // ── Health check ──
 app.get('/health', (req, res) => {
@@ -171,6 +179,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
   })
 })
+
+// ── Prometheus Metrics Endpoint ──
+app.get('/metrics', metricsHandler)
 
 // ── API Routes ──
 app.use('/api/auth',         authRoutes)
@@ -220,7 +231,8 @@ initChatSocket(io)
 
 // ── Start server ──
 const PORT = process.env.PORT || 5000
-server.listen(PORT, async () => {
+if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+  server.listen(PORT, async () => {
   console.log(`\n🚀 ProctorNet Backend running on port ${PORT}`)
   console.log(`📊 Health: http://localhost:${PORT}/health`)
   console.log(`🔌 Socket.io initialized`)
@@ -237,5 +249,6 @@ server.listen(PORT, async () => {
     console.log('   → If using Supabase free tier, check that the project is not paused')
   }
 })
+}
 
 module.exports = { app, server, io, prisma }

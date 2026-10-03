@@ -1,0 +1,23 @@
+{
+  "name": "proctornet-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProctorNet — Scalable Online Exam Proctoring System",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "commitlint": "commitlint --edit",
+    "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,json,md}\"",
+    "test": "npm test --prefix proctornet/backend",
+    "lint": "npm run lint --prefix proctornet/backend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-conventional": "^19.7.1",
+    "husky": "^9.1.7",
+    "prettier": "^3.5.2"
+  }
+}

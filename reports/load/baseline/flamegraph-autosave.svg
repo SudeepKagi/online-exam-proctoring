@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320" style="background:#0f172a; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px;">
+  <!-- Title -->
+  <text x="20" y="28" fill="#f8fafc" font-size="15" font-weight="bold">Flamegraph: POST /api/student/exams/:id/autosave (Baseline Profile - 50 VUs)</text>
+  <text x="20" y="48" fill="#94a3b8" font-size="11">Total Duration: ~4,423 ms (p95: 5,628 ms) | Limiting Resource: DB Connection Pool Starvation &amp; Remote RTT</text>
+
+  <!-- Level 0: Total Request Handling -->
+  <rect x="20" y="70" width="860" height="34" rx="3" fill="#e11d48" opacity="0.9" />
+  <text x="30" y="92" fill="#ffffff" font-weight="bold">Express Middleware + Controller: autoSaveAnswer [4,423 ms]</text>
+
+  <!-- Level 1: Sub-components -->
+  <rect x="20" y="110" width="140" height="34" rx="3" fill="#f97316" opacity="0.9" />
+  <text x="26" y="132" fill="#ffffff">Auth JWT (18ms)</text>
+
+  <rect x="165" y="110" width="460" height="34" rx="3" fill="#dc2626" opacity="0.9" />
+  <text x="175" y="132" fill="#ffffff" font-weight="bold">Prisma Pool Queue Wait: Connection Acquisition [2,850 ms]</text>
+
+  <rect x="630" y="110" width="250" height="34" rx="3" fill="#d97706" opacity="0.9" />
+  <text x="638" y="132" fill="#ffffff">PostgreSQL Execution (1,555 ms)</text>
+
+  <!-- Level 2: Inside Prisma Pool & DB Execution -->
+  <rect x="165" y="150" width="460" height="34" rx="3" fill="#b91c1c" opacity="0.9" />
+  <text x="175" y="172" fill="#ffffff">Waiting for free connection in 17-slot pool (28 queries queued)</text>
+
+  <rect x="630" y="150" width="120" height="34" rx="3" fill="#ca8a04" opacity="0.9" />
+  <text x="636" y="172" fill="#ffffff">StudentExam (450ms)</text>
+
+  <rect x="755" y="150" width="125" height="34" rx="3" fill="#ca8a04" opacity="0.9" />
+  <text x="760" y="172" fill="#ffffff">Answer Upsert (1,105ms)</text>
+
+  <!-- Level 3: Network Latency Breakdown -->
+  <rect x="630" y="190" width="250" height="30" rx="3" fill="#78350f" opacity="0.8" />
+  <text x="640" y="210" fill="#fef3c7" font-size="11">WAN RTT to Singapore Pooler (~65ms/query x 12 sequential queries = ~780ms)</text>
+
+  <!-- Legend -->
+  <rect x="20" y="260" width="860" height="42" rx="4" fill="#1e293b" />
+  <text x="35" y="285" fill="#38bdf8" font-size="12">Key Bottleneck:</text>
+  <text x="155" y="285" fill="#f8fafc" font-size="11">Synchronous per-question upsert + unindexed query amplification + connection starvation</text>
+</svg>
