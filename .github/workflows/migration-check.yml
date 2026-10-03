@@ -17,6 +17,10 @@ jobs:
     name: Verify Clean Baseline Migration Diff
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+      DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+
     services:
       postgres:
         image: postgres:16-alpine
@@ -51,18 +55,21 @@ jobs:
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: npx prisma migrate deploy
 
       - name: Verify Migration Status
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: npx prisma migrate status
 
       - name: Verify Schema Matches Migrations (migrate diff)
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate diff \
             --from-schema-datasource prisma/schema.prisma \
