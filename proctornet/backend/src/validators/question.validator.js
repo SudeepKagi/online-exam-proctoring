@@ -135,7 +135,7 @@ function validateMcqQuestion(data = {}) {
     marks: parsedMarks,
     negativeMarks: parsedNegMarks,
     difficulty: (data.difficulty ? String(data.difficulty).trim() : 'MEDIUM').toUpperCase(),
-    imageUrl: data.imageUrl ? String(data.imageUrl).trim() : null,
+    imageKey: (data.imageKey || data.imageUrl) ? String(data.imageKey || data.imageUrl).trim() : null,
     order: data.order !== undefined && data.order !== null ? parseInt(data.order, 10) : 0,
     tags: Array.isArray(data.tags)
       ? data.tags.map(t => String(t).trim()).filter(Boolean)

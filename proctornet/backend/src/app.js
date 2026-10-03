@@ -5,8 +5,8 @@ const { Server } = require('socket.io')
 const cors       = require('cors')
 const helmet     = require('helmet')
 const compression = require('compression')
-const rateLimit  = require('express-rate-limit')
-const { PrismaClient } = require('@prisma/client')
+const rateLimit   = require('express-rate-limit')
+const { prisma }  = require('./infra/postgres/client')
 
 // ── Route imports ──
 const authRoutes         = require('./routes/auth.routes')
@@ -32,7 +32,6 @@ const initChatSocket = require('./sockets/chat.socket')
 
 const app    = express()
 const server = http.createServer(app)
-const prisma = new PrismaClient()
 
 const cookieParser = require('cookie-parser')
 const { verifyToken } = require('./utils/jwt')

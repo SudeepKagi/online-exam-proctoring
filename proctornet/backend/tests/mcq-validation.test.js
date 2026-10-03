@@ -1,9 +1,7 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../src/validators/question.validator')
-const { PrismaClient } = require('@prisma/client')
-const prisma = new PrismaClient()
-global.prisma = prisma
+const { prisma } = require('../src/infra/postgres/client')
 
 const questionService = require('../src/services/questionService')
 const examService = require('../src/services/examService')
@@ -21,7 +19,7 @@ async function getOrCreateTestFaculty() {
       email: 'mcq.test.faculty@test.local',
       password: 'hashed-password-faculty',
       employeeId: 'FAC_MCQ_001',
-      department: 'CS',
+      departmentCode: 'CSE',
       isApproved: true
     }
   })
@@ -46,7 +44,7 @@ async function createTestExam(overrides = {}) {
       endTime: later,
       invId: uniqueInv,
       invPasswordHash: 'sample-hash',
-      allowedDepartments: ['CS'],
+      allowedDepartments: ['CSE'],
       allowedSemesters: [6],
       ...overrides
     }
@@ -302,7 +300,7 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
         email: `dto.student.${Date.now()}@test.local`,
         usn: '1MS22CS' + Math.floor(100 + Math.random() * 899),
         password: 'hashed-password-sample',
-        department: 'CS',
+        departmentCode: 'CSE',
         semester: 6
       }
     })
@@ -321,17 +319,6 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
           { text: '4', isCorrect: true },
           { text: '5', isCorrect: false }
         ]
-      }
-    })
-
-    // Register student
-    await prisma.studentExam.create({
-      data: {
-        examId: exam.id,
-        studentId: student.id,
-        status: 'PENDING',
-        watermarkSeed: 'SEED1234',
-        assignedQuestionIds: [createdQ.id]
       }
     })
 
@@ -359,8 +346,9 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
         )
       }
     } finally {
-      await prisma.answer.deleteMany({ where: { studentExam: { examId: exam.id } } }).catch(() => {})
-      await prisma.studentExam.deleteMany({ where: { examId: exam.id } }).catch(() => {})
+      await prisma.answer.deleteMany({ where: { attemptQuestion: { attempt: { examId: exam.id } } } }).catch(() => {})
+      await prisma.attemptQuestion.deleteMany({ where: { attempt: { examId: exam.id } } }).catch(() => {})
+      await prisma.examAttempt.deleteMany({ where: { examId: exam.id } }).catch(() => {})
       await prisma.questionOption.deleteMany({ where: { questionId: createdQ.id } }).catch(() => {})
       await prisma.question.deleteMany({ where: { examId: exam.id } }).catch(() => {})
       await prisma.student.delete({ where: { id: student.id } }).catch(() => {})

@@ -1,0 +1,65 @@
+name: Database Migration Integrity Check
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'proctornet/backend/prisma/**'
+      - '.github/workflows/migration-check.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'proctornet/backend/prisma/**'
+      - '.github/workflows/migration-check.yml'
+
+jobs:
+  verify-migrations:
+    name: Verify Clean Baseline Migration Diff
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: proctornet/backend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: proctornet/backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prisma Migrate Deploy
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma migrate deploy
+
+      - name: Verify Schema Matches Migrations (migrate diff)
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: |
+          npx prisma migrate diff \
+            --from-schema-datamodel prisma/schema.prisma \
+            --to-migrations prisma/migrations \
+            --exit-code

@@ -1,6 +1,6 @@
 const crypto = require('crypto')
 const { exec } = require('child_process')
-const { PrismaClient } = require('@prisma/client')
+const { prisma: defaultDb } = require('../infra/postgres/client')
 
 /**
  * Generate a valid WireGuard-compatible Curve25519 (x25519) keypair
@@ -122,7 +122,7 @@ function withAllocationLock(fn) {
  * Issue or retrieve a WireGuard client configuration for a student taking an exam
  */
 async function issueVpnConfig({ studentId, examId }) {
-  const db = global.prisma || new PrismaClient()
+  const db = defaultDb
 
   const exam = await db.exam.findUnique({
     where: { id: examId },
@@ -153,63 +153,33 @@ async function issueVpnConfig({ studentId, examId }) {
 
   // H-6: Serialize IP allocation and database persistence to prevent concurrency race
   return withAllocationLock(async () => {
-    let studentExam = await db.studentExam.findUnique({
-      where: { studentId_examId: { studentId, examId } }
-    })
-
-    // Check if active unexpired VPN config already exists for this session
-    if (studentExam && studentExam.vpnPrivateKey && studentExam.vpnPeerIp && studentExam.vpnKeyExpiry && new Date(studentExam.vpnKeyExpiry) > now) {
-      syncWireGuardAddPeer(studentExam.vpnKey, studentExam.vpnPeerIp)
-
-      const confContent = generateWireGuardClientConf({
-        clientPrivateKey: studentExam.vpnPrivateKey,
-        clientIp: studentExam.vpnPeerIp
-      })
-
-      return {
-        success: true,
-        reused: true,
-        studentExamId: studentExam.id,
-        vpnPeerIp: studentExam.vpnPeerIp,
-        vpnKey: studentExam.vpnKey,
-        vpnKeyExpiry: studentExam.vpnKeyExpiry,
-        config: confContent,
-        serverIp: process.env.VPN_SERVER_IP || '20.198.83.12',
-        serverPort: parseInt(process.env.VPN_SERVER_PORT || '51820', 10),
-      }
-    }
-
     // Generate new keypair and allocate unique IP
     const { privateKey, publicKey } = generateKeyPair()
     const peerIp = await allocatePeerIp(db)
 
     const watermarkSeed = `WM-${student.usn}-${Date.now()}`
-    studentExam = await db.studentExam.upsert({
+    const studentExam = await db.studentExam.upsert({
       where: {
-        studentId_examId: { studentId, examId }
+        examId_studentId: { examId, studentId }
       },
       update: {
-        vpnKey: publicKey,
-        vpnPrivateKey: privateKey,
-        vpnPeerIp: peerIp,
+        vpnIp: peerIp,
         vpnKeyExpiry: expiryTime
       },
       create: {
         studentId,
         examId,
         watermarkSeed,
-        assignedQuestionIds: [],
-        vpnKey: publicKey,
-        vpnPrivateKey: privateKey,
-        vpnPeerIp: peerIp,
+        vpnIp: peerIp,
         vpnKeyExpiry: expiryTime,
-        status: 'PENDING'
+        status: 'READY'
       }
     })
 
     // Sync peer public key with live Azure WireGuard server
     syncWireGuardAddPeer(publicKey, peerIp)
 
+    // Ephemeral config delivers clientPrivateKey directly to memory
     const confContent = generateWireGuardClientConf({
       clientPrivateKey: privateKey,
       clientIp: peerIp
@@ -255,7 +225,7 @@ PersistentKeepalive = 25
  * Fetch current VPN session status for a student
  */
 async function getVpnStatus({ studentId, examId }) {
-  const db = global.prisma || new PrismaClient()
+  const db = defaultDb
 
   const studentExam = await db.studentExam.findUnique({
     where: { studentId_examId: { studentId, examId } },
@@ -293,7 +263,7 @@ async function getVpnStatus({ studentId, examId }) {
  * Revoke VPN peer access after exam completion
  */
 async function revokeVpnPeer({ studentId, examId }) {
-  const db = global.prisma || new PrismaClient()
+  const db = defaultDb
 
   const studentExam = await db.studentExam.findUnique({
     where: { studentId_examId: { studentId, examId } }

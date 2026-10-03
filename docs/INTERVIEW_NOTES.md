@@ -98,5 +98,43 @@
 6. **Frontend Footprint Reduction**:
    - Purged the code editor packages and their transitive dependencies, reducing production JS bundle size by 21.46 kB raw (7.07 kB gzip) and freeing client main-thread CPU.
 
+---
 
+## 5. Phase P3: Schema & Data Layer Invariants, Query Indexes & Postgres Tuning
 
+### Interview Question: *"How do you defend data integrity against race conditions and concurrent writes in a distributed or multi-core web environment?"*
+
+**Answer:**
+> *"Encode invariants in the database, then make the app's job easier: constraints are the last line of defence against races."*
+
+1. **Why Application-Level Checks Are Insufficient**:
+   - In a concurrent Node.js cluster or multi-replica environment, application checks like `if (await checkDuplicate()) return err;` fail to prevent race conditions during simultaneous network requests (time-of-check to time-of-use / TOCTOU bugs).
+   - Two concurrent candidate requests to start an exam or answer a question will both pass validation and insert duplicate rows.
+   - By placing hard relational constraints directly in the PostgreSQL engine (`UNIQUE(exam_id, student_id)`, `UNIQUE(attempt_id, display_order)`, `CHECK (marks > 0)`, `CHECK (0 <= negative_marks <= marks)`), the database becomes the infallible arbiter of truth. Even if an application bug or race condition occurs, PostgreSQL rejects the conflicting transaction with an immediate, deterministic error.
+
+2. **Partial Indexes for Asymmetric Hot Workloads**:
+   - In an active examination session, hundreds of background processes need to find *only* active attempts expiring soon or pending evidence items needing upload.
+   - Traditional b-tree indexes index every row across millions of historical records, incurring unnecessary write overhead and disk space.
+   - We created **PostgreSQL partial indexes**:
+     ```sql
+     CREATE INDEX idx_exam_attempts_active_expiry ON exam_attempts(status, expires_at) WHERE status = 'ACTIVE';
+     CREATE INDEX idx_violation_events_pending ON violation_events(evidence_status) WHERE evidence_status = 'PENDING';
+     ```
+   - These indexes remain tiny in memory, execute in sub-millisecond index scans, and add zero indexing cost to completed attempts or resolved evidence.
+
+3. **HOT Updates & Storage Tuning (`fillfactor = 80`)**:
+   - The `answers` table absorbs candidate autosave updates every few seconds. In standard PostgreSQL, every `UPDATE` writes a new tuple and must update all table indexes, causing index bloat and write amplification.
+   - We set `fillfactor = 80` on `answers` and `exam_attempts` and lowered autovacuum scale factors to `0.02`:
+     ```sql
+     ALTER TABLE answers SET (fillfactor = 80, autovacuum_vacuum_scale_factor = 0.02, autovacuum_analyze_scale_factor = 0.02);
+     ```
+   - Because the updated columns (`revision`, `selected_option_id`, `saved_at`) are not part of an index, PostgreSQL places new row versions on the **same page** (Heap-Only Tuple / HOT updates), completely bypassing index writes and reducing disk I/O by orders of magnitude.
+
+4. **Query-Driven Index Verification (`EXPLAIN Gate`)**:
+   - We rejected speculative indexing. Every single index was validated against query plans using an automated Node.js test fixture executing `EXPLAIN (FORMAT JSON)` on a 100k-row dataset.
+   - The test asserts that every query in our 8 core hot paths (`exam_attempts`, `attempt_questions`, `violation_events`, `chat_messages`, `audit_logs`) resolves to an `Index Scan` rather than a sequential table scan.
+
+5. **Single Connection Management & Bounded Timeouts**:
+   - Eliminated rogue `new PrismaClient()` instantiations across the codebase in favor of a singleton dependency-injected client with mathematical pool sizing:
+     $$\text{Pool Size} = ((\text{CPU Cores} \times 2) + \text{Spindle Count}) \times 1.25$$
+   - Enforced tight session timeouts (`statement_timeout = 8s`, `lock_timeout = 3s`, `idle_in_transaction_session_timeout = 15s`) and bounded interactive transactions `{ maxWait: 2000, timeout: 5000 }` to permanently prevent pool starvation deadlocks under heavy load.
