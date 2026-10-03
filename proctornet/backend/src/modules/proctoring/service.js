@@ -70,7 +70,26 @@ class ProctoringService {
     // 3. Server severity assignment (Never trust client severity)
     const severity = CANONICAL_SEVERITY[eventType] || 'MEDIUM'
 
-    // 4. Push to micro-batcher
+    // 4. Evidence ticket if required and budget allows (Notion 13.10 / Task 7)
+    let evidenceUpload = null
+    const { isEvidenceRequired, checkEvidenceBudget } = require('../../shared/evidencePolicy')
+    const { presignService } = require('../media/presignService')
+
+    if (isEvidenceRequired(eventType)) {
+      const budget = await checkEvidenceBudget(attemptId, prisma)
+      if (budget.allowed) {
+        try {
+          evidenceUpload = await presignService.generateUploadPresignedUrl(
+            { id: studentId, role: 'student' },
+            { purpose: 'EVIDENCE', attemptId, contentType: 'image/webp', bytes: 300 * 1024 }
+          )
+        } catch (err) {
+          logger.warn({ attemptId, error: err.message }, 'Could not generate evidence upload ticket')
+        }
+      }
+    }
+
+    // 5. Push to micro-batcher
     await violationMicroBatcher.queue({
       attemptId,
       eventType,
@@ -82,8 +101,42 @@ class ProctoringService {
     return {
       recorded: true,
       eventType,
-      severity
+      severity,
+      evidenceUpload
     }
+  }
+
+  /**
+   * Fetch timeline of violation events with rounded presigned read URLs (ADR-011)
+   */
+  async getViolationTimeline(attemptId) {
+    const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+    const events = await prisma.violationEvent.findMany({
+      where: { attemptId },
+      orderBy: { serverTimestamp: 'desc' }
+    })
+
+    return await Promise.all(
+      events.map(async (ev) => {
+        const evidenceUrl = ev.evidenceKey ? await getPresignedReadUrl(ev.evidenceKey, 600) : null
+        const thumbUrl = ev.thumbKey ? await getPresignedReadUrl(ev.thumbKey, 600) : null
+
+        return {
+          id: ev.id.toString(),
+          attemptId: ev.attemptId,
+          eventType: ev.eventType,
+          severity: ev.severity,
+          evidenceKey: ev.evidenceKey,
+          thumbKey: ev.thumbKey,
+          evidenceUrl,
+          thumbUrl,
+          evidenceStatus: ev.evidenceStatus,
+          metadata: ev.metadata,
+          clientTimestamp: ev.clientTimestamp,
+          serverTimestamp: ev.serverTimestamp
+        }
+      })
+    )
   }
 
   /**

@@ -404,6 +404,7 @@ model ViolationEvent {
   metadata        Json?
   evidenceKey     String?        @map("evidence_key")
   evidenceStatus  EvidenceStatus @default(NONE) @map("evidence_status")
+  thumbKey        String?        @map("thumb_key")
   invAction       String?        @map("inv_action")
   invActionNote   String?        @map("inv_action_note")
 

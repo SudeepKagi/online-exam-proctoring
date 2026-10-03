@@ -14,11 +14,9 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: CLOUDINARY_CLOUD_NAME
+      - key: AWS_REGION
         sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
+      - key: AWS_S3_BUCKET_NAME
         sync: false
 
   - type: web

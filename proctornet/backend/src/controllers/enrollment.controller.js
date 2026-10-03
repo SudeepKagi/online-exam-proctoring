@@ -1,7 +1,7 @@
 const comprefaceService = require('../services/compreface.service')
 const pythonService = require('../services/python.service')
 const ocrService = require('../services/ocr.service')
-const { uploadToCloudinary } = require('../services/cloudinary.service')
+const { putObject, buildIdentityKey } = require('../infra/s3/s3.client')
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
 
@@ -107,23 +107,24 @@ async function enrollFace(req, res) {
       })
     }
 
-    // 2. Upload face image to AWS S3 / Cloud Storage
-    let uploadedFaceUrl = image
+    // 2. Upload face image to AWS S3 (Keys, not URLs — ADR-011)
+    const faceKey = buildIdentityKey(studentId, 'profile')
     try {
-      const uploadRes = await uploadToCloudinary(image, `proctornet/students/face_${student.usn}`)
-      uploadedFaceUrl = (uploadRes && (uploadRes.secure_url || uploadRes.url || (typeof uploadRes === 'string' ? uploadRes : null))) || image
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, '')
+      const buffer = Buffer.from(base64Data, 'base64')
+      await putObject(faceKey, buffer, 'image/webp')
     } catch (e) {
-      console.warn('[enrollFace S3/Cloudinary Warning]', e.message)
+      console.warn('[enrollFace S3 Warning]', e.message)
     }
 
     // 3. Register Subject & Face in CompreFace REST API
     const comprefaceRes = await comprefaceService.addFaceToSubject(student.usn, image)
 
-    // 4. Update Student DB record
+    // 4. Update Student DB record (Keys, not URLs)
     await global.prisma.student.update({
       where: { id: studentId },
       data: {
-        facePhotoUrl: uploadedFaceUrl,
+        facePhotoKey: faceKey,
         faceSubjectId: student.usn,
         faceEmbeddingRef: comprefaceRes.image_id || `emb_${Date.now()}`,
       },
@@ -183,13 +184,14 @@ async function enrollIdDocument(req, res) {
       return res.status(403).json({ error: 'Your profile biometrics are locked and verified.' })
     }
 
-    // 1. Upload ID card image to AWS S3 / Cloud Storage
-    let uploadedIdUrl = idCardImage
+    // 1. Upload ID card image to AWS S3 (Keys, not URLs — ADR-011)
+    const idKey = buildIdentityKey(studentId, 'id-card')
     try {
-      const uploadRes = await uploadToCloudinary(idCardImage, `proctornet/students/id_${student.usn}`)
-      uploadedIdUrl = (uploadRes && (uploadRes.secure_url || uploadRes.url || (typeof uploadRes === 'string' ? uploadRes : null))) || idCardImage
+      const base64Data = idCardImage.replace(/^data:image\/\w+;base64,/, '')
+      const buffer = Buffer.from(base64Data, 'base64')
+      await putObject(idKey, buffer, 'image/webp')
     } catch (e) {
-      console.warn('[enrollIdDocument S3/Cloudinary Warning]', e.message)
+      console.warn('[enrollIdDocument S3 Warning]', e.message)
     }
 
     // 2. Perform intelligent OCR extraction using Tesseract.js
@@ -210,10 +212,10 @@ async function enrollIdDocument(req, res) {
     const extractedUsn = ocrResult?.extractedUsn || student.usn
 
     // 3. Crop Face from ID Card via MTCNN / OpenCV / fallback
-    let croppedFaceUrl = uploadedIdUrl
+    let croppedFaceUrl = idCardImage
     try {
       const cropResult = await pythonService.cropIdFace(idCardImage).catch(() => null)
-      croppedFaceUrl = cropResult?.croppedFaceBase64 || uploadedIdUrl
+      croppedFaceUrl = cropResult?.croppedFaceBase64 || idCardImage
     } catch (e) {
       console.warn('[cropIdFace Warning]', e.message)
     }
@@ -229,9 +231,7 @@ async function enrollIdDocument(req, res) {
     const updatedStudent = await global.prisma.student.update({
       where: { id: studentId },
       data: {
-        idCardPhotoUrl: uploadedIdUrl,
-        idDocumentUrl: uploadedIdUrl,
-        idCroppedFaceUrl: croppedFaceUrl,
+        idCardPhotoKey: idKey,
         idOcrFields: {
           extractedUsn,
           extractedName,

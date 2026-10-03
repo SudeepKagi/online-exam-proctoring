@@ -15,13 +15,11 @@ router.get('/view', async (req, res) => {
       return res.status(400).json({ error: 'Missing key or url query parameter' })
     }
 
-    // If it's already a non-S3 full URL (e.g. legacy Cloudinary or local upload)
+    // If it's already a non-S3 full URL
     if (rawTarget.startsWith('http://') || rawTarget.startsWith('https://')) {
       if (!rawTarget.includes('.amazonaws.com')) {
         return res.redirect(302, rawTarget)
       }
-    } else if (rawTarget.startsWith('/uploads/')) {
-      return res.redirect(302, rawTarget)
     }
 
     // Generate signed S3 URL (valid 2 hours)
