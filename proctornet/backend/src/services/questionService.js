@@ -29,7 +29,7 @@ async function addQuestionToExam({ examId, facultyId, data }) {
         marks: validated.marks,
         negativeMarks: validated.negativeMarks,
         difficulty: validated.difficulty,
-        imageUrl: validated.imageUrl,
+        imageKey: validated.imageKey || null,
         order: validated.order,
         tags: validated.tags,
         options: {
@@ -97,7 +97,7 @@ async function updateQuestionById({ id, facultyId, data }) {
     marks: data.marks !== undefined ? data.marks : question.marks,
     negativeMarks: data.negativeMarks !== undefined ? data.negativeMarks : question.negativeMarks,
     difficulty: data.difficulty !== undefined ? data.difficulty : question.difficulty,
-    imageUrl: data.imageUrl !== undefined ? data.imageUrl : question.imageUrl,
+    imageKey: data.imageKey !== undefined ? data.imageKey : (data.imageUrl !== undefined ? data.imageUrl : question.imageKey),
     order: data.order !== undefined ? data.order : question.order,
     tags: data.tags !== undefined ? data.tags : question.tags,
     options: data.options !== undefined ? data.options : question.options,
@@ -122,7 +122,7 @@ async function updateQuestionById({ id, facultyId, data }) {
         marks: validated.marks,
         negativeMarks: validated.negativeMarks,
         difficulty: validated.difficulty,
-        imageUrl: validated.imageUrl,
+        imageKey: validated.imageKey || null,
         order: validated.order,
         tags: validated.tags,
         options: {
@@ -230,7 +230,7 @@ async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
           marks: val.marks,
           negativeMarks: val.negativeMarks,
           difficulty: val.difficulty,
-          imageUrl: val.imageUrl,
+          imageKey: val.imageKey || null,
           order: val.order,
           tags: val.tags,
           options: {

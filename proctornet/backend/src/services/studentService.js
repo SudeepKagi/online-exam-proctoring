@@ -6,34 +6,12 @@ const { transitionExamSession, SESSION_STATES } = require('./sessionStateMachine
  * Encapsulates candidate exam discovery, session lifecycle, answer autosave, auto-grading, and profile management.
  */
 
-const DEPT_ALIASES = {
-  ece: ['ece', 'ec', 'electronics', 'electronics & communication', 'electronics and communication', 'electronics & communication engineering', 'electronics and communication engineering'],
-  cse: ['cse', 'cs', 'computer science', 'computer science & engineering', 'computer science and engineering'],
-  ise: ['ise', 'is', 'information science', 'information science & engineering', 'information technology', 'it'],
-  aiml: ['aiml', 'ai', 'ai & ml', 'ai/ml', 'artificial intelligence', 'artificial intelligence and machine learning'],
-  mech: ['mech', 'me', 'mechanical', 'mechanical engineering'],
-  civil: ['civil', 'cv', 'civil engineering'],
-  eee: ['eee', 'ee', 'electrical', 'electrical and electronics', 'electrical & electronics engineering'],
-}
-
 const checkDeptMatch = (allowedDepts, sDept) => {
   if (!allowedDepts || allowedDepts.length === 0) return false
   if (allowedDepts.some(d => String(d).toUpperCase() === 'ALL')) return true
   if (!sDept) return false
-  const s = sDept.toLowerCase().trim()
-
-  return allowedDepts.some(rawDept => {
-    const d = String(rawDept).toLowerCase().trim()
-    if (d === 'all') return true
-    if (d === s) return true
-
-    for (const aliases of Object.values(DEPT_ALIASES)) {
-      const dMatches = aliases.some(a => a === d)
-      const sMatches = aliases.some(a => a === s)
-      if (dMatches && sMatches) return true
-    }
-    return false
-  })
+  const s = String(sDept).toUpperCase().trim()
+  return allowedDepts.some(d => String(d).toUpperCase().trim() === s)
 }
 
 const checkSemMatch = (allowedSems, sSem) => {
@@ -250,17 +228,36 @@ async function startOrResumeExam({ examId, studentId, clientIp = '127.0.0.1', us
     throw error
   }
 
-  let studentExam = await global.prisma.studentExam.findUnique({
-    where: { studentId_examId: { studentId, examId } },
-    include: { answers: true }
+  let attempt = await global.prisma.examAttempt.findFirst({
+    where: { examId, studentId },
+    include: {
+      answers: true,
+      attemptQuestions: {
+        include: {
+          question: {
+            include: {
+              options: {
+                select: {
+                  id: true,
+                  text: true,
+                  order: true
+                },
+                orderBy: { order: 'asc' }
+              }
+            }
+          }
+        },
+        orderBy: { displayOrder: 'asc' }
+      }
+    }
   })
 
-  if (!studentExam) {
+  if (!attempt) {
     const student = await global.prisma.student.findUnique({
       where: { id: studentId },
-      select: { department: true, semester: true }
+      select: { departmentCode: true, semester: true }
     })
-    const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.department)
+    const isDeptEligible = checkDeptMatch(exam.allowedDepartments, student?.departmentCode)
     const isSemEligible = checkSemMatch(exam.allowedSemesters, student?.semester)
     if (!isDeptEligible || !isSemEligible) {
       const error = new Error('You are not eligible for this examination. This assessment is allotted specifically to other departments or semesters.')
@@ -273,111 +270,114 @@ async function startOrResumeExam({ examId, studentId, clientIp = '127.0.0.1', us
       ? pool.length
       : Math.min(exam.questionsPerStudent, pool.length)
 
-    const assignedIds = pool
+    const assigned = pool
       .slice()
       .sort(() => Math.random() - 0.5)
       .slice(0, count)
-      .map(q => q.id)
 
-    studentExam = await global.prisma.studentExam.upsert({
-      where: { studentId_examId: { studentId, examId } },
-      update: {},
-      create: {
+    attempt = await global.prisma.examAttempt.create({
+      data: {
         studentId,
         examId,
-        assignedQuestionIds: assignedIds,
         watermarkSeed: Math.random().toString(36).substring(2, 10).toUpperCase(),
-        status: 'PENDING'
+        status: 'READY',
+        attemptQuestions: {
+          create: assigned.map((q, idx) => ({
+            questionId: q.id,
+            displayOrder: idx + 1,
+            optionOrder: []
+          }))
+        }
       },
-      include: { answers: true }
+      include: {
+        answers: true,
+        attemptQuestions: {
+          include: {
+            question: {
+              include: {
+                options: {
+                  select: {
+                    id: true,
+                    text: true,
+                    order: true
+                  },
+                  orderBy: { order: 'asc' }
+                }
+              }
+            }
+          },
+          orderBy: { displayOrder: 'asc' }
+        }
+      }
     })
   }
 
-  if (studentExam.status === 'SUBMITTED') {
-    const res = await global.prisma.examResult.findFirst({ where: { studentExamId: studentExam.id } })
+  if (attempt.status === 'SUBMITTED') {
+    const res = await global.prisma.examResult.findFirst({ where: { attemptId: attempt.id } })
     return {
       sessionState: 'SUBMITTED',
       isSubmitted: true,
-      score: res ? res.totalScore : 0,
-      totalMarks: res ? res.totalMarks : (exam.totalMarks || 100),
+      score: res ? res.score : 0,
+      totalMarks: exam.totalMarks || 100,
       percentage: res ? res.percentage : 0,
       message: 'This examination has already been completed and submitted.'
     }
   }
 
-  if (studentExam.status === 'TERMINATED') {
+  if (attempt.status === 'TERMINATED') {
     return {
       sessionState: 'TERMINATED',
       isTerminated: true,
-      terminationReason: studentExam.terminationReason || 'Terminated by Invigilator for academic dishonesty.',
+      terminationReason: attempt.terminationReason || 'Terminated by Invigilator for academic dishonesty.',
       message: 'This examination was terminated by an invigilator.'
     }
   }
 
-  if (studentExam.status === 'SUSPENDED') {
+  if (attempt.status === 'SUSPENDED') {
     return {
       sessionState: 'SUSPENDED',
       isSuspended: true,
-      suspensionReason: studentExam.terminationReason || 'Examination temporarily suspended by proctor or VPN drop.',
+      suspensionReason: attempt.terminationReason || 'Examination temporarily suspended by proctor or VPN drop.',
       message: 'Your examination session is currently suspended.'
     }
   }
 
-  let assignedIds = studentExam.assignedQuestionIds || []
-  if (!assignedIds || assignedIds.length === 0) {
-    const pool = exam.questions
-    const count = (!exam.questionsPerStudent || exam.questionsPerStudent === 0)
-      ? pool.length
-      : Math.min(exam.questionsPerStudent, pool.length)
-
-    assignedIds = pool
-      .slice()
-      .sort(() => Math.random() - 0.5)
-      .slice(0, count)
-      .map(q => q.id)
-
-    await global.prisma.studentExam.update({
-      where: { id: studentExam.id },
-      data: { assignedQuestionIds: assignedIds }
+  if (attempt.status === 'READY') {
+    attempt = await global.prisma.examAttempt.update({
+      where: { id: attempt.id },
+      data: { status: 'ACTIVE', startedAt: attempt.startedAt || new Date() },
+      include: {
+        answers: true,
+        attemptQuestions: {
+          include: {
+            question: {
+              include: {
+                options: {
+                  select: {
+                    id: true,
+                    text: true,
+                    order: true
+                  },
+                  orderBy: { order: 'asc' }
+                }
+              }
+            }
+          },
+          orderBy: { displayOrder: 'asc' }
+        }
+      }
     })
-    studentExam.assignedQuestionIds = assignedIds
   }
 
-  const transitionResult = await transitionExamSession({
-    studentExamId: studentExam.id,
-    targetStatus: SESSION_STATES.ACTIVE,
-    reqUser: { id: studentId, role: 'student' },
-    reason: 'Candidate entered active examination interface.'
-  })
-
-  studentExam = transitionResult.session || await global.prisma.studentExam.findUnique({
-    where: { id: studentExam.id },
-    include: { answers: true }
-  })
-
-  const questions = await global.prisma.question.findMany({
-    where: { id: { in: studentExam.assignedQuestionIds }, examId: exam.id },
-    select: {
-      id: true,
-      questionText: true,
-      imageUrl: true,
-      marks: true,
-      negativeMarks: true,
-      order: true,
-      options: {
-        select: {
-          id: true,
-          text: true,
-          order: true
-        },
-        orderBy: { order: 'asc' }
-      }
-    }
-  })
-
-  const orderedQuestions = studentExam.assignedQuestionIds
-    .map(qid => questions.find(q => q.id === qid))
-    .filter(Boolean)
+  const orderedQuestions = (attempt.attemptQuestions || []).map(aq => ({
+    id: aq.question.id,
+    questionText: aq.question.questionText,
+    imageKey: aq.question.imageKey,
+    marks: aq.question.marks,
+    negativeMarks: aq.question.negativeMarks,
+    order: aq.displayOrder,
+    options: aq.question.options
+  }))
 
   return {
     exam: {
@@ -392,9 +392,9 @@ async function startOrResumeExam({ examId, studentId, clientIp = '127.0.0.1', us
       watermarkRequired: exam.watermarkRequired
     },
     questions: orderedQuestions,
-    answers: studentExam.answers || [],
-    sessionId: studentExam.id,
-    sessionState: studentExam.status || 'ACTIVE',
+    answers: attempt.answers || [],
+    sessionId: attempt.id,
+    sessionState: attempt.status || 'ACTIVE',
     serverTime: new Date()
   }
 }
