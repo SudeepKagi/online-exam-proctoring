@@ -22,6 +22,7 @@ const enrollmentRoutes   = require('./routes/enrollment.routes')
 const deviceCheckRoutes  = require('./routes/deviceCheck.routes')
 const vpnRoutes          = require('./routes/vpn.routes')
 const notificationRoutes = require('./routes/notification.routes')
+const evidenceRoutes     = require('./routes/evidence.routes')
 
 const path = require('path')
 
@@ -185,6 +186,7 @@ app.use('/api',              enrollmentRoutes)
 app.use('/api',              deviceCheckRoutes)
 app.use('/api/vpn',          vpnRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/evidence',      evidenceRoutes)
 
 // ── 404 handler ──
 app.use((req, res) => {

@@ -372,7 +372,8 @@ async function invigilatorLogin(req, res) {
     if (idCardPhoto) {
       try {
         const { uploadBase64 } = require('../services/cloudinary.service')
-        idCardPhotoUrl = await uploadBase64(idCardPhoto, 'invigilator-ids')
+        const uploadRes = await uploadBase64(idCardPhoto, 'invigilator-ids')
+        idCardPhotoUrl = uploadRes?.secure_url || uploadRes?.url || (typeof uploadRes === 'string' ? uploadRes : null)
       } catch (uploadErr) {
         console.warn('[invigilatorLogin] ID card upload skipped:', uploadErr.message)
         // Upload failure is non-fatal; proceed with null rather than a placeholder

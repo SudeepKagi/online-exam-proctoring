@@ -107,13 +107,13 @@ async function enrollFace(req, res) {
       })
     }
 
-    // 2. Upload face image to Cloud Storage / Cloudinary
+    // 2. Upload face image to AWS S3 / Cloud Storage
     let uploadedFaceUrl = image
     try {
       const uploadRes = await uploadToCloudinary(image, `proctornet/students/face_${student.usn}`)
-      uploadedFaceUrl = uploadRes.secure_url || image
+      uploadedFaceUrl = (uploadRes && (uploadRes.secure_url || uploadRes.url || (typeof uploadRes === 'string' ? uploadRes : null))) || image
     } catch (e) {
-      console.warn('[enrollFace Cloudinary Warning]', e.message)
+      console.warn('[enrollFace S3/Cloudinary Warning]', e.message)
     }
 
     // 3. Register Subject & Face in CompreFace REST API
@@ -183,13 +183,13 @@ async function enrollIdDocument(req, res) {
       return res.status(403).json({ error: 'Your profile biometrics are locked and verified.' })
     }
 
-    // 1. Upload ID card image to Cloudinary
+    // 1. Upload ID card image to AWS S3 / Cloud Storage
     let uploadedIdUrl = idCardImage
     try {
       const uploadRes = await uploadToCloudinary(idCardImage, `proctornet/students/id_${student.usn}`)
-      uploadedIdUrl = uploadRes.secure_url || idCardImage
+      uploadedIdUrl = (uploadRes && (uploadRes.secure_url || uploadRes.url || (typeof uploadRes === 'string' ? uploadRes : null))) || idCardImage
     } catch (e) {
-      console.warn('[enrollIdDocument Cloudinary Warning]', e.message)
+      console.warn('[enrollIdDocument S3/Cloudinary Warning]', e.message)
     }
 
     // 2. Perform intelligent OCR extraction using Tesseract.js
