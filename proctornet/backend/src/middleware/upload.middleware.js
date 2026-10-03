@@ -68,7 +68,7 @@ const uploadQuestionImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 }).single('image')
 
-/** CSV import for bulk questions */
+/** CSV / Excel import for bulk questions */
 const uploadCsv = multer({
   storage: memoryStorage,
   fileFilter: (req, file, cb) => {
@@ -78,6 +78,16 @@ const uploadCsv = multer({
   },
   limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 }).single('csv')
+
+const uploadExcel = multer({
+  storage: memoryStorage,
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase()
+    if (['.xlsx', '.xls', '.csv'].includes(ext)) cb(null, true)
+    else cb(new Error('Only Excel (.xlsx, .xls) and CSV files are allowed'), false)
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+}).single('file')
 
 // ── Multer error handler wrapper ─────────────────────────────────
 function handleUpload(multerMiddleware) {
@@ -100,4 +110,5 @@ module.exports = {
   uploadIdCard:       handleUpload(uploadIdCard),
   uploadQuestionImage: handleUpload(uploadQuestionImage),
   uploadCsv:          handleUpload(uploadCsv),
+  uploadExcel:        handleUpload(uploadExcel),
 }

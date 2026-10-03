@@ -58,6 +58,6 @@ As mandated by §0 Rule 4 of the Master Operating Protocol, every finding in §3
 | **C-03** | P1 | `package.json`, `auth.controller.js` | CPU-intensive `bcryptjs` and `tesseract.js` run on the main Node event loop. |
 | **C-04** | P2 | `app.js:223-241` | No `SIGTERM`/`SIGINT` graceful shutdown; no request timeouts; no request ID tracing. |
 | **C-05** | P2 | Repository Root | 24 scratch scripts under `scripts/scratch/` and `B04_Final_Year_Project_Updated new one.docx` committed in version control. |
-| **F-01** | P2 | `frontend/package.json:17` | Unused `@monaco-editor/react` bundled in frontend dependencies. |
+| **F-01** | P2 | `frontend/package.json:17` | Unused heavy code editor package bundled in frontend dependencies. |
 | **F-02** | P2 | `useExamSocket.js`, `ExamInterface.jsx`, `SecurityCheck.jsx` | Streams and frames stored globally on `window.screenShareStream`, `window.latestStudentFrames`, and `CustomEvent` listeners. |
 | **T-01** | P1 | `backend/tests/` | 7 test files pass, but zero load, concurrency, or chaos simulation tests exist. |

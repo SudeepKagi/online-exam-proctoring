@@ -141,7 +141,7 @@ function ResultDetailModal({ result, onClose }) {
                     <span className={a.isCorrect ? 'text-[#10b981] font-bold' : 'text-[#ef4444] font-bold'}>
                       {a.isCorrect ? `Correct (+${a.marksAwarded})` : `Incorrect (${a.marksAwarded})`}
                     </span>
-                    <span className="text-[#64748b]">Selected: {a.selectedOption || a.writtenText || '—'}</span>
+                    <span className="text-[#64748b]">Selected: {a.selectedOption || '—'}</span>
                   </div>
                 </div>
               ))}

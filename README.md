@@ -25,7 +25,7 @@ ProctorNet is a multi-tier online examination proctoring and laboratory network 
   - [4. In-Exam Proctoring & Kiosk Enforcement](#4-in-exam-proctoring--kiosk-enforcement)
   - [5. Real-Time Video Invigilation & Socket Architecture](#5-real-time-video-invigilation--socket-architecture)
   - [6. Authoritative Exam Session State Machine](#6-authoritative-exam-session-state-machine)
-  - [7. Question Bank & Monaco Coding IDE](#7-question-bank--monaco-coding-ide)
+  - [7. Question Bank & Deterministic MCQ Engine](#7-question-bank--deterministic-mcq-engine)
 - [Database Schema (Prisma ORM)](#database-schema-prisma-orm)
 - [Security Architecture](#security-architecture)
 - [End-to-End System Workflows](#end-to-end-system-workflows)
@@ -116,7 +116,6 @@ graph TD
 | **Frontend** | React | `^19.2.5` | Single-page application, multi-role routing, reactive UI state. |
 | | Vite | `^8.0.10` | Frontend tooling, build pipeline, and local dev server. |
 | | Tailwind CSS | `^4.3.0` | CSS utility architecture, dark charcoal dashboard styling. |
-| | Monaco Editor | `@monaco-editor/react ^4.7.0` | In-browser coding exam IDE with syntax highlighting. |
 | | In-Browser Vision | `face-api.js ^0.22.2` | Client-side TinyFaceDetector polling loop (every 4 seconds). |
 | | Real-Time Client | `socket.io-client ^4.8.3` | Dual-stream signaling, live proctoring alerts, exam chat. |
 | | Data Tables & Charts | `@tanstack/react-table`, `recharts` | Invigilator metrics, candidate rosters, audit log viewer. |
@@ -319,24 +318,25 @@ stateDiagram-v2
 
 ---
 
-### 7. Question Bank & Monaco Coding IDE
+### 7. Question Bank & Deterministic MCQ Engine
 
-- **Question Types**: Supports Multiple Choice (`MCQ`), Programming (`CODING`), Short Written (`WRITTEN`), and Subjective (`SUBJECTIVE`) question types.
-- **Monaco Code Editor**: Embedded VS Code Monaco editor (`@monaco-editor/react`) supporting JavaScript, Python, Java, C, and C++ with custom starter code templates, sample I/O, and test cases.
-- **Autosave & Queue Flushing**: Candidate answer inputs are debounced and autosaved in the background (`saveQueueRef`), with a guaranteed synchronous flush on final submission (`POST /student/exams/:examId/submit`).
+- **Standardized Question Model**: 100% single-correct-option MCQ format with 2–6 options per question, verified by database-level partial unique index constraints (`idx_question_single_correct`).
+- **Deterministic Option Shuffling & Security**: Question options are independently keyed (`QuestionOption`). Option randomization and answer keys (`isCorrect`) are strictly stripped from student-facing payloads to prevent client-side inspection leakage.
+- **Autosave & Queue Flushing**: Candidate answer selections are debounced and autosaved in the background (`saveQueueRef`), with a guaranteed synchronous flush on final submission (`POST /student/exams/:examId/submit`).
 - **Negative Marking Calculation Engine**: Evaluates MCQ answers with support for per-question penalties (`question.negativeMarks`) or global exam-level defaults (`exam.negativeValue`). Unanswered questions incur zero penalty.
-- **AI Question Generator (`POST /api/ai/generate-questions`)**: Generates structured MCQ questions from syllabus text. Uses OpenAI GPT-3.5-turbo if `OPENAI_API_KEY` is present, or falls back to an extensive domain-curated question bank (Operating Systems, DBMS, Networking, DSA, JS, Python) with deterministic shuffling.
+- **AI Question Generator (`POST /api/ai/generate-questions`)**: Generates structured MCQ questions from syllabus text. Uses Gemini/GPT AI when configured, or falls back to an extensive domain-curated question bank (Operating Systems, DBMS, Networking, DSA, JS, Python) with deterministic shuffling.
 
 ---
 
 ## Database Schema (Prisma ORM)
 
-The database schema is managed via Prisma ORM (`prisma/schema.prisma`) targeting PostgreSQL, consisting of **21 distinct models**:
+The database schema is managed via Prisma ORM (`prisma/schema.prisma`) targeting PostgreSQL, consisting of **22 distinct models**:
 
 ```mermaid
 erDiagram
     Faculty ||--o{ Exam : creates
     Exam ||--o{ Question : contains
+    Question ||--o{ QuestionOption : has
     Exam ||--o{ StudentExam : instances
     Student ||--o{ StudentExam : takes
     Student ||--o{ VerificationAuditLog : logs
@@ -364,9 +364,10 @@ erDiagram
 | `VerificationAuditLog` | Audit log of biometric check results | `id`, `studentId`, `checkType`, `score`, `status`, `details`, `timestamp` |
 | `BiometricOverrideLog` | Manual faculty overrides of biometrics | `id`, `studentId`, `approverId`, `reason`, `prevStatus`, `newStatus`, `timestamp` |
 | `Exam` | Examination definitions & proctor config | `id`, `title`, `subject`, `duration`, `startTime`, `endTime`, `negativeMarking`, `invId`, `status` |
-| `Question` | Questions within an exam | `id`, `examId`, `type`, `questionText`, `options`, `correctAnswer`, `marks`, `codeTemplate` |
+| `Question` | Questions within an exam | `id`, `examId`, `questionText`, `marks`, `negativeMarks`, `difficulty`, `options` |
+| `QuestionOption` | Discrete MCQ options | `id`, `questionId`, `optionLetter`, `optionText`, `isCorrect` |
 | `StudentExam` | Candidate exam session instance | `id`, `studentId`, `examId`, `status`, `vpnPeerIp`, `vpnKey`, `flagCount`, `watermarkSeed` |
-| `Answer` | Student responses to questions | `id`, `studentExamId`, `questionId`, `selectedOption`, `codeAnswer`, `autoScore`, `manualScore` |
+| `Answer` | Student responses to questions | `id`, `studentExamId`, `questionId`, `selectedOption`, `autoScore`, `isCorrect` |
 | `IdentityVerification` | Pre-exam biometric & OCR match record | `id`, `studentExamId`, `liveFaceMatchScore`, `idCardMatchResult`, `status`, `verifiedAt` |
 | `EvidenceLog` | Proctoring violation snapshots & events | `id`, `studentExamId`, `eventType`, `severity`, `screenshotUrl`, `cameraFrameUrl`, `details` |
 | `ChatMessage` | In-exam student-proctor messages | `id`, `examId`, `studentId`, `senderRole`, `message`, `timestamp` |
@@ -443,8 +444,8 @@ ProctorNet implements layered security controls verified across the backend and 
   │── Session transitions to ACTIVE; connects to Socket.io room exam:{id}
   │── In-browser face-api.js presence detection loop runs every 4s
   │── Frame emitter pushes compressed base64 JPEG snapshots every 1.5s
-  │── Monaco Editor / MCQ Question UI with dynamic USN watermark overlay
-  │── Debounced answer autosave (POST /student/exams/:id/submit)
+  │── Deterministic MCQ Question UI with dynamic USN watermark overlay
+  │── Debounced answer autosave (POST /student/exams/:id/autosave)
   ▼
 [5. Submission & Teardown]
   │── Final answer submission flushes to DB
@@ -551,7 +552,7 @@ online-exam-proctoring/
 │   │   │   │   ├── faculty/           # Exam authoring, questions, student dossiers
 │   │   │   │   ├── invigilator/       # Live proctoring grid and violation HUD
 │   │   │   │   └── student/           # Exam interface, security check, results
-│   │   │   ├── components/            # UI components (Monaco editor, watermark canvas, feeds)
+│   │   │   ├── components/            # UI components (question panel, watermark canvas, feeds)
 │   │   │   ├── context/               # AuthContext.jsx and ExamContext.jsx
 │   │   │   ├── hooks/                 # useExamSocket, useProctoringMonitors, useAntiCheat
 │   │   │   └── utils/                 # api.js (Axios instance with withCredentials: true)
@@ -726,7 +727,7 @@ During technical evaluation and source inspection, the following architectural b
 | **ID Card OCR Parsing** | `IMPLEMENTED` | Tesseract.js / Pytesseract extracting USN and student metadata from ID cards. |
 | **Socket.IO Signaling & Relays** | `IMPLEMENTED` | Room-isolated socket signaling, rate-limited frame relay (800ms throttle, 500KB cap). |
 | **WebRTC P2P Signaling** | `IMPLEMENTED` | SDP offer/answer and ICE candidate exchange between student and invigilator. |
-| **Monaco Coding IDE** | `IMPLEMENTED` | Multi-language code editor with test cases and starter templates. |
+| **Deterministic MCQ Engine** | `IMPLEMENTED` | Standardized single-choice assessments with DB-enforced partial unique index. |
 | **Exam Session State Machine** | `IMPLEMENTED` | Authoritative state machine with immutable terminal states (`SUBMITTED`, `TERMINATED`, `ENDED`). |
 | **AI Question Generator** | `IMPLEMENTED` | OpenAI GPT-3.5-turbo integration with curated domain question bank fallback. |
 | **Automated Test Suite** | `IMPLEMENTED` | 65 automated tests across 17 suites in `proctornet/backend/tests`. |

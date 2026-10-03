@@ -358,12 +358,20 @@ async function startOrResumeExam({ examId, studentId, clientIp = '127.0.0.1', us
   const questions = await global.prisma.question.findMany({
     where: { id: { in: studentExam.assignedQuestionIds }, examId: exam.id },
     select: {
-      id: true, type: true, questionText: true,
-      options: true, marks: true,
-      codeLanguage: true, codeTemplate: true,
-      sampleInput: true, sampleOutput: true,
-      wordLimitMin: true, wordLimitMax: true,
-      order: true
+      id: true,
+      questionText: true,
+      imageUrl: true,
+      marks: true,
+      negativeMarks: true,
+      order: true,
+      options: {
+        select: {
+          id: true,
+          text: true,
+          order: true
+        },
+        orderBy: { order: 'asc' }
+      }
     }
   })
 
@@ -423,24 +431,13 @@ async function saveStudentAnswer({ examId, studentId, questionId, answerData }) 
   }
 
   const selectedVal = answerData?.selectedOption ?? answerData?.selected ?? (typeof answerData === 'string' ? answerData : null)
-  const codeVal = answerData?.codeAnswer ?? answerData?.code ?? (typeof answerData === 'string' ? answerData : null)
-  const writtenVal = answerData?.writtenText ?? answerData?.text ?? answerData?.subjectiveAnswer ?? (typeof answerData === 'string' ? answerData : null)
-
-  const updateData = {}
-  if (question.type === 'MCQ') {
-    updateData.selectedOption = selectedVal
-  } else if (question.type === 'CODE') {
-    updateData.codeAnswer = codeVal
-  } else {
-    updateData.writtenText = writtenVal
-  }
 
   await global.prisma.answer.upsert({
     where: {
       studentExamId_questionId: { studentExamId: session.id, questionId }
     },
-    update: { ...updateData, changedCount: { increment: 1 } },
-    create: { studentExamId: session.id, questionId, questionType: question.type, ...updateData }
+    update: { selectedOption: selectedVal, changedCount: { increment: 1 } },
+    create: { studentExamId: session.id, questionId, selectedOption: selectedVal }
   })
 
   return { success: true }
@@ -475,18 +472,11 @@ async function autoSaveStudentAnswers({ examId, studentId, questionId, answer, a
         if (!ans) continue
 
         const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
-        const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
-        const writtenVal = ans.writtenText ?? ans.text ?? ans.subjectiveAnswer ?? (typeof ans === 'string' ? ans : null)
-
-        const updateData = {}
-        if (question.type === 'MCQ') updateData.selectedOption = selectedVal
-        else if (question.type === 'CODE') updateData.codeAnswer = codeVal
-        else updateData.writtenText = writtenVal
 
         await global.prisma.answer.upsert({
           where: { studentExamId_questionId: { studentExamId: session.id, questionId: question.id } },
-          update: { ...updateData, changedCount: { increment: 1 } },
-          create: { studentExamId: session.id, questionId: question.id, questionType: question.type, ...updateData }
+          update: { selectedOption: selectedVal, changedCount: { increment: 1 } },
+          create: { studentExamId: session.id, questionId: question.id, selectedOption: selectedVal }
         })
       }
     }
@@ -565,28 +555,17 @@ async function submitStudentExam({ examId, studentId, answers }) {
     const validQuestionIds = rawIds.filter(qid => assignedSet.has(qid))
 
     if (validQuestionIds.length > 0) {
-      const questions = await global.prisma.question.findMany({
-        where: { id: { in: validQuestionIds }, examId: session.examId }
-      })
-
       await Promise.all(
-        questions.map(async (question) => {
-          const ans = answers[question.id]
+        validQuestionIds.map(async (qid) => {
+          const ans = answers[qid]
           if (!ans) return
 
           const selectedVal = ans.selectedOption ?? ans.selected ?? (typeof ans === 'string' ? ans : null)
-          const codeVal = ans.codeAnswer ?? ans.code ?? (typeof ans === 'string' ? ans : null)
-          const writtenVal = ans.writtenText ?? ans.text ?? ans.subjectiveAnswer ?? (typeof ans === 'string' ? ans : null)
-
-          const updateData = {}
-          if (question.type === 'MCQ') updateData.selectedOption = selectedVal
-          else if (question.type === 'CODE') updateData.codeAnswer = codeVal
-          else updateData.writtenText = writtenVal
 
           return global.prisma.answer.upsert({
-            where: { studentExamId_questionId: { studentExamId: session.id, questionId: question.id } },
-            update: { ...updateData, changedCount: { increment: 1 } },
-            create: { studentExamId: session.id, questionId: question.id, questionType: question.type, ...updateData }
+            where: { studentExamId_questionId: { studentExamId: session.id, questionId: qid } },
+            update: { selectedOption: selectedVal, changedCount: { increment: 1 } },
+            create: { studentExamId: session.id, questionId: qid, selectedOption: selectedVal }
           })
         })
       )
@@ -594,7 +573,8 @@ async function submitStudentExam({ examId, studentId, answers }) {
   }
 
   const assignedQuestions = await global.prisma.question.findMany({
-    where: { id: { in: session.assignedQuestionIds || [] }, examId: session.examId }
+    where: { id: { in: session.assignedQuestionIds || [] }, examId: session.examId },
+    include: { options: true }
   })
   const calculatedTotalMarks = assignedQuestions.reduce((acc, q) => acc + (q.marks || 0), 0) || session.exam?.totalMarks || 100
 
@@ -603,7 +583,11 @@ async function submitStudentExam({ examId, studentId, answers }) {
       studentExamId: session.id,
       questionId: { in: session.assignedQuestionIds || [] }
     },
-    include: { question: true }
+    include: {
+      question: {
+        include: { options: true }
+      }
+    }
   })
 
   let totalScore = 0
@@ -611,84 +595,42 @@ async function submitStudentExam({ examId, studentId, answers }) {
   for (const ans of finalAnswers) {
     if (!ans.question) continue
 
-    if (ans.question.type === 'MCQ') {
-      const letterToIndex = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, '0': 0, '1': 1, '2': 2, '3': 3 }
-      const rawSelected = ans.selectedOption !== null && ans.selectedOption !== undefined ? String(ans.selectedOption).trim() : ''
-      const rawCorrect = ans.question.correctAnswer !== null && ans.question.correctAnswer !== undefined ? String(ans.question.correctAnswer).trim() : ''
+    const rawSelected = ans.selectedOption !== null && ans.selectedOption !== undefined ? String(ans.selectedOption).trim() : ''
+    const options = ans.question.options || []
+    const correctOpt = options.find(o => o.isCorrect)
 
-      let selectedIdx = letterToIndex[rawSelected.toUpperCase()]
-      let correctIdx = letterToIndex[rawCorrect.toUpperCase()]
-
-      let parsedOptions = ans.question.options
-      if (typeof parsedOptions === 'string') {
-        try { parsedOptions = JSON.parse(parsedOptions) } catch { parsedOptions = [] }
-      }
-      if (!Array.isArray(parsedOptions)) parsedOptions = []
-
-      // If correctOption is explicitly on question
-      if (correctIdx === undefined && typeof ans.question.correctOption === 'number') {
-        correctIdx = ans.question.correctOption
-      }
-
-      // Check if options array has isCorrect: true
-      if (correctIdx === undefined && parsedOptions.length > 0) {
-        const foundCorrect = parsedOptions.findIndex(o => o && typeof o === 'object' && o.isCorrect)
-        if (foundCorrect !== -1) correctIdx = foundCorrect
-      }
-
-      // If selectedOption is the full text of an option
-      if (selectedIdx === undefined && parsedOptions.length > 0) {
-        const foundSel = parsedOptions.findIndex(o => {
-          const t = typeof o === 'string' ? o : o?.text
-          return t && t.trim().toLowerCase() === rawSelected.toLowerCase()
-        })
-        if (foundSel !== -1) selectedIdx = foundSel
-      }
-
-      // If correctAnswer is the full text of an option
-      if (correctIdx === undefined && parsedOptions.length > 0) {
-        const foundCorr = parsedOptions.findIndex(o => {
-          const t = typeof o === 'string' ? o : o?.text
-          return t && t.trim().toLowerCase() === rawCorrect.toLowerCase()
-        })
-        if (foundCorr !== -1) correctIdx = foundCorr
-      }
-
-      // Default correctIdx to 0 (Option A) if completely unspecified
-      if (correctIdx === undefined) correctIdx = 0
-
-      let isCorrect = false
-      if (rawSelected && rawCorrect && rawSelected.toLowerCase() === rawCorrect.toLowerCase()) {
+    let isCorrect = false
+    if (correctOpt && rawSelected) {
+      if (rawSelected.toLowerCase() === correctOpt.text.toLowerCase() || rawSelected === correctOpt.id) {
         isCorrect = true
-      } else if (selectedIdx !== undefined && correctIdx !== undefined && selectedIdx === correctIdx) {
-        isCorrect = true
-      } else if (parsedOptions.length > 0 && selectedIdx !== undefined && parsedOptions[selectedIdx]) {
-        const selOpt = parsedOptions[selectedIdx]
-        if (typeof selOpt === 'object' && selOpt.isCorrect) {
+      } else {
+        const letterMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5 }
+        const selLetterIdx = letterMap[rawSelected.toUpperCase()]
+        if (selLetterIdx !== undefined && correctOpt.order === selLetterIdx) {
           isCorrect = true
         }
       }
-
-      let marksAwarded = 0
-      if (isCorrect) {
-        marksAwarded = ans.question.marks || 1
-      } else if (session.exam?.negativeMarking && rawSelected.length > 0) {
-        let penalty = 0
-        if (ans.question.negativeMarks !== null && ans.question.negativeMarks !== undefined && ans.question.negativeMarks > 0) {
-          penalty = Number(ans.question.negativeMarks)
-        } else if (session.exam?.negativeValue !== null && session.exam?.negativeValue !== undefined && session.exam?.negativeValue > 0) {
-          penalty = Number(session.exam.negativeValue)
-        }
-        marksAwarded = -penalty
-      }
-
-      totalScore += marksAwarded
-
-      await global.prisma.answer.update({
-        where: { id: ans.id },
-        data: { autoScore: marksAwarded }
-      })
     }
+
+    let marksAwarded = 0
+    if (isCorrect) {
+      marksAwarded = ans.question.marks || 1
+    } else if (session.exam?.negativeMarking && rawSelected.length > 0) {
+      let penalty = 0
+      if (ans.question.negativeMarks !== null && ans.question.negativeMarks !== undefined && ans.question.negativeMarks > 0) {
+        penalty = Number(ans.question.negativeMarks)
+      } else if (session.exam?.negativeValue !== null && session.exam?.negativeValue !== undefined && session.exam?.negativeValue > 0) {
+        penalty = Number(session.exam.negativeValue)
+      }
+      marksAwarded = -penalty
+    }
+
+    totalScore += marksAwarded
+
+    await global.prisma.answer.update({
+      where: { id: ans.id },
+      data: { autoScore: marksAwarded }
+    })
   }
 
   // H-1: Only clamp to 0 if negative marking is disabled.

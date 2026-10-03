@@ -141,28 +141,31 @@ model Exam {
 }
 
 model Question {
-  id            String    @id @default(uuid())
+  id            String           @id @default(uuid())
   examId        String
-  exam          Exam      @relation(fields: [examId], references: [id])
-  type          String
+  exam          Exam             @relation(fields: [examId], references: [id])
   questionText  String
   imageUrl      String?
-  options       Json?
-  correctAnswer String?
   marks         Float
-  negativeMarks Float     @default(0)
-  difficulty    String    @default("MEDIUM")
-  codeTemplate  String?
-  codeLanguage  String?
-  sampleInput   String?
-  sampleOutput  String?
-  testCases     Json?
-  wordLimitMin  Int?
-  wordLimitMax  Int?
-  order         Int       @default(0)
+  negativeMarks Float            @default(0)
+  difficulty    String           @default("MEDIUM")
+  order         Int              @default(0)
   tags          String[]
-  createdAt     DateTime  @default(now())
+  createdAt     DateTime         @default(now())
+  options       QuestionOption[]
   answers       Answer[]
+}
+
+model QuestionOption {
+  id         String   @id @default(uuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([questionId])
 }
 
 model StudentExam {
@@ -200,16 +203,11 @@ model Answer {
   studentExam    StudentExam @relation(fields: [studentExamId], references: [id])
   questionId     String
   question       Question    @relation(fields: [questionId], references: [id])
-  questionType   String
   selectedOption String?
-  writtenText    String?
-  codeAnswer     String?
   submittedAt    DateTime    @default(now())
   timeTakenSecs  Int         @default(0)
   changedCount   Int         @default(0)
   autoScore      Float?
-  manualScore    Float?
-  scoredBy       String?
 
   @@unique([studentExamId, questionId])
 }
@@ -281,7 +279,6 @@ model ExamResult {
   examId           String
   exam             Exam        @relation(fields: [examId], references: [id])
   autoScore        Float       @default(0)
-  manualScore      Float       @default(0)
   totalScore       Float       @default(0)
   totalMarks       Float
   percentage       Float

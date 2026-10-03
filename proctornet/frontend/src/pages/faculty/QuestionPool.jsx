@@ -31,19 +31,19 @@ function QuestionCard({ q, index, onDelete, onEdit }) {
         <div className="flex items-center gap-2 flex-shrink-0 font-mono text-xs">
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${diffColor[q.difficulty] || diffColor.MEDIUM}`}>{q.difficulty}</span>
           <span className="text-muted-foreground font-semibold">{q.marks}m</span>
-          <Badge variant="outline" className="text-[10px] border-border bg-background font-mono">{q.type}</Badge>
+          <Badge variant="outline" className="text-[10px] border-border bg-background font-mono">MCQ</Badge>
           <button onClick={e => { e.stopPropagation(); onEdit(q) }} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg text-primary"><Edit3 size={13} /></button>
           <button onClick={e => { e.stopPropagation(); onDelete(q.id) }} className="p-1.5 hover:bg-rose-500/10 rounded-lg text-rose-500"><Trash2 size={13} /></button>
           {open ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
         </div>
       </div>
-      {open && q.type === 'MCQ' && Array.isArray(q.options) && q.options.length > 0 && (
+      {open && Array.isArray(q.options) && q.options.length > 0 && (
         <div className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-sans">
           {q.options.map((opt, i) => {
-            const text = typeof opt === 'string' ? opt : opt.text
-            const letter = String.fromCharCode(65 + i)
+            const text = typeof opt === 'string' ? opt : (opt.optionText || opt.text || '')
+            const letter = opt.optionLetter || String.fromCharCode(65 + i)
             const isCorrect = typeof opt === 'object' && opt.isCorrect !== undefined
-              ? opt.isCorrect
+              ? Boolean(opt.isCorrect)
               : (q.correctAnswer === letter || q.correctAnswer === String(i) || text === q.correctAnswer)
             return (
               <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${isCorrect ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-semibold' : 'bg-background text-muted-foreground border border-border'}`}>
@@ -55,12 +55,6 @@ function QuestionCard({ q, index, onDelete, onEdit }) {
               </div>
             )
           })}
-        </div>
-      )}
-      {open && q.type !== 'MCQ' && q.correctAnswer && (
-        <div className="px-4 pb-4 text-xs font-sans">
-          <p className="text-[10px] font-mono text-muted-foreground mb-1">Model Answer / Key Points</p>
-          <p className="text-foreground/90 bg-background border border-border rounded-xl p-3">{q.correctAnswer}</p>
         </div>
       )}
     </Card>
@@ -87,15 +81,13 @@ export default function QuestionPool() {
 
   // Question Form state
   const [form, setForm] = useState({
-    type: 'MCQ',
     questionText: '',
     marks: 2,
+    negativeMarks: 0,
     difficulty: 'HARD',
     options: ['', '', '', ''],
     correctOption: 0,
-    correctAnswer: 'A',
-    codeTemplate: '',
-    wordLimitMax: 250
+    correctAnswer: 'A'
   })
 
   useEffect(() => {
@@ -144,16 +136,18 @@ export default function QuestionPool() {
     
     // Format options cleanly
     const formattedOptions = form.options.map((optText, idx) => ({
-      text: optText || `Option ${String.fromCharCode(65 + idx)}`,
+      optionLetter: String.fromCharCode(65 + idx),
+      optionText: optText || `Option ${String.fromCharCode(65 + idx)}`,
       isCorrect: idx === form.correctOption
     }))
 
     const payload = {
-      ...form,
       examId,
-      options: formattedOptions,
-      correctAnswer: String.fromCharCode(65 + form.correctOption),
-      marks: Number(form.marks || 2)
+      questionText: form.questionText,
+      marks: Number(form.marks || 2),
+      negativeMarks: Number(form.negativeMarks || 0),
+      difficulty: form.difficulty,
+      options: formattedOptions
     }
 
     try {
@@ -207,8 +201,8 @@ export default function QuestionPool() {
             <Button size="sm" onClick={() => {
               setEditQ(null)
               setForm({
-                type: 'MCQ', questionText: '', marks: 2, difficulty: 'HARD',
-                options: ['', '', '', ''], correctOption: 0, correctAnswer: 'A', codeTemplate: '', wordLimitMax: 250
+                questionText: '', marks: 2, negativeMarks: 0, difficulty: 'HARD',
+                options: ['', '', '', ''], correctOption: 0, correctAnswer: 'A'
               })
               setShowForm(true)
             }} className="text-xs font-bold">
@@ -318,6 +312,17 @@ export default function QuestionPool() {
                   />
                 </div>
                 <div>
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Negative Marks</label>
+                  <input
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={form.negativeMarks}
+                    onChange={e => setForm({ ...form, negativeMarks: e.target.value })}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div>
                   <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Difficulty</label>
                   <select
                     value={form.difficulty}
@@ -331,41 +336,39 @@ export default function QuestionPool() {
                 </div>
               </div>
 
-              {form.type === 'MCQ' && (
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-                    Options & Correct Answer (Select the radio button for the correct option)
-                  </label>
-                  {form.options.map((opt, idx) => {
-                    const letter = String.fromCharCode(65 + idx)
-                    const textVal = typeof opt === 'string' ? opt : (opt?.text || '')
-                    return (
-                      <div key={idx} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="correctOptionRadio"
-                          checked={form.correctOption === idx}
-                          onChange={() => setForm({ ...form, correctOption: idx, correctAnswer: letter })}
-                          className="w-4 h-4 text-primary cursor-pointer"
-                        />
-                        <span className="w-6 text-xs font-mono font-bold text-muted-foreground">{letter}:</span>
-                        <input
-                          type="text"
-                          value={textVal}
-                          onChange={e => {
-                            const next = [...form.options]
-                            next[idx] = e.target.value
-                            setForm({ ...form, options: next })
-                          }}
-                          placeholder={`Option ${letter} text`}
-                          className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
-                          required
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Options & Correct Answer (Select the radio button for the correct option)
+                </label>
+                {form.options.map((opt, idx) => {
+                  const letter = String.fromCharCode(65 + idx)
+                  const textVal = typeof opt === 'string' ? opt : (opt?.text || '')
+                  return (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="correctOptionRadio"
+                        checked={form.correctOption === idx}
+                        onChange={() => setForm({ ...form, correctOption: idx, correctAnswer: letter })}
+                        className="w-4 h-4 text-primary cursor-pointer"
+                      />
+                      <span className="w-6 text-xs font-mono font-bold text-muted-foreground">{letter}:</span>
+                      <input
+                        type="text"
+                        value={textVal}
+                        onChange={e => {
+                          const next = [...form.options]
+                          next[idx] = e.target.value
+                          setForm({ ...form, options: next })
+                        }}
+                        placeholder={`Option ${letter} text`}
+                        className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs text-foreground focus:outline-none focus:border-primary"
+                        required
+                      />
+                    </div>
+                  )
+                })}
+              </div>
 
               <div className="flex justify-end gap-2 pt-2 border-t border-border">
                 <Button type="button" variant="outline" size="sm" onClick={() => { setShowForm(false); setEditQ(null) }}>
@@ -390,12 +393,14 @@ export default function QuestionPool() {
           ) : (
             questions.map((q, idx) => {
               // Parse options if stored as string/array
+              const rawOpts = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+              const correctIdx = Array.isArray(rawOpts)
+                ? rawOpts.findIndex(o => o.isCorrect || o.letter === q.correctAnswer || o.optionLetter === q.correctAnswer)
+                : 0
               const parsedQ = {
                 ...q,
-                options: typeof q.options === 'string' ? JSON.parse(q.options) : q.options,
-                correctOption: typeof q.correctOption === 'number'
-                  ? q.correctOption
-                  : (q.correctAnswer && q.correctAnswer.length === 1 ? q.correctAnswer.charCodeAt(0) - 65 : 0)
+                options: rawOpts,
+                correctOption: correctIdx >= 0 ? correctIdx : 0
               }
               return (
                 <QuestionCard
@@ -404,18 +409,21 @@ export default function QuestionPool() {
                   index={idx}
                   onDelete={handleDelete}
                   onEdit={(qToEdit) => {
-                    const rawOpts = Array.isArray(qToEdit.options) ? qToEdit.options.map(o => typeof o === 'string' ? o : (o.text || '')) : ['', '', '', '']
+                    const opts = Array.isArray(qToEdit.options) 
+                      ? qToEdit.options.map(o => typeof o === 'string' ? o : (o.optionText || o.text || '')) 
+                      : ['', '', '', '']
+                    const correctIdx = Array.isArray(qToEdit.options)
+                      ? qToEdit.options.findIndex(o => o.isCorrect)
+                      : 0
                     setEditQ(qToEdit)
                     setForm({
-                      type: qToEdit.type || 'MCQ',
                       questionText: qToEdit.questionText || '',
                       marks: qToEdit.marks || 2,
+                      negativeMarks: qToEdit.negativeMarks || 0,
                       difficulty: qToEdit.difficulty || 'HARD',
-                      options: rawOpts,
-                      correctOption: qToEdit.correctOption || 0,
-                      correctAnswer: qToEdit.correctAnswer || 'A',
-                      codeTemplate: qToEdit.codeTemplate || '',
-                      wordLimitMax: qToEdit.wordLimitMax || 250
+                      options: opts,
+                      correctOption: correctIdx >= 0 ? correctIdx : 0,
+                      correctAnswer: String.fromCharCode(65 + (correctIdx >= 0 ? correctIdx : 0))
                     })
                     setShowForm(true)
                   }}

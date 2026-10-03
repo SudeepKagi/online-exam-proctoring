@@ -3,7 +3,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useState, useRef, useEffect } from 'react'
 import {
   Shield, ChevronRight, Eye, FileText,
-  ArrowRight, Monitor, UserCheck, ChevronDown, Check,
+  ArrowRight, Monitor, UserCheck, ChevronDown, Check, CheckCircle2,
   Laptop, Code2, Video, Cpu, Clock, Calendar, Users,
   KeyRound, User, Sparkles, Download, Phone
 } from 'lucide-react'
@@ -22,7 +22,7 @@ const rolePortals = [
     icon: UserCheck,
     title: 'Student Exam Portal',
     subtitle: 'Candidate Assessment Workspace',
-    description: 'Take assigned tests in a locked fullscreen kiosk with automated pre-flight system checks, live biometric identity verification, and multi-language coding sandbox.',
+    description: 'Take assigned tests in a locked fullscreen kiosk with automated pre-flight system checks, live biometric identity verification, and standardized MCQ assessments.',
     highlights: [
       'Fullscreen lockdown & tab switch guard',
       'Continuous biometric facial check',
@@ -138,14 +138,14 @@ const builtFeatures = [
     desc: 'Detects window blur, tab switching, and fullscreen exits with instant alert flags.'
   },
   {
-    icon: Code2,
-    title: 'Monaco Code IDE',
-    desc: 'Embedded code editor with syntax highlighting, line numbering, and test runners.'
+    icon: CheckCircle2,
+    title: 'Deterministic MCQ Engine',
+    desc: 'High-throughput single-choice assessments with set-based database evaluation.'
   },
   {
     icon: Cpu,
-    title: 'Cosine Similarity Engine',
-    desc: 'Computes TF-IDF semantic overlap across submissions to detect answer sharing.'
+    title: 'Integrity Correlation Engine',
+    desc: 'Analyzes anomalies, event timing, and submission patterns across candidate attempts.'
   },
   {
     icon: Laptop,
@@ -166,7 +166,7 @@ const faqs = [
   },
   {
     q: 'What question formats are supported for faculty?',
-    a: 'Faculty can create auto-graded multiple-choice questions, subjective text questions with similarity evaluation, and programming tasks with an integrated Monaco code editor.'
+    a: 'Faculty create standardized single-correct-choice multiple-choice assessments with 2 to 6 options, custom positive marks, and negative marking rules.'
   },
   {
     q: 'What supervisory controls do invigilators have?',
@@ -401,11 +401,11 @@ export default function LandingPage() {
 
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] flex items-center justify-center text-[#2f80ed]">
-                  <Code2 size={18} />
+                  <CheckCircle2 size={18} />
                 </div>
                 <div>
-                  <div className="font-bold text-[#18181b]">Monaco Code IDE</div>
-                  <div className="text-[11px] text-[#71717a]">Multi-Language Sandbox</div>
+                  <div className="font-bold text-[#18181b]">Deterministic MCQ</div>
+                  <div className="text-[11px] text-[#71717a]">Scalable Set-Based Grading</div>
                 </div>
               </div>
             </div>
@@ -455,9 +455,9 @@ export default function LandingPage() {
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">3 Formats</div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Question Engine</div>
-              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">MCQ, Subjective & Monaco IDE</p>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">100% MCQ</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Single-Choice Engine</div>
+              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Instant set-based SQL grading</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
@@ -755,7 +755,7 @@ export default function LandingPage() {
             <ul className="space-y-2.5 text-xs text-[#52525b]">
               <li><span>DeepFace Biometric Verification</span></li>
               <li><span>Fullscreen Kiosk Lockdown</span></li>
-              <li><span>Monaco Coding Sandbox</span></li>
+              <li><span>Deterministic MCQ Engine</span></li>
               <li><span>BYOD Process Companion Agent</span></li>
             </ul>
           </div>

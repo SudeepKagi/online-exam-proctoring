@@ -13,10 +13,8 @@ function AIGeneratorPanel({ onGenerated }) {
   const [file, setFile] = useState(null)
   const [extractedText, setExtractedText] = useState('')
   const [numMCQ, setNumMCQ] = useState(5)
-  const [numEssay, setNumEssay] = useState(2)
   const [difficulty, setDifficulty] = useState('MEDIUM')
   const [marksPerMCQ, setMarksPerMCQ] = useState(2)
-  const [marksPerEssay, setMarksPerEssay] = useState(10)
   const [step, setStep] = useState('upload') // upload | preview | generating | done
   const [generating, setGenerating] = useState(false)
   const fileRef = React.useRef()
@@ -78,17 +76,12 @@ function AIGeneratorPanel({ onGenerated }) {
     setStep('generating')
     try {
       const mcqCount = parseInt(numMCQ) || 5
-      const essayCount = parseInt(numEssay) || 0
-      const totalCount = mcqCount + essayCount
 
       const res = await api.post(`/faculty/exams/ai-generate-preview`, {
         topic: text,
-        count: totalCount,
-        numMCQ: mcqCount,
-        numEssay: essayCount,
+        count: mcqCount,
         difficulty,
-        marksPerMCQ: parseFloat(marksPerMCQ),
-        marksPerEssay: parseFloat(marksPerEssay)
+        marksPerMCQ: parseFloat(marksPerMCQ)
       })
       
       const newQuestions = res.data.questions || []
@@ -151,9 +144,7 @@ function AIGeneratorPanel({ onGenerated }) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
         {[
           { label: 'MCQ Count', value: numMCQ, set: setNumMCQ, min: 1, max: 20 },
-          { label: 'Essay Count', value: numEssay, set: setNumEssay, min: 0, max: 10 },
-          { label: 'Marks / MCQ', value: marksPerMCQ, set: setMarksPerMCQ, min: 0.5, step: 0.5 },
-          { label: 'Marks / Essay', value: marksPerEssay, set: setMarksPerEssay, min: 1 },
+          { label: 'Marks / MCQ', value: marksPerMCQ, set: setMarksPerMCQ, min: 0.5, step: 0.5 }
         ].map(({ label, value, set, min = 1, max, step = 1 }) => (
           <div key={label}>
             <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
@@ -181,7 +172,7 @@ function AIGeneratorPanel({ onGenerated }) {
         <button onClick={handleGenerate} disabled={generating || extractedText.trim().length < 50}
           className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
           {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {generating ? 'Generating with Gemini AI…' : `Generate ${numMCQ} MCQ + ${numEssay} Essay Questions`}
+          {generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
         </button>
       )}
     </div>
@@ -200,13 +191,11 @@ export default function CreateExam() {
   const [qForm, setQForm] = useState({
     type: 'MCQ',
     questionText: '',
-    marks: 5,
+    marks: 2,
     difficulty: 'MEDIUM',
     negativeMarks: 0,
     options: ['', '', '', ''],
-    correctAnswer: 'A',
-    codeTemplate: '',
-    wordLimitMax: 250
+    correctAnswer: 'A'
   })
 
   const [formData, setFormData] = useState({
@@ -268,27 +257,22 @@ export default function CreateExam() {
 
   const handleAddQuestionLocal = () => {
     if (!qForm.questionText.trim()) return toast.error('Question prompt cannot be empty')
-    
-    let formattedOptions = []
-    if (qForm.type === 'MCQ') {
-      if (qForm.options.some(opt => !opt.trim())) return toast.error('All 4 MCQ options must be filled')
-      formattedOptions = qForm.options.map((opt, i) => {
-        const letter = String.fromCharCode(65 + i)
-        return { text: opt.trim(), isCorrect: letter === qForm.correctAnswer }
-      })
-    }
+    if (qForm.options.some(opt => !opt.trim())) return toast.error('All 4 MCQ options must be filled')
+
+    const formattedOptions = qForm.options.map((opt, i) => {
+      const letter = String.fromCharCode(65 + i)
+      return { text: opt.trim(), isCorrect: letter === qForm.correctAnswer, order: i }
+    })
 
     const newQuestion = {
       id: Math.random().toString(36).substr(2, 9),
-      type: qForm.type,
+      type: 'MCQ',
       questionText: qForm.questionText.trim(),
-      marks: Number(qForm.marks || 5),
+      marks: Number(qForm.marks || 2),
       difficulty: qForm.difficulty,
       negativeMarks: Number(qForm.negativeMarks || 0),
       options: formattedOptions,
-      correctAnswer: qForm.correctAnswer,
-      codeTemplate: qForm.codeTemplate,
-      wordLimitMax: qForm.type === 'SUBJECTIVE' ? Number(qForm.wordLimitMax || 250) : null
+      correctAnswer: qForm.correctAnswer
     }
 
     setQuestions(prev => [...prev, newQuestion])
@@ -298,13 +282,11 @@ export default function CreateExam() {
     setQForm({
       type: 'MCQ',
       questionText: '',
-      marks: 5,
+      marks: 2,
       difficulty: 'MEDIUM',
       negativeMarks: 0,
       options: ['', '', '', ''],
-      correctAnswer: 'A',
-      codeTemplate: '',
-      wordLimitMax: 250
+      correctAnswer: 'A'
     })
     toast.success('Question added to exam pool')
   }
@@ -348,15 +330,13 @@ export default function CreateExam() {
 
       return {
         id: Math.random().toString(36).substr(2, 9),
-        type: qType,
+        type: 'MCQ',
         questionText: q.questionText || '',
         marks: parsedMarks,
         difficulty: (q.difficulty || 'MEDIUM').toUpperCase(),
         negativeMarks: 0,
         options: formattedOptions,
-        correctAnswer: rawCorrectAnswer,
-        codeTemplate: q.codeTemplate || '',
-        wordLimitMax: qType === 'SUBJECTIVE' ? Number(q.wordLimitMax || 250) : null
+        correctAnswer: rawCorrectAnswer
       }
     })
 
@@ -407,8 +387,8 @@ export default function CreateExam() {
       const res = await api.post('/faculty/exams', payload)
       const createdExam = res.data.exam
       
-      const questionsToUpload = questions.map(({ type, questionText, options, correctAnswer, marks, negativeMarks, difficulty, codeTemplate, wordLimitMax }) => ({
-        type, questionText, options, correctAnswer, marks, negativeMarks, difficulty, codeTemplate, wordLimitMax
+      const questionsToUpload = questions.map(({ questionText, options, correctAnswer, marks, negativeMarks, difficulty }) => ({
+        questionText, options, correctAnswer, marks, negativeMarks, difficulty
       }))
 
       await api.post('/faculty/questions/bulk', {
@@ -575,7 +555,7 @@ export default function CreateExam() {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <div className="grid grid-cols-3 gap-3">
             {[
-              { step: 1, label: 'Add Questions', desc: 'Build MCQ, Code & Subjective items' },
+              { step: 1, label: 'Add Questions', desc: 'Build Single-Choice MCQ items' },
               { step: 2, label: 'Timing & Security', desc: 'Configure schedules & rules' },
               { step: 3, label: 'Review & Publish', desc: 'Verify and deploy assessment' }
             ].map((s) => (
@@ -640,28 +620,9 @@ export default function CreateExam() {
 
                 {activeTab === 'manual' ? (
                   <div className="space-y-5 text-xs font-sans">
-                    <div>
-                      <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Question Type</label>
-                      <div className="grid grid-cols-3 gap-2.5">
-                        {[
-                          { type: 'MCQ', label: 'Multiple Choice' },
-                          { type: 'CODE', label: 'Coding Test' },
-                          { type: 'SUBJECTIVE', label: 'Subjective' }
-                        ].map(t => (
-                          <button
-                            key={t.type}
-                            type="button"
-                            onClick={() => setQForm(prev => ({ ...prev, type: t.type }))}
-                            className={`py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all ${
-                              qForm.type === t.type 
-                                ? 'bg-[#2f80ed] text-white border-[#2f80ed] shadow-xs'
-                                : 'bg-[#f8fafc] border-slate-200 text-slate-600 hover:text-slate-900'
-                            }`}
-                          >
-                            {t.label}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="flex items-center justify-between p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
+                      <div className="text-xs font-semibold text-[#2f80ed]">Question Type: Single-Choice Multiple Choice (MCQ)</div>
+                      <div className="text-[11px] text-slate-500 font-medium">Exactly one correct option</div>
                     </div>
 
                     <div>
@@ -675,37 +636,35 @@ export default function CreateExam() {
                       />
                     </div>
 
-                    {qForm.type === 'MCQ' && (
-                      <div className="space-y-3 p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
-                        <label className="block text-xs font-semibold text-slate-900">MCQ Options & Correct Choice</label>
-                        {['A', 'B', 'C', 'D'].map((opt, i) => (
-                          <div key={opt} className="flex gap-2.5 items-center">
-                            <button
-                              type="button"
-                              onClick={() => setQForm(prev => ({ ...prev, correctAnswer: opt }))}
-                              className={`w-9 h-9 rounded-xl font-semibold text-xs flex items-center justify-center transition-all ${
-                                qForm.correctAnswer === opt 
-                                  ? 'bg-[#10b981] text-white shadow-xs' 
-                                  : 'bg-[#475569] text-white'
-                              }`}
-                            >
-                              {opt}
-                            </button>
-                            <input
-                              type="text"
-                              value={qForm.options[i]}
-                              onChange={(e) => {
-                                const updatedOpts = [...qForm.options]
-                                updatedOpts[i] = e.target.value
-                                setQForm(prev => ({ ...prev, options: updatedOpts }))
-                              }}
-                              placeholder={`Option ${opt} text`}
-                              className="flex-1 px-3.5 py-2 border-1.5 border-slate-300 rounded-xl text-xs bg-white text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="space-y-3 p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
+                      <label className="block text-xs font-semibold text-slate-900">MCQ Options & Correct Choice</label>
+                      {['A', 'B', 'C', 'D'].map((opt, i) => (
+                        <div key={opt} className="flex gap-2.5 items-center">
+                          <button
+                            type="button"
+                            onClick={() => setQForm(prev => ({ ...prev, correctAnswer: opt }))}
+                            className={`w-9 h-9 rounded-xl font-semibold text-xs flex items-center justify-center transition-all ${
+                              qForm.correctAnswer === opt 
+                                ? 'bg-[#10b981] text-white shadow-xs' 
+                                : 'bg-[#475569] text-white'
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                          <input
+                            type="text"
+                            value={qForm.options[i]}
+                            onChange={(e) => {
+                              const updatedOpts = [...qForm.options]
+                              updatedOpts[i] = e.target.value
+                              setQForm(prev => ({ ...prev, options: updatedOpts }))
+                            }}
+                            placeholder={`Option ${opt} text`}
+                            className="flex-1 px-3.5 py-2 border-1.5 border-slate-300 rounded-xl text-xs bg-white text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]"
+                          />
+                        </div>
+                      ))}
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>

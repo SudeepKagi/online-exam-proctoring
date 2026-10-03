@@ -72,17 +72,8 @@ async function checkCollusionForExam(examId, threshold = 0.85) {
         const a2 = r2.answers.find(x => x.questionId === a1.questionId)
         if (!a2) return
 
-        if (a1.question?.type === 'MCQ') {
-          if (a1.selectedOption && a2.selectedOption && a1.selectedOption === a2.selectedOption) {
-            matches++
-          }
-        } else {
-          const ans1 = a1.codeAnswer || a1.writtenText || ''
-          const ans2 = a2.codeAnswer || a2.writtenText || ''
-          if (ans1.trim() && ans2.trim()) {
-            const sim = calculateSimilarity(ans1, ans2)
-            if (sim > threshold) matches++
-          }
+        if (a1.selectedOption && a2.selectedOption && a1.selectedOption === a2.selectedOption) {
+          matches++
         }
       })
 

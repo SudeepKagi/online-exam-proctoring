@@ -1,8 +1,11 @@
+const xlsx = require('xlsx')
 const pythonService = require('./python.service')
+const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../validators/question.validator')
 
 /**
  * Question Service
- * Handles Question creation, updates, deletes, bulk additions, and AI question generation.
+ * Handles Single-Correct MCQ creation, updates, deletes, bulk additions,
+ * Excel imports, and AI question generation.
  */
 
 async function addQuestionToExam({ examId, facultyId, data }) {
@@ -16,61 +19,37 @@ async function addQuestionToExam({ examId, facultyId, data }) {
     throw error
   }
 
-  const {
-    type,
-    questionText,
-    text,
-    marks,
-    negativeMarks,
-    difficulty,
-    options,
-    correctAnswer,
-    codeTemplate,
-    codeLanguage,
-    sampleInput,
-    sampleOutput,
-    testCases,
-    wordLimitMin,
-    wordLimitMax,
-    order
-  } = data
-
-  const finalQuestionText = questionText || text || ''
-  if (!finalQuestionText.trim()) {
-    const error = new Error('Question text is required.')
-    error.status = 400
-    throw error
-  }
-
-  const parsedMarks = marks !== undefined && marks !== null ? parseFloat(marks) : 5
-  const parsedNegMarks = negativeMarks !== undefined && negativeMarks !== null ? parseFloat(negativeMarks) : 0
-  const parsedOrder = order !== undefined && order !== null ? parseInt(order, 10) : 0
+  const validated = validateMcqQuestion(data)
 
   const question = await global.prisma.$transaction(async (tx) => {
     const created = await tx.question.create({
       data: {
         examId,
-        type: (type || 'MCQ').toUpperCase(),
-        questionText: finalQuestionText,
-        marks: parsedMarks,
-        negativeMarks: parsedNegMarks,
-        difficulty: difficulty ? difficulty.toUpperCase() : 'MEDIUM',
-        options: options || [],
-        correctAnswer: correctAnswer ? String(correctAnswer) : null,
-        codeTemplate: codeTemplate || null,
-        codeLanguage: codeLanguage || null,
-        sampleInput: sampleInput || null,
-        sampleOutput: sampleOutput || null,
-        testCases: testCases || [],
-        wordLimitMin: wordLimitMin ? parseInt(wordLimitMin, 10) : null,
-        wordLimitMax: wordLimitMax ? parseInt(wordLimitMax, 10) : null,
-        order: parsedOrder
+        questionText: validated.questionText,
+        marks: validated.marks,
+        negativeMarks: validated.negativeMarks,
+        difficulty: validated.difficulty,
+        imageUrl: validated.imageUrl,
+        order: validated.order,
+        tags: validated.tags,
+        options: {
+          create: validated.options.map((opt, idx) => ({
+            text: opt.text,
+            isCorrect: opt.isCorrect,
+            order: opt.order !== undefined ? opt.order : idx
+          }))
+        }
+      },
+      include: {
+        options: {
+          orderBy: { order: 'asc' }
+        }
       }
     })
 
     await tx.exam.update({
       where: { id: examId },
-      data: { totalMarks: { increment: parsedMarks } }
+      data: { totalMarks: { increment: validated.marks } }
     })
 
     return created
@@ -82,6 +61,11 @@ async function addQuestionToExam({ examId, facultyId, data }) {
 async function listQuestionsForExam(examId) {
   const questions = await global.prisma.question.findMany({
     where: { examId },
+    include: {
+      options: {
+        orderBy: { order: 'asc' }
+      }
+    },
     orderBy: [
       { order: 'asc' },
       { createdAt: 'asc' }
@@ -93,7 +77,7 @@ async function listQuestionsForExam(examId) {
 async function updateQuestionById({ id, facultyId, data }) {
   const question = await global.prisma.question.findUnique({
     where: { id },
-    include: { exam: true }
+    include: { exam: true, options: true }
   })
   if (!question) {
     const error = new Error('Question not found.')
@@ -107,44 +91,52 @@ async function updateQuestionById({ id, facultyId, data }) {
     throw error
   }
 
-  const {
-    type,
-    questionText,
-    text,
-    marks,
-    negativeMarks,
-    difficulty,
-    options,
-    correctAnswer,
-    sampleInput,
-    sampleOutput,
-    testCases,
-    order
-  } = data
+  // Merge existing values with update data before validation
+  const mergedData = {
+    questionText: data.questionText !== undefined ? data.questionText : question.questionText,
+    marks: data.marks !== undefined ? data.marks : question.marks,
+    negativeMarks: data.negativeMarks !== undefined ? data.negativeMarks : question.negativeMarks,
+    difficulty: data.difficulty !== undefined ? data.difficulty : question.difficulty,
+    imageUrl: data.imageUrl !== undefined ? data.imageUrl : question.imageUrl,
+    order: data.order !== undefined ? data.order : question.order,
+    tags: data.tags !== undefined ? data.tags : question.tags,
+    options: data.options !== undefined ? data.options : question.options,
+    correctOption: data.correctOption,
+    correctAnswer: data.correctAnswer
+  }
 
+  const validated = validateMcqQuestion(mergedData)
   const oldMarks = question.marks || 0
-  const newMarks = marks !== undefined && marks !== null ? parseFloat(marks) : oldMarks
-  const markDiff = newMarks - oldMarks
+  const markDiff = validated.marks - oldMarks
 
   const updated = await global.prisma.$transaction(async (tx) => {
+    // Delete old options and re-create validated options
+    await tx.questionOption.deleteMany({
+      where: { questionId: id }
+    })
+
     const q = await tx.question.update({
       where: { id },
       data: {
-        type: type ? type.toUpperCase() : question.type,
-        questionText: questionText !== undefined ? questionText : (text !== undefined ? text : question.questionText),
-        marks: newMarks,
-        negativeMarks: negativeMarks !== undefined && negativeMarks !== null ? parseFloat(negativeMarks) : question.negativeMarks,
-        difficulty: difficulty ? difficulty.toUpperCase() : question.difficulty,
-        options: options !== undefined ? options : question.options,
-        correctAnswer: correctAnswer !== undefined ? String(correctAnswer) : question.correctAnswer,
-        sampleInput: sampleInput !== undefined ? (sampleInput || null) : question.sampleInput,
-        sampleOutput: sampleOutput !== undefined ? (sampleOutput || null) : question.sampleOutput,
-        testCases: testCases !== undefined ? testCases : question.testCases,
-        codeTemplate: data.codeTemplate !== undefined ? data.codeTemplate : question.codeTemplate,
-        codeLanguage: data.codeLanguage !== undefined ? data.codeLanguage : question.codeLanguage,
-        wordLimitMin: data.wordLimitMin !== undefined ? (data.wordLimitMin ? parseInt(data.wordLimitMin, 10) : null) : question.wordLimitMin,
-        wordLimitMax: data.wordLimitMax !== undefined ? (data.wordLimitMax ? parseInt(data.wordLimitMax, 10) : null) : question.wordLimitMax,
-        order: order !== undefined && order !== null ? parseInt(order, 10) : question.order
+        questionText: validated.questionText,
+        marks: validated.marks,
+        negativeMarks: validated.negativeMarks,
+        difficulty: validated.difficulty,
+        imageUrl: validated.imageUrl,
+        order: validated.order,
+        tags: validated.tags,
+        options: {
+          create: validated.options.map((opt, idx) => ({
+            text: opt.text,
+            isCorrect: opt.isCorrect,
+            order: opt.order !== undefined ? opt.order : idx
+          }))
+        }
+      },
+      include: {
+        options: {
+          orderBy: { order: 'asc' }
+        }
       }
     })
 
@@ -215,34 +207,47 @@ async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
     throw error
   }
 
+  // Pre-validate all questions before entering transaction
+  const validatedList = questions.map((q, idx) => {
+    try {
+      return validateMcqQuestion({ ...q, order: q.order !== undefined ? q.order : (idx + 1) })
+    } catch (err) {
+      const error = new Error(`Question ${idx + 1} validation failed: ${err.message}`)
+      error.status = 400
+      throw error
+    }
+  })
+
   const createdQuestions = await global.prisma.$transaction(async (tx) => {
     let totalAddedMarks = 0
     const list = []
 
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]
-      const parsedMarks = q.marks !== undefined && q.marks !== null ? parseFloat(q.marks) : 5
+    for (const val of validatedList) {
       const created = await tx.question.create({
         data: {
           examId,
-          type: (q.type || 'MCQ').toUpperCase(),
-          questionText: q.questionText || q.text || `Question ${i + 1}`,
-          marks: parsedMarks,
-          negativeMarks: q.negativeMarks !== undefined && q.negativeMarks !== null ? parseFloat(q.negativeMarks) : 0,
-          difficulty: (q.difficulty || 'MEDIUM').toUpperCase(),
-          options: q.options || [],
-          correctAnswer: q.correctAnswer ? String(q.correctAnswer) : null,
-          codeTemplate: q.codeTemplate || null,
-          codeLanguage: q.codeLanguage || null,
-          sampleInput: q.sampleInput || null,
-          sampleOutput: q.sampleOutput || null,
-          testCases: q.testCases || [],
-          wordLimitMin: q.wordLimitMin ? parseInt(q.wordLimitMin, 10) : null,
-          wordLimitMax: q.wordLimitMax ? parseInt(q.wordLimitMax, 10) : null,
-          order: q.order !== undefined && q.order !== null ? parseInt(q.order, 10) : (i + 1)
+          questionText: val.questionText,
+          marks: val.marks,
+          negativeMarks: val.negativeMarks,
+          difficulty: val.difficulty,
+          imageUrl: val.imageUrl,
+          order: val.order,
+          tags: val.tags,
+          options: {
+            create: val.options.map((opt, optIdx) => ({
+              text: opt.text,
+              isCorrect: opt.isCorrect,
+              order: opt.order !== undefined ? opt.order : optIdx
+            }))
+          }
+        },
+        include: {
+          options: {
+            orderBy: { order: 'asc' }
+          }
         }
       })
-      totalAddedMarks += parsedMarks
+      totalAddedMarks += val.marks
       list.push(created)
     }
 
@@ -257,24 +262,86 @@ async function bulkAddQuestionsToExam({ examId, facultyId, questions }) {
   return createdQuestions
 }
 
-async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count, numMCQ, numEssay, type = 'MCQ' }) {
+/**
+ * Bulk imports questions from an Excel file buffer.
+ * Columns: Question, OptionA…OptionF, CorrectOption, Marks, NegativeMarks, Difficulty, Tags
+ */
+async function importQuestionsFromExcel({ examId, facultyId, fileBuffer }) {
+  if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
+    const error = new Error('Valid Excel file buffer is required.')
+    error.status = 400
+    throw error
+  }
+
+  let workbook
+  try {
+    workbook = xlsx.read(fileBuffer, { type: 'buffer' })
+  } catch (err) {
+    const error = new Error(`Failed to parse Excel workbook: ${err.message}`)
+    error.status = 400
+    throw error
+  }
+
+  const sheetName = workbook.SheetNames[0]
+  if (!sheetName) {
+    const error = new Error('Excel workbook contains no sheets.')
+    error.status = 400
+    throw error
+  }
+
+  const worksheet = workbook.Sheets[sheetName]
+  const rows = xlsx.utils.sheet_to_json(worksheet, { defval: '' })
+
+  if (!rows || rows.length === 0) {
+    const error = new Error('Excel sheet contains no data rows.')
+    error.status = 400
+    throw error
+  }
+
+  const validatedQuestions = []
+  const rowErrors = []
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i]
+    try {
+      const normalized = normalizeExcelQuestionRow(row, i + 1)
+      validatedQuestions.push(normalized)
+    } catch (err) {
+      rowErrors.push(`Row ${i + 2}: ${err.message}`)
+    }
+  }
+
+  if (rowErrors.length > 0) {
+    const error = new Error(`Bulk import rejected with ${rowErrors.length} error(s): ${rowErrors.join('; ')}`)
+    error.status = 400
+    error.rowErrors = rowErrors
+    throw error
+  }
+
+  return bulkAddQuestionsToExam({
+    examId,
+    facultyId,
+    questions: validatedQuestions
+  })
+}
+
+async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count = 5 }) {
   if (!topic || !String(topic).trim()) {
     const error = new Error('Topic is required.')
     error.status = 400
     throw error
   }
 
-  const requestedCount = count || numMCQ || (numEssay ? parseInt(numEssay, 10) : 5)
-  const sanitizedCount = Math.max(1, Math.min(parseInt(requestedCount, 10) || 5, 30))
+  const sanitizedCount = Math.max(1, Math.min(parseInt(count, 10) || 5, 30))
   const sanitizedTopic = String(topic).trim().substring(0, 200)
-  const sanitizedType = ['MCQ', 'CODE', 'SUBJECTIVE'].includes(String(type).toUpperCase()) ? String(type).toUpperCase() : 'MCQ'
 
   const result = await pythonService.generateAIQuestions({
     topic: sanitizedTopic,
     difficulty,
     count: sanitizedCount,
-    type: sanitizedType
+    type: 'MCQ'
   })
+
   if (!result.success) {
     const error = new Error(result.error || 'Failed to generate AI questions')
     error.status = 500
@@ -283,21 +350,19 @@ async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count,
 
   const formattedQuestions = (result.questions || []).map((q, idx) => {
     const correctIdx = typeof q.correctOption === 'number' ? q.correctOption : 0
-    const correctLetter = String.fromCharCode(65 + correctIdx)
     const rawOptions = Array.isArray(q.options) && q.options.length > 0 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D']
     const optionsObj = rawOptions.map((opt, i) => {
       const isCorrect = i === correctIdx
-      if (typeof opt === 'string') return { text: opt, isCorrect }
-      return { text: opt.text || String(opt), isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCorrect }
+      if (typeof opt === 'string') return { text: opt, isCorrect, order: i }
+      return { text: opt.text || String(opt), isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCorrect, order: i }
     })
 
     return {
-      type: (q.type || 'MCQ').toUpperCase(),
       questionText: q.questionText || `Question ${idx + 1}`,
       options: optionsObj,
       correctOption: correctIdx,
-      correctAnswer: q.correctAnswer || correctLetter,
       marks: q.marks || (difficulty.toUpperCase() === 'HARD' ? 3 : difficulty.toUpperCase() === 'MEDIUM' ? 2 : 1),
+      negativeMarks: 0,
       difficulty: q.difficulty || difficulty,
       explanation: q.explanation || ''
     }
@@ -309,7 +374,7 @@ async function generateAIQuestionsPreview({ topic, difficulty = 'Medium', count,
   }
 }
 
-async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty = 'Medium', count, numMCQ, numEssay, type = 'MCQ' }) {
+async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty = 'Medium', count = 5 }) {
   const where = { id: examId }
   if (facultyId) where.facultyId = facultyId
 
@@ -320,68 +385,17 @@ async function generateAndSaveAIQuestions({ examId, facultyId, topic, difficulty
     throw error
   }
 
-  const requestedCount = count || numMCQ || (numEssay ? parseInt(numEssay, 10) : 5)
-  const sanitizedCount = Math.max(1, Math.min(parseInt(requestedCount, 10) || 5, 30))
-  const sanitizedTopic = String(topic || exam.title || 'General Subject').trim().substring(0, 200)
-  const sanitizedType = ['MCQ', 'CODE', 'SUBJECTIVE'].includes(String(type).toUpperCase()) ? String(type).toUpperCase() : 'MCQ'
-
-  const result = await pythonService.generateAIQuestions({
-    topic: sanitizedTopic,
+  const preview = await generateAIQuestionsPreview({
+    topic: topic || exam.title || exam.subject,
     difficulty,
-    count: sanitizedCount,
-    type: sanitizedType
+    count
   })
 
-  if (!result.success || !result.questions || result.questions.length === 0) {
-    const error = new Error(result.error || 'AI question generation returned no results.')
-    error.status = 500
-    throw error
-  }
-
-  const createdQuestions = await global.prisma.$transaction(async (tx) => {
-    const list = []
-    let totalAddedMarks = 0
-
-    for (let i = 0; i < result.questions.length; i++) {
-      const q = result.questions[i]
-      const correctIdx = typeof q.correctOption === 'number' ? q.correctOption : 0
-      const correctLetter = String.fromCharCode(65 + correctIdx)
-      const rawOptions = Array.isArray(q.options) && q.options.length > 0 ? q.options : ['Option A', 'Option B', 'Option C', 'Option D']
-      const optionsObj = rawOptions.map((opt, optIdx) => {
-        const isCorrect = optIdx === correctIdx
-        if (typeof opt === 'string') return { text: opt, isCorrect }
-        return { text: opt.text || String(opt), isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCorrect }
-      })
-
-      const marks = q.marks ? parseFloat(q.marks) : (difficulty.toUpperCase() === 'HARD' ? 3 : difficulty.toUpperCase() === 'MEDIUM' ? 2 : 1)
-      const created = await tx.question.create({
-        data: {
-          examId,
-          questionText: q.questionText || q.text || 'AI Generated Question',
-          type: (q.type || 'MCQ').toUpperCase(),
-          options: optionsObj,
-          correctAnswer: q.correctAnswer || correctLetter,
-          sampleInput: q.sampleInput || null,
-          sampleOutput: q.sampleOutput || null,
-          marks,
-          negativeMarks: 0,
-          difficulty: q.difficulty || difficulty,
-          order: i + 1
-        }
-      })
-      totalAddedMarks += marks
-      list.push(created)
-    }
-
-    await tx.exam.update({
-      where: { id: examId },
-      data: { totalMarks: { increment: totalAddedMarks } }
-    })
-
-    return list
+  return bulkAddQuestionsToExam({
+    examId,
+    facultyId,
+    questions: preview.questions
   })
-
-  return createdQuestions
 }
 
 module.exports = {
@@ -390,6 +404,7 @@ module.exports = {
   updateQuestionById,
   deleteQuestionById,
   bulkAddQuestionsToExam,
+  importQuestionsFromExcel,
   generateAIQuestionsPreview,
   generateAndSaveAIQuestions
 }

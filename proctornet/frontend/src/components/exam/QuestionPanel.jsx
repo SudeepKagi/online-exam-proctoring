@@ -1,11 +1,8 @@
-import { useState } from 'react'
-import Editor from '@monaco-editor/react'
-import { Flag, Code, ChevronLeft, ChevronRight, CheckCircle, Send } from 'lucide-react'
+import { Flag, ChevronLeft, ChevronRight, CheckCircle, Send } from 'lucide-react'
 
 /**
  * QuestionPanel Component
- * Handles rendering MCQ option buttons, Monaco code editor, and subjective text inputs,
- * along with question navigation footer.
+ * Renders Single-Choice MCQ options and question navigation footer.
  */
 export default function QuestionPanel({
   questions,
@@ -20,7 +17,6 @@ export default function QuestionPanel({
   onSubmitRequest
 }) {
   const currentQ = questions[currentIdx]
-  const [codeLanguage, setCodeLanguage] = useState('python')
 
   if (!currentQ) {
     return (
@@ -29,6 +25,49 @@ export default function QuestionPanel({
       </main>
     )
   }
+
+  // Extract and normalize options
+  let optionsList = []
+  let rawOpts = currentQ.options
+
+  if (typeof rawOpts === 'string') {
+    try { rawOpts = JSON.parse(rawOpts) } catch { rawOpts = [] }
+  }
+
+  if (Array.isArray(rawOpts) && rawOpts.length > 0) {
+    optionsList = rawOpts.map((opt, i) => {
+      const letter = String.fromCharCode(65 + i)
+      let text = ''
+      if (typeof opt === 'object' && opt !== null) {
+        text = opt.text || opt.optionText || opt.label || opt.value || JSON.stringify(opt)
+      } else {
+        text = String(opt)
+      }
+      return { letter, text: String(text).trim(), id: opt?.id }
+    }).filter(o => o.text)
+  } else if (typeof rawOpts === 'object' && rawOpts !== null) {
+    const keys = Object.keys(rawOpts)
+    optionsList = keys.map((k, i) => {
+      const letter = k.length === 1 ? k.toUpperCase() : String.fromCharCode(65 + i)
+      const val = rawOpts[k]
+      const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
+      return { letter, text: String(text).trim() }
+    }).filter(o => o.text)
+  }
+
+  if (optionsList.length === 0) {
+    ;['A', 'B', 'C', 'D', 'E', 'F'].forEach((letter, i) => {
+      const val = currentQ[`option${letter}`] || currentQ[`option${i + 1}`]
+      if (val !== undefined && val !== null) {
+        const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
+        if (text && text.trim()) {
+          optionsList.push({ letter, text: String(text).trim() })
+        }
+      }
+    })
+  }
+
+  const currentAnswer = answers[currentQ.id]?.selected
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden bg-background text-foreground">
@@ -50,10 +89,18 @@ export default function QuestionPanel({
                 {currentQ.difficulty || 'MEDIUM'}
               </span>
               <span className="text-xs text-muted-foreground font-normal">{currentQ.marks} marks</span>
+              {currentQ.negativeMarks > 0 && (
+                <span className="text-xs text-[#b91c1c] font-normal">(-{currentQ.negativeMarks} penalty)</span>
+              )}
             </div>
             <h2 className="text-lg font-bold text-foreground leading-relaxed max-w-3xl font-sans">
               {currentQ.questionText}
             </h2>
+            {currentQ.imageUrl && (
+              <div className="mt-4 max-w-xl rounded-xl overflow-hidden border border-border">
+                <img src={currentQ.imageUrl} alt="Question Diagram" className="w-full object-contain max-h-72" />
+              </div>
+            )}
           </div>
 
           <button
@@ -70,152 +117,34 @@ export default function QuestionPanel({
           </button>
         </div>
 
-        {/* Helper function to extract and normalize options */}
-        {(() => {
-          const qType = String(currentQ.type || 'MCQ').toUpperCase()
-          const isMcq = qType !== 'CODE' && qType !== 'SUBJECTIVE'
-
-          if (!isMcq) return null
-
-          // Extract options from any possible data structure
-          let optionsList = []
-          let rawOpts = currentQ.options
-
-          if (typeof rawOpts === 'string') {
-            try { rawOpts = JSON.parse(rawOpts) } catch { rawOpts = [] }
-          }
-
-          if (Array.isArray(rawOpts) && rawOpts.length > 0) {
-            optionsList = rawOpts.map((opt, i) => {
-              const letter = String.fromCharCode(65 + i)
-              let text = ''
-              if (typeof opt === 'object' && opt !== null) {
-                text = opt.text || opt.optionText || opt.label || opt.value || JSON.stringify(opt)
-              } else {
-                text = String(opt)
-              }
-              return { letter, text: String(text).trim() }
-            }).filter(o => o.text)
-          } else if (typeof rawOpts === 'object' && rawOpts !== null) {
-            const keys = Object.keys(rawOpts)
-            optionsList = keys.map((k, i) => {
-              const letter = k.length === 1 ? k.toUpperCase() : String.fromCharCode(65 + i)
-              const val = rawOpts[k]
-              const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
-              return { letter, text: String(text).trim() }
-            }).filter(o => o.text)
-          }
-
-          // Direct property check (optionA, optionB, optionC, optionD)
-          if (optionsList.length === 0) {
-            ['A', 'B', 'C', 'D'].forEach((letter, i) => {
-              const val = currentQ[`option${letter}`] || currentQ[`option${i + 1}`]
-              if (val !== undefined && val !== null) {
-                const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
-                if (text && text.trim()) {
-                  optionsList.push({ letter, text: String(text).trim() })
-                }
-              }
-            })
-          }
-
-          // Fail-safe: If options are missing or empty in DB, provide clean default choices
-          if (optionsList.length === 0) {
-            const topicSnippet = (currentQ.questionText || 'the concept').replace(/^[^\w]+/, '').slice(0, 35).trim()
-            optionsList = [
-              { letter: 'A', text: `Core Principle of ${topicSnippet}` },
-              { letter: 'B', text: `Secondary Execution Framework for ${topicSnippet}` },
-              { letter: 'C', text: `Deprecated Method & Legacy Implementation` },
-              { letter: 'D', text: `External System Dependency Integration` }
-            ]
-          }
-
-          const currentAnswer = answers[currentQ.id]?.selected
-
-          return (
-            <div className="space-y-3 max-w-3xl">
-              {optionsList.map((opt) => {
-                const selected = currentAnswer === opt.letter || currentAnswer === opt.text
-                return (
-                  <button
-                    key={opt.letter}
-                    onClick={() => setAnswer(currentQ.id, 'selected', opt.letter)}
-                    className={`w-full text-left flex items-center gap-3.5 px-4.5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
-                      selected
-                        ? 'bg-[#eff6ff] border-[#2f80ed] text-slate-900 shadow-xs font-semibold'
-                        : 'bg-white border-slate-200 text-slate-900 hover:border-[#2f80ed]/50 hover:bg-[#eff6ff]/30'
-                    }`}
-                    aria-pressed={selected}
-                  >
-                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
-                      selected ? 'bg-[#2f80ed] text-white shadow-xs' : 'bg-slate-100 border border-slate-200 text-slate-600'
-                    }`}>
-                      {opt.letter}
-                    </span>
-                    <span className="text-sm font-sans font-medium text-slate-900">{opt.text}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )
-        })()}
-
-        {/* ── Type 2: CODE (Monaco Editor) ── */}
-        {currentQ.type === 'CODE' && (
-          <div className="rounded-2xl overflow-hidden border border-border bg-card max-w-4xl shadow-xs">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-[#f8fafc] dark:bg-neutral-900 border-b border-border">
-              <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                <Code size={14} className="text-primary" /> Embedded IDE
-              </div>
-              <select
-                value={codeLanguage}
-                onChange={e => setCodeLanguage(e.target.value)}
-                className="bg-card text-foreground font-sans text-xs rounded-xl px-3 py-1 border border-border outline-none font-medium cursor-pointer"
-                aria-label="Code language"
+        {/* MCQ Options List */}
+        <div className="space-y-3 max-w-3xl">
+          {optionsList.map((opt) => {
+            const selected = currentAnswer === opt.letter || currentAnswer === opt.text || (opt.id && currentAnswer === opt.id)
+            return (
+              <button
+                key={opt.letter}
+                onClick={() => setAnswer(currentQ.id, 'selected', opt.letter)}
+                className={`w-full text-left flex items-center gap-3.5 px-4.5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
+                  selected
+                    ? 'bg-[#eff6ff] border-[#2f80ed] text-slate-900 shadow-xs font-semibold'
+                    : 'bg-white border-slate-200 text-slate-900 hover:border-[#2f80ed]/50 hover:bg-[#eff6ff]/30'
+                }`}
+                aria-pressed={selected}
               >
-                <option value="python">Python 3</option>
-                <option value="javascript">JavaScript (Node)</option>
-                <option value="java">Java</option>
-                <option value="cpp">C++</option>
-              </select>
-            </div>
-            <Editor
-              height="360px"
-              language={codeLanguage}
-              value={answers[currentQ.id]?.code || currentQ.codeTemplate || '# Write your solution here\n'}
-              onChange={val => setAnswer(currentQ.id, 'code', val)}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                fontFamily: 'JetBrains Mono, monospace'
-              }}
-            />
-          </div>
-        )}
-
-        {/* ── Type 3: SUBJECTIVE (Textarea) ── */}
-        {currentQ.type === 'SUBJECTIVE' && (
-          <div className="max-w-3xl space-y-2">
-            <textarea
-              value={answers[currentQ.id]?.text || ''}
-              onChange={e => setAnswer(currentQ.id, 'text', e.target.value)}
-              placeholder="Type your explanation or structured answer here…"
-              rows={9}
-              className="w-full bg-card border border-border rounded-2xl text-foreground text-sm p-4 focus:outline-none focus:border-primary focus:ring-3 focus:ring-primary/10 resize-none font-sans leading-relaxed transition-all shadow-xs"
-              aria-label="Subjective answer"
-            />
-            <div className="flex justify-between text-xs text-muted-foreground px-1 font-medium">
-              <span>Word Limit: {currentQ.wordLimitMin || 0} - {currentQ.wordLimitMax || 500} words</span>
-              <span>{(answers[currentQ.id]?.text || '').trim().split(/\s+/).filter(Boolean).length} words</span>
-            </div>
-          </div>
-        )}
+                <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                  selected ? 'bg-[#2f80ed] text-white shadow-xs' : 'bg-slate-100 border border-slate-200 text-slate-600'
+                }`}>
+                  {opt.letter}
+                </span>
+                <span className="text-sm font-sans font-medium text-slate-900">{opt.text}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* ── Navigation Footer ── */}
+      {/* Navigation Footer */}
       <footer className="flex items-center justify-between px-6 py-3.5 bg-card border-t border-border shrink-0 font-sans shadow-xs">
         <button
           disabled={currentIdx === 0}

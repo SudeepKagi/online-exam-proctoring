@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs')
+const { validateMcqQuestion } = require('../validators/question.validator')
 
 /**
  * Exam Service
@@ -232,7 +233,11 @@ async function deleteExamById({ id, facultyId }) {
 async function duplicateExamById({ id, facultyId }) {
   const original = await global.prisma.exam.findFirst({
     where: { id, facultyId },
-    include: { questions: true }
+    include: {
+      questions: {
+        include: { options: true }
+      }
+    }
   })
   if (!original) {
     const error = new Error('Original exam not found.')
@@ -275,23 +280,28 @@ async function duplicateExamById({ id, facultyId }) {
       status: 'DRAFT',
       questions: {
         create: original.questions.map(q => ({
-          type: q.type,
           questionText: q.questionText,
           marks: q.marks,
           negativeMarks: q.negativeMarks,
           difficulty: q.difficulty,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          codeTemplate: q.codeTemplate,
-          codeLanguage: q.codeLanguage,
-          testCases: q.testCases,
-          wordLimitMin: q.wordLimitMin,
-          wordLimitMax: q.wordLimitMax,
-          tags: q.tags
+          imageUrl: q.imageUrl,
+          order: q.order,
+          tags: q.tags,
+          options: {
+            create: (q.options || []).map(opt => ({
+              text: opt.text,
+              isCorrect: opt.isCorrect,
+              order: opt.order
+            }))
+          }
         }))
       }
     },
-    include: { questions: true }
+    include: {
+      questions: {
+        include: { options: true }
+      }
+    }
   })
 
   return duplicated
@@ -307,9 +317,29 @@ async function publishExamById({ id, facultyId }) {
     throw error
   }
 
-  const questionCount = await global.prisma.question.count({ where: { examId: id } })
-  if (questionCount === 0) {
-    console.warn(`[publishExamById] Publishing exam ${id} with 0 questions currently configured.`)
+  const questions = await global.prisma.question.findMany({
+    where: { examId: id },
+    include: { options: true },
+    orderBy: { order: 'asc' }
+  })
+
+  if (questions.length === 0) {
+    const error = new Error('Cannot publish exam: At least one question is required.')
+    error.status = 400
+    throw error
+  }
+
+  // Strictly validate every question against MCQ rules before publishing.
+  // This kills any silent "option A is correct" fallback.
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i]
+    try {
+      validateMcqQuestion(q)
+    } catch (valErr) {
+      const error = new Error(`Cannot publish exam: Question ${i + 1} ("${q.questionText.slice(0, 30)}...") violates MCQ rules: ${valErr.message}`)
+      error.status = 400
+      throw error
+    }
   }
 
   const invId = exam.invId || `INV-${Math.floor(100 + Math.random() * 900)}`

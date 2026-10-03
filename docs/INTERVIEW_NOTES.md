@@ -69,3 +69,34 @@
    - Asserts post-conditions: `Admin` count is unchanged, all truncated tables have 0 rows (except 1 `SYSTEM_RESET` row in `AuditLog`), and S3 bucket is empty. Non-zero exit code on any failure.
    - **Idempotency**: Consecutive runs are guaranteed safe no-ops that exit 0.
 
+---
+
+## 4. Phase P2: MCQ-Only Scope Restriction & Attack Surface Elimination
+
+### Interview Question: *"Why did you deliberately remove question types like coding problems and long-form written responses instead of supporting them alongside MCQs?"*
+
+**Answer:**
+> *"Narrowing scope is a scalability decision: grading became one set-based SQL and the attack surface (code execution) disappeared."*
+
+1. **Scalability Rationale**:
+   - In the legacy implementation, grading non-MCQ questions required heuristic similarity calculations, sequential manual scoring workflows, and remote containerized code execution runtimes. Under high concurrency (hundreds or thousands of students submitting simultaneously), these paths caused main-thread event loop blocking and database lock contention.
+   - By constraining the system to single-correct-option MCQ format, grading transforms into a **single, set-based SQL join**: comparing student selected options directly against authoritative `QuestionOption.isCorrect = true`.
+2. **Security & Attack Surface Elimination**:
+   - Supporting in-browser coding environments required embedding heavy client editor packages and accepting arbitrary user code execution payloads.
+   - Removing non-MCQ types completely eliminated the remote code execution (RCE) vector, container escape vulnerabilities, memory exhaustion, and runaway loop attacks on backend grading workers.
+3. **Database-Level Integrity Constraints**:
+   - Rather than relying solely on application-layer validation, we enforced domain invariants directly at the database engine level via a **PostgreSQL partial unique index**:
+     ```sql
+     CREATE UNIQUE INDEX idx_question_single_correct ON "QuestionOption" ("questionId") WHERE "isCorrect" = true;
+     ```
+   - This makes it physically impossible for any race condition, rogue service call, or manual SQL script to insert more than one correct option for any question.
+4. **Publish-Time Rejection (Eliminating Silent Fallbacks)**:
+   - Defect B-04 in the legacy system silently defaulted missing question answers to Option A, skewing examination integrity.
+   - In P2, publishing an exam is hard-rejected (`400 Bad Request`) if any question violates validation rules: 2–6 options, exactly one correct option, positive marks, non-negative penalty bounded by marks, and non-empty text.
+5. **DTO Security Leak Prevention**:
+   - Student-facing endpoints (`startOrResumeExam`) explicitly strip `isCorrect` from every serialized option object. Students cannot discover answers through browser devtools, network inspection, or DOM state.
+6. **Frontend Footprint Reduction**:
+   - Purged the code editor packages and their transitive dependencies, reducing production JS bundle size by 21.46 kB raw (7.07 kB gzip) and freeing client main-thread CPU.
+
+
+

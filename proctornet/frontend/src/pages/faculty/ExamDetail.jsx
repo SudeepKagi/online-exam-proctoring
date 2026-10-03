@@ -37,64 +37,17 @@ function getMCQOptions(q) {
   if (typeof opts === 'string') {
     try {
       opts = JSON.parse(opts);
-    } catch (e) {
-      console.error("Failed to parse options", e);
+    } catch {
       opts = [];
     }
   }
-
-  // Fallback: If options array is missing or empty, generate 4 default option slots
-  if (!Array.isArray(opts) || opts.length === 0) {
-    const rawText = q.questionText || '';
-    const topicTag = rawText.includes('of ') ? rawText.split('of ').slice(-1)[0].replace('?', '').trim() : 'topic';
-    opts = [
-      `Core Principle of ${topicTag}`,
-      'Secondary Execution Rule',
-      'Deprecated Method',
-      'External System Dependency'
-    ];
-  }
-
-  while (opts.length < 4) {
-    opts.push(`Option ${String.fromCharCode(65 + opts.length)}`);
-  }
-
-  const rawCorrect = String(q.correctAnswer ?? 'A').trim().toUpperCase();
-
+  if (!Array.isArray(opts)) return [];
   return opts.map((opt, index) => {
-    const letter = String.fromCharCode(65 + index); // 'A', 'B', 'C', 'D'
-    if (typeof opt === 'string') {
-      const isCorrect = rawCorrect === letter || rawCorrect === opt || rawCorrect === String(index) || (index === 0 && (!q.correctAnswer || rawCorrect === '0' || rawCorrect === 'NULL'));
-      return {
-        letter,
-        text: opt,
-        isCorrect
-      };
-    } else if (opt && typeof opt === 'object') {
-      const text = opt.text || opt.value || JSON.stringify(opt);
-      const isCorrect = opt.isCorrect || rawCorrect === (opt.letter || letter) || rawCorrect === text || rawCorrect === String(index) || (index === 0 && (!q.correctAnswer || rawCorrect === '0' || rawCorrect === 'NULL'));
-      return {
-        letter: opt.letter || letter,
-        text,
-        isCorrect
-      };
-    }
-    return { letter, text: String(opt), isCorrect: index === 0 };
+    const letter = opt.optionLetter || String.fromCharCode(65 + index);
+    const text = opt.optionText || (typeof opt === 'string' ? opt : opt.text || '');
+    const isCorrect = Boolean(opt.isCorrect);
+    return { letter, text, isCorrect };
   });
-}
-
-function getTestCases(q) {
-  if (!q.testCases) return [];
-  let cases = q.testCases;
-  if (typeof cases === 'string') {
-    try {
-      cases = JSON.parse(cases);
-    } catch (e) {
-      console.error("Failed to parse test cases", e);
-      return [];
-    }
-  }
-  return Array.isArray(cases) ? cases : [];
 }
 
 const navItems = [
@@ -120,9 +73,9 @@ export default function ExamDetail() {
 
   // Question Form State
   const [qForm, setQForm] = useState({
-    type: 'MCQ',
     questionText: '',
     marks: '5',
+    negativeMarks: '0',
     difficulty: 'MEDIUM',
     options: ['', '', '', ''],
     correctAnswer: 'A'
@@ -187,12 +140,24 @@ export default function ExamDetail() {
   const handleAddQuestion = async (e) => {
     e.preventDefault()
     try {
-      await api.post('/faculty/questions', { ...qForm, examId: id })
+      const optionsPayload = ['A', 'B', 'C', 'D'].map((letter, idx) => ({
+        optionLetter: letter,
+        optionText: qForm.options[idx] || '',
+        isCorrect: (qForm.correctAnswer || 'A') === letter
+      }))
+      await api.post('/faculty/questions', {
+        examId: id,
+        questionText: qForm.questionText,
+        marks: parseFloat(qForm.marks) || 1,
+        negativeMarks: parseFloat(qForm.negativeMarks) || 0,
+        difficulty: qForm.difficulty || 'MEDIUM',
+        options: optionsPayload
+      })
       fetchExam()
-      setQForm({ type: 'MCQ', questionText: '', marks: '5', difficulty: 'MEDIUM', options: ['', '', '', ''], correctAnswer: 'A' })
+      setQForm({ questionText: '', marks: '5', negativeMarks: '0', difficulty: 'MEDIUM', options: ['', '', '', ''], correctAnswer: 'A' })
       toast.success('Question added successfully!')
     } catch (err) {
-      toast.error('Error adding question')
+      toast.error(err.response?.data?.error || 'Error adding question')
     }
   }
 
@@ -602,7 +567,6 @@ export default function ExamDetail() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {exam.questions.map((q, i) => {
                       const mcqOptions = getMCQOptions(q);
-                      const testCases = getTestCases(q);
                       
                       return (
                         <div key={q.id} style={{ 
@@ -633,16 +597,16 @@ export default function ExamDetail() {
                               </span>
                               <span style={{ 
                                 fontWeight: 800, 
-                                fontSize: '0.8125rem',
-                                color: '#1e40af',
-                                textTransform: 'uppercase',
+                                fontSize: '0.8125rem', 
+                                color: '#1e40af', 
+                                textTransform: 'uppercase', 
                                 letterSpacing: '0.05em',
                                 background: '#dbeafe',
                                 border: '1px solid #bfdbfe',
                                 padding: '0.3rem 0.65rem',
                                 borderRadius: '6px'
                               }}>
-                                {q.type}
+                                MCQ
                               </span>
                               {q.difficulty && (
                                 <span style={{
@@ -665,169 +629,89 @@ export default function ExamDetail() {
                           <p style={{ fontWeight: 600, fontSize: '1rem', lineHeight: 1.6, margin: '0 0 1rem 0', color: 'var(--on-surface)' }}>{q.questionText}</p>
 
                           {/* MCQ Options Display */}
-                          {q.type === 'MCQ' && (
-                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                              <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Options:</div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem' }}>
-                                {mcqOptions.map((opt) => (
-                                  <div 
-                                    key={opt.letter} 
+                          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>Options:</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.875rem' }}>
+                              {mcqOptions.map((opt) => (
+                                <div 
+                                  key={opt.letter} 
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.75rem',
+                                    padding: '0.875rem 1.125rem',
+                                    borderRadius: '12px',
+                                    border: opt.isCorrect ? '1.5px solid #10b981' : '1.5px solid var(--outline-variant, #cbd5e1)',
+                                    background: opt.isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface-container-high, #f8fafc)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                >
+                                  <span 
                                     style={{
                                       display: 'flex',
                                       alignItems: 'center',
-                                      gap: '0.75rem',
-                                      padding: '0.875rem 1.125rem',
-                                      borderRadius: '12px',
-                                      border: opt.isCorrect ? '1.5px solid #10b981' : '1.5px solid var(--outline-variant, #cbd5e1)',
-                                      background: opt.isCorrect ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface-container-high, #f8fafc)',
-                                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                                      transition: 'all 0.2s ease'
+                                      justifyContent: 'center',
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '50%',
+                                      fontSize: '0.8125rem',
+                                      fontWeight: 800,
+                                      background: opt.isCorrect ? '#10b981' : '#475569',
+                                      color: '#ffffff',
+                                      flexShrink: 0
                                     }}
                                   >
-                                    <span 
-                                      style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '28px',
-                                        height: '28px',
-                                        borderRadius: '50%',
-                                        fontSize: '0.8125rem',
-                                        fontWeight: 800,
-                                        background: opt.isCorrect ? '#10b981' : '#475569',
-                                        color: '#ffffff',
-                                        flexShrink: 0
-                                      }}
-                                    >
-                                      {opt.letter}
-                                    </span>
-                                    <span style={{ 
-                                      fontSize: '0.875rem', 
-                                      fontWeight: opt.isCorrect ? 700 : 600, 
-                                      color: opt.isCorrect ? '#047857' : 'var(--on-surface, #1e293b)',
-                                      wordBreak: 'break-word',
-                                      lineHeight: '1.4'
-                                    }}>
-                                      {opt.text}
-                                    </span>
-                                    {opt.isCorrect && (
-                                      <span style={{
-                                        marginLeft: 'auto',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        fontSize: '0.7rem',
-                                        fontWeight: 800,
-                                        color: '#10b981',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                        background: 'rgba(16, 185, 129, 0.15)',
-                                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                                        padding: '0.25rem 0.5rem',
-                                        borderRadius: '6px',
-                                        flexShrink: 0
-                                      }}>
-                                        <Icon name="check" size={12} /> Correct
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                              <div style={{ 
-                                marginTop: '0.5rem', 
-                                padding: '0.75rem 1rem', 
-                                background: 'rgba(16, 185, 129, 0.08)', 
-                                border: '1px solid rgba(16, 185, 129, 0.2)', 
-                                borderRadius: '10px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem'
-                              }}>
-                                <Icon name="check_circle" size={16} style={{ color: '#10b981' }} />
-                                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface)' }}>
-                                  Correct Answer Key: <strong style={{ color: '#10b981', fontSize: '1rem', marginLeft: '0.25rem' }}>{mcqOptions.find(o => o.isCorrect)?.letter || q.correctAnswer || 'A'}</strong>
-                                </span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Code Display */}
-                          {q.type === 'CODE' && (
-                            <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                              {q.codeLanguage && (
-                                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  Language: <span style={{ fontFamily: 'monospace', color: 'var(--primary)', background: 'var(--surface-container-high)', padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.875rem' }}>{q.codeLanguage}</span>
-                                </div>
-                              )}
-                              {q.codeTemplate && (
-                                <div>
-                                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Starter Code Template:</div>
-                                  <pre style={{
-                                    fontFamily: 'monospace',
-                                    fontSize: '0.8125rem',
-                                    padding: '1rem',
-                                    background: 'var(--surface-container-highest)',
-                                    color: 'var(--on-surface)',
-                                    borderRadius: '10px',
-                                    overflowX: 'auto',
-                                    margin: 0,
-                                    border: '1px solid var(--outline-variant)'
+                                    {opt.letter}
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.875rem', 
+                                    fontWeight: opt.isCorrect ? 700 : 600, 
+                                    color: opt.isCorrect ? '#047857' : 'var(--on-surface, #1e293b)',
+                                    wordBreak: 'break-word',
+                                    lineHeight: '1.4'
                                   }}>
-                                    {q.codeTemplate}
-                                  </pre>
+                                    {opt.text}
+                                  </span>
+                                  {opt.isCorrect && (
+                                    <span style={{
+                                      marginLeft: 'auto',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 800,
+                                      color: '#10b981',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.05em',
+                                      background: 'rgba(16, 185, 129, 0.15)',
+                                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                                      padding: '0.25rem 0.5rem',
+                                      borderRadius: '6px',
+                                      flexShrink: 0
+                                    }}>
+                                      <Icon name="check" size={12} /> Correct
+                                    </span>
+                                  )}
                                 </div>
-                              )}
-                              {testCases.length > 0 && (
-                                <div>
-                                  <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Verification Test Cases:</div>
-                                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '0.75rem' }}>
-                                    {testCases.map((tc, idx) => (
-                                      <div key={idx} style={{ 
-                                        padding: '0.75rem 1rem', 
-                                        background: 'var(--surface-container-high)', 
-                                        borderRadius: '10px', 
-                                        fontSize: '0.8125rem', 
-                                        border: '1px solid var(--outline-variant)',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '0.35rem'
-                                      }}>
-                                        <div style={{ fontWeight: 700, color: 'var(--primary)', borderBottom: '1px dashed var(--outline-variant)', paddingBottom: '0.25rem', marginBottom: '0.25rem' }}>Test Case #{idx+1}</div>
-                                        <div><strong style={{ color: 'var(--on-surface-variant)' }}>Input:</strong> <code style={{ fontFamily: 'monospace', padding: '0.1rem 0.3rem', background: 'var(--surface-container-highest)', borderRadius: '4px' }}>{tc.input || tc.Input || '(None)'}</code></div>
-                                        <div><strong style={{ color: 'var(--on-surface-variant)' }}>Expected Output:</strong> <code style={{ fontFamily: 'monospace', padding: '0.1rem 0.3rem', background: 'var(--surface-container-highest)', borderRadius: '4px', color: '#10b981', fontWeight: 700 }}>{tc.output || tc.Output || tc.expectedOutput}</code></div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                              ))}
                             </div>
-                          )}
-
-                          {/* Subjective/Other Answer Guide */}
-                          {q.type !== 'MCQ' && q.type !== 'CODE' && q.correctAnswer && (
                             <div style={{ 
-                              marginTop: '1rem', 
-                              padding: '1rem', 
-                              borderRadius: '10px', 
-                              background: 'rgba(16, 185, 129, 0.06)', 
-                              border: '1px solid rgba(16, 185, 129, 0.2)' 
+                              marginTop: '0.5rem', 
+                              padding: '0.75rem 1rem', 
+                              background: 'rgba(16, 185, 129, 0.08)', 
+                              border: '1px solid rgba(16, 185, 129, 0.2)', 
+                              borderRadius: '10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.5rem'
                             }}>
-                              <span style={{ 
-                                fontSize: '0.8125rem', 
-                                fontWeight: 700, 
-                                color: '#10b981', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.35rem', 
-                                textTransform: 'uppercase', 
-                                letterSpacing: '0.05em', 
-                                marginBottom: '0.5rem' 
-                              }}>
-                                <Icon name="info" size={16} /> Reference Answer Guide / Solution
+                              <Icon name="check_circle" size={16} style={{ color: '#10b981' }} />
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--on-surface)' }}>
+                                Correct Answer: <strong style={{ color: '#10b981', fontSize: '1rem', marginLeft: '0.25rem' }}>Option {mcqOptions.find(o => o.isCorrect)?.letter || 'A'}</strong>
                               </span>
-                              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 500, lineHeight: 1.5, color: 'var(--on-surface)' }}>{q.correctAnswer}</p>
                             </div>
-                          )}
+                          </div>
                         </div>
                       )
                     })}
@@ -843,50 +727,45 @@ export default function ExamDetail() {
                 {/* Add Question Form */}
                 {exam.status === 'DRAFT' && (
                   <div style={{ background: 'var(--surface-container-highest)', padding: '1.5rem', borderRadius: '16px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Add New Question</h3>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1.5rem' }}>Add MCQ Question</h3>
                     <form onSubmit={handleAddQuestion}>
-                      <SelectInput 
-                        label="Type" value={qForm.type} onChange={(e) => setQForm({...qForm, type: e.target.value})}
-                        options={[{value: 'MCQ', label: 'Multiple Choice'}, {value: 'CODE', label: 'Coding'}]}
-                      />
                       <FormTextarea 
                         label="Question Text" value={qForm.questionText} onChange={(e) => setQForm({...qForm, questionText: e.target.value})}
                         placeholder="Enter the question prompt..." rows={3} required
                       />
                       
-                      {qForm.type === 'MCQ' && (
-                        <div style={{ marginBottom: '1.5rem' }}>
-                          <label style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Options</label>
-                          {['A', 'B', 'C', 'D'].map((opt, i) => (
-                            <div key={opt} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                              <button 
-                                type="button" 
-                                onClick={() => setQForm({...qForm, correctAnswer: opt})}
-                                style={{ 
-                                  width: '32px', height: '32px', borderRadius: '4px', border: 'none',
-                                  background: qForm.correctAnswer === opt ? 'var(--success)' : 'var(--outline-variant)',
-                                  color: '#fff', fontWeight: 700, cursor: 'pointer'
-                                }}
-                              >
-                                {opt}
-                              </button>
-                              <FormInput 
-                                value={qForm.options[i]} 
-                                onChange={(e) => {
-                                  const newOpts = [...qForm.options]
-                                  newOpts[i] = e.target.value
-                                  setQForm({...qForm, options: newOpts})
-                                }}
-                                placeholder={`Option ${opt}`}
-                                style={{ marginBottom: 0, flex: 1 }}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Options (Click letter to set correct answer)</label>
+                        {['A', 'B', 'C', 'D'].map((opt, i) => (
+                          <div key={opt} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <button 
+                              type="button" 
+                              onClick={() => setQForm({...qForm, correctAnswer: opt})}
+                              style={{ 
+                                width: '32px', height: '32px', borderRadius: '4px', border: 'none',
+                                background: qForm.correctAnswer === opt ? 'var(--success)' : 'var(--outline-variant)',
+                                color: '#fff', fontWeight: 700, cursor: 'pointer'
+                              }}
+                            >
+                              {opt}
+                            </button>
+                            <FormInput 
+                              value={qForm.options[i]} 
+                              onChange={(e) => {
+                                const newOpts = [...qForm.options]
+                                newOpts[i] = e.target.value
+                                setQForm({...qForm, options: newOpts})
+                              }}
+                              placeholder={`Option ${opt}`}
+                              style={{ marginBottom: 0, flex: 1 }}
+                            />
+                          </div>
+                        ))}
+                      </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <FormInput label="Marks" type="number" value={qForm.marks} onChange={(e) => setQForm({...qForm, marks: e.target.value})} required />
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                        <FormInput label="Marks" type="number" step="0.5" min="0.5" value={qForm.marks} onChange={(e) => setQForm({...qForm, marks: e.target.value})} required />
+                        <FormInput label="Negative Marks" type="number" step="0.25" min="0" value={qForm.negativeMarks} onChange={(e) => setQForm({...qForm, negativeMarks: e.target.value})} required />
                         <SelectInput label="Difficulty" value={qForm.difficulty} onChange={(e) => setQForm({...qForm, difficulty: e.target.value})} options={[{value:'EASY', label:'Easy'}, {value:'MEDIUM', label:'Medium'}, {value:'HARD', label:'Hard'}]} />
                       </div>
 

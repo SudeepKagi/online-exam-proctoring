@@ -17,7 +17,7 @@
   /* Typography Tokens — AccioJob Hierarchy */
   --font-family-primary: 'Satoshi', sans-serif;
   --font-family-stack: 'Satoshi', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-md: 13px;
@@ -179,7 +179,7 @@
 
 @theme {
   --font-sans: var(--font-family-stack);
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --color-background: var(--color-surface-subtle);
   --color-foreground: var(--color-text-primary);

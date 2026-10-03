@@ -40,14 +40,18 @@ const aiLimiter = rateLimit({
   message: { error: 'Too many AI generation requests. Please wait before generating again.' },
 })
 
+const { uploadExcel } = require('../middleware/upload.middleware')
+
 // ── Question Management ───────────────────────────────
-router.post  ('/exams/:examId/questions',     ctrl.addQuestion)
-router.get   ('/exams/:examId/questions',     ctrl.listExamQuestions)
-router.post  ('/exams/:examId/ai-generate',   aiLimiter, ctrl.generateQuestionsFromAI)
-router.post  ('/exams/ai-generate-preview',   aiLimiter, ctrl.generateQuestionsPreview)
-router.put   ('/questions/:id',               ctrl.updateQuestion)
-router.delete('/questions/:id',               ctrl.deleteQuestion)
-router.post  ('/questions/bulk',              ctrl.bulkAddQuestions)
+router.post  ('/exams/:examId/questions',              ctrl.addQuestion)
+router.get   ('/exams/:examId/questions',              ctrl.listExamQuestions)
+router.post  ('/exams/:examId/questions/import-excel', uploadExcel, ctrl.importQuestionsExcel)
+router.post  ('/exams/:examId/ai-generate',            aiLimiter, ctrl.generateQuestionsFromAI)
+router.post  ('/exams/ai-generate-preview',            aiLimiter, ctrl.generateQuestionsPreview)
+router.put   ('/questions/:id',                        ctrl.updateQuestion)
+router.delete('/questions/:id',                        ctrl.deleteQuestion)
+router.post  ('/questions/bulk',                       ctrl.bulkAddQuestions)
+router.post  ('/questions/import-excel',               uploadExcel, ctrl.importQuestionsExcel)
 
 // ── Legacy question routes ────────────────────────────
 router.post  ('/questions',  ctrl.addQuestion)

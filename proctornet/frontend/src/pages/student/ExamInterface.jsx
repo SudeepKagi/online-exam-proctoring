@@ -290,9 +290,7 @@ export default function ExamInterface() {
             const map = {}
             res.data.answers.forEach(a => {
               map[a.questionId] = {
-                selected: a.selectedOption,
-                code: a.codeAnswer,
-                text: a.writtenText
+                selected: a.selectedOption
               }
             })
             setAnswers(map)

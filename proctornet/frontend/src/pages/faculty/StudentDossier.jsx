@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
-import CodeQuestion from '@/components/exam/CodeQuestion'
 import toast from 'react-hot-toast'
 import ErrorState from '@/components/common/ErrorState'
 import {
@@ -267,7 +265,7 @@ export default function StudentDossier() {
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-slate-900">
                               Question {idx + 1}
-                              <span className="ml-2 text-[10px] font-medium text-slate-400 uppercase">({q.type || 'MCQ'})</span>
+                              <span className="ml-2 text-[10px] font-medium text-slate-400 uppercase">(MCQ)</span>
                             </span>
                             <span className="text-xs font-semibold text-[#2f80ed]">
                               {ans.autoScore ?? 0} / {q.marks ?? 2} Marks
@@ -276,31 +274,20 @@ export default function StudentDossier() {
 
                           <p className="text-xs font-normal text-slate-800">{q.questionText}</p>
 
-                          {q.type === 'MCQ' ? (
-                            <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-slate-500 font-normal">Student Selection:</span>
-                                <span className="font-medium text-slate-900">{ans.selectedOption || 'Not answered'}</span>
+                          <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500 font-normal">Student Selection:</span>
+                              <span className="font-medium text-slate-900">{ans.selectedOption || 'Not answered'}</span>
+                            </div>
+                            {q.options && q.options.some((o) => o.isCorrect) && (
+                              <div className="flex justify-between pt-1 border-t border-slate-100">
+                                <span className="text-slate-500 font-normal">Correct Option:</span>
+                                <span className="font-medium text-emerald-600">
+                                  {q.options.find((o) => o.isCorrect)?.optionLetter}
+                                </span>
                               </div>
-                              {q.correctAnswer && (
-                                <div className="flex justify-between pt-1 border-t border-slate-100">
-                                  <span className="text-slate-500 font-normal">Correct Answer:</span>
-                                  <span className="font-medium text-emerald-600">{q.correctAnswer}</span>
-                                </div>
-                              )}
-                            </div>
-                          ) : q.type === 'CODE' ? (
-                            <div className="space-y-1">
-                              <span className="text-[10px] font-medium uppercase text-slate-400">Submitted Code:</span>
-                              <pre className="p-3 bg-slate-900 text-slate-100 rounded-xl font-mono text-xs overflow-x-auto">
-                                {ans.codeAnswer || '// No code submitted'}
-                              </pre>
-                            </div>
-                          ) : (
-                            <div className="p-3 bg-white border border-slate-200 rounded-xl text-xs text-slate-800">
-                              {ans.writtenText || 'No subjective answer text submitted.'}
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       )
                     })

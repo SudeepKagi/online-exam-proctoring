@@ -288,6 +288,36 @@ async function bulkAddQuestions(req, res) {
   }
 }
 
+async function importQuestionsExcel(req, res) {
+  try {
+    const examId = req.params.examId || req.body.examId
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: 'Please upload an Excel file (.xlsx or .xls).' })
+    }
+    const questions = await questionService.importQuestionsFromExcel({
+      examId,
+      facultyId: req.user.id,
+      fileBuffer: req.file.buffer
+    })
+    logAudit({
+      userId: req.user.id,
+      userRole: 'faculty',
+      action: 'QUESTIONS_EXCEL_IMPORTED',
+      details: `${questions.length} questions imported to exam ${examId}`,
+      ipAddress: getClientIp(req)
+    })
+    res.status(201).json({
+      success: true,
+      message: `${questions.length} questions imported successfully from Excel.`,
+      count: questions.length,
+      questions
+    })
+  } catch (e) {
+    console.error('[importQuestionsExcel]', e)
+    res.status(e.status || 500).json({ error: e.message || 'Failed to import questions from Excel.' })
+  }
+}
+
 async function generateQuestionsPreview(req, res) {
   try {
     const result = await questionService.generateAIQuestionsPreview(req.body)
@@ -476,6 +506,7 @@ module.exports = {
   updateQuestion,
   deleteQuestion,
   bulkAddQuestions,
+  importQuestionsExcel,
   addStudentsToExam,
   listExamStudents,
   listExamResults,
