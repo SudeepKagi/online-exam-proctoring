@@ -97,4 +97,23 @@ router.get(
   }
 )
 
+/**
+ * GET /api/v1/attempts/:attemptId/timeline
+ * Fetch violation event timeline with presigned read URLs
+ */
+router.get(
+  '/attempts/:attemptId/timeline',
+  requireAuth,
+  validateParams(attemptIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const timeline = await proctoringService.getViolationTimeline(attemptId)
+      return res.status(200).json(timeline)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router

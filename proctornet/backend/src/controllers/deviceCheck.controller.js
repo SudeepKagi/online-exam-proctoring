@@ -1,5 +1,5 @@
 const { createLiveKitToken } = require('../services/livekit.service')
-const { storeSnapshot, storeEvidenceClip } = require('../services/minio.service')
+const { storeSnapshot, storeEvidenceClip } = require('../services/s3.service')
 
 // Known forbidden remote desktop software
 const BANNED_PROCESSES = [

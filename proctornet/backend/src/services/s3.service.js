@@ -166,26 +166,6 @@ async function uploadBase64(dataUrl, folder = 'evidence', filename = null) {
 }
 
 /**
- * Upload a local file from disk to S3.
- */
-async function uploadFile(filePath, folder = 'evidence') {
-  const buffer = fs.readFileSync(filePath)
-  const ext = path.extname(filePath).toLowerCase()
-  const mimeMap = {
-    '.jpg': 'image/jpeg',
-    '.jpeg': 'image/jpeg',
-    '.png': 'image/png',
-    '.webp': 'image/webp',
-    '.webm': 'video/webm',
-    '.mp4': 'video/mp4',
-    '.pdf': 'application/pdf',
-  }
-  const mimeType = mimeMap[ext] || 'application/octet-stream'
-  const filename = path.basename(filePath)
-  return await uploadBuffer(buffer, folder, filename, mimeType)
-}
-
-/**
  * Delete an object from S3 by URL or Key.
  */
 async function deleteByUrl(urlOrKey) {
@@ -205,7 +185,7 @@ async function deleteByUrl(urlOrKey) {
 }
 
 /**
- * Store periodic webcam or screen snapshot (replaces MinIO / local disk)
+ * Store periodic webcam or screen snapshot
  */
 async function storeSnapshot(studentExamId, frameBase64, frameType = 'webcam') {
   try {
@@ -220,7 +200,7 @@ async function storeSnapshot(studentExamId, frameBase64, frameType = 'webcam') {
 }
 
 /**
- * Store 60-second violation clip evidence (replaces MinIO / local disk)
+ * Store 60-second violation clip evidence
  */
 async function storeEvidenceClip(studentExamId, violationType, clipBase64) {
   try {
@@ -234,19 +214,13 @@ async function storeEvidenceClip(studentExamId, violationType, clipBase64) {
   }
 }
 
-const uploadToS3 = uploadBase64
-const uploadToCloudinary = uploadBase64 // backwards compatibility alias
-
 module.exports = {
   s3Client,
   uploadBuffer,
   uploadBase64,
-  uploadFile,
   deleteByUrl,
   getPresignedUrl,
   extractS3Key,
   storeSnapshot,
   storeEvidenceClip,
-  uploadToS3,
-  uploadToCloudinary,
 }

@@ -203,3 +203,30 @@
    - Under `READ COMMITTED`, every SQL statement sees the latest committed snapshot. Because our predicates (`WHERE status = ...`, `WHERE revision = ...`) evaluate against the live locked row at update time, phantom reads and dirty reads are structurally impossible for these paths.
    - Result: zero serialization abort overhead, minimal lock footprints, predictable single-digit latency, and 100% data integrity under load.
 
+---
+
+## 6. Storage & Evidence Pipeline (ADR-011) — Move Bytes Off the App Tier
+
+> *"Move bytes off the app tier: signed direct uploads, keys not URLs, async validation. The DB never waits for S3."*
+
+1. **Why Direct Uploads (Presigned POST) Over Proxying Through the API?**
+   - **The Bottleneck**: Proxying image binaries through Node.js Express binds memory in V8 buffer pools, consumes event loop CPU on multipart parsing, and congests application server network interfaces. Under 5,000 concurrent students triggering violation snapshots, a proxying API tier rapidly suffers socket exhaustion and high tail latency.
+   - **The Architecture**: Candidates request an upload policy (`POST /api/v1/uploads/presign`) containing an S3 presigned POST policy with exact key, content-length range (evidence $\le 300\text{ KB}$, profile $\le 2\text{ MB}$), MIME type constraint (`image/webp|jpeg|png`), and SSE-S3 encryption. The client pushes directly to AWS S3/MinIO.
+   - **The Benefit**: Application server CPU usage remains near zero during high-frequency snapshot streams.
+
+2. **Why Store Keys Instead of URLs (ADR-011)?**
+   - Presigned URLs are time-limited (10–15 min). Storing full URLs in database columns causes dead links once expired or forces public bucket exposure.
+   - Database tables (`violation_events`, `students`) store **canonical relative keys** (`evidence/{examId}/{attemptId}/{uuid}.webp`, `identity/{studentId}/{kind}-{uuid}.webp`).
+   - Read DTO mappers dynamically presign URLs with 10-minute validity. Presigning is a local HMAC calculation requiring zero S3 network calls.
+
+3. **Why Round Signing Dates Down to 5-Minute Boundaries?**
+   - If each GET request signs with the current millisecond timestamp (`X-Amz-Date`), every response produces a distinct URL query string, defeating browser and CDN caches.
+   - By quantizing `signingDate = new Date(Math.floor(Date.now() / 300000) * 300000)`, all candidates and proctors loading an image within the same 5-minute interval receive bit-for-bit identical presigned URLs.
+   - Result: 100% browser and edge cache reuse, zero cache thrashing.
+
+4. **Why Decouple Image Processing with Transactional Outbox & Background Workers?**
+   - After a candidate completes S3 upload, they notify `POST /api/v1/uploads/complete`. The API commits the violation row with `evidence_status = 'PENDING'` and inserts an `outbox_events` row in the **same database transaction** in $< 15\text{ ms}$.
+   - The API returns durable success immediately. If S3 experiences high latency or Sharp image processing queues back up, the student's exam experience is completely insulated.
+   - An asynchronous worker (`EvidenceWorker` on `pn.evidence`) inspects `HeadObject`, validates binary magic bytes, uses Sharp with concurrency 2 and pixel limits to generate a 320 px WebP thumbnail, and transitions status to `UPLOADED` with `thumb_key`. If the file is corrupted, the worker marks `FAILED`, but the violation audit row remains intact.
+
+

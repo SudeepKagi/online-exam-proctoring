@@ -108,9 +108,6 @@ app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
-// Protected static uploads folder for snapshots & evidence clips (D-8)
-app.use('/uploads', authenticate, express.static(path.join(__dirname, '../uploads')))
-
 // ── CSRF Defense for Cookie-Authenticated State-Changing Requests ──
 function csrfProtection(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
@@ -189,6 +186,8 @@ const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
 const { outboxPublisher } = require('./infra/rabbitmq/outboxPublisher')
 const { evaluationWorker } = require('./modules/results/evaluationWorker')
+const { evidenceWorker } = require('./modules/media/evidenceWorker')
+const { verificationWorker } = require('./modules/media/biometricService')
 const { expirySweeper } = require('./modules/attempts/expirySweeper')
 const { violationMicroBatcher } = require('./modules/proctoring/violationMicroBatcher')
 const { chatMicroBatcher } = require('./modules/proctoring/chatMicroBatcher')
@@ -313,9 +312,11 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     console.log(`🔌 Socket.io initialized`)
     console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-    // Start P4 background workers
+    // Start P4/P5 background workers
     outboxPublisher.start()
     evaluationWorker.start()
+    evidenceWorker.start()
+    verificationWorker.start()
     expirySweeper.start()
 
     // Test DB connection

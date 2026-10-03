@@ -371,7 +371,7 @@ async function invigilatorLogin(req, res) {
     let idCardPhotoUrl = null
     if (idCardPhoto) {
       try {
-        const { uploadBase64 } = require('../services/cloudinary.service')
+        const { uploadBase64 } = require('../services/s3.service')
         const uploadRes = await uploadBase64(idCardPhoto, 'invigilator-ids')
         idCardPhotoUrl = uploadRes?.secure_url || uploadRes?.url || (typeof uploadRes === 'string' ? uploadRes : null)
       } catch (uploadErr) {
