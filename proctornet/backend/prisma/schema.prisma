@@ -251,6 +251,8 @@ model Exam {
   collusionReports    CollusionReport[]
   examResults         ExamResult[]
 
+  @@index([allowedDepartments], type: Gin, map: "idx_exams_allowed_departments_gin")
+  @@index([allowedSemesters], type: Gin, map: "idx_exams_allowed_semesters_gin")
   @@map("exams")
 }
 
@@ -270,7 +272,7 @@ model Question {
   options          QuestionOption[]
   attemptQuestions AttemptQuestion[]
 
-  @@index([examId])
+  @@index([examId], map: "idx_questions_exam_id")
   @@map("questions")
 }
 
@@ -323,8 +325,8 @@ model ExamAttempt {
   deviceCheckLogs      DeviceCheckLog[]
 
   @@unique([examId, studentId])
-  @@index([examId, status])
-  @@index([studentId, status])
+  @@index([examId, status], map: "idx_exam_attempts_exam_status")
+  @@index([studentId, status], map: "idx_exam_attempts_student_status")
   @@map("exam_attempts")
 }
 
@@ -341,7 +343,7 @@ model AttemptQuestion {
 
   @@unique([attemptId, displayOrder])
   @@unique([attemptId, questionId])
-  @@index([attemptId, displayOrder])
+  @@index([attemptId, displayOrder], map: "idx_attempt_questions_attempt_display")
   @@map("attempt_questions")
 }
 
@@ -381,7 +383,7 @@ model ExamResult {
   releasedAt       DateTime?    @map("released_at")
   createdAt        DateTime     @default(now()) @map("created_at")
 
-  @@index([examId])
+  @@index([examId], map: "idx_exam_results_exam_id")
   @@map("exam_results")
 }
 
@@ -404,8 +406,8 @@ model ViolationEvent {
   invAction       String?        @map("inv_action")
   invActionNote   String?        @map("inv_action_note")
 
-  @@index([attemptId, serverTimestamp(sort: Desc)])
-  @@index([severity, serverTimestamp(sort: Desc)])
+  @@index([attemptId, serverTimestamp(sort: Desc)], map: "idx_violation_events_attempt_time")
+  @@index([severity, serverTimestamp(sort: Desc)], map: "idx_violation_events_severity_time")
   @@map("violation_events")
 }
 
@@ -426,8 +428,8 @@ model AuditLog {
   ipAddress    String?   @map("ip_address")
   timestamp    DateTime  @default(now())
 
-  @@index([actorId, id(sort: Desc)])
-  @@index([resourceType, resourceId, id(sort: Desc)])
+  @@index([actorId, id(sort: Desc)], map: "idx_audit_logs_actor_id")
+  @@index([resourceType, resourceId, id(sort: Desc)], map: "idx_audit_logs_resource")
   @@map("audit_logs")
 }
 
@@ -442,7 +444,7 @@ model ChatMessage {
   timestamp  DateTime @default(now())
   isRead     Boolean  @default(false) @map("is_read")
 
-  @@index([examId, studentId, id])
+  @@index([examId, studentId, id], map: "idx_chat_messages_exam_student_id")
   @@map("chat_messages")
 }
 

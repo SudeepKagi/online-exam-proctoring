@@ -11,20 +11,25 @@ function findLatestAdminBackup() {
   const files = fs.readdirSync(backupsDir)
     .filter(f => f.endsWith('-admin.json'))
     .sort()
-    .reverse()
 
+  let best = null
   for (const f of files) {
     const filePath = path.join(backupsDir, f)
     try {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf8'))
       if (Array.isArray(parsed.admins) && parsed.admins.length > 0) {
-        return { file: f, path: filePath, data: parsed }
+        const hasBcrypt = parsed.admins.some(a => a.password && a.password.startsWith('$2'))
+        if (hasBcrypt) {
+          if (!best || (parsed.platformSettings?.length || 0) >= (best.data.platformSettings?.length || 0)) {
+            best = { file: f, path: filePath, data: parsed }
+          }
+        }
       }
     } catch {
       // Continue searching
     }
   }
-  return null
+  return best
 }
 
 async function seedCanonicalDepartments() {

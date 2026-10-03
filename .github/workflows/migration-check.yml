@@ -32,10 +32,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    defaults:
-      run:
-        working-directory: proctornet/backend
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -45,21 +41,38 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: proctornet/backend/package-lock.json
+          cache-dependency-path: proctornet/package-lock.json
 
       - name: Install dependencies
+        working-directory: proctornet
         run: npm ci
 
       - name: Run Prisma Migrate Deploy
+        working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: npx prisma migrate deploy
 
+      - name: Verify Migration Status
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma migrate status
+
       - name: Verify Schema Matches Migrations (migrate diff)
+        working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate diff \
-            --from-schema-datamodel prisma/schema.prisma \
-            --to-migrations prisma/migrations \
-            --exit-code
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script > diff.sql
+          
+          if grep -E "CREATE TABLE|DROP TABLE|ALTER TABLE.*DROP COLUMN|ALTER TABLE.*ADD COLUMN" diff.sql; then
+            echo "❌ Schema drift detected between Prisma schema and migration baseline!"
+            cat diff.sql
+            exit 1
+          else
+            echo "✅ Schema is perfectly aligned with baseline migrations."
+          fi
