@@ -1,0 +1,3 @@
+*.json
+*.dump
+!.gitignore
