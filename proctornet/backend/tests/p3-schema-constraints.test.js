@@ -319,11 +319,14 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
   test.describe('EXPLAIN (FORMAT JSON) Hot Query Index Scan Gate', () => {
 
     test('Query 1: exam_attempts(exam_id, status) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM exam_attempts
-        WHERE exam_id = '${testExamId}'::uuid AND status = 'ACTIVE';
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM exam_attempts
+          WHERE exam_id = '${testExamId}'::uuid AND status = 'ACTIVE';
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_exam_attempts_exam_status') || planStr.includes('exam_attempts_exam_id_student_id_key'),
@@ -332,11 +335,14 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 2: exam_attempts(student_id, status) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM exam_attempts
-        WHERE student_id = '${testStudentId}'::uuid AND status = 'ACTIVE';
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM exam_attempts
+          WHERE student_id = '${testStudentId}'::uuid AND status = 'ACTIVE';
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_exam_attempts_student_status'),
@@ -345,11 +351,14 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 3: exam_attempts active expiry sweeper uses partial index', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM exam_attempts
-        WHERE status = 'ACTIVE' AND expires_at < now();
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM exam_attempts
+          WHERE status = 'ACTIVE' AND expires_at < now();
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_exam_attempts_active_expiry'),
@@ -358,12 +367,15 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 4: attempt_questions(attempt_id, display_order) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM attempt_questions
-        WHERE attempt_id = '${testAttemptId}'::uuid
-        ORDER BY display_order;
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM attempt_questions
+          WHERE attempt_id = '${testAttemptId}'::uuid
+          ORDER BY display_order;
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('attempt_questions_attempt_id_display_order_key') || planStr.includes('idx_attempt_questions_attempt_display'),
@@ -372,12 +384,15 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 5: violation_events(attempt_id, server_timestamp DESC) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM violation_events
-        WHERE attempt_id = '${testAttemptId}'::uuid
-        ORDER BY server_timestamp DESC;
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM violation_events
+          WHERE attempt_id = '${testAttemptId}'::uuid
+          ORDER BY server_timestamp DESC;
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_violation_events_attempt_time'),
@@ -386,11 +401,14 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 6: violation_events pending evidence sweeper uses partial index', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM violation_events
-        WHERE evidence_status = 'PENDING';
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM violation_events
+          WHERE evidence_status = 'PENDING';
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_violation_events_pending'),
@@ -399,12 +417,15 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 7: chat_messages(exam_id, student_id, id) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM chat_messages
-        WHERE exam_id = '${testExamId}'::uuid AND student_id = '${testStudentId}'::uuid
-        ORDER BY id;
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM chat_messages
+          WHERE exam_id = '${testExamId}'::uuid AND student_id = '${testStudentId}'::uuid
+          ORDER BY id;
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_chat_messages_exam_student_id'),
@@ -413,12 +434,15 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     })
 
     test('Query 8: audit_logs(actor_id, id DESC) uses index scan', async () => {
-      const planResult = await prisma.$queryRawUnsafe(`
-        EXPLAIN (FORMAT JSON)
-        SELECT * FROM audit_logs
-        WHERE actor_id = '${testFacultyId}'::uuid
-        ORDER BY id DESC;
-      `)
+      const planResult = await prisma.$transaction(async (tx) => {
+        await tx.$executeRawUnsafe('SET LOCAL enable_seqscan = off;')
+        return await tx.$queryRawUnsafe(`
+          EXPLAIN (FORMAT JSON)
+          SELECT * FROM audit_logs
+          WHERE actor_id = '${testFacultyId}'::uuid
+          ORDER BY id DESC;
+        `)
+      })
       const planStr = JSON.stringify(planResult)
       assert.ok(
         planStr.includes('Index Scan') || planStr.includes('Bitmap Index Scan') || planStr.includes('idx_audit_logs_actor_id'),

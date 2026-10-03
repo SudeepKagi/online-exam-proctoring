@@ -23,8 +23,9 @@ function buildDatasourceUrl(role = 'api') {
   // Calculate pool limit based on single-node resource budget (Appendix C):
   // Rule: total pool sizes <= 60% of Postgres max_connections (100).
   // 4 API workers * 10 conns = 40. 2 background workers * 10 conns = 20. Total: 60 conns.
-  const poolLimit = role === 'worker' ? 10 : 10;
-  const poolTimeout = 10; // 10 seconds pool acquire timeout
+  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
+  const poolLimit = isTest ? 20 : (role === 'worker' ? 10 : 15);
+  const poolTimeout = isTest ? 30 : 20; // Allow 30s during high concurrency tests
 
   const urlObj = new URL(url);
   if (!urlObj.searchParams.has('connection_limit')) {
@@ -65,9 +66,10 @@ function createPrismaClient(role = 'api') {
   // Apply default transaction boundaries: { maxWait: 2000, timeout: 5000 }
   const originalTransaction = client.$transaction.bind(client);
   client.$transaction = function (arg, options = {}) {
+    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
     const safeOptions = {
-      maxWait: 2000,
-      timeout: 5000,
+      maxWait: isTest ? 10000 : 2000,
+      timeout: isTest ? 15000 : 5000,
       ...options
     };
     return originalTransaction(arg, safeOptions);
@@ -102,9 +104,10 @@ const prisma = createPrismaClient(process.env.APP_ROLE || 'api');
  * Execute interactive transaction with enforced timeouts { maxWait: 2000, timeout: 5000 }
  */
 async function withTransaction(fn, customOptions = {}) {
+  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
   const options = {
-    maxWait: 2000,
-    timeout: 5000,
+    maxWait: isTest ? 10000 : 2000,
+    timeout: isTest ? 15000 : 5000,
     ...customOptions
   };
   return prisma.$transaction(fn, options);

@@ -138,3 +138,68 @@
    - Eliminated rogue `new PrismaClient()` instantiations across the codebase in favor of a singleton dependency-injected client with mathematical pool sizing:
      $$\text{Pool Size} = ((\text{CPU Cores} \times 2) + \text{Spindle Count}) \times 1.25$$
    - Enforced tight session timeouts (`statement_timeout = 8s`, `lock_timeout = 3s`, `idle_in_transaction_session_timeout = 15s`) and bounded interactive transactions `{ maxWait: 2000, timeout: 5000 }` to permanently prevent pool starvation deadlocks under heavy load.
+
+---
+
+## 6. Phase P4: Concurrency Controls & Hot-Path Isolation
+
+### Interview Question: *"Where did you use SELECT FOR UPDATE, where optimistic compare-and-set (CAS), where unique constraints — and why is READ COMMITTED isolation level sufficient?"*
+
+**Answer:**
+> *"You don't need heavy SERIALIZABLE isolation if you deliberately choose the right concurrency primitive for each specific write pattern: pessimistic row locking for irreversible lifecycle transitions, optimistic CAS for high-frequency low-contention updates, unique constraints for exactly-once idempotency, and SKIP LOCKED for work queues."*
+
+1. **Where We Used `SELECT FOR UPDATE` (Pessimistic Locking)**:
+   - **Use Case**: Candidate Exam Submission (`POST /api/v1/attempts/:attemptId/submission`).
+   - **Why Pessimistic**: Exam submission is a high-stakes, irreversible terminal lifecycle transition. When a candidate clicks "Submit", multiple concurrent network requests might arrive simultaneously (rapid double-clicking, browser retry, concurrent tab).
+   - **Mechanism**:
+     ```sql
+     SELECT id, status, expires_at FROM exam_attempts
+     WHERE id = $1 AND student_id = $2
+     FOR UPDATE;
+     ```
+   - **Impact**: It serializes access to that specific candidate attempt row for the duration of the submit transaction. The first request takes the lock, checks terminal status, flushes dirty answers, updates status to `SUBMITTED`, writes the outbox event, and commits. When the queued requests acquire the lock, they immediately read `status = 'SUBMITTED'` and execute the fast, idempotent replay path without performing redundant work.
+
+2. **Where We Used Optimistic Compare-and-Set / CAS**:
+   - **Use Case**: Candidate Answer Autosave (`PUT /api/v1/attempts/:attemptId/answers/:attemptQuestionId`).
+   - **Why Optimistic**: Autosave occurs every 5 seconds per candidate across thousands of students. Using pessimistic locking (`SELECT FOR UPDATE`) on every autosave would cause severe lock contention, unnecessary transaction overhead, and threadpool exhaustion.
+   - **Mechanism**:
+     ```sql
+     INSERT INTO answers (attempt_question_id, selected_option_id, revision, saved_at)
+     SELECT attempt_question_id, $4, 1, now() FROM guard
+     ON CONFLICT (attempt_question_id) DO UPDATE
+       SET selected_option_id = EXCLUDED.selected_option_id,
+           revision = answers.revision + 1,
+           saved_at = now()
+       WHERE answers.revision = $5
+     RETURNING revision;
+     ```
+   - **Impact**: Zero locks are held. The query updates the row if and only if the stored `revision` matches the client's expected base revision `$5`. If network reordering occurs (e.g. revision 7 arrives after revision 8), the `WHERE answers.revision = 7` condition fails, 0 rows are updated, and the server returns `409 Conflict (STALE_REVISION)` with `{ currentRevision: 8 }`. The client fast-forwards its revision without corrupting the authoritative state.
+
+3. **Where We Used Unique Constraints (Physical Invariants)**:
+   - **Use Cases**:
+     - Pre-warmed attempt creation: `UNIQUE(exam_id, student_id)` with `ON CONFLICT DO NOTHING`.
+     - Asynchronous evaluation worker: `UNIQUE(attempt_id)` on `exam_results` with `ON CONFLICT DO NOTHING`.
+     - Idempotency store: `UNIQUE(user_id, scope, target_id, key)` on `idempotency_keys`.
+   - **Why Unique Constraints**: Distributed retries, outbox worker retries, and network replays inevitably send duplicate messages. By relying on relational uniqueness at the storage engine level, business operations achieve **exactly-once execution** without distributed two-phase commits.
+
+4. **Where We Used `FOR UPDATE SKIP LOCKED` (Queue Leasing)**:
+   - **Use Case**: Transactional Outbox Publisher (`OutboxPublisher`).
+   - **Mechanism**:
+     ```sql
+     SELECT id, type, payload FROM outbox_events
+     WHERE status = 'PENDING' AND next_attempt_at <= now()
+     ORDER BY id ASC
+     LIMIT 100
+     FOR UPDATE SKIP LOCKED;
+     ```
+   - **Impact**: Allows multiple horizontal outbox workers to process the event queue concurrently without lock contention or duplicate publishing: each worker instantly skips rows already leased by another worker.
+
+5. **Why `READ COMMITTED` Isolation Level Is Sufficient**:
+   - Higher isolation levels (`REPEATABLE READ`, `SERIALIZABLE`) rely on First-Committer-Wins optimistic concurrency or SSI (Serializable Snapshot Isolation) locks, which throw serialization failure errors (`40001: could not serialize access due to concurrent update`) that require complex application-level retry loops under high write contention.
+   - In ProctorNet, we intentionally designed our SQL statements so that **every critical write is atomic within a single statement or protected by row-level locks**:
+     - State transitions use atomic conditional updates: `UPDATE ... WHERE id = $1 AND status = 'READY' RETURNING *`.
+     - Autosaves use single-statement atomic CTE `ON CONFLICT DO UPDATE WHERE revision = $5`.
+     - Lifecycle changes lock the specific row with `SELECT FOR UPDATE`.
+   - Under `READ COMMITTED`, every SQL statement sees the latest committed snapshot. Because our predicates (`WHERE status = ...`, `WHERE revision = ...`) evaluate against the live locked row at update time, phantom reads and dirty reads are structurally impossible for these paths.
+   - Result: zero serialization abort overhead, minimal lock footprints, predictable single-digit latency, and 100% data integrity under load.
+

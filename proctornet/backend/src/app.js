@@ -182,7 +182,24 @@ app.get('/health', (req, res) => {
 // ── Prometheus Metrics Endpoint ──
 app.get('/metrics', metricsHandler)
 
-// ── API Routes ──
+// ── V1 Modular Monolith Routes (P4 Hot Paths) ──
+const v1Routes = require('./routes/v1.routes')
+const { requestIdMiddleware } = require('./middleware/requestId')
+const { loadShed } = require('./middleware/loadShed')
+const { errorHandler } = require('./middleware/errorHandler')
+const { outboxPublisher } = require('./infra/rabbitmq/outboxPublisher')
+const { evaluationWorker } = require('./modules/results/evaluationWorker')
+const { expirySweeper } = require('./modules/attempts/expirySweeper')
+const { violationMicroBatcher } = require('./modules/proctoring/violationMicroBatcher')
+const { chatMicroBatcher } = require('./modules/proctoring/chatMicroBatcher')
+const { redisClient } = require('./infra/redis/client')
+const { rabbitmq } = require('./infra/rabbitmq/client')
+
+app.use(requestIdMiddleware)
+app.use(loadShed)
+app.use('/api/v1', v1Routes)
+
+// ── Legacy API Routes ──
 app.use('/api/auth',         authRoutes)
 app.use('/api/admin',        adminRoutes)
 app.use('/api/faculty',      facultyRoutes)
@@ -200,11 +217,24 @@ app.use('/api/evidence',      evidenceRoutes)
 
 // ── 404 handler ──
 app.use((req, res) => {
+  if (req.path.startsWith('/api/v1')) {
+    return res.status(404).json({
+      error: {
+        code: 'NOT_FOUND',
+        message: `Route ${req.method} ${req.path} not found`
+      },
+      requestId: req.requestId || null
+    })
+  }
   res.status(404).json({ error: `Route ${req.method} ${req.path} not found` })
 })
 
 // ── Global error handler ──
 app.use((err, req, res, next) => {
+  if (req.path.startsWith('/api/v1') || err.statusCode) {
+    return errorHandler(err, req, res, next)
+  }
+
   console.error('[ERROR]', err.message, err.stack)
   const status = err.status || err.statusCode || 500
 
@@ -228,26 +258,78 @@ app.use((err, req, res, next) => {
 initExamSocket(io)
 initChatSocket(io)
 
+// ── Server Timeouts (Section 4.12: outlive ingress proxy) ──
+server.requestTimeout = 15000
+server.headersTimeout = 65000
+server.keepAliveTimeout = 65000
+
+// ── Graceful Shutdown Handler (Section 4.12) ──
+async function gracefulShutdown(signal) {
+  logger.info({ signal }, 'Graceful shutdown initiated: draining requests and closing connections')
+
+  // Notify connected sockets of server restarting
+  if (io) {
+    io.emit('server:restarting', { message: 'Server is restarting for maintenance', reconnectAfter: 3000 })
+  }
+
+  // Stop background worker loops
+  expirySweeper.stop()
+  outboxPublisher.stop()
+
+  // Flush any pending micro-batchers before termination
+  await Promise.allSettled([
+    violationMicroBatcher.flush(),
+    chatMicroBatcher.flush()
+  ])
+
+  // Stop accepting new HTTP requests
+  server.close(async () => {
+    logger.info('HTTP server closed')
+    await Promise.allSettled([
+      prisma.$disconnect(),
+      redisClient.quit(),
+      rabbitmq.close()
+    ])
+    logger.info('All connections drained and closed cleanly')
+    process.exit(0)
+  })
+
+  // Force exit after 10s if graceful shutdown hangs
+  setTimeout(() => {
+    logger.error('Graceful shutdown timeout exceeded, forcing exit')
+    process.exit(1)
+  }, 10000).unref()
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
+process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+
 // ── Start server ──
 const PORT = process.env.PORT || 5000
 if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
   server.listen(PORT, async () => {
-  console.log(`\n🚀 ProctorNet Backend running on port ${PORT}`)
-  console.log(`📊 Health: http://localhost:${PORT}/health`)
-  console.log(`🔌 Socket.io initialized`)
-  console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
+    console.log(`\n🚀 ProctorNet Backend running on port ${PORT}`)
+    console.log(`📊 Health: http://localhost:${PORT}/health`)
+    console.log(`🔌 Socket.io initialized`)
+    console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-  // Test DB connection
-  try {
-    await prisma.$connect()
-    console.log('✅ Database connection successful')
-    console.log('🗄️  Prisma connected to PostgreSQL')
-  } catch (e) {
-    console.error('❌ Database connection failed:', e.message)
-    console.log('   → Make sure DATABASE_URL is set correctly in backend/.env')
-    console.log('   → If using Supabase free tier, check that the project is not paused')
-  }
-})
+    // Start P4 background workers
+    outboxPublisher.start()
+    evaluationWorker.start()
+    expirySweeper.start()
+
+    // Test DB connection
+    try {
+      await prisma.$connect()
+      console.log('✅ Database connection successful')
+      console.log('🗄️  Prisma connected to PostgreSQL')
+    } catch (e) {
+      console.error('❌ Database connection failed:', e.message)
+      console.log('   → Make sure DATABASE_URL is set correctly in backend/.env')
+      console.log('   → If using Supabase free tier, check that the project is not paused')
+    }
+  })
 }
 
 module.exports = { app, server, io, prisma }
+

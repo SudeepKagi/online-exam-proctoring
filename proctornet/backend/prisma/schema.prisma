@@ -57,6 +57,7 @@ enum AttemptStatus {
   SUSPENDED
   TERMINATED
   TIMED_OUT
+  EXPIRED
 }
 
 enum ResultStatus {

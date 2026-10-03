@@ -1,0 +1,90 @@
+const { resultRepository } = require('./repository')
+const { prisma } = require('../../infra/postgres/client')
+const { toStudentResultDTO, toFacultyResultDTO } = require('./dto')
+const {
+  NotFoundError,
+  ForbiddenError
+} = require('../../shared/errors')
+
+class ResultService {
+  /**
+   * Get student exam result, enforcing exam release policy
+   */
+  async getResultForStudent(attemptId, studentId) {
+    const result = await resultRepository.findByAttempt(attemptId)
+    if (!result) {
+      throw new NotFoundError(`Result for attempt '${attemptId}' is still being evaluated or not found`)
+    }
+
+    if (result.attempt?.studentId !== studentId) {
+      throw new ForbiddenError('Access denied: You do not own this attempt')
+    }
+
+    return toStudentResultDTO(result, result.exam)
+  }
+
+  /**
+   * Get all results for an exam (Faculty / Admin view)
+   */
+  async getResultsForExam(examId, userId, userRole) {
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId }
+    })
+
+    if (!exam) {
+      throw new NotFoundError(`Exam '${examId}' not found`)
+    }
+
+    if (userRole === 'FACULTY' && exam.facultyId !== userId) {
+      throw new ForbiddenError('Access denied: You do not own this exam')
+    }
+
+    // Refresh ranks lazily
+    await resultRepository.updateRanksForExam(examId).catch(() => {})
+
+    const results = await resultRepository.findByExam(examId)
+    return results.map(toFacultyResultDTO)
+  }
+
+  /**
+   * Release results to students (Faculty / Admin)
+   */
+  async releaseResults(examId, userId, userRole) {
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId }
+    })
+
+    if (!exam) {
+      throw new NotFoundError(`Exam '${examId}' not found`)
+    }
+
+    if (userRole === 'FACULTY' && exam.facultyId !== userId) {
+      throw new ForbiddenError('Access denied: You do not own this exam')
+    }
+
+    await prisma.$transaction([
+      prisma.exam.update({
+        where: { id: examId },
+        data: { resultsReleased: true }
+      }),
+      prisma.examResult.updateMany({
+        where: { examId },
+        data: {
+          isReleased: true,
+          releasedAt: new Date()
+        }
+      })
+    ])
+
+    if (global.io) {
+      global.io.to(`exam:${examId}`).emit('exam:results_released', { examId })
+    }
+
+    return { success: true, examId, releasedAt: new Date().toISOString() }
+  }
+}
+
+module.exports = {
+  ResultService,
+  resultService: new ResultService()
+}
