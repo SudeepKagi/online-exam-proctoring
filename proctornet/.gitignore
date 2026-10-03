@@ -34,9 +34,6 @@ Thumbs.db
 *.swp
 *.swo
 
-# Prisma
-backend/prisma/migrations/
-
 # Uploads (local)
 backend/uploads/
 
