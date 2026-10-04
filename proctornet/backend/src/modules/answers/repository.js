@@ -124,7 +124,7 @@ class AnswerRepository {
   /**
    * Batch save dirty answers (<= 100 items) using unnest
    */
-  async saveBatchAnswers(attemptId, studentId, items) {
+  async saveBatchAnswers(attemptId, studentId, items, client = prisma) {
     if (!items || items.length === 0) return []
 
     const qIds = items.map(i => i.attemptQuestionId)
@@ -171,7 +171,7 @@ class AnswerRepository {
       RETURNING answers.attempt_question_id, answers.revision;
     `
 
-    const updatedRows = await prisma.$queryRawUnsafe(
+    const updatedRows = await client.$queryRawUnsafe(
       sql,
       attemptId,
       studentId,
@@ -192,14 +192,18 @@ class AnswerRepository {
           revision: updatedMap.get(item.attemptQuestionId)
         })
       } else {
-        // Individual diagnostic for failed item
-        const diag = await this.diagnoseSaveFailure(
-          attemptId,
-          studentId,
-          item.attemptQuestionId,
-          item.optionId,
-          item.revision
-        )
+        let diag = { error: 'STALE_REVISION_OR_INVALID_OPTION' }
+        if (items.length <= 5) {
+          try {
+            diag = await this.diagnoseSaveFailure(
+              attemptId,
+              studentId,
+              item.attemptQuestionId,
+              item.optionId,
+              item.revision
+            )
+          } catch (e) {}
+        }
         results.push({
           attemptQuestionId: item.attemptQuestionId,
           success: false,

@@ -1,0 +1,11 @@
+{
+  "exams": [
+    {
+      "id": "a0000000-0000-4000-8000-000000000001",
+      "title": "loadtest-exam-1",
+      "questions": 50
+    }
+  ],
+  "totalStudents": 50,
+  "generatedAt": "2026-10-04T03:45:08.260Z"
+}

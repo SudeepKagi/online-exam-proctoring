@@ -1,0 +1,353 @@
+openapi: 3.0.3
+info:
+  title: ProctorNet Core Exam Engine API
+  description: >
+    Production REST and WebSocket API specification for ProctorNet Online Exam Proctoring System.
+    Engineered for high-concurrency university examinations with idempotent submission,
+    Compare-and-Set (CAS) revision locking, and transactional outbox evaluation.
+  version: 1.0.0
+servers:
+  - url: http://localhost:5000/api/v1
+    description: Local Development / Test Cluster
+  - url: https://exam.university.edu/api/v1
+    description: Production Single-Host / ALB Cluster
+
+paths:
+  /auth/login:
+    post:
+      summary: Candidate, Faculty, or Admin Authentication
+      description: Concurrent multi-role lookup with bcrypt validation and HttpOnly JWT issuance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: loadtest-student-1@proctornet.test
+                password:
+                  type: string
+                  format: password
+                  example: Student123!
+      responses:
+        '200':
+          description: Authentication successful. Sets HttpOnly cookie and returns bearer token.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      email:
+                        type: string
+                      name:
+                        type: string
+                      role:
+                        type: string
+                        enum: [admin, faculty, student]
+        '401':
+          description: Invalid email or password.
+
+  /exams/{examId}/attempt:
+    post:
+      summary: Start or Resume Exam Attempt (Start Spike Fast Path)
+      description: >
+        1-hop atomic SQL activation for pre-warmed READY attempts. Late joiners fall back
+        to transactional on-demand generation. Strict sanitization strips is_correct from student options.
+      parameters:
+        - name: examId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Attempt started or resumed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StudentAttempt'
+        '403':
+          description: Exam not open, not eligible, or late arrival.
+        '404':
+          description: Exam not found.
+
+  /attempts/{attemptId}/answers:
+    put:
+      summary: Micro-Batch Dirty Answer Autosave (80% Traffic Path)
+      description: >
+        Saves up to 100 dirty answer items via atomic PostgreSQL unnest CTE insertion.
+        Checks Compare-and-Set (CAS) revision guards.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  maxItems: 100
+                  items:
+                    $ref: '#/components/schemas/AnswerItem'
+      responses:
+        '200':
+          description: Batch saved successfully. Returns per-item acknowledgment and confirmed revision.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  savedCount:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        attemptQuestionId:
+                          type: string
+                          format: uuid
+                        success:
+                          type: boolean
+                        revision:
+                          type: integer
+
+  /attempts/{attemptId}/answers/{attemptQuestionId}:
+    put:
+      summary: Single-Question CAS Answer Update (20% Traffic Path)
+      description: Atomic compare-and-set update verifying expected revision.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: attemptQuestionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [revision]
+              properties:
+                optionId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                revision:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Answer updated successfully. Returns incremented revision.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  revision:
+                    type: integer
+        '409':
+          description: Stale revision conflict. Returns server's current revision.
+
+  /attempts/{attemptId}/submission:
+    post:
+      summary: Idempotent Two-Phase Final Submission (Submit Burst Path)
+      description: >
+        Finalizes exam attempt, flushes un-saved answers, emits attempt.submitted event
+        into transactional outbox table, and transitions attempt state to SUBMITTED.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique client-generated UUID for exactly-once execution.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                answers:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/AnswerItem'
+      responses:
+        '200':
+          description: Attempt finalized. Returns submission timestamp and outbox event confirmation.
+        '400':
+          description: Validation error or invalid Idempotency-Key format.
+        '409':
+          description: Attempt already submitted (idempotent replay).
+
+  /attempts/{attemptId}/violations:
+    post:
+      summary: Record Proctoring Violation Event
+      description: Ingests candidate violation events with server-side severity enums and Redis cooldown.
+      parameters:
+        - name: attemptId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [TAB_SWITCH, FULLSCREEN_EXIT, NO_FACE, MULTIPLE_FACES, LOOKING_AWAY, WINDOW_BLUR]
+                evidenceUrl:
+                  type: string
+                  nullable: true
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Violation recorded and evaluated.
+        '429':
+          description: Cooldown active; violation dropped as duplicate.
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AnswerItem:
+      type: object
+      required: [attemptQuestionId, revision]
+      properties:
+        attemptQuestionId:
+          type: string
+          format: uuid
+        optionId:
+          type: string
+          format: uuid
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
+
+    StudentAttempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        examId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [READY, ACTIVE, SUSPENDED, SUBMITTED, TERMINATED]
+        startedAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        watermarkSeed:
+          type: string
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SanitizedQuestion'
+
+    SanitizedQuestion:
+      type: object
+      properties:
+        attemptQuestionId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        displayOrder:
+          type: integer
+        questionText:
+          type: string
+        marks:
+          type: number
+        negativeMarks:
+          type: number
+        selectedOptionId:
+          type: string
+          format: uuid
+          nullable: true
+        revision:
+          type: integer
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              text:
+                type: string
+              order:
+                type: integer

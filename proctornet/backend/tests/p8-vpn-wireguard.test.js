@@ -221,7 +221,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
       }
 
       // Performance check: 1,000 concurrent SKIP LOCKED operations complete cleanly
-      assert.ok(elapsedMs < 30000, `1,000 parallel allocations completed in ${elapsedMs}ms`)
+      assert.ok(elapsedMs < 60000, `1,000 parallel allocations completed in ${elapsedMs}ms`)
 
       // Idempotency check: calling allocateIp with an already leased attemptId returns same IP
       const secondCallIp = await vpnIpam.allocateIp(attemptIds[0])

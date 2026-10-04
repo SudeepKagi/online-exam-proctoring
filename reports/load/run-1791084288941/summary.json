@@ -1,0 +1,166 @@
+{
+  "durationSeconds": 8.8,
+  "throughputRps": 2.9,
+  "counts": {
+    "totalRequests": 25,
+    "totalSuccess": 15,
+    "totalErrors": 10,
+    "intentionalConflicts": 0,
+    "networkDisconnects": 0,
+    "networkReconnects": 0,
+    "browserRefreshes": 0,
+    "answersAcked": 0,
+    "submissionsCompleted": 0,
+    "violationsDispatched": 0
+  },
+  "quantiles": {
+    "login": {
+      "count": 10,
+      "min": 1020.16,
+      "avg": 1159.64,
+      "p50": 1047.32,
+      "p90": 1819.76,
+      "p95": 1819.76,
+      "p99": 1819.76,
+      "max": 1819.76
+    },
+    "start": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "answer_save_batch": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "answer_save_single": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "answer_save_all": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "submit": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "roster_page": {
+      "count": 4,
+      "min": 669.96,
+      "avg": 754.5,
+      "p50": 738.65,
+      "p90": 902.06,
+      "p95": 902.06,
+      "p99": 902.06,
+      "max": 902.06
+    },
+    "ws_heartbeat_ack": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "ws_delta_delivery": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "violation_record": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "chat_message": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    }
+  },
+  "slos": {
+    "answerSaveP95": {
+      "actual": 0,
+      "target": 150,
+      "passed": true
+    },
+    "answerSaveP99": {
+      "actual": 0,
+      "target": 400,
+      "passed": true
+    },
+    "startSpikeP95": {
+      "actual": 0,
+      "target": 800,
+      "passed": true
+    },
+    "submitP95": {
+      "actual": 0,
+      "target": 500,
+      "passed": true
+    },
+    "loginP95": {
+      "actual": 1819.76,
+      "target": 400,
+      "passed": false
+    },
+    "rosterPageP95": {
+      "actual": 902.06,
+      "target": 300,
+      "passed": false
+    },
+    "errorRate": {
+      "actual": 40,
+      "target": 0.1,
+      "passed": false
+    }
+  },
+  "allSlosPassed": false
+}

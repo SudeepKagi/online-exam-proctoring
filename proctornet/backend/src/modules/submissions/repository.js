@@ -79,7 +79,7 @@ class SubmissionRepository {
 
       // 3. Flush optional final dirty answers (answers hard-cut at expires_at)
       if (finalAnswers && finalAnswers.length > 0) {
-        await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers)
+        await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers, tx)
       }
 
       // 4. Update status to SUBMITTED
