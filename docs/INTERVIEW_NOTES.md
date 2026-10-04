@@ -264,5 +264,45 @@
    - **Network Backoff & Offline Retention**: Failed saves do not discard dirty state; they back off exponentially with full jitter while keeping answers safe in memory.
    - **Server-Clock Drift Offset**: The client computes `offset = serverTime − Date.now()` from every authoritative REST response, calculating remaining time against `expiresAt` immune to student local system clock tampering.
 
+---
+
+## 8. Media Plane: LiveKit SFU (ADR-008 / Notion 13.10) — The "Multiple Users" Fix
+
+> *"Mesh is $\mathcal{O}(N \times M)$; SFU makes the publisher cost $\mathcal{O}(1)$ and the viewer cost $\mathcal{O}(\text{visible})$. Selective subscription is what makes it scale."*
+
+### Interview Question: *"Why did the legacy WebRTC P2P mesh and JPEG-over-socket architecture fail, and how does an SFU scale video proctoring to thousands of candidates?"*
+
+**Answer:**
+
+1. **Why the Legacy Design Failed**:
+   - **Quadratic Fan-out ($\mathcal{O}(N \times M)$)**: In a P2P mesh or JPEG-over-socket implementation, each candidate uploads video frames directly to every active invigilator. With 500 candidates and 10 staff members, candidates upload 10 separate streams, saturating campus Wi-Fi uplinks ($0.4\text{ Mbps} \times 10 = 4\text{ Mbps}$ per student).
+   - **Invigilator Browser Collapse**: In a mesh or frame-streaming setup, an invigilator viewing $N$ candidates must decode $2N$ streams (webcam + screen). At $N = 50$, the invigilator's browser CPU saturates at 100%, dropping frames, freezing video elements, and crashing the tab.
+   - **Fallback JPEG Flooding ($\mathcal{O}(N^2)$)**: Fallback canvas capture (`exam:frame`, `exam:screenFrame`) streamed base64 JPEGs over WebSocket, causing Node.js event loop lag and ballooning memory.
+
+2. **The SFU Transformation ($\mathcal{O}(1)$ Upstream, $\mathcal{O}(\text{visible})$ Downstream)**:
+   - **Candidate Upstream is Constant**: Each candidate sends exactly **1 video stream** to the LiveKit SFU regardless of how many invigilators are watching ($\mathcal{O}(1)$).
+   - **Selective Subscription**: The invigilator connects with `autoSubscribe: false`. Tiles subscribe to candidate video **only while visible in the viewport** (`IntersectionObserver` + active grid page). Off-page tiles are unsubscribed (`publication.setSubscribed(false)`), consuming **0 egress bandwidth** and **0 browser decode CPU**.
+   - **VP8 Simulcast by Design**:
+     - *Screen Share*: Capped at $1280 \times 720$ @ 5 fps ($400\text{ kbps}$, `contentHint: 'detail'`) with a low simulcast layer at $640 \times 360$ @ 3 fps ($\le 120\text{ kbps}$).
+     - *Webcam (if enabled)*: $320 \times 180$ @ 15 fps ($150\text{ kbps}$, `contentHint: 'motion'`), non-simulcast; DTX enabled.
+     - Visible grid tiles request `VideoQuality.LOW`. Only the actively focused candidate is promoted to `VideoQuality.HIGH`, with a hard limit of `MAX_HIGH_QUALITY_STREAMS = 4`.
+
+3. **Strict Zero-Trust Token Service (`modules/media/media.service.js`)**:
+   - Replaced hand-rolled JWT tokens with official `livekit-server-sdk` (`AccessToken`).
+   - **Candidate Token**: Bounded to remaining attempt duration + 5 min grace. Grants strictly enforce `canPublish: true`, `canSubscribe: false` (anti-spying guard — candidates cannot view other students or staff), `canPublishData: false`.
+   - **Staff Token**: Grants enforce `canPublish: false`, `canSubscribe: true`, `hidden: true` (candidates cannot see proctors in room participant roster), TTL 4 hours. Exam scoping is validated via SQL.
+   - **Terminal State Cleanup**: When an attempt transitions to `TERMINATED`, `SUBMITTED`, or `EXPIRED`, the state machine immediately calls `RoomServiceClient.removeParticipant(room, identity)` to disconnect the candidate from the media plane.
+
+4. **Cryptographically Signed Authoritative Webhooks**:
+   - LiveKit SFU notifies `POST /internal/livekit/webhook` and `POST /api/v1/proctoring/livekit/webhook`.
+   - Incoming webhooks are verified via `WebhookReceiver.receive(rawBody, authHeader)` using HMAC SHA-256 digest matching. Unsigned or forged webhooks are rejected with 403 Forbidden.
+   - When a student's screen track is unpublished (`track_unpublished`), the webhook authoritatively logs a `SCREEN_SHARE_STOPPED` violation with a 5-second debounce window.
+   - **Non-Cheating Severity Principle (Notion 13.10 §15)**: Media failures are assigned `MEDIUM` severity, never treated as instant proof of cheating, and candidates receive an auto-reconnect prompt.
+
+5. **Bandwidth & Capacity Math**:
+   - Ingress to SFU for 500 candidates $\approx 500 \times (0.4 + 0.15) = \mathbf{275\text{ Mbps}}$ (well within AWS `c6i.xlarge` $1.25\text{ Gbps}$ baseline NIC).
+   - Egress per invigilator: 12 visible tiles $\times 0.1\text{ Mbps} + 1\text{ focus} \times 0.5\text{ Mbps} \approx \mathbf{1.7 - 2.0\text{ Mbps}}$ (less than 8% of ingress).
+   - Invigilator decode load: exactly 12 hardware-accelerated VP8 thumbnail streams, independent of $N$.
+
 
 

@@ -89,8 +89,26 @@ const corsOptions = {
 app.use(cors(corsOptions))
 
 // Controlled Payload Limits: 10MB standard API (D-6)
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    req.rawBody = buf
+  }
+}))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+
+// ── Internal LiveKit Webhook Endpoint (P7 Task 7.1) ──
+app.post('/internal/livekit/webhook', async (req, res, next) => {
+  try {
+    const { mediaService } = require('./modules/media/media.service')
+    const authHeader = req.headers.authorization
+    const rawBody = req.rawBody ? req.rawBody.toString('utf-8') : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
+    const result = await mediaService.handleWebhook(rawBody, authHeader)
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+})
 
 // ── CSRF Defense for Cookie-Authenticated State-Changing Requests ──
 function csrfProtection(req, res, next) {

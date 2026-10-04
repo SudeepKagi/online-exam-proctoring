@@ -1,13 +1,23 @@
+# Reference to canonical LiveKit SFU config in ops/livekit/livekit.yaml
 port: 7880
 bind_addresses:
   - ""
+
 rtc:
   tcp_port: 7881
-  port_range_start: 50000
-  port_range_end: 60000
+  udp_port: 7882
   use_external_ip: false
+  congestion_control:
+    enabled: true
+
+room:
+  auto_create: false
+  empty_timeout: 300
+  max_participants: 1200
+
 keys:
-  devkey: secretsecretsecretsecretsecretsecret
+  ${LIVEKIT_API_KEY:-proctornet_livekit_key}: ${LIVEKIT_API_SECRET:-proctornet_livekit_secret_at_least_32_chars}
+
 logging:
-  json: false
+  json: true
   level: info

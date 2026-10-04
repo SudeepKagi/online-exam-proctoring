@@ -129,6 +129,16 @@ class AttemptStateMachine {
       logger.error({ error: err.message, attemptId }, 'Failed to record audit/outbox for state transition')
     })
 
+    // Disconnect participant from LiveKit SFU on terminal states (P7 Task 7.2)
+    if (TERMINAL_STATES.includes(target) && updated.exam_id) {
+      try {
+        const { mediaService } = require('../media/media.service')
+        mediaService.removeParticipant(updated.exam_id, `student:${updated.id}`).catch(() => {})
+      } catch (err) {
+        // ignore in mock environments
+      }
+    }
+
     return updated
   }
 

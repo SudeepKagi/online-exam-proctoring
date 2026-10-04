@@ -1,104 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Video, Monitor, AlertTriangle, Eye, ShieldAlert, CheckCircle2 } from 'lucide-react'
 
-export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, fallbackSize = 14 }) {
-  const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.camera || null)
-  const [stream, setStream] = useState(null)
-  const [lastSeen, setLastSeen] = useState(Date.now())
+export function WebcamFeed({ track, initialFrame, fallbackPhoto, className, fallbackSize = 14 }) {
   const videoNodeRef = useRef(null)
 
-  const attachVideo = (node) => {
-    videoNodeRef.current = node
-    if (node && stream) {
-      if (node.srcObject !== stream) {
-        node.srcObject = stream
-      }
-      if (node.paused) {
-        node.play().catch(() => {})
-      }
-    }
-  }
-
   useEffect(() => {
-    const handleFrameUpdate = (e) => {
-      if (e.detail?.studentId === studentId && e.detail?.type === 'camera') {
-        setFrame(e.detail.frame)
-        setLastSeen(Date.now())
-      }
-    }
-    const handleStreamUpdate = (e) => {
-      if (e.detail?.studentId === studentId && e.detail?.type === 'camera') {
-        setStream(e.detail.stream)
-        setLastSeen(Date.now())
-      }
-    }
-    window.addEventListener('student-frame-update', handleFrameUpdate)
-    window.addEventListener('student-stream-update', handleStreamUpdate)
-
-    if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.camera) {
-      const activeSt = window.activeWebRTCStreams[studentId].camera
-      if (activeSt && activeSt.active) {
-        setStream(activeSt)
-        setLastSeen(Date.now())
-      }
-    }
-    if (window.latestStudentFrames?.[studentId]?.camera) {
-      setFrame(window.latestStudentFrames[studentId].camera)
-      setLastSeen(Date.now())
-    }
-
-    return () => {
-      window.removeEventListener('student-frame-update', handleFrameUpdate)
-      window.removeEventListener('student-stream-update', handleStreamUpdate)
-    }
-  }, [studentId])
-
-  useEffect(() => {
-    if (initialFrame) {
-      setFrame(initialFrame)
-      setLastSeen(Date.now())
-    }
-  }, [initialFrame])
-
-  useEffect(() => {
-    if (videoNodeRef.current && stream) {
-      if (videoNodeRef.current.srcObject !== stream) {
-        videoNodeRef.current.srcObject = stream
-      }
-      if (videoNodeRef.current.paused) {
-        videoNodeRef.current.play().catch(() => {})
-      }
-
-      const tracks = stream.getTracks()
-      const handleEnded = () => {
-        setStream(null)
-      }
-      tracks.forEach(t => t.addEventListener('ended', handleEnded))
+    if (track && videoNodeRef.current) {
+      track.attach(videoNodeRef.current)
       return () => {
-        tracks.forEach(t => t.removeEventListener('ended', handleEnded))
+        try { track.detach(videoNodeRef.current) } catch (e) {}
       }
     }
-  }, [stream])
+  }, [track])
 
-  if (stream && stream.active) {
+  if (track) {
     return (
       <div className="relative w-full h-full">
-        <video ref={attachVideo} autoPlay playsInline muted className={className} />
+        <video ref={videoNodeRef} autoPlay playsInline muted className={className} />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-[8px] font-bold text-emerald-400 uppercase tracking-tight">
-          Live WebRTC
+          Live LiveKit SFU
         </span>
       </div>
     )
   }
 
-  const activePhoto = frame || fallbackPhoto || initialFrame
+  const activePhoto = fallbackPhoto || initialFrame
   if (activePhoto) {
-    const isRegisteredPhoto = Boolean(!frame && (fallbackPhoto || initialFrame))
     return (
       <div className="relative w-full h-full">
         <img src={activePhoto} className={className} alt="Student" />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 border border-white/10 text-[8px] font-bold text-white/80 uppercase tracking-tight">
-          {isRegisteredPhoto ? 'Registered Photo' : 'Adaptive Feed'}
+          Snapshot
         </span>
       </div>
     )
@@ -112,89 +44,22 @@ export function WebcamFeed({ studentId, initialFrame, fallbackPhoto, className, 
   )
 }
 
-export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 32 }) {
-  const [frame, setFrame] = useState(initialFrame || window.latestStudentFrames?.[studentId]?.screen || null)
-  const [stream, setStream] = useState(null)
-  const [lastSeen, setLastSeen] = useState(Date.now())
+export function ScreenFeed({ track, initialFrame, fallbackPhoto, className, fallbackSize = 32 }) {
   const videoNodeRef = useRef(null)
 
-  const attachVideo = (node) => {
-    videoNodeRef.current = node
-    if (node && stream) {
-      if (node.srcObject !== stream) {
-        node.srcObject = stream
-      }
-      if (node.paused) {
-        node.play().catch(() => {})
-      }
-    }
-  }
-
   useEffect(() => {
-    const handleFrameUpdate = (e) => {
-      if (e.detail?.studentId === studentId && e.detail?.type === 'screen') {
-        setFrame(e.detail.frame)
-        setLastSeen(Date.now())
-      }
-    }
-    const handleStreamUpdate = (e) => {
-      if (e.detail?.studentId === studentId && e.detail?.type === 'screen') {
-        setStream(e.detail.stream)
-        setLastSeen(Date.now())
-      }
-    }
-    window.addEventListener('student-frame-update', handleFrameUpdate)
-    window.addEventListener('student-stream-update', handleStreamUpdate)
-
-    if (window.activeWebRTCStreams && window.activeWebRTCStreams[studentId]?.screen) {
-      const activeSt = window.activeWebRTCStreams[studentId].screen
-      if (activeSt && activeSt.active) {
-        setStream(activeSt)
-        setLastSeen(Date.now())
-      }
-    }
-    if (window.latestStudentFrames?.[studentId]?.screen) {
-      setFrame(window.latestStudentFrames[studentId].screen)
-      setLastSeen(Date.now())
-    }
-
-    return () => {
-      window.removeEventListener('student-frame-update', handleFrameUpdate)
-      window.removeEventListener('student-stream-update', handleStreamUpdate)
-    }
-  }, [studentId])
-
-  useEffect(() => {
-    if (initialFrame) {
-      setFrame(initialFrame)
-      setLastSeen(Date.now())
-    }
-  }, [initialFrame])
-
-  useEffect(() => {
-    if (videoNodeRef.current && stream) {
-      if (videoNodeRef.current.srcObject !== stream) {
-        videoNodeRef.current.srcObject = stream
-      }
-      if (videoNodeRef.current.paused) {
-        videoNodeRef.current.play().catch(() => {})
-      }
-
-      const tracks = stream.getTracks()
-      const handleEnded = () => {
-        setStream(null)
-      }
-      tracks.forEach(t => t.addEventListener('ended', handleEnded))
+    if (track && videoNodeRef.current) {
+      track.attach(videoNodeRef.current)
       return () => {
-        tracks.forEach(t => t.removeEventListener('ended', handleEnded))
+        try { track.detach(videoNodeRef.current) } catch (e) {}
       }
     }
-  }, [stream])
+  }, [track])
 
-  if (stream && stream.active) {
+  if (track) {
     return (
       <div className="relative w-full h-full">
-        <video ref={attachVideo} autoPlay playsInline muted className={className} />
+        <video ref={videoNodeRef} autoPlay playsInline muted className={className} />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/30 text-[8px] font-bold text-emerald-400 uppercase tracking-tight">
           Live Screen
         </span>
@@ -202,12 +67,13 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
     )
   }
 
-  if (frame) {
+  const activePhoto = fallbackPhoto || initialFrame
+  if (activePhoto) {
     return (
       <div className="relative w-full h-full">
-        <img src={frame} className={className} alt="Screen" />
+        <img src={activePhoto} className={className} alt="Screen" />
         <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 border border-white/10 text-[8px] font-bold text-white/80 uppercase tracking-tight">
-          Adaptive Screen
+          Last Snapshot
         </span>
       </div>
     )
@@ -215,7 +81,7 @@ export function ScreenFeed({ studentId, initialFrame, className, fallbackSize = 
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-neutral-900 text-muted-foreground">
-      <Monitor size={fallbackSize} className="mb-1 text-muted-foreground/70 animate-pulse" />
+      <Monitor size={fallbackSize} className="mb-1 text-muted-foreground/70" />
       <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Screen Standby</span>
     </div>
   )

@@ -1,0 +1,74 @@
+# ==============================================================================
+# ProctorNet LiveKit SFU Configuration (ADR-008 / Notion 13.10 / Appendix D)
+# Phase P7 — High-density selective forwarding media plane
+# ==============================================================================
+
+port: 7880
+bind_addresses:
+  - ""
+
+# RTC Transport Configuration
+rtc:
+  # TCP fallback port for restrictive firewalls
+  tcp_port: 7881
+  
+  # Single UDP media multiplexing port (avoids massive Docker/NAT port ranges)
+  udp_port: 7882
+
+  # Explicitly resolve public external IP for ICE host candidates
+  use_external_ip: true
+
+  # Network interfaces to advertise for ICE candidates (includes WireGuard wg0 for P8)
+  interfaces:
+    includes:
+      - eth0
+      - wg0
+
+  # Bandwidth and congestion control
+  congestion_control:
+    enabled: true
+
+# Built-in TURN Server Configuration
+# Note: In campus networks with strict egress filtering (only 443 open),
+# TURN/TLS port 5349 can be multiplexed with HTTPS on port 443 using nginx:
+#   stream {
+#     map $ssl_preread_server_name $turn_or_web {
+#       turn.proctornet.internal turn_backend;
+#       default web_backend;
+#     }
+#     server {
+#       listen 443;
+#       ssl_preread on;
+#       proxy_pass $turn_or_web;
+#     }
+#   }
+turn:
+  enabled: true
+  domain: turn.proctornet.internal
+  tls_port: 5349
+  udp_port: 3478
+
+# Room Management Policies
+room:
+  # Enforce backend-controlled room creation (reject client auto-creation)
+  auto_create: false
+
+  # Close idle rooms 5 minutes (300 s) after all participants leave
+  empty_timeout: 300
+
+  # Bounded maximum participants per exam room
+  max_participants: 1200
+
+# API Keys & Secrets (Injected from environment / secrets manager)
+keys:
+  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+
+# Authoritative Webhook Notifications
+webhook:
+  api_key: ${LIVEKIT_API_KEY}
+  urls:
+    - http://host.docker.internal:5000/internal/livekit/webhook
+
+logging:
+  json: true
+  level: info

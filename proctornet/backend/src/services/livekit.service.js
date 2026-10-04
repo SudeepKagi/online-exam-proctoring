@@ -1,30 +1,30 @@
-const jwt = require('jsonwebtoken')
-
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET
-
 /**
- * Generate a signed LiveKit Access Token for WebRTC Room Streaming
- * @param {string} roomName - Unique room ID (e.g., examId)
- * @param {string} participantIdentity - Identity string (e.g., student usn or invigilator ID)
- * @param {boolean} isPublisher - True for student publishing video/screen, false for invigilator subscriber
+ * livekit.service.js (Secure livekit-server-sdk adapter)
+ * Replaces hand-rolled JWT with cryptographic livekit-server-sdk AccessToken.
+ * Fixes canSubscribe always-true bug (ADR-008 / Task 7.2).
  */
-function createLiveKitToken(roomName, participantIdentity, isPublisher = true) {
-  const payload = {
-    iss: LIVEKIT_API_KEY,
-    sub: participantIdentity,
-    nbf: Math.floor(Date.now() / 1000) - 5,
-    exp: Math.floor(Date.now() / 1000) + 4 * 3600, // 4 hours
-    video: {
-      room: roomName,
-      roomJoin: true,
-      canPublish: isPublisher,
-      canPublishData: true,
-      canSubscribe: !isPublisher || true,
-    },
-  }
 
-  return jwt.sign(payload, LIVEKIT_API_SECRET, { algorithm: 'HS256' })
+const { AccessToken, TrackSource } = require('livekit-server-sdk')
+
+function createLiveKitToken(roomName, participantIdentity, isPublisher = true) {
+  const apiKey = process.env.LIVEKIT_API_KEY || 'proctornet_livekit_key'
+  const apiSecret = process.env.LIVEKIT_API_SECRET || 'proctornet_livekit_secret_at_least_32_chars'
+
+  const token = new AccessToken(apiKey, apiSecret, {
+    identity: participantIdentity,
+    ttl: '4h'
+  })
+
+  token.addGrant({
+    roomJoin: true,
+    room: roomName,
+    canPublish: Boolean(isPublisher),
+    canPublishData: false,
+    canSubscribe: !isPublisher, // Fixed: Subscribers cannot publish; publishers cannot subscribe
+    hidden: !isPublisher
+  })
+
+  return token.toJwt()
 }
 
 module.exports = { createLiveKitToken }

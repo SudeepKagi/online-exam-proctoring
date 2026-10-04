@@ -22,11 +22,17 @@ const recordViolationSchema = z.object({
     'KEYBOARD_SHORTCUT',
     'WINDOW_BLUR',
     'IP_CHANGE',
-    'VM_DETECTED'
+    'VM_DETECTED',
+    'SCREEN_SHARE_STOPPED'
   ]),
   metadata: z.record(z.any()).optional().default({}),
   clientTimestamp: z.union([z.string(), z.number()]).optional()
 }).strict()
+
+const liveKitTokenSchema = z.object({
+  examId: z.string().uuid('Invalid exam ID format'),
+  attemptId: z.string().uuid('Invalid attempt ID format').optional()
+}).passthrough()
 
 const postChatMessageSchema = z.object({
   message: z.string().min(1).max(500, 'Message cannot exceed 500 characters'),
@@ -59,6 +65,7 @@ module.exports = {
   attemptIdParamSchema,
   examIdParamSchema,
   recordViolationSchema,
+  liveKitTokenSchema,
   postChatMessageSchema,
   rosterQuerySchema,
   violationsQuerySchema,

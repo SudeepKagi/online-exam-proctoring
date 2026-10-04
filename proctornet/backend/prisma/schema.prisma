@@ -81,6 +81,7 @@ enum ViolationType {
   WINDOW_BLUR
   IP_CHANGE
   VM_DETECTED
+  SCREEN_SHARE_STOPPED
 }
 
 enum Severity {
