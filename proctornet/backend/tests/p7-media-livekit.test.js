@@ -205,6 +205,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
     await prisma.department.deleteMany({
       where: { code: dept.code }
     }).catch(() => {})
+    await prisma.$disconnect().catch(() => {})
   })
 
   // ══════════════════════════════════════════════════════════════════

@@ -178,6 +178,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
     }).catch(() => {})
     await prisma.faculty.delete({ where: { id: testFaculty.id } }).catch(() => {})
     await prisma.department.delete({ where: { code: testDept.code } }).catch(() => {})
+    await prisma.$disconnect().catch(() => {})
   })
 
   beforeEach(async () => {

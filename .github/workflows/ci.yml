@@ -168,11 +168,11 @@ jobs:
           VPN_ENABLED: false
         run: |
           npx prisma migrate deploy
-          node --test tests/p4-state-machine.test.js
-          node --test tests/p5-client-compression.test.js
-          node --test tests/p6-frontend-autosave.test.js
-          node --test tests/p7-media-livekit.test.js
-          node --test tests/p8-vpn-wireguard.test.js
+          node --test --test-force-exit tests/p4-state-machine.test.js
+          node --test --test-force-exit tests/p5-client-compression.test.js
+          node --test --test-force-exit tests/p6-frontend-autosave.test.js
+          node --test --test-force-exit tests/p7-media-livekit.test.js
+          node --test --test-force-exit tests/p8-vpn-wireguard.test.js
 
   # ----------------------------------------------------------------------------
   # Stage 4: Container Build & Vulnerability Scan
