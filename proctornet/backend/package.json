@@ -40,7 +40,7 @@
     "node-cron": "^3.0.2",
     "nodemailer": "^6.9.3",
     "opossum": "^10.0.0",
-    "p-limit": "^3.1.0",
+    "p-limit": "^7.3.3",
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "pino": "^9.6.0",
