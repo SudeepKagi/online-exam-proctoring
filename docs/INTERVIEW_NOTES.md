@@ -229,4 +229,40 @@
    - The API returns durable success immediately. If S3 experiences high latency or Sharp image processing queues back up, the student's exam experience is completely insulated.
    - An asynchronous worker (`EvidenceWorker` on `pn.evidence`) inspects `HeadObject`, validates binary magic bytes, uses Sharp with concurrency 2 and pixel limits to generate a 320 px WebP thumbnail, and transitions status to `UPLOADED` with `thumb_key`. If the file is corrupted, the worker marks `FAILED`, but the violation audit row remains intact.
 
+---
+
+## 7. Realtime Plane & Invigilator Dashboard (ADR-008 / Notion 13.10) — WebSocket is a Notification Channel, Not a Source of Truth
+
+> *"WebSocket is a notification channel, not a source of truth — that single rule makes reconnects, scaling and failure handling simple."*
+
+1. **Why WebSocket Is Treated Strictly as a Best-Effort Notification Channel**:
+   - Treating WebSocket connections as sources of truth introduces distributed state synchronization nightmares: missed messages during network drops require complex sequence number negotiations, message replays, and distributed queue buffering per client.
+   - In ProctorNet, **all state changes happen via ACID-compliant REST write paths and database transactions**. WebSocket simply signals: *"Something changed, here is the latest delta."*
+   - If a client disconnects, drops packets, or restarts, it simply issues a single `GET /api/v1/attempts/:id/state` on reconnect to fetch authoritative server state, current `expiresAt`, revision, and synchronized server clock epoch. A dropped or reordered WebSocket message can never corrupt exam state or cause data loss.
+
+2. **Why Handshake Authentication Fails Closed**:
+   - The Socket.IO connection handshake validates JWT tokens synchronously before upgrading or accepting the socket (`io.use(...)`).
+   - If the token is missing, expired, forged, or belongs to an unauthorized role, the middleware rejects immediately with an explicit authentication error and severs the TCP connection. No unauthenticated client can ever bind memory or join rooms.
+
+3. **Room Isolation & The Deletion of the Global Broadcast Room**:
+   - Candidates are strictly bound to private rooms: `attempt:{attemptId}`. SQL authorization guarantees candidate ownership before socket admission.
+   - Staff (invigilators, faculty, admin) join `inv:{examId}` only after database authorization verifies exam ownership or explicit invigilator assignment.
+   - **Privacy Security Decision**: The legacy `exam:{examId}` student-wide broadcast room was permanently deleted. Broadcasting student flags, warnings, or roster changes across all students represents a severe privacy and compliance leak.
+
+4. **Why 500 ms Coalescing Eliminates Invigilator Dashboard Thrashing**:
+   - In an exam with 1,000 students, background violation detection (gaze diversion, tab switching, noise alerts) and heartbeats can produce hundreds of events per second.
+   - Broadcasting raw events directly to proctor sockets overwhelms client-side React rendering loops and exhausts browser CPU.
+   - `RosterDeltaCoalescer` buffers candidate updates in-memory per exam and flushes a consolidated batch array via a single `roster:delta` emission every 500 ms. 1,000 rapid violations are coalesced into $\le 3$ network frames per proctor, maintaining a silky-smooth 60 fps dashboard.
+
+5. **Why Keyset Pagination on `(display_name, attempt_id)` and Zero-Media Payloads**:
+   - Offset pagination (`OFFSET 2500 LIMIT 50`) degrades with quadratic page scans on PostgreSQL and produces jitter/skipped items when students sort orders shift during live exams.
+   - ProctorNet uses keyset pagination on `(s.name, ea.id)` with opaque base64 cursors: queries execute via B-tree index scans in $< 2\text{ ms}$, guaranteed bounded payloads ($< 100\text{ KB}$ per page), and zero base64 image data or heavy violation evidence arrays in the roster DTO.
+
+6. **Client-Side Resilience (Autosave Manager & Server-Clock Timer)**:
+   - **Dirty Buffer & Flush**: Answers are tracked in an in-memory dirty map. The manager flushes dirty answers every 5 seconds, on window blur, and on `visibilitychange`.
+   - **Optimistic Concurrency & 409 STALE_REVISION**: Responses return the updated revision counter. If a 409 conflict occurs, the client immediately updates its local revision counter to match the server and automatically retries the save.
+   - **Network Backoff & Offline Retention**: Failed saves do not discard dirty state; they back off exponentially with full jitter while keeping answers safe in memory.
+   - **Server-Clock Drift Offset**: The client computes `offset = serverTime − Date.now()` from every authoritative REST response, calculating remaining time against `expiresAt` immune to student local system clock tampering.
+
+
 

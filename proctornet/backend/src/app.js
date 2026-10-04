@@ -1,7 +1,8 @@
 require('dotenv').config()
 const express    = require('express')
 const http       = require('http')
-const { Server } = require('socket.io')
+const { createWebSocketServer } = require('./infra/websocket/socket.server')
+const { rosterCoalescer } = require('./infra/websocket/rosterCoalescer')
 const cors       = require('cors')
 const helmet     = require('helmet')
 const compression = require('compression')
@@ -25,10 +26,6 @@ const notificationRoutes = require('./routes/notification.routes')
 const evidenceRoutes     = require('./routes/evidence.routes')
 
 const path = require('path')
-
-// ── Socket handlers ──
-const initExamSocket = require('./sockets/exam.socket')
-const initChatSocket = require('./sockets/chat.socket')
 
 const app    = express()
 const server = http.createServer(app)
@@ -59,21 +56,8 @@ if (process.env.FRONTEND_URL) {
 // ── Make prisma globally available ──
 global.prisma = prisma
 
-// ── Socket.io ──
-const io = new Server(server, {
-  cors: {
-    origin: isProd ? (process.env.FRONTEND_URL || allowedOrigins) : allowedOrigins,
-    methods: ['GET', 'POST', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie']
-  },
-  transports: ['websocket', 'polling'],
-  allowUpgrades: true,
-  pingTimeout: 20000,
-  pingInterval: 25000,
-  maxHttpBufferSize: 1e6, // 1MB payload limit (accommodates 500KB JPEG frames)
-  allowEIO3: true
-})
+// ── Socket.io WebSocket Plane (P6) ──
+const io = createWebSocketServer(server)
 
 // Make io available to routes via app locals
 app.set('io', io)
@@ -253,10 +237,6 @@ app.use((err, req, res, next) => {
   })
 })
 
-// ── Initialize sockets ──
-initExamSocket(io)
-initChatSocket(io)
-
 // ── Server Timeouts (Section 4.12: outlive ingress proxy) ──
 server.requestTimeout = 15000
 server.headersTimeout = 65000
@@ -274,6 +254,7 @@ async function gracefulShutdown(signal) {
   // Stop background worker loops
   expirySweeper.stop()
   outboxPublisher.stop()
+  rosterCoalescer.stop()
 
   // Flush any pending micro-batchers before termination
   await Promise.allSettled([
@@ -332,5 +313,6 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
   })
 }
 
-module.exports = { app, server, io, prisma }
+const { presenceManager } = require('./infra/websocket/presence')
+module.exports = { app, server, io, prisma, rosterCoalescer, presenceManager }
 

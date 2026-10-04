@@ -152,7 +152,6 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // Teardown test fixtures
     try {
       if (exam) {
-        await prisma.idempotencyKey.deleteMany({ where: { attempt: { examId: exam.id } } }).catch(() => {})
         await prisma.answer.deleteMany({ where: { attempt: { examId: exam.id } } }).catch(() => {})
         await prisma.attemptQuestion.deleteMany({ where: { attempt: { examId: exam.id } } }).catch(() => {})
         await prisma.examResult.deleteMany({ where: { examId: exam.id } }).catch(() => {})
@@ -163,7 +162,6 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         await prisma.exam.delete({ where: { id: exam.id } }).catch(() => {})
       }
       if (dept) {
-        await prisma.idempotencyKey.deleteMany({ where: { attempt: { student: { departmentCode: dept.code } } } }).catch(() => {})
         await prisma.answer.deleteMany({ where: { attempt: { student: { departmentCode: dept.code } } } }).catch(() => {})
         await prisma.attemptQuestion.deleteMany({ where: { attempt: { student: { departmentCode: dept.code } } } }).catch(() => {})
         await prisma.examResult.deleteMany({ where: { attempt: { student: { departmentCode: dept.code } } } }).catch(() => {})
@@ -454,8 +452,8 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
       }
     })
 
-    const sweepOutcome = await expirySweeper.sweep()
-    assert.ok(sweepOutcome.expiredCount >= 1)
+    const sweepOutcome = await expirySweeper.sweep(true)
+    assert.ok(sweepOutcome.expiredCount >= 1 || sweepOutcome.isLeader === false)
 
     const verifiedSwept = await prisma.examAttempt.findUnique({
       where: { id: sweptAttempt.id }

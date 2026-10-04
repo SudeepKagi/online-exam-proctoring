@@ -4,9 +4,13 @@ const {
   attemptIdParamSchema,
   examIdParamSchema,
   recordViolationSchema,
-  postChatMessageSchema
+  postChatMessageSchema,
+  rosterQuerySchema,
+  violationsQuerySchema,
+  warnCandidateSchema,
+  actionReasonSchema
 } = require('./validation')
-const { validateBody, validateParams } = require('../../middleware/validation')
+const { validateBody, validateParams, validateQuery } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
@@ -116,4 +120,223 @@ router.get(
   }
 )
 
+/**
+ * GET /api/v1/proctoring/exams/:examId/summary
+ * Aggregate metrics and live presence count (Task 6)
+ */
+router.get(
+  '/proctoring/exams/:examId/summary',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(examIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const summary = await proctoringService.getExamSummary(req.params.examId, req.user)
+      return res.status(200).json(summary)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/proctoring/exams/:examId/roster
+ * Keyset paginated candidate roster with presigned thumbnails (Task 6)
+ */
+router.get(
+  '/proctoring/exams/:examId/roster',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(examIdParamSchema),
+  validateQuery(rosterQuerySchema),
+  async (req, res, next) => {
+    try {
+      const { limit, cursor, status, q } = req.query
+      const roster = await proctoringService.getExamRoster(req.params.examId, req.user, {
+        limit,
+        cursor,
+        status,
+        q
+      })
+      return res.status(200).json(roster)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/proctoring/attempts/:attemptId/violations
+ * Keyset paginated violations for an attempt (Task 6)
+ */
+router.get(
+  '/proctoring/attempts/:attemptId/violations',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(attemptIdParamSchema),
+  validateQuery(violationsQuerySchema),
+  async (req, res, next) => {
+    try {
+      const { limit, cursor } = req.query
+      const violations = await proctoringService.getAttemptViolations(req.params.attemptId, req.user, {
+        limit,
+        cursor
+      })
+      return res.status(200).json(violations)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/proctoring/exams/:examId/violations
+ * Keyset paginated violations across exam (Task 6)
+ */
+router.get(
+  '/proctoring/exams/:examId/violations',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(examIdParamSchema),
+  validateQuery(violationsQuerySchema),
+  async (req, res, next) => {
+    try {
+      const { limit, cursor, severity, type } = req.query
+      const violations = await proctoringService.getExamViolations(req.params.examId, req.user, {
+        limit,
+        cursor,
+        severity,
+        type
+      })
+      return res.status(200).json(violations)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/attempts/:attemptId/warn
+ * Dispatch proctor warning to student (Task 7)
+ */
+router.post(
+  '/proctoring/attempts/:attemptId/warn',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(attemptIdParamSchema),
+  validateBody(warnCandidateSchema),
+  async (req, res, next) => {
+    try {
+      const io = req.app.get('io')
+      const result = await proctoringService.warnCandidate(
+        req.params.attemptId,
+        req.user,
+        req.body.message,
+        io
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/attempts/:attemptId/pause
+ * Pause student attempt (Task 7)
+ */
+router.post(
+  '/proctoring/attempts/:attemptId/pause',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(attemptIdParamSchema),
+  validateBody(actionReasonSchema),
+  async (req, res, next) => {
+    try {
+      const io = req.app.get('io')
+      const result = await proctoringService.pauseAttempt(
+        req.params.attemptId,
+        req.user,
+        req.body.reason,
+        io
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/attempts/:attemptId/resume
+ * Resume student attempt (Task 7)
+ */
+router.post(
+  '/proctoring/attempts/:attemptId/resume',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(attemptIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const io = req.app.get('io')
+      const result = await proctoringService.resumeAttempt(
+        req.params.attemptId,
+        req.user,
+        io
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/attempts/:attemptId/terminate
+ * Terminate student attempt (Task 7)
+ */
+router.post(
+  '/proctoring/attempts/:attemptId/terminate',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(attemptIdParamSchema),
+  validateBody(actionReasonSchema),
+  async (req, res, next) => {
+    try {
+      const io = req.app.get('io')
+      const result = await proctoringService.terminateAttempt(
+        req.params.attemptId,
+        req.user,
+        req.body.reason,
+        io
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/violations/:violationId/acknowledge
+ * Acknowledge violation event (Task 7)
+ */
+router.post(
+  '/proctoring/violations/:violationId/acknowledge',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  async (req, res, next) => {
+    try {
+      const result = await proctoringService.acknowledgeViolation(
+        req.params.violationId,
+        req.user
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router
+

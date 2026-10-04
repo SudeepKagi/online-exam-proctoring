@@ -33,9 +33,36 @@ const postChatMessageSchema = z.object({
   studentId: z.string().uuid('Invalid student ID format').optional()
 }).strict()
 
+const rosterQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(50),
+  cursor: z.string().optional(),
+  status: z.enum(['READY', 'ACTIVE', 'SUBMITTED', 'TERMINATED']).optional(),
+  q: z.string().max(100).optional()
+}).passthrough()
+
+const violationsQuerySchema = z.object({
+  limit: z.coerce.number().min(1).max(100).optional().default(50),
+  cursor: z.string().optional(),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  type: z.string().max(50).optional()
+}).passthrough()
+
+const warnCandidateSchema = z.object({
+  message: z.string().min(1).max(500)
+}).strict()
+
+const actionReasonSchema = z.object({
+  reason: z.string().max(500).optional()
+}).passthrough()
+
 module.exports = {
   attemptIdParamSchema,
   examIdParamSchema,
   recordViolationSchema,
-  postChatMessageSchema
+  postChatMessageSchema,
+  rosterQuerySchema,
+  violationsQuerySchema,
+  warnCandidateSchema,
+  actionReasonSchema
 }
+

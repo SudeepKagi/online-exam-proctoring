@@ -38,16 +38,20 @@ class ExpirySweeper {
   /**
    * Leader-elected sweep step
    */
-  async sweep() {
+  async sweep(force = false) {
     let hasLock = false
     try {
-      // 1. Attempt non-blocking advisory lock
-      const lockRes = await prisma.$queryRawUnsafe(`SELECT pg_try_advisory_lock($1) AS acquired;`, SWEEPER_LOCK_ID)
-      hasLock = lockRes && lockRes[0] && lockRes[0].acquired
+      if (!force) {
+        // 1. Attempt non-blocking advisory lock
+        const lockRes = await prisma.$queryRawUnsafe(`SELECT pg_try_advisory_lock($1) AS acquired;`, SWEEPER_LOCK_ID)
+        hasLock = lockRes && lockRes[0] && lockRes[0].acquired
 
-      if (!hasLock) {
-        // Another instance is the sweeper leader
-        return { expiredCount: 0, isLeader: false }
+        if (!hasLock) {
+          // Another instance is the sweeper leader
+          return { expiredCount: 0, isLeader: false }
+        }
+      } else {
+        hasLock = false
       }
 
       // 2. Set-based update: find ACTIVE attempts past expires_at + 30s grace

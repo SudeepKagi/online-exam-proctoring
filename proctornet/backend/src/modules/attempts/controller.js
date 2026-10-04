@@ -77,6 +77,77 @@ router.get(
 )
 
 /**
+ * GET /api/v1/attempts/:attemptId/state
+ * Authoritative state resync endpoint (Notion 13.10 §10 / Task 5)
+ * Returns current attempt status, expiry, revision, flagCount, and synchronized server clock.
+ */
+router.get(
+  '/attempts/:attemptId/state',
+  requireAuth,
+  validateParams(attemptIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+
+      const attempt = await prisma.examAttempt.findUnique({
+        where: { id: attemptId },
+        select: {
+          id: true,
+          examId: true,
+          studentId: true,
+          status: true,
+          revision: true,
+          flagCount: true,
+          startedAt: true,
+          expiresAt: true,
+          submittedAt: true,
+          suspendedAt: true,
+          totalSuspendedMs: true,
+          exam: {
+            select: {
+              isPaused: true,
+              pauseReason: true,
+              facultyId: true
+            }
+          }
+        }
+      })
+
+      if (!attempt) {
+        throw new NotFoundError(`Attempt '${attemptId}' not found`)
+      }
+
+      // Authorization guard: Student must own attempt; Staff must have permission
+      if (req.user.role === 'STUDENT' && attempt.studentId !== req.user.id) {
+        throw new ForbiddenError('Access denied: You do not own this attempt')
+      }
+      if (req.user.role === 'FACULTY' && attempt.exam.facultyId !== req.user.id) {
+        throw new ForbiddenError('Access denied: You do not own this exam')
+      }
+
+      const now = new Date()
+      return res.status(200).json({
+        id: attempt.id,
+        examId: attempt.examId,
+        studentId: attempt.studentId,
+        status: attempt.status,
+        revision: attempt.revision,
+        flagCount: attempt.flagCount,
+        startedAt: attempt.startedAt,
+        expiresAt: attempt.expiresAt,
+        submittedAt: attempt.submittedAt,
+        isPaused: attempt.exam.isPaused,
+        pauseReason: attempt.exam.pauseReason,
+        serverTime: now.toISOString(),
+        serverEpochMs: now.getTime()
+      })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
  * POST /api/v1/attempts/:attemptId/state
  * State machine transition (Invigilator / Faculty / Admin)
  */

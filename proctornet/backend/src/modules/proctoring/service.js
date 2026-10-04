@@ -3,6 +3,9 @@ const { redisClient } = require('../../infra/redis/client')
 const { CANONICAL_SEVERITY, FLAG_COOLDOWNS } = require('./constants')
 const { violationMicroBatcher } = require('./violationMicroBatcher')
 const { chatMicroBatcher } = require('./chatMicroBatcher')
+const { presenceManager } = require('../../infra/websocket/presence')
+const { rosterCoalescer } = require('../../infra/websocket/rosterCoalescer')
+const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const {
   NotFoundError,
   ForbiddenError,
@@ -185,6 +188,486 @@ class ProctoringService {
       message: m.message,
       timestamp: m.timestamp
     }))
+  }
+
+  /**
+   * Authorize staff access to an exam in SQL (Task 6 / Notion 13.10 §11)
+   */
+  async assertStaffExamAccess(user, examId) {
+    const role = (user.role || '').toUpperCase()
+    if (role === 'ADMIN') return true
+
+    if (role === 'INVIGILATOR') {
+      if (user.examId && user.examId !== examId) {
+        throw new ForbiddenError('Access denied: You are not assigned to this exam')
+      }
+      return true
+    }
+
+    if (role === 'FACULTY') {
+      const exam = await prisma.exam.findFirst({
+        where: { id: examId, facultyId: user.id },
+        select: { id: true }
+      })
+      if (!exam) {
+        throw new ForbiddenError('Access denied: You do not own this exam')
+      }
+      return true
+    }
+
+    throw new ForbiddenError('Access denied: Staff role required')
+  }
+
+  /**
+   * GET /api/v1/proctoring/exams/:examId/summary
+   * Single aggregate query + Redis online presence
+   */
+  async getExamSummary(examId, user) {
+    await this.assertStaffExamAccess(user, examId)
+
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT
+        count(*)::int AS total,
+        count(*) FILTER (WHERE status = 'ACTIVE')::int AS active,
+        count(*) FILTER (WHERE status = 'SUBMITTED')::int AS submitted,
+        count(*) FILTER (WHERE status = 'TERMINATED')::int AS terminated,
+        count(*) FILTER (WHERE status = 'READY')::int AS ready,
+        count(*) FILTER (WHERE flag_count > 0)::int AS flagged
+      FROM exam_attempts
+      WHERE exam_id = $1::uuid;
+    `, examId)
+
+    const agg = rows[0] || { total: 0, active: 0, submitted: 0, terminated: 0, ready: 0, flagged: 0 }
+    const online = await presenceManager.getOnlineCount(examId)
+
+    return {
+      examId,
+      total: agg.total,
+      active: agg.active,
+      submitted: agg.submitted,
+      terminated: agg.terminated,
+      ready: agg.ready,
+      flagged: agg.flagged,
+      online
+    }
+  }
+
+  /**
+   * GET /api/v1/proctoring/exams/:examId/roster
+   * Keyset pagination on (display_name, attempt_id)
+   * Bounded DTO with NO base64 and NO evidence arrays (< 100 KB)
+   */
+  async getExamRoster(examId, user, { limit = 50, cursor = null, status = null, q = null } = {}) {
+    await this.assertStaffExamAccess(user, examId)
+
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
+    const params = [examId]
+    let paramIdx = 2
+    let filterClause = ''
+
+    if (status) {
+      params.push(status.toUpperCase())
+      filterClause += ` AND ea.status = $${paramIdx++}::"AttemptStatus"`
+    }
+
+    if (q && q.trim()) {
+      params.push(`%${q.trim()}%`)
+      filterClause += ` AND (s.name ILIKE $${paramIdx} OR s.usn ILIKE $${paramIdx})`
+      paramIdx++
+    }
+
+    if (cursor) {
+      try {
+        const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
+        if (decoded.name !== undefined && decoded.id) {
+          params.push(decoded.name, decoded.id)
+          filterClause += ` AND (s.name, ea.id) > ($${paramIdx++}, $${paramIdx++}::uuid)`
+        }
+      } catch (err) {
+        logger.warn({ cursor, error: err.message }, 'Failed to decode roster cursor')
+      }
+    }
+
+    params.push(sanitizedLimit + 1)
+    const query = `
+      SELECT 
+        ea.id AS "attemptId",
+        ea.student_id AS "studentId",
+        s.name,
+        s.usn,
+        ea.status,
+        ea.flag_count AS "flagCount",
+        s.face_photo_key AS "facePhotoKey",
+        (SELECT count(*)::int FROM questions q WHERE q.exam_id = ea.exam_id) AS "totalQuestions",
+        (SELECT count(*)::int FROM answers a WHERE a.attempt_id = ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
+      FROM exam_attempts ea
+      JOIN students s ON s.id = ea.student_id
+      WHERE ea.exam_id = $1::uuid
+      ${filterClause}
+      ORDER BY s.name ASC, ea.id ASC
+      LIMIT $${paramIdx};
+    `
+
+    const rows = await prisma.$queryRawUnsafe(query, ...params)
+    const hasMore = rows.length > sanitizedLimit
+    const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
+
+    let nextCursor = null
+    if (hasMore && itemsToReturn.length > 0) {
+      const last = itemsToReturn[itemsToReturn.length - 1]
+      nextCursor = Buffer.from(JSON.stringify({ name: last.name, id: last.attemptId })).toString('base64')
+    }
+
+    const onlineStudentIds = new Set(await presenceManager.getOnlineStudentIds(examId))
+
+    const items = await Promise.all(
+      itemsToReturn.map(async (row) => {
+        let thumbUrl = null
+        if (row.facePhotoKey) {
+          try {
+            thumbUrl = await getPresignedReadUrl(row.facePhotoKey, 600)
+          } catch (e) {
+            // ignore presign error
+          }
+        }
+
+        return {
+          attemptId: row.attemptId,
+          studentId: row.studentId,
+          name: row.name,
+          usn: row.usn,
+          status: row.status,
+          flagCount: row.flagCount,
+          answered: row.answeredCount,
+          total: row.totalQuestions,
+          online: onlineStudentIds.has(row.studentId),
+          thumbUrl
+        }
+      })
+    )
+
+    return {
+      items,
+      nextCursor,
+      hasMore,
+      limit: sanitizedLimit
+    }
+  }
+
+  /**
+   * GET /api/v1/proctoring/attempts/:attemptId/violations
+   * Keyset pagination on (server_timestamp DESC, id DESC)
+   */
+  async getAttemptViolations(attemptId, user, { cursor = null, limit = 50 } = {}) {
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
+
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true, studentId: true }
+    })
+    if (!attempt) throw new NotFoundError('Attempt not found')
+    await this.assertStaffExamAccess(user, attempt.examId)
+
+    const params = [attemptId]
+    let paramIdx = 2
+    let cursorClause = ''
+
+    if (cursor) {
+      try {
+        const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
+        if (decoded.ts && decoded.id) {
+          params.push(new Date(decoded.ts), BigInt(decoded.id))
+          cursorClause = ` AND (server_timestamp, id) < ($${paramIdx++}::timestamptz, $${paramIdx++}::bigint)`
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    params.push(sanitizedLimit + 1)
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT id, attempt_id AS "attemptId", event_type AS "eventType", severity,
+             evidence_key AS "evidenceKey", thumb_key AS "thumbKey", evidence_status AS "evidenceStatus",
+             client_timestamp AS "clientTimestamp", server_timestamp AS "serverTimestamp", metadata
+      FROM violation_events
+      WHERE attempt_id = $1::uuid
+      ${cursorClause}
+      ORDER BY server_timestamp DESC, id DESC
+      LIMIT $${paramIdx};
+    `, ...params)
+
+    const hasMore = rows.length > sanitizedLimit
+    const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
+
+    let nextCursor = null
+    if (hasMore && itemsToReturn.length > 0) {
+      const last = itemsToReturn[itemsToReturn.length - 1]
+      nextCursor = Buffer.from(JSON.stringify({
+        ts: last.serverTimestamp.toISOString(),
+        id: last.id.toString()
+      })).toString('base64')
+    }
+
+    const items = await Promise.all(
+      itemsToReturn.map(async (v) => {
+        const evidenceUrl = v.evidenceKey ? await getPresignedReadUrl(v.evidenceKey, 600) : null
+        const thumbUrl = v.thumbKey ? await getPresignedReadUrl(v.thumbKey, 600) : null
+
+        return {
+          id: v.id.toString(),
+          attemptId: v.attemptId,
+          eventType: v.eventType,
+          severity: v.severity,
+          evidenceKey: v.evidenceKey,
+          thumbKey: v.thumbKey,
+          evidenceUrl,
+          thumbUrl,
+          evidenceStatus: v.evidenceStatus,
+          metadata: v.metadata,
+          clientTimestamp: v.clientTimestamp,
+          serverTimestamp: v.serverTimestamp
+        }
+      })
+    )
+
+    return { items, nextCursor, hasMore }
+  }
+
+  /**
+   * GET /api/v1/proctoring/exams/:examId/violations
+   * Keyset pagination on (server_timestamp DESC, id DESC) across exam
+   */
+  async getExamViolations(examId, user, { severity = null, type = null, cursor = null, limit = 50 } = {}) {
+    await this.assertStaffExamAccess(user, examId)
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
+
+    const params = [examId]
+    let paramIdx = 2
+    let filterClause = ''
+
+    if (severity) {
+      params.push(severity.toUpperCase())
+      filterClause += ` AND ve.severity = $${paramIdx++}`
+    }
+
+    if (type) {
+      params.push(type.toUpperCase())
+      filterClause += ` AND ve.event_type = $${paramIdx++}`
+    }
+
+    if (cursor) {
+      try {
+        const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
+        if (decoded.ts && decoded.id) {
+          params.push(new Date(decoded.ts), BigInt(decoded.id))
+          filterClause += ` AND (ve.server_timestamp, ve.id) < ($${paramIdx++}::timestamptz, $${paramIdx++}::bigint)`
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    params.push(sanitizedLimit + 1)
+    const query = `
+      SELECT ve.id, ve.attempt_id AS "attemptId", ve.event_type AS "eventType", ve.severity,
+             ve.evidence_key AS "evidenceKey", ve.thumb_key AS "thumbKey", ve.evidence_status AS "evidenceStatus",
+             ve.client_timestamp AS "clientTimestamp", ve.server_timestamp AS "serverTimestamp", ve.metadata,
+             s.name AS "studentName", s.usn AS "studentUsn"
+      FROM violation_events ve
+      JOIN exam_attempts ea ON ea.id = ve.attempt_id
+      JOIN students s ON s.id = ea.student_id
+      WHERE ea.exam_id = $1::uuid
+      ${filterClause}
+      ORDER BY ve.server_timestamp DESC, ve.id DESC
+      LIMIT $${paramIdx};
+    `
+
+    const rows = await prisma.$queryRawUnsafe(query, ...params)
+    const hasMore = rows.length > sanitizedLimit
+    const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
+
+    let nextCursor = null
+    if (hasMore && itemsToReturn.length > 0) {
+      const last = itemsToReturn[itemsToReturn.length - 1]
+      nextCursor = Buffer.from(JSON.stringify({
+        ts: last.serverTimestamp.toISOString(),
+        id: last.id.toString()
+      })).toString('base64')
+    }
+
+    const items = await Promise.all(
+      itemsToReturn.map(async (v) => {
+        const evidenceUrl = v.evidenceKey ? await getPresignedReadUrl(v.evidenceKey, 600) : null
+        const thumbUrl = v.thumbKey ? await getPresignedReadUrl(v.thumbKey, 600) : null
+
+        return {
+          id: v.id.toString(),
+          attemptId: v.attemptId,
+          studentName: v.studentName,
+          studentUsn: v.studentUsn,
+          eventType: v.eventType,
+          severity: v.severity,
+          evidenceKey: v.evidenceKey,
+          thumbKey: v.thumbKey,
+          evidenceUrl,
+          thumbUrl,
+          evidenceStatus: v.evidenceStatus,
+          metadata: v.metadata,
+          clientTimestamp: v.clientTimestamp,
+          serverTimestamp: v.serverTimestamp
+        }
+      })
+    )
+
+    return { items, nextCursor, hasMore }
+  }
+
+  /**
+   * Warn candidate (Task 7)
+   */
+  async warnCandidate(attemptId, user, message, io = null) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true, studentId: true }
+    })
+    if (!attempt) throw new NotFoundError('Attempt not found')
+    await this.assertStaffExamAccess(user, attempt.examId)
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        actorId: user.id,
+        actorRole: user.role.toUpperCase(),
+        action: 'PROCTOR_WARNING',
+        resourceType: 'ExamAttempt',
+        resourceId: attemptId,
+        attemptId: attemptId,
+        metadata: { message, studentId: attempt.studentId }
+      }
+    })
+
+    if (io) {
+      io.to(`attempt:${attemptId}`).emit('proctor:warning', {
+        message,
+        timestamp: new Date().toISOString()
+      })
+    }
+
+    return { success: true, message: 'Warning dispatched' }
+  }
+
+  /**
+   * Pause exam attempt (Task 7)
+   */
+  async pauseAttempt(attemptId, user, reason, io = null) {
+    const { attemptService } = require('../attempts/service')
+    const updated = await attemptService.transitionState(attemptId, 'SUSPENDED', {
+      actorId: user.id,
+      actorRole: user.role.toLowerCase(),
+      reason: reason || 'Paused by proctor'
+    })
+
+    if (io) {
+      io.to(`attempt:${attemptId}`).emit('attempt:state', {
+        status: 'SUSPENDED',
+        isPaused: true,
+        reason
+      })
+      rosterCoalescer.queueDelta(updated.examId, {
+        attemptId,
+        status: 'SUSPENDED'
+      })
+    }
+
+    return { success: true, status: 'SUSPENDED' }
+  }
+
+  /**
+   * Resume exam attempt (Task 7)
+   */
+  async resumeAttempt(attemptId, user, io = null) {
+    const { attemptService } = require('../attempts/service')
+    const updated = await attemptService.transitionState(attemptId, 'ACTIVE', {
+      actorId: user.id,
+      actorRole: user.role.toLowerCase(),
+      reason: 'Resumed by proctor'
+    })
+
+    if (io) {
+      io.to(`attempt:${attemptId}`).emit('attempt:state', {
+        status: 'ACTIVE',
+        isPaused: false
+      })
+      rosterCoalescer.queueDelta(updated.examId, {
+        attemptId,
+        status: 'ACTIVE'
+      })
+    }
+
+    return { success: true, status: 'ACTIVE' }
+  }
+
+  /**
+   * Terminate exam attempt (Task 7)
+   */
+  async terminateAttempt(attemptId, user, reason, io = null) {
+    const { attemptService } = require('../attempts/service')
+    const updated = await attemptService.transitionState(attemptId, 'TERMINATED', {
+      actorId: user.id,
+      actorRole: user.role.toLowerCase(),
+      reason: reason || 'Terminated by proctor for academic dishonesty'
+    })
+
+    if (io) {
+      io.to(`attempt:${attemptId}`).emit('attempt:state', {
+        status: 'TERMINATED',
+        reason
+      })
+      rosterCoalescer.queueDelta(updated.examId, {
+        attemptId,
+        status: 'TERMINATED'
+      })
+    }
+
+    return { success: true, status: 'TERMINATED' }
+  }
+
+  /**
+   * Acknowledge violation (Task 7)
+   */
+  async acknowledgeViolation(violationId, user) {
+    const violation = await prisma.violationEvent.findUnique({
+      where: { id: BigInt(violationId) },
+      include: { attempt: true }
+    })
+    if (!violation) throw new NotFoundError('Violation event not found')
+    await this.assertStaffExamAccess(user, violation.attempt.examId)
+
+    const updated = await prisma.violationEvent.update({
+      where: { id: BigInt(violationId) },
+      data: {
+        metadata: {
+          ...(typeof violation.metadata === 'object' && violation.metadata !== null ? violation.metadata : {}),
+          acknowledged: true,
+          acknowledgedBy: user.id,
+          acknowledgedAt: new Date().toISOString()
+        }
+      }
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        actorId: user.id,
+        actorRole: user.role.toUpperCase(),
+        action: 'VIOLATION_ACKNOWLEDGED',
+        resourceType: 'ViolationEvent',
+        resourceId: String(violationId),
+        attemptId: violation.attemptId,
+        metadata: { attemptId: violation.attemptId }
+      }
+    })
+
+    return { success: true, violationId: updated.id.toString(), acknowledged: true }
   }
 }
 
