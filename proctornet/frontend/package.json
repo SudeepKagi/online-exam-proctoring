@@ -24,6 +24,7 @@
     "face-api.js": "^0.22.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "livekit-client": "^2.22.3",
     "lucide-react": "^1.14.0",
     "next-themes": "^0.4.6",
     "radix-ui": "^1.6.7",

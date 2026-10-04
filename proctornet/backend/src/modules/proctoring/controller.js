@@ -4,6 +4,7 @@ const {
   attemptIdParamSchema,
   examIdParamSchema,
   recordViolationSchema,
+  liveKitTokenSchema,
   postChatMessageSchema,
   rosterQuerySchema,
   violationsQuerySchema,
@@ -16,6 +17,44 @@ const { requireRole } = require('../../middleware/authorization')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
 
 const router = express.Router()
+
+/**
+ * POST /api/v1/proctoring/token
+ * Issue LiveKit WebRTC Access Token (P7 Task 7.2)
+ */
+router.post(
+  '/proctoring/token',
+  requireAuth,
+  validateBody(liveKitTokenSchema),
+  async (req, res, next) => {
+    try {
+      const { mediaService } = require('../media/media.service')
+      const result = await mediaService.issueToken(req.user, req.body)
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/proctoring/livekit/webhook
+ * LiveKit Webhook Handler
+ */
+router.post(
+  '/proctoring/livekit/webhook',
+  async (req, res, next) => {
+    try {
+      const { mediaService } = require('../media/media.service')
+      const authHeader = req.headers.authorization
+      const rawBody = req.rawBody ? req.rawBody.toString('utf-8') : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
+      const result = await mediaService.handleWebhook(rawBody, authHeader)
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
 
 /**
  * POST /api/v1/attempts/:attemptId/violations
