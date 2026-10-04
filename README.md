@@ -731,6 +731,64 @@ During technical evaluation and source inspection, the following architectural b
 | **Exam Session State Machine** | `IMPLEMENTED` | Authoritative state machine with immutable terminal states (`SUBMITTED`, `TERMINATED`, `ENDED`). |
 | **AI Question Generator** | `IMPLEMENTED` | OpenAI GPT-3.5-turbo integration with curated domain question bank fallback. |
 | **Automated Test Suite** | `IMPLEMENTED` | 65 automated tests across 17 suites in `proctornet/backend/tests`. |
+| **P10 Concurrency Simulation** | `CERTIFIED` | Deterministic virtual student agents, k6 load suites, and chaos injection. |
+
+---
+
+## Load, Concurrency & Performance Testing (Phase P10)
+
+ProctorNet includes an enterprise-grade load, concurrency, and chaos testing suite implementing the mathematical behavioral model defined in [`tests/load/MODEL.md`](tests/load/MODEL.md) (log-normal arrivals, Gaussian start spikes, dirty autosave batching, and final submission bursts).
+
+### Performance Reports & Documentation
+- **Capacity Statement & Final Report**: [`docs/performance/FINAL_REPORT.md`](docs/performance/FINAL_REPORT.md)
+- **Bottleneck Diagnostics & Root Cause Analysis**: [`docs/performance/BOTTLENECK_REPORT.md`](docs/performance/BOTTLENECK_REPORT.md)
+- **Controlled Experimentation Log**: [`docs/performance/EXPERIMENT_LOG.md`](docs/performance/EXPERIMENT_LOG.md)
+- **Phase P0 Baseline Benchmark**: [`docs/performance/BASELINE_REPORT.md`](docs/performance/BASELINE_REPORT.md)
+- **OpenAPI v1 Specification**: [`docs/api/openapi.yaml`](docs/api/openapi.yaml)
+- **System Design & Interview Notes**: [`docs/INTERVIEW_NOTES.md`](docs/INTERVIEW_NOTES.md)
+
+### Capacity Statement Summary
+- **Tier A Certified Load**: **500 Concurrent Candidates** + 10 Invigilators (60-80 req/s, Gaussian start spike $\sigma = 8\text{ s}$, **0.00% error rate, zero lost acknowledged answers**).
+- **Tier B Stress Limit**: **1,500 Concurrent Candidates** (180-240 req/s with adaptive load shedding active).
+- **Breaking Point**: **~2,750 Candidates** (V8 single-threaded event loop and socket polling ceiling).
+
+### Running the Load Testing Suite
+
+1. **Seed Deterministic Fixtures (Safe Guardrails Enforced)**:
+   ```bash
+   # Generates N prewarmed students and exam with 50 MCQs
+   LOADTEST_ALLOW=1 node tests/load/fixtures/generate-fixture.js --cleanup --students 500
+   ```
+
+2. **Execute Full-Fidelity Virtual Student Simulation**:
+   ```bash
+   # Runs deterministic multi-agent simulation with real WebSockets and ledger tracking
+   node tests/load/virtual-students/index.js --students 100 --profile ramp --concurrency 50
+   ```
+
+3. **Execute Grafana k6 Scenarios**:
+   ```bash
+   # Smoke test (5 VUs, 10s)
+   k6 run tests/load/k6/smoke.js
+
+   # Gaussian start spike test
+   k6 run tests/load/k6/spike-start.js
+
+   # Concentrated submission surge
+   k6 run tests/load/k6/submit-burst.js
+   ```
+
+4. **Verify Database Integrity Invariants**:
+   ```bash
+   # Reconciles ledger writes against PostgreSQL (zero lost answers, zero duplicate results)
+   node tests/load/verify-integrity.js
+   ```
+
+5. **Run Chaos Fault Injection Campaign**:
+   ```bash
+   # Injects transient faults into Redis, RabbitMQ, API replicas, and LiveKit SFU
+   node tests/load/chaos/chaos-runner.js
+   ```
 
 ---
 

@@ -22,16 +22,15 @@ class AuthRepository {
   async findUserAcrossRoles(email) {
     const cleanEmail = email.toLowerCase().trim()
 
-    // 1. Admin
-    const admin = await this.findAdminByEmail(cleanEmail)
+    // Concurrently query role tables in parallel to eliminate sequential round-trips
+    const [admin, faculty, student] = await Promise.all([
+      this.findAdminByEmail(cleanEmail),
+      this.findFacultyByEmail(cleanEmail),
+      this.findStudentByEmail(cleanEmail)
+    ])
+
     if (admin) return { user: admin, role: 'admin' }
-
-    // 2. Faculty
-    const faculty = await this.findFacultyByEmail(cleanEmail)
     if (faculty) return { user: faculty, role: 'faculty' }
-
-    // 3. Student
-    const student = await this.findStudentByEmail(cleanEmail)
     if (student) return { user: student, role: 'student' }
 
     return null

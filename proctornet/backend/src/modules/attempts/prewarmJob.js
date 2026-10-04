@@ -62,10 +62,10 @@ class AttemptPrewarmJob {
       return { prewarmedCount: 0 }
     }
 
-    const CHUNK_SIZE = 200
+    const CHUNK_SIZE = 10
     let totalPrewarmed = 0
 
-    // 4. Process in chunks of 200
+    // 4. Process in safe chunks of 10 to avoid interactive transaction timeouts
     for (let i = 0; i < eligibleStudents.length; i += CHUNK_SIZE) {
       const chunk = eligibleStudents.slice(i, i + CHUNK_SIZE)
 
@@ -108,18 +108,28 @@ class AttemptPrewarmJob {
               ? questions.slice(0, exam.questionsPerStudent)
               : questions
 
-            for (let qIdx = 0; qIdx < selected.length; qIdx++) {
-              const q = selected[qIdx]
-              const optionOrder = q.options.map((_, idx) => idx)
-              if (exam.randomiseOptions) {
-                shuffleArray(optionOrder, rng)
+            if (selected.length > 0) {
+              const valuePlaceholders = []
+              const params = [attemptId]
+              let paramIdx = 2
+
+              for (let qIdx = 0; qIdx < selected.length; qIdx++) {
+                const q = selected[qIdx]
+                const optionOrder = q.options.map((_, idx) => idx)
+                if (exam.randomiseOptions) {
+                  shuffleArray(optionOrder, rng)
+                }
+
+                valuePlaceholders.push(`(gen_random_uuid(), $1::uuid, $${paramIdx}::uuid, $${paramIdx + 1}, $${paramIdx + 2}::smallint[])`)
+                params.push(q.id, qIdx + 1, optionOrder)
+                paramIdx += 3
               }
 
               await tx.$executeRawUnsafe(`
                 INSERT INTO attempt_questions (id, attempt_id, question_id, display_order, option_order)
-                VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3, $4::smallint[])
+                VALUES ${valuePlaceholders.join(',\n')}
                 ON CONFLICT (attempt_id, question_id) DO NOTHING;
-              `, attemptId, q.id, qIdx + 1, optionOrder)
+              `, ...params)
             }
 
             // Pre-provision VPN peer during pre-warm if VPN is enabled (P8 Task 6)

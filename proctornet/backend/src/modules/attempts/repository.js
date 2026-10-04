@@ -105,24 +105,35 @@ class AttemptRepository {
           ? shuffledQuestions.slice(0, exam.questionsPerStudent)
           : shuffledQuestions
 
-        for (let i = 0; i < selectedQuestions.length; i++) {
-          const q = selectedQuestions[i]
-          const optionOrder = (q.options || []).map((_, idx) => idx)
-          if (exam.randomiseOptions) {
-            shuffleArray(optionOrder, rng)
+        if (selectedQuestions.length > 0) {
+          const valuePlaceholders = []
+          const params = [attempt.id]
+          let paramIdx = 2
+
+          for (let i = 0; i < selectedQuestions.length; i++) {
+            const q = selectedQuestions[i]
+            const optionOrder = (q.options || []).map((_, idx) => idx)
+            if (exam.randomiseOptions) {
+              shuffleArray(optionOrder, rng)
+            }
+
+            valuePlaceholders.push(`(gen_random_uuid(), $1::uuid, $${paramIdx}::uuid, $${paramIdx + 1}, $${paramIdx + 2}::smallint[])`)
+            params.push(q.id, i + 1, optionOrder)
+            paramIdx += 3
           }
 
-          await tx.$executeRawUnsafe(`
+          const sql = `
             INSERT INTO attempt_questions (id, attempt_id, question_id, display_order, option_order)
-            VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3, $4::smallint[])
+            VALUES ${valuePlaceholders.join(',\n')}
             ON CONFLICT (attempt_id, question_id) DO NOTHING;
-          `, attempt.id, q.id, i + 1, optionOrder)
+          `
+          await tx.$executeRawUnsafe(sql, ...params)
         }
       }
 
       attempt.exam = exam
       return attempt
-    })
+    }, { maxWait: 5000, timeout: 15000 })
   }
 
   /**

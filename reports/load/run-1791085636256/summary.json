@@ -1,0 +1,166 @@
+{
+  "durationSeconds": 119.4,
+  "throughputRps": 23.4,
+  "counts": {
+    "totalRequests": 2792,
+    "totalSuccess": 2792,
+    "totalErrors": 0,
+    "intentionalConflicts": 0,
+    "networkDisconnects": 0,
+    "networkReconnects": 0,
+    "browserRefreshes": 0,
+    "answersAcked": 3115,
+    "submissionsCompleted": 45,
+    "violationsDispatched": 127
+  },
+  "quantiles": {
+    "login": {
+      "count": 50,
+      "min": 624.25,
+      "avg": 1263.52,
+      "p50": 1058.71,
+      "p90": 2061.93,
+      "p95": 2382.31,
+      "p99": 2409.56,
+      "max": 2409.56
+    },
+    "start": {
+      "count": 50,
+      "min": 2118.09,
+      "avg": 2933.46,
+      "p50": 2796.99,
+      "p90": 3615.93,
+      "p95": 4179.64,
+      "p99": 4968.59,
+      "max": 4968.59
+    },
+    "answer_save_batch": {
+      "count": 2024,
+      "min": 250.58,
+      "avg": 1613.35,
+      "p50": 1583.2,
+      "p90": 2431.23,
+      "p95": 2519.24,
+      "p99": 2724.05,
+      "max": 2937.08
+    },
+    "answer_save_single": {
+      "count": 618,
+      "min": 241.73,
+      "avg": 802.66,
+      "p50": 465.28,
+      "p90": 1654,
+      "p95": 2087.58,
+      "p99": 2429.97,
+      "max": 2799.16
+    },
+    "answer_save_all": {
+      "count": 2642,
+      "min": 241.73,
+      "avg": 1423.72,
+      "p50": 1406.06,
+      "p90": 2398.24,
+      "p95": 2503.07,
+      "p99": 2709.19,
+      "max": 2937.08
+    },
+    "submit": {
+      "count": 45,
+      "min": 1164.49,
+      "avg": 2348.8,
+      "p50": 2273.71,
+      "p90": 3433.06,
+      "p95": 3599.67,
+      "p99": 5066.34,
+      "max": 5066.34
+    },
+    "roster_page": {
+      "count": 4,
+      "min": 1369.5,
+      "avg": 2475.89,
+      "p50": 2313.02,
+      "p90": 4514.52,
+      "p95": 4514.52,
+      "p99": 4514.52,
+      "max": 4514.52
+    },
+    "ws_heartbeat_ack": {
+      "count": 115,
+      "min": 0.51,
+      "avg": 3.45,
+      "p50": 3.09,
+      "p90": 5.86,
+      "p95": 6.86,
+      "p99": 11.4,
+      "max": 11.59
+    },
+    "ws_delta_delivery": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "violation_record": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    },
+    "chat_message": {
+      "count": 0,
+      "min": 0,
+      "avg": 0,
+      "p50": 0,
+      "p90": 0,
+      "p95": 0,
+      "p99": 0,
+      "max": 0
+    }
+  },
+  "slos": {
+    "answerSaveP95": {
+      "actual": 2503.07,
+      "target": 150,
+      "passed": false
+    },
+    "answerSaveP99": {
+      "actual": 2709.19,
+      "target": 400,
+      "passed": false
+    },
+    "startSpikeP95": {
+      "actual": 4179.64,
+      "target": 800,
+      "passed": false
+    },
+    "submitP95": {
+      "actual": 3599.67,
+      "target": 500,
+      "passed": false
+    },
+    "loginP95": {
+      "actual": 2382.31,
+      "target": 400,
+      "passed": false
+    },
+    "rosterPageP95": {
+      "actual": 4514.52,
+      "target": 300,
+      "passed": false
+    },
+    "errorRate": {
+      "actual": 0,
+      "target": 0.1,
+      "passed": true
+    }
+  },
+  "allSlosPassed": false
+}

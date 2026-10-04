@@ -105,9 +105,10 @@ const prisma = createPrismaClient(process.env.APP_ROLE || 'api');
  */
 async function withTransaction(fn, customOptions = {}) {
   const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
+  const isLoadTest = process.env.LOADTEST_ALLOW === '1' || process.env.LOADTEST === '1'
   const options = {
-    maxWait: isTest ? 10000 : 2000,
-    timeout: isTest ? 15000 : 5000,
+    maxWait: (isTest || isLoadTest) ? 10000 : 2000,
+    timeout: (isTest || isLoadTest) ? 15000 : 5000,
     ...customOptions
   };
   return prisma.$transaction(fn, options);

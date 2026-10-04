@@ -112,13 +112,30 @@ class AttemptService {
 
     // Attach exam metadata if not loaded
     if (!attempt.exam) {
-      attempt.exam = await prisma.exam.findUnique({ where: { id: examId } })
+      attempt.exam = await this.getExamMetadataCached(examId)
     }
 
     return {
       isTerminal: false,
       attempt: toStudentAttemptDTO(attempt, assembledQuestions)
     }
+  }
+
+  /**
+   * Cache-aside exam metadata in Redis with singleflight coalescing and L1 in-memory LRU
+   */
+  async getExamMetadataCached(examId) {
+    const cacheKey = `pn:v1:exam:${examId}:meta`
+    return redisClient.singleflight(cacheKey, async () => {
+      const cached = await redisClient.getWithL1(cacheKey)
+      if (cached) return cached
+
+      const exam = await prisma.exam.findUnique({ where: { id: examId } })
+      if (exam) {
+        await redisClient.setWithL1(cacheKey, exam, 21600)
+      }
+      return exam
+    })
   }
 
   /**

@@ -85,11 +85,12 @@ class OutboxPublisher {
         payload: evt.payload
       }
 
-      try {
-        if (!rabbitmq.isReady) {
-          throw new Error('RabbitMQ client not connected')
-        }
+      if (!rabbitmq.isReady) {
+        // Broker offline: leave events PENDING and do not burn retry attempts
+        break
+      }
 
+      try {
         await rabbitmq.publish(routingKey, envelope, {
           messageId: eventId
         })

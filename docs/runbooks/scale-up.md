@@ -1,13 +1,17 @@
 # Horizontal & Vertical Scaling Runbook
 
 **Reference**: ADR-001 / ADR-007 / Notion Architecture Roadmap  
+**Empirical Capacity Certification**: [`docs/performance/FINAL_REPORT.md`](../performance/FINAL_REPORT.md)  
+**Root Cause Diagnostics**: [`docs/performance/BOTTLENECK_REPORT.md`](../performance/BOTTLENECK_REPORT.md)
 
 ---
 
 ## 1. Capacity Limits on Single 8-Core Node
 
-On a single compute-optimized node (`c6i.2xlarge` — 8 vCPUs / 16 GB RAM / NVMe SSD):
-- **Maximum Recommended Concurrent Candidates**: $\mathbf{2,500\text{ candidates}}$ per exam session.
+Based on the Phase P10 empirical load campaign on a single compute node (`c6i.2xlarge` — 8 vCPUs / 16 GB RAM / NVMe SSD):
+- **Tier A Certified Load**: $\mathbf{500\text{ concurrent candidates}}$ (60-80 writes/sec, Gaussian start spike $\sigma = 8\text{ s}$, zero data loss).
+- **Tier B Stress Limit**: $\mathbf{1,500\text{ concurrent candidates}}$ (180-240 writes/sec with adaptive load shedding active).
+- **Absolute Breaking Point**: $\mathbf{\sim 2,750\text{ candidates}}$ (V8 single-thread event loop & socket polling ceiling).
 - **Limiting Resource Thresholds**:
   1. *PostgreSQL CPU*: $\le 65\%$ at 2,500 concurrent autosaves every 5s with `fillfactor = 80` HOT updates.
   2. *SFU Ingress Bandwidth*: $2,500 \times 0.55\text{ Mbps} \approx \mathbf{1.375\text{ Gbps}}$ (saturating AWS baseline $1.25\text{ Gbps}$ NIC).
