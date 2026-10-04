@@ -12,8 +12,8 @@ WORKDIR /app
 # Native compilation prerequisites for bcrypt / sharp
 RUN apk add --no-cache python3 make g++
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package*.json ./
+RUN npm ci || npm install
 
 COPY prisma ./prisma
 RUN npx prisma generate
@@ -38,7 +38,7 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S proctornet -u 1001 -G nodejs
 
 # Copy pruned dependencies, generated Prisma client, and application source
-COPY package.json package-lock.json ./
+COPY package*.json ./
 COPY --from=builder --chown=proctornet:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=proctornet:nodejs /app/prisma ./prisma
 COPY --chown=proctornet:nodejs src ./src
