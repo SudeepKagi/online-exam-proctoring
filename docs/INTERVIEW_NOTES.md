@@ -450,3 +450,31 @@
   3. **Decoupled Evaluation Worker Fleet**: Autoscale the outbox consumer as independent worker pods based on RabbitMQ queue depth.
   4. **Distributed LiveKit SFU Cluster**: Deploy LiveKit media SFUs across regional availability zones with GeoDNS to distribute media ingress across multi-gigabit interfaces.
 
+---
+
+## Phase Q0: Golden-Path Real-User E2E Harness & Integration Baseline
+
+### Portfolio Interview Story: *"My AI-generated scaling plan reported 'all PASSED', but the real UI was completely broken. Here is how I built the Golden Path test that uncovered the integration gap."*
+
+**The Context**:
+Following a multi-phase scalability sprint (P0–P10) that introduced optimized set-based SQL, optimistic revision CAS, and transactional outbox patterns, automated unit and load scripts reported green. However, an end-to-end audit revealed that the React frontend was still calling deprecated legacy endpoints (`/student/exams/:id/start`, `/autosave`, `/submit`). The new high-performance modules were completely bypassed in production!
+
+**The Failure Mode Discovered**:
+1. **Broken Autosave Contract**:
+   - The UI continued calling `POST /student/exams/:id/autosave`.
+   - The legacy `studentService.js` handler referenced `global.prisma.studentExam.findUnique`, a model dropped during the P3 schema overhaul.
+   - Every candidate autosave triggered a runtime `PrismaClientValidationError` and crashed with HTTP 500, silently dropping student answers.
+2. **Missing Attempt Context in Realtime Sockets**:
+   - The React `useExamSocket` hook was invoked without passing `attemptId`.
+   - As a result, candidate connections never joined the authoritative `attempt:{id}` room, causing all invigilator pause/terminate commands and presence updates to be silently dropped.
+3. **Deadlock in Audit Logging**:
+   - The authentication handler called `auditLogger.logAudit` with legacy parameters (`userId`, `userRole`, `details`), violating the mandatory `actorRole` column constraint on `audit_logs`.
+
+**The Root Cause**:
+Siloed backend optimizations without a real-browser end-to-end test suite. Unit tests mocking the service layer gave false confidence because the contract boundary between the frontend UI and the v1 REST/WebSocket API was never exercised in a real browser.
+
+**The Fix & Preventive Measure**:
+- Built an automated Golden-Path Playwright suite (`tests/e2e/golden-path-student.spec.js`) that boots the full real stack (PostgreSQL, Redis, RabbitMQ, Express API, Vite frontend) and drives Google Chrome through the complete candidate lifecycle: Login -> Lobby -> Start Attempt -> Answer Question -> Trigger Violation -> Submit.
+- Codified §0.4: *"Real-user end-to-end is the arbiter. Unit tests alone never close a phase."*
+- Created `docs/qa/CLAIMS_LEDGER.md` requiring runnable command evidence and concrete artifacts before marking any requirement complete.
+

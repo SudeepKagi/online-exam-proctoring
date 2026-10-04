@@ -15,7 +15,7 @@
 | **DOD-09** | §6 DoD | Presigned S3 keys only; no base64 in database/API | `node tests/p5-storage-evidence.test.js` | — | PENDING | `proctornet/backend/tests/p5-storage-evidence.test.js` |
 | **DOD-10** | §6 DoD | VPN flag-gated; IPAM O(1) lease/release | `node tests/p8-vpn-wireguard.test.js` | — | PENDING | `proctornet/backend/tests/p8-vpn-wireguard.test.js` |
 | **DOD-11** | §6 DoD | Zero tech disclosure in student/faculty copy | `npm run test:tech-disclosure` | — | PENDING | `docs/qa/tech_disclosure_audit.log` |
-| **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite green | `npx playwright test tests/e2e/golden-path.spec.js` | — | PENDING | `tests/e2e/golden-path.spec.js` |
+| **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test tests/e2e/golden-path-student.spec.js` | 2026-10-04T16:54:30Z | IN_PROGRESS (BASELINE RED) | `tests/e2e/golden-path-student.spec.js` |
 | **BUG-A01** | Integration | ExamInterface rewired to v1 API | `npx playwright test tests/e2e/exam-flow.spec.js` | — | PENDING | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
 | **BUG-A02** | Integration | Plumb attemptId into useExamSocket & assert room join | `npx playwright test tests/e2e/socket-attempt.spec.js` | — | PENDING | `proctornet/frontend/src/hooks/useExamSocket.js` |
 | **BUG-A03** | Integration | Student ExamInterface publishes LiveKit stream | `npx playwright test tests/e2e/media-sfu.spec.js` | — | PENDING | `proctornet/frontend/src/lib/proctorMedia.js` |
