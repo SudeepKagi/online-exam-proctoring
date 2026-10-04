@@ -121,6 +121,48 @@ class AttemptPrewarmJob {
                 ON CONFLICT (attempt_id, question_id) DO NOTHING;
               `, attemptId, q.id, qIdx + 1, optionOrder)
             }
+
+            // Pre-provision VPN peer during pre-warm if VPN is enabled (P8 Task 6)
+            if (process.env.VPN_ENABLED === 'true' || exam.vpnRequired) {
+              try {
+                const rawIp = await tx.$queryRawUnsafe(`
+                  UPDATE vpn_ip_pool
+                  SET attempt_id = $1::uuid, leased_at = now(), released_at = null
+                  WHERE ip = (
+                    SELECT ip FROM vpn_ip_pool
+                    WHERE attempt_id IS NULL
+                    ORDER BY ip
+                    LIMIT 1
+                    FOR UPDATE SKIP LOCKED
+                  )
+                  RETURNING ip;
+                `, attemptId)
+                if (rawIp && rawIp.length > 0) {
+                  const { vpnKeyService } = require('../vpn/keyService')
+                  const { publicKey } = vpnKeyService.generateKeyPair()
+                  await tx.vpnPeer.create({
+                    data: {
+                      attemptId,
+                      studentId: student.id,
+                      ipAddress: rawIp[0].ip,
+                      publicKey,
+                      isActive: true
+                    }
+                  })
+                  await tx.$executeRawUnsafe(`
+                    INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+                    VALUES ('vpn.peer.add', $1::jsonb, 'PENDING', now());
+                  `, JSON.stringify({
+                    attemptId,
+                    studentId: student.id,
+                    publicKey,
+                    ipAddress: rawIp[0].ip
+                  }))
+                }
+              } catch (vpnErr) {
+                logger.warn({ error: vpnErr.message, attemptId }, 'Failed to pre-provision VPN during prewarm')
+              }
+            }
           }
         }
       }, { maxWait: 5000, timeout: 15000 })

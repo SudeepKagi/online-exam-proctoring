@@ -10,6 +10,7 @@ const proctoringController = require('../modules/proctoring/controller')
 const resultController = require('../modules/results/controller')
 const mediaController = require('../modules/media/controller')
 const auditController = require('../modules/audit/controller')
+const vpnController = require('../modules/vpn/controller')
 
 const router = express.Router()
 
@@ -23,5 +24,6 @@ router.use('/', proctoringController)
 router.use('/', resultController)
 router.use('/', mediaController)
 router.use('/', auditController)
+router.use('/', vpnController)
 
 module.exports = router

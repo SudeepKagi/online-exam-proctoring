@@ -82,6 +82,8 @@ enum ViolationType {
   IP_CHANGE
   VM_DETECTED
   SCREEN_SHARE_STOPPED
+  VPN_DISCONNECT
+  VPN_IP_MISMATCH
 }
 
 enum Severity {
@@ -239,6 +241,7 @@ model Exam {
   tabSwitchLimit      Int                  @default(3) @map("tab_switch_limit")
   aiReverifyInterval  Int                  @default(10) @map("ai_reverify_interval")
   mobileDetectConfig  Json?                @map("mobile_detect_config")
+  vpnRequired         Boolean              @default(false) @map("vpn_required")
 
   isPaused            Boolean              @default(false) @map("is_paused")
   pausedBy            String?              @map("paused_by") @db.Uuid
@@ -490,23 +493,25 @@ model ProcessedEvent {
 // -------------------------------------------------------------
 
 model VpnIpPool {
-  id          String    @id @default(uuid()) @db.Uuid
-  ipAddress   String    @unique @map("ip_address")
-  isAllocated Boolean   @default(false) @map("is_allocated")
-  allocatedTo String?   @map("allocated_to") @db.Uuid
-  allocatedAt DateTime? @map("allocated_at")
+  ip          String    @id @map("ip")
+  attemptId   String?   @unique @map("attempt_id") @db.Uuid
+  leasedAt    DateTime? @map("leased_at")
+  releasedAt  DateTime? @map("released_at")
 
   @@map("vpn_ip_pool")
 }
 
 model VpnPeer {
   id        String   @id @default(uuid()) @db.Uuid
+  attemptId String?  @map("attempt_id") @db.Uuid
   studentId String   @map("student_id") @db.Uuid
-  ipAddress String   @unique @map("ip_address")
+  ipAddress String   @map("ip_address")
   publicKey String   @unique @map("public_key")
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([attemptId], map: "idx_vpn_peers_attempt_id")
+  @@index([ipAddress], map: "idx_vpn_peers_ip_address")
   @@map("vpn_peers")
 }
 

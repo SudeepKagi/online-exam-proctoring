@@ -45,6 +45,12 @@ class ForbiddenError extends AppError {
   }
 }
 
+class BadRequestError extends AppError {
+  constructor(message = 'Bad request', code = 'BAD_REQUEST', details = null) {
+    super(message, 400, code, details)
+  }
+}
+
 class ValidationError extends AppError {
   constructor(message = 'Validation failed', details = null) {
     super(message, 400, 'VALIDATION_ERROR', details)
@@ -94,6 +100,7 @@ module.exports = {
   GoneError,
   UnauthorizedError,
   ForbiddenError,
+  BadRequestError,
   ValidationError,
   TooManyRequestsError,
   ServiceUnavailableError,

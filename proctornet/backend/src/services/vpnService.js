@@ -1,121 +1,59 @@
-const crypto = require('crypto')
-const { exec } = require('child_process')
+/**
+ * services/vpnService.js
+ * Legacy Adapter for WireGuard VPN (Refactored for P8 / ADR-010)
+ *
+ * Replaces all shell string-interpolation, WSL, and hardcoded Azure IP/keys
+ * with calls to the provider interface (getVpnProvider), atomic IPAM, and keyService.
+ */
+
+const { getVpnProvider } = require('../infra/vpn')
+const { vpnIpam } = require('../modules/vpn/ipam')
+const { vpnKeyService } = require('../modules/vpn/keyService')
 const { prisma: defaultDb } = require('../infra/postgres/client')
+const { logger } = require('../shared/logging')
 
 /**
  * Generate a valid WireGuard-compatible Curve25519 (x25519) keypair
- * Returns Base64-encoded private and public keys.
  */
 function generateKeyPair() {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync('x25519')
-
-  const privateKeyBase64 = privateKey
-    .export({ type: 'pkcs8', format: 'der' })
-    .subarray(-32)
-    .toString('base64')
-
-  const publicKeyBase64 = publicKey
-    .export({ type: 'spki', format: 'der' })
-    .subarray(-32)
-    .toString('base64')
-
-  return { privateKey: privateKeyBase64, publicKey: publicKeyBase64 }
+  return vpnKeyService.generateKeyPair()
 }
 
 /**
- * Synchronize peer addition directly with live WireGuard kernel interface (wg0)
+ * Format a WireGuard .conf file string
  */
-function syncWireGuardAddPeer(publicKey, allowedIp) {
-  const vpnServerIp = process.env.VPN_SERVER_IP || '20.198.83.12'
-  const sshKeyPath = process.env.VPN_SSH_KEY_PATH
-  const sshUser = process.env.VPN_SSH_USER || 'azureuser'
-  const isWin = process.platform === 'win32'
-
-  let cmd
-  if (isWin && sshKeyPath) {
-    cmd = `ssh -i "${sshKeyPath}" -o StrictHostKeyChecking=no ${sshUser}@${vpnServerIp} "sudo wg set wg0 peer '${publicKey}' allowed-ips ${allowedIp}/32"`
-  } else if (!isWin) {
-    cmd = `sudo wg set wg0 peer '${publicKey}' allowed-ips ${allowedIp}/32`
-  } else {
-    cmd = `wsl -d Ubuntu -u root wg set wg0 peer '${publicKey}' allowed-ips ${allowedIp}/32`
-  }
-
-  exec(cmd, (err, stdout, stderr) => {
-    if (err) {
-      console.warn('[vpnService] Live WireGuard sync note:', stderr || err.message)
-    } else {
-      console.log(`[vpnService] ✅ Synced peer ${publicKey.substring(0, 8)}... (${allowedIp}) to wg0 on ${vpnServerIp}`)
-    }
+function generateWireGuardClientConf({ clientPrivateKey, clientIp }) {
+  return vpnKeyService.formatClientConf({
+    clientPrivateKey,
+    clientIp
   })
 }
 
 /**
- * Synchronize peer removal directly with live WireGuard kernel interface (wg0)
+ * Synchronize peer addition via provider interface (no shell interpolation)
  */
-function syncWireGuardRemovePeer(publicKey) {
+async function syncWireGuardAddPeer(publicKey, allowedIp) {
+  try {
+    const provider = getVpnProvider()
+    await provider.addPeer({ publicKey, ip: allowedIp })
+    logger.info({ publicKey: publicKey.substring(0, 8), allowedIp }, '[vpnService] Synced peer via provider')
+  } catch (err) {
+    logger.warn({ error: err.message }, '[vpnService] Peer sync warning')
+  }
+}
+
+/**
+ * Synchronize peer removal via provider interface (no shell interpolation)
+ */
+async function syncWireGuardRemovePeer(publicKey) {
   if (!publicKey) return
-  const vpnServerIp = process.env.VPN_SERVER_IP || '20.198.83.12'
-  const sshKeyPath = process.env.VPN_SSH_KEY_PATH
-  const sshUser = process.env.VPN_SSH_USER || 'azureuser'
-  const isWin = process.platform === 'win32'
-
-  let cmd
-  if (isWin && sshKeyPath) {
-    cmd = `ssh -i "${sshKeyPath}" -o StrictHostKeyChecking=no ${sshUser}@${vpnServerIp} "sudo wg set wg0 peer '${publicKey}' remove"`
-  } else if (!isWin) {
-    cmd = `sudo wg set wg0 peer '${publicKey}' remove`
-  } else {
-    cmd = `wsl -d Ubuntu -u root wg set wg0 peer '${publicKey}' remove`
+  try {
+    const provider = getVpnProvider()
+    await provider.removePeer(publicKey)
+    logger.info({ publicKey: publicKey.substring(0, 8) }, '[vpnService] Removed peer via provider')
+  } catch (err) {
+    logger.warn({ error: err.message }, '[vpnService] Peer remove warning')
   }
-
-  exec(cmd, (err, stdout, stderr) => {
-    if (err) {
-      console.warn('[vpnService] Live WireGuard remove note:', stderr || err.message)
-    } else {
-      console.log(`[vpnService] 🛑 Removed peer ${publicKey.substring(0, 8)}... from wg0 on ${vpnServerIp}`)
-    }
-  })
-}
-
-/**
- * Allocate next available IP address in 10.0.0.0/24 subnet (10.0.0.2 -> 10.0.0.254)
- */
-async function allocatePeerIp(prismaClient) {
-  const activeStudentExams = await prismaClient.studentExam.findMany({
-    where: {
-      vpnPeerIp: { not: null },
-      OR: [
-        { vpnKeyExpiry: { gt: new Date() } },
-        { status: { in: ['PENDING', 'SECURITY_CHECK', 'READY', 'ACTIVE', 'SUSPENDED'] } }
-      ]
-    },
-    select: { vpnPeerIp: true }
-  })
-
-  const usedIps = new Set(activeStudentExams.map(se => se.vpnPeerIp))
-
-  for (let i = 2; i <= 254; i++) {
-    const candidateIp = `10.0.0.${i}`
-    if (!usedIps.has(candidateIp)) {
-      return candidateIp
-    }
-  }
-
-  throw new Error('VPN Subnet IP pool exhausted (maximum 253 concurrent active peers reached).')
-}
-
-let allocationMutex = Promise.resolve()
-
-function withAllocationLock(fn) {
-  let release
-  const waitPromise = new Promise(resolve => { release = resolve })
-  const acquiredPromise = allocationMutex.then(() => release)
-  allocationMutex = allocationMutex.then(() => waitPromise)
-  return acquiredPromise.then(releaseFn => {
-    return Promise.resolve()
-      .then(fn)
-      .finally(() => releaseFn())
-  })
 }
 
 /**
@@ -126,7 +64,7 @@ async function issueVpnConfig({ studentId, examId }) {
 
   const exam = await db.exam.findUnique({
     where: { id: examId },
-    select: { id: true, title: true, duration: true, status: true }
+    select: { id: true, title: true, duration: true, status: true, vpnRequired: true }
   })
 
   if (!exam) {
@@ -151,74 +89,49 @@ async function issueVpnConfig({ studentId, examId }) {
   const durationMins = exam.duration || 60
   const expiryTime = new Date(now.getTime() + (durationMins + bufferMins) * 60 * 1000)
 
-  // H-6: Serialize IP allocation and database persistence to prevent concurrency race
-  return withAllocationLock(async () => {
-    // Generate new keypair and allocate unique IP
-    const { privateKey, publicKey } = generateKeyPair()
-    const peerIp = await allocatePeerIp(db)
+  // Use atomic IPAM allocation
+  const peerIp = await vpnIpam.allocateIp(`exam_${examId}_student_${studentId}`)
+  const { privateKey, publicKey } = generateKeyPair()
 
-    const watermarkSeed = `WM-${student.usn}-${Date.now()}`
-    const studentExam = await db.studentExam.upsert({
-      where: {
-        examId_studentId: { examId, studentId }
-      },
-      update: {
-        vpnIp: peerIp,
-        vpnKeyExpiry: expiryTime
-      },
-      create: {
-        studentId,
-        examId,
-        watermarkSeed,
-        vpnIp: peerIp,
-        vpnKeyExpiry: expiryTime,
-        status: 'READY'
-      }
-    })
-
-    // Sync peer public key with live Azure WireGuard server
-    syncWireGuardAddPeer(publicKey, peerIp)
-
-    // Ephemeral config delivers clientPrivateKey directly to memory
-    const confContent = generateWireGuardClientConf({
-      clientPrivateKey: privateKey,
-      clientIp: peerIp
-    })
-
-    return {
-      success: true,
-      studentExamId: studentExam.id,
-      vpnPeerIp: peerIp,
+  const watermarkSeed = `WM-${student.usn}-${Date.now()}`
+  const studentExam = await db.studentExam.upsert({
+    where: {
+      examId_studentId: { examId, studentId }
+    },
+    update: {
+      vpnIp: peerIp,
+      vpnKey: publicKey,
+      vpnKeyExpiry: expiryTime
+    },
+    create: {
+      studentId,
+      examId,
+      watermarkSeed,
+      vpnIp: peerIp,
       vpnKey: publicKey,
       vpnKeyExpiry: expiryTime,
-      config: confContent,
-      serverIp: process.env.VPN_SERVER_IP || '20.198.83.12',
-      serverPort: parseInt(process.env.VPN_SERVER_PORT || '51820', 10),
+      status: 'READY'
     }
   })
-}
 
-/**
- * Format a WireGuard .conf file string
- * Uses split-tunneling (AllowedIPs = 10.0.0.0/24) so exam traffic is isolated
- * without hijacking the student's entire internet or severing cloud database connectivity.
- */
-function generateWireGuardClientConf({ clientPrivateKey, clientIp }) {
-  const serverPubKey = process.env.VPN_SERVER_PUBLIC_KEY || 'wmESrH5SWn6ES7dV/sVtKsZkifBJcjHjwXy5EBc4pVc='
-  const serverIp = process.env.VPN_SERVER_IP || '20.198.83.12'
-  const serverPort = process.env.VPN_SERVER_PORT || '51820'
-  const allowedIps = process.env.VPN_ALLOWED_IPS || '10.0.0.0/24'
+  // Sync peer via configured provider
+  await syncWireGuardAddPeer(publicKey, peerIp)
 
-  return `[Interface]
-PrivateKey = ${clientPrivateKey}
-Address = ${clientIp}/24
+  const confContent = generateWireGuardClientConf({
+    clientPrivateKey: privateKey,
+    clientIp: peerIp
+  })
 
-[Peer]
-PublicKey = ${serverPubKey}
-Endpoint = ${serverIp}:${serverPort}
-AllowedIPs = ${allowedIps}
-PersistentKeepalive = 25
-`
+  return {
+    success: true,
+    studentExamId: studentExam.id,
+    vpnPeerIp: peerIp,
+    vpnKey: publicKey,
+    vpnKeyExpiry: expiryTime,
+    config: confContent,
+    serverIp: process.env.VPN_SERVER_IP || '127.0.0.1',
+    serverPort: parseInt(process.env.VPN_SERVER_PORT || '51820', 10),
+  }
 }
 
 /**
@@ -254,7 +167,7 @@ async function getVpnStatus({ studentId, examId }) {
     vpnKey: studentExam.vpnKey,
     vpnKeyExpiry: studentExam.vpnKeyExpiry,
     isExpired,
-    serverIp: process.env.VPN_SERVER_IP || '20.198.83.12',
+    serverIp: process.env.VPN_SERVER_IP || '127.0.0.1',
     serverPort: parseInt(process.env.VPN_SERVER_PORT || '51820', 10),
   }
 }
@@ -275,8 +188,11 @@ async function revokeVpnPeer({ studentId, examId }) {
     throw err
   }
 
-  // Remove peer live from WireGuard kernel interface
-  syncWireGuardRemovePeer(studentExam.vpnKey)
+  if (studentExam.vpnKey) {
+    await syncWireGuardRemovePeer(studentExam.vpnKey)
+  }
+
+  await vpnIpam.releaseIp(`exam_${examId}_student_${studentId}`).catch(() => {})
 
   await db.studentExam.update({
     where: { id: studentExam.id },
@@ -295,5 +211,6 @@ module.exports = {
   issueVpnConfig,
   getVpnStatus,
   revokeVpnPeer,
+  syncWireGuardAddPeer,
   syncWireGuardRemovePeer
 }

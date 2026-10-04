@@ -11,6 +11,7 @@ const { requireRole } = require('../../middleware/authorization')
 const { toInvigilatorAttemptDTO } = require('./dto')
 const { prisma } = require('../../infra/postgres/client')
 const { NotFoundError, ForbiddenError } = require('../../shared/errors')
+const { vpnGuard } = require('../../middleware/vpnGuard')
 const express = require('express')
 
 const router = express.Router()
@@ -44,6 +45,7 @@ router.post(
 router.get(
   '/attempts/:attemptId',
   requireAuth,
+  vpnGuard,
   validateParams(attemptIdParamSchema),
   async (req, res, next) => {
     try {
@@ -84,6 +86,7 @@ router.get(
 router.get(
   '/attempts/:attemptId/state',
   requireAuth,
+  vpnGuard,
   validateParams(attemptIdParamSchema),
   async (req, res, next) => {
     try {

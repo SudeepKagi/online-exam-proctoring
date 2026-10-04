@@ -124,6 +124,32 @@ class AttemptStateMachine {
           status: target,
           reason
         }))
+
+        // VPN cleanup on terminal states when VPN is enabled (P8 Task 6)
+        if (process.env.VPN_ENABLED === 'true') {
+          const activePeer = await tx.vpnPeer.findFirst({
+            where: { attemptId: updated.id, isActive: true }
+          }).catch(() => null)
+
+          if (activePeer) {
+            await tx.vpnPeer.updateMany({
+              where: { attemptId: updated.id, isActive: true },
+              data: { isActive: false }
+            })
+            await tx.$executeRawUnsafe(`
+              UPDATE vpn_ip_pool SET attempt_id = null, released_at = now()
+              WHERE attempt_id = $1::uuid;
+            `, updated.id).catch(() => {})
+
+            await tx.$executeRawUnsafe(`
+              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              VALUES ('vpn.peer.remove', $1::jsonb, 'PENDING', now());
+            `, JSON.stringify({
+              attemptId: updated.id,
+              publicKey: activePeer.publicKey
+            }))
+          }
+        }
       }
     }, { maxWait: 2000, timeout: 5000 }).catch(err => {
       logger.error({ error: err.message, attemptId }, 'Failed to record audit/outbox for state transition')

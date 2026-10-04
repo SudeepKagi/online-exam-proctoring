@@ -191,6 +191,8 @@ const { evaluationWorker } = require('./modules/results/evaluationWorker')
 const { evidenceWorker } = require('./modules/media/evidenceWorker')
 const { verificationWorker } = require('./modules/media/biometricService')
 const { expirySweeper } = require('./modules/attempts/expirySweeper')
+const { vpnWorker } = require('./modules/vpn/vpnWorker')
+const { vpnReconciler } = require('./modules/vpn/vpnReconciler')
 const { violationMicroBatcher } = require('./modules/proctoring/violationMicroBatcher')
 const { chatMicroBatcher } = require('./modules/proctoring/chatMicroBatcher')
 const { redisClient } = require('./infra/redis/client')
@@ -318,6 +320,13 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     verificationWorker.start()
     expirySweeper.start()
 
+    // Start P8 WireGuard VPN background workers (flag-gated)
+    if (process.env.VPN_ENABLED === 'true') {
+      vpnWorker.start()
+      vpnReconciler.start()
+      console.log('🛡️  WireGuard VPN Worker & Reconciler started')
+    }
+
     // Test DB connection
     try {
       await prisma.$connect()
@@ -332,5 +341,5 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
 }
 
 const { presenceManager } = require('./infra/websocket/presence')
-module.exports = { app, server, io, prisma, rosterCoalescer, presenceManager }
+module.exports = { app, server, io, prisma, rosterCoalescer, presenceManager, vpnWorker, vpnReconciler }
 

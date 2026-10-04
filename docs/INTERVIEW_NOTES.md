@@ -304,5 +304,38 @@
    - Egress per invigilator: 12 visible tiles $\times 0.1\text{ Mbps} + 1\text{ focus} \times 0.5\text{ Mbps} \approx \mathbf{1.7 - 2.0\text{ Mbps}}$ (less than 8% of ingress).
    - Invigilator decode load: exactly 12 hardware-accelerated VP8 thumbnail streams, independent of $N$.
 
+---
 
+## 9. Phase P8: VPN (WireGuard) Module — Flag-Gated Zero-Trust Boundary
 
+> *"A feature flag plus an interface lets me ship the hard part now and enable it with config at deploy time."*
+
+### Interview Question: *"Why and how did you implement the WireGuard VPN module if it's disabled in production, and how did you eliminate the security and scalability flaws of the original implementation?"*
+
+**Answer:**
+
+1. **Why Ship with `VPN_ENABLED=false`?**:
+   - Deploying a kernel-level VPN network boundary in educational institutions often requires custom security approvals, campus network whitelisting, and specialized cloud infrastructure (`NET_ADMIN` capabilities, host UDP routing).
+   - If the VPN architecture is coupled directly to deployment scripts or built at the last minute, it introduces high-risk changes on release day.
+   - By engineering an interface-driven (`VpnProvider`), flag-gated implementation with `NoopProvider` as the default, the core product runs with zero overhead and zero database/outbox operations when disabled. Enabling it in staging or dedicated enterprise deployments requires strictly a configuration change (`VPN_ENABLED=true`), not engineering.
+
+2. **Killing the 6 Legacy Flaws (V-01 through V-06)**:
+   - **Flaw V-01 (Hardcoded IPs & Keys)**: Purged Azure IP (`20.198.83.12`) and default keys from the repository; all endpoint addresses, ports, and public keys are injected via environment variables.
+   - **Flaw V-02 (Subnet Exhaustion & In-Memory Mutex)**: The legacy `/24` subnet was limited to 254 addresses and relied on a JavaScript mutex that broke across multiple Node.js processes. We replaced it with an atomic $\mathcal{O}(1)$ relational IPAM (`vpn_ip_pool`) pre-seeded for `/16` (65,534 addresses) using `SELECT FOR UPDATE SKIP LOCKED`.
+   - **Flaw V-03 (Plaintext Private Keys in DB)**: Storing client private keys in database tables (`vpn_peers.private_key`) was a critical vulnerability. In P8, server-generated keypairs are ephemeral: the `.conf` is returned **once** over HTTPS and the private key is immediately discarded from memory. Only the public key is persisted. Furthermore, we enabled browser-generated WebCrypto X25519 keys so the server never even sees candidate private keys.
+   - **Flaw V-04 (Arbitrary Peer Upsert Side-Effects)**: Scoped routes to `/api/v1/attempts/:attemptId/vpn`. The handler verifies JWT student identity, checks attempt state (`READY|ACTIVE|SUSPENDED`), and validates exam VPN requirements before allocating an IP.
+   - **Flaw V-05 (Synchronous Shell/SSH in DB Transactions)**: The legacy code executed `exec("wg set ...")` inside HTTP handlers and database transactions. If WireGuard hung or WSL lagged, database locks were held indefinitely. In P8, API requests emit transactional outbox events (`vpn.peer.add`, `vpn.peer.remove`), and an asynchronous worker (`VpnWorker`) retries with exponential backoff outside the database transaction.
+   - **Flaw V-06 (Configuration Drift & Silent Disconnects)**: If an exam VM restarted or a peer silently dropped, the kernel state diverged from the database. A 60-second background reconciler (`VpnReconciler`) purges orphan peers, re-provisions missing active peers, and detects stale handshakes ($> 3 \times \text{PersistentKeepalive}$ for $> 45\text{s}$) to emit server-originated `VPN_DISCONNECT` alerts.
+
+3. **Privileged Sidecar & Least-Privilege Isolation**:
+   - The main Node.js application container runs with **zero Linux capabilities** and zero host network access.
+   - A dedicated, lightweight `vpn-agent` sidecar container runs on the host network with isolated `NET_ADMIN` privileges.
+   - The application communicates with the sidecar over a local Unix domain socket with HMAC-SHA256 request signing. When more than 20 peers change at once, the agent batches changes via `wg syncconf` rather than firing repetitive `wg set` commands.
+
+4. **VPN Is a Boundary, Not Authorization (Notion 13.2 / 13.15)**:
+   - The `vpnGuard` middleware enforces that incoming requests on exam-critical routes arrive from the candidate's leased VPN IP address.
+   - However, VPN presence is **strictly a perimeter boundary, never proof of identity or authorization**. All requests still undergo complete JWT authentication, attempt ownership checks, and attempt state machine validation.
+
+5. **Single-Node Nuance & Media Routing**:
+   - When the VPN and application terminate on the same physical host, candidates reach both the HTTP API and the LiveKit SFU via the `wg0` tunnel interface.
+   - Configured LiveKit ICE candidate interfaces (`rtc.interfaces.includes: [eth0, wg0]`) and MTU 1380 to guarantee video packets flow smoothly without fragmentation over the tunnel.

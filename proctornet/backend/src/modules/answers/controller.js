@@ -10,6 +10,7 @@ const { validateBody, validateParams } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
+const { vpnGuard } = require('../../middleware/vpnGuard')
 
 const router = express.Router()
 
@@ -21,6 +22,7 @@ router.put(
   '/attempts/:attemptId/answers/:attemptQuestionId',
   requireAuth,
   requireRole('STUDENT'),
+  vpnGuard,
   routeRateLimiters.autosave,
   validateParams(saveAnswerParamsSchema),
   validateBody(saveAnswerBodySchema),
@@ -53,6 +55,7 @@ router.put(
   '/attempts/:attemptId/answers',
   requireAuth,
   requireRole('STUDENT'),
+  vpnGuard,
   routeRateLimiters.autosave,
   validateParams(attemptIdParamSchema),
   validateBody(batchSaveAnswersBodySchema),

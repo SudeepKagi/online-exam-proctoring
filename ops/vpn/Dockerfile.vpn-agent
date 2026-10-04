@@ -1,0 +1,9 @@
+FROM node:22-alpine
+
+RUN apk add --no-cache wireguard-tools iptables iproute2
+
+WORKDIR /app
+COPY ops/vpn/vpn-agent.js ./
+
+# Runs with NET_ADMIN and host network
+CMD ["node", "vpn-agent.js"]
