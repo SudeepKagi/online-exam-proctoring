@@ -1,0 +1,547 @@
+# ==============================================================================
+# ProctorNet Production Infrastructure Stack (Phase P9 Task 1)
+# Hardened, Private Data Services, Resource Limits, Healthchecks, & Non-Root
+# ==============================================================================
+
+
+# Common logging configuration for all production containers
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+# Common base configuration for API and Worker containers
+x-api-common: &api-common
+  build:
+    context: ./proctornet/backend
+    dockerfile: Dockerfile
+  image: proctornet-backend:latest
+  restart: unless-stopped
+  init: true
+  stop_grace_period: 35s
+  env_file:
+    - .env
+  environment:
+    PORT: 5000
+    NODE_ENV: production
+    START_WORKERS: "false"
+  networks:
+    - internal
+  mem_limit: 1024m
+  cpus: "1.5"
+  read_only: true
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=64m
+    - /run:rw,noexec,nosuid,size=16m
+  logging: *default-logging
+  healthcheck:
+    test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5000/healthz || exit 1"]
+    interval: 10s
+    timeout: 3s
+    start_period: 15s
+    retries: 3
+
+services:
+  # ----------------------------------------------------------------------------
+  # Edge Reverse Proxy (Nginx) — Only Service on Edge Network
+  # ----------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: proctornet-nginx
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - edge
+      - internal
+    mem_limit: 512m
+    cpus: "1.0"
+    volumes:
+      - ./ops/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ops/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ops/nginx/ssl:/etc/nginx/ssl:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=128m
+      - /var/run:rw,noexec,nosuid,size=16m
+      - /tmp:rw,noexec,nosuid,size=32m
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    depends_on:
+      api-1:
+        condition: service_healthy
+      api-2:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # Horizontally Scaled API Pods (api-1, api-2)
+  # ----------------------------------------------------------------------------
+  api-1:
+    <<: *api-common
+    container_name: proctornet-api-1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  api-2:
+    <<: *api-common
+    container_name: proctornet-api-2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # Dedicated Asynchronous Worker Pod
+  # ----------------------------------------------------------------------------
+  worker:
+    <<: *api-common
+    container_name: proctornet-worker
+    command: ["node", "--max-old-space-size=2048", "src/worker.js"]
+    environment:
+      NODE_ENV: production
+      START_WORKERS: "true"
+    mem_limit: 1024m
+    cpus: "1.0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # Private Data Tier: PostgreSQL 16 (Appendix C Tuned, Zero Host Ports)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: proctornet-postgres
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    networks:
+      - internal
+    mem_limit: 4096m
+    cpus: "2.0"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-proctornet}
+      POSTGRES_USER: ${POSTGRES_USER:-proctornet_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-wal:/var/lib/postgresql/wal_archive
+      - ./ops/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-proctornet_admin} -d $${POSTGRES_DB:-proctornet}"]
+      interval: 10s
+      timeout: 3s
+      start_period: 15s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # Private Cache & Fast State Tier: Redis 7 (AOF Enabled, Zero Host Ports)
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: proctornet-redis
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    env_file:
+      - .env
+    command: >
+      sh -c 'redis-server --requirepass "$${REDIS_PASSWORD}"
+      --appendonly yes
+      --maxmemory 800mb
+      --maxmemory-policy volatile-lru'
+    volumes:
+      - redis-data:/data
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # Private Event Bus: RabbitMQ 3.12 (Zero Host Ports)
+  # ----------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: proctornet-rabbitmq
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    networks:
+      - internal
+    mem_limit: 1536m
+    cpus: "1.0"
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-proctornet}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics check_running && rabbitmq-diagnostics check_local_alarms"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # Media Plane: LiveKit SFU (Pinned v1.13.7, Host Network on Linux)
+  # ----------------------------------------------------------------------------
+  livekit:
+    image: livekit/livekit-server:v1.13.7
+    container_name: proctornet-livekit
+    restart: unless-stopped
+    network_mode: host
+    mem_limit: 2048m
+    cpus: "2.0"
+    command: --config /etc/livekit.yaml
+    env_file:
+      - .env
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    volumes:
+      - ./ops/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:7880/ || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # Biometric Python Auxiliary Service (Private Network, Zero Host Ports)
+  # ----------------------------------------------------------------------------
+  python-service:
+    build:
+      context: ./proctornet/python-service
+      dockerfile: Dockerfile
+    container_name: proctornet-python
+    restart: unless-stopped
+    init: true
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    env_file:
+      - .env
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:5001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # WireGuard VPN Privileged Sidecar (Profile: vpn)
+  # ----------------------------------------------------------------------------
+  vpn-agent:
+    build:
+      context: ./ops/vpn
+      dockerfile: Dockerfile.vpn-agent
+    container_name: proctornet-vpn-agent
+    profiles:
+      - vpn
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    mem_limit: 256m
+    cpus: "0.5"
+    env_file:
+      - .env
+    environment:
+      VPN_SERVER_IP: ${VPN_SERVER_IP:-127.0.0.1}
+      VPN_SERVER_PUBLIC_KEY: ${VPN_SERVER_PUBLIC_KEY}
+      VPN_AGENT_SECRET: ${VPN_AGENT_SECRET}
+    volumes:
+      - /var/run/wireguard:/var/run/wireguard
+      - /etc/wireguard:/etc/wireguard
+    logging: *default-logging
+
+  # ----------------------------------------------------------------------------
+  # CompreFace Facial Recognition Stack (Profile: enrollment)
+  # ----------------------------------------------------------------------------
+  compreface-postgres-db:
+    image: postgres:13-alpine
+    container_name: compreface-postgres-db
+    profiles:
+      - enrollment
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: compreface
+      POSTGRES_USER: compreface
+      POSTGRES_PASSWORD: ${COMPREFACE_DB_PASSWORD:-compreface_secure_password}
+    volumes:
+      - compreface-db-data:/var/lib/postgresql/data
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compreface -d compreface"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  compreface-admin:
+    image: exadel/compreface-admin:1.2.0
+    container_name: compreface-admin
+    profiles:
+      - enrollment
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/compreface
+      POSTGRES_USER: compreface
+      POSTGRES_PASSWORD: ${COMPREFACE_DB_PASSWORD:-compreface_secure_password}
+      SAVE_IMAGES_TO_DB: "true"
+    depends_on:
+      compreface-postgres-db:
+        condition: service_healthy
+    logging: *default-logging
+
+  compreface-api:
+    image: exadel/compreface-api:1.2.0
+    container_name: compreface-api
+    profiles:
+      - enrollment
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 2048m
+    cpus: "1.5"
+    env_file:
+      - .env
+    environment:
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/compreface
+      POSTGRES_USER: compreface
+      POSTGRES_PASSWORD: ${COMPREFACE_DB_PASSWORD:-compreface_secure_password}
+      SAVE_IMAGES_TO_DB: "true"
+    depends_on:
+      compreface-postgres-db:
+        condition: service_healthy
+    logging: *default-logging
+
+  compreface-core:
+    image: exadel/compreface-core:1.2.0
+    container_name: compreface-core
+    profiles:
+      - enrollment
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 2048m
+    cpus: "2.0"
+    environment:
+      compreface.service.api: http://compreface-api:8080
+    depends_on:
+      - compreface-api
+    logging: *default-logging
+
+  # ----------------------------------------------------------------------------
+  # Observability Stack (Profile: observability)
+  # ----------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.50.1
+    container_name: proctornet-prometheus
+    profiles:
+      - observability
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+    volumes:
+      - ./ops/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  grafana:
+    image: grafana/grafana:10.3.3
+    container_name: proctornet-grafana
+    profiles:
+      - observability
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 512m
+    cpus: "0.5"
+    env_file:
+      - .env
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin_change_in_prod}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./ops/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    logging: *default-logging
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: proctornet-postgres-exporter
+    profiles:
+      - observability
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 256m
+    cpus: "0.2"
+    env_file:
+      - .env
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-proctornet_admin}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-proctornet}?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *default-logging
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0-alpine
+    container_name: proctornet-redis-exporter
+    profiles:
+      - observability
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 256m
+    cpus: "0.2"
+    env_file:
+      - .env
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      redis:
+        condition: service_healthy
+    logging: *default-logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: proctornet-node-exporter
+    profiles:
+      - observability
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    mem_limit: 256m
+    cpus: "0.2"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    logging: *default-logging
+
+  # ----------------------------------------------------------------------------
+  # Local S3 Dev MinIO (Profile: dev)
+  # ----------------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2024-01-31T03-24-00Z
+    container_name: proctornet-minio
+    profiles:
+      - dev
+    restart: unless-stopped
+    networks:
+      - internal
+    mem_limit: 1024m
+    cpus: "1.0"
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-storage:/data
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:9000/minio/health/live || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+# ==============================================================================
+# Isolated Production Networks (Task 2: Boundary Isolation)
+# ==============================================================================
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
+
+# ==============================================================================
+# Persistent Volumes
+# ==============================================================================
+volumes:
+  postgres-data:
+  postgres-wal:
+  redis-data:
+  rabbitmq-data:
+  compreface-db-data:
+  prometheus-data:
+  grafana-data:
+  minio-storage:

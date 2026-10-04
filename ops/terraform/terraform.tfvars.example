@@ -1,0 +1,11 @@
+# ==============================================================================
+# ProctorNet Terraform Configuration Example
+# ==============================================================================
+
+aws_region         = "ap-south-1"
+environment        = "prod"
+instance_type      = "c6i.2xlarge"
+root_volume_size   = 100
+root_volume_iops   = 3000
+root_volume_throughput = 125
+ssh_allowed_cidrs  = ["203.0.113.50/32"]

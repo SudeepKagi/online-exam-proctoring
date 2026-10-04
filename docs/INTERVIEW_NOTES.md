@@ -339,3 +339,42 @@
 5. **Single-Node Nuance & Media Routing**:
    - When the VPN and application terminate on the same physical host, candidates reach both the HTTP API and the LiveKit SFU via the `wg0` tunnel interface.
    - Configured LiveKit ICE candidate interfaces (`rtc.interfaces.includes: [eth0, wg0]`) and MTU 1380 to guarantee video packets flow smoothly without fragmentation over the tunnel.
+
+---
+
+## 10. Phase P9: Single-Node Infrastructure & Hardening — The Operable System
+
+> *"Resource limits, healthchecks and private networks are what separate a Compose file from an operable system."*
+
+### Interview Question: *"How do you harden a single-node containerized deployment to achieve production-grade reliability, security isolation, and disaster recovery without adding the complexity of Kubernetes?"*
+
+**Answer:**
+
+1. **Why Single-Node First (ADR-001)?**:
+   - A modern 8-core compute node (`c6i.2xlarge`) with 16 GB RAM and fast NVMe storage delivers tens of thousands of requests per second when software bottlenecks are eliminated.
+   - Premature distributed orchestration (Kubernetes, distributed transactions, multi-region clustering) adds severe operational overhead, configuration fragility, and network latency before single-host capacity is understood.
+   - By engineering strict horizontal-ready boundaries on a single node (stateless API pods, Redis singleflight cache, transactional outbox on RabbitMQ, and dedicated background workers), the stack handles up to 2,500 concurrent examination sessions. Decoupling onto AWS Aurora/ECS later requires configuration, not refactoring.
+
+2. **Network Boundary & Private Data Services**:
+   - In ad-hoc Compose setups, data ports (`5432`, `6379`, `5672`) are published directly to `0.0.0.0`, exposing internal storage engines to internet port scanners.
+   - In ProctorNet, we split the topology into two networks:
+     - `edge`: Exposed to host on ports 80/443; connected exclusively to Nginx.
+     - `internal`: Configured with `internal: true`. Containers communicate across internal DNS names (`postgres`, `redis`, `rabbitmq`, `api-1`, `api-2`, `worker`).
+     - **PostgreSQL, Redis, RabbitMQ, and Python services have ZERO published host ports in production.** In local development (`docker-compose.dev.yml`), ports bind strictly to `127.0.0.1`.
+
+3. **Resource Guardrails & Least-Privilege Execution**:
+   - **Kernel & Host Protection**: Without container limits, an uncontrolled query or memory leak can crash the host kernel via Linux OOM killer. We enforced explicit `mem_limit` and `cpus` quotas on every service (PostgreSQL 4GB / 2 CPUs; API 1GB / 1.5 CPUs; Redis 1GB / 1 CPU).
+   - **Zombie Process Reaping**: Configured `init: true` (or `tini`) on container runtimes to reap orphaned child processes and handle termination signals cleanly.
+   - **Least Privilege**: Application containers run as unprivileged non-root users (`nodejs:1001`, `appuser:1002`, `nginx:nginx`) with `read_only: true` root filesystems and explicit `tmpfs` mounts for `/tmp` and `/run`.
+
+4. **Edge Ingress Hardening & Content-Security-Policy (CSP)**:
+   - **Upstream Load Balancing**: Nginx distributes traffic across `api-1` and `api-2` using `least_conn` with 32 persistent keepalive connections.
+   - **Shared-NAT Rate Limiting**: Campus examination labs share single public IP addresses. Standard per-IP rate limits trigger false-positive blocks during burst starts. We tuned Nginx limit zones (`60r/s` with burst 100) and connection limits (`50`) to provide outer DDOS protection while permitting legitimate NAT traffic.
+   - **Strict CSP**: Replaced `contentSecurityPolicy: false` with strict headers permitting `self`, the LiveKit SFU WebSocket origin (`wss:`), and S3/MinIO bucket storage, preventing cross-site scripting (XSS) and iframe embedding (`frame-ancestors: 'none'`).
+   - **Blocked Endpoints**: Nginx edge directly drops `/metrics` and internal webhook routes with HTTP 403 Forbidden.
+
+5. **Disaster Recovery: PITR & Live Restore Drills**:
+   - Backups are only as good as their tested restorations.
+   - Configured PostgreSQL continuous WAL archiving (`wal_level = replica`, `wal_compression = on`, `archive_mode = on`) to provide Point-In-Time-Recovery (RPO $\le 5\text{ minutes}$).
+   - Automated nightly `pg_dump -Fc` snapshots with off-site S3 sync and catalog validation (`pg_restore -l`).
+   - Built and automated an executable restoration verification test directly in the test suite to ensure snapshots can be restored and booted without error.

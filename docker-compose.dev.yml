@@ -1,0 +1,56 @@
+# ==============================================================================
+# ProctorNet Local Development Compose Override (Phase P9 Task 1 & 2)
+# Usage: docker compose -f docker-compose.prod.yml -f docker-compose.dev.yml up
+# ==============================================================================
+
+
+services:
+  # Expose internal API for direct local testing / debugging (localhost only)
+  api-1:
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      NODE_ENV: development
+      START_WORKERS: "true"
+    read_only: false
+    volumes:
+      - ./proctornet/backend/src:/app/src:ro
+
+  # Allow local direct connection to database (127.0.0.1 only)
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  # Allow local direct connection to Redis (127.0.0.1 only)
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # Allow local direct connection to RabbitMQ broker & UI (127.0.0.1 only)
+  rabbitmq:
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+
+  # Allow local direct connection to Python service (127.0.0.1 only)
+  python-service:
+    ports:
+      - "127.0.0.1:5001:5001"
+    read_only: false
+    volumes:
+      - ./proctornet/python-service:/app:ro
+
+  # Expose MinIO S3 API & Web Console (127.0.0.1 only)
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  # Expose Prometheus & Grafana for local monitoring validation (127.0.0.1 only)
+  prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    ports:
+      - "127.0.0.1:3001:3000"

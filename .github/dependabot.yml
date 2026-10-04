@@ -1,0 +1,34 @@
+# ==============================================================================
+# Dependabot Configuration for ProctorNet (Phase P9 Task 8)
+# Automated Security & Version Updates
+# ==============================================================================
+
+version: 2
+updates:
+  # Maintain dependencies for backend
+  - package-ecosystem: "npm"
+    directory: "/proctornet/backend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # Maintain dependencies for frontend
+  - package-ecosystem: "npm"
+    directory: "/proctornet/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  # Maintain GitHub Actions dependencies
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "ci"

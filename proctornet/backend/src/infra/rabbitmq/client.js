@@ -156,6 +156,18 @@ class RabbitMQManager {
       if (this.connection) await this.connection.close()
     } catch {}
   }
+
+  async checkHealth() {
+    if (!this.isReady || !this.channel || !this.connection) {
+      return false
+    }
+    try {
+      await this.channel.checkExchange(this.exchange)
+      return true
+    } catch {
+      return false
+    }
+  }
 }
 
 const rabbitmq = new RabbitMQManager()

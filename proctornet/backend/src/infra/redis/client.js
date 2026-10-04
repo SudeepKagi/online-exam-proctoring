@@ -206,6 +206,16 @@ class RedisManager {
       } catch {}
     }
   }
+
+  async ping() {
+    if (!this.client) return false
+    try {
+      const res = await this.client.ping()
+      return res === 'PONG'
+    } catch {
+      return false
+    }
+  }
 }
 
 const redis = new RedisManager()

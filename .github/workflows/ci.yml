@@ -1,0 +1,259 @@
+name: ProctorNet CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
+  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/frontend
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # Stage 1: Code Quality & Linting
+  # ----------------------------------------------------------------------------
+  lint:
+    name: Lint & Code Style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: proctornet/backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: proctornet/backend
+        run: npm ci
+
+      - name: Check Backend Linting
+        working-directory: proctornet/backend
+        run: npm run lint || true
+
+  # ----------------------------------------------------------------------------
+  # Stage 2: Database Migration Integrity
+  # ----------------------------------------------------------------------------
+  migrations:
+    name: Database Migration & Schema Alignment
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: proctornet/backend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: proctornet/backend
+        run: npm ci
+
+      - name: Apply Migrations
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma migrate deploy
+
+      - name: Verify No Schema Drift
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: |
+          npx prisma migrate diff \
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma \
+            --script > diff.sql
+          if grep -E "CREATE TABLE|DROP TABLE|ALTER TABLE.*DROP COLUMN|ALTER TABLE.*ADD COLUMN" diff.sql; then
+            echo "❌ Schema drift detected!"
+            cat diff.sql
+            exit 1
+          else
+            echo "✅ Schema is aligned."
+          fi
+
+  # ----------------------------------------------------------------------------
+  # Stage 3: Automated Test Suites
+  # ----------------------------------------------------------------------------
+  test:
+    name: Unit & Integration Tests
+    needs: [lint, migrations]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics check_running"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: proctornet/backend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: proctornet/backend
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma generate
+
+      - name: Run Test Suites
+        working-directory: proctornet/backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672
+          JWT_SECRET: test_ci_secret_at_least_64_bytes_super_secure_proctornet_2026
+          LIVEKIT_API_KEY: devkey
+          LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
+          VPN_ENABLED: false
+        run: |
+          npx prisma db push --skip-generate
+          node --test tests/p4-state-machine.test.js
+          node --test tests/p5-client-compression.test.js
+          node --test tests/p6-frontend-autosave.test.js
+          node --test tests/p7-media-livekit.test.js
+          node --test tests/p8-vpn-wireguard.test.js
+
+  # ----------------------------------------------------------------------------
+  # Stage 4: Container Build & Vulnerability Scan
+  # ----------------------------------------------------------------------------
+  build-and-scan:
+    name: Docker Build & Trivy Security Scan
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run npm audit (Production Dependencies)
+        working-directory: proctornet/backend
+        run: npm audit --omit=dev || true
+
+      - name: Build Backend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./proctornet/backend
+          file: ./proctornet/backend/Dockerfile
+          load: true
+          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+
+      - name: Scan Backend Container with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build Frontend Container
+        uses: docker/build-push-action@v5
+        with:
+          context: ./proctornet/frontend
+          file: ./proctornet/frontend/Dockerfile
+          load: true
+          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+  # ----------------------------------------------------------------------------
+  # Stage 5: Push Immutable Tags & Deployment Hook
+  # ----------------------------------------------------------------------------
+  deploy:
+    name: Publish Image & Deploy Trigger
+    needs: [build-and-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./proctornet/backend
+          file: ./proctornet/backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+            ${{ env.BACKEND_IMAGE }}:latest
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./proctornet/frontend
+          file: ./proctornet/frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+            ${{ env.FRONTEND_IMAGE }}:latest
+
+      - name: Output Deployment Metadata
+        run: |
+          echo "✅ Production artifacts successfully published to GHCR:"
+          echo "   Backend:  ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
+          echo "   Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
+          echo "   Deploy via: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --no-deps"

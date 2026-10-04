@@ -1,0 +1,28 @@
+# ==============================================================================
+# Gitleaks Configuration for ProctorNet (Phase P9 Task 8)
+# Enforces zero secrets in git history going forward
+# ==============================================================================
+
+title = "ProctorNet Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlists for test fixtures and false positives"
+paths = [
+  '''^\.env\.example$''',
+  '''^proctornet/backend/\.env\.example$''',
+  '''^proctornet/frontend/\.env\.example$''',
+  '''^proctornet/python-service/\.env\.example$''',
+  '''^ops/terraform/terraform\.tfvars\.example$''',
+  '''^tests/.*''',
+  '''^proctornet/backend/tests/.*''',
+  '''^docs/.*'''
+]
+
+stopwords = [
+  "replace_with_",
+  "example",
+  "dummy"
+]

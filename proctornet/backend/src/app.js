@@ -168,13 +168,55 @@ const authLimiter = rateLimit({
 app.use('/api/auth', authLimiter)
 
 
-// ── Health check ──
-app.get('/health', (req, res) => {
+// ── Liveness and Readiness Probes (P9 Task 7) ──
+app.get(['/health', '/healthz'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'ProctorNet Backend',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+  })
+})
+
+app.get('/readyz', async (req, res) => {
+  const timeoutMs = 1500
+  const withTimeout = (promise, name) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${name} health check timed out after ${timeoutMs}ms`)), timeoutMs)
+      )
+    ])
+
+  const checks = {
+    postgres: 'pending',
+    redis: 'pending',
+    rabbitmq: 'pending'
+  }
+
+  const { redisClient } = require('./infra/redis/client')
+  const { rabbitmq } = require('./infra/rabbitmq/client')
+
+  const results = await Promise.allSettled([
+    withTimeout(prisma.$queryRawUnsafe('SELECT 1'), 'PostgreSQL')
+      .then(() => { checks.postgres = 'ok' })
+      .catch((err) => { checks.postgres = `failed: ${err.message}` }),
+    withTimeout(redisClient.ping(), 'Redis')
+      .then((ok) => { checks.redis = ok ? 'ok' : 'failed: ping returned false' })
+      .catch((err) => { checks.redis = `failed: ${err.message}` }),
+    withTimeout(rabbitmq.checkHealth(), 'RabbitMQ')
+      .then((ok) => { checks.rabbitmq = ok ? 'ok' : 'failed: exchange check failed' })
+      .catch((err) => { checks.rabbitmq = `failed: ${err.message}` })
+  ])
+
+  const isReady = checks.postgres === 'ok' && checks.redis === 'ok' && checks.rabbitmq === 'ok'
+  const statusCode = isReady ? 200 : 503
+
+  return res.status(statusCode).json({
+    status: isReady ? 'ready' : 'not_ready',
+    service: 'ProctorNet Backend',
+    timestamp: new Date().toISOString(),
+    checks
   })
 })
 
@@ -313,18 +355,22 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     console.log(`🔌 Socket.io initialized`)
     console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-    // Start P4/P5 background workers
-    outboxPublisher.start()
-    evaluationWorker.start()
-    evidenceWorker.start()
-    verificationWorker.start()
-    expirySweeper.start()
+    // Start P4/P5 background workers (disabled on API pods when worker daemon is separate)
+    if (process.env.START_WORKERS !== 'false') {
+      outboxPublisher.start()
+      evaluationWorker.start()
+      evidenceWorker.start()
+      verificationWorker.start()
+      expirySweeper.start()
 
-    // Start P8 WireGuard VPN background workers (flag-gated)
-    if (process.env.VPN_ENABLED === 'true') {
-      vpnWorker.start()
-      vpnReconciler.start()
-      console.log('🛡️  WireGuard VPN Worker & Reconciler started')
+      // Start P8 WireGuard VPN background workers (flag-gated)
+      if (process.env.VPN_ENABLED === 'true') {
+        vpnWorker.start()
+        vpnReconciler.start()
+        console.log('🛡️  WireGuard VPN Worker & Reconciler started')
+      }
+    } else {
+      console.log('⚡ START_WORKERS=false: Background workers delegated to dedicated worker container')
     }
 
     // Test DB connection
