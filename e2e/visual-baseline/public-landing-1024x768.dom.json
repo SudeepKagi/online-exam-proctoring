@@ -1,0 +1,3111 @@
+{
+  "tag": "div",
+  "attributes": {
+    "id": "root"
+  },
+  "childCount": 2,
+  "children": [
+    {
+      "tag": "div",
+      "childCount": 0
+    },
+    {
+      "tag": "div",
+      "attributes": {
+        "class": "w-full min-h-screen bg-[#ffffff] text-[#18181b] font-sans antialiased selection:bg-[#2f80ed]/15 selection:text-[#2f80ed]"
+      },
+      "childCount": 8,
+      "children": [
+        {
+          "tag": "header",
+          "attributes": {
+            "class": "sticky top-0 z-50 bg-white border-b border-[#e5e7eb] shadow-[0_1px_3px_rgba(0,0,0,0.03)] w-full"
+          },
+          "childCount": 1,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full px-6 lg:px-12 h-[72px] flex items-center justify-between"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center gap-3 cursor-pointer"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "img",
+                      "attributes": {
+                        "class": "w-9 h-9 object-contain rounded-xl"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex items-center"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "attributes": {
+                                "class": "text-xl font-bold tracking-tight text-[#18181b]"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "span",
+                              "attributes": {
+                                "class": "text-xl font-bold tracking-tight text-[#2f80ed]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[10px] text-[#71717a] font-medium leading-none mt-0.5"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center gap-8 lg:gap-10"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "nav",
+                      "attributes": {
+                        "class": "hidden lg:flex items-center gap-8 text-sm font-medium"
+                      },
+                      "childCount": 5,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col items-center"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "py-1 transition-colors duration-150 text-[#18181b] font-semibold"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "h-[2px] rounded-full transition-all duration-200 w-5 bg-[#18181b]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col items-center"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "py-1 transition-colors duration-150 text-[#4b5563] hover:text-[#18181b]"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "h-[2px] rounded-full transition-all duration-200 w-0 bg-transparent"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col items-center"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "py-1 transition-colors duration-150 text-[#4b5563] hover:text-[#18181b]"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "h-[2px] rounded-full transition-all duration-200 w-0 bg-transparent"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col items-center"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "py-1 transition-colors duration-150 text-[#4b5563] hover:text-[#18181b]"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "h-[2px] rounded-full transition-all duration-200 w-0 bg-transparent"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "relative"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "button",
+                              "attributes": {
+                                "class": "flex items-center gap-1 hover:text-[#2f80ed] transition-colors py-1 text-[#4b5563] cursor-pointer"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "span",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "svg",
+                                  "attributes": {
+                                    "class": "lucide lucide-chevron-down text-[#71717a] transition-transform"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "path",
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "flex items-center gap-3"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-[0_2px_8px_rgba(47,128,237,0.25)] transition-all flex items-center gap-2 cursor-pointer"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-arrow-right"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "class": "relative w-full pt-16 pb-20 px-6 lg:px-12 bg-white"
+          },
+          "childCount": 1,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "lg:col-span-6 space-y-6 text-left"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "h1",
+                      "attributes": {
+                        "class": "text-4xl sm:text-5xl lg:text-[56px] font-bold tracking-tight text-[#18181b] leading-[1.12]"
+                      },
+                      "childCount": 4,
+                      "children": [
+                        {
+                          "tag": "br",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "text-[#2f80ed]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "br",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "text-[#1c4d8e]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-base sm:text-lg text-[#52525b] font-medium leading-relaxed"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "pt-4 flex flex-wrap items-center gap-6 text-xs text-[#52525b] border-t border-[#e5e7eb]/80"
+                      },
+                      "childCount": 5,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex items-center gap-2.5"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "w-8 h-8 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] flex items-center justify-center text-[#2f80ed]"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "svg",
+                                  "attributes": {
+                                    "class": "lucide lucide-user-check"
+                                  },
+                                  "childCount": 3,
+                                  "children": [
+                                    {
+                                      "tag": "path",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "path",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "circle",
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "font-bold text-[#18181b]"
+                                  },
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "text-[11px] text-[#71717a]"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "hidden sm:block h-8 w-px bg-[#e5e7eb]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex items-center gap-2.5"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "w-8 h-8 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] flex items-center justify-center text-[#2f80ed]"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "svg",
+                                  "attributes": {
+                                    "class": "lucide lucide-video"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "path",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "rect",
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "font-bold text-[#18181b]"
+                                  },
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "text-[11px] text-[#71717a]"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "hidden sm:block h-8 w-px bg-[#e5e7eb]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex items-center gap-2.5"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "w-8 h-8 rounded-lg bg-[#eff6ff] border border-[#d5e6fb] flex items-center justify-center text-[#2f80ed]"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "svg",
+                                  "attributes": {
+                                    "class": "lucide lucide-circle-check"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "circle",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "path",
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "font-bold text-[#18181b]"
+                                  },
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "text-[11px] text-[#71717a]"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "lg:col-span-6 flex justify-center w-full"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "relative w-full group"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "absolute -inset-1.5 bg-gradient-to-tr from-[#2f80ed]/20 via-[#38bdf8]/20 to-[#6366f1]/15 rounded-3xl blur-2xl opacity-70 group-hover:opacity-100 transition duration-500 pointer-events-none"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "relative w-full bg-white border border-[#e5e7eb] rounded-3xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(16,24,40,0.18)]"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "img",
+                              "attributes": {
+                                "class": "w-full h-auto max-h-[560px] object-cover object-center rounded-3xl transition-transform duration-500 group-hover:scale-[1.01]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "id": "specs",
+            "class": "w-full py-10 px-6 lg:px-12"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "text-center mb-6"
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inline-block"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "span",
+                      "attributes": {
+                        "class": "text-xs font-semibold uppercase tracking-wider text-[#18181b]"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full relative bg-[#0d2847] text-white rounded-3xl overflow-hidden shadow-xl"
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 py-9 px-6 text-center"
+                  },
+                  "childCount": 4,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "py-4 px-4 flex flex-col items-center justify-center"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl lg:text-4xl font-bold text-white tracking-tight"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] text-white/70 mt-1 font-medium max-w-[220px]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "py-4 px-4 flex flex-col items-center justify-center"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl lg:text-4xl font-bold text-white tracking-tight"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] text-white/70 mt-1 font-medium max-w-[220px]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "py-4 px-4 flex flex-col items-center justify-center"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl lg:text-4xl font-bold text-white tracking-tight"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] text-white/70 mt-1 font-medium max-w-[220px]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "py-4 px-4 flex flex-col items-center justify-center"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl lg:text-4xl font-bold text-white tracking-tight"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] text-white/70 mt-1 font-medium max-w-[220px]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "id": "portals",
+            "class": "w-full py-20 px-6 lg:px-12 bg-[#fafbfc] border-y border-[#e5e7eb]"
+          },
+          "childCount": 1,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "text-center mb-12"
+                  },
+                  "childCount": 4,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "inline-block"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h2",
+                      "attributes": {
+                        "class": "text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "text-[#2f80ed]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-sm text-[#52525b] mt-2 font-medium max-w-2xl mx-auto"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "mt-8 inline-flex items-center p-1.5 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl shadow-xs"
+                      },
+                      "childCount": 4,
+                      "children": [
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer bg-white text-[#2f80ed] shadow-xs"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-[#52525b] hover:text-[#18181b]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-[#52525b] hover:text-[#18181b]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer text-[#52525b] hover:text-[#18181b]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8"
+                  },
+                  "childCount": 4,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "bg-white border border-[#e2e8f0] rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f8fafc] p-7 relative border-b border-[#e2e8f0]"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center justify-between"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] border border-[#dbeafe] flex items-center justify-center shadow-xs"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-user-check"
+                                          },
+                                          "childCount": 3,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "circle",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "mt-5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "h3",
+                                      "attributes": {
+                                        "class": "text-xl font-bold text-[#18181b] tracking-tight"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "p",
+                                      "attributes": {
+                                        "class": "text-xs text-[#64748b] font-normal mt-1"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-7"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "p",
+                                  "attributes": {
+                                    "class": "text-xs text-[#52525b] leading-relaxed font-normal"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-6 pt-4"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-chevron-right"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#eff6ff] text-[#2563eb] border-t border-[#dbeafe] py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "bg-white border border-[#e2e8f0] rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f8fafc] p-7 relative border-b border-[#e2e8f0]"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center justify-between"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-12 h-12 rounded-2xl bg-[#f5f3ff] text-[#7c3aed] border border-[#ede9fe] flex items-center justify-center shadow-xs"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-file-text"
+                                          },
+                                          "childCount": 5,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "mt-5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "h3",
+                                      "attributes": {
+                                        "class": "text-xl font-bold text-[#18181b] tracking-tight"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "p",
+                                      "attributes": {
+                                        "class": "text-xs text-[#64748b] font-normal mt-1"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-7"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "p",
+                                  "attributes": {
+                                    "class": "text-xs text-[#52525b] leading-relaxed font-normal"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-6 pt-4"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-chevron-right"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#faf5ff] text-[#7c3aed] border-t border-[#ede9fe] py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "bg-white border border-[#e2e8f0] rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f8fafc] p-7 relative border-b border-[#e2e8f0]"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center justify-between"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-12 h-12 rounded-2xl bg-[#f0fdf4] text-[#16a34a] border border-[#dcfce7] flex items-center justify-center shadow-xs"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-eye"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "circle",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "mt-5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "h3",
+                                      "attributes": {
+                                        "class": "text-xl font-bold text-[#18181b] tracking-tight"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "p",
+                                      "attributes": {
+                                        "class": "text-xs text-[#64748b] font-normal mt-1"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-7"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "p",
+                                  "attributes": {
+                                    "class": "text-xs text-[#52525b] leading-relaxed font-normal"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-6 pt-4"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-chevron-right"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f0fdf4] text-[#16a34a] border-t border-[#dcfce7] py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "bg-white border border-[#e2e8f0] rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f8fafc] p-7 relative border-b border-[#e2e8f0]"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center justify-between"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-12 h-12 rounded-2xl bg-[#f1f5f9] text-[#1c4d8e] border border-[#e2e8f0] flex items-center justify-center shadow-xs"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-shield"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "mt-5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "h3",
+                                      "attributes": {
+                                        "class": "text-xl font-bold text-[#18181b] tracking-tight"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "p",
+                                      "attributes": {
+                                        "class": "text-xs text-[#64748b] font-normal mt-1"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-7"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "p",
+                                  "attributes": {
+                                    "class": "text-xs text-[#52525b] leading-relaxed font-normal"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-2.5 text-xs text-[#334155] font-medium"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-check"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "leading-snug"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "p-6 pt-4"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-chevron-right"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "bg-[#f8fafc] text-[#475569] border-t border-[#e2e8f0] py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "id": "pipeline",
+            "class": "relative w-full py-20 px-6 lg:px-12 bg-white border-b border-[#e5e7eb] overflow-hidden"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "text-center mb-16"
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inline-block"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "span",
+                      "attributes": {
+                        "class": "text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "h2",
+                  "attributes": {
+                    "class": "text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3"
+                  },
+                  "childCount": 0
+                },
+                {
+                  "tag": "p",
+                  "attributes": {
+                    "class": "text-sm text-[#52525b] mt-3 font-medium max-w-2xl mx-auto"
+                  },
+                  "childCount": 0
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8"
+              },
+              "childCount": 4,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all flex flex-col justify-between"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl font-bold text-[#2f80ed] mb-4"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "h3",
+                          "attributes": {
+                            "class": "text-base font-bold text-[#18181b] mb-2.5"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all flex flex-col justify-between"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl font-bold text-[#2f80ed] mb-4"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "h3",
+                          "attributes": {
+                            "class": "text-base font-bold text-[#18181b] mb-2.5"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all flex flex-col justify-between"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl font-bold text-[#2f80ed] mb-4"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "h3",
+                          "attributes": {
+                            "class": "text-base font-bold text-[#18181b] mb-2.5"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all flex flex-col justify-between"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "text-3xl font-bold text-[#2f80ed] mb-4"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "h3",
+                          "attributes": {
+                            "class": "text-base font-bold text-[#18181b] mb-2.5"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "id": "features",
+            "class": "relative w-full py-20 px-6 lg:px-12 bg-[#f8f9fa] border-b border-[#e5e7eb] overflow-hidden"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "text-center mb-16"
+              },
+              "childCount": 3,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inline-block"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "span",
+                      "attributes": {
+                        "class": "text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "h2",
+                  "attributes": {
+                    "class": "text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3"
+                  },
+                  "childCount": 0
+                },
+                {
+                  "tag": "p",
+                  "attributes": {
+                    "class": "text-sm text-[#52525b] mt-3 font-medium"
+                  },
+                  "childCount": 0
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+              },
+              "childCount": 6,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-user-check"
+                          },
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "circle",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-video"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "rect",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-monitor"
+                          },
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "rect",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "line",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "line",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-circle-check"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "circle",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-cpu"
+                          },
+                          "childCount": 14,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "rect",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "rect",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-3xl p-8 shadow-xs hover:border-[#2f80ed]/50 hover:shadow-lg transition-all"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2f80ed] flex items-center justify-center border border-[#d5e6fb] mb-5 shadow-xs"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-laptop"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "h3",
+                      "attributes": {
+                        "class": "text-base font-bold text-[#18181b] mb-2.5"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "section",
+          "attributes": {
+            "id": "faqs",
+            "class": "py-20 px-6 max-w-4xl mx-auto border-t border-[#e5e7eb]"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "text-center mb-16"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inline-block"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "span",
+                      "attributes": {
+                        "class": "text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "h2",
+                  "attributes": {
+                    "class": "text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3"
+                  },
+                  "childCount": 0
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "space-y-4"
+              },
+              "childCount": 5,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden shadow-xs transition-all"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "w-full text-left p-6 flex items-center justify-between font-bold text-sm text-[#18181b] cursor-pointer hover:text-[#2f80ed] transition-colors"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-chevron-down text-[#71717a] transition-transform duration-200 rotate-180 text-[#2f80ed]"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "px-6 pb-6 text-xs text-[#52525b] leading-relaxed border-t border-[#f4f4f5] pt-4 font-medium"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden shadow-xs transition-all"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "w-full text-left p-6 flex items-center justify-between font-bold text-sm text-[#18181b] cursor-pointer hover:text-[#2f80ed] transition-colors"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-chevron-down text-[#71717a] transition-transform duration-200"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden shadow-xs transition-all"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "w-full text-left p-6 flex items-center justify-between font-bold text-sm text-[#18181b] cursor-pointer hover:text-[#2f80ed] transition-colors"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-chevron-down text-[#71717a] transition-transform duration-200"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden shadow-xs transition-all"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "w-full text-left p-6 flex items-center justify-between font-bold text-sm text-[#18181b] cursor-pointer hover:text-[#2f80ed] transition-colors"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-chevron-down text-[#71717a] transition-transform duration-200"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "bg-white border border-[#e5e7eb] rounded-2xl overflow-hidden shadow-xs transition-all"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "w-full text-left p-6 flex items-center justify-between font-bold text-sm text-[#18181b] cursor-pointer hover:text-[#2f80ed] transition-colors"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-chevron-down text-[#71717a] transition-transform duration-200"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "footer",
+          "attributes": {
+            "class": "w-full bg-white border-t border-[#e7ebf1] text-[#13335f]"
+          },
+          "childCount": 3,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "bg-gradient-to-b from-[#f4f8fe] to-[#edf4fd] border-b border-[#e1ebf8] py-10 px-6 lg:px-12 w-full"
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "w-full flex flex-col md:flex-row items-center justify-between gap-6"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "h3",
+                          "attributes": {
+                            "class": "text-xl font-bold text-[#18181b]"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs text-[#52525b] mt-1.5 font-medium"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "flex gap-3.5"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-bold px-6 py-3 rounded-xl shadow-[0_1px_2px_0_rgba(37,99,235,0.05)] cursor-pointer transition"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "bg-white border border-[#9ec2f5] hover:bg-[#eff6ff] text-[#2666be] text-xs font-bold px-6 py-3 rounded-xl cursor-pointer transition"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-full px-6 lg:px-12 py-14 grid grid-cols-1 md:grid-cols-4 gap-10"
+              },
+              "childCount": 4,
+              "children": [
+                {
+                  "tag": "div",
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "flex items-center gap-2.5 mb-4"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "img",
+                          "attributes": {
+                            "class": "w-8 h-8 object-contain rounded-lg shadow-xs"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "font-bold text-base text-[#18181b]"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "h4",
+                      "attributes": {
+                        "class": "text-xs font-bold text-[#2f80ed] uppercase tracking-wider mb-4"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "ul",
+                      "attributes": {
+                        "class": "space-y-2.5 text-xs text-[#52525b]"
+                      },
+                      "childCount": 4,
+                      "children": [
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "hover:text-[#2f80ed]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "hover:text-[#2f80ed]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "hover:text-[#2f80ed]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "a",
+                              "attributes": {
+                                "class": "hover:text-[#2f80ed]"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "h4",
+                      "attributes": {
+                        "class": "text-xs font-bold text-[#2f80ed] uppercase tracking-wider mb-4"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "ul",
+                      "attributes": {
+                        "class": "space-y-2.5 text-xs text-[#52525b]"
+                      },
+                      "childCount": 4,
+                      "children": [
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "li",
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "h4",
+                      "attributes": {
+                        "class": "text-xs font-bold text-[#2f80ed] uppercase tracking-wider mb-4"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "p",
+                      "attributes": {
+                        "class": "text-xs text-[#52525b] leading-relaxed mb-3"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "span",
+                      "attributes": {
+                        "class": "inline-block text-[11px] font-bold text-[#166534] bg-[#ecfdf5] border border-[#bbf7d0] px-3 py-1 rounded-md"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "border-t border-[#e7ebf1] py-6 px-6 text-center text-xs text-[#71717a] font-medium w-full"
+              },
+              "childCount": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

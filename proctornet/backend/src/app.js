@@ -129,8 +129,7 @@ function csrfProtection(req, res, next) {
 }
 app.use('/api', csrfProtection)
 
-// ── Rate Limiting Strategy for Shared-NAT University Labs ──
-const isLoadTest = process.env.LOADTEST_ALLOW === '1'
+const isLoadTest = process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isLoadTest ? 100000 : 600,

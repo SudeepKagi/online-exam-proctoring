@@ -93,7 +93,7 @@ async function getNotifications(req, res) {
       const activeExams = await global.prisma.exam.findMany({
         where: {
           facultyId: userId,
-          status: { in: ['ACTIVE', 'PUBLISHED'] },
+          status: { in: ['LIVE', 'PUBLISHED'] },
           startTime: { lte: now },
           endTime: { gte: now }
         },

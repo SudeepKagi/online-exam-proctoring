@@ -1,7 +1,8 @@
 const { defineConfig } = require('@playwright/test')
 
 module.exports = defineConfig({
-  testDir: './tests/e2e',
+  testDir: '.',
+  testMatch: ['e2e/**/*.spec.{js,ts}', 'tests/e2e/**/*.spec.{js,ts}'],
   timeout: 60000,
   expect: {
     timeout: 10000
@@ -36,6 +37,10 @@ module.exports = defineConfig({
       command: 'node src/app.js',
       cwd: 'proctornet/backend',
       url: 'http://localhost:5000/health',
+      env: {
+        LOADTEST_ALLOW: '1',
+        DISABLE_RATE_LIMIT: '1'
+      },
       timeout: 30000,
       reuseExistingServer: true
     },

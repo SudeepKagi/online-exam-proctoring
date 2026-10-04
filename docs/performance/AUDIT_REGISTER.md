@@ -102,3 +102,20 @@ Severity Definitions:
 | **A-06** | P2 | `chat.socket.js:7, 42` | In-memory `chatRateLimitMap` cannot coordinate across multiple API processes; single synchronous database insert per chat message. | P6: Redis rate limiting and micro-batched chat inserts. |
 | **A-07** | P2 | `resultService.js:16-30` | `listResultsForExam` loads full student exams with all answers, all questions, and all evidence logs without pagination. For a 500-student exam, returns a 20+ MB JSON payload. | P4/P6: Paginated summary projection with on-demand drill-down. |
 | **A-08** | P2 | `examService.js:138-142` | `getExamById` includes all `studentExams` and nested `student` profiles whenever faculty views an exam, loading thousands of rows for large cohorts. | P4: Separate exam configuration from candidate roster; paginate roster separately. |
+
+---
+
+## 7. Deep Integration Audit (Prompt 2 — Q0.6)
+
+| ID | Sev | Codebase Location | Evidence & Verified Vulnerability | Architectural Remedy |
+|---|---|---|---|---|
+| **I-01** | S0 | `backend/src/modules/submissions/` & `pages/student/ExamInterface.jsx` | Client UI submits via legacy `/student/exams/:id/submit` rather than modern idempotent v1 submissions endpoint. | Q3: Wire frontend to `/api/v1/exams/:id/attempts/:attemptId/submit`. |
+| **I-02** | S0 | `backend/src/modules/answers/` & `ExamInterface.jsx` | Candidate autosaves bypass revision-CAS endpoint in `modules/answers` and post to legacy unversioned autosave endpoint. | Q3: Wire frontend autosave to v1 revision CAS. |
+| **I-03** | S0 | `backend/src/modules/media/` & `useExamSocket.js` | Media pipeline module exists for LiveKit token issuance, but student exam client never requests token or publishes media. | Q6: Wire LiveKit publisher and subscriber components. |
+| **I-04** | S1 | `backend/src/modules/vpn/` & `device-agent/` | Device agent has hardcoded command structures and lacks mutual TLS with the backend API. | Q5/Q7: Strict API token validation and WireGuard peer lifecycle events. |
+| **I-05** | S1 | `python-service/app.py` | Python biometric service operates synchronously on single worker without keep-alive or connection pooling. | Q4/Q7: ASGI production server (Uvicorn) with internal Docker networking. |
+| **I-06** | S0 | `frontend/src/services/api.js` | Axios interceptor expects flat string error messages (`err.response.data.error`), breaking on modern `{ error: { code, message } }` envelope. | Q2/Q3: Unified client error unwrapper. |
+| **I-07** | S0 | `backend/src/modules/auth/` & `auth.middleware.js` | Role normalisation mismatch: JWT payload uses lowercase `'faculty'` / `'student'`, while v1 route guards compare uppercase `'FACULTY'` / `'STUDENT'`. | Q5: Canonical role constants across auth middleware and guards. |
+| **I-08** | S1 | `backend/src/modules/audit/` | Audit writer commits asynchronously without transactional outbox tie-in, risking lost audit logs on process crashes. | Q4: Dual-write prevention using PostgreSQL single-statement CTEs. |
+| **I-09** | S1 | `frontend/src/pages/invigilator/` | Invigilator live grid and violation viewer still query legacy unindexed endpoints instead of keyset-paginated v1 endpoints. | Q6: Migrate invigilator views to v1 keyset roster & violations endpoints. |
+

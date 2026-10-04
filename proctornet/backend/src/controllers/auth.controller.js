@@ -387,7 +387,7 @@ async function invigilatorLogin(req, res) {
       data: {
         exam: { connect: { id: examId } },
         invId,
-        idCardPhotoUrl: idCardPhotoUrl || '',
+        idCardPhotoKey: idCardPhotoUrl || 'invigilator-id-placeholder',
         idCardOcrResult: null,
         sessionExpiry,
         ipAddress: getClientIp(req),

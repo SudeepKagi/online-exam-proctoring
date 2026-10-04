@@ -1,0 +1,29 @@
+{
+  "tag": "div",
+  "attributes": {
+    "id": "root"
+  },
+  "childCount": 2,
+  "children": [
+    {
+      "tag": "div",
+      "childCount": 0
+    },
+    {
+      "tag": "div",
+      "attributes": {
+        "class": "min-h-screen bg-background flex items-center justify-center font-mono text-xs text-muted-foreground"
+      },
+      "childCount": 1,
+      "children": [
+        {
+          "tag": "div",
+          "attributes": {
+            "class": "w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"
+          },
+          "childCount": 0
+        }
+      ]
+    }
+  ]
+}

@@ -25,7 +25,7 @@ const checkSemMatch = (allowedSems, sSem) => {
 async function listExamsForStudent(studentId) {
   const student = await global.prisma.student.findUnique({
     where: { id: studentId },
-    select: { id: true, department: true, semester: true }
+    select: { id: true, department: true, departmentCode: true, semester: true }
   })
   if (!student) {
     const error = new Error('Student not found')
@@ -33,12 +33,13 @@ async function listExamsForStudent(studentId) {
     throw error
   }
 
-  const studentDept = (student.department || '').toLowerCase().trim()
+  const deptCode = student.departmentCode || student.department?.code || (typeof student.department === 'string' ? student.department : '')
+  const studentDept = deptCode.toLowerCase().trim()
   const studentSem = student.semester
 
   const exams = await global.prisma.exam.findMany({
     where: {
-      status: { in: ['PUBLISHED', 'ACTIVE', 'SCHEDULED', 'IN_PROGRESS'] }
+      status: { in: ['PUBLISHED', 'SCHEDULED', 'LIVE'] }
     },
     select: {
       id: true,
@@ -57,7 +58,7 @@ async function listExamsForStudent(studentId) {
       createdAt: true,
       faculty: { select: { name: true } },
       _count: { select: { questions: true } },
-      studentExams: {
+      attempts: {
         where: { studentId },
         select: { status: true }
       }
@@ -70,8 +71,8 @@ async function listExamsForStudent(studentId) {
   })
 
   const filtered = exams.filter(e => {
-    // If student was specifically enrolled in studentExams table, grant access
-    const isExplicitlyEnrolled = e.studentExams && e.studentExams.length > 0
+    // If student was specifically enrolled or has attempt, grant access
+    const isExplicitlyEnrolled = e.attempts && e.attempts.length > 0
     if (isExplicitlyEnrolled) return true
 
     // 1. Department match: Student's department must be in allowedDepartments (or ALL)
@@ -101,7 +102,7 @@ async function listExamsForStudent(studentId) {
     faculty: e.faculty,
     questionCount: e._count?.questions || 0,
     _count: e._count,
-    studentStatus: e.studentExams?.[0]?.status || 'NOT_JOINED'
+    studentStatus: e.attempts?.[0]?.status || 'NOT_JOINED'
   }))
 
   return formatted

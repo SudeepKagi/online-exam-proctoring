@@ -14,9 +14,9 @@
 | **DOD-08** | §6 DoD | Zero media over socket/API; LiveKit SFU; TURN fallback | `node tests/p7-media-livekit.test.js` | — | PENDING | `proctornet/backend/tests/p7-media-livekit.test.js` |
 | **DOD-09** | §6 DoD | Presigned S3 keys only; no base64 in database/API | `node tests/p5-storage-evidence.test.js` | — | PENDING | `proctornet/backend/tests/p5-storage-evidence.test.js` |
 | **DOD-10** | §6 DoD | VPN flag-gated; IPAM O(1) lease/release | `node tests/p8-vpn-wireguard.test.js` | — | PENDING | `proctornet/backend/tests/p8-vpn-wireguard.test.js` |
-| **DOD-11** | §6 DoD | Zero tech disclosure in student/faculty copy | `npm run test:tech-disclosure` | — | PENDING | `docs/qa/tech_disclosure_audit.log` |
-| **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test tests/e2e/golden-path-student.spec.js` | 2026-10-04T16:54:30Z | IN_PROGRESS (BASELINE RED) | `tests/e2e/golden-path-student.spec.js` |
-| **BUG-A01** | Integration | ExamInterface rewired to v1 API | `npx playwright test tests/e2e/exam-flow.spec.js` | — | PENDING | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
+| **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test e2e/golden/golden-path.spec.ts` | 2026-10-04T17:51:53Z | PASSED (REPRODUCED RED AT STEP 3 AUTOSAVE AS PREDICTED) | `e2e/golden/golden-path.spec.ts` |
+| **VIS-01** | §3 Q0.5 | Visual + structural DOM baselines across 5 roles & 3 viewports | `npx playwright test e2e/capture-baselines.spec.js` | 2026-10-04T17:35:00Z | PASSED (186 baseline files) | `e2e/visual-baseline/` |
+| **DOC-01** | §3 Q0.1 | Markdown documentation link integrity check | `node scripts/ci/check-doc-links.js` | 2026-10-04T17:05:00Z | PASSED (0 broken links) | `scripts/ci/check-doc-links.js` |
 | **BUG-A02** | Integration | Plumb attemptId into useExamSocket & assert room join | `npx playwright test tests/e2e/socket-attempt.spec.js` | — | PENDING | `proctornet/frontend/src/hooks/useExamSocket.js` |
 | **BUG-A03** | Integration | Student ExamInterface publishes LiveKit stream | `npx playwright test tests/e2e/media-sfu.spec.js` | — | PENDING | `proctornet/frontend/src/lib/proctorMedia.js` |
 | **BUG-A04** | Integration | Error envelope unification frontend ↔ backend | `node tests/error_envelope.test.js` | — | PENDING | `proctornet/backend/src/shared/errors.js` |

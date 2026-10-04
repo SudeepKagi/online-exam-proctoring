@@ -62,16 +62,19 @@ Running 1 test using 1 worker
 
 | Requirement ID | Description | Command | Timestamp | Result | Artifact Path |
 |---|---|---|---|---|---|
-| **DOD-12** | Golden-Path Playwright E2E Suite harness setup & red test verification | `npx playwright test tests/e2e/golden-path-student.spec.js` | 2026-10-04T16:54:30Z | BASELINE_ESTABLISHED (RED) | `tests/e2e/golden-path-student.spec.js` |
-| **BUG-A01** | Red test reproduction: autosave bypasses v1 and crashes on legacy endpoint | `npx playwright test tests/e2e/golden-path-student.spec.js` | 2026-10-04T16:54:30Z | REPRODUCED | `tests/e2e/golden-path-student.spec.js` |
-| **BUG-B01** | Red test reproduction: studentService.js calls deleted model studentExam | `npx playwright test tests/e2e/golden-path-student.spec.js` | 2026-10-04T16:54:30Z | REPRODUCED | `proctornet/backend/src/services/studentService.js` |
+| **DOD-12** | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test e2e/golden/golden-path.spec.ts` | 2026-10-04T17:51:53Z | PASSED (REPRODUCED RED AT STEP 3 AUTOSAVE AS PREDICTED) | `e2e/golden/golden-path.spec.ts` |
+| **VIS-01** | Visual + structural DOM baselines across 5 roles & 3 viewports | `npx playwright test e2e/capture-baselines.spec.js` | 2026-10-04T17:35:00Z | PASSED (186 baseline files) | `e2e/visual-baseline/` |
+| **DOC-01** | Markdown documentation link integrity check | `node scripts/ci/check-doc-links.js` | 2026-10-04T17:05:00Z | PASSED (0 broken links) | `scripts/ci/check-doc-links.js` |
+| **RED-01** | Known-Red baseline suite for §2 S0/S1 defects | `npx playwright test e2e/known-red/s0-s1-defects.spec.ts` | 2026-10-05T01:30:50Z | COMMITTED (@known-red) | `e2e/known-red/s0-s1-defects.spec.ts` |
+| **AUD-01** | Extended deep integration audit | Inspection across services/modules/components | 2026-10-05T01:31:14Z | COMPLETED | `docs/performance/AUDIT_REGISTER.md` |
 
 ---
 
-## 5. Next Phase Handoff (Phase Q1)
+## 5. Next Phase Handoff (Phase Q1 — Schema & Migration Truth)
 
-With the golden-path Playwright harness in place to act as runtime arbiter, Phase Q1 will focus on:
-1. Converting all database timestamps to `@db.Timestamptz(3)` with strict UTC session enforcement (E-02).
-2. Generating and locking clean database migration history (`0003_timestamptz_utc_invariants`) with zero migration drift (E-01).
-3. Enforcing attempt activation SQL guards and dropping redundant `TIMED_OUT` enum (E-03, E-09).
-4. Adding missing composite index on `answers(attempt_id)` (E-04).
+With the golden-path Playwright harness and visual/structural baselines locked in, Phase Q1 focuses on:
+1. Converting all database timestamps to `@db.Timestamptz(3)` with strict UTC session enforcement (E-02) and testing under `PGTZ=Asia/Kolkata` and `PGTZ=America/Los_Angeles`.
+2. Rebuilding migrations from current `schema.prisma` (E-01) with enums (`AttemptStatus` without `TIMED_OUT`, with `EXPIRED`), `violation_events.thumb_key`, `exams.vpn_required`, VPN tables, `DEFAULT gen_random_uuid()` on every uuid PK, `answers(attempt_id)` index, composite scoped `idempotency_keys` PK + `request_hash`, `CHECK`/FK tying `answers.attempt_id` to its `attempt_question`.
+3. CI gates: apply migrations to an empty DB; `prisma migrate diff --from-migrations … --to-schema-datamodel … --exit-code`; seed admin; run schema-constraint tests.
+4. Exam lifecycle scheduler (A-07): worker job (advisory-lock leader) moving exams `PUBLISHED→LIVE→ENDED→EVALUATED`.
+5. Prewarm trigger: on publish and on roster change enqueue prewarm; also at `start_time - ATTEMPT_PREWARM_MINUTES` with 500 `READY` attempts test.

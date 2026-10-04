@@ -24,7 +24,7 @@ async function getExamInfo(req, res) {
         examId = req.user.examId
       } else {
         const activeExam = await global.prisma.exam.findFirst({
-          where: { status: { in: ['ACTIVE', 'SCHEDULED', 'IN_PROGRESS', 'PUBLISHED'] } },
+          where: { status: { in: ['PUBLISHED', 'SCHEDULED', 'LIVE'] } },
           orderBy: [{ createdAt: 'desc' }, { startTime: 'desc' }]
         })
         if (activeExam) {

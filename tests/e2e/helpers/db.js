@@ -9,7 +9,24 @@ async function setupE2EFixture() {
   const commonPassword = 'Password123!'
   const hashedPassword = await bcrypt.hash(commonPassword, 10)
 
-  // 1. Ensure Department exists
+  // 1. Ensure Admin exists
+  const adminEmail = process.env.ADMIN_EMAIL || 'admin@proctornet.com'
+  const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123'
+  const hashedAdminPassword = await bcrypt.hash(adminPassword, 10)
+
+  const admin = await prisma.admin.upsert({
+    where: { email: adminEmail },
+    update: {
+      password: hashedAdminPassword
+    },
+    create: {
+      name: 'ProctorNet Admin',
+      email: adminEmail,
+      password: hashedAdminPassword
+    }
+  })
+
+  // 2. Ensure Department exists
   await prisma.department.upsert({
     where: { code: 'CSE' },
     update: {},
@@ -142,7 +159,7 @@ async function setupE2EFixture() {
     examId = exam.id
   }
 
-  return { student, faculty, examId, commonPassword }
+  return { admin, adminEmail, adminPassword, student, faculty, examId, commonPassword }
 }
 
 module.exports = {
