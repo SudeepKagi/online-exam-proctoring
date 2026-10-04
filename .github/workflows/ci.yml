@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: ghcr.io/${{ github.repository }}/backend
@@ -163,7 +167,7 @@ jobs:
           LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
           VPN_ENABLED: false
         run: |
-          npx prisma db push --skip-generate
+          npx prisma migrate deploy
           node --test tests/p4-state-machine.test.js
           node --test tests/p5-client-compression.test.js
           node --test tests/p6-frontend-autosave.test.js

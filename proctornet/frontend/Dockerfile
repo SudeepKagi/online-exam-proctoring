@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ==============================================================================
 # ProctorNet Frontend — Multi-Stage Production Dockerfile (P9 Task 7)
 # Stage 1: Build static SPA assets with Vite + brotli/gzip pre-compression

@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ==============================================================================
 # ProctorNet Backend — Production Multi-Stage Dockerfile (P9 Task 7)
 # Node 22 LTS, non-root user, tini init, Prisma generated, read-only root friendly
