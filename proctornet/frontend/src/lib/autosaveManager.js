@@ -15,7 +15,8 @@ import { serverClock } from './serverClock'
 export class AutosaveManager {
   constructor(options = {}) {
     this.attemptId = options.attemptId || null
-    this.apiBaseUrl = options.apiBaseUrl || (import.meta.env.VITE_API_BASE_URL || '/api/v1')
+    const rawApi = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
+    this.apiBaseUrl = options.apiBaseUrl || (rawApi.endsWith('/api/v1') ? rawApi : `${rawApi.replace(/\/$/, '')}/api/v1`)
     this.currentRevision = options.initialRevision || 1
     this.dirtyMap = new Map() // attemptQuestionId -> { attemptQuestionId, selectedOptionId, revision, clientTimestamp }
     this.isFlushing = false
@@ -35,14 +36,14 @@ export class AutosaveManager {
   }
 
   _setupAutoFlush() {
-    // 1. Periodic 5-second background flush (Task 8)
+    // 1. Periodic 5-second background flush (Task 8 / Q3.2)
     this.flushTimer = setInterval(() => {
       if (this.dirtyMap.size > 0 && !this.isFlushing && !this.isSubmitting) {
         this.flush().catch(() => {})
       }
     }, 5000)
 
-    // 2. Immediate flush on tab blur or visibility change (Task 8)
+    // 2. Immediate flush on tab blur, visibility change, or pagehide (Q3.2)
     if (typeof window !== 'undefined') {
       window.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden' && this.dirtyMap.size > 0) {
@@ -51,6 +52,12 @@ export class AutosaveManager {
       })
 
       window.addEventListener('blur', () => {
+        if (this.dirtyMap.size > 0) {
+          this.flush().catch(() => {})
+        }
+      })
+
+      window.addEventListener('pagehide', () => {
         if (this.dirtyMap.size > 0) {
           this.flush().catch(() => {})
         }
@@ -99,8 +106,8 @@ export class AutosaveManager {
     this.isFlushing = true
     this._notifyStateChange()
 
-    // Take snapshot of dirty items
-    const snapshot = Array.from(this.dirtyMap.values())
+    // Take snapshot of dirty items (batch <= 100 per Q3.2)
+    const snapshot = Array.from(this.dirtyMap.values()).slice(0, 100)
     const payload = {
       answers: snapshot.map(item => ({
         attemptQuestionId: item.attemptQuestionId,
@@ -208,11 +215,11 @@ export class AutosaveManager {
       // 1. Flush any pending dirty answers
       await this.flushBeforeSubmit()
 
-      // 2. Stable Idempotency-Key reused across retries (Task 8)
+      // 2. Stable Idempotency-Key reused across retries (Task 8 / Q3.2)
       const idempotencyKey = this.getStableIdempotencyKey()
 
       const response = await axios.post(
-        `${this.apiBaseUrl}/attempts/${this.attemptId}/submit`,
+        `${this.apiBaseUrl}/attempts/${this.attemptId}/submission`,
         {},
         {
           headers: {
@@ -234,6 +241,35 @@ export class AutosaveManager {
       this._notifyStateChange()
       throw err
     }
+  }
+
+  /**
+   * Poll GET /attempts/:attemptId/result (respecting release policy per Q3.2)
+   */
+  async pollResult(maxAttempts = 10, intervalMs = 2000) {
+    if (!this.attemptId) return null
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const res = await axios.get(
+          `${this.apiBaseUrl}/attempts/${this.attemptId}/result`,
+          { withCredentials: true, timeout: 5000 }
+        )
+        if (res.data) {
+          return res.data
+        }
+      } catch (err) {
+        const status = err.response?.status
+        if (status === 403) {
+          // Result held by policy (not released yet)
+          return { released: false, status: 'HELD_BY_POLICY' }
+        }
+        if (status !== 404 && status !== 202) {
+          throw err
+        }
+      }
+      await new Promise(r => setTimeout(r, intervalMs))
+    }
+    return null
   }
 
   subscribe(callback) {

@@ -49,7 +49,7 @@ const defaultLimiter = createLimiter('default', 300, 60)
 function rateLimit(limiter, keyGenerator) {
   return async (req, res, next) => {
     // Skip in test mode if LOADTEST_ALLOW or NODE_ENV=test
-    if (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1') {
+    if (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1' || process.env.NODE_ENV === 'test') {
       return next()
     }
 

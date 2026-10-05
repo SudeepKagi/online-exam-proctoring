@@ -450,3 +450,184 @@
   3. **Decoupled Evaluation Worker Fleet**: Autoscale the outbox consumer as independent worker pods based on RabbitMQ queue depth.
   4. **Distributed LiveKit SFU Cluster**: Deploy LiveKit media SFUs across regional availability zones with GeoDNS to distribute media ingress across multi-gigabit interfaces.
 
+---
+
+## Phase Q0: Golden-Path Real-User E2E Harness & Integration Baseline
+
+### Portfolio Interview Story: *"My AI-generated scaling plan reported 'all PASSED', but the real UI was completely broken. Here is how I built the Golden Path test that uncovered the integration gap."*
+
+**The Context**:
+Following a multi-phase scalability sprint (P0–P10) that introduced optimized set-based SQL, optimistic revision CAS, and transactional outbox patterns, automated unit and load scripts reported green. However, an end-to-end audit revealed that the React frontend was still calling deprecated legacy endpoints (`/student/exams/:id/start`, `/autosave`, `/submit`). The new high-performance modules were completely bypassed in production!
+
+**The Failure Mode Discovered**:
+1. **Broken Autosave Contract**:
+   - The UI continued calling `POST /student/exams/:id/autosave`.
+   - The legacy `studentService.js` handler referenced `global.prisma.studentExam.findUnique`, a model dropped during the P3 schema overhaul.
+   - Every candidate autosave triggered a runtime `PrismaClientValidationError` and crashed with HTTP 500, silently dropping student answers.
+2. **Missing Attempt Context in Realtime Sockets**:
+   - The React `useExamSocket` hook was invoked without passing `attemptId`.
+   - As a result, candidate connections never joined the authoritative `attempt:{id}` room, causing all invigilator pause/terminate commands and presence updates to be silently dropped.
+3. **Deadlock in Audit Logging**:
+   - The authentication handler called `auditLogger.logAudit` with legacy parameters (`userId`, `userRole`, `details`), violating the mandatory `actorRole` column constraint on `audit_logs`.
+
+**The Root Cause**:
+Siloed backend optimizations without a real-browser end-to-end test suite. Unit tests mocking the service layer gave false confidence because the contract boundary between the frontend UI and the v1 REST/WebSocket API was never exercised in a real browser.
+
+**The Fix & Preventive Measure**:
+- Built an automated Golden-Path Playwright suite (`tests/e2e/golden-path-student.spec.js`) that boots the full real stack (PostgreSQL, Redis, RabbitMQ, Express API, Vite frontend) and drives Google Chrome through the complete candidate lifecycle: Login -> Lobby -> Start Attempt -> Answer Question -> Trigger Violation -> Submit.
+- Codified §0.4: *"Real-user end-to-end is the arbiter. Unit tests alone never close a phase."*
+- Created `docs/qa/CLAIMS_LEDGER.md` requiring runnable command evidence and concrete artifacts before marking any requirement complete.
+
+---
+
+## Phase Q1: Schema & Migration Truth, Timezone Invariance, and Exam Lifecycle
+
+### Portfolio Interview Story: *"The silent time bomb: How unmigrated PostgreSQL types and client-controlled exam states can compromise an entire university examination system."*
+
+**The Context**:
+While the codebase contained an advanced `schema.prisma` with rich domain constraints, our audit revealed that the actual database migration baseline had drifted severely from the Prisma datamodel (E-01). Worse, timestamp columns were defined as `timestamp without time zone` (E-02). Furthermore, exam status transitions were completely client-writable and had no background automation, leaving published exams unable to go live or transition to evaluation automatically (A-07).
+
+**The Failure Modes Discovered**:
+1. **Timezone Deadline Shifts (E-02)**:
+   - When timestamp columns were `timestamp without time zone`, raw SQL queries comparing `expires_at < now()` or `now() BETWEEN start_time AND end_time` evaluated against the database session's timezone.
+   - We proved this with our empirical `timezone-matrix.test.js`: on unmigrated tables, setting the session to `America/Los_Angeles` shifted relative deadlines by 7 to 8 hours compared to `Asia/Kolkata` (+5.5h) and `UTC`, causing student attempts to expire prematurely or extend hours past the exam window!
+2. **Schema and Migration Drift (E-01)**:
+   - `prisma/migrations/0001_init/migration.sql` was missing the `EXPIRED` status enum, WireGuard VPN tables, `violation_events.thumb_key`, and foreign key constraints tying `answers.attempt_id` to `attempt_questions`.
+   - Any clean deployment (`prisma migrate deploy`) failed or produced a schema incompatible with the running backend services.
+3. **Unmanaged Exam Lifecycle & Client Status Tampering (A-07)**:
+   - Exam status was exposed as a writable field on `PATCH /api/v1/exams/:id` and legacy `updateExamById`, allowing any faculty or client to directly overwrite exam status to `LIVE`, `ENDED`, or back to `DRAFT`.
+   - Without an automated lifecycle engine, published exams never transitioned to `LIVE` at `start_time` or `ENDED` at `end_time`.
+
+**The Root Cause**:
+1. Omitting explicit `@db.Timestamptz(3)` declarations on DateTime fields in Prisma, causing PostgreSQL to infer naive `TIMESTAMP` types whose epoch representation changes with the client connection's `TimeZone` setting.
+2. Lack of an automated CI gate comparing the database migration ledger against the active Prisma datamodel (`prisma migrate diff --exit-code`).
+3. Absence of a leader-elected, advisory-locked background scheduler to drive guarded state machine transitions on exams.
+
+**The Fix & Preventive Architecture**:
+1. **Universal Timestamptz & UTC Enforcement**:
+   - Converted all 45 `DateTime` columns across the entire database to `@db.Timestamptz(3)`.
+   - Set PostgreSQL default database timezone to `UTC` (`ALTER DATABASE proctornet SET timezone TO 'UTC'`).
+   - Authored `tests/timezone-matrix.test.js` validating that instant preservation and relative deadline evaluations (`expires_at < now() - interval '30 seconds'`) are 100% identical under `PGTZ=Asia/Kolkata` and `PGTZ=America/Los_Angeles`.
+2. **Canonical Zero-Drift Migration Baseline**:
+   - Regenerated `0001_init/migration.sql` reflecting all UUID defaults (`gen_random_uuid()`), domain check constraints, partial indexes, and composite FKs.
+   - Enforced a zero-drift CI gate: `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code` exiting cleanly with `No difference detected.` (code 0).
+3. **Advisory-Locked Exam Lifecycle Scheduler**:
+   - Implemented `ExamScheduler` with PostgreSQL advisory lock `987654322`, ensuring only one worker instance coordinates exam lifecycle transitions across distributed replicas.
+   - Guarded SQL transitions only:
+     - `PUBLISHED -> LIVE` when `start_time <= now() < end_time` (`WHERE status = 'PUBLISHED'`).
+     - `LIVE -> ENDED` when `end_time <= now()` (`WHERE status = 'LIVE'`).
+     - `ENDED -> EVALUATED` only when zero active/suspended attempts remain and all finished attempts have results in `exam_results`.
+   - Completely stripped `status` from client-writable update endpoints.
+4. **Pre-warming Scalability & Idempotency Gate**:
+   - Automated candidate pre-warming trigger at `start_time - ATTEMPT_PREWARM_MINUTES` in the scheduler, as well as on exam publish.
+   - Authored `tests/p4-prewarm-500.test.js` proving that 500 candidate `READY` attempts with shuffled questions and options are created in 2.7 seconds before start, with strict idempotency (rerun creates 0 duplicates).
+
+---
+
+## 13. Legacy Layer Deletion, Canonical Role Enforcement & Route Matrix Verification (Phase Q2)
+
+> *"A migration is not complete when the new code is written — it is complete when the old code is deleted, the forbidden tokens are banned by CI, and every single route has an automated test matrix."*
+
+### Interview Question: *"How did you safely eliminate the legacy monolithic codebase, and how do you guarantee that every mounted API endpoint enforces zero-trust authentication, canonical role authorization, and resource scoping?"*
+
+**Answer:**
+
+1. **The Legacy Debt & Security Hazards (The "Before" State)**:
+   - **Dual Code Paths**: Before Q2, ProctorNet ran both legacy monolithic routes (`src/controllers`, `src/routes`, `src/services`, `src/sockets`, `src/validators`) and modular domain services (`src/modules/*`). This dual architecture created severe split-brain risks where bug fixes applied to modular code left legacy endpoints vulnerable.
+   - **Forbidden Global State & Schema Relics**:
+     - `global.prisma`: Created race conditions, leaked connections outside Prisma pool management, and prevented unit test isolation.
+     - `studentExam`: Legacy plural/singular schema alias bridge hiding broken SQL relationships.
+     - Direct image URLs (`imageUrl`, `facePhotoUrl`) bypassing S3 presigned key architecture (ADR-011).
+   - **Case-Sensitivity & Role Authorization Flaws (Defects D-01, D-02, D-03)**:
+     - Role comparisons mixed `'STUDENT'`, `'student'`, `'faculty'`, and `'ADMIN'`. If a JWT payload contained mixed-case or lowercase roles, strict string equality (`=== 'STUDENT'`) failed or bypassed authorization checks.
+     - `GET /attempts/:attemptId/timeline` lacked resource ownership validation, allowing candidate A to view candidate B's complete proctoring violation event stream (BOLA / D-02).
+     - Invigilator staff actions (`pauseAttempt`, `resumeAttempt`, `terminateAttempt`) failed open if `examId` was missing or mismatched (D-03).
+
+2. **The Deletion Strategy & CI Token Enforcement (Q2.2 & Q2.3)**:
+   - **Total Deletion of Legacy Layer**: Completely deleted all 5 legacy backend directories (`src/controllers/`, `src/routes/`, `src/services/`, `src/sockets/`, `src/validators/`) and all obsolete deployment descriptors (`render.yaml`, `vercel.json`, `docker-compose.yml`).
+   - **Automated CI Static Analysis Gate (`scripts/ci/check-no-legacy.js`)**:
+     - Fails the build (exit code 1) if any legacy directory or obsolete deployment file exists in the repository.
+     - Scans every `.js`, `.ts`, and `.mjs` file in `src/` using regex token inspection, asserting zero occurrences of `global.prisma`, `studentExam`, `assignedQuestionIds`, `facePhotoUrl`, and `imageUrl`.
+     - Result: It is structurally impossible for any engineer to re-introduce legacy patterns into the backend.
+
+3. **Canonical Lowercase Roles & ESLint AST Rule (Q2.4 & D-01)**:
+   - Created `src/shared/roles.js` exporting frozen canonical roles:
+     ```javascript
+     const ROLES = Object.freeze({
+       ADMIN: 'admin',
+       FACULTY: 'faculty',
+       STUDENT: 'student',
+       INVIGILATOR: 'invigilator'
+     })
+     ```
+   - Added `normalizeRole(input)` returning canonical lowercase or `null` for unknown roles. Authentication middleware normalizes `req.user.role = normalizeRole(payload.role)`.
+   - **ESLint AST Rule (`no-restricted-syntax`)**: Configured ESLint with an AST selector targeting all binary comparisons (`===`, `!==`, `==`, `!=`) against string literals matching role names:
+     ```javascript
+     {
+       selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^(admin|faculty|student|invigilator)$/i]",
+       message: "Forbidden comparison with role string literal. Use canonical ROLES from src/shared/roles.js instead."
+     }
+     ```
+   - Refactored the entire codebase across `src/` to reference `ROLES.*`, eliminating all string-literal comparisons and passing ESLint with 0 errors.
+
+4. **Automated Route Inventory & Drift Gate (Q2.1)**:
+   - Hand-written route documentation always drifts from code. We solved this with `scripts/ci/generate-route-inventory.js`.
+   - The script mounts Express routers, introspects layer stacks, middleware tags (`.isAuthMiddleware`, `.allowedRoles`), regex route paths, and extracts 175 canonical endpoints across all 17 domain modules.
+   - Generates `docs/api/ROUTE_INVENTORY.md` and `docs/api/route-matrix.json`.
+   - CI check in `tests/route-matrix.test.js` asserts that every route registered in Express exists in `ROUTE_INVENTORY.md`, preventing undocumented endpoints from ever merging.
+
+5. **Route-Matrix Test Generator & Security Fixes (Q2.5, D-01, D-02, D-03)**:
+   - Authored `tests/route-matrix.test.js` (26 tests, 7 suites) asserting the four pillars of zero-trust API access:
+     1. **Unauthenticated Access Gate**: Every protected route rejected with 401 when auth token is missing or invalid.
+     2. **Role Authorization Gate**: Routes reject unauthorized roles with 403 Forbidden (e.g., student calling `/admin/dashboard` or faculty calling student endpoints).
+     3. **Canonical Role Normalization (D-01)**: Uppercase tokens (e.g. `ADMIN`) normalized to canonical lowercase; bogus roles fail-closed with 401.
+     4. **Resource Ownership & Scoping (D-02 & D-03)**:
+        - `GET /attempts/:attemptId/timeline`: Student A accessing Student B attempt timeline returns 403 Forbidden; invigilator assigned to Exam 1 accessing Exam 2 attempt returns 403 Forbidden.
+        - Staff Action Guards (`pauseAttempt`, `resumeAttempt`, `terminateAttempt`): Invigilators with mismatched exam IDs or missing exam scope are rejected with 403 Forbidden (fail-closed).
+     5. **Authorized Access (Right Owner -> 2xx)**: Admin, faculty, and student access their respective resources cleanly with 200 OK.
+
+6. **Production Impact**:
+   - Clean, modern modular monolith with unified `/api/v1` namespace and RFC-7807 unified error envelope.
+   - Zero legacy cruft, zero global state, zero string-literal role comparisons, and 100% automated test coverage over the route matrix.
+
+---
+
+## 11. Phase Q3: Student Exam Flow on v1 (UI Data Layer & Integrity Hardening)
+
+> *"The client UI is an untrusted rendering layer: never trust client timers, never leak question content before or during suspension, and never confuse a 403 Forbidden with a successful submission."*
+
+1. **Why Start/Resume Attempt Authoritatively via `POST /api/v1/exams/:id/attempt` (Q3.1 & A-02)**:
+   - **The Problem**: In legacy architectures, the frontend guessed attempt IDs from URL params, read static start/end times from exam metadata, and initialized sockets without tying connections to authoritative database attempts. This caused phantom socket rooms, out-of-order writes, and desynchronized timers.
+   - **The Solution**: On mount, `ExamInterface.jsx` calls `POST /api/v1/exams/:id/attempt`. The backend executes a single SQL transition `READY -> ACTIVE`, resolves server time epoch, calculates `expiresAt` based on actual started/extended duration, hydrates existing answers with their respective revisions, and returns `attemptId`.
+   - **Socket Binding (A-02)**: `attemptId` is explicitly passed to `useExamSocket({ examId, attemptId, ... })`. The client joins `attempt:{attemptId}`, ensuring that socket commands (`attempt:suspended`, `attempt:terminated`, `attempt:resumed`) are bound 1:1 to the candidate's exact database attempt record.
+
+2. **Client-Side Autosave Architecture (`AutosaveManager.js`) (Q3.2 & H-02)**:
+   - **Batching & Frequency**: Dirty candidate answers are captured in an in-memory `Map` keyed by `attemptQuestionId`. A background timer flushes batches of $\le 100$ every 5 seconds. Additionally, event listeners on `visibilitychange`, `blur`, and `pagehide` trigger immediate flushes whenever the candidate changes tabs or navigates away.
+   - **Revision Tracking & CAS Reconciliation**: Answers carry an incrementing `revision` number. If the server detects that another request updated the answer first (or network reordering occurred), it responds with `409 Conflict (STALE_REVISION)` containing `currentRevision`. `AutosaveManager` automatically adopts the server's authoritative revision and retries immediately without dropping dirty state.
+   - **30-Second Network Drop Resilience**: On 429, 503, or network timeout, dirty answers are retained in memory with exponential back-off and jitter ($\text{delay} \in [0.8, 1.2] \times \min(16000, \text{backoff} \times 2)$). Answers are never cleared from memory until the server responds with 200 OK.
+   - **Flush-Before-Submit with Stable `Idempotency-Key`**: Before submission, `flushBeforeSubmit()` ensures 100% of dirty answers are pushed to PostgreSQL. The submission is executed via `POST /attempts/:id/submission` using a stable `Idempotency-Key` generated per submission session. If network drops mid-submit, retries reuse the exact same key, eliminating duplicate grading or race conditions.
+   - **Optimistic Submission UI & Release Policy Polling**: The UI immediately transitions to "Submitted" state upon dispatch, preventing candidate double-clicks. It then polls `GET /attempts/:id/result` every 2 seconds (up to 10 attempts). If the exam release policy holds results (`403 Forbidden`), the client displays "Exam submitted successfully" with policy hold notice rather than failing or looping indefinitely.
+
+3. **Precision Timer & Deadline Enforcement (`serverClock.js` & `useExamTimer.js`) (Q3.3 & A-05)**:
+   - **Clock Skew Neutralization**: Local client clocks frequently drift by seconds or minutes. `serverClock` synchronizes with the server time received in every API response, maintaining a rolling average offset $\Delta = T_{\text{server}} - T_{\text{client}}$.
+   - **Recomputed Remaining Time**: Every tick, remaining seconds are recomputed strictly against the server-authoritative deadline:
+     $$\text{remaining} = \max\left(0, \left\lfloor \frac{T_{\text{expiresAt}} - (T_{\text{now}} + \Delta)}{1000} \right\rfloor\right)$$
+   - **Zero Drift & Auto-Submit**: Tab throttling or device sleep does not cause timer drift because time is never decremented naively. If remaining reaches 0 (or deadline is already past upon loading), `autoSubmit` is automatically invoked.
+
+4. **Single Shared Violation Event Catalogue (`shared/violationTypes.json`) (Q3.4 & A-06)**:
+   - **The Anti-Pattern**: Client emitted arbitrary strings (`SCREEN_RECORDING`, `NO_FACE_DETECTED`, `COPY_ATTEMPT`), while backend constants expected different enums (`SCREEN_SHARE_STOPPED`, `NO_FACE`, `KEYBOARD_SHORTCUT`), causing silent validation drops or unclassified flags.
+   - **The Single Source of Truth**: Created `shared/violationTypes.json` containing canonical violation enums, severities, cooldown intervals, and client event mappings.
+   - **Code Generation**: A generator script `scripts/generate-violation-types.js` outputs backend CommonJS (`src/shared/violationTypes.js`) and frontend ES modules (`src/shared/violationTypes.js`).
+   - **Fail-Closed Validation**: Incoming socket and REST violation payloads are validated against the catalogue. Legacy aliases are normalized to canonical enums; unknown types are rejected client-side before sending and rejected server-side with `ValidationError (code: INVALID_VIOLATION_TYPE)`.
+
+5. **Question Leak Prevention (E-03) & Never Treat 403 as Success (H-01) (Q3.5)**:
+   - **E-03 Question Withholding**: When an attempt is `SUSPENDED`, `READY`, or expired, `startOrResumeAttempt` and `getAttemptForStudent` return `questions: []`. A student whose exam has been paused by an invigilator cannot inspect questions in the browser DOM, devtools network tab, or state dumps.
+   - **H-01 Strict Error Code Handling**: Legacy code caught any HTTP error on submit and assumed the exam was finished. If a suspended student submitted and received `403 Forbidden (ATTEMPT_SUSPENDED)`, legacy code falsely displayed "Exam submitted successfully!". In v1, 403 immediately reverts the optimistic submitted state, displays a clear proctor hold overlay, and prevents premature redirect.
+
+6. **Scoped Media State & Server-Driven Config (Q3.7)**:
+   - **Global Scope Elimination**: Replaced `window.screenShareStream` with `proctornet/frontend/src/lib/mediaState.js`, eliminating global namespace pollution and cross-tab media leaks.
+   - **Dynamic Feature Flags**: Replaced hardcoded `VPN_FEATURE_PAUSED = true` in `SecurityCheck.jsx` with dynamic query to `GET /api/v1/config`, reading `vpnEnforcement` directly from server configuration.
+
+
+
+

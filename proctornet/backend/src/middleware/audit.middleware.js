@@ -1,5 +1,6 @@
 const { logAudit } = require('../utils/auditLogger')
 const { getClientIp } = require('../utils/helpers')
+const { ROLES } = require('../shared/roles')
 
 /**
  * audit.middleware.js
@@ -24,8 +25,8 @@ function auditRequest(req, res, next) {
     action:    `${req.method} ${req.path}`,
     details:   JSON.stringify({ body: sanitiseBody(req.body), params: req.params }),
     ipAddress: getClientIp(req),
-    facultyId: user.role === 'faculty' ? user.id : null,
-    studentId: user.role === 'student' ? user.id : null,
+    facultyId: user.role === ROLES.FACULTY ? user.id : null,
+    studentId: user.role === ROLES.STUDENT ? user.id : null,
   })
 
   next()

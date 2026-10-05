@@ -1,8 +1,9 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 
-const collusionService = require('../src/services/collusionService')
-const verificationService = require('../src/services/verificationService')
+const collusionService = require('../src/modules/proctoring/collusionService')
+const { verifyFaceBiometrics } = require('../src/modules/media/biometricService')
+const verificationService = { verifyFaceBiometrics }
 
 describe('Collusion Service', () => {
   it('calculates token similarity correctly for identical text', () => {

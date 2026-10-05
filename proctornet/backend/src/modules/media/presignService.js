@@ -15,6 +15,7 @@ const {
   NotFoundError,
   ValidationError
 } = require('../../shared/errors')
+const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
 class PresignService {
@@ -75,7 +76,7 @@ class PresignService {
       case 'IDENTITY_PHOTO':
       case 'PROFILE':
       case 'IDENTITY': {
-        if (user.role !== 'student') {
+        if (user.role !== ROLES.STUDENT) {
           throw new ForbiddenError('Only candidates may upload identity profile photos')
         }
         if (bytes > MAX_IDENTITY_SIZE_BYTES) {
@@ -87,7 +88,7 @@ class PresignService {
       }
 
       case 'ID_CARD': {
-        if (user.role !== 'student') {
+        if (user.role !== ROLES.STUDENT) {
           throw new ForbiddenError('Only candidates may upload student ID cards')
         }
         if (bytes > MAX_IDENTITY_SIZE_BYTES) {
@@ -99,13 +100,13 @@ class PresignService {
       }
 
       case 'QUESTION_IMAGE': {
-        if (!['faculty', 'admin'].includes(user.role)) {
+        if (![ROLES.FACULTY, ROLES.ADMIN].includes(user.role)) {
           throw new ForbiddenError('Only faculty or administrators may upload question illustrations')
         }
         if (!examId) {
           throw new ValidationError('examId is required for question image uploads')
         }
-        if (user.role === 'faculty') {
+        if (user.role === ROLES.FACULTY) {
           const exam = await prisma.exam.findFirst({
             where: { id: examId, facultyId: user.id }
           })

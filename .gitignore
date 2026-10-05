@@ -42,3 +42,7 @@ vpn-server/*.conf
 # OCR traineddata & scratch
 *.traineddata
 **/scripts/scratch/
+
+# Playwright
+test-results/
+playwright-report/

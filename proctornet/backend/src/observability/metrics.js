@@ -1,5 +1,6 @@
 const client = require('prom-client')
 const { monitorEventLoopDelay } = require('perf_hooks')
+const { prisma } = require('../infra/postgres/client')
 
 // Global Registry
 const register = new client.Registry()
@@ -71,9 +72,9 @@ async function metricsHandler(req, res) {
     let output = await register.metrics()
 
     // Append Prisma native metrics if enabled
-    if (global.prisma?.$metrics) {
+    if (prisma?.$metrics) {
       try {
-        const prismaMetrics = await global.prisma.$metrics.prometheus()
+        const prismaMetrics = await prisma.$metrics.prometheus()
         output += `\n${prismaMetrics}`
       } catch (_prismaErr) {
         // Ignore if preview not loaded

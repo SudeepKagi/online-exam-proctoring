@@ -75,26 +75,7 @@ function createPrismaClient(role = 'api') {
     return originalTransaction(arg, safeOptions);
   };
 
-  // Compatibility bridge: ensure legacy references to studentExam point to examAttempt
-  if (!client.studentExam && client.examAttempt) {
-    Object.defineProperty(client, 'studentExam', {
-      get() {
-        return client.examAttempt;
-      }
-    });
-  }
-
-  // Compatibility bridge: evidenceLog -> violationEvent
-  if (!client.evidenceLog && client.violationEvent) {
-    Object.defineProperty(client, 'evidenceLog', {
-      get() {
-        return client.violationEvent;
-      }
-    });
-  }
-
   prismaInstance = client;
-  global.prisma = client; // prevent multiple instances from legacy code
   return client;
 }
 

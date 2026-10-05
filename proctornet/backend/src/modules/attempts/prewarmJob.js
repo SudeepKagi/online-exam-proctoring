@@ -62,10 +62,10 @@ class AttemptPrewarmJob {
       return { prewarmedCount: 0 }
     }
 
-    const CHUNK_SIZE = 10
+    const CHUNK_SIZE = 50
     let totalPrewarmed = 0
 
-    // 4. Process in safe chunks of 10 to avoid interactive transaction timeouts
+    // 4. Process in safe chunks of 50 to avoid interactive transaction timeouts
     for (let i = 0; i < eligibleStudents.length; i += CHUNK_SIZE) {
       const chunk = eligibleStudents.slice(i, i + CHUNK_SIZE)
 

@@ -12,6 +12,7 @@ const { AccessToken, RoomServiceClient, WebhookReceiver, TrackSource } = require
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
 const { ForbiddenError, NotFoundError } = require('../../shared/errors')
+const { ROLES } = require('../../shared/roles')
 const { proctoringService } = require('../proctoring/service')
 
 class MediaService {
@@ -53,12 +54,12 @@ class MediaService {
     }
 
     const roomName = `exam:${examId}`
-    let identity = ''
-    let metadata = {}
-    let grant = {}
-    let ttlSeconds = 4 * 3600 // 4 hours default for staff
+    let identity
+    let metadata
+    let grant
+    let ttlSeconds
 
-    if (user.role === 'student') {
+    if (user.role === ROLES.STUDENT) {
       // 1. Student authorization check via SQL
       const attempt = await prisma.examAttempt.findFirst({
         where: {

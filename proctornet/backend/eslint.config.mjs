@@ -24,6 +24,13 @@ export default defineConfig([
       'no-redeclare': 'error',
       'no-undef': 'error',
       'no-constant-condition': 'warn',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^(admin|faculty|student|invigilator)$/i]",
+          message: "Forbidden comparison with role string literal. Use canonical ROLES from src/shared/roles.js instead."
+        }
+      ],
     },
   },
 ])

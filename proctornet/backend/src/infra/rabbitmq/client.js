@@ -153,8 +153,9 @@ class RabbitMQManager {
   async close() {
     try {
       if (this.channel) await this.channel.close()
-      if (this.connection) await this.connection.close()
-    } catch {}
+    } catch {
+      // ignore close error
+    }
   }
 
   async checkHealth() {

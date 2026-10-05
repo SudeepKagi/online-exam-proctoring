@@ -8,6 +8,7 @@ const {
 const { validateBody, validateParams } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
+const { ROLES } = require('../../shared/roles')
 const { toInvigilatorAttemptDTO } = require('./dto')
 const { prisma } = require('../../infra/postgres/client')
 const { NotFoundError, ForbiddenError } = require('../../shared/errors')
@@ -23,7 +24,7 @@ const router = express.Router()
 router.post(
   '/exams/:examId/attempt',
   requireAuth,
-  requireRole('STUDENT'),
+  requireRole(ROLES.STUDENT),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {
@@ -51,7 +52,7 @@ router.get(
     try {
       const { attemptId } = req.params
 
-      if (req.user.role === 'STUDENT') {
+      if (req.user.role === ROLES.STUDENT) {
         const studentAttempt = await attemptService.getAttemptForStudent(attemptId, req.user.id)
         return res.status(200).json(studentAttempt)
       }
@@ -67,7 +68,7 @@ router.get(
       }
 
       // Faculty authorization check
-      if (req.user.role === 'FACULTY' && attempt.exam.facultyId !== req.user.id) {
+      if (req.user.role === ROLES.FACULTY && attempt.exam.facultyId !== req.user.id) {
         throw new ForbiddenError('Access denied: You do not own this exam')
       }
 
@@ -121,10 +122,10 @@ router.get(
       }
 
       // Authorization guard: Student must own attempt; Staff must have permission
-      if (req.user.role === 'STUDENT' && attempt.studentId !== req.user.id) {
+      if (req.user.role === ROLES.STUDENT && attempt.studentId !== req.user.id) {
         throw new ForbiddenError('Access denied: You do not own this attempt')
       }
-      if (req.user.role === 'FACULTY' && attempt.exam.facultyId !== req.user.id) {
+      if (req.user.role === ROLES.FACULTY && attempt.exam.facultyId !== req.user.id) {
         throw new ForbiddenError('Access denied: You do not own this exam')
       }
 
@@ -157,7 +158,7 @@ router.get(
 router.post(
   '/attempts/:attemptId/state',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY]),
   validateParams(attemptIdParamSchema),
   validateBody(transitionStateSchema),
   async (req, res, next) => {
@@ -189,7 +190,7 @@ router.post(
 router.post(
   '/exams/:examId/prewarm',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY]),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {

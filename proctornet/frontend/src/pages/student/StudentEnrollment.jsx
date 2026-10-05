@@ -105,11 +105,11 @@ export default function StudentEnrollment() {
 
     setIsSubmitting(true)
     try {
-      await api.post('/enrollment/consent')
+      await api.post('/student/enrollment/consent', { consentGiven: true })
       toast.success('Biometric consent recorded.')
       setStep(2)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to submit consent.')
+      toast.error(err.response?.data?.error?.message || err.message || 'Failed to submit consent.')
     } finally {
       setIsSubmitting(false)
     }
@@ -123,12 +123,12 @@ export default function StudentEnrollment() {
 
     setIsSubmitting(true)
     try {
-      await api.post('/enrollment/face', { image: capturedSelfie })
+      await api.post('/student/enrollment/face', { facePhotoKey: capturedSelfie, image: capturedSelfie })
       toast.success('Live face enrolled successfully.')
       stopCamera()
       setStep(3)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Face enrollment failed. Please retry.')
+      toast.error(err.response?.data?.error?.message || err.message || 'Face enrollment failed. Please retry.')
     } finally {
       setIsSubmitting(false)
     }
@@ -154,13 +154,13 @@ export default function StudentEnrollment() {
 
     setIsSubmitting(true)
     try {
-      const res = await api.post('/enrollment/id', { idCardImage: idImage })
+      const res = await api.post('/student/enrollment/id', { idCardPhotoKey: idImage, idCardImage: idImage })
       setOcrResult(res.data?.ocrData)
       toast.success('ID document parsed and profile submitted!')
       await refreshUser()
       setStep(4)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'ID document submission failed.')
+      toast.error(err.response?.data?.error?.message || err.message || 'ID document submission failed.')
     } finally {
       setIsSubmitting(false)
     }

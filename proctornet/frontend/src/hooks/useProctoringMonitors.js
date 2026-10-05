@@ -131,10 +131,10 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
           setFaceOk(true)
         } else if (detections.length === 0) {
           setFaceOk(false)
-          notifyViolation('NO_FACE_DETECTED', 'HIGH')
+          notifyViolation('NO_FACE', 'HIGH')
         } else {
           setFaceOk(false)
-          notifyViolation('MULTIPLE_FACES_DETECTED', 'HIGH', { count: detections.length })
+          notifyViolation('MULTIPLE_FACES', 'HIGH', { count: detections.length })
         }
       } catch (err) {
         console.warn('Face detection loop error:', err)

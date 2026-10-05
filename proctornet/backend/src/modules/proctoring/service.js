@@ -1,6 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { redisClient } = require('../../infra/redis/client')
-const { CANONICAL_SEVERITY, FLAG_COOLDOWNS } = require('./constants')
+const { CANONICAL_SEVERITY, FLAG_COOLDOWNS, normalizeViolationType, isValidViolationType } = require('./constants')
 const { violationMicroBatcher } = require('./violationMicroBatcher')
 const { chatMicroBatcher } = require('./chatMicroBatcher')
 const { presenceManager } = require('../../infra/websocket/presence')
@@ -10,9 +10,11 @@ const {
   NotFoundError,
   ForbiddenError,
   ConflictError,
-  TooManyRequestsError
+  TooManyRequestsError,
+  ValidationError
 } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 
 // In-memory fallback cooldown tracker if Redis is down
 const inMemoryCooldowns = new Map()
@@ -22,6 +24,12 @@ class ProctoringService {
    * Record a violation event with Redis cooldown, server-side severity, and micro-batching
    */
   async recordViolation(attemptId, studentId, eventType, metadata = {}, clientTimestamp = null) {
+    // 0. Validate and normalize against single shared catalogue
+    const canonicalType = normalizeViolationType(eventType)
+    if (!canonicalType || !isValidViolationType(canonicalType)) {
+      throw new ValidationError(`Unknown or invalid violation event type: '${eventType}'`)
+    }
+
     // 1. Authoritative check: ownership & ACTIVE status in SQL
     const rows = await prisma.$queryRawUnsafe(`
       SELECT id, exam_id, status, expires_at
@@ -39,8 +47,8 @@ class ProctoringService {
     }
 
     // 2. Cooldown check: Redis SET NX PX
-    const cooldownMs = FLAG_COOLDOWNS[eventType] || FLAG_COOLDOWNS.DEFAULT
-    const cooldownKey = `pn:v1:cooldown:${attemptId}:${eventType}`
+    const cooldownMs = FLAG_COOLDOWNS[canonicalType] || FLAG_COOLDOWNS.DEFAULT
+    const cooldownKey = `pn:v1:cooldown:${attemptId}:${canonicalType}`
     let isCooledDown = false
 
     if (redisClient.client && redisClient.isReady) {
@@ -71,14 +79,14 @@ class ProctoringService {
     }
 
     // 3. Server severity assignment (Never trust client severity)
-    const severity = CANONICAL_SEVERITY[eventType] || 'MEDIUM'
+    const severity = CANONICAL_SEVERITY[canonicalType] || 'MEDIUM'
 
     // 4. Evidence ticket if required and budget allows (Notion 13.10 / Task 7)
     let evidenceUpload = null
     const { isEvidenceRequired, checkEvidenceBudget } = require('../../shared/evidencePolicy')
     const { presignService } = require('../media/presignService')
 
-    if (isEvidenceRequired(eventType)) {
+    if (isEvidenceRequired(canonicalType)) {
       const budget = await checkEvidenceBudget(attemptId, prisma)
       if (budget.allowed) {
         try {
@@ -95,7 +103,7 @@ class ProctoringService {
     // 5. Push to micro-batcher
     await violationMicroBatcher.queue({
       attemptId,
-      eventType,
+      eventType: canonicalType,
       severity,
       metadata,
       clientTimestamp
@@ -103,16 +111,33 @@ class ProctoringService {
 
     return {
       recorded: true,
-      eventType,
+      eventType: canonicalType,
       severity,
       evidenceUpload
     }
   }
 
   /**
-   * Fetch timeline of violation events with rounded presigned read URLs (ADR-011)
+   * Fetch timeline of violation events with rounded presigned read URLs (Defect D-02 Fix)
    */
-  async getViolationTimeline(attemptId) {
+  async getViolationTimeline(attemptId, user) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true, studentId: true }
+    })
+    if (!attempt) {
+      throw new NotFoundError(`Attempt '${attemptId}' not found`)
+    }
+
+    const role = normalizeRole(user?.role)
+    if (role === ROLES.STUDENT) {
+      if (attempt.studentId !== user.id) {
+        throw new ForbiddenError('Access denied: You do not own this attempt')
+      }
+    } else {
+      await this.assertStaffExamAccess(user, attempt.examId)
+    }
+
     const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
     const events = await prisma.violationEvent.findMany({
       where: { attemptId },
@@ -146,7 +171,8 @@ class ProctoringService {
    * Post a chat message through micro-batcher with rate limiting (1 msg / 2 s)
    */
   async postChatMessage(examId, senderId, senderRole, message, studentIdParam = null) {
-    const studentId = senderRole === 'STUDENT' ? senderId : (studentIdParam || senderId)
+    const normRole = normalizeRole(senderRole)
+    const studentId = normRole === ROLES.STUDENT ? senderId : (studentIdParam || senderId)
 
     // Rate limit check: 1 per 2 seconds
     const rateLimitKey = `pn:v1:chat_limit:${senderId}`
@@ -160,7 +186,7 @@ class ProctoringService {
     return chatMicroBatcher.queue({
       examId,
       studentId,
-      senderRole,
+      senderRole: normRole || senderRole,
       message
     })
   }
@@ -191,20 +217,20 @@ class ProctoringService {
   }
 
   /**
-   * Authorize staff access to an exam in SQL (Task 6 / Notion 13.10 §11)
+   * Authorize staff access to an exam in SQL (Task 6 / Notion 13.10 §11 / Defect D-03 Fix)
    */
   async assertStaffExamAccess(user, examId) {
-    const role = (user.role || '').toUpperCase()
-    if (role === 'ADMIN') return true
+    const role = normalizeRole(user?.role)
+    if (role === ROLES.ADMIN) return true
 
-    if (role === 'INVIGILATOR') {
-      if (user.examId && user.examId !== examId) {
+    if (role === ROLES.INVIGILATOR) {
+      if (!user.examId || user.examId !== examId) {
         throw new ForbiddenError('Access denied: You are not assigned to this exam')
       }
       return true
     }
 
-    if (role === 'FACULTY') {
+    if (role === ROLES.FACULTY) {
       const exam = await prisma.exam.findFirst({
         where: { id: examId, facultyId: user.id },
         select: { id: true }
@@ -557,13 +583,20 @@ class ProctoringService {
   }
 
   /**
-   * Pause exam attempt (Task 7)
+   * Pause exam attempt (Task 7 / Defect D-03 Fix)
    */
   async pauseAttempt(attemptId, user, reason, io = null) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true }
+    })
+    if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
+    await this.assertStaffExamAccess(user, attempt.examId)
+
     const { attemptService } = require('../attempts/service')
     const updated = await attemptService.transitionState(attemptId, 'SUSPENDED', {
       actorId: user.id,
-      actorRole: user.role.toLowerCase(),
+      actorRole: normalizeRole(user.role),
       reason: reason || 'Paused by proctor'
     })
 
@@ -583,13 +616,20 @@ class ProctoringService {
   }
 
   /**
-   * Resume exam attempt (Task 7)
+   * Resume exam attempt (Task 7 / Defect D-03 Fix)
    */
   async resumeAttempt(attemptId, user, io = null) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true }
+    })
+    if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
+    await this.assertStaffExamAccess(user, attempt.examId)
+
     const { attemptService } = require('../attempts/service')
     const updated = await attemptService.transitionState(attemptId, 'ACTIVE', {
       actorId: user.id,
-      actorRole: user.role.toLowerCase(),
+      actorRole: normalizeRole(user.role),
       reason: 'Resumed by proctor'
     })
 
@@ -608,13 +648,20 @@ class ProctoringService {
   }
 
   /**
-   * Terminate exam attempt (Task 7)
+   * Terminate exam attempt (Task 7 / Defect D-03 Fix)
    */
   async terminateAttempt(attemptId, user, reason, io = null) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true }
+    })
+    if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
+    await this.assertStaffExamAccess(user, attempt.examId)
+
     const { attemptService } = require('../attempts/service')
     const updated = await attemptService.transitionState(attemptId, 'TERMINATED', {
       actorId: user.id,
-      actorRole: user.role.toLowerCase(),
+      actorRole: normalizeRole(user.role),
       reason: reason || 'Terminated by proctor for academic dishonesty'
     })
 

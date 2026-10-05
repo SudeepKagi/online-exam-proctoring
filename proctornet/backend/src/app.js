@@ -9,22 +9,6 @@ const compression = require('compression')
 const rateLimit   = require('express-rate-limit')
 const { prisma }  = require('./infra/postgres/client')
 
-// ── Route imports ──
-const authRoutes         = require('./routes/auth.routes')
-const adminRoutes        = require('./routes/admin.routes')
-const facultyRoutes      = require('./routes/faculty.routes')
-const studentRoutes      = require('./routes/student.routes')
-const invigilatorRoutes  = require('./routes/invigilator.routes')
-const examRoutes         = require('./routes/exam.routes')
-const questionRoutes     = require('./routes/question.routes')
-const answerRoutes       = require('./routes/answer.routes')
-const resultRoutes       = require('./routes/result.routes')
-const enrollmentRoutes   = require('./routes/enrollment.routes')
-const deviceCheckRoutes  = require('./routes/deviceCheck.routes')
-const vpnRoutes          = require('./routes/vpn.routes')
-const notificationRoutes = require('./routes/notification.routes')
-const evidenceRoutes     = require('./routes/evidence.routes')
-
 const path = require('path')
 
 const app    = express()
@@ -32,7 +16,6 @@ const server = http.createServer(app)
 
 const cookieParser = require('cookie-parser')
 const { verifyToken } = require('./utils/jwt')
-const { authenticate } = require('./middleware/auth.middleware')
 const { extractTokenFromReq } = require('./utils/cookies')
 const { requestContextMiddleware, logger } = require('./observability/logger')
 const { metricsMiddleware, metricsHandler } = require('./observability/metrics')
@@ -52,9 +35,6 @@ const allowedOrigins = [
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL)
 }
-
-// ── Make prisma globally available ──
-global.prisma = prisma
 
 // ── Socket.io WebSocket Plane (P6) ──
 const io = createWebSocketServer(server)
@@ -129,8 +109,7 @@ function csrfProtection(req, res, next) {
 }
 app.use('/api', csrfProtection)
 
-// ── Rate Limiting Strategy for Shared-NAT University Labs ──
-const isLoadTest = process.env.LOADTEST_ALLOW === '1'
+const isLoadTest = process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isLoadTest ? 100000 : 600,
@@ -223,8 +202,8 @@ app.get('/readyz', async (req, res) => {
 // ── Prometheus Metrics Endpoint ──
 app.get('/metrics', metricsHandler)
 
-// ── V1 Modular Monolith Routes (P4 Hot Paths) ──
-const v1Routes = require('./routes/v1.routes')
+// ── Canonical Modular Monolith Routes (/api/v1) ──
+const v1Router = require('./modules/router')
 const { requestIdMiddleware } = require('./middleware/requestId')
 const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
@@ -242,62 +221,40 @@ const { rabbitmq } = require('./infra/rabbitmq/client')
 
 app.use(requestIdMiddleware)
 app.use(loadShed)
-app.use('/api/v1', v1Routes)
 
-// ── Legacy API Routes ──
-app.use('/api/auth',         authRoutes)
-app.use('/api/admin',        adminRoutes)
-app.use('/api/faculty',      facultyRoutes)
-app.use('/api/student',      studentRoutes)
-app.use('/api/invigilator',  invigilatorRoutes)
-app.use('/api/exam',         examRoutes)
-app.use('/api/question',     questionRoutes)
-app.use('/api/answer',       answerRoutes)
-app.use('/api/result',       resultRoutes)
-app.use('/api',              enrollmentRoutes)
-app.use('/api',              deviceCheckRoutes)
-app.use('/api/vpn',          vpnRoutes)
-app.use('/api/notifications', notificationRoutes)
-app.use('/api/evidence',      evidenceRoutes)
-
-// ── 404 handler ──
-app.use((req, res) => {
-  if (req.path.startsWith('/api/v1')) {
-    return res.status(404).json({
-      error: {
-        code: 'NOT_FOUND',
-        message: `Route ${req.method} ${req.path} not found`
-      },
-      requestId: req.requestId || null
-    })
+// Seamless URL compatibility rewrite: /api/* or un-prefixed -> /api/v1/*
+app.use((req, res, next) => {
+  if (
+    !req.url.startsWith('/api/v1') &&
+    !req.url.startsWith('/health') &&
+    !req.url.startsWith('/readyz') &&
+    !req.url.startsWith('/metrics') &&
+    !req.url.startsWith('/socket.io')
+  ) {
+    if (req.url.startsWith('/api/')) {
+      req.url = req.url.replace('/api/', '/api/v1/')
+    } else {
+      req.url = '/api/v1' + (req.url.startsWith('/') ? req.url : '/' + req.url)
+    }
   }
-  res.status(404).json({ error: `Route ${req.method} ${req.path} not found` })
+  next()
 })
 
-// ── Global error handler ──
-app.use((err, req, res, next) => {
-  if (req.path.startsWith('/api/v1') || err.statusCode) {
-    return errorHandler(err, req, res, next)
-  }
+app.use('/api/v1', v1Router)
 
-  console.error('[ERROR]', err.message, err.stack)
-  const status = err.status || err.statusCode || 500
-
-  // Sanitize database internal details
-  let clientMessage = err.message || 'Internal Server Error'
-  if (err.code === 'P2002') {
-    clientMessage = 'A record with these unique details already exists.'
-  } else if (err.code === 'P2025') {
-    clientMessage = 'The requested database record could not be found.'
-  } else if (err.name === 'PrismaClientKnownRequestError' || err.name === 'PrismaClientValidationError') {
-    clientMessage = 'Database operation failed validation.'
-  }
-
-  res.status(status).json({
-    error: clientMessage,
-    ...(process.env.NODE_ENV === 'development' && { rawError: err.message, code: err.code }),
+// ── 404 handler (Unified Error Envelope) ──
+app.use((req, res) => {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: `Route ${req.method} ${req.path} not found`
+    },
+    requestId: req.requestId || null
   })
 })
+
+// ── Global error handler (Unified Error Envelope) ──
+app.use(errorHandler)
 
 // ── Server Timeouts (Section 4.12: outlive ingress proxy) ──
 server.requestTimeout = 15000

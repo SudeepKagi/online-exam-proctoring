@@ -5,6 +5,7 @@ const {
   NotFoundError,
   ForbiddenError
 } = require('../../shared/errors')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 
 class ResultService {
   /**
@@ -24,6 +25,23 @@ class ResultService {
   }
 
   /**
+   * Get result for staff (Faculty / Admin)
+   */
+  async getResultForStaff(attemptId, user) {
+    const result = await resultRepository.findByAttempt(attemptId)
+    if (!result) {
+      throw new NotFoundError(`Result for attempt '${attemptId}' is still being evaluated or not found`)
+    }
+
+    const role = normalizeRole(user.role)
+    if (role === ROLES.FACULTY && result.exam?.facultyId !== user.id) {
+      throw new ForbiddenError('Access denied: You do not own this exam')
+    }
+
+    return toFacultyResultDTO(result)
+  }
+
+  /**
    * Get all results for an exam (Faculty / Admin view)
    */
   async getResultsForExam(examId, userId, userRole) {
@@ -35,7 +53,8 @@ class ResultService {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
 
-    if (userRole === 'FACULTY' && exam.facultyId !== userId) {
+    const role = normalizeRole(userRole)
+    if (role === ROLES.FACULTY && exam.facultyId !== userId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 
@@ -58,7 +77,8 @@ class ResultService {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
 
-    if (userRole === 'FACULTY' && exam.facultyId !== userId) {
+    const role = normalizeRole(userRole)
+    if (role === ROLES.FACULTY && exam.facultyId !== userId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 

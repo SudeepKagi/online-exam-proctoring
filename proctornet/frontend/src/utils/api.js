@@ -9,10 +9,22 @@ const api = axios.create({
   }
 })
 
-// Response interceptor — handle 401 session expiry
+// Response interceptor — handle error normalization & 401 session expiry
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Normalize unified error envelope
+    if (error.response?.data?.error) {
+      const errObj = error.response.data.error
+      if (typeof errObj === 'object') {
+        error.code = errObj.code || error.code
+        error.message = errObj.message || error.message
+        error.details = errObj.details
+      } else if (typeof errObj === 'string') {
+        error.message = errObj
+      }
+    }
+
     const isAuthRequest =
       error.config?.url?.includes('/login') ||
       error.config?.url?.includes('/register') ||

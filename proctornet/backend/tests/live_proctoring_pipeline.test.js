@@ -15,7 +15,7 @@ const {
   SESSION_STATES,
   VALID_TRANSITIONS,
   isValidTransition
-} = require('../src/services/sessionStateMachine')
+} = require('../src/shared/sessionStateMachine')
 
 describe('Live Proctoring Pipeline — State Machine & Terminal Immutability', () => {
   it('allows valid transitions from ACTIVE to TERMINATED, SUSPENDED, SUBMITTED, and ENDED', () => {

@@ -16,6 +16,7 @@ const { evaluationWorker } = require('./modules/results/evaluationWorker')
 const { evidenceWorker } = require('./modules/media/evidenceWorker')
 const { verificationWorker } = require('./modules/media/biometricService')
 const { expirySweeper } = require('./modules/attempts/expirySweeper')
+const { examScheduler } = require('./modules/exams/examScheduler')
 const { vpnWorker } = require('./modules/vpn/vpnWorker')
 const { vpnReconciler } = require('./modules/vpn/vpnReconciler')
 const { redisClient } = require('./infra/redis/client')
@@ -38,6 +39,7 @@ evaluationWorker.start()
 evidenceWorker.start()
 verificationWorker.start()
 expirySweeper.start()
+examScheduler.start()
 logger.info('Core background workers successfully started')
 
 // Start WireGuard VPN Workers (Flag-gated)
@@ -54,6 +56,7 @@ async function shutdown(signal) {
   logger.info({ signal }, 'Worker received termination signal; shutting down background processors')
 
   expirySweeper.stop()
+  examScheduler.stop()
   outboxPublisher.stop()
 
   if (process.env.VPN_ENABLED === 'true') {

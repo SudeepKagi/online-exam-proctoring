@@ -202,7 +202,9 @@ class AnswerRepository {
               item.optionId,
               item.revision
             )
-          } catch (e) {}
+          } catch {
+            // ignore diagnose failure
+          }
         }
         results.push({
           attemptQuestionId: item.attemptQuestionId,

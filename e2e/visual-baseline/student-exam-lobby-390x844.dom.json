@@ -1,0 +1,45 @@
+{
+  "tag": "div",
+  "attributes": {
+    "id": "root"
+  },
+  "childCount": 2,
+  "children": [
+    {
+      "tag": "div",
+      "childCount": 0
+    },
+    {
+      "tag": "div",
+      "attributes": {
+        "class": "fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      },
+      "childCount": 1,
+      "children": [
+        {
+          "tag": "div",
+          "attributes": {
+            "class": "flex flex-col items-center justify-center gap-4"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin shadow-lg"
+              },
+              "childCount": 0
+            },
+            {
+              "tag": "p",
+              "attributes": {
+                "class": "text-gray-500 font-medium animate-pulse"
+              },
+              "childCount": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

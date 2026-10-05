@@ -1,4 +1,4 @@
-  import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
@@ -19,6 +19,9 @@ import ConfirmDialog from '@/components/ui/confirm-dialog'
 import { useExamTimer } from '@/hooks/useExamTimer'
 import { useExamSocket } from '@/hooks/useExamSocket'
 import { useProctoringMonitors } from '@/hooks/useProctoringMonitors'
+import { AutosaveManager } from '@/lib/autosaveManager'
+import { serverClock } from '@/lib/serverClock'
+import { getSharedScreenStream, setSharedScreenStream, clearSharedScreenStream } from '@/lib/mediaState'
 
 import ExamHeader from '@/components/exam/ExamHeader'
 import QuestionPanel from '@/components/exam/QuestionPanel'
@@ -31,11 +34,14 @@ export default function ExamInterface() {
   const { user } = useAuth()
 
   // ── Exam & Session State ──
+  const [attemptId, setAttemptId] = useState(null)
+  const [expiresAt, setExpiresAt] = useState(null)
   const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
   const [isWaiting, setIsWaiting] = useState(false)
   const [secsToStart, setSecsToStart] = useState(null)
+  const [vpnEnforcement, setVpnEnforcement] = useState(false)
 
   // ── Authoritative Terminal & Suspended States ──
   const [terminalState, setTerminalState] = useState(null) // { type: 'SUBMITTED' | 'TERMINATED', ... }
@@ -50,10 +56,27 @@ export default function ExamInterface() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error'
 
-  const saveQueueRef = useRef({})
-  const saveTimeoutRef = useRef(null)
   const streamRef = useRef(null)
+  const screenStreamRef = useRef(null)
   const tabInstanceId = useRef(Math.random().toString(36).substring(2))
+  const autosaveRef = useRef(new AutosaveManager())
+
+  // ── 0. Subscribe to Autosave Manager Status ──
+  useEffect(() => {
+    const manager = autosaveRef.current
+    const unsubscribe = manager.subscribe((state) => {
+      if (state.isSubmitting || state.isFlushing) {
+        setSaveStatus('saving')
+      } else if (state.dirtyCount === 0) {
+        setSaveStatus('saved')
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      manager.destroy()
+    }
+  }, [])
 
   // ── Multi-Tab Concurrency Guard ──
   useEffect(() => {
@@ -84,35 +107,58 @@ export default function ExamInterface() {
     }
   }, [examId])
 
-  // ── Submit Exam Function ──
+  // ── Submit Exam Function (Q3.2 & H-01) ──
   const handleSubmit = useCallback(async (forced = false) => {
     if (submitting) return
     setSubmitting(true)
     setSaveStatus('saving')
 
+    // Show "Submitted" immediately (Q3.2)
+    setTerminalState({
+      type: 'SUBMITTED',
+      score: 0,
+      totalMarks: exam?.totalMarks || 100,
+      percentage: 0,
+      message: forced ? 'Exam auto-submitted upon deadline.' : 'Exam submitted successfully.'
+    })
+
     try {
-      // Flush answers directly in submission body
-      const res = await api.post(`/student/exams/${examId}/submit`, { answers })
+      await autosaveRef.current.submitAttempt()
       setSaveStatus('saved')
       toast.success(forced ? 'Exam auto-submitted upon deadline' : 'Exam submitted successfully!')
 
-      setTerminalState({
-        type: 'SUBMITTED',
-        score: res.data?.score ?? 0,
-        totalMarks: res.data?.totalMarks ?? (exam?.totalMarks || 100),
-        percentage: res.data?.percentage ?? 0,
-        message: res.data?.message || 'Examination finalized and certified.'
-      })
+      // Poll GET /attempts/:id/result (respecting release policy per Q3.2)
+      const result = await autosaveRef.current.pollResult(10, 2000)
+      if (result && result.released !== false && result.status !== 'HELD_BY_POLICY') {
+        setTerminalState({
+          type: 'SUBMITTED',
+          score: result.score ?? 0,
+          totalMarks: result.totalMarks ?? (exam?.totalMarks || 100),
+          percentage: result.percentage ?? 0,
+          message: result.message || 'Examination finalized and certified.'
+        })
+      }
     } catch (err) {
       console.error('Submit error:', err)
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message
-      if (
-        errorMsg?.includes('already submitted') ||
-        errorMsg?.includes('session not active') ||
-        err.response?.status === 403
-      ) {
-        toast.success('Exam submitted successfully!')
-        navigate('/student/results', { replace: true })
+      const status = err.response?.status
+      const errorCode = err.code || err.response?.data?.error?.code
+      const errorMsg = err.response?.data?.error?.message || err.message
+
+      // Never treat 403 as success (H-01 / Q3.5)
+      if (status === 403 || errorCode === 'ATTEMPT_SUSPENDED' || errorCode === 'FORBIDDEN') {
+        toast.error(errorMsg || 'Action forbidden: Attempt is suspended or access denied.')
+        setTerminalState(null) // Revert premature submitted state
+        if (errorCode === 'ATTEMPT_SUSPENDED') {
+          setSuspendedState({
+            active: true,
+            reason: errorMsg || 'Attempt is currently suspended by proctor.',
+            isVpn: false
+          })
+        }
+      } else if (errorCode === 'EXAM_EXPIRED' || status === 410) {
+        toast.error('Exam deadline has passed. Submission recorded.')
+      } else if (status === 409 && (errorCode === 'ALREADY_SUBMITTED' || errorMsg?.includes('already submitted'))) {
+        toast.success('Exam was already submitted.')
       } else {
         toast.error(errorMsg || 'Submission encountered an error. Please try again.')
       }
@@ -120,21 +166,22 @@ export default function ExamInterface() {
       setSubmitting(false)
       setShowSubmitConfirm(false)
     }
-  }, [examId, answers, submitting, exam, navigate])
+  }, [submitting, exam])
 
-  // ── Hook 1: Exam Timer ──
+  // ── Hook 1: Exam Timer (Q3.3) ──
   const { formattedTime, isUrgent, isCritical } = useExamTimer({
+    expiresAt,
     endTime: exam?.endTime,
     durationMinutes: exam?.duration,
     onTimeUp: () => handleSubmit(true),
-    autoStart: !isWaiting && !loading && !terminalState
+    autoStart: !isWaiting && !loading && !terminalState && !suspendedState?.active
   })
 
-  // ── Hook 2: Socket.io & WebRTC ──
+  // ── Hook 2: Socket.io & Real-Time Control Plane (Q3.1 / A-02) ──
   const { socketConnected, violations, emitViolation } = useExamSocket({
     examId,
+    attemptId, // Plumbed attemptId! (A-02)
     user,
-    streamRef,
     onTerminated: (payload) => {
       setTerminalState({
         type: 'TERMINATED',
@@ -148,21 +195,28 @@ export default function ExamInterface() {
         isVpn: false
       })
     },
-    onResumed: () => {
+    onResumed: (payload) => {
       setSuspendedState(null)
       setTerminalState(null)
+      if (payload?.expiresAt) {
+        setExpiresAt(payload.expiresAt)
+      }
     },
     onStateChange: (payload) => {
-      if (payload?.currentStatus === 'ACTIVE') {
+      const status = payload?.currentStatus || payload?.status
+      if (status === 'ACTIVE') {
         setSuspendedState(null)
         setTerminalState(null)
-      } else if (payload?.currentStatus === 'SUSPENDED') {
+        if (payload?.expiresAt) {
+          setExpiresAt(payload.expiresAt)
+        }
+      } else if (status === 'SUSPENDED') {
         setSuspendedState({
           active: true,
           reason: payload?.reason || 'Session temporarily paused by proctor.',
           isVpn: false
         })
-      } else if (payload?.currentStatus === 'TERMINATED') {
+      } else if (status === 'TERMINATED') {
         setTerminalState({
           type: 'TERMINATED',
           reason: payload?.reason || 'Terminated by invigilator for academic integrity violation.'
@@ -186,12 +240,18 @@ export default function ExamInterface() {
     externalStreamRef: streamRef
   })
 
-  // ── Auto-Maintain Screen Share Stream ──
+  // ── Maintain Screen Share Stream (Scoped mediaState, no window pollution per Q3.7) ──
   useEffect(() => {
     if (loading || isWaiting || terminalState) return
-    const hasLiveScreen = window.screenShareStream &&
-      window.screenShareStream.active &&
-      window.screenShareStream.getVideoTracks().some(t => t.readyState === 'live')
+
+    const existingStream = getSharedScreenStream()
+    if (existingStream) {
+      screenStreamRef.current = existingStream
+    }
+
+    const hasLiveScreen = screenStreamRef.current &&
+      screenStreamRef.current.active &&
+      screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live')
 
     if (!hasLiveScreen && navigator.mediaDevices?.getDisplayMedia) {
       const initScreen = async () => {
@@ -200,9 +260,10 @@ export default function ExamInterface() {
             video: { displaySurface: 'monitor', cursor: 'always' },
             audio: false
           })
-          window.screenShareStream = screenStream
+          screenStreamRef.current = screenStream
+          setSharedScreenStream(screenStream)
           screenStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-            emitViolation('SCREEN_RECORDING', 'CRITICAL', { details: 'Screen sharing was stopped by candidate.' })
+            emitViolation('SCREEN_SHARE_STOPPED', 'CRITICAL', { details: 'Screen sharing was stopped by candidate.' })
             toast.error('Screen sharing was disconnected. Please re-enable screen sharing immediately.', { duration: 8000 })
           })
         } catch (_e) {}
@@ -218,57 +279,93 @@ export default function ExamInterface() {
         try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
         streamRef.current = null
       }
-      if (window.screenShareStream) {
-        try { window.screenShareStream.getTracks().forEach(t => t.stop()) } catch (_e) {}
-        window.screenShareStream = null
+      if (screenStreamRef.current) {
+        try { screenStreamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        screenStreamRef.current = null
       }
+      clearSharedScreenStream()
     }
   }, [terminalState])
 
-  // ── 1. Fetch Exam Initialization & Authoritative State Recovery ──
+  // ── 1. Fetch Exam Initialization & Authoritative State Recovery (Q3.1 / Q3.7) ──
   useEffect(() => {
     let interval = null
 
     const initExam = async () => {
       setLoading(true)
       try {
-        const res = await api.get(`/student/exams/${examId}/start`)
+        // Read system configuration for VPN enforcement (Q3.7)
+        api.get('/config')
+          .then(res => {
+            if (typeof res.data?.vpnEnforcement === 'boolean') {
+              setVpnEnforcement(res.data.vpnEnforcement)
+            }
+          })
+          .catch(() => {})
+
+        // Authoritative start or resume attempt (Q3.1)
+        const res = await api.post(`/exams/${examId}/attempt`)
+        const attempt = res.data
+
+        if (!attempt) {
+          throw new Error('Invalid attempt response payload')
+        }
+
+        // Synchronize server clock
+        if (attempt.serverTime) {
+          serverClock.synchronize(attempt.serverTime)
+        }
+
+        setAttemptId(attempt.id)
+        setExpiresAt(attempt.expiresAt)
+        autosaveRef.current.setAttemptId(attempt.id)
 
         // Authoritative State Check
-        if (res.data.sessionState === 'SUBMITTED' || res.data.isSubmitted) {
+        if (attempt.status === 'SUBMITTED' || attempt.isSubmitted) {
           setTerminalState({
             type: 'SUBMITTED',
-            score: res.data.score || 0,
-            totalMarks: res.data.totalMarks || 100,
-            percentage: res.data.percentage || 0,
-            message: res.data.message || 'Exam already submitted.'
+            score: 0,
+            totalMarks: attempt.exam?.totalMarks || 100,
+            percentage: 0,
+            message: 'Exam already submitted.'
+          })
+          autosaveRef.current.pollResult(5, 2000).then(r => {
+            if (r && r.released !== false && r.status !== 'HELD_BY_POLICY') {
+              setTerminalState({
+                type: 'SUBMITTED',
+                score: r.score ?? 0,
+                totalMarks: r.totalMarks ?? (attempt.exam?.totalMarks || 100),
+                percentage: r.percentage ?? 0,
+                message: r.message || 'Examination finalized and certified.'
+              })
+            }
           })
           setLoading(false)
           return
         }
 
-        if (res.data.sessionState === 'TERMINATED' || res.data.isTerminated) {
+        if (attempt.status === 'TERMINATED' || attempt.isTerminated) {
           setTerminalState({
             type: 'TERMINATED',
-            reason: res.data.terminationReason || 'This exam was terminated by the invigilator.'
+            reason: attempt.terminationReason || 'This exam was terminated by the invigilator.'
           })
           setLoading(false)
           return
         }
 
-        if (res.data.sessionState === 'SUSPENDED' || res.data.isSuspended) {
+        if (attempt.status === 'SUSPENDED' || attempt.isSuspended) {
           setSuspendedState({
             active: true,
-            reason: res.data.suspensionReason || 'Session temporarily held by invigilator.',
+            reason: attempt.suspensionReason || 'Session temporarily held by invigilator.',
             isVpn: false
           })
         }
 
-        if (res.data.waiting) {
+        if (attempt.status === 'READY') {
           setIsWaiting(true)
-          setExam(res.data.exam)
-          const startMs = new Date(res.data.exam?.startTime || res.data.startTime || Date.now()).getTime()
-          const calcSecs = () => Math.max(0, Math.floor((startMs - Date.now()) / 1000))
+          setExam(attempt.exam)
+          const startMs = new Date(attempt.exam?.startTime || Date.now()).getTime()
+          const calcSecs = () => Math.max(0, Math.floor((startMs - serverClock.now()) / 1000))
           setSecsToStart(calcSecs())
 
           interval = setInterval(() => {
@@ -282,23 +379,62 @@ export default function ExamInterface() {
           }, 1000)
         } else {
           setIsWaiting(false)
-          setExam(res.data.exam)
-          setQuestions(res.data.questions || [])
+          setExam(attempt.exam)
 
-          // Hydrate previously saved answers
-          if (res.data.answers && Array.isArray(res.data.answers)) {
-            const map = {}
-            res.data.answers.forEach(a => {
-              map[a.questionId] = {
-                selected: a.selectedOption
+          // Load and normalize questions
+          const loadedQuestions = (attempt.questions || []).map((q, idx) => ({
+            id: q.attemptQuestionId || q.questionId,
+            attemptQuestionId: q.attemptQuestionId,
+            questionId: q.questionId,
+            displayOrder: q.displayOrder ?? idx,
+            questionText: q.questionText,
+            imageUrl: q.imageKey ? `/api/v1/media/image/${q.imageKey}` : null,
+            marks: q.marks,
+            negativeMarks: q.negativeMarks,
+            difficulty: q.difficulty || 'MEDIUM',
+            options: (q.options || []).map((opt, i) => ({
+              id: opt.id,
+              letter: String.fromCharCode(65 + i),
+              text: opt.text,
+              order: opt.order ?? i
+            }))
+          }))
+          setQuestions(loadedQuestions)
+
+          // Hydrate previously saved answers + revisions (Q3.1)
+          const hydratedAnswers = {}
+          let maxRevision = 1
+          for (const q of (attempt.questions || [])) {
+            if (q.revision && q.revision > maxRevision) {
+              maxRevision = q.revision
+            }
+            if (q.selectedOptionId) {
+              let matchedLetter = null
+              const matchedOpt = (q.options || []).find((opt, i) => {
+                if (opt.id === q.selectedOptionId) {
+                  matchedLetter = String.fromCharCode(65 + i)
+                  return true
+                }
+                return false
+              })
+
+              const targetVal = {
+                selected: matchedLetter || matchedOpt?.text || q.selectedOptionId,
+                revision: q.revision || 1
               }
-            })
-            setAnswers(map)
+
+              if (q.attemptQuestionId) hydratedAnswers[q.attemptQuestionId] = targetVal
+              if (q.questionId) hydratedAnswers[q.questionId] = targetVal
+            }
+          }
+          setAnswers(hydratedAnswers)
+          if (autosaveRef.current) {
+            autosaveRef.current.currentRevision = maxRevision
           }
         }
       } catch (err) {
         console.error('Failed to initialize exam:', err)
-        const msg = err.response?.data?.error || err.message
+        const msg = err.response?.data?.error?.message || err.message
         toast.error(msg || 'Failed to initialize examination.')
         navigate('/student/dashboard')
       } finally {
@@ -312,55 +448,40 @@ export default function ExamInterface() {
     }
   }, [examId, navigate])
 
-  // ── 2. Reliable Autosave with Queue & Visual Feedback ──
-  const processSaveQueue = useCallback(async () => {
-    const queue = { ...saveQueueRef.current }
-    const qIds = Object.keys(queue)
-    if (qIds.length === 0) return
-
-    setSaveStatus('saving')
-    try {
-      // Save all queued questions
-      await Promise.all(
-        qIds.map(async (qid) => {
-          await api.post(`/student/exams/${examId}/autosave`, {
-            questionId: qid,
-            answer: queue[qid]
-          })
-          delete saveQueueRef.current[qid]
-        })
-      )
-      setSaveStatus('saved')
-    } catch (err) {
-      console.warn('[Autosave] save error:', err.message)
-      setSaveStatus('error')
-      // Retry in 4 seconds
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = setTimeout(processSaveQueue, 4000)
-    }
-  }, [examId])
-
+  // ── Record Answer via AutosaveManager (Q3.2) ──
   const setAnswer = (questionId, field, val) => {
-    setAnswers(prev => {
-      const updatedItem = {
-        ...(prev[questionId] || {}),
+    const q = questions.find(item => item.id === questionId || item.attemptQuestionId === questionId || item.questionId === questionId)
+    const attemptQuestionId = q?.attemptQuestionId || questionId
+    const targetQId = q?.id || questionId
+
+    setAnswers(prev => ({
+      ...prev,
+      [targetQId]: {
+        ...(prev[targetQId] || {}),
+        [field]: val
+      },
+      [attemptQuestionId]: {
+        ...(prev[attemptQuestionId] || {}),
         [field]: val
       }
-      const updated = {
-        ...prev,
-        [questionId]: updatedItem
+    }))
+
+    // Match option ID for backend record
+    let selectedOptionId = val
+    if (q && q.options) {
+      const matchOpt = q.options.find((opt, i) => {
+        const letter = String.fromCharCode(65 + i)
+        return opt.id === val || opt.text === val || letter === val
+      })
+      if (matchOpt) {
+        selectedOptionId = matchOpt.id
       }
+    }
 
-      // Add to queue
-      saveQueueRef.current[questionId] = updatedItem
+    if (attemptQuestionId && selectedOptionId) {
+      autosaveRef.current.recordAnswer(attemptQuestionId, selectedOptionId)
       setSaveStatus('saving')
-
-      // Debounce trigger
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
-      saveTimeoutRef.current = setTimeout(processSaveQueue, 1200)
-
-      return updated
-    })
+    }
   }
 
   const toggleFlag = (questionId) => {
@@ -378,11 +499,9 @@ export default function ExamInterface() {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {})
   }
 
-  // ── 3. Continuous In-Exam WireGuard VPN Monitor (PAUSED FOR MAINTENANCE) ──
+  // ── 3. Continuous In-Exam WireGuard VPN Monitor (Q3.7) ──
   useEffect(() => {
-    // VPN feature is temporarily paused for maintenance
-    const VPN_FEATURE_PAUSED = true
-    if (VPN_FEATURE_PAUSED) return
+    if (!vpnEnforcement) return
     if (loading || isWaiting || terminalState) return
 
     let vpnTimer = null
@@ -426,7 +545,7 @@ export default function ExamInterface() {
     return () => {
       if (vpnTimer) clearInterval(vpnTimer)
     }
-  }, [loading, isWaiting, terminalState, emitViolation])
+  }, [vpnEnforcement, loading, isWaiting, terminalState, emitViolation])
 
   // ── 4. Keyboard Shortcut & Clipboard Protection ──
   useEffect(() => {
@@ -451,7 +570,7 @@ export default function ExamInterface() {
         const isEditable = targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable
         if (!isEditable) {
           e.preventDefault()
-          emitViolation?.('COPY_ATTEMPT', 'LOW')
+          emitViolation?.('KEYBOARD_SHORTCUT', 'LOW', { action: 'copy_paste' })
         }
       }
     }
@@ -476,7 +595,12 @@ export default function ExamInterface() {
           streamRef.current.getTracks().forEach(track => track.stop())
         } catch {}
       }
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      if (screenStreamRef.current) {
+        try {
+          screenStreamRef.current.getTracks().forEach(track => track.stop())
+        } catch {}
+      }
+      clearSharedScreenStream()
     }
   }, [])
 

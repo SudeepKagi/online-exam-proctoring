@@ -1,0 +1,1689 @@
+{
+  "tag": "div",
+  "attributes": {
+    "id": "root"
+  },
+  "childCount": 2,
+  "children": [
+    {
+      "tag": "div",
+      "childCount": 0
+    },
+    {
+      "tag": "div",
+      "attributes": {
+        "class": "min-h-screen w-full bg-[#f8fafc] flex flex-col md:flex-row font-sans antialiased text-[#0f172a]"
+      },
+      "childCount": 2,
+      "children": [
+        {
+          "tag": "aside",
+          "attributes": {
+            "class": "w-64 bg-white border-r border-[#e2e8f0] flex flex-col justify-between shrink-0 min-h-screen sticky top-0 h-screen font-sans z-30"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "overflow-y-auto flex-1"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center gap-3 px-6 py-5 border-b border-[#f1f5f9]"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "img",
+                      "attributes": {
+                        "class": "w-8 h-8 rounded-xl object-contain shrink-0 shadow-xs"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "min-w-0"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "span",
+                          "attributes": {
+                            "class": "font-bold text-base text-slate-900 tracking-tight block"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-xs font-medium text-slate-500 capitalize leading-none mt-1"
+                          },
+                          "childCount": 0
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "px-4 py-4 space-y-6"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "space-y-1"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] font-semibold text-slate-400 tracking-wider px-3 mb-2 uppercase"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "a",
+                          "attributes": {
+                            "class": "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-layout-dashboard"
+                              },
+                              "childCount": 4,
+                              "children": [
+                                {
+                                  "tag": "rect",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "rect",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "rect",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "rect",
+                                  "childCount": 0
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "a",
+                          "attributes": {
+                            "class": "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-chart-no-axes-column"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "space-y-1"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "p",
+                          "attributes": {
+                            "class": "text-[11px] font-semibold text-slate-400 tracking-wider px-3 mb-2 uppercase"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "a",
+                          "attributes": {
+                            "class": "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-book-open"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "a",
+                          "attributes": {
+                            "class": "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-user-check"
+                              },
+                              "childCount": 3,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "circle",
+                                  "childCount": 0
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "span",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "div",
+              "attributes": {
+                "class": "p-4 border-t border-slate-100"
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200"
+                  },
+                  "childCount": 2,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "flex items-center gap-2.5 min-w-0"
+                      },
+                      "childCount": 2,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "w-8 h-8 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center shrink-0 border border-blue-100"
+                          },
+                          "childCount": 0
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "min-w-0"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "p",
+                              "attributes": {
+                                "class": "text-xs font-semibold text-slate-900 truncate"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "p",
+                              "attributes": {
+                                "class": "text-xs font-normal text-slate-500 truncate"
+                              },
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "button",
+                      "attributes": {
+                        "class": "text-slate-400 hover:text-destructive p-1.5 rounded-lg hover:bg-white transition-colors cursor-pointer",
+                        "aria-label": "Sign out"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "svg",
+                          "attributes": {
+                            "class": "lucide lucide-log-out"
+                          },
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "path",
+                              "childCount": 0
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "attributes": {
+            "class": "flex-1 flex flex-col min-w-0 bg-[#f8fafc]"
+          },
+          "childCount": 2,
+          "children": [
+            {
+              "tag": "header",
+              "attributes": {
+                "class": "h-16 border-b border-slate-200 flex items-center justify-between px-6 md:px-8 bg-white/95 backdrop-blur sticky top-0 z-20 font-sans"
+              },
+              "childCount": 2,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center gap-2"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "h2",
+                      "attributes": {
+                        "class": "text-sm font-semibold text-slate-900 capitalize"
+                      },
+                      "childCount": 0
+                    }
+                  ]
+                },
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "flex items-center gap-3"
+                  },
+                  "childCount": 3,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "relative"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "relative p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer border border-transparent hover:border-slate-200",
+                            "aria-label": "View notifications"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-bell"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                },
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "h-5 w-[1px] bg-[#e2e8f0]"
+                      },
+                      "childCount": 0
+                    },
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "relative"
+                      },
+                      "childCount": 1,
+                      "children": [
+                        {
+                          "tag": "button",
+                          "attributes": {
+                            "class": "flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-full bg-[#f8fafc] hover:bg-white border border-slate-200 shadow-xs transition-all cursor-pointer",
+                            "aria-label": "User menu"
+                          },
+                          "childCount": 3,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center border border-blue-200"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "span",
+                              "attributes": {
+                                "class": "text-xs font-semibold text-slate-900"
+                              },
+                              "childCount": 0
+                            },
+                            {
+                              "tag": "svg",
+                              "attributes": {
+                                "class": "lucide lucide-chevron-down text-slate-400"
+                              },
+                              "childCount": 1,
+                              "children": [
+                                {
+                                  "tag": "path",
+                                  "childCount": 0
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "tag": "main",
+              "attributes": {
+                "class": "flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto"
+              },
+              "childCount": 1,
+              "children": [
+                {
+                  "tag": "div",
+                  "attributes": {
+                    "class": "max-w-[1600px] mx-auto w-full"
+                  },
+                  "childCount": 1,
+                  "children": [
+                    {
+                      "tag": "div",
+                      "attributes": {
+                        "class": "max-w-5xl mx-auto space-y-6 font-sans text-[#0f172a]"
+                      },
+                      "childCount": 3,
+                      "children": [
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#f1f5f9]"
+                          },
+                          "childCount": 2,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "h1",
+                                  "attributes": {
+                                    "class": "text-xl font-bold tracking-tight text-[#0f172a] flex items-center gap-2"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-shield-check w-6 h-6 text-[#2563eb]"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "p",
+                                  "attributes": {
+                                    "class": "text-xs text-[#64748b] mt-0.5"
+                                  },
+                                  "childCount": 0
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "flex items-center gap-3"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "text-right"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "text-[10px] font-bold text-[#64748b] uppercase tracking-wider block"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "text-sm font-semibold font-mono text-[#0f172a]"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "w-12 h-12 rounded-full border-4 border-[#e2e8f0] flex items-center justify-center relative overflow-hidden bg-white shadow-2xs"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "absolute inset-0 transition-all bg-[#eff6ff]"
+                                      },
+                                      "childCount": 0
+                                    },
+                                    {
+                                      "tag": "span",
+                                      "attributes": {
+                                        "class": "text-xs font-bold font-mono relative z-10 text-[#2563eb]"
+                                      },
+                                      "childCount": 0
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "grid grid-cols-1 md:grid-cols-2 gap-5"
+                          },
+                          "childCount": 4,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "gap-5 text-card-foreground transition-all duration-150 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "flex items-center justify-between mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "flex items-center gap-2.5"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] flex items-center justify-center"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "svg",
+                                                  "attributes": {
+                                                    "class": "lucide lucide-terminal"
+                                                  },
+                                                  "childCount": 2,
+                                                  "children": [
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "h3",
+                                                  "attributes": {
+                                                    "class": "text-sm font-bold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "p",
+                                                  "attributes": {
+                                                    "class": "text-[11px] text-[#64748b]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "space-y-2.5 my-3.5"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "p-3 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs font-medium text-[#10b981] flex items-center gap-2"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "svg",
+                                              "attributes": {
+                                                "class": "lucide lucide-circle-check text-[#10b981] shrink-0"
+                                              },
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "circle",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "path",
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "span",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "grid grid-cols-2 gap-2 text-[11px] text-[#64748b] bg-[#f8fafc] p-2.5 rounded-xl border border-[#e2e8f0]"
+                                          },
+                                          "childCount": 4,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "font-semibold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "font-semibold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "font-semibold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "font-semibold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none border shadow-xs hover:text-foreground active:bg-neutral-200 active:scale-[0.98] dark:hover:bg-neutral-800 px-4 py-2 has-[>svg]:px-3 w-full text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-refresh-cw w-3.5 h-3.5 mr-2 text-[#2563eb]"
+                                      },
+                                      "childCount": 4,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "gap-5 text-card-foreground transition-all duration-150 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "flex items-center justify-between mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "flex items-center gap-2.5"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] flex items-center justify-center"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "svg",
+                                                  "attributes": {
+                                                    "class": "lucide lucide-wifi"
+                                                  },
+                                                  "childCount": 4,
+                                                  "children": [
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "h3",
+                                                  "attributes": {
+                                                    "class": "text-sm font-bold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "p",
+                                                  "attributes": {
+                                                    "class": "text-[11px] text-[#64748b]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "space-y-2.5 my-3.5"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex items-center justify-between"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "flex items-center gap-2"
+                                              },
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "div",
+                                                  "attributes": {
+                                                    "class": "w-2.5 h-2.5 rounded-full bg-[#10b981]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "text-xs font-semibold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "span",
+                                              "attributes": {
+                                                "class": "text-xs font-bold font-mono text-[#0f172a]"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "span",
+                                                  "attributes": {
+                                                    "class": "text-[#10b981] ml-1 font-sans"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "p-3 rounded-xl bg-[#eff6ff] border border-[#dbeafe] text-xs flex items-center justify-between"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "flex items-center gap-2"
+                                              },
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "div",
+                                                  "attributes": {
+                                                    "class": "w-2.5 h-2.5 rounded-full bg-[#2563eb]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "div",
+                                                  "childCount": 2,
+                                                  "children": [
+                                                    {
+                                                      "tag": "p",
+                                                      "attributes": {
+                                                        "class": "font-bold text-[#1e40af] flex items-center gap-1"
+                                                      },
+                                                      "childCount": 1,
+                                                      "children": [
+                                                        {
+                                                          "tag": "svg",
+                                                          "attributes": {
+                                                            "class": "lucide lucide-circle-check text-[#2563eb]"
+                                                          },
+                                                          "childCount": 2,
+                                                          "children": [
+                                                            {
+                                                              "tag": "circle",
+                                                              "childCount": 0
+                                                            },
+                                                            {
+                                                              "tag": "path",
+                                                              "childCount": 0
+                                                            }
+                                                          ]
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "tag": "p",
+                                                      "attributes": {
+                                                        "class": "text-[10px] text-[#3b82f6]"
+                                                      },
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex gap-2"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "button",
+                                      "attributes": {
+                                        "class": "inline-flex items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none border shadow-xs hover:text-foreground active:bg-neutral-200 active:scale-[0.98] dark:hover:bg-neutral-800 px-4 py-2 has-[>svg]:px-3 flex-1 text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-refresh-cw w-3.5 h-3.5 mr-1.5 text-[#2563eb]"
+                                          },
+                                          "childCount": 4,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "button",
+                                      "attributes": {
+                                        "class": "inline-flex items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none border shadow-xs hover:text-foreground active:bg-neutral-200 active:scale-[0.98] dark:hover:bg-neutral-800 px-4 py-2 has-[>svg]:px-3 flex-1 text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-lock w-3.5 h-3.5 mr-1.5 text-[#64748b]"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "rect",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "gap-5 text-card-foreground transition-all duration-150 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "childCount": 3,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "flex items-center justify-between mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "flex items-center gap-2.5"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] flex items-center justify-center"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "svg",
+                                                  "attributes": {
+                                                    "class": "lucide lucide-camera"
+                                                  },
+                                                  "childCount": 2,
+                                                  "children": [
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "circle",
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "h3",
+                                                  "attributes": {
+                                                    "class": "text-sm font-bold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "p",
+                                                  "attributes": {
+                                                    "class": "text-[11px] text-[#64748b]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#ef4444] border border-[#fecaca]"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "relative w-full h-44 bg-[#0f172a] rounded-xl overflow-hidden mb-3 border border-[#e2e8f0] flex items-center justify-center"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "video",
+                                          "attributes": {
+                                            "class": "w-full h-full object-cover hidden"
+                                          },
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "text-center p-4"
+                                          },
+                                          "childCount": 3,
+                                          "children": [
+                                            {
+                                              "tag": "svg",
+                                              "attributes": {
+                                                "class": "lucide lucide-video-off text-[#64748b] mx-auto mb-2 opacity-60"
+                                              },
+                                              "childCount": 3,
+                                              "children": [
+                                                {
+                                                  "tag": "path",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "path",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "path",
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "p",
+                                              "attributes": {
+                                                "class": "text-xs font-semibold text-white"
+                                              },
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "p",
+                                              "attributes": {
+                                                "class": "text-[10px] text-[#94a3b8] mt-0.5"
+                                              },
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "space-y-1 mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "flex items-center justify-between text-[11px]"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "span",
+                                              "attributes": {
+                                                "class": "flex items-center gap-1 text-[#64748b] font-medium"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "svg",
+                                                  "attributes": {
+                                                    "class": "lucide lucide-mic text-[#64748b]"
+                                                  },
+                                                  "childCount": 3,
+                                                  "children": [
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "path",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "rect",
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "span",
+                                              "attributes": {
+                                                "class": "font-mono text-xs font-bold text-[#0f172a]"
+                                              },
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "w-full h-2 bg-[#f1f5f9] rounded-full overflow-hidden border border-[#e2e8f0]"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "h-full bg-[#10b981] transition-all duration-100 rounded-full"
+                                              },
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none shadow-sm active:bg-[#1c4d8e] active:scale-[0.98] px-4 py-2 has-[>svg]:px-3 w-full text-xs font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] text-white h-9 cursor-pointer"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-camera w-3.5 h-3.5 mr-1.5"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "circle",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "gap-5 text-card-foreground transition-all duration-150 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "childCount": 3,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "flex items-center justify-between mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "flex items-center gap-2.5"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "div",
+                                              "attributes": {
+                                                "class": "w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] flex items-center justify-center"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "svg",
+                                                  "attributes": {
+                                                    "class": "lucide lucide-monitor"
+                                                  },
+                                                  "childCount": 3,
+                                                  "children": [
+                                                    {
+                                                      "tag": "rect",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "line",
+                                                      "childCount": 0
+                                                    },
+                                                    {
+                                                      "tag": "line",
+                                                      "childCount": 0
+                                                    }
+                                                  ]
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "div",
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "h3",
+                                                  "attributes": {
+                                                    "class": "text-sm font-bold text-[#0f172a]"
+                                                  },
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "p",
+                                                  "attributes": {
+                                                    "class": "text-[11px] text-[#64748b]"
+                                                  },
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "span",
+                                          "attributes": {
+                                            "class": "px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#ef4444] border border-[#fecaca]"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "relative w-full h-44 bg-[#0f172a] rounded-xl overflow-hidden mb-3 border border-[#e2e8f0] flex items-center justify-center"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "video",
+                                          "attributes": {
+                                            "class": "w-full h-full object-contain hidden"
+                                          },
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "div",
+                                          "attributes": {
+                                            "class": "text-center p-4"
+                                          },
+                                          "childCount": 3,
+                                          "children": [
+                                            {
+                                              "tag": "svg",
+                                              "attributes": {
+                                                "class": "lucide lucide-monitor text-[#64748b] mx-auto mb-2 opacity-60"
+                                              },
+                                              "childCount": 3,
+                                              "children": [
+                                                {
+                                                  "tag": "rect",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "line",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "line",
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            },
+                                            {
+                                              "tag": "p",
+                                              "attributes": {
+                                                "class": "text-xs font-semibold text-white"
+                                              },
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "p",
+                                              "attributes": {
+                                                "class": "text-[10px] text-[#94a3b8] mt-0.5"
+                                              },
+                                              "childCount": 1,
+                                              "children": [
+                                                {
+                                                  "tag": "strong",
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "p-2.5 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-[11px] text-[#64748b] space-y-1 mb-3"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "p",
+                                          "attributes": {
+                                            "class": "flex items-center gap-1.5 text-[#0f172a] font-semibold"
+                                          },
+                                          "childCount": 1,
+                                          "children": [
+                                            {
+                                              "tag": "svg",
+                                              "attributes": {
+                                                "class": "lucide lucide-circle-check text-[#10b981]"
+                                              },
+                                              "childCount": 2,
+                                              "children": [
+                                                {
+                                                  "tag": "circle",
+                                                  "childCount": 0
+                                                },
+                                                {
+                                                  "tag": "path",
+                                                  "childCount": 0
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "tag": "p",
+                                          "attributes": {
+                                            "class": "text-[10px]"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none shadow-sm active:bg-[#1c4d8e] active:scale-[0.98] px-4 py-2 has-[>svg]:px-3 w-full text-xs font-semibold bg-[#2563eb] hover:bg-[#1d4ed8] text-white h-9 cursor-pointer"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-monitor w-3.5 h-3.5 mr-1.5"
+                                      },
+                                      "childCount": 3,
+                                      "children": [
+                                        {
+                                          "tag": "rect",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "line",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "line",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "tag": "div",
+                          "attributes": {
+                            "class": "flex flex-col gap-5 text-card-foreground transition-all duration-150 bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5"
+                          },
+                          "childCount": 1,
+                          "children": [
+                            {
+                              "tag": "div",
+                              "attributes": {
+                                "class": "flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                              },
+                              "childCount": 2,
+                              "children": [
+                                {
+                                  "tag": "div",
+                                  "attributes": {
+                                    "class": "flex items-center gap-3"
+                                  },
+                                  "childCount": 2,
+                                  "children": [
+                                    {
+                                      "tag": "div",
+                                      "attributes": {
+                                        "class": "w-10 h-10 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] flex items-center justify-center text-[#10b981] shrink-0"
+                                      },
+                                      "childCount": 1,
+                                      "children": [
+                                        {
+                                          "tag": "svg",
+                                          "attributes": {
+                                            "class": "lucide lucide-shield-check"
+                                          },
+                                          "childCount": 2,
+                                          "children": [
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            },
+                                            {
+                                              "tag": "path",
+                                              "childCount": 0
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "tag": "div",
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "h3",
+                                          "attributes": {
+                                            "class": "text-sm font-bold text-[#0f172a]"
+                                          },
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "p",
+                                          "attributes": {
+                                            "class": "text-xs text-[#64748b] mt-0.5"
+                                          },
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "tag": "button",
+                                  "attributes": {
+                                    "class": "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl whitespace-nowrap transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none active:bg-[#1c4d8e] active:scale-[0.98] py-2 has-[>svg]:px-3 w-full sm:w-auto text-xs font-bold px-6 bg-[#0f172a] hover:bg-[#1e293b] text-white shadow-xs cursor-pointer h-10"
+                                  },
+                                  "childCount": 1,
+                                  "children": [
+                                    {
+                                      "tag": "svg",
+                                      "attributes": {
+                                        "class": "lucide lucide-shield-check w-3.5 h-3.5 mr-2 text-[#10b981]"
+                                      },
+                                      "childCount": 2,
+                                      "children": [
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        },
+                                        {
+                                          "tag": "path",
+                                          "childCount": 0
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

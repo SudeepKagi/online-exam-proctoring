@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { io } from 'socket.io-client'
 import toast from 'react-hot-toast'
+import { normalizeViolationType } from '@/shared/violationTypes'
 
 /**
- * useExamSocket Hook (P7 Cleaned)
+ * useExamSocket Hook (P7 Cleaned / Q3 Integrated)
  * Handles Socket.io real-time control plane events (state changes, proctor warnings, chat).
  * Media streaming is handled exclusively by LiveKit SFU (ProctorPublisher) - no media over socket!
  */
@@ -36,20 +37,26 @@ export function useExamSocket({
   const userRef = useRef(user)
   userRef.current = user
 
-  // ── Throttled Violation Emitter ──
+  // ── Throttled Violation Emitter (Q3.4 / A-06) ──
   const emitViolation = useCallback((type, severity, metadata = {}) => {
+    const canonicalType = normalizeViolationType(type)
+    if (!canonicalType) {
+      console.warn(`[useExamSocket] Rejected unknown client violation type: '${type}'`)
+      return
+    }
+
     const now = Date.now()
-    const lastTime = lastViolationTimeRef.current[type] || 0
+    const lastTime = lastViolationTimeRef.current[canonicalType] || 0
     if (now - lastTime < 5000) return // Throttle 5s per violation type
 
-    lastViolationTimeRef.current[type] = now
+    lastViolationTimeRef.current[canonicalType] = now
     setViolations(v => v + 1)
 
     // Send control event over socket without image bytes
     socketRef.current?.emit('violation', {
       examId,
       attemptId,
-      eventType: type,
+      eventType: canonicalType,
       clientTimestamp: new Date().toISOString(),
       metadata
     })

@@ -96,7 +96,7 @@ class WireGuardAgentProvider extends VpnProvider {
    */
   async _directExec(method, path, body) {
     return new Promise((resolve, reject) => {
-      let args = []
+      let args
       if (path === '/peers/add' && body) {
         args = ['set', this.interfaceName, 'peer', body.publicKey, 'allowed-ips', `${body.ip}/32`]
       } else if (path === '/peers/remove' && body) {

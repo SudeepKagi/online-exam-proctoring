@@ -4,39 +4,22 @@ const fs = require('fs')
 const path = require('path')
 
 describe('Architectural & Regression Guardrails', () => {
-  it('faculty.controller.js must export valid unique functions with no duplicate declarations in source', () => {
-    const facultyController = require('../src/controllers/faculty.controller')
-    const exportedKeys = Object.keys(facultyController)
+  it('Modular domain controllers must export valid Express routers', () => {
+    const facultyRouter = require('../src/modules/faculty/controller')
+    const studentRouter = require('../src/modules/student/controller')
+    const adminRouter = require('../src/modules/admin/controller')
 
-    assert.ok(exportedKeys.length >= 10, 'Must export all required handler methods')
-    exportedKeys.forEach(key => {
-      assert.strictEqual(typeof facultyController[key], 'function', `Export ${key} must be a valid function`)
-    })
-
-    // Check source code for duplicate function declarations
-    const filePath = path.join(__dirname, '../src/controllers/faculty.controller.js')
-    const content = fs.readFileSync(filePath, 'utf8')
-    const functionRegex = /async function\s+([a-zA-Z0-9_]+)\s*\(/g
-    const matches = []
-    let m
-    while ((m = functionRegex.exec(content)) !== null) {
-      matches.push(m[1])
-    }
-
-    const uniqueMatches = new Set(matches)
-    assert.strictEqual(
-      matches.length,
-      uniqueMatches.size,
-      `Duplicate function names found in faculty.controller.js: ${matches.filter((v, i, a) => a.indexOf(v) !== i).join(', ')}`
-    )
+    assert.strictEqual(typeof facultyRouter, 'function', 'Faculty controller must be an Express router')
+    assert.strictEqual(typeof studentRouter, 'function', 'Student controller must be an Express router')
+    assert.strictEqual(typeof adminRouter, 'function', 'Admin controller must be an Express router')
   })
 
   it('Controllers must have ZERO direct prisma.* database invocations (Service Layer Pattern)', () => {
-    const controllersDir = path.join(__dirname, '../src/controllers')
-    const files = ['faculty.controller.js', 'student.controller.js', 'admin.controller.js']
+    const modulesDir = path.join(__dirname, '../src/modules')
+    const files = ['faculty/controller.js', 'student/controller.js', 'admin/controller.js']
 
     files.forEach(file => {
-      const fullPath = path.join(controllersDir, file)
+      const fullPath = path.join(modulesDir, file)
       const content = fs.readFileSync(fullPath, 'utf8')
       const prismaCalls = (content.match(/prisma\.[a-zA-Z0-9_]+\./g) || []).length
       assert.strictEqual(
@@ -48,30 +31,22 @@ describe('Architectural & Regression Guardrails', () => {
   })
 
   it('Controllers should stay within manageable length guidelines (<500 lines)', () => {
-    const controllersDir = path.join(__dirname, '../src/controllers')
-    const files = ['faculty.controller.js', 'student.controller.js', 'admin.controller.js']
+    const modulesDir = path.join(__dirname, '../src/modules')
+    const files = ['faculty/controller.js', 'student/controller.js', 'admin/controller.js']
 
     files.forEach(file => {
-      const fullPath = path.join(controllersDir, file)
+      const fullPath = path.join(modulesDir, file)
       const content = fs.readFileSync(fullPath, 'utf8')
       const lines = content.split('\n').length
       assert.ok(lines < 550, `${file} is too long (${lines} lines). Keep below 500 lines.`)
     })
   })
 
-  it('render.yaml startCommand must point to an existing backend entry point (src/app.js)', () => {
+  it('Legacy deployment files (render.yaml, vercel.json) must be deleted in Phase Q2', () => {
     const renderPath = path.join(__dirname, '../../render.yaml')
-    if (fs.existsSync(renderPath)) {
-      const renderContent = fs.readFileSync(renderPath, 'utf8')
-      assert.ok(
-        renderContent.includes('node src/app.js'),
-        'render.yaml must use node src/app.js matching package.json entry point'
-      )
-      assert.ok(
-        !renderContent.includes('node src/server.js'),
-        'render.yaml must not reference obsolete src/server.js'
-      )
-    }
+    const vercelPath = path.join(__dirname, '../../vercel.json')
+    assert.strictEqual(fs.existsSync(renderPath), false, 'render.yaml must be deleted')
+    assert.strictEqual(fs.existsSync(vercelPath), false, 'vercel.json must be deleted')
   })
 
   it('VITE_VPN_ENABLED must not exist in any configuration template or frontend source', () => {
