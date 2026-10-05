@@ -1,13 +1,14 @@
 process.env.NODE_ENV = 'test'
-const { describe, it } = require('node:test')
+const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const http = require('http')
-const { app } = require('../src/app')
+const { app, internalApp } = require('../src/app')
 
 function makeRequest(path, headers = {}) {
+  const targetApp = (['/metrics', '/readyz'].includes(path) && internalApp) ? internalApp : app
   return new Promise((resolve, reject) => {
-    const server = http.createServer(app)
-    server.listen(0, () => {
+    const server = http.createServer(targetApp)
+    server.listen(0, '127.0.0.1', () => {
       const port = server.address().port
       const req = http.request(
         {
@@ -85,5 +86,9 @@ describe('Observability & Telemetry Verification Suite (P0)', () => {
     assert.ok(returnedId, 'Response must include an X-Request-Id header')
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     assert.match(returnedId, uuidRegex, 'Generated request ID must be a valid UUID')
+  })
+
+  after(() => {
+    setTimeout(() => process.exit(0), 100).unref()
   })
 })

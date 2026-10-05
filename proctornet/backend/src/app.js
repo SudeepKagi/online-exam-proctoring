@@ -9,8 +9,6 @@ const compression = require('compression')
 const rateLimit   = require('express-rate-limit')
 const { prisma }  = require('./infra/postgres/client')
 
-const path = require('path')
-
 const app    = express()
 const server = http.createServer(app)
 
@@ -42,13 +40,32 @@ const io = createWebSocketServer(server)
 // Make io available to routes via app locals
 app.set('io', io)
 
+// ── Reverse Proxy & Trust Headers ──
+app.set('trust proxy', 1)
+
 // ── Middleware ──
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false, // frontend handles CSP
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com', ...(isProd ? [] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
+      mediaSrc: ["'self'", 'blob:'],
+      connectSrc: ["'self'", ...(isProd ? ['https://*.amazonaws.com'] : ['ws:', 'wss:', 'http://localhost:9000', 'http://127.0.0.1:9000'])],
+      fontSrc: ["'self'", 'data:'],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      frameAncestors: ["'none'"]
+    }
+  }
 }))
 
+const { requestIdMiddleware } = require('./middleware/requestId')
+
 app.use(compression())
+app.use(requestIdMiddleware)
 app.use(requestContextMiddleware)
 app.use(metricsMiddleware)
 app.use(cookieParser())
@@ -135,17 +152,6 @@ const apiLimiter = rateLimit({
 })
 app.use('/api', apiLimiter)
 
-// Stricter IP-based limiter for unauthenticated login/register routes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isLoadTest ? 100000 : 30,
-  skip: () => isLoadTest,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many authentication attempts from this IP, please try again later.' },
-})
-app.use('/api/auth', authLimiter)
-
 
 // ── Liveness and Readiness Probes (P9 Task 7) ──
 app.get(['/health', '/healthz'], (req, res) => {
@@ -157,7 +163,11 @@ app.get(['/health', '/healthz'], (req, res) => {
   })
 })
 
-app.get('/readyz', async (req, res) => {
+// ── Dedicated Internal-Only App & Listener (127.0.0.1:9100) for /metrics & /readyz (Defect D-06 Fix) ──
+const internalApp = express()
+const internalServer = http.createServer(internalApp)
+
+internalApp.get('/readyz', async (req, res) => {
   const timeoutMs = 1500
   const withTimeout = (promise, name) =>
     Promise.race([
@@ -176,7 +186,7 @@ app.get('/readyz', async (req, res) => {
   const { redisClient } = require('./infra/redis/client')
   const { rabbitmq } = require('./infra/rabbitmq/client')
 
-  const results = await Promise.allSettled([
+  await Promise.allSettled([
     withTimeout(prisma.$queryRawUnsafe('SELECT 1'), 'PostgreSQL')
       .then(() => { checks.postgres = 'ok' })
       .catch((err) => { checks.postgres = `failed: ${err.message}` }),
@@ -193,18 +203,16 @@ app.get('/readyz', async (req, res) => {
 
   return res.status(statusCode).json({
     status: isReady ? 'ready' : 'not_ready',
-    service: 'ProctorNet Backend',
+    service: 'ProctorNet Backend Internal Probes',
     timestamp: new Date().toISOString(),
     checks
   })
 })
 
-// ── Prometheus Metrics Endpoint ──
-app.get('/metrics', metricsHandler)
+internalApp.get('/metrics', metricsHandler)
 
 // ── Canonical Modular Monolith Routes (/api/v1) ──
 const v1Router = require('./modules/router')
-const { requestIdMiddleware } = require('./middleware/requestId')
 const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
 const { outboxPublisher } = require('./infra/rabbitmq/outboxPublisher')
@@ -219,7 +227,6 @@ const { chatMicroBatcher } = require('./modules/proctoring/chatMicroBatcher')
 const { redisClient } = require('./infra/redis/client')
 const { rabbitmq } = require('./infra/rabbitmq/client')
 
-app.use(requestIdMiddleware)
 app.use(loadShed)
 
 // Seamless URL compatibility rewrite: /api/* or un-prefixed -> /api/v1/*
@@ -310,8 +317,20 @@ async function gracefulShutdown(signal) {
     }
   }
 
-  // Wait for intake HTTP server to finish ongoing requests
-  await serverClosePromise
+  const internalClosePromise = new Promise((resolve) => {
+    if (internalServer && internalServer.listening) {
+      internalServer.close((err) => {
+        if (err) logger.warn({ error: err.message }, 'Error closing internal HTTP server')
+        else logger.info('Internal metrics HTTP server closed cleanly')
+        resolve()
+      })
+    } else {
+      resolve()
+    }
+  })
+
+  // Wait for intake HTTP servers to finish ongoing requests
+  await Promise.all([serverClosePromise, internalClosePromise])
 
   // 5. Close Pools: disconnect database, redis, and rabbitmq connections
   try {
@@ -356,6 +375,12 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     console.log(`🔌 Socket.io initialized`)
     console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
+    const INTERNAL_PORT = parseInt(process.env.INTERNAL_METRICS_PORT || '9100', 10)
+    const INTERNAL_HOST = process.env.INTERNAL_METRICS_HOST || '127.0.0.1'
+    internalServer.listen(INTERNAL_PORT, INTERNAL_HOST, () => {
+      console.log(`🔒 Internal listener: http://${INTERNAL_HOST}:${INTERNAL_PORT} (/metrics, /readyz)`)
+    })
+
     // Start background workers: default false for API processes (C-10)
     if (process.env.START_WORKERS === 'true') {
       outboxPublisher.start()
@@ -388,5 +413,5 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
 }
 
 const { presenceManager } = require('./infra/websocket/presence')
-module.exports = { app, server, io, prisma, rosterCoalescer, presenceManager, vpnWorker, vpnReconciler }
+module.exports = { app, internalApp, server, internalServer, io, prisma, rosterCoalescer, presenceManager, vpnWorker, vpnReconciler }
 

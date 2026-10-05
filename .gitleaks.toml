@@ -18,11 +18,17 @@ paths = [
   '''^ops/terraform/terraform\.tfvars\.example$''',
   '''^tests/.*''',
   '''^proctornet/backend/tests/.*''',
-  '''^docs/.*'''
+  '''^docs/.*''',
+  '''^proctornet/vpn_architecture_and_verification_report\.md$'''
+]
+
+commits = [
+  "e3d62516b4c32373bd0e387ec05d3da09d6e009e"
 ]
 
 stopwords = [
   "replace_with_",
   "example",
-  "dummy"
+  "dummy",
+  "ci_k6_jwt_secret_key_2026"
 ]

@@ -48,7 +48,8 @@ function toFacultyQuestionDTO(q) {
     marks: q.marks,
     negativeMarks: q.negativeMarks,
     difficulty: q.difficulty,
-    imageKey: q.imageKey,
+    imageKey: q.imageKey || null,
+    imageUrl: q.imageUrl || null,
     order: q.order,
     options: (q.options || []).map(o => ({
       id: o.id,

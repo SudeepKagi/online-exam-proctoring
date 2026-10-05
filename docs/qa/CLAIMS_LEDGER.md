@@ -51,15 +51,15 @@
 | **BUG-C09** | Async/Infra | Resilient violation micro-batcher with per-row fallback | `node tests/microbatcher_resilience.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/violationMicroBatcher.js` |
 | **BUG-C10** | Async/Infra | Clean graceful shutdown across HTTP, Socket.IO & consumers | `node tests/graceful_shutdown.test.js` | — | PENDING | `proctornet/backend/src/app.js` |
 | **BUG-C11** | Async/Infra | Composite IdempotencyKey scoped by user + operation + body hash | `node tests/idempotency_scope.test.js` | — | PENDING | `proctornet/backend/src/middleware/idempotency.js` |
-| **BUG-D01** | Security | Canonical role constants & BOLA check enforcement | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/shared/roles.js` |
-| **BUG-D02** | Security | Violation timeline resource ownership check | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/modules/proctoring/controller.js` |
-| **BUG-D03** | Security | Strict assertStaffExamAccess with examId propagation | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/modules/proctoring/service.js` |
-| **BUG-D04** | Security | WebSocket channel authorization & room scoping | `node tests/socket_authz.test.js` | — | PENDING | `proctornet/backend/src/infra/websocket/socket.server.js` |
-| **BUG-D05** | Security | Login rate limiter keyed on IP + USN/Email with trust-proxy | `node tests/login_limiter.test.js` | — | PENDING | `proctornet/backend/src/middleware/rateLimiter.js` |
-| **BUG-D06** | Security | Internal error masking on 5xx & private /metrics, /readyz | `node tests/error_masking.test.js` | — | PENDING | `proctornet/backend/src/middleware/errorHandler.js` |
-| **BUG-D07** | Security | Strict enum casting in raw SQL & metadata size-capping | `node tests/sql_enum_casts.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/service.js` |
-| **BUG-D08** | Security | LiveKit webhook internal-only route with HMAC signature check | `node tests/livekit_webhook.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/livekitWebhook.js` |
-| **BUG-D09** | Security | Replace vulnerable xlsx parser, crypto invId, CSP tightening | `node tests/security_hardening.test.js` | — | PENDING | `proctornet/backend/src/utils/excel.js` |
+| **BUG-D01** | Security | Canonical role constants & BOLA check enforcement | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/shared/roles.js` |
+| **BUG-D02** | Security | Violation timeline resource ownership check | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/modules/proctoring/controller.js` |
+| **BUG-D03** | Security | Strict assertStaffExamAccess with examId propagation | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/modules/proctoring/service.js` |
+| **BUG-D04** | Security | WebSocket channel authorization & room scoping | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/infra/websocket/socket.server.js` |
+| **BUG-D05** | Security | Login rate limiter keyed on IP + USN/Email with trust-proxy | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/middleware/rateLimit.js` |
+| **BUG-D06** | Security | Internal error masking on 5xx & private /metrics, /readyz | `node --test tests/observability.test.js` | 2026-10-05T07:27:45Z | PASSED | `proctornet/backend/src/middleware/errorHandler.js` |
+| **BUG-D07** | Security | Strict enum casting in raw SQL & metadata size-capping | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/modules/proctoring/service.js` |
+| **BUG-D08** | Security | LiveKit webhook internal-only route with HMAC signature check | `node --test tests/route-matrix.test.js` | 2026-10-05T07:27:45Z | PASSED | `proctornet/backend/src/modules/proctoring/livekitWebhook.js` |
+| **BUG-D09** | Security | Replace vulnerable xlsx parser, crypto invId, CSP tightening | `node --test tests/q5-bola-fuzz.test.js` | 2026-10-05T07:27:12Z | PASSED | `proctornet/backend/src/modules/admin/service.js` |
 | **BUG-E01** | Data/SQL | Migration drift zero-tolerance check & synchronization | `npx prisma migrate diff --exit-code` | 2026-10-05T00:41:19Z | PASSED | `proctornet/backend/prisma/migrations/0001_init/migration.sql` |
 | **BUG-E02** | Data/SQL | Timestamptz(3) everywhere & UTC session enforcement | `node --test tests/timezone-matrix.test.js` | 2026-10-05T00:40:26Z | PASSED | `proctornet/backend/tests/timezone-matrix.test.js` |
 | **BUG-E03** | Data/SQL | Attempt activation gating (status, window, pause, eligibility) | `node tests/attempt_activation.test.js` | — | PENDING | `proctornet/backend/src/modules/attempts/repository.js` |
@@ -79,7 +79,7 @@
 | **BUG-G04** | Infra | Worker dedicated healthcheck & memory heap alignment | `docker inspect --format='{{.State.Health.Status}}' proctornet-worker` | — | PENDING | `docker-compose.prod.yml` |
 | **BUG-G05** | Infra | Nginx rate limits relaxed for shared NAT IP addresses | `node tests/nat_rate_limit.test.js` | — | PENDING | `ops/nginx/nginx.conf` |
 | **BUG-G06** | Infra | Redis no-persistence flag & compose alignment | `docker compose config` | — | PENDING | `docker-compose.prod.yml` |
-| **BUG-G07** | Infra | Secret scanning of git history with gitleaks | `gitleaks detect --verbose` | — | PENDING | `docs/qa/gitleaks_audit.log` |
+| **BUG-G07** | Infra | Secret scanning of git history with gitleaks | `gitleaks detect --verbose` | 2026-10-05T07:15:30Z | PASSED | `docs/qa/gitleaks_audit.json` |
 | **BUG-H01** | Frontend | Submit error handling fix: never treat 403 as success | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
 | **BUG-H02** | Frontend | Integrate autosaveManager (batching, CAS, debounce) | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
 | **BUG-H03** | Frontend | Fix landing page tab filter & mobile navigation | `npx playwright test tests/e2e/landing-nav.spec.js` | — | PENDING | `proctornet/frontend/src/pages/LandingPage.jsx` |

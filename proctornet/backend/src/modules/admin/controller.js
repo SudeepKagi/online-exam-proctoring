@@ -191,9 +191,9 @@ router.get('/exams/:id/invigilator-credentials', async (req, res, next) => {
   }
 })
 
-router.post('/exams/:id/invigilator-credentials/reset', async (req, res, next) => {
+router.post(['/exams/:id/invigilator-credentials/regenerate', '/exams/:id/invigilator-credentials/reset'], async (req, res, next) => {
   try {
-    const credentials = await adminService.resetExamInvigilatorCredentials(req.params.id)
+    const credentials = await adminService.resetExamInvigilatorCredentials(req.params.id, req.user)
     res.status(200).json({ success: true, credentials })
   } catch (err) {
     next(err)
@@ -320,7 +320,7 @@ router.post('/bulk-upload/parse', upload.single('file'), async (req, res, next) 
     if (!req.file || !req.file.buffer) {
       return res.status(400).json({ error: 'Missing file upload' })
     }
-    const rows = adminService.parseBulkBuffer(req.file.buffer)
+    const rows = await adminService.parseBulkBuffer(req.file.buffer)
     res.status(200).json({ success: true, total: rows.length, rows })
   } catch (err) {
     next(err)

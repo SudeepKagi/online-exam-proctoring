@@ -140,6 +140,7 @@ class ProctoringService {
       await this.assertStaffExamAccess(user, attempt.examId)
     }
 
+    const isStudent = role === ROLES.STUDENT
     const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
     const events = await prisma.violationEvent.findMany({
       where: { attemptId },
@@ -148,16 +149,17 @@ class ProctoringService {
 
     return await Promise.all(
       events.map(async (ev) => {
-        const evidenceUrl = ev.evidenceKey ? await getPresignedReadUrl(ev.evidenceKey, 600) : null
-        const thumbUrl = ev.thumbKey ? await getPresignedReadUrl(ev.thumbKey, 600) : null
+        // If student, strip presigned evidence URLs and internal storage keys (D-02)
+        const evidenceUrl = (!isStudent && ev.evidenceKey) ? await getPresignedReadUrl(ev.evidenceKey, 600) : null
+        const thumbUrl = (!isStudent && ev.thumbKey) ? await getPresignedReadUrl(ev.thumbKey, 600) : null
 
         return {
           id: ev.id.toString(),
           attemptId: ev.attemptId,
           eventType: ev.eventType,
           severity: ev.severity,
-          evidenceKey: ev.evidenceKey,
-          thumbKey: ev.thumbKey,
+          evidenceKey: isStudent ? null : ev.evidenceKey,
+          thumbKey: isStudent ? null : ev.thumbKey,
           evidenceUrl,
           thumbUrl,
           evidenceStatus: ev.evidenceStatus,
@@ -171,10 +173,49 @@ class ProctoringService {
 
   /**
    * Post a chat message through micro-batcher with rate limiting (1 msg / 2 s)
+   * Hardened against BOLA (D-01 / D-03 / D-04)
    */
-  async postChatMessage(examId, senderId, senderRole, message, studentIdParam = null) {
-    const normRole = normalizeRole(senderRole)
-    const studentId = normRole === ROLES.STUDENT ? senderId : (studentIdParam || senderId)
+  async postChatMessage(examId, userOrId, roleOrMessage, messageOrStudent, studentIdParam = null) {
+    // Support signature: (examId, user, message, targetStudentId) OR legacy (examId, senderId, senderRole, message, studentIdParam)
+    let user, message, targetStudentId
+    if (typeof userOrId === 'object' && userOrId !== null) {
+      user = userOrId
+      message = roleOrMessage
+      targetStudentId = messageOrStudent || null
+    } else {
+      user = { id: userOrId, role: roleOrMessage }
+      message = messageOrStudent
+      targetStudentId = studentIdParam || null
+    }
+
+    const normRole = normalizeRole(user?.role)
+    const senderId = user.id
+
+    let studentId = targetStudentId
+    if (normRole === ROLES.STUDENT) {
+      // Student chat strictly bound to user.id (D-01)
+      studentId = senderId
+      const attempt = await prisma.examAttempt.findFirst({
+        where: { examId, studentId: senderId },
+        select: { id: true }
+      })
+      if (!attempt) {
+        throw new ForbiddenError('Access denied: You are not enrolled in this exam')
+      }
+    } else {
+      // Staff chat bound to exam scope (D-01 / D-03)
+      await this.assertStaffExamAccess(user, examId)
+      if (!studentId) {
+        throw new ValidationError('studentId is required for staff chat')
+      }
+      const attempt = await prisma.examAttempt.findFirst({
+        where: { examId, studentId },
+        select: { id: true }
+      })
+      if (!attempt) {
+        throw new NotFoundError('Target student has no attempt in this exam')
+      }
+    }
 
     // Rate limit check: 1 per 2 seconds
     const rateLimitKey = `pn:v1:chat_limit:${senderId}`
@@ -188,18 +229,60 @@ class ProctoringService {
     return chatMicroBatcher.queue({
       examId,
       studentId,
-      senderRole: normRole || senderRole,
+      senderRole: normRole || user.role,
       message
     })
   }
 
   /**
    * Fetch chat history paginated by ID
+   * Hardened against BOLA (D-01 / D-03 / D-04)
    */
-  async getChatHistory(examId, studentId, limit = 50, beforeId = null) {
-    const where = { examId, studentId }
-    if (beforeId) {
-      where.id = { lt: BigInt(beforeId) }
+  async getChatHistory(examId, userOrStudentId, studentIdOrLimit = 50, limitOrBefore = null, beforeId = null) {
+    let user, studentId, limit, before
+    if (typeof userOrStudentId === 'object' && userOrStudentId !== null) {
+      user = userOrStudentId
+      studentId = studentIdOrLimit
+      limit = parseInt(limitOrBefore || '50', 10)
+      before = beforeId
+    } else {
+      user = null
+      studentId = userOrStudentId
+      limit = parseInt(studentIdOrLimit || '50', 10)
+      before = limitOrBefore
+    }
+
+    if (user) {
+      const normRole = normalizeRole(user.role)
+      if (normRole === ROLES.STUDENT) {
+        studentId = user.id
+        const attempt = await prisma.examAttempt.findFirst({
+          where: { examId, studentId: user.id },
+          select: { id: true }
+        })
+        if (!attempt) {
+          throw new ForbiddenError('Access denied: You are not enrolled in this exam')
+        }
+      } else {
+        await this.assertStaffExamAccess(user, examId)
+        if (studentId) {
+          const attempt = await prisma.examAttempt.findFirst({
+            where: { examId, studentId },
+            select: { id: true }
+          })
+          if (!attempt) {
+            throw new NotFoundError('Target student has no attempt in this exam')
+          }
+        }
+      }
+    }
+
+    const where = { examId }
+    if (studentId) {
+      where.studentId = studentId
+    }
+    if (before) {
+      where.id = { lt: BigInt(before) }
     }
 
     const messages = await prisma.chatMessage.findMany({
@@ -475,12 +558,12 @@ class ProctoringService {
 
     if (severity) {
       params.push(severity.toUpperCase())
-      filterClause += ` AND ve.severity = $${paramIdx++}`
+      filterClause += ` AND ve.severity = $${paramIdx++}::"ViolationSeverity"`
     }
 
     if (type) {
       params.push(type.toUpperCase())
-      filterClause += ` AND ve.event_type = $${paramIdx++}`
+      filterClause += ` AND ve.event_type = $${paramIdx++}::"ViolationType"`
     }
 
     if (cursor) {

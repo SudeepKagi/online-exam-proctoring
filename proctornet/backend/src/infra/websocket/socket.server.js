@@ -18,7 +18,7 @@ const { redisClient } = require('../redis/client')
 const { presenceManager } = require('./presence')
 const { rosterCoalescer } = require('./rosterCoalescer')
 const { proctoringService } = require('../../modules/proctoring/service')
-const { ROLES } = require('../../shared/roles')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
 function createWebSocketServer(httpServer, options = {}) {
@@ -90,9 +90,14 @@ function createWebSocketServer(httpServer, options = {}) {
         return next(new Error('AUTHENTICATION_FAILED: Invalid or expired token'))
       }
 
+      const role = normalizeRole(decoded.role)
+      if (!role) {
+        return next(new Error('AUTHENTICATION_FAILED: Invalid or unrecognized role in token'))
+      }
+
       socket.user = {
         id: decoded.id,
-        role: (decoded.role || 'student').toLowerCase(),
+        role,
         examId: decoded.examId || null,
         name: decoded.name || null,
         usn: decoded.usn || null
@@ -167,7 +172,7 @@ function createWebSocketServer(httpServer, options = {}) {
     })
 
     // ── 2. STAFF: Join Invigilator Exam Room (Task 2) ──
-    socket.on('inv:join', async (data, ack) => {
+    const handleStaffJoin = async (data, ack) => {
       try {
         const { examId } = data || {}
         if (!examId) {
@@ -213,17 +218,41 @@ function createWebSocketServer(httpServer, options = {}) {
         logger.error({ error: err.message }, 'Error in inv:join')
         if (typeof ack === 'function') ack({ success: false, error: err.message })
       }
-    })
+    }
+    socket.on('inv:join', handleStaffJoin)
+    socket.on('invigilator:join', handleStaffJoin)
 
-    // ── 3. STUDENT: Heartbeat (Task 4) ──
+    // ── 3. STUDENT: Heartbeat (Task 4 / D-04 BOLA Fix) ──
     socket.on('heartbeat', async (data, ack) => {
       try {
         const { attemptId, examId } = data || {}
-        if (!attemptId || !examId) return
+        if (!attemptId || !examId) {
+          if (typeof ack === 'function') ack({ success: false, error: 'attemptId and examId required' })
+          return
+        }
 
         if (socket.user.role === ROLES.STUDENT && socket.user.id) {
-          await presenceManager.recordHeartbeat(examId, socket.user.id)
-          rosterCoalescer.queueDelta(examId, {
+          // Authorize attempt & exam scope (D-04)
+          if (!socket.authorizedAttempts.has(attemptId)) {
+            const attempt = await prisma.examAttempt.findFirst({
+              where: { id: attemptId, studentId: socket.user.id, examId },
+              select: { id: true, examId: true }
+            })
+            if (!attempt) {
+              if (typeof ack === 'function') ack({ success: false, error: 'Unauthorized attempt/exam heartbeat' })
+              return
+            }
+            socket.authorizedAttempts.add(attemptId)
+            socket.activeAttemptId = attemptId
+            socket.activeExamId = attempt.examId
+          } else if (socket.activeExamId && socket.activeExamId !== examId) {
+            if (typeof ack === 'function') ack({ success: false, error: 'Mismatched examId in heartbeat' })
+            return
+          }
+
+          const targetExamId = socket.activeExamId || examId
+          await presenceManager.recordHeartbeat(targetExamId, socket.user.id)
+          rosterCoalescer.queueDelta(targetExamId, {
             attemptId,
             studentId: socket.user.id,
             online: true,
@@ -235,16 +264,35 @@ function createWebSocketServer(httpServer, options = {}) {
           ack({ status: 'ACK', serverTime: new Date().toISOString(), serverEpochMs: Date.now() })
         }
       } catch (err) {
-        // Heartbeat errors should never throw unhandled
+        if (typeof ack === 'function') ack({ success: false, error: err.message })
       }
     })
 
-    // ── 4. STUDENT: Real-time Violation Event (Task 3) ──
+    // ── 4. STUDENT: Real-time Violation Event (Task 3 / D-04 BOLA Fix) ──
     socket.on('violation', async (data, ack) => {
       try {
         const { attemptId, examId, eventType, metadata, clientTimestamp } = data || {}
-        if (!attemptId || !eventType || socket.user.role !== ROLES.STUDENT) return
+        if (!attemptId || !eventType || socket.user.role !== ROLES.STUDENT) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Invalid violation parameters or role' })
+          return
+        }
 
+        // Authorize attempt ownership (D-04)
+        if (!socket.authorizedAttempts.has(attemptId)) {
+          const attempt = await prisma.examAttempt.findFirst({
+            where: { id: attemptId, studentId: socket.user.id },
+            select: { id: true, examId: true }
+          })
+          if (!attempt) {
+            if (typeof ack === 'function') ack({ success: false, error: 'Unauthorized attempt access' })
+            return
+          }
+          socket.authorizedAttempts.add(attemptId)
+          socket.activeAttemptId = attemptId
+          socket.activeExamId = attempt.examId
+        }
+
+        const verifiedExamId = socket.activeExamId
         const res = await proctoringService.recordViolation(
           attemptId,
           socket.user.id,
@@ -253,27 +301,24 @@ function createWebSocketServer(httpServer, options = {}) {
           clientTimestamp
         )
 
-        if (res?.recorded) {
-          const currentExamId = examId || socket.activeExamId
-          if (currentExamId) {
-            // Forward notification to invigilator room (Task 3; tickets never broadcast per C-08/C-09)
-            io.to(`inv:${currentExamId}`).emit('violation:new', {
-              attemptId,
-              violationId: res.violationId,
-              studentId: socket.user.id,
-              eventType: res.eventType,
-              severity: res.severity,
-              timestamp: new Date().toISOString()
-            })
+        if (res?.recorded && verifiedExamId) {
+          // Forward notification to invigilator room (tickets stripped per C-08/C-09)
+          io.to(`inv:${verifiedExamId}`).emit('violation:new', {
+            attemptId,
+            violationId: res.violationId,
+            studentId: socket.user.id,
+            eventType: res.eventType,
+            severity: res.severity,
+            timestamp: new Date().toISOString()
+          })
 
-            // Push delta update for roster
-            rosterCoalescer.queueDelta(currentExamId, {
-              attemptId,
-              studentId: socket.user.id,
-              lastViolation: res.eventType,
-              severity: res.severity
-            })
-          }
+          // Push delta update for roster
+          rosterCoalescer.queueDelta(verifiedExamId, {
+            attemptId,
+            studentId: socket.user.id,
+            lastViolation: res.eventType,
+            severity: res.severity
+          })
         }
 
         if (typeof ack === 'function') ack({ success: true, result: res })
@@ -282,44 +327,104 @@ function createWebSocketServer(httpServer, options = {}) {
       }
     })
 
-    // ── 5. STUDENT / PROCTOR: Private Chat (Task 3) ──
+    // ── 5. STUDENT / PROCTOR: Private Chat (Task 3 / D-01 / D-04 BOLA Fix) ──
     socket.on('chat', async (data, ack) => {
       try {
         const { examId, attemptId, studentId, message } = data || {}
-        if (!examId || !message?.trim()) return
+        if (!examId || !message?.trim()) {
+          if (typeof ack === 'function') ack({ success: false, error: 'examId and message required' })
+          return
+        }
 
         const role = socket.user.role
-        const targetStudentId = role === ROLES.STUDENT ? socket.user.id : (studentId || socket.user.id)
-
-        const savedMsg = await proctoringService.postChatMessage(
-          examId,
-          socket.user.id,
-          role.toUpperCase(),
-          message.trim(),
-          targetStudentId
-        )
-
-        const chatPayload = {
-          examId,
-          studentId: targetStudentId,
-          senderId: socket.user.id,
-          senderRole: role.toUpperCase(),
-          senderName: socket.user.name || (role === ROLES.STUDENT ? 'Student' : 'Invigilator'),
-          message: message.trim(),
-          timestamp: new Date().toISOString()
-        }
 
         if (role === ROLES.STUDENT) {
-          // Send to invigilator room
-          io.to(`inv:${examId}`).emit('chat:new', chatPayload)
-        } else {
-          // Send to specific student's attempt room
-          if (attemptId) {
-            io.to(`attempt:${attemptId}`).emit('proctor:chat', chatPayload)
+          // Student chat strictly bound to socket.user.id (D-01)
+          if (attemptId && !socket.authorizedAttempts.has(attemptId)) {
+            const attempt = await prisma.examAttempt.findFirst({
+              where: { id: attemptId, examId, studentId: socket.user.id },
+              select: { id: true, examId: true }
+            })
+            if (!attempt) {
+              if (typeof ack === 'function') ack({ success: false, error: 'Unauthorized exam/attempt chat access' })
+              return
+            }
+            socket.authorizedAttempts.add(attempt.id)
+            socket.activeAttemptId = attempt.id
+            socket.activeExamId = attempt.examId
           }
-        }
 
-        if (typeof ack === 'function') ack({ success: true, message: savedMsg })
+          const targetStudentId = socket.user.id
+          const savedMsg = await proctoringService.postChatMessage(
+            examId,
+            socket.user,
+            message.trim(),
+            targetStudentId
+          )
+
+          const chatPayload = {
+            examId,
+            studentId: targetStudentId,
+            senderId: socket.user.id,
+            senderRole: role,
+            senderName: socket.user.name || 'Student',
+            message: message.trim(),
+            timestamp: new Date().toISOString()
+          }
+
+          // Broadcast to invigilators of this exam only
+          io.to(`inv:${examId}`).emit('chat:new', chatPayload)
+
+          if (typeof ack === 'function') ack({ success: true, message: savedMsg })
+        } else {
+          // Staff chat bound to exam scope (D-01 / D-03 / D-04)
+          await proctoringService.assertStaffExamAccess(socket.user, examId)
+
+          if (!studentId && !attemptId) {
+            if (typeof ack === 'function') ack({ success: false, error: 'studentId or attemptId required for staff chat' })
+            return
+          }
+
+          const targetAttempt = await prisma.examAttempt.findFirst({
+            where: {
+              examId,
+              ...(attemptId ? { id: attemptId } : { studentId })
+            },
+            select: { id: true, studentId: true }
+          })
+
+          if (!targetAttempt) {
+            if (typeof ack === 'function') ack({ success: false, error: 'Target student attempt not found in this exam' })
+            return
+          }
+
+          const targetStudentId = targetAttempt.studentId
+          const targetAttemptId = targetAttempt.id
+
+          const savedMsg = await proctoringService.postChatMessage(
+            examId,
+            socket.user,
+            message.trim(),
+            targetStudentId
+          )
+
+          const chatPayload = {
+            examId,
+            studentId: targetStudentId,
+            senderId: socket.user.id,
+            senderRole: role,
+            senderName: socket.user.name || 'Invigilator',
+            message: message.trim(),
+            timestamp: new Date().toISOString()
+          }
+
+          // Send to specific student's attempt room only
+          io.to(`attempt:${targetAttemptId}`).emit('proctor:chat', chatPayload)
+          // Echo to staff room for co-invigilators
+          io.to(`inv:${examId}`).emit('chat:new', chatPayload)
+
+          if (typeof ack === 'function') ack({ success: true, message: savedMsg })
+        }
       } catch (err) {
         if (typeof ack === 'function') ack({ success: false, error: err.message })
       }

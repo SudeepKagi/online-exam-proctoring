@@ -1,5 +1,6 @@
 const { verifyToken } = require('../utils/jwt')
 const { extractTokenFromReq } = require('../utils/cookies')
+const { normalizeRole } = require('../shared/roles')
 
 /**
  * auth.middleware.js
@@ -14,7 +15,20 @@ function authenticate(req, res, next) {
     }
 
     const decoded = verifyToken(token)
-    req.user = decoded   // { id, role, examId?, iat, exp }
+    if (!decoded || !decoded.id || !decoded.role) {
+      return res.status(401).json({ error: 'Your session has expired. Please sign in again.' })
+    }
+
+    const role = normalizeRole(decoded.role)
+    if (!role) {
+      return res.status(401).json({ error: 'Invalid user role in credentials.' })
+    }
+
+    req.user = {
+      ...decoded,
+      role,
+      examId: decoded.examId || null
+    }
     next()
   } catch (err) {
     return res.status(401).json({ error: 'Your session has expired. Please sign in again.' })

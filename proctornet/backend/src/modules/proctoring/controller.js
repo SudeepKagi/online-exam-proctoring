@@ -40,25 +40,6 @@ router.post(
 )
 
 /**
- * POST /api/v1/proctoring/livekit/webhook
- * LiveKit Webhook Handler
- */
-router.post(
-  '/proctoring/livekit/webhook',
-  async (req, res, next) => {
-    try {
-      const { mediaService } = require('../media/media.service')
-      const authHeader = req.headers.authorization
-      const rawBody = req.rawBody ? req.rawBody.toString('utf-8') : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
-      const result = await mediaService.handleWebhook(rawBody, authHeader)
-      return res.status(200).json(result)
-    } catch (err) {
-      next(err)
-    }
-  }
-)
-
-/**
  * POST /api/v1/attempts/:attemptId/violations
  * Record client-detected violation (Student)
  */
@@ -92,7 +73,7 @@ router.post(
 
 /**
  * POST /api/v1/exams/:examId/chat
- * Post chat message
+ * Post chat message (Defects D-01 / D-04 Fix)
  */
 router.post(
   '/exams/:examId/chat',
@@ -106,8 +87,7 @@ router.post(
 
       const result = await proctoringService.postChatMessage(
         examId,
-        req.user.id,
-        req.user.role,
+        req.user,
         message,
         studentId
       )
@@ -121,7 +101,7 @@ router.post(
 
 /**
  * GET /api/v1/exams/:examId/chat
- * Fetch chat message history
+ * Fetch chat message history (Defects D-01 / D-04 Fix)
  */
 router.get(
   '/exams/:examId/chat',
@@ -134,7 +114,7 @@ router.get(
       const beforeId = req.query.beforeId || null
       const limit = parseInt(req.query.limit || '50', 10)
 
-      const history = await proctoringService.getChatHistory(examId, studentId, limit, beforeId)
+      const history = await proctoringService.getChatHistory(examId, req.user, studentId, limit, beforeId)
       return res.status(200).json(history)
     } catch (err) {
       next(err)
