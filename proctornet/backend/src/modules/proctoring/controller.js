@@ -16,6 +16,8 @@ const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
 
+const { ROLES } = require('../../shared/roles')
+
 const router = express.Router()
 
 /**
@@ -63,7 +65,7 @@ router.post(
 router.post(
   '/attempts/:attemptId/violations',
   requireAuth,
-  requireRole('STUDENT'),
+  requireRole(ROLES.STUDENT),
   routeRateLimiters.violations,
   validateParams(attemptIdParamSchema),
   validateBody(recordViolationSchema),
@@ -128,7 +130,7 @@ router.get(
   async (req, res, next) => {
     try {
       const { examId } = req.params
-      const studentId = req.user.role === 'STUDENT' ? req.user.id : req.query.studentId
+      const studentId = req.user.role === ROLES.STUDENT ? req.user.id : req.query.studentId
       const beforeId = req.query.beforeId || null
       const limit = parseInt(req.query.limit || '50', 10)
 
@@ -142,7 +144,7 @@ router.get(
 
 /**
  * GET /api/v1/attempts/:attemptId/timeline
- * Fetch violation event timeline with presigned read URLs
+ * Fetch violation event timeline with presigned read URLs (Defect D-02 Fix)
  */
 router.get(
   '/attempts/:attemptId/timeline',
@@ -151,7 +153,7 @@ router.get(
   async (req, res, next) => {
     try {
       const { attemptId } = req.params
-      const timeline = await proctoringService.getViolationTimeline(attemptId)
+      const timeline = await proctoringService.getViolationTimeline(attemptId, req.user)
       return res.status(200).json(timeline)
     } catch (err) {
       next(err)
@@ -166,7 +168,7 @@ router.get(
 router.get(
   '/proctoring/exams/:examId/summary',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {
@@ -185,7 +187,7 @@ router.get(
 router.get(
   '/proctoring/exams/:examId/roster',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(examIdParamSchema),
   validateQuery(rosterQuerySchema),
   async (req, res, next) => {
@@ -211,7 +213,7 @@ router.get(
 router.get(
   '/proctoring/attempts/:attemptId/violations',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(attemptIdParamSchema),
   validateQuery(violationsQuerySchema),
   async (req, res, next) => {
@@ -235,7 +237,7 @@ router.get(
 router.get(
   '/proctoring/exams/:examId/violations',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(examIdParamSchema),
   validateQuery(violationsQuerySchema),
   async (req, res, next) => {
@@ -261,7 +263,7 @@ router.get(
 router.post(
   '/proctoring/attempts/:attemptId/warn',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(attemptIdParamSchema),
   validateBody(warnCandidateSchema),
   async (req, res, next) => {
@@ -285,9 +287,9 @@ router.post(
  * Pause student attempt (Task 7)
  */
 router.post(
-  '/proctoring/attempts/:attemptId/pause',
+  ['/proctoring/attempts/:attemptId/pause', '/attempts/:attemptId/pause'],
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(attemptIdParamSchema),
   validateBody(actionReasonSchema),
   async (req, res, next) => {
@@ -311,9 +313,9 @@ router.post(
  * Resume student attempt (Task 7)
  */
 router.post(
-  '/proctoring/attempts/:attemptId/resume',
+  ['/proctoring/attempts/:attemptId/resume', '/attempts/:attemptId/resume'],
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(attemptIdParamSchema),
   async (req, res, next) => {
     try {
@@ -335,9 +337,9 @@ router.post(
  * Terminate student attempt (Task 7)
  */
 router.post(
-  '/proctoring/attempts/:attemptId/terminate',
+  ['/proctoring/attempts/:attemptId/terminate', '/attempts/:attemptId/terminate'],
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(attemptIdParamSchema),
   validateBody(actionReasonSchema),
   async (req, res, next) => {
@@ -363,7 +365,7 @@ router.post(
 router.post(
   '/proctoring/violations/:violationId/acknowledge',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   async (req, res, next) => {
     try {
       const result = await proctoringService.acknowledgeViolation(

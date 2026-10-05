@@ -1,11 +1,26 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
-const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../src/validators/question.validator')
+const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../src/modules/questions/validation')
 const { prisma } = require('../src/infra/postgres/client')
 
-const questionService = require('../src/services/questionService')
-const examService = require('../src/services/examService')
-const studentService = require('../src/services/studentService')
+const { questionService: domainQuestionService } = require('../src/modules/questions/service')
+const { examService: domainExamService } = require('../src/modules/exams/service')
+const { attemptService } = require('../src/modules/attempts/service')
+
+const questionService = {
+  addQuestionToExam: ({ examId, facultyId, data }) =>
+    domainQuestionService.createQuestion(examId, data, facultyId, 'FACULTY')
+}
+const examService = {
+  publishExamById: ({ id, facultyId }) =>
+    domainExamService.publishExam(id, facultyId, 'FACULTY')
+}
+const studentService = {
+  startOrResumeExam: async ({ examId, studentId }) => {
+    const res = await attemptService.startOrResumeAttempt(examId, studentId)
+    return res.attempt
+  }
+}
 
 let testFaculty = null
 
@@ -292,7 +307,7 @@ describe('P2 MCQ-Only — Publish Rejection Guard', () => {
 
 describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
   it('strictly ensures isCorrect is never serialized to student-facing start payloads', async () => {
-    const exam = await createTestExam({ title: 'DTO Security Test Exam', status: 'PUBLISHED' })
+    const exam = await createTestExam({ title: 'DTO Security Test Exam', status: 'DRAFT' })
 
     const student = await prisma.student.create({
       data: {
@@ -320,6 +335,12 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
           { text: '5', isCorrect: false }
         ]
       }
+    })
+
+    // Publish exam once questions are finalized
+    await prisma.exam.update({
+      where: { id: exam.id },
+      data: { status: 'PUBLISHED' }
     })
 
     try {

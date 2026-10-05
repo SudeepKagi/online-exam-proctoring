@@ -522,4 +522,73 @@ While the codebase contained an advanced `schema.prisma` with rich domain constr
    - Automated candidate pre-warming trigger at `start_time - ATTEMPT_PREWARM_MINUTES` in the scheduler, as well as on exam publish.
    - Authored `tests/p4-prewarm-500.test.js` proving that 500 candidate `READY` attempts with shuffled questions and options are created in 2.7 seconds before start, with strict idempotency (rerun creates 0 duplicates).
 
+---
+
+## 13. Legacy Layer Deletion, Canonical Role Enforcement & Route Matrix Verification (Phase Q2)
+
+> *"A migration is not complete when the new code is written — it is complete when the old code is deleted, the forbidden tokens are banned by CI, and every single route has an automated test matrix."*
+
+### Interview Question: *"How did you safely eliminate the legacy monolithic codebase, and how do you guarantee that every mounted API endpoint enforces zero-trust authentication, canonical role authorization, and resource scoping?"*
+
+**Answer:**
+
+1. **The Legacy Debt & Security Hazards (The "Before" State)**:
+   - **Dual Code Paths**: Before Q2, ProctorNet ran both legacy monolithic routes (`src/controllers`, `src/routes`, `src/services`, `src/sockets`, `src/validators`) and modular domain services (`src/modules/*`). This dual architecture created severe split-brain risks where bug fixes applied to modular code left legacy endpoints vulnerable.
+   - **Forbidden Global State & Schema Relics**:
+     - `global.prisma`: Created race conditions, leaked connections outside Prisma pool management, and prevented unit test isolation.
+     - `studentExam`: Legacy plural/singular schema alias bridge hiding broken SQL relationships.
+     - Direct image URLs (`imageUrl`, `facePhotoUrl`) bypassing S3 presigned key architecture (ADR-011).
+   - **Case-Sensitivity & Role Authorization Flaws (Defects D-01, D-02, D-03)**:
+     - Role comparisons mixed `'STUDENT'`, `'student'`, `'faculty'`, and `'ADMIN'`. If a JWT payload contained mixed-case or lowercase roles, strict string equality (`=== 'STUDENT'`) failed or bypassed authorization checks.
+     - `GET /attempts/:attemptId/timeline` lacked resource ownership validation, allowing candidate A to view candidate B's complete proctoring violation event stream (BOLA / D-02).
+     - Invigilator staff actions (`pauseAttempt`, `resumeAttempt`, `terminateAttempt`) failed open if `examId` was missing or mismatched (D-03).
+
+2. **The Deletion Strategy & CI Token Enforcement (Q2.2 & Q2.3)**:
+   - **Total Deletion of Legacy Layer**: Completely deleted all 5 legacy backend directories (`src/controllers/`, `src/routes/`, `src/services/`, `src/sockets/`, `src/validators/`) and all obsolete deployment descriptors (`render.yaml`, `vercel.json`, `docker-compose.yml`).
+   - **Automated CI Static Analysis Gate (`scripts/ci/check-no-legacy.js`)**:
+     - Fails the build (exit code 1) if any legacy directory or obsolete deployment file exists in the repository.
+     - Scans every `.js`, `.ts`, and `.mjs` file in `src/` using regex token inspection, asserting zero occurrences of `global.prisma`, `studentExam`, `assignedQuestionIds`, `facePhotoUrl`, and `imageUrl`.
+     - Result: It is structurally impossible for any engineer to re-introduce legacy patterns into the backend.
+
+3. **Canonical Lowercase Roles & ESLint AST Rule (Q2.4 & D-01)**:
+   - Created `src/shared/roles.js` exporting frozen canonical roles:
+     ```javascript
+     const ROLES = Object.freeze({
+       ADMIN: 'admin',
+       FACULTY: 'faculty',
+       STUDENT: 'student',
+       INVIGILATOR: 'invigilator'
+     })
+     ```
+   - Added `normalizeRole(input)` returning canonical lowercase or `null` for unknown roles. Authentication middleware normalizes `req.user.role = normalizeRole(payload.role)`.
+   - **ESLint AST Rule (`no-restricted-syntax`)**: Configured ESLint with an AST selector targeting all binary comparisons (`===`, `!==`, `==`, `!=`) against string literals matching role names:
+     ```javascript
+     {
+       selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^(admin|faculty|student|invigilator)$/i]",
+       message: "Forbidden comparison with role string literal. Use canonical ROLES from src/shared/roles.js instead."
+     }
+     ```
+   - Refactored the entire codebase across `src/` to reference `ROLES.*`, eliminating all string-literal comparisons and passing ESLint with 0 errors.
+
+4. **Automated Route Inventory & Drift Gate (Q2.1)**:
+   - Hand-written route documentation always drifts from code. We solved this with `scripts/ci/generate-route-inventory.js`.
+   - The script mounts Express routers, introspects layer stacks, middleware tags (`.isAuthMiddleware`, `.allowedRoles`), regex route paths, and extracts 175 canonical endpoints across all 17 domain modules.
+   - Generates `docs/api/ROUTE_INVENTORY.md` and `docs/api/route-matrix.json`.
+   - CI check in `tests/route-matrix.test.js` asserts that every route registered in Express exists in `ROUTE_INVENTORY.md`, preventing undocumented endpoints from ever merging.
+
+5. **Route-Matrix Test Generator & Security Fixes (Q2.5, D-01, D-02, D-03)**:
+   - Authored `tests/route-matrix.test.js` (26 tests, 7 suites) asserting the four pillars of zero-trust API access:
+     1. **Unauthenticated Access Gate**: Every protected route rejected with 401 when auth token is missing or invalid.
+     2. **Role Authorization Gate**: Routes reject unauthorized roles with 403 Forbidden (e.g., student calling `/admin/dashboard` or faculty calling student endpoints).
+     3. **Canonical Role Normalization (D-01)**: Uppercase tokens (e.g. `ADMIN`) normalized to canonical lowercase; bogus roles fail-closed with 401.
+     4. **Resource Ownership & Scoping (D-02 & D-03)**:
+        - `GET /attempts/:attemptId/timeline`: Student A accessing Student B attempt timeline returns 403 Forbidden; invigilator assigned to Exam 1 accessing Exam 2 attempt returns 403 Forbidden.
+        - Staff Action Guards (`pauseAttempt`, `resumeAttempt`, `terminateAttempt`): Invigilators with mismatched exam IDs or missing exam scope are rejected with 403 Forbidden (fail-closed).
+     5. **Authorized Access (Right Owner -> 2xx)**: Admin, faculty, and student access their respective resources cleanly with 200 OK.
+
+6. **Production Impact**:
+   - Clean, modern modular monolith with unified `/api/v1` namespace and RFC-7807 unified error envelope.
+   - Zero legacy cruft, zero global state, zero string-literal role comparisons, and 100% automated test coverage over the route matrix.
+
+
 

@@ -1,20 +1,25 @@
 const { ForbiddenError, UnauthorizedError } = require('../shared/errors')
+const { normalizeRole } = require('../shared/roles')
 
 function requireRole(allowedRoles) {
-  const roles = Array.isArray(allowedRoles) ? allowedRoles.map(r => r.toLowerCase()) : [allowedRoles.toLowerCase()]
+  const rawList = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]
+  const roles = rawList.map(r => normalizeRole(r) || String(r).toLowerCase())
 
-  return (req, res, next) => {
+  const middleware = (req, res, next) => {
     if (!req.user || !req.user.role) {
       return next(new UnauthorizedError('Authentication required'))
     }
 
-    const userRole = req.user.role.toLowerCase()
+    const userRole = normalizeRole(req.user.role)
     if (!roles.includes(userRole)) {
       return next(new ForbiddenError(`Access restricted to roles: [${roles.join(', ')}]`))
     }
 
     next()
   }
+
+  middleware.allowedRoles = roles
+  return middleware
 }
 
 module.exports = {

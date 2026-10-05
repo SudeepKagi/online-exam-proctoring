@@ -7,6 +7,7 @@ const {
 const { validateParams } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 
 const router = express.Router()
 
@@ -22,14 +23,15 @@ router.get(
     try {
       const { attemptId } = req.params
       const studentId = req.user.id
+      const role = normalizeRole(req.user.role)
 
-      if (req.user.role === 'STUDENT') {
+      if (role === ROLES.STUDENT) {
         const result = await resultService.getResultForStudent(attemptId, studentId)
         return res.status(200).json(result)
       }
 
       // Faculty / Admin
-      const result = await resultService.getResultForStudent(attemptId, req.user.id)
+      const result = await resultService.getResultForStaff(attemptId, req.user)
       return res.status(200).json(result)
     } catch (err) {
       next(err)
@@ -44,7 +46,7 @@ router.get(
 router.get(
   '/exams/:examId/results',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY]),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {
@@ -64,7 +66,7 @@ router.get(
 router.post(
   '/exams/:examId/results/release',
   requireAuth,
-  requireRole(['ADMIN', 'FACULTY']),
+  requireRole([ROLES.ADMIN, ROLES.FACULTY]),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {

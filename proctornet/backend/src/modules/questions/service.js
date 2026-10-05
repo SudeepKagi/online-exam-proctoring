@@ -5,6 +5,7 @@ const {
   ForbiddenError,
   ConflictError
 } = require('../../shared/errors')
+const { ROLES } = require('../../shared/roles')
 
 class QuestionService {
   async createQuestion(examId, data, facultyId, userRole) {
@@ -13,7 +14,7 @@ class QuestionService {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
 
-    if (userRole === 'FACULTY' && exam.facultyId !== facultyId) {
+    if (userRole === ROLES.FACULTY && exam.facultyId !== facultyId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 
@@ -64,7 +65,7 @@ class QuestionService {
       throw new NotFoundError(`Question '${questionId}' not found`)
     }
 
-    if (userRole === 'FACULTY' && question.exam.facultyId !== facultyId) {
+    if (userRole === ROLES.FACULTY && question.exam.facultyId !== facultyId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 

@@ -2,6 +2,8 @@
  * auditLogger.js — Write entries to the AuditLog table
  */
 
+const { prisma } = require('../infra/postgres/client')
+
 /**
  * Log an action to the AuditLog table.
  * Safe to call without await — failures are swallowed so they
@@ -18,7 +20,7 @@
  */
 async function logAudit(opts) {
   try {
-    await global.prisma.auditLog.create({
+    await prisma.auditLog.create({
       data: {
         userId:    opts.userId    || null,
         userRole:  opts.userRole  || 'system',

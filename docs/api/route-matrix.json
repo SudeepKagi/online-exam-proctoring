@@ -1,0 +1,1402 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/announcements",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/announcements",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/admin/announcements/:id",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/audit-logs",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/bulk-upload/confirm",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/bulk-upload/parse",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/dashboard",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/enrollments",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/enrollments/:id/approve",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/enrollments/:id/reject",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/enrollments/override",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/exams",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/exams/:id",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/exams/:id/invigilator-credentials",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/exams/:id/invigilator-credentials/reset",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/exams/:id/pause",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/exams/:id/resume",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/exams/all",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/faculty",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/faculty",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/faculty/:id/approve",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/faculty/:id/reject",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/faculty/:id/suspend",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/faculty/:id/unsuspend",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/faculty/pending",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/invigilator-sessions",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/invigilator-sessions/:id/revoke",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/reports",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/settings",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/settings",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/students",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/students",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/students/:id/approve",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/students/:id/reject",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/students/:id/suspend",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/students/:id/unsuspend",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/students/pending",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/violations",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/violations/summary",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/attempts/:attemptId/answers",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/attempts/:attemptId/answers/:attemptQuestionId",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/pause",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "attempts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/result",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/resume",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "attempts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/state",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/state",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/submission",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/terminate",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "attempts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/timeline",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/violations",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/attempts/:attemptId/vpn",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/vpn",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/vpn",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/audit/logs",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "audit"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/admin/login",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/change-password",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/faculty/login",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/faculty/register",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/invigilator/login",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/login",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/logout",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/auth/me",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/student/login",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/student/register",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/device-check",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/device-check/run",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/evidence-clip",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "system"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exam/device-check",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exam/evidence-clip",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exam/livekit-token",
+    "auth": "Required",
+    "role": "student, invigilator, faculty, admin",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exam/snapshot",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "deviceCheck"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exams/:examId",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "exams"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/exams/:examId",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/attempt",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "exams"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exams/:examId/chat",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/chat",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/prewarm",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/publish",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/questions",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/exams/:examId/results",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/results/release",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "exams"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/dashboard",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:examId/ai-generate",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:examId/questions",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:examId/questions",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:examId/questions/import-excel",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:examId/results/:studentId",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/faculty/exams/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/faculty/exams/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id/collusion",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id/credentials",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/duplicate",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id/export-csv",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/faculty/exams/:id/publish",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/publish",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/publish-alt",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id/results",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/faculty/exams/:id/results/release",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/exams/:id/students",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/students",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/ai-generate-preview",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/questions",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/questions",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/faculty/questions/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/faculty/questions/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/questions/bulk",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/questions/import-excel",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/results",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/results/:id",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/faculty/students",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes",
+    "module": "faculty"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/faculty/students/:id/approve",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes",
+    "module": "faculty"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invigilator/exam/:examId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/exam/:examId/terminate/:studentId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/exam/:examId/warn/:studentId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invigilator/exams/:examId/students",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invigilator/live-grid/:examId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/login",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/pause-student/:studentId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/resume-student/:studentId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/send-warning",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/terminate-student/:studentId",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invigilator/violations",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/invigilator/violations/:id/action",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/livekit-token",
+    "auth": "Required",
+    "role": "student, invigilator, faculty, admin",
+    "ownerCheck": "Yes",
+    "module": "system"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/media/complete-upload",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "media"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/media/presign-upload",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "media"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/media/view",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "media"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notifications",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "notifications"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/attempts/:attemptId/pause",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/attempts/:attemptId/resume",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/attempts/:attemptId/terminate",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/proctoring/attempts/:attemptId/violations",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/attempts/:attemptId/warn",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes",
+    "module": "proctoring"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/proctoring/exams/:examId/roster",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/proctoring/exams/:examId/summary",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/proctoring/exams/:examId/violations",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/livekit/webhook",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/token",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "proctoring"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/proctoring/violations/:violationId/acknowledge",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring"
+  },
+  {
+    "method": "DELETE",
+    "path": "/api/v1/questions/:questionId",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "questions"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/snapshot",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "system"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/enrollment/consent",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/enrollment/face",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/enrollment/id",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/enrollment/status",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/exams",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/exams/:id",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/acknowledge",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/answer",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/autosave",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/exams/:id/chat",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/chat",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/evidence",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/identity-verify",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/exams/:id/lobby",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/exams/:id/start",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/start",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/submit",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/violation",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/profile",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/student/profile",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/student/profile",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/results",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/support/ticket",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/support/tickets",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/verify-face",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/verify-id",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/uploads/complete",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "system"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/uploads/presign",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "system"
+  }
+]

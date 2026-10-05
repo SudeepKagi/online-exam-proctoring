@@ -12,6 +12,7 @@ const { prisma } = require('../../infra/postgres/client')
 const { vpnIpam } = require('./ipam')
 const { vpnKeyService } = require('./keyService')
 const { NotFoundError, ForbiddenError, BadRequestError } = require('../../shared/errors')
+const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
 class VpnService {
@@ -50,10 +51,11 @@ class VpnService {
     }
 
     // 2. Ownership verification
-    if (userRole === 'STUDENT' && attempt.studentId !== studentId) {
+    const normalizedRole = userRole?.toLowerCase()
+    if (normalizedRole === ROLES.STUDENT && attempt.studentId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this attempt')
     }
-    if (userRole === 'FACULTY' && attempt.exam.facultyId !== studentId) {
+    if (normalizedRole === ROLES.FACULTY && attempt.exam.facultyId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 
@@ -134,10 +136,11 @@ class VpnService {
       throw new NotFoundError(`Attempt '${attemptId}' not found`)
     }
 
-    if (userRole === 'STUDENT' && attempt.studentId !== studentId) {
+    const normalizedRole = userRole?.toLowerCase()
+    if (normalizedRole === ROLES.STUDENT && attempt.studentId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this attempt')
     }
-    if (userRole === 'FACULTY' && attempt.exam.facultyId !== studentId) {
+    if (normalizedRole === ROLES.FACULTY && attempt.exam.facultyId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 
@@ -186,10 +189,11 @@ class VpnService {
       throw new NotFoundError(`Attempt '${attemptId}' not found`)
     }
 
-    if (userRole === 'STUDENT' && attempt.studentId !== studentId) {
+    const normalizedRole = userRole?.toLowerCase()
+    if (normalizedRole === ROLES.STUDENT && attempt.studentId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this attempt')
     }
-    if (userRole === 'FACULTY' && attempt.exam.facultyId !== studentId) {
+    if (normalizedRole === ROLES.FACULTY && attempt.exam.facultyId !== studentId) {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 

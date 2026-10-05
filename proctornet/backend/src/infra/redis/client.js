@@ -203,7 +203,9 @@ class RedisManager {
     if (this.client) {
       try {
         await this.client.quit()
-      } catch {}
+      } catch {
+        // ignore disconnect error
+      }
     }
   }
 

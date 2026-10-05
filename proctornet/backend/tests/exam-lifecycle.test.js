@@ -4,7 +4,7 @@ const crypto = require('crypto')
 const { prisma } = require('../src/infra/postgres/client')
 const { examScheduler } = require('../src/modules/exams/examScheduler')
 const { examService } = require('../src/modules/exams/service')
-const legacyExamService = require('../src/services/examService')
+const facultyService = require('../src/modules/faculty/service')
 
 test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)', () => {
   let facultyId
@@ -74,14 +74,10 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     assert.equal(check1.title, 'Updated Title')
     assert.equal(check1.status, 'DRAFT', 'v1 updateExam must not allow client to change status to LIVE')
 
-    // 2. Attempt to set status via legacy updateExamById
-    await legacyExamService.updateExamById({
-      id: exam.id,
-      facultyId,
-      data: { status: 'ENDED' }
-    })
+    // 2. Attempt to set status via faculty module updateExam
+    await facultyService.updateExam(exam.id, { status: 'ENDED' }, facultyId).catch(() => {})
     const check2 = await prisma.exam.findUnique({ where: { id: exam.id } })
-    assert.equal(check2.status, 'DRAFT', 'legacy updateExamById must not allow client to change status to ENDED')
+    assert.equal(check2.status, 'DRAFT', 'facultyService.updateExam must not allow client to change status to ENDED')
   })
 
   test('Scheduler transitions PUBLISHED -> LIVE when start_time <= now() < end_time', async () => {

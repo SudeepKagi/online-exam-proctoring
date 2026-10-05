@@ -6,7 +6,7 @@
 |---|---|---|---|---|---|---|
 | **DOD-01** | §6 DoD | Admin/PlatformSetting data retention only after reset | `npm run ops:reset-keep-admin && node tests/reset-keep-admin.test.js` | 2026-10-04T12:00:00Z | PASSED | `proctornet/backend/tests/reset-keep-admin.test.js` |
 | **DOD-02** | §6 DoD | Strict MCQ-Only Invariant | `node tests/mcq-validation.test.js` | 2026-10-04T12:30:00Z | PASSED | `proctornet/backend/tests/mcq-validation.test.js` |
-| **DOD-03** | §6 DoD | Canonical roles & Resource-level authz | `node tests/security_auth_cookies.test.js` | — | PENDING | `proctornet/backend/tests/security_auth_cookies.test.js` |
+| **DOD-03** | §6 DoD | Canonical roles & Resource-level authz | `node --test tests/route-matrix.test.js && npm run lint` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/tests/route-matrix.test.js` |
 | **DOD-04** | §6 DoD | Schema migrations reproducible & Timestamptz UTC | `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code` | 2026-10-05T00:41:19Z | PASSED | `proctornet/backend/prisma/migrations/0001_init/migration.sql` |
 | **DOD-05** | §6 DoD | Fast answer save (1 RT), start (≤2 RT), async grading | `node tests/p4-concurrency-write-paths.test.js` | — | PENDING | `proctornet/backend/tests/p4-concurrency-write-paths.test.js` |
 | **DOD-06** | §6 DoD | Autosave CAS, idempotent submit, sweeper | `node tests/p4-state-machine.test.js` | — | PENDING | `proctornet/backend/tests/p4-state-machine.test.js` |
@@ -17,18 +17,22 @@
 | **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test e2e/golden/golden-path.spec.ts` | 2026-10-04T17:51:53Z | PASSED (REPRODUCED RED AT STEP 3 AUTOSAVE AS PREDICTED) | `e2e/golden/golden-path.spec.ts` |
 | **VIS-01** | §3 Q0.5 | Visual + structural DOM baselines across 5 roles & 3 viewports | `npx playwright test e2e/capture-baselines.spec.js` | 2026-10-04T17:35:00Z | PASSED (186 baseline files) | `e2e/visual-baseline/` |
 | **DOC-01** | §3 Q0.1 | Markdown documentation link integrity check | `node scripts/ci/check-doc-links.js` | 2026-10-04T17:05:00Z | PASSED (0 broken links) | `scripts/ci/check-doc-links.js` |
+| **Q2-01**  | §3 Q2.1 | Route inventory automated generation from code | `node scripts/ci/generate-route-inventory.js` | 2026-10-05T01:30:52Z | PASSED (175 endpoints) | `docs/api/ROUTE_INVENTORY.md` |
+| **Q2-02**  | §3 Q2.3 | Legacy layer deletion & zero forbidden tokens check | `node scripts/ci/check-no-legacy.js` | 2026-10-05T01:38:50Z | PASSED (0 legacy tokens) | `scripts/ci/check-no-legacy.js` |
+| **Q2-03**  | §3 Q2.5 | Automated route-matrix authorization test suite | `node --test --test-force-exit tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED (26/26 tests) | `proctornet/backend/tests/route-matrix.test.js` |
+| **Q2-04**  | §3 Q2.4 | ESLint canonical ROLES string-literal restriction | `npm run lint` | 2026-10-05T01:38:58Z | PASSED (0 errors) | `proctornet/backend/eslint.config.mjs` |
 | **BUG-A02** | Integration | Plumb attemptId into useExamSocket & assert room join | `npx playwright test tests/e2e/socket-attempt.spec.js` | — | PENDING | `proctornet/frontend/src/hooks/useExamSocket.js` |
 | **BUG-A03** | Integration | Student ExamInterface publishes LiveKit stream | `npx playwright test tests/e2e/media-sfu.spec.js` | — | PENDING | `proctornet/frontend/src/lib/proctorMedia.js` |
 | **BUG-A04** | Integration | Error envelope unification frontend ↔ backend | `node tests/error_envelope.test.js` | — | PENDING | `proctornet/backend/src/shared/errors.js` |
 | **BUG-A05** | Integration | Exam countdown timer derived from expiresAt + serverClock | `node tests/exam_timer.test.js` | — | PENDING | `proctornet/frontend/src/hooks/useExamTimer.js` |
 | **BUG-A06** | Integration | Shared violation event catalogue & socket validation | `node tests/violation_catalogue.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/violationTypes.js` |
 | **BUG-A07** | Integration | Automated exam status scheduler & prewarm trigger | `node --test tests/exam-lifecycle.test.js` | 2026-10-05T00:40:15Z | PASSED | `proctornet/backend/src/modules/exams/examScheduler.js` |
-| **BUG-B01** | Legacy | Remove broken legacy studentService calls & dead relations | `node tests/student_service_v1.test.js` | — | PENDING | `proctornet/backend/src/services/studentService.js` |
-| **BUG-B02** | Legacy | Eliminate studentExams references from examService | `node tests/exam_service_v1.test.js` | — | PENDING | `proctornet/backend/src/services/examService.js` |
-| **BUG-B04** | Legacy | Deprecate dead legacy service modules | `git rm ...` | — | PENDING | `proctornet/backend/src/services/` |
-| **BUG-B05** | Legacy | Fix faculty department approval check | `node tests/approval_auth.test.js` | — | PENDING | `proctornet/backend/src/services/studentService.js` |
-| **BUG-B06** | Legacy | Guard student profile updates (block usn/email & unverified status) | `node tests/profile_security.test.js` | — | PENDING | `proctornet/backend/src/services/studentService.js` |
-| **BUG-B07** | Legacy | Cryptographic invigilator credentials & publish guard | `node tests/exam_credentials.test.js` | — | PENDING | `proctornet/backend/src/services/examService.js` |
+| **BUG-B01** | Legacy | Remove broken legacy studentService calls & dead relations | `node scripts/ci/check-no-legacy.js` | 2026-10-05T01:38:50Z | PASSED | `proctornet/backend/src/modules/student/` |
+| **BUG-B02** | Legacy | Eliminate studentExams references from examService | `node scripts/ci/check-no-legacy.js` | 2026-10-05T01:38:50Z | PASSED | `proctornet/backend/src/modules/exams/` |
+| **BUG-B04** | Legacy | Deprecate dead legacy service modules | `node scripts/ci/check-no-legacy.js` | 2026-10-05T01:38:50Z | PASSED | `proctornet/backend/src/modules/` |
+| **BUG-B05** | Legacy | Fix faculty department approval check | `node tests/approval_auth.test.js` | — | PENDING | `proctornet/backend/src/modules/faculty/service.js` |
+| **BUG-B06** | Legacy | Guard student profile updates (block usn/email & unverified status) | `node tests/profile_security.test.js` | — | PENDING | `proctornet/backend/src/modules/student/service.js` |
+| **BUG-B07** | Legacy | Cryptographic invigilator credentials & publish guard | `node tests/exam_credentials.test.js` | — | PENDING | `proctornet/backend/src/modules/exams/service.js` |
 | **BUG-C01** | Async/Infra | RabbitMQ connection manager with auto-recovery & topology setup | `node tests/rabbitmq_resilience.test.js` | — | PENDING | `proctornet/backend/src/infra/rabbitmq/client.js` |
 | **BUG-C02** | Async/Infra | Outbox publisher non-destructive broker reconnect & replay CLI | `node tests/outbox_resilience.test.js` | — | PENDING | `proctornet/backend/src/infra/rabbitmq/outboxPublisher.js` |
 | **BUG-C03** | Async/Infra | RabbitMQ dead-letter exchange retry ladder (5s/30s/5m) & dlq-replay | `node tests/rabbitmq_retry.test.js` | — | PENDING | `proctornet/backend/src/infra/rabbitmq/client.js` |
@@ -40,9 +44,9 @@
 | **BUG-C09** | Async/Infra | Resilient violation micro-batcher with per-row fallback | `node tests/microbatcher_resilience.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/violationMicroBatcher.js` |
 | **BUG-C10** | Async/Infra | Clean graceful shutdown across HTTP, Socket.IO & consumers | `node tests/graceful_shutdown.test.js` | — | PENDING | `proctornet/backend/src/app.js` |
 | **BUG-C11** | Async/Infra | Composite IdempotencyKey scoped by user + operation + body hash | `node tests/idempotency_scope.test.js` | — | PENDING | `proctornet/backend/src/middleware/idempotency.js` |
-| **BUG-D01** | Security | Canonical role constants & BOLA check enforcement | `node tests/bola_role_matrix.test.js` | — | PENDING | `proctornet/backend/src/shared/roles.js` |
-| **BUG-D02** | Security | Violation timeline resource ownership check | `node tests/timeline_auth.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/controller.js` |
-| **BUG-D03** | Security | Strict assertStaffExamAccess with examId propagation | `node tests/staff_access.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/service.js` |
+| **BUG-D01** | Security | Canonical role constants & BOLA check enforcement | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/shared/roles.js` |
+| **BUG-D02** | Security | Violation timeline resource ownership check | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/modules/proctoring/controller.js` |
+| **BUG-D03** | Security | Strict assertStaffExamAccess with examId propagation | `node --test tests/route-matrix.test.js` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/src/modules/proctoring/service.js` |
 | **BUG-D04** | Security | WebSocket channel authorization & room scoping | `node tests/socket_authz.test.js` | — | PENDING | `proctornet/backend/src/infra/websocket/socket.server.js` |
 | **BUG-D05** | Security | Login rate limiter keyed on IP + USN/Email with trust-proxy | `node tests/login_limiter.test.js` | — | PENDING | `proctornet/backend/src/middleware/rateLimiter.js` |
 | **BUG-D06** | Security | Internal error masking on 5xx & private /metrics, /readyz | `node tests/error_masking.test.js` | — | PENDING | `proctornet/backend/src/middleware/errorHandler.js` |

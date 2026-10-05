@@ -18,6 +18,7 @@ const { redisClient } = require('../redis/client')
 const { presenceManager } = require('./presence')
 const { rosterCoalescer } = require('./rosterCoalescer')
 const { proctoringService } = require('../../modules/proctoring/service')
+const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
 function createWebSocketServer(httpServer, options = {}) {
@@ -112,7 +113,7 @@ function createWebSocketServer(httpServer, options = {}) {
           return
         }
 
-        if (socket.user.role !== 'student') {
+        if (socket.user.role !== ROLES.STUDENT) {
           if (typeof ack === 'function') ack({ success: false, error: 'Student role required' })
           return
         }
@@ -165,7 +166,7 @@ function createWebSocketServer(httpServer, options = {}) {
         }
 
         const role = socket.user.role
-        if (!['admin', 'faculty', 'invigilator'].includes(role)) {
+        if (![ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR].includes(role)) {
           if (typeof ack === 'function') ack({ success: false, error: 'Staff role required' })
           return
         }
@@ -174,11 +175,11 @@ function createWebSocketServer(httpServer, options = {}) {
         if (!socket.authorizedExams.has(examId)) {
           let authorized = false
 
-          if (role === 'admin') {
+          if (role === ROLES.ADMIN) {
             authorized = true
-          } else if (role === 'invigilator') {
+          } else if (role === ROLES.INVIGILATOR) {
             authorized = (socket.user.examId === examId)
-          } else if (role === 'faculty') {
+          } else if (role === ROLES.FACULTY) {
             const exam = await prisma.exam.findFirst({
               where: { id: examId, facultyId: socket.user.id },
               select: { id: true }
@@ -210,7 +211,7 @@ function createWebSocketServer(httpServer, options = {}) {
         const { attemptId, examId } = data || {}
         if (!attemptId || !examId) return
 
-        if (socket.user.role === 'student' && socket.user.id) {
+        if (socket.user.role === ROLES.STUDENT && socket.user.id) {
           await presenceManager.recordHeartbeat(examId, socket.user.id)
           rosterCoalescer.queueDelta(examId, {
             attemptId,
@@ -232,7 +233,7 @@ function createWebSocketServer(httpServer, options = {}) {
     socket.on('violation', async (data, ack) => {
       try {
         const { attemptId, examId, eventType, metadata, clientTimestamp } = data || {}
-        if (!attemptId || !eventType || socket.user.role !== 'student') return
+        if (!attemptId || !eventType || socket.user.role !== ROLES.STUDENT) return
 
         const res = await proctoringService.recordViolation(
           attemptId,
@@ -278,7 +279,7 @@ function createWebSocketServer(httpServer, options = {}) {
         if (!examId || !message?.trim()) return
 
         const role = socket.user.role
-        const targetStudentId = role === 'student' ? socket.user.id : (studentId || socket.user.id)
+        const targetStudentId = role === ROLES.STUDENT ? socket.user.id : (studentId || socket.user.id)
 
         const savedMsg = await proctoringService.postChatMessage(
           examId,
@@ -293,12 +294,12 @@ function createWebSocketServer(httpServer, options = {}) {
           studentId: targetStudentId,
           senderId: socket.user.id,
           senderRole: role.toUpperCase(),
-          senderName: socket.user.name || (role === 'student' ? 'Student' : 'Invigilator'),
+          senderName: socket.user.name || (role === ROLES.STUDENT ? 'Student' : 'Invigilator'),
           message: message.trim(),
           timestamp: new Date().toISOString()
         }
 
-        if (role === 'student') {
+        if (role === ROLES.STUDENT) {
           // Send to invigilator room
           io.to(`inv:${examId}`).emit('chat:new', chatPayload)
         } else {
@@ -318,7 +319,7 @@ function createWebSocketServer(httpServer, options = {}) {
     socket.on('disconnect', async () => {
       logger.info({ socketId: socket.id, userId: socket.user?.id }, 'Socket client disconnected')
 
-      if (socket.user?.role === 'student' && socket.activeExamId && socket.activeAttemptId) {
+      if (socket.user?.role === ROLES.STUDENT && socket.activeExamId && socket.activeAttemptId) {
         await presenceManager.markOffline(socket.activeExamId, socket.user.id)
         rosterCoalescer.queueDelta(socket.activeExamId, {
           attemptId: socket.activeAttemptId,

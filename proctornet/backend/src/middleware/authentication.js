@@ -3,6 +3,8 @@ const config = require('../shared/config')
 const { UnauthorizedError } = require('../shared/errors')
 const { extractTokenFromReq } = require('../utils/cookies')
 
+const { ROLES, normalizeRole } = require('../shared/roles')
+
 function authenticate(req, res, next) {
   try {
     const token = extractTokenFromReq(req)
@@ -15,13 +17,19 @@ function authenticate(req, res, next) {
       throw new UnauthorizedError('Malformed authentication credentials')
     }
 
+    const role = normalizeRole(decoded.role)
+    if (!role) {
+      throw new UnauthorizedError('Invalid user role in credentials')
+    }
+
     req.user = {
       id: decoded.id,
-      role: decoded.role.toLowerCase(),
+      role,
       email: decoded.email,
       name: decoded.name,
       departmentCode: decoded.departmentCode,
-      semester: decoded.semester
+      semester: decoded.semester,
+      examId: decoded.examId || null
     }
 
     next()
@@ -35,6 +43,8 @@ function authenticate(req, res, next) {
     next(err)
   }
 }
+
+authenticate.isAuthMiddleware = true
 
 module.exports = {
   authenticate,
