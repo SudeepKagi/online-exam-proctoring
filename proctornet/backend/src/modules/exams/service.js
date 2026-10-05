@@ -102,12 +102,15 @@ class ExamService {
       throw new ConflictError(`Exam is in '${exam.status}' status. Content is immutable once published.`)
     }
 
+    // Strip client-writable status and id (A-07)
+    const { status, id, ...allowedData } = data
+
     const updated = await prisma.exam.update({
       where: { id: examId },
       data: {
-        ...data,
-        startTime: data.startTime ? new Date(data.startTime) : undefined,
-        endTime: data.endTime ? new Date(data.endTime) : undefined
+        ...allowedData,
+        startTime: allowedData.startTime ? new Date(allowedData.startTime) : undefined,
+        endTime: allowedData.endTime ? new Date(allowedData.endTime) : undefined
       }
     })
 

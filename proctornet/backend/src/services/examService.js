@@ -174,11 +174,10 @@ async function updateExamById({ id, facultyId, data }) {
   }
 
   const updateData = {}
+  // A-07 / B-02: Status is lifecycle-managed only; unmapped fields stripped
   const fields = [
-    'title', 'description', 'subject', 'courseCode', 'status',
-    'securityLevel', 'browserLockdown', 'tabLockdown', 'fullScreen',
-    'faceTrack', 'aiObjectDetection', 'screenShareMonitoring',
-    'ipCheck', 'negativeMarking', 'allowRetake', 'cameraRequired', 'browserLock',
+    'title', 'description', 'subject',
+    'negativeMarking', 'cameraRequired', 'browserLock',
     'fullScreenMode', 'randomiseQuestions', 'randomiseOptions'
   ]
 

@@ -7,7 +7,7 @@
 | **DOD-01** | §6 DoD | Admin/PlatformSetting data retention only after reset | `npm run ops:reset-keep-admin && node tests/reset-keep-admin.test.js` | 2026-10-04T12:00:00Z | PASSED | `proctornet/backend/tests/reset-keep-admin.test.js` |
 | **DOD-02** | §6 DoD | Strict MCQ-Only Invariant | `node tests/mcq-validation.test.js` | 2026-10-04T12:30:00Z | PASSED | `proctornet/backend/tests/mcq-validation.test.js` |
 | **DOD-03** | §6 DoD | Canonical roles & Resource-level authz | `node tests/security_auth_cookies.test.js` | — | PENDING | `proctornet/backend/tests/security_auth_cookies.test.js` |
-| **DOD-04** | §6 DoD | Schema migrations reproducible & Timestamptz UTC | `npx prisma migrate diff --exit-code` | — | PENDING | `proctornet/backend/prisma/migrations/` |
+| **DOD-04** | §6 DoD | Schema migrations reproducible & Timestamptz UTC | `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code` | 2026-10-05T00:41:19Z | PASSED | `proctornet/backend/prisma/migrations/0001_init/migration.sql` |
 | **DOD-05** | §6 DoD | Fast answer save (1 RT), start (≤2 RT), async grading | `node tests/p4-concurrency-write-paths.test.js` | — | PENDING | `proctornet/backend/tests/p4-concurrency-write-paths.test.js` |
 | **DOD-06** | §6 DoD | Autosave CAS, idempotent submit, sweeper | `node tests/p4-state-machine.test.js` | — | PENDING | `proctornet/backend/tests/p4-state-machine.test.js` |
 | **DOD-07** | §6 DoD | Redis / RabbitMQ graceful degradation | `node tests/infra_resilience.test.js` | — | PENDING | `proctornet/backend/tests/infra_resilience.test.js` |
@@ -22,7 +22,7 @@
 | **BUG-A04** | Integration | Error envelope unification frontend ↔ backend | `node tests/error_envelope.test.js` | — | PENDING | `proctornet/backend/src/shared/errors.js` |
 | **BUG-A05** | Integration | Exam countdown timer derived from expiresAt + serverClock | `node tests/exam_timer.test.js` | — | PENDING | `proctornet/frontend/src/hooks/useExamTimer.js` |
 | **BUG-A06** | Integration | Shared violation event catalogue & socket validation | `node tests/violation_catalogue.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/violationTypes.js` |
-| **BUG-A07** | Integration | Automated exam status scheduler & prewarm trigger | `node tests/exam_lifecycle.test.js` | — | PENDING | `proctornet/backend/src/jobs/examScheduler.js` |
+| **BUG-A07** | Integration | Automated exam status scheduler & prewarm trigger | `node --test tests/exam-lifecycle.test.js` | 2026-10-05T00:40:15Z | PASSED | `proctornet/backend/src/modules/exams/examScheduler.js` |
 | **BUG-B01** | Legacy | Remove broken legacy studentService calls & dead relations | `node tests/student_service_v1.test.js` | — | PENDING | `proctornet/backend/src/services/studentService.js` |
 | **BUG-B02** | Legacy | Eliminate studentExams references from examService | `node tests/exam_service_v1.test.js` | — | PENDING | `proctornet/backend/src/services/examService.js` |
 | **BUG-B04** | Legacy | Deprecate dead legacy service modules | `git rm ...` | — | PENDING | `proctornet/backend/src/services/` |
@@ -49,15 +49,16 @@
 | **BUG-D07** | Security | Strict enum casting in raw SQL & metadata size-capping | `node tests/sql_enum_casts.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/service.js` |
 | **BUG-D08** | Security | LiveKit webhook internal-only route with HMAC signature check | `node tests/livekit_webhook.test.js` | — | PENDING | `proctornet/backend/src/modules/proctoring/livekitWebhook.js` |
 | **BUG-D09** | Security | Replace vulnerable xlsx parser, crypto invId, CSP tightening | `node tests/security_hardening.test.js` | — | PENDING | `proctornet/backend/src/utils/excel.js` |
-| **BUG-E01** | Data/SQL | Migration drift zero-tolerance check & synchronization | `npx prisma migrate diff --exit-code` | — | PENDING | `proctornet/backend/prisma/migrations/` |
-| **BUG-E02** | Data/SQL | Timestamptz(3) everywhere & UTC session enforcement | `node tests/utc_timestamptz.test.js` | — | PENDING | `proctornet/backend/prisma/schema.prisma` |
+| **BUG-E01** | Data/SQL | Migration drift zero-tolerance check & synchronization | `npx prisma migrate diff --exit-code` | 2026-10-05T00:41:19Z | PASSED | `proctornet/backend/prisma/migrations/0001_init/migration.sql` |
+| **BUG-E02** | Data/SQL | Timestamptz(3) everywhere & UTC session enforcement | `node --test tests/timezone-matrix.test.js` | 2026-10-05T00:40:26Z | PASSED | `proctornet/backend/tests/timezone-matrix.test.js` |
 | **BUG-E03** | Data/SQL | Attempt activation gating (status, window, pause, eligibility) | `node tests/attempt_activation.test.js` | — | PENDING | `proctornet/backend/src/modules/attempts/repository.js` |
-| **BUG-E04** | Data/SQL | Roster query performance & index on answers(attempt_id) | `node tests/roster_query.test.js` | — | PENDING | `proctornet/backend/prisma/schema.prisma` |
+| **BUG-E04** | Data/SQL | Roster query performance & index on answers(attempt_id) | `node --test tests/p3-schema-constraints.test.js` | 2026-10-05T00:40:26Z | PASSED | `proctornet/backend/prisma/schema.prisma` |
 | **BUG-E05** | Data/SQL | Deduplicate batch answers in-memory before ON CONFLICT upsert | `node tests/batch_answer_dedup.test.js` | — | PENDING | `proctornet/backend/src/modules/answers/service.js` |
 | **BUG-E06** | Data/SQL | Question immutability after publish & safe in-place option updates | `node tests/question_immutability.test.js` | — | PENDING | `proctornet/backend/src/modules/questions/service.js` |
 | **BUG-E07** | Data/SQL | AI question preview validation (reject missing unambiguous correct) | `node tests/ai_question_validation.test.js` | — | PENDING | `proctornet/backend/src/services/aiService.js` |
 | **BUG-E08** | Data/SQL | Cache empty prevention & crypto Fisher-Yates shuffle | `node tests/shuffle_cache.test.js` | — | PENDING | `proctornet/backend/src/modules/questions/cache.js` |
-| **BUG-E09** | Data/SQL | Drop redundant TIMED_OUT status & enforce revision CAS on 0 | `node tests/revision_cas.test.js` | — | PENDING | `proctornet/backend/prisma/schema.prisma` |
+| **BUG-E09** | Data/SQL | Drop redundant TIMED_OUT status & enforce revision CAS on 0 | `node --test tests/p3-schema-constraints.test.js` | 2026-10-05T00:40:26Z | PASSED | `proctornet/backend/prisma/schema.prisma` |
+| **SCALE-01**| Scale | 500 Candidate READY Pre-warming & Shuffling Gate | `node --test tests/p4-prewarm-500.test.js` | 2026-10-05T00:39:10Z | PASSED (500 in 2.7s) | `proctornet/backend/tests/p4-prewarm-500.test.js` |
 | **BUG-F01** | Media | Nginx LiveKit reverse proxy & bridge network alignment | `curl -i -N http://localhost/livekit` | — | PENDING | `ops/nginx/conf.d/proctornet.conf` |
 | **BUG-F02** | Media | Invigilator UI migration to v1 rosterStore & proctorViewer | `npx playwright test tests/e2e/invigilator-grid.spec.js` | — | PENDING | `proctornet/frontend/src/pages/invigilator/` |
 | **BUG-F03** | Media | Align connectionStateRecovery with Socket.IO Redis transport | `node tests/socket_recovery.test.js` | — | PENDING | `proctornet/backend/src/infra/websocket/socket.server.js` |

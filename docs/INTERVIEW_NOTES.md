@@ -478,3 +478,48 @@ Siloed backend optimizations without a real-browser end-to-end test suite. Unit 
 - Codified §0.4: *"Real-user end-to-end is the arbiter. Unit tests alone never close a phase."*
 - Created `docs/qa/CLAIMS_LEDGER.md` requiring runnable command evidence and concrete artifacts before marking any requirement complete.
 
+---
+
+## Phase Q1: Schema & Migration Truth, Timezone Invariance, and Exam Lifecycle
+
+### Portfolio Interview Story: *"The silent time bomb: How unmigrated PostgreSQL types and client-controlled exam states can compromise an entire university examination system."*
+
+**The Context**:
+While the codebase contained an advanced `schema.prisma` with rich domain constraints, our audit revealed that the actual database migration baseline had drifted severely from the Prisma datamodel (E-01). Worse, timestamp columns were defined as `timestamp without time zone` (E-02). Furthermore, exam status transitions were completely client-writable and had no background automation, leaving published exams unable to go live or transition to evaluation automatically (A-07).
+
+**The Failure Modes Discovered**:
+1. **Timezone Deadline Shifts (E-02)**:
+   - When timestamp columns were `timestamp without time zone`, raw SQL queries comparing `expires_at < now()` or `now() BETWEEN start_time AND end_time` evaluated against the database session's timezone.
+   - We proved this with our empirical `timezone-matrix.test.js`: on unmigrated tables, setting the session to `America/Los_Angeles` shifted relative deadlines by 7 to 8 hours compared to `Asia/Kolkata` (+5.5h) and `UTC`, causing student attempts to expire prematurely or extend hours past the exam window!
+2. **Schema and Migration Drift (E-01)**:
+   - `prisma/migrations/0001_init/migration.sql` was missing the `EXPIRED` status enum, WireGuard VPN tables, `violation_events.thumb_key`, and foreign key constraints tying `answers.attempt_id` to `attempt_questions`.
+   - Any clean deployment (`prisma migrate deploy`) failed or produced a schema incompatible with the running backend services.
+3. **Unmanaged Exam Lifecycle & Client Status Tampering (A-07)**:
+   - Exam status was exposed as a writable field on `PATCH /api/v1/exams/:id` and legacy `updateExamById`, allowing any faculty or client to directly overwrite exam status to `LIVE`, `ENDED`, or back to `DRAFT`.
+   - Without an automated lifecycle engine, published exams never transitioned to `LIVE` at `start_time` or `ENDED` at `end_time`.
+
+**The Root Cause**:
+1. Omitting explicit `@db.Timestamptz(3)` declarations on DateTime fields in Prisma, causing PostgreSQL to infer naive `TIMESTAMP` types whose epoch representation changes with the client connection's `TimeZone` setting.
+2. Lack of an automated CI gate comparing the database migration ledger against the active Prisma datamodel (`prisma migrate diff --exit-code`).
+3. Absence of a leader-elected, advisory-locked background scheduler to drive guarded state machine transitions on exams.
+
+**The Fix & Preventive Architecture**:
+1. **Universal Timestamptz & UTC Enforcement**:
+   - Converted all 45 `DateTime` columns across the entire database to `@db.Timestamptz(3)`.
+   - Set PostgreSQL default database timezone to `UTC` (`ALTER DATABASE proctornet SET timezone TO 'UTC'`).
+   - Authored `tests/timezone-matrix.test.js` validating that instant preservation and relative deadline evaluations (`expires_at < now() - interval '30 seconds'`) are 100% identical under `PGTZ=Asia/Kolkata` and `PGTZ=America/Los_Angeles`.
+2. **Canonical Zero-Drift Migration Baseline**:
+   - Regenerated `0001_init/migration.sql` reflecting all UUID defaults (`gen_random_uuid()`), domain check constraints, partial indexes, and composite FKs.
+   - Enforced a zero-drift CI gate: `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code` exiting cleanly with `No difference detected.` (code 0).
+3. **Advisory-Locked Exam Lifecycle Scheduler**:
+   - Implemented `ExamScheduler` with PostgreSQL advisory lock `987654322`, ensuring only one worker instance coordinates exam lifecycle transitions across distributed replicas.
+   - Guarded SQL transitions only:
+     - `PUBLISHED -> LIVE` when `start_time <= now() < end_time` (`WHERE status = 'PUBLISHED'`).
+     - `LIVE -> ENDED` when `end_time <= now()` (`WHERE status = 'LIVE'`).
+     - `ENDED -> EVALUATED` only when zero active/suspended attempts remain and all finished attempts have results in `exam_results`.
+   - Completely stripped `status` from client-writable update endpoints.
+4. **Pre-warming Scalability & Idempotency Gate**:
+   - Automated candidate pre-warming trigger at `start_time - ATTEMPT_PREWARM_MINUTES` in the scheduler, as well as on exam publish.
+   - Authored `tests/p4-prewarm-500.test.js` proving that 500 candidate `READY` attempts with shuffled questions and options are created in 2.7 seconds before start, with strict idempotency (rerun creates 0 duplicates).
+
+
