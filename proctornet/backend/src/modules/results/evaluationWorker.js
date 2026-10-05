@@ -58,17 +58,47 @@ class EvaluationWorker {
         status: result.status
       }, 'Successfully evaluated attempt')
 
-      // 2. Broadcast result.ready via WebSocket
+      // 2. Deliver result to student and staff via Redis Emitter (C-06 & test f)
+      const examId = result.exam_id || result.examId
       try {
-        if (global.io) {
-          global.io.to(`exam:${result.exam_id || result.examId}`).emit('result:ready', {
+        const { socketEmitter } = require('../../infra/websocket/emitter')
+        // Deliver to the right student via attempt room (Mandatory test f)
+        socketEmitter.emitToAttempt(attemptId, 'result:ready', {
+          attemptId,
+          examId,
+          resultId: result.id,
+          score: result.score
+        })
+        // Notify invigilators room
+        if (examId) {
+          socketEmitter.emitToInvigilators(examId, 'result:ready', {
             attemptId,
-            examId: result.exam_id || result.examId,
-            resultId: result.id
+            examId,
+            resultId: result.id,
+            score: result.score
           })
         }
       } catch (wsErr) {
         logger.warn({ error: wsErr.message }, 'Failed to emit WS result.ready notification')
+      }
+
+      // 3. Compute ranks once after the last result of an exam (job), not per read (C-07)
+      if (examId) {
+        try {
+          const remainingUnevaluated = await prisma.examAttempt.count({
+            where: {
+              examId,
+              status: { in: ['SUBMITTED', 'EXPIRED', 'TERMINATED'] },
+              examResult: null
+            }
+          })
+          if (remainingUnevaluated === 0) {
+            logger.info({ examId }, 'Last result of exam evaluated: executing final rank computation job')
+            await resultRepository.updateRanksForExam(examId)
+          }
+        } catch (rankErr) {
+          logger.warn({ examId, error: rankErr.message }, 'Failed post-evaluation rank computation job')
+        }
       }
     }
 

@@ -81,7 +81,17 @@ class ProctoringService {
     // 3. Server severity assignment (Never trust client severity)
     const severity = CANONICAL_SEVERITY[canonicalType] || 'MEDIUM'
 
-    // 4. Evidence ticket if required and budget allows (Notion 13.10 / Task 7)
+    // 4. Push to micro-batcher first to ensure row exists in database (C-08/C-09)
+    const batchRes = await violationMicroBatcher.queue({
+      attemptId,
+      eventType: canonicalType,
+      severity,
+      metadata,
+      clientTimestamp
+    })
+    const violationId = batchRes?.violationId || null
+
+    // 5. Issue the evidence ticket AFTER the row exists and bind key to violationId (C-08/C-09)
     let evidenceUpload = null
     const { isEvidenceRequired, checkEvidenceBudget } = require('../../shared/evidencePolicy')
     const { presignService } = require('../media/presignService')
@@ -92,25 +102,17 @@ class ProctoringService {
         try {
           evidenceUpload = await presignService.generateUploadPresignedUrl(
             { id: studentId, role: 'student' },
-            { purpose: 'EVIDENCE', attemptId, contentType: 'image/webp', bytes: 300 * 1024 }
+            { purpose: 'EVIDENCE', attemptId, violationId, contentType: 'image/webp', bytes: 300 * 1024 }
           )
         } catch (err) {
-          logger.warn({ attemptId, error: err.message }, 'Could not generate evidence upload ticket')
+          logger.warn({ attemptId, violationId, error: err.message }, 'Could not generate evidence upload ticket')
         }
       }
     }
 
-    // 5. Push to micro-batcher
-    await violationMicroBatcher.queue({
-      attemptId,
-      eventType: canonicalType,
-      severity,
-      metadata,
-      clientTimestamp
-    })
-
     return {
       recorded: true,
+      violationId,
       eventType: canonicalType,
       severity,
       evidenceUpload

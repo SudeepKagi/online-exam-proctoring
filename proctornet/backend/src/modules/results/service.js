@@ -58,9 +58,7 @@ class ResultService {
       throw new ForbiddenError('Access denied: You do not own this exam')
     }
 
-    // Refresh ranks lazily
-    await resultRepository.updateRanksForExam(examId).catch(() => {})
-
+    // Do NOT recompute ranks per read (C-07: compute once after last result of an exam job)
     const results = await resultRepository.findByExam(examId)
     return results.map(toFacultyResultDTO)
   }
@@ -96,8 +94,12 @@ class ResultService {
       })
     ])
 
-    if (global.io) {
-      global.io.to(`exam:${examId}`).emit('exam:results_released', { examId })
+    // Broadcast via Redis emitter (C-06: inv:{examId} only)
+    try {
+      const { socketEmitter } = require('../../infra/websocket/emitter')
+      socketEmitter.emitToInvigilators(examId, 'exam:results_released', { examId })
+    } catch {
+      // Best-effort notification
     }
 
     return { success: true, examId, releasedAt: new Date().toISOString() }

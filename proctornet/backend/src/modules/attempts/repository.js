@@ -7,22 +7,38 @@ class AttemptRepository {
    * 1 round trip: updates READY -> ACTIVE returning the row.
    */
   async activateReadyAttempt(examId, studentId) {
+    const graceSeconds = parseInt(process.env.EXAM_GRACE_SECONDS || process.env.SUBMIT_GRACE_SECONDS || '300', 10)
     const sql = `
-      UPDATE exam_attempts ea
-      SET status = 'ACTIVE',
-          started_at = now(),
-          expires_at = LEAST(
-            now() + (e.duration || ' minutes')::interval,
-            e.end_time
-          )
-      FROM exams e
-      WHERE ea.exam_id = e.id
-        AND ea.exam_id = $1::uuid
-        AND ea.student_id = $2::uuid
-        AND ea.status = 'READY'
-      RETURNING ea.*;
+      WITH updated_attempt AS (
+        UPDATE exam_attempts ea
+        SET status = 'ACTIVE',
+            status_reason = 'Guarded start',
+            started_at = now(),
+            expires_at = LEAST(
+              now() + (e.duration || ' minutes')::interval,
+              e.end_time + ($3 || ' seconds')::interval
+            )
+        FROM exams e
+        WHERE ea.exam_id = e.id
+          AND ea.exam_id = $1::uuid
+          AND ea.student_id = $2::uuid
+          AND ea.status = 'READY'
+        RETURNING ea.*
+      ),
+      inserted_audit AS (
+        INSERT INTO audit_logs (attempt_id, actor_role, action, metadata, timestamp)
+        SELECT 
+          ua.id, 
+          'student', 
+          'ATTEMPT_STATE_CHANGE_ACTIVE', 
+          '{"from":"READY","to":"ACTIVE","guarded":true}'::jsonb, 
+          now()
+        FROM updated_attempt ua
+        RETURNING id
+      )
+      SELECT * FROM updated_attempt;
     `
-    const rows = await prisma.$queryRawUnsafe(sql, examId, studentId)
+    const rows = await prisma.$queryRawUnsafe(sql, examId, studentId, graceSeconds.toString())
     return rows && rows.length > 0 ? rows[0] : null
   }
 

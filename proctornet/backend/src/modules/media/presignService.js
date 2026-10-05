@@ -22,7 +22,7 @@ class PresignService {
   /**
    * Authorize and generate direct client-to-S3 upload credentials (ADR-011)
    */
-  async generateUploadPresignedUrl(user, { purpose, attemptId, examId, contentType, bytes }) {
+  async generateUploadPresignedUrl(user, { purpose, attemptId, violationId, examId, contentType, bytes }) {
     const normalizedPurpose = purpose.toUpperCase()
 
     const ALLOWED_CONTENT_TYPES = ['image/webp', 'image/jpeg', 'image/png']
@@ -69,7 +69,8 @@ class PresignService {
         }
 
         maxAllowedBytes = MAX_EVIDENCE_SIZE_BYTES
-        key = buildEvidenceKey(attempt.examId, attemptId)
+        // Bind evidence key to violationId (C-08/C-09)
+        key = buildEvidenceKey(attempt.examId, attemptId, violationId || undefined)
         break
       }
 

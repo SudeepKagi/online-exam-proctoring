@@ -38,27 +38,37 @@ function createWebSocketServer(httpServer, options = {}) {
     pingTimeout: 20000,
     maxHttpBufferSize: 64 * 1024, // 64 KB max payload: events only, NO MEDIA (Task 1)
     perMessageDeflate: false, // Tiny JSON payloads; CPU cost > gain (Task 1)
-    connectionStateRecovery: {
-      maxDisconnectionDuration: 2 * 60 * 1000,
-      skipMiddlewares: true
-    },
+    // connectionStateRecovery dropped per F-03 / C-06
     ...options
   })
 
-  // ── Redis Adapter for Multi-Process Horizontal Fan-Out (Task 1) ──
-  if (redisClient.client && redisClient.isReady) {
-    try {
-      const pubClient = redisClient.client.duplicate()
-      const subClient = redisClient.client.duplicate()
-      Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-        io.adapter(createAdapter(pubClient, subClient))
-        logger.info('Socket.IO Redis adapter enabled for multi-process scaling')
-      }).catch((err) => {
-        logger.warn({ error: err.message }, 'Socket.IO Redis adapter connection failed, using default memory adapter')
+  // ── Redis Adapter for Multi-Process Horizontal Fan-Out (C-05 / C-06) ──
+  // Always install Redis adapter; instantiate duplicate pub/sub clients with retryStrategy
+  try {
+    const Redis = require('ioredis')
+    const config = require('../../shared/config')
+    const pubClient = redisClient.client
+      ? redisClient.client.duplicate()
+      : new Redis(config.redisUrl, {
+        keyPrefix: config.redisPrefix,
+        lazyConnect: true,
+        maxRetriesPerRequest: 1,
+        retryStrategy: (n) => Math.min(n * 200, 5000)
       })
-    } catch (err) {
-      logger.warn({ error: err.message }, 'Failed to configure Redis adapter for Socket.IO')
-    }
+    const subClient = pubClient.duplicate()
+
+    io.adapter(createAdapter(pubClient, subClient))
+
+    Promise.all([
+      pubClient.status === 'ready' ? Promise.resolve() : pubClient.connect().catch(() => {}),
+      subClient.status === 'ready' ? Promise.resolve() : subClient.connect().catch(() => {})
+    ]).then(() => {
+      logger.info('Socket.IO Redis adapter enabled for multi-process scaling')
+    }).catch((err) => {
+      logger.warn({ error: err.message }, 'Socket.IO Redis adapter connection deferred, ioredis will retry')
+    })
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Failed to configure Redis adapter for Socket.IO')
   }
 
   // Bind coalescer to this IO instance
@@ -246,13 +256,13 @@ function createWebSocketServer(httpServer, options = {}) {
         if (res?.recorded) {
           const currentExamId = examId || socket.activeExamId
           if (currentExamId) {
-            // Forward notification to invigilator room (Task 3)
+            // Forward notification to invigilator room (Task 3; tickets never broadcast per C-08/C-09)
             io.to(`inv:${currentExamId}`).emit('violation:new', {
               attemptId,
+              violationId: res.violationId,
               studentId: socket.user.id,
               eventType: res.eventType,
               severity: res.severity,
-              evidenceUpload: res.evidenceUpload,
               timestamp: new Date().toISOString()
             })
 

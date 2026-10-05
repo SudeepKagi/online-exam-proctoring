@@ -76,5 +76,16 @@ async function shutdown(signal) {
   process.exit(0)
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'))
-process.on('SIGINT', () => shutdown('SIGINT'))
+let isShuttingDown = false
+
+function handleSignal(signal) {
+  if (isShuttingDown) {
+    logger.warn({ signal }, 'Second termination signal received in worker daemon, forcing immediate exit (C-10)')
+    process.exit(1)
+  }
+  isShuttingDown = true
+  shutdown(signal)
+}
+
+process.on('SIGTERM', () => handleSignal('SIGTERM'))
+process.on('SIGINT', () => handleSignal('SIGINT'))
