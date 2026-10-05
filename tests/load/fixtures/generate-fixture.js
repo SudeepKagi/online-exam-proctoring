@@ -8,10 +8,17 @@
 
 const path = require('path')
 module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
-require('dotenv').config({ path: path.resolve(__dirname, '../../../proctornet/backend/.env') })
+require('dotenv').config({ path: path.resolve(__dirname, '../../../proctornet/backend/.env'), override: true })
+if (!process.env.REDIS_URL || process.env.REDIS_URL.includes('@redis:')) {
+  process.env.REDIS_URL = 'redis://127.0.0.1:6379'
+}
+if (!process.env.RABBITMQ_URL || process.env.RABBITMQ_URL.includes('@rabbitmq:')) {
+  process.env.RABBITMQ_URL = 'amqp://127.0.0.1:5672'
+}
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
 const fs = require('fs')
+const crypto = require('crypto')
 
 const prisma = new PrismaClient()
 
@@ -137,6 +144,7 @@ async function generate() {
     where: { email: 'loadtest-faculty@proctornet.test' },
     update: { isApproved: true },
     create: {
+      id: crypto.randomUUID(),
       name: 'LoadTest Faculty Lead',
       email: 'loadtest-faculty@proctornet.test',
       password: facultyPasswordHash,
@@ -198,8 +206,10 @@ async function generate() {
     if (existingQCount < N_QUESTIONS) {
       console.log(`    Creating ${N_QUESTIONS} MCQs for ${examTitle}...`)
       for (let q = 1; q <= N_QUESTIONS; q++) {
+        const questionId = crypto.randomUUID()
         const question = await prisma.question.create({
           data: {
+            id: questionId,
             examId: exam.id,
             questionText: `Question ${q} (${examTitle}): What is the primary characteristic of concurrency invariant ${q}?`,
             marks: 1.0,
@@ -208,10 +218,10 @@ async function generate() {
             order: q,
             options: {
               create: [
-                { text: `Deterministic option A for question ${q}`, isCorrect: q % 4 === 1, order: 1 },
-                { text: `Deterministic option B for question ${q}`, isCorrect: q % 4 === 2, order: 2 },
-                { text: `Deterministic option C for question ${q}`, isCorrect: q % 4 === 3, order: 3 },
-                { text: `Deterministic option D for question ${q}`, isCorrect: q % 4 === 0, order: 4 }
+                { id: crypto.randomUUID(), text: `Deterministic option A for question ${q}`, isCorrect: q % 4 === 1, order: 1 },
+                { id: crypto.randomUUID(), text: `Deterministic option B for question ${q}`, isCorrect: q % 4 === 2, order: 2 },
+                { id: crypto.randomUUID(), text: `Deterministic option C for question ${q}`, isCorrect: q % 4 === 3, order: 3 },
+                { id: crypto.randomUUID(), text: `Deterministic option D for question ${q}`, isCorrect: q % 4 === 0, order: 4 }
               ]
             }
           },
@@ -250,6 +260,7 @@ async function generate() {
             approvalStatus: 'APPROVED'
           },
           create: {
+            id: crypto.randomUUID(),
             name: `LoadTest Student ${i}`,
             email,
             usn,
@@ -317,8 +328,10 @@ async function main() {
 }
 
 main()
+  .then(() => {
+    prisma.$disconnect().then(() => process.exit(0))
+  })
   .catch((err) => {
     console.error('\n❌ Fatal Fixture Error:', err)
     process.exit(1)
   })
-  .finally(() => prisma.$disconnect())

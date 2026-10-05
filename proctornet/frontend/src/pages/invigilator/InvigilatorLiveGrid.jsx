@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
@@ -15,17 +15,23 @@ import { useAuth } from '@/context/AuthContext'
 import { WebcamFeed, ScreenFeed } from '@/components/invigilator/StudentGrid'
 import { useInvigilatorSocket } from '@/hooks/useInvigilatorSocket'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
+import { useRosterStore, rosterStore } from '@/lib/rosterStore'
+import { ProctorViewer } from '@/lib/proctorViewer'
+
+const PAGE_SIZE = 12
 
 export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const effectiveExamId = examId || user?.examId || 'active'
 
   const handleLogout = () => {
-    logout()
+    logout?.()
     navigate('/invigilator/login')
   }
 
-  const [candidates, setCandidates] = useState([])
+  const rosterSnapshot = useRosterStore()
   const [loading, setLoading] = useState(true)
   const [errorState, setErrorState] = useState(null)
   const [selectedCandidate, setSelectedCandidate] = useState(null)
@@ -34,8 +40,12 @@ export default function InvigilatorLiveGrid() {
   const [showExited, setShowExited] = useState(false)
   const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
   const [activeLightboxImage, setActiveLightboxImage] = useState(null)
-
   const [examTitle, setExamTitle] = useState('')
+  const [page, setPage] = useState(1)
+
+  // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
+  const [subscribedTracks, setSubscribedTracks] = useState({})
+  const viewerRef = useRef(null)
 
   const {
     connected,
@@ -62,23 +72,24 @@ export default function InvigilatorLiveGrid() {
         invAction: alert.invAction,
         invActionNote: alert.invActionNote
       }
-      setCandidates(prev => prev.map(c => {
-        if (c.id === alert.studentId || c.studentId === alert.studentId) {
-          const updatedEvents = [formattedEv, ...(c.events || [])]
-          return {
-            ...c,
-            flagCount: (c.flagCount || 0) + 1,
-            isHotspot: true,
-            alerts: [formattedEv.type, ...(c.alerts || [])],
-            events: updatedEvents,
-            latestFrame: alert.cameraFrameUrl || c.latestFrame,
-            latestScreen: alert.screenshotUrl || c.latestScreen
-          }
-        }
-        return c
-      }))
+
+      const candId = alert.attemptId || alert.studentId
+      if (candId) {
+        rosterStore.updateCandidate(candId, {
+          flagCount: (rosterSnapshot.rosterMap?.get?.(candId)?.flagCount || 0) + 1,
+          isHotspot: true,
+          latestFrame: alert.cameraFrameUrl,
+          latestScreen: alert.screenshotUrl
+        })
+      }
+
+      // Promote flagged candidate on SFU for 60s
+      if (viewerRef.current && candId) {
+        viewerRef.current.handleSecurityAlert(candId)
+      }
+
       setSelectedCandidate(prev => {
-        if (prev && (prev.id === alert.studentId || prev.studentId === alert.studentId)) {
+        if (prev && (prev.id === candId || prev.studentId === candId || prev.attemptId === candId)) {
           return {
             ...prev,
             flagCount: (prev.flagCount || 0) + 1,
@@ -94,53 +105,155 @@ export default function InvigilatorLiveGrid() {
     }
   })
 
+  // ── Fetch Roster and Summary from V1 API ──
   const fetchGridData = async () => {
     setLoading(true)
     setErrorState(null)
     try {
-      const res = await api.get(`/invigilator/exam/${effectiveExamId}`)
-      if (res.data.exam) setExamTitle(res.data.exam.title)
-      const rawStudents = res.data.students || []
-      const mapped = rawStudents.map((st, i) => ({
-        id: st.studentId || st.id,
-        studentId: st.studentId || st.id,
-        seatNo: `A-${101 + i}`,
-        usn: st.usn,
-        name: st.name,
-        status: st.status || 'ACTIVE',
-        alerts: (st.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
-        events: st.events || [],
-        isHotspot: (st.flagCount || 0) > 0 || (st.events || []).length > 0,
-        flagCount: st.flagCount || (st.events || []).length || 0,
-        lastSnapshot: st.latestFrame || null,
-        latestFrame: st.latestFrame || null,
-        latestScreen: st.latestScreen || null,
-      }))
-      setCandidates(mapped)
+      // 1. Fetch Exam details
+      const examRes = await api.get(`/invigilator/exam/${effectiveExamId}`).catch(() => null)
+      if (examRes?.data?.exam) setExamTitle(examRes.data.exam.title)
 
-      // Auto-subscribe to WebRTC live streams for active candidates
-      mapped.forEach(cand => {
-        if (cand.status === 'ACTIVE') {
-          requestStudentStream?.(cand.id)
-        }
-      })
+      // 2. Fetch v1 Summary & Roster
+      const [summaryRes, rosterRes] = await Promise.all([
+        api.get(`/proctoring/exams/${effectiveExamId}/summary`).catch(() => null),
+        api.get(`/proctoring/exams/${effectiveExamId}/roster?limit=100`).catch(() => null)
+      ])
+
+      const summary = summaryRes?.data || null
+      let rosterItems = rosterRes?.data?.items || []
+
+      // Fallback to legacy exam students if v1 roster returned empty in legacy test env
+      if (rosterItems.length === 0 && examRes?.data?.students) {
+        rosterItems = examRes.data.students.map((st, i) => ({
+          attemptId: st.attemptId || st.studentId || st.id,
+          studentId: st.studentId || st.id,
+          seatNo: `A-${101 + i}`,
+          usn: st.usn,
+          name: st.name,
+          status: st.status || 'ACTIVE',
+          alerts: (st.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
+          events: st.events || [],
+          isHotspot: (st.flagCount || 0) > 0 || (st.events || []).length > 0,
+          flagCount: st.flagCount || (st.events || []).length || 0,
+          lastSnapshot: st.latestFrame || null,
+          latestFrame: st.latestFrame || null,
+          latestScreen: st.latestScreen || null
+        }))
+      } else {
+        rosterItems = rosterItems.map((item, i) => ({
+          ...item,
+          id: item.attemptId || item.studentId || item.id,
+          seatNo: item.seatNo || `A-${101 + i}`,
+          alerts: (item.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
+          events: item.events || [],
+          isHotspot: (item.flagCount || 0) > 0,
+          latestFrame: item.thumbUrl || item.latestFrame || null,
+          latestScreen: item.latestScreen || null
+        }))
+      }
+
+      rosterStore.initExam(effectiveExamId, rosterItems, summary)
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to exam server.'
       setErrorState({
         status,
-        title: status === 403 
+        title: status === 403
           ? 'Invigilator Access Restricted'
           : status === 404
           ? 'No Active Examination Assigned'
           : 'Failed to Synchronize Live Grid',
         message: msg
       })
-      setCandidates([])
     } finally {
       setLoading(false)
     }
   }
+
+  // ── Initialize LiveKit SFU ProctorViewer ──
+  useEffect(() => {
+    let activeViewer = null
+    let isMounted = true
+
+    async function initLiveKitViewer() {
+      try {
+        const tokenRes = await api.post('/proctoring/token', {
+          examId: effectiveExamId
+        })
+
+        if (!isMounted) return
+
+        const { token, wsUrl } = tokenRes.data
+        if (!token) return
+
+        const resolvedWsUrl = wsUrl?.startsWith('http') || wsUrl?.startsWith('ws')
+          ? wsUrl
+          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${wsUrl || '/media/'}`
+
+        const viewer = new ProctorViewer({
+          wsUrl: resolvedWsUrl,
+          token,
+          onTrackSubscribed: ({ identity, source, track }) => {
+            const cleanId = identity.replace(/^student:/, '')
+            setSubscribedTracks(prev => ({
+              ...prev,
+              [cleanId]: { ...(prev[cleanId] || {}), [source]: track },
+              [identity]: { ...(prev[identity] || {}), [source]: track }
+            }))
+          },
+          onTrackUnsubscribed: ({ identity, source }) => {
+            const cleanId = identity.replace(/^student:/, '')
+            setSubscribedTracks(prev => {
+              const cur = prev[cleanId] || {}
+              const updated = { ...cur }
+              delete updated[source]
+              return {
+                ...prev,
+                [cleanId]: updated,
+                [identity]: updated
+              }
+            })
+          },
+          onParticipantDisconnected: (participant) => {
+            const cleanId = participant.identity.replace(/^student:/, '')
+            setSubscribedTracks(prev => {
+              const updated = { ...prev }
+              delete updated[cleanId]
+              delete updated[participant.identity]
+              return updated
+            })
+          }
+        })
+
+        await viewer.connect()
+        if (isMounted) {
+          viewerRef.current = viewer
+          activeViewer = viewer
+          if (typeof window !== 'undefined') {
+            window.__proctorViewer = viewer
+          }
+        } else {
+          viewer.disconnect()
+        }
+      } catch (err) {
+        console.warn('LiveKit SFU ProctorViewer connection deferred or unavailable:', err.message)
+      }
+    }
+
+    initLiveKitViewer()
+
+    return () => {
+      isMounted = false
+      if (activeViewer) {
+        activeViewer.disconnect()
+      }
+      viewerRef.current = null
+      if (typeof window !== 'undefined') {
+        window.__proctorViewer = null
+      }
+    }
+  }, [effectiveExamId])
 
   // ── Periodic reconciliation sync: Re-sync every 15s to catch persisted db records ──
   useEffect(() => {
@@ -149,64 +262,60 @@ export default function InvigilatorLiveGrid() {
     return () => clearInterval(interval)
   }, [effectiveExamId])
 
-  // ── Candidate State Updates (Real-Time from Socket) ──
-  useEffect(() => {
-    const handleStateUpdate = (e) => {
-      const { studentId, currentStatus } = e.detail || {}
-      if (!studentId || !currentStatus) return
-      setCandidates(prev => prev.map(c => {
-        if (c.id === studentId || c.studentId === studentId) {
-          return { ...c, status: currentStatus }
-        }
-        return c
-      }))
-      setSelectedCandidate(prev => {
-        if (prev && (prev.id === studentId || prev.studentId === studentId)) {
-          return { ...prev, status: currentStatus }
-        }
-        return prev
-      })
-    }
-    window.addEventListener('student-state-update', handleStateUpdate)
-    return () => window.removeEventListener('student-state-update', handleStateUpdate)
-  }, [])
+  const candidates = rosterSnapshot.items || []
 
-  // ── Re-Subscribe to streams on socket connection / candidate list sync ──
-  useEffect(() => {
-    if (connected && candidates.length > 0) {
-      candidates.forEach(cand => {
-        if (cand.status === 'ACTIVE' || cand.status === 'IN_PROGRESS') {
-          requestStudentStream?.(cand.id)
-        }
-      })
-    }
-  }, [connected, candidates.length, requestStudentStream])
+  const filteredCandidates = candidates.filter((c) => {
+    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
+    if (!showExited && isExited) return false
 
-  // ── Keep selected candidate stream active ──
-  useEffect(() => {
-    if (selectedCandidate?.id && connected) {
-      requestStudentStream?.(selectedCandidate.id)
-      const streamTimer = setInterval(() => {
-        requestStudentStream?.(selectedCandidate.id)
-      }, 5000)
-      return () => clearInterval(streamTimer)
+    if (filterAlertsOnly) {
+      return (c.flagCount || 0) > 0 || c.status === 'SUSPENDED' || (c.alerts && c.alerts.length > 0)
     }
-  }, [selectedCandidate?.id, connected, requestStudentStream])
+    return true
+  })
+
+  // ── Pagination Calculation ──
+  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const currentCandidates = filteredCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  // ── Sync SFU Subscriptions: LOW quality for visible tiles, HIGH quality for focus view ──
+  useEffect(() => {
+    if (viewerRef.current) {
+      const visibleIdentities = currentCandidates.map(c => c.attemptId || c.id)
+      const focusedIdentity = selectedCandidate ? (selectedCandidate.attemptId || selectedCandidate.id) : null
+      viewerRef.current.syncVisibleTiles(visibleIdentities, focusedIdentity)
+    }
+  }, [currentCandidates, selectedCandidate])
 
   const handleSelectCandidate = (cand) => {
     setSelectedCandidate(cand)
-    requestStudentStream?.(cand.id)
+    if (viewerRef.current) {
+      viewerRef.current.setFocusCandidate(cand.attemptId || cand.id)
+    }
+  }
+
+  const handleCloseModal = () => {
+    setSelectedCandidate(null)
+    if (viewerRef.current) {
+      viewerRef.current.clearFocusCandidate()
+    }
   }
 
   const handleSendWarning = async () => {
     if (!selectedCandidate || !warningMsg.trim()) return
+    const candidateId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
     try {
-      await sendSocketWarning(selectedCandidate.id, warningMsg.trim())
-      await api.post('/invigilator/send-warning', {
-        examId: effectiveExamId,
-        studentId: selectedCandidate.id,
-        message: warningMsg.trim(),
-      }).catch(() => {})
+      await sendSocketWarning?.(candidateId, warningMsg.trim())
+      await api.post(`/proctoring/attempts/${candidateId}/warn`, {
+        message: warningMsg.trim()
+      }).catch(async () => {
+        await api.post('/invigilator/send-warning', {
+          examId: effectiveExamId,
+          studentId: candidateId,
+          message: warningMsg.trim()
+        }).catch(() => {})
+      })
       toast.success(`Warning dispatched to candidate ${selectedCandidate.name || selectedCandidate.usn}`)
       setWarningMsg('')
     } catch {
@@ -217,16 +326,17 @@ export default function InvigilatorLiveGrid() {
 
   const handlePauseExam = async (cand) => {
     if (!cand) return
-    const candidateId = cand.id || cand.studentId
+    const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
-      await pauseStudentExam(candidateId, 'Session paused by proctor.')
-      await api.post(`/invigilator/pause-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
+      await pauseStudentExam?.(candidateId, 'Session paused by proctor.')
+      await api.post(`/proctoring/attempts/${candidateId}/pause`, { reason: 'Session paused by proctor.' }).catch(async () => {
+        await api.post(`/invigilator/pause-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
+      })
       toast.success(`Exam session paused for candidate ${cand.name || cand.usn}`)
-      setCandidates(prev => prev.map(c => ((c.id === candidateId || c.studentId === candidateId) ? { ...c, status: 'SUSPENDED' } : c)))
-      if (selectedCandidate?.id === candidateId || selectedCandidate?.studentId === candidateId) {
+      rosterStore.updateCandidate(candidateId, { status: 'SUSPENDED' })
+      if (selectedCandidate?.id === candidateId || selectedCandidate?.attemptId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'SUSPENDED' }))
       }
-      fetchGridData()
     } catch {
       toast.error(`Failed to pause session for candidate ${cand.usn}`)
     }
@@ -234,17 +344,17 @@ export default function InvigilatorLiveGrid() {
 
   const handleResumeExam = async (cand) => {
     if (!cand) return
-    const candidateId = cand.id || cand.studentId
+    const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
-      await resumeStudentExam(candidateId)
-      await api.post(`/invigilator/resume-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
+      await resumeStudentExam?.(candidateId)
+      await api.post(`/proctoring/attempts/${candidateId}/resume`).catch(async () => {
+        await api.post(`/invigilator/resume-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
+      })
       toast.success(`Exam session resumed for candidate ${cand.name || cand.usn}`)
-      setCandidates(prev => prev.map(c => ((c.id === candidateId || c.studentId === candidateId) ? { ...c, status: 'ACTIVE' } : c)))
-      if (selectedCandidate?.id === candidateId || selectedCandidate?.studentId === candidateId) {
+      rosterStore.updateCandidate(candidateId, { status: 'ACTIVE' })
+      if (selectedCandidate?.id === candidateId || selectedCandidate?.attemptId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'ACTIVE' }))
       }
-      requestStudentStream?.(candidateId)
-      fetchGridData()
     } catch {
       toast.error(`Failed to resume session for candidate ${cand.usn}`)
     }
@@ -253,34 +363,36 @@ export default function InvigilatorLiveGrid() {
   const handleConfirmTerminate = async () => {
     const { candidate, reason } = terminateDialog
     if (!candidate) return
+    const candidateId = candidate.attemptId || candidate.id || candidate.studentId
     const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
     try {
-      await terminateStudentExam(candidate.id || candidate.studentId, termReason)
-      await api.post(`/invigilator/terminate-student/${candidate.id || candidate.studentId}`, {
-        examId: effectiveExamId,
-        reason: termReason
-      }).catch(() => {})
+      await terminateStudentExam?.(candidateId, termReason)
+      await api.post(`/proctoring/attempts/${candidateId}/terminate`, { reason: termReason }).catch(async () => {
+        await api.post(`/invigilator/terminate-student/${candidateId}`, {
+          examId: effectiveExamId,
+          reason: termReason
+        }).catch(() => {})
+      })
       toast.error(`Exam session terminated for ${candidate.name || candidate.usn}`)
-      setCandidates(prev => prev.map(c => c.id === candidate.id ? { ...c, status: 'TERMINATED' } : c))
-      fetchGridData()
+      rosterStore.updateCandidate(candidateId, { status: 'TERMINATED' })
     } catch {
       toast.error('Failed to dispatch termination order.')
     } finally {
       setTerminateDialog({ open: false, candidate: null, reason: '' })
-      setSelectedCandidate(null)
+      handleCloseModal()
     }
   }
 
-  const filteredCandidates = candidates.filter((c) => {
-    // By default, exclude candidates who have exited/terminated/submitted from active Live Grid
-    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
-    if (!showExited && isExited) return false
-
-    if (filterAlertsOnly) {
-      return c.alerts.length > 0 || c.status === 'SUSPENDED'
-    }
-    return true
-  })
+  const getCandidateTracks = (cand) => {
+    if (!cand) return {}
+    return (
+      subscribedTracks[cand.attemptId] ||
+      subscribedTracks[cand.id] ||
+      subscribedTracks[cand.studentId] ||
+      subscribedTracks[`student:${cand.attemptId}`] ||
+      {}
+    )
+  }
 
   return (
     <DashboardLayout title="Live Invigilator Grid">
@@ -335,7 +447,7 @@ export default function InvigilatorLiveGrid() {
           </div>
         </div>
 
-        {/* 24-Seat Tile Matrix */}
+        {/* 12-Seat Tile Matrix */}
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {[...Array(12)].map((_, i) => (
@@ -426,82 +538,117 @@ export default function InvigilatorLiveGrid() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
-            {filteredCandidates.map((cand) => {
-              const isTerminated = cand.status === 'TERMINATED'
-              const isSuspended = cand.status === 'SUSPENDED'
-              const isFlagged = cand.alerts.length > 0 || isTerminated || isSuspended
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
+              {currentCandidates.map((cand) => {
+                const isTerminated = cand.status === 'TERMINATED'
+                const isSuspended = cand.status === 'SUSPENDED'
+                const isFlagged = (cand.alerts && cand.alerts.length > 0) || cand.flagCount > 0 || isTerminated || isSuspended
+                const tracks = getCandidateTracks(cand)
 
-              return (
-                <Card
-                  key={cand.id}
-                  onClick={() => handleSelectCandidate(cand)}
-                  className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
-                    isTerminated
-                      ? 'border-rose-300 bg-rose-50/20 dark:bg-rose-950/20 hover:border-rose-500'
-                      : isSuspended
-                      ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20 hover:border-amber-500'
-                      : isFlagged
-                      ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold text-foreground bg-[#f1f5f9] dark:bg-neutral-800 px-2 py-0.5 rounded-lg border border-border">
-                        Seat {cand.seatNo}
-                      </span>
-                      {isTerminated ? (
-                        <Badge variant="destructive" className="text-[9px] uppercase tracking-wider font-bold">
-                          TERMINATED
-                        </Badge>
-                      ) : isSuspended ? (
-                        <Badge className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider">
-                          SUSPENDED
-                        </Badge>
-                      ) : isFlagged ? (
-                        <Badge variant="destructive" className="text-[9px] font-bold uppercase tracking-wider">
-                          FLAGGED
-                        </Badge>
-                      ) : (
-                        <Badge variant="green" className="text-[9px] font-bold uppercase tracking-wider">
-                          LIVE
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Camera Feed Thumbnail */}
-                    <div className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
-                      <WebcamFeed
-                        studentId={cand.id}
-                        initialFrame={cand.latestFrame || cand.lastSnapshot}
-                        className="w-full h-full object-cover"
-                      />
-                      {cand.isHotspot && (
-                        <span className="absolute top-1.5 right-1.5 bg-[#fffbeb] text-[#b45309] text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[#fde68a]">
-                          HOTSPOT
+                return (
+                  <Card
+                    key={cand.id || cand.attemptId}
+                    onClick={() => handleSelectCandidate(cand)}
+                    className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
+                      isTerminated
+                        ? 'border-rose-300 bg-rose-50/20 dark:bg-rose-950/20 hover:border-rose-500'
+                        : isSuspended
+                        ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20 hover:border-amber-500'
+                        : isFlagged
+                        ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold text-foreground bg-[#f1f5f9] dark:bg-neutral-800 px-2 py-0.5 rounded-lg border border-border">
+                          Seat {cand.seatNo}
                         </span>
-                      )}
+                        {isTerminated ? (
+                          <Badge variant="destructive" className="text-[9px] uppercase tracking-wider font-bold">
+                            TERMINATED
+                          </Badge>
+                        ) : isSuspended ? (
+                          <Badge className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider">
+                            SUSPENDED
+                          </Badge>
+                        ) : isFlagged ? (
+                          <Badge variant="destructive" className="text-[9px] font-bold uppercase tracking-wider">
+                            FLAGGED
+                          </Badge>
+                        ) : (
+                          <Badge variant="green" className="text-[9px] font-bold uppercase tracking-wider">
+                            LIVE
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Camera Feed Thumbnail */}
+                      <div className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
+                        <WebcamFeed
+                          track={tracks.camera}
+                          initialFrame={cand.latestFrame || cand.lastSnapshot || cand.thumbUrl}
+                          className="w-full h-full object-cover"
+                        />
+                        {cand.isHotspot && (
+                          <span className="absolute top-1.5 right-1.5 bg-[#fffbeb] text-[#b45309] text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[#fde68a]">
+                            HOTSPOT
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs font-bold text-foreground truncate">{cand.usn}</p>
+                      <p className="text-[11px] text-muted-foreground truncate font-medium">{cand.name}</p>
                     </div>
 
-                    <p className="text-xs font-bold text-foreground truncate">{cand.usn}</p>
-                    <p className="text-[11px] text-muted-foreground truncate font-medium">{cand.name}</p>
-                  </div>
+                    {cand.alerts && cand.alerts.length > 0 && (
+                      <div className="mt-2 text-[10px] font-bold text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] px-2 py-1 rounded-lg truncate">
+                        {cand.alerts[0]}
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
 
-                  {cand.alerts.length > 0 && (
-                    <div className="mt-2 text-[10px] font-bold text-[#b91c1c] bg-[#fef2f2] border border-[#fecaca] px-2 py-1 rounded-lg truncate">
-                      {cand.alerts[0]}
-                    </div>
-                  )}
-                </Card>
-              )
-            })}
-          </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-border pt-3 px-1">
+                <span className="text-xs text-muted-foreground font-medium">
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length} workstations
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setPage(p => Math.max(p - 1, 1))}
+                    className="text-xs font-bold"
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs font-mono font-bold px-2.5 py-1 bg-muted rounded-lg text-foreground border border-border">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+                    className="text-xs font-bold"
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {/* Selected Candidate Detailed Stream Modal */}
         {selectedCandidate && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={() => setSelectedCandidate(null)}>
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={handleCloseModal}>
             <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-3xl w-full p-6 text-foreground font-sans max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4 border-b border-border pb-3.5">
                 <div>
@@ -513,7 +660,7 @@ export default function InvigilatorLiveGrid() {
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5 font-normal">{selectedCandidate.name}</p>
                 </div>
-                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer" aria-label="Close dialog">
+                <button onClick={handleCloseModal} className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer" aria-label="Close dialog">
                   <X size={18} />
                 </button>
               </div>
@@ -523,8 +670,8 @@ export default function InvigilatorLiveGrid() {
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
                     <WebcamFeed
-                      studentId={selectedCandidate.id}
-                      initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot}
+                      track={getCandidateTracks(selectedCandidate).camera}
+                      initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot || selectedCandidate.thumbUrl}
                       className="w-full h-full object-cover"
                     />
                     <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
@@ -533,7 +680,7 @@ export default function InvigilatorLiveGrid() {
                   </div>
                   <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
                     <ScreenFeed
-                      studentId={selectedCandidate.id}
+                      track={getCandidateTracks(selectedCandidate).screen}
                       initialFrame={selectedCandidate.latestScreen}
                       className="w-full h-full object-cover"
                     />
@@ -678,7 +825,7 @@ export default function InvigilatorLiveGrid() {
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => setSelectedCandidate(null)}
+                      onClick={handleCloseModal}
                       className="text-xs font-bold cursor-pointer"
                     >
                       Close Window

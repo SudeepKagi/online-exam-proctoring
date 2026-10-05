@@ -20,7 +20,13 @@ room:
   max_participants: 1200
 
 keys:
-  ${LIVEKIT_API_KEY:-proctornet_livekit_key}: ${LIVEKIT_API_SECRET:-proctornet_livekit_secret_at_least_32_chars}
+  devkey: secretsecretsecretsecretsecretsecret
+  proctornet_livekit_key: proctornet_livekit_secret_at_least_32_chars
+
+webhook:
+  api_key: proctornet_livekit_key
+  urls:
+    - http://127.0.0.1:5000/internal/livekit/webhook
 
 logging:
   json: true

@@ -1,4 +1,4 @@
-const { prisma } = require('../../infra/postgres/client')
+const { examRepository } = require('./repository')
 const { attemptPrewarmJob } = require('../attempts/prewarmJob')
 const { attemptService } = require('../attempts/service')
 const bcrypt = require('bcrypt')
@@ -17,16 +17,14 @@ class ExamService {
     const rawInvPassword = crypto.randomBytes(6).toString('hex')
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
 
-    const exam = await prisma.exam.create({
-      data: {
-        ...data,
-        facultyId,
-        invId,
-        invPasswordHash,
-        status: 'DRAFT',
-        startTime: new Date(data.startTime),
-        endTime: new Date(data.endTime)
-      }
+    const exam = await examRepository.create({
+      ...data,
+      facultyId,
+      invId,
+      invPasswordHash,
+      status: 'DRAFT',
+      startTime: new Date(data.startTime),
+      endTime: new Date(data.endTime)
     })
 
     return {
@@ -36,14 +34,7 @@ class ExamService {
   }
 
   async publishExam(examId, facultyId, userRole) {
-    const exam = await prisma.exam.findUnique({
-      where: { id: examId },
-      include: {
-        questions: {
-          include: { options: true }
-        }
-      }
-    })
+    const exam = await examRepository.findById(examId, { includeQuestions: true })
 
     if (!exam) {
       throw new NotFoundError(`Exam '${examId}' not found`)
@@ -78,10 +69,7 @@ class ExamService {
       }
     }
 
-    const updated = await prisma.exam.update({
-      where: { id: examId },
-      data: { status: 'PUBLISHED' }
-    })
+    const updated = await examRepository.updateStatus(examId, 'PUBLISHED')
 
     // Trigger pre-warming in background
     attemptPrewarmJob.prewarmExam(examId).catch(() => {})
@@ -90,7 +78,7 @@ class ExamService {
   }
 
   async updateExam(examId, data, facultyId, userRole) {
-    const exam = await prisma.exam.findUnique({ where: { id: examId } })
+    const exam = await examRepository.findById(examId)
     if (!exam) {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
@@ -106,13 +94,10 @@ class ExamService {
     // Strip client-writable status and id (A-07)
     const { status, id, ...allowedData } = data
 
-    const updated = await prisma.exam.update({
-      where: { id: examId },
-      data: {
-        ...allowedData,
-        startTime: allowedData.startTime ? new Date(allowedData.startTime) : undefined,
-        endTime: allowedData.endTime ? new Date(allowedData.endTime) : undefined
-      }
+    const updated = await examRepository.update(examId, {
+      ...allowedData,
+      startTime: allowedData.startTime ? new Date(allowedData.startTime) : undefined,
+      endTime: allowedData.endTime ? new Date(allowedData.endTime) : undefined
     })
 
     // Invalidate content cache
@@ -122,14 +107,7 @@ class ExamService {
   }
 
   async getExam(examId, user) {
-    const exam = await prisma.exam.findUnique({
-      where: { id: examId },
-      include: {
-        faculty: {
-          select: { id: true, name: true, email: true, departmentCode: true }
-        }
-      }
-    })
+    const exam = await examRepository.findByIdWithFaculty(examId)
 
     if (!exam) {
       throw new NotFoundError(`Exam '${examId}' not found`)

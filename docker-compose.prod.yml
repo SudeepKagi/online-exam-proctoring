@@ -1,17 +1,17 @@
 # ==============================================================================
-# ProctorNet Production Infrastructure Stack (Phase P9 Task 1)
-# Hardened, Private Data Services, Resource Limits, Healthchecks, & Non-Root
+# ProctorNet Production Infrastructure Stack  —  Single Source of Truth
+# Usage: docker compose -f docker-compose.prod.yml up
+# Dev  : docker compose -f docker-compose.prod.yml -f docker-compose.override.yml up
 # ==============================================================================
 
-
-# Common logging configuration for all production containers
+# Common structured logging
 x-logging: &default-logging
   driver: "json-file"
   options:
     max-size: "10m"
     max-file: "3"
 
-# Common base configuration for API and Worker containers
+# Shared anchor for all API / Worker containers
 x-api-common: &api-common
   build:
     context: ./proctornet/backend
@@ -26,6 +26,7 @@ x-api-common: &api-common
     PORT: 5000
     NODE_ENV: production
     START_WORKERS: "false"
+    UV_THREADPOOL_SIZE: "16"
   networks:
     - internal
   mem_limit: 1024m
@@ -44,7 +45,7 @@ x-api-common: &api-common
 
 services:
   # ----------------------------------------------------------------------------
-  # Edge Reverse Proxy (Nginx) â€” Only Service on Edge Network
+  # Edge Reverse Proxy (Nginx)
   # ----------------------------------------------------------------------------
   nginx:
     image: nginx:1.25-alpine
@@ -77,18 +78,70 @@ services:
       start_period: 5s
       retries: 3
     depends_on:
+      frontend:
+        condition: service_healthy
       api-1:
         condition: service_healthy
       api-2:
         condition: service_healthy
+      api-3:
+        condition: service_healthy
 
   # ----------------------------------------------------------------------------
-  # Horizontally Scaled API Pods (api-1, api-2)
+  # Frontend SPA  —  Multi-stage Vite build -> nginx:unprivileged (G-02)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./proctornet/frontend
+      dockerfile: Dockerfile
+    image: proctornet-frontend:latest
+    container_name: proctornet-frontend
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 10s
+    networks:
+      - internal
+    mem_limit: 256m
+    cpus: "0.5"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+      - /var/cache/nginx:rw,noexec,nosuid,size=64m
+      - /var/run:rw,noexec,nosuid,size=8m
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 10s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # One-shot Database Migration Runner (G-03)
+  # ----------------------------------------------------------------------------
+  migrate:
+    <<: *api-common
+    container_name: proctornet-migrate
+    restart: "no"
+    command: ["node", "-e", "const {execSync}=require('child_process'); execSync('npx prisma migrate deploy', {stdio:'inherit'}); process.exit(0)"]
+    environment:
+      NODE_ENV: production
+      UV_THREADPOOL_SIZE: "16"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ----------------------------------------------------------------------------
+  # Horizontally Scaled API Pods — three replicas (docs requirement)
   # ----------------------------------------------------------------------------
   api-1:
     <<: *api-common
     container_name: proctornet-api-1
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -100,6 +153,21 @@ services:
     <<: *api-common
     container_name: proctornet-api-2
     depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  api-3:
+    <<: *api-common
+    container_name: proctornet-api-3
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -108,18 +176,27 @@ services:
         condition: service_healthy
 
   # ----------------------------------------------------------------------------
-  # Dedicated Asynchronous Worker Pod
+  # Dedicated Asynchronous Worker Pod  (G-04: heap + healthcheck)
   # ----------------------------------------------------------------------------
   worker:
     <<: *api-common
     container_name: proctornet-worker
-    command: ["node", "--max-old-space-size=2048", "src/worker.js"]
+    command: ["node", "--max-old-space-size=768", "src/worker.js"]
     environment:
       NODE_ENV: production
       START_WORKERS: "true"
+      UV_THREADPOOL_SIZE: "16"
     mem_limit: 1024m
     cpus: "1.0"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/worker.ready && find /tmp/worker.ready -mmin -2 | grep -q worker.ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -128,7 +205,7 @@ services:
         condition: service_healthy
 
   # ----------------------------------------------------------------------------
-  # Private Data Tier: PostgreSQL 16 (Appendix C Tuned, Zero Host Ports)
+  # Private Data Tier: PostgreSQL 16
   # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
@@ -161,14 +238,14 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # Private Cache & Fast State Tier: Redis 7 (AOF Enabled, Zero Host Ports)
+  # Private Cache: Redis 7  —  persistence OFF (cache-only mode)
   # ----------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: proctornet-redis
     restart: unless-stopped
     init: true
-    stop_grace_period: 30s
+    stop_grace_period: 10s
     networks:
       - internal
     mem_limit: 1024m
@@ -176,8 +253,10 @@ services:
     env_file:
       - .env
     command: >
-      sh -c 'redis-server --requirepass "$${REDIS_PASSWORD}"
-      --appendonly yes
+      sh -c 'redis-server
+      --requirepass "$${REDIS_PASSWORD}"
+      --save ""
+      --appendonly no
       --maxmemory 800mb
       --maxmemory-policy volatile-lru'
     volumes:
@@ -191,10 +270,10 @@ services:
       retries: 3
 
   # ----------------------------------------------------------------------------
-  # Private Event Bus: RabbitMQ 3.12 (Zero Host Ports)
+  # Private Event Bus: RabbitMQ 3.12  —  non-management image (G-04)
   # ----------------------------------------------------------------------------
   rabbitmq:
-    image: rabbitmq:3.12-management-alpine
+    image: rabbitmq:3.12-alpine
     container_name: proctornet-rabbitmq
     restart: unless-stopped
     init: true
@@ -219,13 +298,22 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # Media Plane: LiveKit SFU (Pinned v1.13.7, Host Network on Linux)
+  # Media Plane: LiveKit SFU (Bridge Network Topology — F-01 / G-01 egress)
   # ----------------------------------------------------------------------------
   livekit:
     image: livekit/livekit-server:v1.13.7
     container_name: proctornet-livekit
     restart: unless-stopped
-    network_mode: host
+    init: true
+    stop_grace_period: 30s
+    networks:
+      - internal
+      - egress
+    ports:
+      - "7881:7881/tcp"
+      - "7882:7882/udp"
+      - "3478:3478/udp"
+      - "5349:5349/tcp"
     mem_limit: 2048m
     cpus: "2.0"
     command: --config /etc/livekit.yaml
@@ -245,7 +333,7 @@ services:
       retries: 3
 
   # ----------------------------------------------------------------------------
-  # Biometric Python Auxiliary Service (Private Network, Zero Host Ports)
+  # Biometric Python Auxiliary Service
   # ----------------------------------------------------------------------------
   python-service:
     build:
@@ -524,7 +612,10 @@ services:
       retries: 3
 
 # ==============================================================================
-# Isolated Production Networks (Task 2: Boundary Isolation)
+# Networks
+#   edge     -- nginx <-> internet only
+#   internal -- all backend services (internal: true -> no external routing)
+#   egress   -- LiveKit only; allows outbound UDP for WebRTC ICE (G-01)
 # ==============================================================================
 networks:
   edge:
@@ -532,6 +623,8 @@ networks:
   internal:
     driver: bridge
     internal: true
+  egress:
+    driver: bridge
 
 # ==============================================================================
 # Persistent Volumes

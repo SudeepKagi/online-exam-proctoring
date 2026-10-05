@@ -7,7 +7,7 @@
  */
 
 import { useSyncExternalStore, startTransition } from 'react'
-import { getSocket } from './socketClient'
+import { getSocket, initSocketClient } from './socketClient'
 
 class RosterStoreManager {
   constructor() {
@@ -26,8 +26,9 @@ class RosterStoreManager {
     this.rosterMap.clear()
 
     for (const item of initialRoster) {
-      if (item.attemptId) {
-        this.rosterMap.set(item.attemptId, item)
+      const key = item.attemptId || item.id
+      if (key) {
+        this.rosterMap.set(key, { ...item, attemptId: key })
       }
     }
 
@@ -39,9 +40,22 @@ class RosterStoreManager {
     this._recomputeSnapshot()
   }
 
+  updateCandidate(attemptId, updates = {}) {
+    startTransition(() => {
+      const existing = this.rosterMap.get(attemptId)
+      if (existing) {
+        this.rosterMap.set(attemptId, {
+          ...existing,
+          ...updates
+        })
+        this._recomputeSnapshot()
+      }
+    })
+  }
+
   _bindSocket(examId) {
     if (this.isListening) return
-    const socket = getSocket()
+    const socket = getSocket() || initSocketClient()
     if (!socket) return
 
     socket.emit('inv:join', { examId })

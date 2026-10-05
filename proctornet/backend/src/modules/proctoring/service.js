@@ -1,4 +1,4 @@
-const { prisma } = require('../../infra/postgres/client')
+const { proctoringRepository } = require('./repository')
 const { redisClient } = require('../../infra/redis/client')
 const { CANONICAL_SEVERITY, FLAG_COOLDOWNS, normalizeViolationType, isValidViolationType } = require('./constants')
 const { violationMicroBatcher } = require('./violationMicroBatcher')
@@ -31,17 +31,12 @@ class ProctoringService {
     }
 
     // 1. Authoritative check: ownership & ACTIVE status in SQL
-    const rows = await prisma.$queryRawUnsafe(`
-      SELECT id, exam_id, status, expires_at
-      FROM exam_attempts
-      WHERE id = $1::uuid AND student_id = $2::uuid;
-    `, attemptId, studentId)
+    const attempt = await proctoringRepository.findAttemptForViolationGuard(attemptId, studentId)
 
-    if (!rows || rows.length === 0) {
+    if (!attempt) {
       throw new NotFoundError(`Attempt '${attemptId}' not found or access denied`)
     }
 
-    const attempt = rows[0]
     if (attempt.status !== 'ACTIVE') {
       throw new ConflictError(`Cannot record violation on attempt in state '${attempt.status}'`)
     }
@@ -97,7 +92,7 @@ class ProctoringService {
     const { presignService } = require('../media/presignService')
 
     if (isEvidenceRequired(canonicalType)) {
-      const budget = await checkEvidenceBudget(attemptId, prisma)
+      const budget = await checkEvidenceBudget(attemptId)
       if (budget.allowed) {
         try {
           evidenceUpload = await presignService.generateUploadPresignedUrl(
@@ -123,10 +118,7 @@ class ProctoringService {
    * Fetch timeline of violation events with rounded presigned read URLs (Defect D-02 Fix)
    */
   async getViolationTimeline(attemptId, user) {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true, studentId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptMinimal(attemptId)
     if (!attempt) {
       throw new NotFoundError(`Attempt '${attemptId}' not found`)
     }
@@ -141,11 +133,7 @@ class ProctoringService {
     }
 
     const isStudent = role === ROLES.STUDENT
-    const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
-    const events = await prisma.violationEvent.findMany({
-      where: { attemptId },
-      orderBy: { serverTimestamp: 'desc' }
-    })
+    const events = await proctoringRepository.findViolationsByAttempt(attemptId)
 
     return await Promise.all(
       events.map(async (ev) => {
@@ -195,10 +183,7 @@ class ProctoringService {
     if (normRole === ROLES.STUDENT) {
       // Student chat strictly bound to user.id (D-01)
       studentId = senderId
-      const attempt = await prisma.examAttempt.findFirst({
-        where: { examId, studentId: senderId },
-        select: { id: true }
-      })
+      const attempt = await proctoringRepository.findStudentAttemptInExam(examId, senderId)
       if (!attempt) {
         throw new ForbiddenError('Access denied: You are not enrolled in this exam')
       }
@@ -208,10 +193,7 @@ class ProctoringService {
       if (!studentId) {
         throw new ValidationError('studentId is required for staff chat')
       }
-      const attempt = await prisma.examAttempt.findFirst({
-        where: { examId, studentId },
-        select: { id: true }
-      })
+      const attempt = await proctoringRepository.findStudentAttemptInExam(examId, studentId)
       if (!attempt) {
         throw new NotFoundError('Target student has no attempt in this exam')
       }
@@ -256,20 +238,14 @@ class ProctoringService {
       const normRole = normalizeRole(user.role)
       if (normRole === ROLES.STUDENT) {
         studentId = user.id
-        const attempt = await prisma.examAttempt.findFirst({
-          where: { examId, studentId: user.id },
-          select: { id: true }
-        })
+        const attempt = await proctoringRepository.findStudentAttemptInExam(examId, user.id)
         if (!attempt) {
           throw new ForbiddenError('Access denied: You are not enrolled in this exam')
         }
       } else {
         await this.assertStaffExamAccess(user, examId)
         if (studentId) {
-          const attempt = await prisma.examAttempt.findFirst({
-            where: { examId, studentId },
-            select: { id: true }
-          })
+          const attempt = await proctoringRepository.findStudentAttemptInExam(examId, studentId)
           if (!attempt) {
             throw new NotFoundError('Target student has no attempt in this exam')
           }
@@ -285,11 +261,7 @@ class ProctoringService {
       where.id = { lt: BigInt(before) }
     }
 
-    const messages = await prisma.chatMessage.findMany({
-      where,
-      take: limit,
-      orderBy: { id: 'desc' }
-    })
+    const messages = await proctoringRepository.findChatMessages(where, limit)
 
     return messages.map(m => ({
       id: m.id.toString(),
@@ -316,10 +288,7 @@ class ProctoringService {
     }
 
     if (role === ROLES.FACULTY) {
-      const exam = await prisma.exam.findFirst({
-        where: { id: examId, facultyId: user.id },
-        select: { id: true }
-      })
+      const exam = await proctoringRepository.findExamOwnedByFaculty(examId, user.id)
       if (!exam) {
         throw new ForbiddenError('Access denied: You do not own this exam')
       }
@@ -336,19 +305,7 @@ class ProctoringService {
   async getExamSummary(examId, user) {
     await this.assertStaffExamAccess(user, examId)
 
-    const rows = await prisma.$queryRawUnsafe(`
-      SELECT
-        count(*)::int AS total,
-        count(*) FILTER (WHERE status = 'ACTIVE')::int AS active,
-        count(*) FILTER (WHERE status = 'SUBMITTED')::int AS submitted,
-        count(*) FILTER (WHERE status = 'TERMINATED')::int AS terminated,
-        count(*) FILTER (WHERE status = 'READY')::int AS ready,
-        count(*) FILTER (WHERE flag_count > 0)::int AS flagged
-      FROM exam_attempts
-      WHERE exam_id = $1::uuid;
-    `, examId)
-
-    const agg = rows[0] || { total: 0, active: 0, submitted: 0, terminated: 0, ready: 0, flagged: 0 }
+    const agg = await proctoringRepository.getExamSummaryAggregate(examId)
     const online = await presenceManager.getOnlineCount(examId)
 
     return {
@@ -372,54 +329,29 @@ class ProctoringService {
     await this.assertStaffExamAccess(user, examId)
 
     const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
-    const params = [examId]
-    let paramIdx = 2
-    let filterClause = ''
 
-    if (status) {
-      params.push(status.toUpperCase())
-      filterClause += ` AND ea.status = $${paramIdx++}::"AttemptStatus"`
-    }
-
-    if (q && q.trim()) {
-      params.push(`%${q.trim()}%`)
-      filterClause += ` AND (s.name ILIKE $${paramIdx} OR s.usn ILIKE $${paramIdx})`
-      paramIdx++
-    }
-
+    // Decode keyset cursor
+    let cursorName, cursorId
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
         if (decoded.name !== undefined && decoded.id) {
-          params.push(decoded.name, decoded.id)
-          filterClause += ` AND (s.name, ea.id) > ($${paramIdx++}, $${paramIdx++}::uuid)`
+          cursorName = decoded.name
+          cursorId = decoded.id
         }
       } catch (err) {
         logger.warn({ cursor, error: err.message }, 'Failed to decode roster cursor')
       }
     }
 
-    params.push(sanitizedLimit + 1)
-    const query = `
-      SELECT 
-        ea.id AS "attemptId",
-        ea.student_id AS "studentId",
-        s.name,
-        s.usn,
-        ea.status,
-        ea.flag_count AS "flagCount",
-        s.face_photo_key AS "facePhotoKey",
-        (SELECT count(*)::int FROM questions q WHERE q.exam_id = ea.exam_id) AS "totalQuestions",
-        (SELECT count(*)::int FROM answers a WHERE a.attempt_id = ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
-      FROM exam_attempts ea
-      JOIN students s ON s.id = ea.student_id
-      WHERE ea.exam_id = $1::uuid
-      ${filterClause}
-      ORDER BY s.name ASC, ea.id ASC
-      LIMIT $${paramIdx};
-    `
+    const rows = await proctoringRepository.findRosterPage(examId, {
+      status,
+      q,
+      cursorName,
+      cursorId,
+      limit: sanitizedLimit + 1
+    })
 
-    const rows = await prisma.$queryRawUnsafe(query, ...params)
     const hasMore = rows.length > sanitizedLimit
     const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
 
@@ -472,40 +404,29 @@ class ProctoringService {
   async getAttemptViolations(attemptId, user, { cursor = null, limit = 50 } = {}) {
     const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
 
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true, studentId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptMinimal(attemptId)
     if (!attempt) throw new NotFoundError('Attempt not found')
     await this.assertStaffExamAccess(user, attempt.examId)
 
-    const params = [attemptId]
-    let paramIdx = 2
-    let cursorClause = ''
-
+    // Decode keyset cursor
+    let cursorTs, cursorId
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
         if (decoded.ts && decoded.id) {
-          params.push(new Date(decoded.ts), BigInt(decoded.id))
-          cursorClause = ` AND (server_timestamp, id) < ($${paramIdx++}::timestamptz, $${paramIdx++}::bigint)`
+          cursorTs = decoded.ts
+          cursorId = decoded.id
         }
       } catch (err) {
         // ignore
       }
     }
 
-    params.push(sanitizedLimit + 1)
-    const rows = await prisma.$queryRawUnsafe(`
-      SELECT id, attempt_id AS "attemptId", event_type AS "eventType", severity,
-             evidence_key AS "evidenceKey", thumb_key AS "thumbKey", evidence_status AS "evidenceStatus",
-             client_timestamp AS "clientTimestamp", server_timestamp AS "serverTimestamp", metadata
-      FROM violation_events
-      WHERE attempt_id = $1::uuid
-      ${cursorClause}
-      ORDER BY server_timestamp DESC, id DESC
-      LIMIT $${paramIdx};
-    `, ...params)
+    const rows = await proctoringRepository.findViolationsByAttemptPaginated(attemptId, {
+      cursorTs,
+      cursorId,
+      limit: sanitizedLimit + 1
+    })
 
     const hasMore = rows.length > sanitizedLimit
     const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
@@ -552,48 +473,28 @@ class ProctoringService {
     await this.assertStaffExamAccess(user, examId)
     const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100)
 
-    const params = [examId]
-    let paramIdx = 2
-    let filterClause = ''
-
-    if (severity) {
-      params.push(severity.toUpperCase())
-      filterClause += ` AND ve.severity = $${paramIdx++}::"ViolationSeverity"`
-    }
-
-    if (type) {
-      params.push(type.toUpperCase())
-      filterClause += ` AND ve.event_type = $${paramIdx++}::"ViolationType"`
-    }
-
+    // Decode keyset cursor
+    let cursorTs, cursorId
     if (cursor) {
       try {
         const decoded = JSON.parse(Buffer.from(cursor, 'base64').toString('utf8'))
         if (decoded.ts && decoded.id) {
-          params.push(new Date(decoded.ts), BigInt(decoded.id))
-          filterClause += ` AND (ve.server_timestamp, ve.id) < ($${paramIdx++}::timestamptz, $${paramIdx++}::bigint)`
+          cursorTs = decoded.ts
+          cursorId = decoded.id
         }
       } catch (err) {
         // ignore
       }
     }
 
-    params.push(sanitizedLimit + 1)
-    const query = `
-      SELECT ve.id, ve.attempt_id AS "attemptId", ve.event_type AS "eventType", ve.severity,
-             ve.evidence_key AS "evidenceKey", ve.thumb_key AS "thumbKey", ve.evidence_status AS "evidenceStatus",
-             ve.client_timestamp AS "clientTimestamp", ve.server_timestamp AS "serverTimestamp", ve.metadata,
-             s.name AS "studentName", s.usn AS "studentUsn"
-      FROM violation_events ve
-      JOIN exam_attempts ea ON ea.id = ve.attempt_id
-      JOIN students s ON s.id = ea.student_id
-      WHERE ea.exam_id = $1::uuid
-      ${filterClause}
-      ORDER BY ve.server_timestamp DESC, ve.id DESC
-      LIMIT $${paramIdx};
-    `
+    const rows = await proctoringRepository.findViolationsByExamPaginated(examId, {
+      severity,
+      type,
+      cursorTs,
+      cursorId,
+      limit: sanitizedLimit + 1
+    })
 
-    const rows = await prisma.$queryRawUnsafe(query, ...params)
     const hasMore = rows.length > sanitizedLimit
     const itemsToReturn = hasMore ? rows.slice(0, sanitizedLimit) : rows
 
@@ -637,24 +538,19 @@ class ProctoringService {
    * Warn candidate (Task 7)
    */
   async warnCandidate(attemptId, user, message, io = null) {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true, studentId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptMinimal(attemptId)
     if (!attempt) throw new NotFoundError('Attempt not found')
     await this.assertStaffExamAccess(user, attempt.examId)
 
     // Audit log
-    await prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        actorRole: user.role.toUpperCase(),
-        action: 'PROCTOR_WARNING',
-        resourceType: 'ExamAttempt',
-        resourceId: attemptId,
-        attemptId: attemptId,
-        metadata: { message, studentId: attempt.studentId }
-      }
+    await proctoringRepository.createAuditEntry({
+      actorId: user.id,
+      actorRole: user.role.toUpperCase(),
+      action: 'PROCTOR_WARNING',
+      resourceType: 'ExamAttempt',
+      resourceId: attemptId,
+      attemptId: attemptId,
+      metadata: { message, studentId: attempt.studentId }
     })
 
     if (io) {
@@ -671,10 +567,7 @@ class ProctoringService {
    * Pause exam attempt (Task 7 / Defect D-03 Fix)
    */
   async pauseAttempt(attemptId, user, reason, io = null) {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptExamScope(attemptId)
     if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
     await this.assertStaffExamAccess(user, attempt.examId)
 
@@ -704,10 +597,7 @@ class ProctoringService {
    * Resume exam attempt (Task 7 / Defect D-03 Fix)
    */
   async resumeAttempt(attemptId, user, io = null) {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptExamScope(attemptId)
     if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
     await this.assertStaffExamAccess(user, attempt.examId)
 
@@ -736,10 +626,7 @@ class ProctoringService {
    * Terminate exam attempt (Task 7 / Defect D-03 Fix)
    */
   async terminateAttempt(attemptId, user, reason, io = null) {
-    const attempt = await prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-      select: { id: true, examId: true }
-    })
+    const attempt = await proctoringRepository.findAttemptExamScope(attemptId)
     if (!attempt) throw new NotFoundError(`Attempt '${attemptId}' not found`)
     await this.assertStaffExamAccess(user, attempt.examId)
 
@@ -768,35 +655,27 @@ class ProctoringService {
    * Acknowledge violation (Task 7)
    */
   async acknowledgeViolation(violationId, user) {
-    const violation = await prisma.violationEvent.findUnique({
-      where: { id: BigInt(violationId) },
-      include: { attempt: true }
-    })
+    const violation = await proctoringRepository.findViolationWithAttempt(violationId)
     if (!violation) throw new NotFoundError('Violation event not found')
     await this.assertStaffExamAccess(user, violation.attempt.examId)
 
-    const updated = await prisma.violationEvent.update({
-      where: { id: BigInt(violationId) },
-      data: {
-        metadata: {
-          ...(typeof violation.metadata === 'object' && violation.metadata !== null ? violation.metadata : {}),
-          acknowledged: true,
-          acknowledgedBy: user.id,
-          acknowledgedAt: new Date().toISOString()
-        }
-      }
-    })
+    const mergedMetadata = {
+      ...(typeof violation.metadata === 'object' && violation.metadata !== null ? violation.metadata : {}),
+      acknowledged: true,
+      acknowledgedBy: user.id,
+      acknowledgedAt: new Date().toISOString()
+    }
 
-    await prisma.auditLog.create({
-      data: {
-        actorId: user.id,
-        actorRole: user.role.toUpperCase(),
-        action: 'VIOLATION_ACKNOWLEDGED',
-        resourceType: 'ViolationEvent',
-        resourceId: String(violationId),
-        attemptId: violation.attemptId,
-        metadata: { attemptId: violation.attemptId }
-      }
+    const updated = await proctoringRepository.acknowledgeViolation(violationId, mergedMetadata)
+
+    await proctoringRepository.createAuditEntry({
+      actorId: user.id,
+      actorRole: user.role.toUpperCase(),
+      action: 'VIOLATION_ACKNOWLEDGED',
+      resourceType: 'ViolationEvent',
+      resourceId: String(violationId),
+      attemptId: violation.attemptId,
+      metadata: { attemptId: violation.attemptId }
     })
 
     return { success: true, violationId: updated.id.toString(), acknowledged: true }

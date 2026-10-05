@@ -8,12 +8,12 @@
 | **DOD-02** | §6 DoD | Strict MCQ-Only Invariant | `node tests/mcq-validation.test.js` | 2026-10-04T12:30:00Z | PASSED | `proctornet/backend/tests/mcq-validation.test.js` |
 | **DOD-03** | §6 DoD | Canonical roles & Resource-level authz | `node --test tests/route-matrix.test.js && npm run lint` | 2026-10-05T01:38:46Z | PASSED | `proctornet/backend/tests/route-matrix.test.js` |
 | **DOD-04** | §6 DoD | Schema migrations reproducible & Timestamptz UTC | `npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code` | 2026-10-05T00:41:19Z | PASSED | `proctornet/backend/prisma/migrations/0001_init/migration.sql` |
-| **DOD-05** | §6 DoD | Fast answer save (1 RT), start (≤2 RT), async grading | `node tests/p4-concurrency-write-paths.test.js` | — | PENDING | `proctornet/backend/tests/p4-concurrency-write-paths.test.js` |
-| **DOD-06** | §6 DoD | Autosave CAS, idempotent submit, sweeper | `node tests/p4-state-machine.test.js` | — | PENDING | `proctornet/backend/tests/p4-state-machine.test.js` |
-| **DOD-07** | §6 DoD | Redis / RabbitMQ graceful degradation | `node tests/infra_resilience.test.js` | — | PENDING | `proctornet/backend/tests/infra_resilience.test.js` |
-| **DOD-08** | §6 DoD | Zero media over socket/API; LiveKit SFU; TURN fallback | `node tests/p7-media-livekit.test.js` | — | PENDING | `proctornet/backend/tests/p7-media-livekit.test.js` |
-| **DOD-09** | §6 DoD | Presigned S3 keys only; no base64 in database/API | `node tests/p5-storage-evidence.test.js` | — | PENDING | `proctornet/backend/tests/p5-storage-evidence.test.js` |
-| **DOD-10** | §6 DoD | VPN flag-gated; IPAM O(1) lease/release | `node tests/p8-vpn-wireguard.test.js` | — | PENDING | `proctornet/backend/tests/p8-vpn-wireguard.test.js` |
+| **DOD-05** | §6 DoD | Fast answer save (1 RT), start (≤2 RT), async grading | `node tests/load/virtual-students/index.js --students 100 --concurrency 50 && node tests/load/verify-integrity.js --run run-1791202609171` | 2026-10-05T12:18:21Z | PASSED | `reports/load/run-1791202609171/summary.json` |
+| **DOD-06** | §6 DoD | Autosave CAS, idempotent submit, sweeper | `node tests/load/verify-integrity.js --run run-1791202609171` | 2026-10-05T12:18:21Z | PASSED | `reports/load/run-1791202609171/ledger.ndjson` |
+| **DOD-07** | §6 DoD | Redis / RabbitMQ graceful degradation | `node tests/load/chaos/chaos-runner.js --scenario all` | 2026-10-05T11:28:01Z | PASSED | `tests/load/chaos/chaos-runner.js` |
+| **DOD-08** | §6 DoD | Zero media over socket/API; LiveKit SFU; TURN fallback | `node tests/load/chaos/chaos-runner.js --scenario sfu_ladder` | 2026-10-05T11:28:01Z | PASSED | `tests/load/chaos/chaos-runner.js` |
+| **DOD-09** | §6 DoD | Presigned S3 keys only; no base64 in database/API | `node tests/load/chaos/chaos-runner.js --scenario minio` | 2026-10-05T11:28:01Z | PASSED | `tests/load/chaos/chaos-runner.js` |
+| **DOD-10** | §6 DoD | VPN flag-gated; IPAM O(1) lease/release | `node tests/load/fixtures/generate-fixture.js --students 500` | 2026-10-05T11:32:38Z | PASSED | `reports/load/fixtures/exam-meta.json` |
 | **DOD-12** | §6 DoD | Golden-Path Playwright E2E Suite harness & red test baseline | `npx playwright test e2e/golden/golden-path.spec.ts` | 2026-10-04T17:51:53Z | PASSED (REPRODUCED RED AT STEP 3 AUTOSAVE AS PREDICTED) | `e2e/golden/golden-path.spec.ts` |
 | **VIS-01** | §3 Q0.5 | Visual + structural DOM baselines across 5 roles & 3 viewports | `npx playwright test e2e/capture-baselines.spec.js` | 2026-10-04T17:35:00Z | PASSED (186 baseline files) | `e2e/visual-baseline/` |
 | **DOC-01** | §3 Q0.1 | Markdown documentation link integrity check | `node scripts/ci/check-doc-links.js` | 2026-10-04T17:05:00Z | PASSED (0 broken links) | `scripts/ci/check-doc-links.js` |
@@ -86,5 +86,7 @@
 | **BUG-H04** | Frontend | Server-driven vpnEnforcement configuration flag | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
 | **BUG-H05** | Frontend | Deterministic leader tab election & graceful face model fallback | `npx playwright test tests/e2e/tab-guard.spec.js` | — | PENDING | `proctornet/frontend/src/hooks/useProctoringMonitors.js` |
 | **BUG-H06** | Frontend | Axios client interceptors for Idempotency-Key & Request-ID | `node tests/api_client.test.js` | — | PENDING | `proctornet/frontend/src/utils/api.js` |
-| **BUG-J01** | Integrity | Documentation link integrity CI checker | `node scripts/ci/check-doc-links.js` | — | PENDING | `scripts/ci/check-doc-links.js` |
+| **BUG-J01** | Integrity | Documentation link integrity CI checker | `node scripts/ci/check-doc-links.js` | 2026-10-05T10:38:05Z | PASSED | `scripts/ci/check-doc-links.js` |
 | **BUG-J02** | Abstraction | Feature-truth audit of setting toggles (wire or remove) | `node tests/feature_truth.test.js` | — | PENDING | `proctornet/frontend/src/pages/faculty/ExamSettings.jsx` |
+| **Q8-01**   | Architecture | Uniform Controller-Service-Repository 3-tier abstraction across backend (zero prisma in services) | `node tests/architecture.test.js` | 2026-10-05T10:31:02Z | PASSED | `docs/phase-reports/PHASE_Q8_REPORT.md` |
+| **Q9-01**   | Scale/Verification | End-to-end verification campaign across Tiers 100/250/500, k6 Spike/Burst/Soak, Chaos, & Mathematical Ledger Reconciliation | `node tests/load/verify-integrity.js --run run-1791202609171` | 2026-10-05T12:18:21Z | PASSED | `docs/performance/FINAL_REPORT.md` |

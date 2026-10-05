@@ -1,0 +1,79 @@
+# ==============================================================================
+# ProctorNet Development Override  (docker-compose.override.yml)
+# Merged automatically by: docker compose up
+# Override prod defaults for local development and testing.
+# ==============================================================================
+
+services:
+  # Expose API directly for local debugging (loopback only)
+  api-1:
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      NODE_ENV: development
+      START_WORKERS: "true"
+    read_only: false
+    volumes:
+      - ./proctornet/backend/src:/app/src:ro
+
+  # Expose Postgres for local GUI tools / direct queries (loopback only)
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  # Expose Redis for local inspection (loopback only)
+  redis:
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  # Expose RabbitMQ AMQP + management UI — re-enable management plugin in dev
+  # Override the image to management variant for the dev profile
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+
+  # Expose Python service for direct local calls
+  python-service:
+    ports:
+      - "127.0.0.1:5001:5001"
+    read_only: false
+    volumes:
+      - ./proctornet/python-service:/app:ro
+
+  # Expose MinIO S3 API + Web Console (loopback only)
+  minio:
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+
+  # Expose Prometheus + Grafana for local monitoring validation
+  prometheus:
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  grafana:
+    ports:
+      - "127.0.0.1:3001:3000"
+
+  # Frontend served via Vite dev server in development (override image build)
+  frontend:
+    build:
+      context: ./proctornet/frontend
+      dockerfile: Dockerfile
+      target: builder
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    ports:
+      - "127.0.0.1:5173:5173"
+    read_only: false
+    volumes:
+      - ./proctornet/frontend/src:/app/src:ro
+    environment:
+      NODE_ENV: development
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:5173/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 3

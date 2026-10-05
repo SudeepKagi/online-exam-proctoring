@@ -1,3 +1,5 @@
+const { prisma } = require('../infra/postgres/client')
+
 const EVIDENCE_EVENT_TYPES = Object.freeze([
   'MULTIPLE_FACES',
   'NO_FACE',
@@ -22,7 +24,7 @@ function isEvidenceRequired(eventType) {
 /**
  * Check if the attempt is still within the evidence screenshot budget
  */
-async function checkEvidenceBudget(attemptId, prisma) {
+async function checkEvidenceBudget(attemptId) {
   const currentCount = await prisma.violationEvent.count({
     where: {
       attemptId,

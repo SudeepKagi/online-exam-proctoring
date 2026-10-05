@@ -45,7 +45,6 @@ rtc:
 turn:
   enabled: true
   domain: turn.proctornet.internal
-  tls_port: 5349
   udp_port: 3478
 
 # Room Management Policies
@@ -61,13 +60,14 @@ room:
 
 # API Keys & Secrets (Injected from environment / secrets manager)
 keys:
-  ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+  devkey: secretsecretsecretsecretsecretsecret
+  proctornet_livekit_key: proctornet_livekit_secret_at_least_32_chars
 
 # Authoritative Webhook Notifications
 webhook:
-  api_key: ${LIVEKIT_API_KEY}
+  api_key: proctornet_livekit_key
   urls:
-    - http://host.docker.internal:5000/internal/livekit/webhook
+    - http://api-1:5000/internal/livekit/webhook
 
 logging:
   json: true

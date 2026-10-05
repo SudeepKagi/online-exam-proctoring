@@ -21,6 +21,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     // 2. Create faculty
     const faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Lifecycle Faculty',
         email: `lifecycle-fac-${Date.now()}@test.edu`,
         password: 'hashed_password',
@@ -33,6 +34,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     // 3. Create student
     const student = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Lifecycle Student',
         usn: `USN-LC-${Date.now()}`,
         email: `student-lc-${Date.now()}@test.edu`,
@@ -55,6 +57,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     const now = new Date()
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'Immutability Guard Exam',
         subject: 'Security',
         facultyId,
@@ -86,6 +89,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
 
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'Start Time Transition Exam',
         subject: 'Operating Systems',
         facultyId,
@@ -113,6 +117,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
 
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'End Time Transition Exam',
         subject: 'Networking',
         facultyId,
@@ -129,6 +134,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     // Active attempt keeps the exam in ENDED rather than EVALUATED
     await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId,
         status: 'ACTIVE',
@@ -150,6 +156,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
 
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'Evaluation Guard Exam',
         subject: 'Algorithms',
         facultyId,
@@ -166,6 +173,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     // Create a SUBMITTED attempt without result yet
     const attempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId,
         status: 'SUBMITTED',
@@ -183,6 +191,7 @@ test.describe('Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)'
     // 2. Grade the attempt (insert examResult)
     await prisma.examResult.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         attemptId: attempt.id,
         score: 45,

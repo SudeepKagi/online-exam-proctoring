@@ -526,10 +526,12 @@ export default function SecurityCheck() {
       return
     }
     // WireGuard VPN Enforcement check (Q3.7)
-    if (vpnEnforcement && !vpnVerified) {
-      toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
-      setActiveStage(0)
-      return
+    if (!vpnVerified) {
+      if (vpnEnforcement) {
+        toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
+        setActiveStage(0)
+        return
+      }
     }
 
     try {

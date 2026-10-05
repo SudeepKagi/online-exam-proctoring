@@ -10,6 +10,7 @@
  * - WireGuard VPN Worker & Reconciler (Flag-gated via VPN_ENABLED)
  */
 require('dotenv').config()
+const fs = require('fs')
 const { prisma } = require('./infra/postgres/client')
 const { outboxPublisher } = require('./infra/rabbitmq/outboxPublisher')
 const { evaluationWorker } = require('./modules/results/evaluationWorker')
@@ -42,6 +43,22 @@ expirySweeper.start()
 examScheduler.start()
 logger.info('Core background workers successfully started')
 
+// ── Worker liveness heartbeat (G-04) ──────────────────────────────────────
+// Docker healthcheck: test -f /tmp/worker.ready && find /tmp/worker.ready -mmin -2
+// Touch the sentinel file immediately, then refresh every 60 s.
+const HEARTBEAT_FILE = '/tmp/worker.ready'
+function touchHeartbeat() {
+  try {
+    const now = new Date()
+    fs.utimesSync(HEARTBEAT_FILE, now, now)
+  } catch {
+    try { fs.writeFileSync(HEARTBEAT_FILE, '') } catch { /* ignore */ }
+  }
+}
+touchHeartbeat()
+const heartbeatInterval = setInterval(touchHeartbeat, 60_000)
+heartbeatInterval.unref() // don't prevent clean exit
+
 // Start WireGuard VPN Workers (Flag-gated)
 if (process.env.VPN_ENABLED === 'true') {
   vpnWorker.start()
@@ -64,6 +81,7 @@ async function shutdown(signal) {
   }
 
   // Allow in-flight worker tasks up to 10s to complete
+  clearInterval(heartbeatInterval)
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
   await Promise.allSettled([

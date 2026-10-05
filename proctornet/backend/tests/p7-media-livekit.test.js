@@ -62,6 +62,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
     // 2. Faculties
     faculty1 = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Faculty 1 ${suffix}`,
         email: `faculty1_${suffix}@test.edu`,
         password: 'hash',
@@ -72,6 +73,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     faculty2 = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Faculty 2 ${suffix}`,
         email: `faculty2_${suffix}@test.edu`,
         password: 'hash',
@@ -83,6 +85,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
     // 3. Students
     student1 = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Student 1 ${suffix}`,
         email: `student1_${suffix}@test.edu`,
         usn: `1MS21CS_${suffix}1`,
@@ -94,6 +97,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     student2 = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Student 2 ${suffix}`,
         email: `student2_${suffix}@test.edu`,
         usn: `1MS21CS_${suffix}2`,
@@ -107,6 +111,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
     const now = new Date()
     exam1 = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: `P7 Exam 1 ${suffix}`,
         subject: 'Media Engineering',
         invId: `INV_P7_1_${suffix}`,
@@ -124,6 +129,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     exam2 = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: `P7 Exam 2 ${suffix}`,
         subject: 'Media Engineering',
         invId: `INV_P7_2_${suffix}`,
@@ -142,6 +148,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
     // 5. Attempts
     attempt1 = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam1.id,
         studentId: student1.id,
         status: 'ACTIVE',
@@ -153,6 +160,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     attempt2 = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam1.id,
         studentId: student2.id,
         status: 'ACTIVE',
@@ -164,6 +172,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     attemptTerminated = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam2.id,
         studentId: student1.id,
         status: 'TERMINATED',
@@ -175,6 +184,7 @@ describe('P7 Media Plane: LiveKit SFU Test Suite', () => {
 
     attemptSubmitted = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam2.id,
         studentId: student2.id,
         status: 'SUBMITTED',

@@ -1,5 +1,6 @@
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
+const crypto = require('crypto')
 const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../src/modules/questions/validation')
 const { prisma } = require('../src/infra/postgres/client')
 
@@ -30,6 +31,7 @@ async function getOrCreateTestFaculty() {
     where: { email: 'mcq.test.faculty@test.local' },
     update: {},
     create: {
+      id: crypto.randomUUID(),
       name: 'MCQ Test Faculty',
       email: 'mcq.test.faculty@test.local',
       password: 'hashed-password-faculty',
@@ -50,6 +52,7 @@ async function createTestExam(overrides = {}) {
 
   return prisma.exam.create({
     data: {
+      id: crypto.randomUUID(),
       title: 'MCQ Test Exam',
       subject: 'CS101',
       duration: 60,
@@ -280,6 +283,7 @@ describe('P2 MCQ-Only — Publish Rejection Guard', () => {
     // Insert question with invalid state (0 options) directly
     await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         questionText: 'Broken question without options',
         marks: 5,
@@ -311,6 +315,7 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
 
     const student = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'DTO Test Student',
         email: `dto.student.${Date.now()}@test.local`,
         usn: '1MS22CS' + Math.floor(100 + Math.random() * 899),
@@ -384,6 +389,7 @@ describe('P2 MCQ-Only — Database Partial Unique Index Enforcement', () => {
 
     const question = await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         questionText: 'Single correct option constraint check',
         marks: 1,
@@ -395,6 +401,7 @@ describe('P2 MCQ-Only — Database Partial Unique Index Enforcement', () => {
       // 1. First correct option: succeeds
       await prisma.questionOption.create({
         data: {
+          id: crypto.randomUUID(),
           questionId: question.id,
           text: 'First Correct',
           isCorrect: true,
@@ -405,6 +412,7 @@ describe('P2 MCQ-Only — Database Partial Unique Index Enforcement', () => {
       // 2. Second option that is false: succeeds
       await prisma.questionOption.create({
         data: {
+          id: crypto.randomUUID(),
           questionId: question.id,
           text: 'Second Incorrect',
           isCorrect: false,
@@ -417,6 +425,7 @@ describe('P2 MCQ-Only — Database Partial Unique Index Enforcement', () => {
         async () => {
           await prisma.questionOption.create({
             data: {
+              id: crypto.randomUUID(),
               questionId: question.id,
               text: 'Second Correct (Illegal)',
               isCorrect: true,

@@ -63,7 +63,7 @@ class PresignService {
         }
 
         // Budget check (max 30 per attempt)
-        const budget = await checkEvidenceBudget(attemptId, prisma)
+        const budget = await checkEvidenceBudget(attemptId)
         if (!budget.allowed) {
           throw new ForbiddenError(`Evidence budget cap reached (${budget.cap} screenshots max per attempt)`)
         }

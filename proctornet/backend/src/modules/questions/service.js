@@ -1,4 +1,4 @@
-const { prisma } = require('../../infra/postgres/client')
+const { questionRepository } = require('./repository')
 const { attemptService } = require('../attempts/service')
 const {
   NotFoundError,
@@ -9,7 +9,7 @@ const { ROLES } = require('../../shared/roles')
 
 class QuestionService {
   async createQuestion(examId, data, facultyId, userRole) {
-    const exam = await prisma.exam.findUnique({ where: { id: examId } })
+    const exam = await questionRepository.findExamById(examId)
     if (!exam) {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
@@ -24,30 +24,7 @@ class QuestionService {
 
     const { options, ...questionData } = data
 
-    const created = await prisma.$transaction(async (tx) => {
-      const q = await tx.question.create({
-        data: {
-          ...questionData,
-          examId
-        }
-      })
-
-      const optionInserts = options.map((opt, idx) => ({
-        questionId: q.id,
-        text: opt.text,
-        isCorrect: opt.isCorrect,
-        order: idx + 1
-      }))
-
-      await tx.questionOption.createMany({
-        data: optionInserts
-      })
-
-      return tx.question.findUnique({
-        where: { id: q.id },
-        include: { options: true }
-      })
-    })
+    const created = await questionRepository.createWithOptions(examId, questionData, options)
 
     // Invalidate exam content cache
     await attemptService.invalidateExamContentCache(examId).catch(() => {})
@@ -56,10 +33,7 @@ class QuestionService {
   }
 
   async deleteQuestion(questionId, facultyId, userRole) {
-    const question = await prisma.question.findUnique({
-      where: { id: questionId },
-      include: { exam: true }
-    })
+    const question = await questionRepository.findByIdWithExam(questionId)
 
     if (!question) {
       throw new NotFoundError(`Question '${questionId}' not found`)
@@ -73,7 +47,7 @@ class QuestionService {
       throw new ConflictError(`Exam is in '${question.exam.status}' status. Content is immutable once published.`)
     }
 
-    await prisma.question.delete({ where: { id: questionId } })
+    await questionRepository.deleteById(questionId)
 
     // Invalidate exam content cache
     await attemptService.invalidateExamContentCache(question.examId).catch(() => {})

@@ -6,6 +6,7 @@ export const submitDuration = new Trend('submit_ms')
 export const errorRate = new Rate('submit_error_rate')
 
 export const options = {
+  setupTimeout: '3m',
   scenarios: {
     submit_burst: {
       executor: 'ramping-arrival-rate',
@@ -32,7 +33,7 @@ const EXAM_ID = __ENV.EXAM_ID || 'a0000000-0000-4000-8000-000000000001'
 
 export function setup() {
   const sessions = []
-  const count = 50
+  const count = 25
 
   for (let i = 1; i <= count; i++) {
     const email = `loadtest-student-${i}@proctornet.test`

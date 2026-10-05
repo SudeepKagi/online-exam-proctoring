@@ -162,25 +162,38 @@ class VirtualStudent {
    */
   async connectWebSocket() {
     return new Promise((resolve) => {
+      let resolved = false
+      const done = () => {
+        if (!resolved) {
+          resolved = true
+          this.startHeartbeat()
+          resolve()
+        }
+      }
+
+      const timer = setTimeout(done, 4000)
+
       this.socket = io(this.wsUrl, {
         transports: ['websocket'],
         auth: { token: this.token },
         forceNew: true,
         reconnection: true,
-        reconnectionAttempts: 10,
-        reconnectionDelay: 1000
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 4000
       })
 
       this.socket.on('connect', () => {
         // Join private student attempt room
-        this.socket.emit('attempt:join', { attemptId: this.attemptId }, (ack) => {
-          this.startHeartbeat()
-          resolve()
+        this.socket.emit('attempt:join', { attemptId: this.attemptId }, () => {
+          clearTimeout(timer)
+          done()
         })
       })
 
-      this.socket.on('connect_error', (err) => {
-        // Logged or handled by reconnection
+      this.socket.on('connect_error', () => {
+        clearTimeout(timer)
+        done()
       })
 
       this.socket.on('roster:delta', (delta) => {

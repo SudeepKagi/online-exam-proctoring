@@ -95,9 +95,9 @@ class MediaService {
       const remainingSec = Math.max(0, Math.ceil((expiresAtMs - now) / 1000))
       ttlSeconds = remainingSec + 300 // + 5 min grace
 
-      // Sources: Screen share default; camera if enabled
+      // Sources: Screen share primary; camera low-bitrate enabled by default
       const publishSources = [TrackSource.SCREEN_SHARE]
-      if (process.env.PROCTOR_CAMERA_PUBLISH === 'true') {
+      if (process.env.PROCTOR_CAMERA_PUBLISH !== 'false') {
         publishSources.push(TrackSource.CAMERA)
       }
 

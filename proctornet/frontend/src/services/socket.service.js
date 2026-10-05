@@ -62,14 +62,6 @@ class SocketService {
   terminateExam(studentId, reason) {
     this.socket?.emit('inv:terminate', { studentId, reason })
   }
-
-  sendFrame(data) {
-    this.socket?.emit('exam:frame', data)
-  }
-
-  onFrame(callback) {
-    this.socket?.on('student:frame', callback)
-  }
 }
 
 export default new SocketService()

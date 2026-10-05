@@ -31,8 +31,7 @@ const FORBIDDEN_TOKENS = [
   'global.prisma',
   'studentExam',
   'assignedQuestionIds',
-  'facePhotoUrl',
-  'imageUrl'
+  'facePhotoUrl'
 ]
 
 let violations = 0

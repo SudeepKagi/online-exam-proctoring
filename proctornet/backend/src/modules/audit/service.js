@@ -1,4 +1,4 @@
-const { prisma } = require('../../infra/postgres/client')
+const { auditRepository } = require('./repository')
 
 class AuditService {
   async logAction(actorId, actorRole, action, options = {}) {
@@ -11,20 +11,7 @@ class AuditService {
       ipAddress = null
     } = options
 
-    const sql = `
-      INSERT INTO audit_logs (
-        actor_id, actor_role, action, resource_type, resource_id, attempt_id,
-        request_id, metadata, ip_address, timestamp
-      )
-      VALUES (
-        $1::uuid, $2, $3, $4, $5, $6::uuid,
-        $7, $8::jsonb, $9, now()
-      )
-      RETURNING id;
-    `
-
-    return prisma.$queryRawUnsafe(
-      sql,
+    return auditRepository.insert({
       actorId,
       actorRole,
       action,
@@ -32,22 +19,13 @@ class AuditService {
       resourceId,
       attemptId,
       requestId,
-      JSON.stringify(metadata),
+      metadata,
       ipAddress
-    )
+    })
   }
 
   async getLogs(limit = 100, beforeId = null) {
-    const where = {}
-    if (beforeId) {
-      where.id = { lt: BigInt(beforeId) }
-    }
-
-    const logs = await prisma.auditLog.findMany({
-      where,
-      take: limit,
-      orderBy: { id: 'desc' }
-    })
+    const logs = await auditRepository.findMany(limit, beforeId)
 
     return logs.map(l => ({
       id: l.id.toString(),

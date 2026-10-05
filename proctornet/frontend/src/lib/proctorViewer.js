@@ -130,7 +130,7 @@ export class ProctorViewer {
     }
 
     if (this.room && this.room.state === ConnectionState.Connected) {
-      const p = this.room.remoteParticipants.get(identity)
+      const p = this.room.remoteParticipants.get(identity) || this.room.remoteParticipants.get(`student:${identity}`)
       if (p) this._syncParticipantSubscription(p)
     }
   }
@@ -148,7 +148,7 @@ export class ProctorViewer {
     }
 
     if (prev && this.room && this.room.state === ConnectionState.Connected) {
-      const p = this.room.remoteParticipants.get(prev)
+      const p = this.room.remoteParticipants.get(prev) || this.room.remoteParticipants.get(`student:${prev}`)
       if (p) this._syncParticipantSubscription(p)
     }
   }
@@ -166,8 +166,10 @@ export class ProctorViewer {
    * Subscribes/unsubscribes and applies simulcast quality layers per participant
    */
   _syncParticipantSubscription(participant) {
-    const isVisible = this.visibleIdentities.has(participant.identity)
-    const isFocused = this.focusedIdentity === participant.identity
+    const rawId = participant.identity
+    const cleanId = rawId ? rawId.replace(/^student:/, '') : ''
+    const isVisible = this.visibleIdentities.has(rawId) || this.visibleIdentities.has(cleanId)
+    const isFocused = Boolean(this.focusedIdentity) && (this.focusedIdentity === rawId || this.focusedIdentity === cleanId)
 
     for (const publication of participant.trackPublications.values()) {
       if (publication.kind !== Track.Kind.Video) continue
@@ -176,20 +178,13 @@ export class ProctorViewer {
       const isCamera = publication.source === Track.Source.Camera || publication.trackName === 'camera'
 
       if (isFocused) {
-        // Focused candidate: screen HIGH, camera MEDIUM
+        // Focused candidate: screen and camera at HIGH quality
         if (!publication.isSubscribed) publication.setSubscribed(true)
-        publication.setVideoQuality(isScreen ? VideoQuality.HIGH : VideoQuality.MEDIUM)
+        publication.setVideoQuality(VideoQuality.HIGH)
       } else if (isVisible) {
-        // Visible grid tile: subscribe only to default grid track at VideoQuality.LOW
-        const shouldSubscribe = (this.defaultGridTrack === 'screen' && isScreen) ||
-                                (this.defaultGridTrack === 'camera' && isCamera)
-
-        if (shouldSubscribe) {
-          if (!publication.isSubscribed) publication.setSubscribed(true)
-          publication.setVideoQuality(VideoQuality.LOW)
-        } else {
-          if (publication.isSubscribed) publication.setSubscribed(false)
-        }
+        // Visible grid tile: subscribe to video at VideoQuality.LOW
+        if (!publication.isSubscribed) publication.setSubscribed(true)
+        publication.setVideoQuality(VideoQuality.LOW)
       } else {
         // Off-screen tile: strictly unsubscribe to conserve bandwidth
         if (publication.isSubscribed) {

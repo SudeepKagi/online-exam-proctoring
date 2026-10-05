@@ -22,6 +22,7 @@ import { useProctoringMonitors } from '@/hooks/useProctoringMonitors'
 import { AutosaveManager } from '@/lib/autosaveManager'
 import { serverClock } from '@/lib/serverClock'
 import { getSharedScreenStream, setSharedScreenStream, clearSharedScreenStream } from '@/lib/mediaState'
+import { mediaStore, useMediaStore, MEDIA_STATUS } from '@/lib/mediaStore'
 
 import ExamHeader from '@/components/exam/ExamHeader'
 import QuestionPanel from '@/components/exam/QuestionPanel'
@@ -32,6 +33,7 @@ export default function ExamInterface() {
   const { id: examId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const mediaState = useMediaStore()
 
   // ── Exam & Session State ──
   const [attemptId, setAttemptId] = useState(null)
@@ -240,37 +242,42 @@ export default function ExamInterface() {
     externalStreamRef: streamRef
   })
 
-  // ── Maintain Screen Share Stream (Scoped mediaState, no window pollution per Q3.7) ──
+  // ── LiveKit SFU WebRTC ProctorPublisher (Q6) ──
   useEffect(() => {
-    if (loading || isWaiting || terminalState) return
+    if (!attemptId || loading || isWaiting || terminalState) return
 
-    const existingStream = getSharedScreenStream()
-    if (existingStream) {
-      screenStreamRef.current = existingStream
-    }
+    let isCleanedUp = false
 
-    const hasLiveScreen = screenStreamRef.current &&
-      screenStreamRef.current.active &&
-      screenStreamRef.current.getVideoTracks().some(t => t.readyState === 'live')
-
-    if (!hasLiveScreen && navigator.mediaDevices?.getDisplayMedia) {
-      const initScreen = async () => {
-        try {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { displaySurface: 'monitor', cursor: 'always' },
-            audio: false
-          })
-          screenStreamRef.current = screenStream
-          setSharedScreenStream(screenStream)
-          screenStream.getVideoTracks()[0]?.addEventListener('ended', () => {
-            emitViolation('SCREEN_SHARE_STOPPED', 'CRITICAL', { details: 'Screen sharing was stopped by candidate.' })
-            toast.error('Screen sharing was disconnected. Please re-enable screen sharing immediately.', { duration: 8000 })
-          })
-        } catch (_e) {}
+    const initMediaPublisher = async () => {
+      try {
+        await mediaStore.startPublisher({
+          examId,
+          attemptId,
+          onViolation: ({ eventType, metadata }) => {
+            emitViolation?.(eventType, 'MEDIUM', metadata)
+          },
+          onScreenShareStopped: () => {
+            emitViolation?.('SCREEN_SHARE_STOPPED', 'MEDIUM', { details: 'Screen sharing was stopped by candidate.' })
+            toast.error('Screen sharing was disconnected. Please click Re-Share Screen to continue.', {
+              id: 'screen-stopped-toast',
+              duration: 8000
+            })
+          }
+        })
+      } catch (err) {
+        if (!isCleanedUp) {
+          console.warn('[ExamInterface] LiveKit publisher startup note:', err.message)
+        }
       }
-      initScreen()
     }
-  }, [loading, isWaiting, terminalState, emitViolation])
+
+    initMediaPublisher()
+
+    return () => {
+      isCleanedUp = true
+      mediaStore.reset()
+    }
+  }, [attemptId, examId, loading, isWaiting, Boolean(terminalState), emitViolation])
 
   // ── Aggressive Hardware & Stream Teardown on Terminal State ──
   useEffect(() => {
@@ -284,6 +291,7 @@ export default function ExamInterface() {
         screenStreamRef.current = null
       }
       clearSharedScreenStream()
+      mediaStore.reset()
     }
   }, [terminalState])
 
