@@ -6,18 +6,11 @@ const crypto = require('crypto')
  * invPass   = 8 random alphanumeric chars (shown once to faculty)
  */
 function generateInvCredentials() {
-  const chars  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const idPart = Array.from({ length: 6 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join('')
-
-  const passChars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
-  const password  = Array.from({ length: 8 }, () =>
-    passChars[Math.floor(Math.random() * passChars.length)]
-  ).join('')
+  const idPart = crypto.randomBytes(3).toString('hex').toUpperCase()
+  const password = crypto.randomBytes(6).toString('hex')
 
   return {
-    invId:       `INV-${idPart}`,
+    invId: `INV-${idPart}`,
     invPassword: password,
   }
 }

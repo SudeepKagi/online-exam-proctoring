@@ -1,6 +1,8 @@
 const bcrypt = require('bcrypt')
-const xlsx = require('xlsx')
+const crypto = require('crypto')
+const ExcelJS = require('exceljs')
 const adminRepository = require('./repository')
+const { logAudit } = require('../../utils/auditLogger')
 const {
   toFacultyAdminDTO,
   toStudentAdminDTO,
@@ -145,17 +147,24 @@ class AdminService {
     return exam
   }
 
-  async resetExamInvigilatorCredentials(id) {
+  async resetExamInvigilatorCredentials(id, user = null) {
     const exam = await adminRepository.getExamById(id)
     if (!exam) throw new NotFoundError('Exam not found')
 
-    const newInvId = `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    const plainPassword = Math.random().toString(36).substring(2, 10) + 'A1!'
+    const newInvId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+    const plainPassword = crypto.randomBytes(6).toString('hex')
     const invPasswordHash = await bcrypt.hash(plainPassword, 10)
 
     const updated = await adminRepository.updateExam(id, {
       invId: newInvId,
       invPasswordHash
+    })
+
+    await logAudit({
+      userId: user?.id || null,
+      userRole: user?.role || 'admin',
+      action: 'EXAM_INVIGILATOR_CREDENTIALS_REGENERATED',
+      details: `Regenerated invigilator credentials for exam ${id} (invId: ${newInvId})`
     })
 
     return {
@@ -247,11 +256,37 @@ class AdminService {
   }
 
   // ── Bulk Upload ──
-  parseBulkBuffer(buffer, fileType = 'excel') {
-    const workbook = xlsx.read(buffer, { type: 'buffer' })
-    const sheetName = workbook.SheetNames[0]
-    const sheet = workbook.Sheets[sheetName]
-    const rows = xlsx.utils.sheet_to_json(sheet)
+  async parseBulkBuffer(buffer, _fileType = 'excel') {
+    const MAX_EXCEL_BYTES = 5 * 1024 * 1024
+    if (!buffer || buffer.length > MAX_EXCEL_BYTES) {
+      throw new ValidationError('Excel file exceeds maximum allowed size of 5 MB')
+    }
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer)
+    const worksheet = workbook.worksheets[0]
+    if (!worksheet) {
+      throw new ValidationError('Excel file contains no worksheets')
+    }
+    const rows = []
+    const headers = []
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell((cell, colNumber) => {
+          headers[colNumber] = String(cell.value || '').trim()
+        })
+      } else {
+        const rowData = {}
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber]
+          if (header) {
+            rowData[header] = cell.text ?? cell.value
+          }
+        })
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData)
+        }
+      }
+    })
     return rows
   }
 

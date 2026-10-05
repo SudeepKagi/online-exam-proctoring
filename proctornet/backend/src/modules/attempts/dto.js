@@ -20,6 +20,7 @@ function toStudentAttemptDTO(attempt, questionsWithAnswers = []) {
       displayOrder: q.displayOrder,
       questionText: q.questionText,
       imageKey: q.imageKey || null,
+      imageUrl: q.imageUrl || null,
       marks: q.marks,
       negativeMarks: q.negativeMarks || 0,
       selectedOptionId: q.selectedOptionId || null,

@@ -67,9 +67,12 @@ router.get(
         throw new NotFoundError(`Attempt '${attemptId}' not found`)
       }
 
-      // Faculty authorization check
+      // Staff authorization check
       if (req.user.role === ROLES.FACULTY && attempt.exam.facultyId !== req.user.id) {
         throw new ForbiddenError('Access denied: You do not own this exam')
+      }
+      if (req.user.role === ROLES.INVIGILATOR && req.user.examId !== attempt.examId) {
+        throw new ForbiddenError('Access denied: You are not assigned to this exam')
       }
 
       return res.status(200).json(toInvigilatorAttemptDTO(attempt))
@@ -128,6 +131,9 @@ router.get(
       if (req.user.role === ROLES.FACULTY && attempt.exam.facultyId !== req.user.id) {
         throw new ForbiddenError('Access denied: You do not own this exam')
       }
+      if (req.user.role === ROLES.INVIGILATOR && req.user.examId !== attempt.examId) {
+        throw new ForbiddenError('Access denied: You are not assigned to this exam')
+      }
 
       const now = new Date()
       return res.status(200).json({
@@ -166,6 +172,16 @@ router.post(
       const { attemptId } = req.params
       const { status, reason } = req.body
 
+      if (req.user.role === ROLES.FACULTY) {
+        const attempt = await prisma.examAttempt.findUnique({
+          where: { id: attemptId },
+          include: { exam: true }
+        })
+        if (!attempt || attempt.exam.facultyId !== req.user.id) {
+          throw new ForbiddenError('Access denied: You do not own this exam')
+        }
+      }
+
       const updated = await attemptService.transitionState(attemptId, status, {
         actorId: req.user.id,
         actorRole: req.user.role.toLowerCase(),
@@ -195,6 +211,15 @@ router.post(
   async (req, res, next) => {
     try {
       const { examId } = req.params
+
+      if (req.user.role === ROLES.FACULTY) {
+        const exam = await prisma.exam.findFirst({
+          where: { id: examId, facultyId: req.user.id },
+          select: { id: true }
+        })
+        if (!exam) throw new ForbiddenError('Access denied: You do not own this exam')
+      }
+
       const result = await attemptPrewarmJob.prewarmExam(examId)
       return res.status(200).json(result)
     } catch (err) {

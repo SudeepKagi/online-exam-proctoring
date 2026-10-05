@@ -20,6 +20,7 @@ const assert = require('node:assert/strict')
 const http = require('http')
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 
 const { app, io } = require('../src/app')
 const { prisma } = require('../src/infra/postgres/client')
@@ -61,8 +62,10 @@ before(async () => {
     data: { code: deptCode, name: `Route Matrix Dept ${deptCode}` }
   })
 
+  const facId = crypto.randomUUID()
   const faculty = await prisma.faculty.create({
     data: {
+      id: facId,
       name: 'Matrix Faculty',
       email: `fac-matrix-${Date.now()}@test.edu`,
       password: 'password',
@@ -72,8 +75,10 @@ before(async () => {
   })
   testFacultyId = faculty.id
 
+  const stuAId = crypto.randomUUID()
   const studentA = await prisma.student.create({
     data: {
+      id: stuAId,
       name: 'Matrix Student A',
       usn: `USN-A-${Date.now()}`,
       email: `studentA-${Date.now()}@test.edu`,
@@ -85,8 +90,10 @@ before(async () => {
   })
   testStudentAId = studentA.id
 
+  const stuBId = crypto.randomUUID()
   const studentB = await prisma.student.create({
     data: {
+      id: stuBId,
       name: 'Matrix Student B',
       usn: `USN-B-${Date.now()}`,
       email: `studentB-${Date.now()}@test.edu`,
@@ -100,6 +107,7 @@ before(async () => {
 
   const exam = await prisma.exam.create({
     data: {
+      id: crypto.randomUUID(),
       title: 'Route Matrix Exam',
       subject: 'Security',
       facultyId: testFacultyId,
@@ -116,6 +124,7 @@ before(async () => {
 
   const attemptA = await prisma.examAttempt.create({
     data: {
+      id: crypto.randomUUID(),
       examId: testExamId,
       studentId: testStudentAId,
       status: 'ACTIVE',
@@ -128,6 +137,7 @@ before(async () => {
 
   const attemptB = await prisma.examAttempt.create({
     data: {
+      id: crypto.randomUUID(),
       examId: testExamId,
       studentId: testStudentBId,
       status: 'ACTIVE',
@@ -350,5 +360,10 @@ describe('Authorized Access (Right Role/Owner -> 2xx)', () => {
     const res = await apiRequest('GET', '/api/v1/health')
     assert.strictEqual(res.status, 200)
     assert.strictEqual(res.data?.status, 'ok')
+  })
+
+  after(() => {
+    if (server) server.close()
+    setTimeout(() => process.exit(0), 100).unref()
   })
 })

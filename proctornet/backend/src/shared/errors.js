@@ -78,22 +78,34 @@ class ServiceUnavailableError extends AppError {
   }
 }
 
+const crypto = require('crypto')
+
 function toErrorEnvelope(err, requestId = null) {
-  const code = err.code || (err.statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_ERROR')
-  const message = err.message || 'An unexpected error occurred'
+  const statusCode = err.statusCode || (err.status ? err.status : 500)
+  const reqId = requestId || err.requestId || crypto.randomUUID()
+
+  if (statusCode >= 500) {
+    return {
+      error: {
+        code: 'INTERNAL',
+        message: 'Something went wrong'
+      },
+      requestId: reqId
+    }
+  }
+
+  const code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'BAD_REQUEST')
+  const message = err.message || 'An error occurred'
   const envelope = {
     error: {
       code,
       message
-    }
+    },
+    requestId: reqId
   }
 
   if (err.details) {
     envelope.error.details = err.details
-  }
-
-  if (requestId) {
-    envelope.requestId = requestId
   }
 
   return envelope

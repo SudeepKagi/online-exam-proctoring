@@ -628,6 +628,40 @@ While the codebase contained an advanced `schema.prisma` with rich domain constr
    - **Global Scope Elimination**: Replaced `window.screenShareStream` with `proctornet/frontend/src/lib/mediaState.js`, eliminating global namespace pollution and cross-tab media leaks.
    - **Dynamic Feature Flags**: Replaced hardcoded `VPN_FEATURE_PAUSED = true` in `SecurityCheck.jsx` with dynamic query to `GET /api/v1/config`, reading `vpnEnforcement` directly from server configuration.
 
+---
+
+## 12. Phase Q5: Authorization & Security Remediation (BOLA Fuzzing & Hardening)
+
+> *"Zero trust means every route, every id parameter, and every WebSocket event must authoritatively verify tenant ownership at runtime — never trust client assertions, never leak raw keys in 429s or stack traces in 5xxs."*
+
+### 1. The BOLA Fuzz Testing Strategy (Q5.2)
+- **The Challenge**: Broken Object Level Authorization (OWASP API1:2023 - BOLA) is the #1 vulnerability in multi-tenant SaaS and examination platforms. Simple unit tests usually test happy paths or single foreign ID substitutions.
+- **The Architecture**: Created a comprehensive BOLA Fuzz Test Suite (`tests/q5-bola-fuzz.test.js`) simulating 3 independent faculties, 9 exams, 20 candidates, and 18 scoped invigilators.
+- **Exhaustive Matrix**:
+  - **Faculty Boundary**: Faculty A cannot read, mutate (`PATCH`), or `DELETE` exams owned by Faculty B; Faculty A cannot inject questions into Faculty B's exams.
+  - **Invigilator Boundary**: Invigilator assigned to Exam 1 cannot read rosters, summary stats, violations, or live grid of Exams 2..9; cannot pause, resume, or terminate attempts in other exams.
+  - **Student Boundary**: Student A cannot read state, update answers, or submit attempts belonging to Student B.
+  - **Real-Time WebSockets**: Candidate cannot join another student's `attempt:{attemptId}` room; invigilator cannot join another exam's `inv:{examId}` room; candidates cannot emit violations referencing foreign `attemptId`.
+- **Outcome**: 100% green pass rate across 12 comprehensive fuzz test suites.
+
+### 2. Dual-Tier Rate Limiting & The 500-Student NAT Spike (D-05)
+- **The Lab Spike Problem**: In an on-campus exam hall, 500 students share a single public institutional IPv4 NAT address. A traditional single-key rate limiter of 60 req/min blocks the entire lab from logging in after the first 60 students. Conversely, relaxing the IP limiter to 600 req/min without secondary keys enables credential stuffing attacks against individual student accounts.
+- **The Dual-Tier Solution**:
+  1. **Tier 1 (IP Ceiling $\ge 600$/min)**: Protects backend infrastructure from volumetric denial-of-service while permitting all 500 students behind the campus NAT to authenticate within a 1-minute window.
+  2. **Tier 2 (Composite Key $10$/min)**: Keyed on `${client_ip}:${identifier}` (where identifier is normalized USN, email, or invigilator ID). Prevents brute-force password guessing against any individual account.
+- **429 Sanitization**: The returned 429 response body never reflects the raw client IP or user identifier, preventing key enumeration or header reflection vulnerabilities.
+
+### 3. Fail-Closed Error Masking & Internal Loopback Services (D-06)
+- **The Information Leak**: Unhandled 5xx exceptions in Node.js frequently dump stack traces, table names, or SQL query snippets in the HTTP response body, assisting attacker reconnaissance.
+- **Generic 5xx Envelope**: All 5xx errors return `{ error: { code: 'INTERNAL', message: 'Something went wrong' }, requestId }`. Real stack traces are logged strictly server-side with structured Pino logs correlated by `requestId`.
+- **Loopback-Only Operational Port (`127.0.0.1:9100`)**: Prometheus `/metrics` and Kubernetes `/readyz` endpoints are bound to an internal loopback listener, physically unroutable from public edge proxies.
+
+### 4. Credential & Data Hardening
+- **Cryptographic Invigilator Generation**: Replaced `Math.random()` with `crypto.randomBytes(3).toString('hex').toUpperCase()` for IDs and `crypto.randomBytes(6).toString('hex')` for passwords.
+- **No Password Rotation on Read**: Eliminated automatic password rotation on `GET /credentials`; implemented explicit `POST /api/v1/exams/:id/invigilator-credentials/regenerate` with mandatory audit logging.
+- **ExcelJS Worker & 5 MB Cap**: Replaced the vulnerable `xlsx` library with `exceljs` and enforced a strict 5 MB file size limit on bulk upload endpoints.
+- **Presigned Question DTOs**: Exam questions with diagrams return dynamically presigned URLs in DTO mappers rather than exposing raw S3 storage keys.
+
 
 
 

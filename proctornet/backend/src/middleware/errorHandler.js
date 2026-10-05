@@ -1,9 +1,10 @@
+const crypto = require('crypto')
 const { toErrorEnvelope } = require('../shared/errors')
 const { logger } = require('../shared/logging')
 
 function errorHandler(err, req, res, next) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
-  const requestId = req.requestId || req.headers['x-request-id'] || null
+  const requestId = req.requestId || req.headers?.['x-request-id'] || crypto.randomUUID()
 
   if (statusCode >= 500) {
     logger.error({

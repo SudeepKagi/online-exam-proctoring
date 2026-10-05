@@ -113,6 +113,14 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/admin/exams/:id/invigilator-credentials/regenerate",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin"
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/admin/exams/:id/invigilator-credentials/reset",
     "auth": "Required",
     "role": "admin",
@@ -518,6 +526,14 @@
     "role": "Public",
     "ownerCheck": "No",
     "module": "auth"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/config",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system"
   },
   {
     "method": "POST",
@@ -1137,14 +1153,6 @@
   },
   {
     "method": "POST",
-    "path": "/api/v1/proctoring/livekit/webhook",
-    "auth": "Public",
-    "role": "Public",
-    "ownerCheck": "No",
-    "module": "proctoring"
-  },
-  {
-    "method": "POST",
     "path": "/api/v1/proctoring/token",
     "auth": "Required",
     "role": "Any Authenticated",
@@ -1306,6 +1314,22 @@
   {
     "method": "POST",
     "path": "/api/v1/student/exams/:id/submit",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/verify-face",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "student"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/exams/:id/verify-id",
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",

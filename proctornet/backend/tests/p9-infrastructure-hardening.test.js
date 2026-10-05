@@ -152,7 +152,7 @@ describe('P9 Infrastructure & Hardening Test Suite', () => {
   // 3. Health & Readiness Probes (Task 7)
   // --------------------------------------------------------------------------
   describe('3. Health & Readiness Probes (/healthz and /readyz)', () => {
-    const { app } = require('../src/app')
+    const { app, internalApp } = require('../src/app')
 
     it('GET /healthz returns 200 OK liveness status immediately', async () => {
       // Mock Express req/res
@@ -190,7 +190,8 @@ describe('P9 Infrastructure & Hardening Test Suite', () => {
         json: (data) => { responseBody = data; return res }
       }
 
-      const routes = app._router.stack
+      const targetApp = internalApp || app
+      const routes = targetApp._router.stack
         .filter(layer => layer.route && layer.route.path)
         .map(layer => layer.route)
 

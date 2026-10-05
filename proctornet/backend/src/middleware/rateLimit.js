@@ -28,8 +28,11 @@ function createLimiter(prefix, points, duration) {
   return limiter
 }
 
-// 1. Login: 10 per minute per IP + email
-const loginLimiter = createLimiter('login', 10, 60)
+// 1. Dual-tier login limiters (Defect D-05 Fix for 500-student lab start spike)
+// Tier 1: Per-IP ceiling >= 600/min (allows NAT lab of 500 students to log in)
+const loginIpLimiter = createLimiter('login_ip', 600, 60)
+// Tier 2: Per IP + user identifier (USN, email, or invId) 10/min
+const loginUserLimiter = createLimiter('login_user', 10, 60)
 
 // 2. Autosave: 60 per minute per attempt (+burst capacity of 20)
 const autosaveLimiter = createLimiter('autosave', 80, 60)
@@ -46,10 +49,19 @@ const rosterLimiter = createLimiter('roster', 60, 60)
 // 6. Default: 300 per minute
 const defaultLimiter = createLimiter('default', 300, 60)
 
+function shouldBypass() {
+  if (process.env.FORCE_RATE_LIMIT === '1') return false
+  if (process.env.NODE_ENV === 'test') return true
+
+  // In production, bypass flags are strictly FORBIDDEN
+  if (process.env.NODE_ENV === 'production') return false
+
+  return process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
+}
+
 function rateLimit(limiter, keyGenerator) {
   return async (req, res, next) => {
-    // Skip in test mode if LOADTEST_ALLOW or NODE_ENV=test
-    if (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1' || process.env.NODE_ENV === 'test') {
+    if (shouldBypass()) {
       return next()
     }
 
@@ -64,17 +76,35 @@ function rateLimit(limiter, keyGenerator) {
       }
       const secs = Math.round(rejRes.msBeforeNext / 1000) || 1
       res.setHeader('Retry-After', String(secs))
-      next(new TooManyRequestsError(`Rate limit exceeded for ${key}, please retry in ${secs}s`, secs))
+      next(new TooManyRequestsError(`Rate limit exceeded, please retry in ${secs}s`, secs))
     }
   }
 }
 
 // Route-specific middleware helpers
-const limitLogin = rateLimit(loginLimiter, (req) => {
+const limitLogin = async (req, res, next) => {
+  if (shouldBypass()) return next()
+
   const ip = req.ip || req.connection?.remoteAddress || '127.0.0.1'
-  const email = (req.body?.email || '').toLowerCase().trim()
-  return `${ip}:${email}`
-})
+  const identifier = (req.body?.usn || req.body?.identifier || req.body?.email || req.body?.invId || '').toLowerCase().trim()
+  const compositeKey = `${ip}:${identifier || 'anonymous'}`
+  const ipKey = `ip:${ip}`
+
+  try {
+    // 1. Consume per-IP ceiling (>= 600/min)
+    await loginIpLimiter.consume(ipKey)
+    // 2. Consume per IP + user identifier (10/min)
+    await loginUserLimiter.consume(compositeKey)
+    next()
+  } catch (rejRes) {
+    if (rejRes instanceof Error) {
+      return next()
+    }
+    const secs = Math.round(rejRes.msBeforeNext / 1000) || 1
+    res.setHeader('Retry-After', String(secs))
+    next(new TooManyRequestsError(`Rate limit exceeded, please retry in ${secs}s`, secs))
+  }
+}
 
 const limitAutosave = rateLimit(autosaveLimiter, (req) => {
   const attemptId = req.params?.attemptId || req.user?.id || 'unknown'

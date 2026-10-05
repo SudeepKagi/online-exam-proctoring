@@ -3,15 +3,28 @@ const { examService } = require('../exams/service')
 const { resultService } = require('../results/service')
 const { toFacultyExamDTO, toFacultyQuestionDTO } = require('./dto')
 const { validateMcqQuestion, normalizeExcelQuestionRow } = require('../questions/validation')
-const xlsx = require('xlsx')
+const ExcelJS = require('exceljs')
 const {
   NotFoundError,
   ForbiddenError,
   ValidationError
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
+const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 
 class FacultyService {
+  async formatQuestionWithPresignedUrl(q) {
+    if (!q) return null
+    let imageUrl = null
+    if (q.imageKey) {
+      try {
+        imageUrl = await getPresignedReadUrl(q.imageKey, 3600)
+      } catch {
+        imageUrl = null
+      }
+    }
+    return toFacultyQuestionDTO({ ...q, imageUrl })
+  }
   async getDashboard(facultyId) {
     return facultyRepository.getDashboardStats(facultyId)
   }
@@ -185,7 +198,7 @@ class FacultyService {
     const exam = await facultyRepository.findExamById(examId, facultyId)
     if (!exam) throw new NotFoundError('Exam not found or access denied')
     const questions = await facultyRepository.listExamQuestions(examId)
-    return questions.map(toFacultyQuestionDTO)
+    return Promise.all(questions.map((q) => this.formatQuestionWithPresignedUrl(q)))
   }
 
   async addQuestion(examId, questionData, facultyId) {
@@ -200,13 +213,13 @@ class FacultyService {
       examId,
       ...validated
     })
-    return toFacultyQuestionDTO(created)
+    return this.formatQuestionWithPresignedUrl(created)
   }
 
   async updateQuestion(id, data, facultyId) {
     const validated = validateMcqQuestion(data)
     const updated = await facultyRepository.updateQuestion(id, validated)
-    return toFacultyQuestionDTO(updated)
+    return this.formatQuestionWithPresignedUrl(updated)
   }
 
   async deleteQuestion(id, facultyId) {
@@ -225,7 +238,7 @@ class FacultyService {
     for (const q of questions) {
       const validated = validateMcqQuestion(q)
       const res = await facultyRepository.createQuestion({ examId, ...validated })
-      created.push(toFacultyQuestionDTO(res))
+      created.push(await this.formatQuestionWithPresignedUrl(res))
     }
     return created
   }
@@ -237,9 +250,39 @@ class FacultyService {
       throw new ValidationError(`Cannot add questions to an exam in status '${exam.status}'`)
     }
 
-    const workbook = xlsx.read(buffer, { type: 'buffer' })
-    const sheet = workbook.Sheets[workbook.SheetNames[0]]
-    const rows = xlsx.utils.sheet_to_json(sheet)
+    // Enforce 5MB size cap
+    const MAX_EXCEL_BYTES = 5 * 1024 * 1024
+    if (!buffer || buffer.length > MAX_EXCEL_BYTES) {
+      throw new ValidationError('Excel file exceeds maximum allowed size of 5 MB')
+    }
+
+    const workbook = new ExcelJS.Workbook()
+    await workbook.xlsx.load(buffer)
+    const worksheet = workbook.worksheets[0]
+    if (!worksheet) {
+      throw new ValidationError('Excel file contains no worksheets')
+    }
+
+    const rows = []
+    const headers = []
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell((cell, colNumber) => {
+          headers[colNumber] = String(cell.value || '').trim()
+        })
+      } else {
+        const rowData = {}
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber]
+          if (header) {
+            rowData[header] = cell.text ?? cell.value
+          }
+        })
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData)
+        }
+      }
+    })
 
     const created = []
     const errors = []
@@ -248,7 +291,7 @@ class FacultyService {
       try {
         const validated = normalizeExcelQuestionRow(rows[i], i + 1)
         const q = await facultyRepository.createQuestion({ examId, ...validated })
-        created.push(toFacultyQuestionDTO(q))
+        created.push(await this.formatQuestionWithPresignedUrl(q))
       } catch (err) {
         errors.push({ row: i + 1, error: err.message })
       }

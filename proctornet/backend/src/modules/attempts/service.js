@@ -2,16 +2,25 @@ const { attemptRepository } = require('./repository')
 const { attemptStateMachine } = require('./stateMachine')
 const { redisClient } = require('../../infra/redis/client')
 const { prisma } = require('../../infra/postgres/client')
-const { toStudentAttemptDTO, toInvigilatorAttemptDTO } = require('./dto')
+const { toStudentAttemptDTO } = require('./dto')
 const {
   NotFoundError,
-  ForbiddenError,
-  ConflictError,
-  ValidationError
+  ForbiddenError
 } = require('../../shared/errors')
-const { logger } = require('../../shared/logging')
+const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 
 class AttemptService {
+  async attachPresignedImageUrls(questions) {
+    return Promise.all((questions || []).map(async (q) => {
+      if (!q.imageKey) return { ...q, imageUrl: null }
+      try {
+        const imageUrl = await getPresignedReadUrl(q.imageKey, 3600)
+        return { ...q, imageUrl }
+      } catch {
+        return { ...q, imageUrl: null }
+      }
+    }))
+  }
   /**
    * Start or resume an exam attempt (Kills B-01)
    * 1 round-trip fast path for pre-warmed READY attempts.
@@ -123,9 +132,11 @@ class AttemptService {
       attempt.exam = await this.getExamMetadataCached(examId)
     }
 
+    const presignedQuestions = await this.attachPresignedImageUrls(assembledQuestions)
+
     return {
       isTerminal: false,
-      attempt: toStudentAttemptDTO(attempt, assembledQuestions)
+      attempt: toStudentAttemptDTO(attempt, presignedQuestions)
     }
   }
 
@@ -232,7 +243,8 @@ class AttemptService {
       }
     }).filter(Boolean)
 
-    return toStudentAttemptDTO(attempt, assembledQuestions)
+    const presignedQuestions = await this.attachPresignedImageUrls(assembledQuestions)
+    return toStudentAttemptDTO(attempt, presignedQuestions)
   }
 
   /**
