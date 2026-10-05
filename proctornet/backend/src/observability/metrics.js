@@ -88,10 +88,19 @@ async function metricsHandler(req, res) {
   }
 }
 
+// ── Outbox Failed Events Counter (Q4 Task 3) ──
+const outboxFailedCounter = new client.Counter({
+  name: 'pn_outbox_failed_total',
+  help: 'Total number of permanently failed outbox events',
+  labelNames: ['event_type'],
+  registers: [register],
+})
+
 module.exports = {
   register,
   metricsMiddleware,
   metricsHandler,
   socketioConnectedGauge,
   eventLoopLagGauge,
+  outboxFailedCounter,
 }

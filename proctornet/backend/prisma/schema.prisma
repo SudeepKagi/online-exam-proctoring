@@ -315,6 +315,7 @@ model ExamAttempt {
   shuffleSeed       String?       @map("shuffle_seed")
   flagCount         Int           @default(0) @map("flag_count")
   terminationReason String?       @map("termination_reason")
+  statusReason      String?       @map("status_reason")
   revision          Int           @default(1)
   vpnIp             String?       @map("vpn_ip")
   vpnKeyExpiry      DateTime?     @map("vpn_key_expiry") @db.Timestamptz(3)

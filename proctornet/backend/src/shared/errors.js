@@ -58,6 +58,12 @@ class ValidationError extends AppError {
   }
 }
 
+class UnprocessableEntityError extends AppError {
+  constructor(message = 'Unprocessable entity', code = 'UNPROCESSABLE_ENTITY', details = null) {
+    super(message, 422, code, details)
+  }
+}
+
 class TooManyRequestsError extends AppError {
   constructor(message = 'Too many requests, please slow down', retryAfter = 60) {
     super(message, 429, 'RATE_LIMIT_EXCEEDED', { retryAfter })
@@ -103,6 +109,7 @@ module.exports = {
   ForbiddenError,
   BadRequestError,
   ValidationError,
+  UnprocessableEntityError,
   TooManyRequestsError,
   ServiceUnavailableError,
   toErrorEnvelope

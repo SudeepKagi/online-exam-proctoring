@@ -261,47 +261,91 @@ server.requestTimeout = 15000
 server.headersTimeout = 65000
 server.keepAliveTimeout = 65000
 
-// ── Graceful Shutdown Handler (Section 4.12) ──
-async function gracefulShutdown(signal) {
-  logger.info({ signal }, 'Graceful shutdown initiated: draining requests and closing connections')
+// ── Graceful Shutdown Handler (Section 4.12 / C-10) ──
+// Shutdown order: stop intake -> stop consumers -> drain batchers -> close io -> close pools; second signal forces exit
+let isShuttingDown = false
 
-  // Notify connected sockets of server restarting
-  if (io) {
-    io.emit('server:restarting', { message: 'Server is restarting for maintenance', reconnectAfter: 3000 })
+async function gracefulShutdown(signal) {
+  logger.info({ signal }, 'Graceful shutdown initiated (C-10): draining requests and closing connections')
+
+  // 1. Stop Intake: stop accepting new HTTP connections
+  const serverClosePromise = new Promise((resolve) => {
+    server.close(() => {
+      logger.info('HTTP server closed: intake stopped')
+      resolve()
+    })
+  })
+
+  // 2. Stop Consumers: stop background polling loops and consumers
+  try {
+    expirySweeper.stop()
+    outboxPublisher.stop()
+    rosterCoalescer.stop()
+    if (process.env.VPN_ENABLED === 'true') {
+      vpnReconciler.stop()
+    }
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Error stopping consumer loops')
   }
 
-  // Stop background worker loops
-  expirySweeper.stop()
-  outboxPublisher.stop()
-  rosterCoalescer.stop()
+  // 3. Drain Batchers: flush micro-batchers to database
+  try {
+    await Promise.allSettled([
+      violationMicroBatcher.flush(),
+      chatMicroBatcher.flush()
+    ])
+    logger.info('Micro-batchers drained successfully')
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Error draining micro-batchers')
+  }
 
-  // Flush any pending micro-batchers before termination
-  await Promise.allSettled([
-    violationMicroBatcher.flush(),
-    chatMicroBatcher.flush()
-  ])
+  // 4. Close Socket.IO
+  if (io) {
+    try {
+      io.emit('server:restarting', { message: 'Server is restarting for maintenance', reconnectAfter: 3000 })
+      await new Promise((resolve) => io.close(() => resolve()))
+      logger.info('Socket.io server closed')
+    } catch (err) {
+      logger.warn({ error: err.message }, 'Error closing socket server')
+    }
+  }
 
-  // Stop accepting new HTTP requests
-  server.close(async () => {
-    logger.info('HTTP server closed')
+  // Wait for intake HTTP server to finish ongoing requests
+  await serverClosePromise
+
+  // 5. Close Pools: disconnect database, redis, and rabbitmq connections
+  try {
     await Promise.allSettled([
       prisma.$disconnect(),
       redisClient.quit(),
       rabbitmq.close()
     ])
-    logger.info('All connections drained and closed cleanly')
-    process.exit(0)
-  })
+    logger.info('All database, redis, and rabbitmq connection pools closed cleanly')
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Error closing connection pools')
+  }
+
+  process.exit(0)
+}
+
+function handleSignal(signal) {
+  if (isShuttingDown) {
+    logger.warn({ signal }, 'Second termination signal received; forcing immediate exit (C-10)')
+    process.exit(1)
+  }
+  isShuttingDown = true
 
   // Force exit after 10s if graceful shutdown hangs
   setTimeout(() => {
     logger.error('Graceful shutdown timeout exceeded, forcing exit')
     process.exit(1)
   }, 10000).unref()
+
+  gracefulShutdown(signal)
 }
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'))
-process.on('SIGINT', () => gracefulShutdown('SIGINT'))
+process.on('SIGTERM', () => handleSignal('SIGTERM'))
+process.on('SIGINT', () => handleSignal('SIGINT'))
 
 // ── Start server ──
 const PORT = process.env.PORT || 5000
@@ -312,22 +356,22 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
     console.log(`🔌 Socket.io initialized`)
     console.log(`🌍 NODE_ENV: ${process.env.NODE_ENV || 'development'}\n`)
 
-    // Start P4/P5 background workers (disabled on API pods when worker daemon is separate)
-    if (process.env.START_WORKERS !== 'false') {
+    // Start background workers: default false for API processes (C-10)
+    if (process.env.START_WORKERS === 'true') {
       outboxPublisher.start()
       evaluationWorker.start()
       evidenceWorker.start()
       verificationWorker.start()
       expirySweeper.start()
 
-      // Start P8 WireGuard VPN background workers (flag-gated)
+      // Start WireGuard VPN background workers (flag-gated)
       if (process.env.VPN_ENABLED === 'true') {
         vpnWorker.start()
         vpnReconciler.start()
         console.log('🛡️  WireGuard VPN Worker & Reconciler started')
       }
     } else {
-      console.log('⚡ START_WORKERS=false: Background workers delegated to dedicated worker container')
+      console.log('⚡ START_WORKERS=false (default): Background workers delegated to dedicated worker container')
     }
 
     // Test DB connection

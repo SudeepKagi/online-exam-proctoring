@@ -230,17 +230,16 @@ class VpnReconciler {
       }
     }
 
-    // Emit event via WebSocket if available
+    // Emit event via WebSocket Redis emitter (C-06)
     try {
-      if (global.io) {
-        global.io.to(`attempt:${dbPeer.attemptId}`).emit('attempt:violation', {
-          attemptId: dbPeer.attemptId,
-          type: 'VPN_DISCONNECT',
-          severity,
-          description,
-          enforcement
-        })
-      }
+      const { socketEmitter } = require('../../infra/websocket/emitter')
+      socketEmitter.emitToAttempt(dbPeer.attemptId, 'attempt:violation', {
+        attemptId: dbPeer.attemptId,
+        type: 'VPN_DISCONNECT',
+        severity,
+        description,
+        enforcement
+      })
     } catch (wsErr) {
       logger.warn({ error: wsErr.message }, '[VpnReconciler] Failed to emit WS violation')
     }

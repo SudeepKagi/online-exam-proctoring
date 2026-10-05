@@ -1,24 +1,41 @@
 const crypto = require('crypto')
 const { submissionRepository } = require('./repository')
 const { toSubmissionResponseDTO } = require('./dto')
+const { socketEmitter } = require('../../infra/websocket/emitter')
+const { UnprocessableEntityError } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
 
 class SubmissionService {
   /**
-   * Submit exam attempt with idempotency key and outbox event (Kills B-03/B-13)
+   * Submit exam attempt with composite idempotency key and outbox event (C-11, Kills B-03/B-13)
    */
   async submitAttempt(attemptId, studentId, idempotencyKey, finalAnswers = []) {
-    // 1. Idempotency Key check (Fast replay)
-    const existing = await submissionRepository.findIdempotentResponse(idempotencyKey)
+    // 1. Composite key + request hash over the payload body (C-11)
+    const compositeKey = `submit:${attemptId}:${idempotencyKey}`
+    const payloadHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(finalAnswers || []))
+      .digest('hex')
+    const requestHash = crypto
+      .createHash('sha256')
+      .update(`${studentId}:${attemptId}:${payloadHash}`)
+      .digest('hex')
+
+    // Fast replay check on composite key or naked key
+    const existing = (await submissionRepository.findIdempotentResponse(compositeKey)) ||
+                     (await submissionRepository.findIdempotentResponse(idempotencyKey))
+
     if (existing) {
+      if (existing.requestHash && existing.requestHash !== requestHash) {
+        throw new UnprocessableEntityError(
+          'Idempotency key reused with a different request body',
+          'IDEMPOTENCY_MISMATCH',
+          { idempotencyKey }
+        )
+      }
       logger.info({ attemptId, idempotencyKey }, 'Returning idempotent replay for exam submit')
       return existing.body
     }
-
-    const requestHash = crypto
-      .createHash('sha256')
-      .update(`${studentId}:${attemptId}:${idempotencyKey}`)
-      .digest('hex')
 
     const submitGraceSeconds = parseInt(process.env.SUBMIT_GRACE_SECONDS || '10', 10)
 
@@ -26,7 +43,7 @@ class SubmissionService {
     const result = await submissionRepository.submitAttemptTransaction(
       attemptId,
       studentId,
-      idempotencyKey,
+      compositeKey,
       requestHash,
       finalAnswers,
       submitGraceSeconds
@@ -34,10 +51,11 @@ class SubmissionService {
 
     const response = toSubmissionResponseDTO(result.attempt, result.alreadySubmitted)
 
-    // 3. Best-effort WS notify outside transaction
+    // 3. Best-effort WS notify outside transaction via Redis Emitter (C-06: inv:{examId} only)
     try {
-      if (global.io) {
-        global.io.to(`exam:${result.attempt.exam_id || result.attempt.examId}`).emit('student:submitted', {
+      const examId = result.attempt.exam_id || result.attempt.examId
+      if (examId) {
+        socketEmitter.emitToInvigilators(examId, 'student:submitted', {
           attemptId: result.attempt.id,
           studentId
         })

@@ -65,11 +65,12 @@ class ChatMicroBatcher {
 
       const rows = await prisma.$queryRawUnsafe(insertSql, examIds, studentIds, roles, texts)
 
-      // Broadcast to room
+      // Broadcast to invigilators room via Redis Emitter (C-06)
       try {
-        if (global.io && rows) {
+        const { socketEmitter } = require('../../infra/websocket/emitter')
+        if (rows) {
           for (const msg of rows) {
-            global.io.to(`exam:${msg.exam_id}`).emit('chat:new_message', {
+            socketEmitter.emitToInvigilators(msg.exam_id, 'chat:new_message', {
               id: msg.id.toString(),
               examId: msg.exam_id,
               studentId: msg.student_id,

@@ -2,7 +2,9 @@ const { prisma } = require('../../infra/postgres/client')
 
 class ResultRepository {
   /**
-   * Set-based idempotent evaluation of an exam attempt (Section 4.7)
+   * Set-based idempotent evaluation of an exam attempt (Section 4.7 / C-07)
+   * - Evaluates ONLY for terminal statuses: SUBMITTED | EXPIRED | TERMINATED
+   * - Preserves negative scores when negative marking is enabled
    */
   async evaluateAttemptSetBased(attemptId) {
     const sql = `
@@ -14,13 +16,20 @@ class ResultRepository {
         gen_random_uuid(),
         s.attempt_id,
         s.exam_id,
-        GREATEST(0, s.calculated_score),
+        CASE
+          WHEN s.negative_marking = true THEN s.calculated_score
+          ELSE GREATEST(0, s.calculated_score)
+        END,
         s.total_marks,
         s.correct_count,
         s.wrong_count,
         s.unanswered_count,
         CASE
-          WHEN s.total_marks > 0 THEN ROUND((GREATEST(0, s.calculated_score)::numeric / s.total_marks::numeric) * 100, 2)
+          WHEN s.total_marks > 0 THEN
+            ROUND((
+              (CASE WHEN s.negative_marking = true THEN s.calculated_score ELSE GREATEST(0, s.calculated_score) END)::numeric
+              / s.total_marks::numeric
+            ) * 100, 2)
           ELSE 0
         END,
         s.time_taken,
@@ -56,6 +65,7 @@ class ResultRepository {
         LEFT JOIN answers a ON a.attempt_question_id = aq.id
         LEFT JOIN question_options o ON o.id = a.selected_option_id
         WHERE at.id = $1::uuid
+          AND at.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
         GROUP BY at.id, at.exam_id, at.flag_count, e.negative_marking, e.results_released, e.negative_value, at.submitted_at, at.started_at
       ) s
       ON CONFLICT (attempt_id) DO NOTHING
@@ -71,6 +81,52 @@ class ResultRepository {
     return prisma.examResult.findUnique({
       where: { attemptId }
     })
+  }
+
+  /**
+   * Create ABSENT / NOT_STARTED results for attempts that never started when exam ends (C-07)
+   */
+  async createAbsentResultsForEndedExam(examId) {
+    const insertSql = `
+      INSERT INTO exam_results (
+        id, attempt_id, exam_id, score, total_marks, correct_count, wrong_count,
+        unanswered_count, percentage, time_taken, flag_count, status, is_released, created_at
+      )
+      SELECT
+        gen_random_uuid(),
+        ea.id,
+        ea.exam_id,
+        0,
+        COALESCE(e.total_marks, 0),
+        0,
+        0,
+        (SELECT COUNT(*)::int FROM attempt_questions WHERE attempt_id = ea.id),
+        0,
+        0,
+        ea.flag_count,
+        'CLEAN'::"ResultStatus",
+        e.results_released,
+        now()
+      FROM exam_attempts ea
+      JOIN exams e ON e.id = ea.exam_id
+      WHERE ea.exam_id = $1::uuid
+        AND ea.status = 'READY'
+      ON CONFLICT (attempt_id) DO NOTHING
+      RETURNING *;
+    `
+
+    const rows = await prisma.$queryRawUnsafe(insertSql, examId)
+
+    // Mark those attempts as EXPIRED with status_reason = 'NOT_STARTED'
+    await prisma.$executeRawUnsafe(`
+      UPDATE exam_attempts
+      SET status = 'EXPIRED',
+          status_reason = 'NOT_STARTED'
+      WHERE exam_id = $1::uuid
+        AND status = 'READY';
+    `, examId)
+
+    return rows
   }
 
   /**

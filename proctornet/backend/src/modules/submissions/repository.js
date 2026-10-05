@@ -13,7 +13,7 @@ class SubmissionRepository {
    */
   async findIdempotentResponse(key) {
     const rows = await prisma.$queryRawUnsafe(`
-      SELECT response_status, response_body
+      SELECT response_status, response_body, request_hash
       FROM idempotency_keys
       WHERE key = $1 AND expires_at > now();
     `, key)
@@ -21,7 +21,8 @@ class SubmissionRepository {
     if (rows && rows.length > 0) {
       return {
         status: rows[0].response_status,
-        body: rows[0].response_body
+        body: rows[0].response_body,
+        requestHash: rows[0].request_hash
       }
     }
     return null
@@ -95,8 +96,9 @@ class SubmissionRepository {
 
       const responsePayload = {
         status: 'SUBMITTED',
-        submittedAt: updated.submitted_at,
-        alreadySubmitted: false
+        submittedAt: updated.submitted_at ? new Date(updated.submitted_at).toISOString() : new Date().toISOString(),
+        alreadySubmitted: false,
+        message: 'Exam submitted successfully'
       }
 
       // 5. Insert outbox event for async evaluation worker
