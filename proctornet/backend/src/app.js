@@ -41,6 +41,7 @@ const io = createWebSocketServer(server)
 app.set('io', io)
 
 // ── Reverse Proxy & Trust Headers ──
+app.disable('x-powered-by')
 app.set('trust proxy', 1)
 
 // ── Middleware ──
@@ -153,8 +154,12 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter)
 
 
-// ── Liveness and Readiness Probes (P9 Task 7) ──
-app.get(['/health', '/healthz'], (req, res) => {
+// ── Liveness and Readiness Probes (P9 Task 7 / §4.5.5) ──
+app.get('/healthz', (req, res) => {
+  res.type('text/plain').send('ok')
+})
+
+app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     service: 'ProctorNet Backend',

@@ -153,10 +153,10 @@ export default function BulkCreateAccounts() {
                   <CheckCircle2 size={18} className="text-white" />
                   Created Accounts Credentials ({credentials.length})
                 </DialogTitle>
-                <Badge variant="default" className="font-mono text-[9px]">EXCEL FORMAT</Badge>
+                <Badge variant="default" className="font-mono text-[9px]">CREDENTIALS FILE</Badge>
               </div>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
-                Accounts created successfully. Download the official Excel spreadsheet (.xlsx) or copy data directly into Excel. Users will be forced to change password on first login.
+                Accounts created successfully. Download the official credentials document or copy data directly. Users will be forced to change password on first login.
               </DialogDescription>
             </DialogHeader>
 
@@ -189,10 +189,10 @@ export default function BulkCreateAccounts() {
                 </Table>
               </div>
 
-              {/* Download Excel Button Only */}
+              {/* Download Document Button Only */}
               <div className="flex items-center justify-end pt-3 border-t border-border">
                 <Button size="sm" onClick={handleDownloadExcel} className="w-full sm:w-auto text-xs font-mono font-bold py-2 px-5">
-                  <FileSpreadsheet size={15} className="mr-2" /> Download Excel (.xlsx) File
+                  <FileSpreadsheet size={15} className="mr-2" /> Download Credentials Document
                 </Button>
               </div>
             </div>
@@ -205,7 +205,7 @@ export default function BulkCreateAccounts() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
           <div>
             <h1 className="text-lg font-bold tracking-tight text-foreground">Bulk Create Accounts</h1>
-            <p className="text-xs font-mono text-muted-foreground mt-0.5">Upload Excel (.xlsx/.xls) or PDF roster to parse, review, and generate credentials in Excel format.</p>
+            <p className="text-xs font-mono text-muted-foreground mt-0.5">Upload spreadsheet or PDF roster to parse, review, and generate credentials in bulk.</p>
           </div>
 
           {/* Role Toggle Selector */}
@@ -242,7 +242,7 @@ export default function BulkCreateAccounts() {
             <CardTitle className="text-sm font-semibold text-foreground">1. Upload Roster File</CardTitle>
             <CardDescription className="text-xs text-muted-foreground flex items-center justify-between">
               <span>
-                Upload {role === 'student' ? 'Student' : 'Faculty'} roster in Excel (.xlsx/.xls) or PDF format containing Name, {role === 'faculty' ? 'Employee ID' : 'Roll No/USN'}, Department, Phone, & Email.
+                Upload {role === 'student' ? 'Student' : 'Faculty'} roster in spreadsheet or PDF format containing Name, {role === 'faculty' ? 'Employee ID' : 'Roll No/USN'}, Department, Phone, & Email.
               </span>
               <a
                 href={role === 'student' ? '/sample_students.xlsx' : '/sample_faculty.xlsx'}
@@ -250,7 +250,7 @@ export default function BulkCreateAccounts() {
                 className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-mono bg-background border border-border hover:bg-[#f8fafc] dark:bg-neutral-900 text-primary rounded-lg transition"
               >
                 <Download size={13} />
-                Download Sample {role === 'student' ? 'Student' : 'Faculty'} Excel
+                Download Sample {role === 'student' ? 'Student' : 'Faculty'} Template
               </a>
             </CardDescription>
           </CardHeader>
@@ -273,7 +273,7 @@ export default function BulkCreateAccounts() {
                 <span className="text-xs text-muted-foreground"> or drag and drop</span>
               </label>
 
-              <p className="text-[11px] font-mono text-slate-500 mt-1">Supports Excel (.xlsx, .xls) and PDF rosters</p>
+              <p className="text-[11px] font-mono text-slate-500 mt-1">Supports spreadsheet and PDF rosters</p>
 
               {file && (
                 <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-mono text-white">

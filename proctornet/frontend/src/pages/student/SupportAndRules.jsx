@@ -405,7 +405,7 @@ export default function SupportAndRules() {
 
                     <tr className="hover:bg-[#f8fafc] transition-colors">
                       <td className="py-3 px-4 font-semibold">Multiple Faces Present (Collusion)</td>
-                      <td className="py-3 px-4 text-[#64748b] font-mono text-[11px]">Face-API / OpenCV</td>
+                      <td className="py-3 px-4 text-[#64748b] font-mono text-[11px]">Identity Verification</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#ef4444] border border-[#fecaca]">
                           CRITICAL
@@ -440,7 +440,7 @@ export default function SupportAndRules() {
                     </tr>
 
                     <tr className="hover:bg-[#f8fafc] transition-colors">
-                      <td className="py-3 px-4 font-semibold">Unauthorized Remote Tools (AnyDesk, etc.)</td>
+                      <td className="py-3 px-4 font-semibold">Unauthorized Remote Tools & Screen Sharing</td>
                       <td className="py-3 px-4 text-[#64748b] font-mono text-[11px]">Local Security Agent</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#fef2f2] text-[#ef4444] border border-[#fecaca]">

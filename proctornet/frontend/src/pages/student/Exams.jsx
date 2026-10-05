@@ -292,12 +292,12 @@ export default function StudentExams() {
               <div className="relative z-10 pt-5 mt-4 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 text-xs text-slate-300 font-normal">
                   <span className="flex items-center gap-1.5">
-                    <Camera size={13} className="text-sky-400" /> AI Face Tracking
+                    <Camera size={13} className="text-sky-400" /> Identity Verification
                   </span>
                   <span>•</span>
                   <span>Screen Capture</span>
                   <span>•</span>
-                  <span>Fullscreen Kiosk</span>
+                  <span>Fullscreen Mode</span>
                 </div>
 
                 <Link to={`/student/exams/${liveExams[0].id}/lobby`}>

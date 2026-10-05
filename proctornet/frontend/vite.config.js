@@ -4,28 +4,36 @@ import tailwindcss from '@tailwindcss/vite'
 import { compression } from 'vite-plugin-compression2'
 import path from 'path'
 
-// https://vite.dev/config/
-export default defineConfig({
+// §4.5 Build Fingerprint Reduction
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     compression({ algorithm: 'gzip' }),
     compression({ algorithm: 'brotliCompress' })
   ],
+  esbuild: {
+    drop: mode === 'production' ? ['console', 'debugger'] : []
+  },
   build: {
     target: 'esnext',
+    sourcemap: false,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
+        entryFileNames: 'assets/[hash].js',
+        chunkFileNames: 'assets/[hash].js',
+        assetFileNames: 'assets/[hash].[ext]',
         manualChunks: (id) => {
-          if (id.includes('node_modules/face-api.js')) return 'vendor-faceapi'
-          if (id.includes('node_modules/xlsx')) return 'vendor-xlsx'
-          if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) return 'vendor-pdf'
-          if (id.includes('node_modules/recharts')) return 'vendor-recharts'
-          if (id.includes('node_modules/@tanstack')) return 'vendor-tanstack'
-          if (id.includes('node_modules/socket.io-client')) return 'vendor-socket'
+          // Opaque chunk names (§4.5.4)
+          if (id.includes('node_modules/face-api.js')) return 'v-fa'
+          if (id.includes('node_modules/xlsx')) return 'v-ds'
+          if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) return 'v-doc'
+          if (id.includes('node_modules/recharts')) return 'v-ch'
+          if (id.includes('node_modules/@tanstack')) return 'v-ts'
+          if (id.includes('node_modules/socket.io-client')) return 'v-rt'
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) {
-            return 'vendor-react'
+            return 'v-core'
           }
         }
       }
@@ -50,4 +58,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

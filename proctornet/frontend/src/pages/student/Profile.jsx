@@ -264,7 +264,7 @@ export default function StudentProfile() {
                 >
                   <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
                   <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
-                  <option value="Artificial Intelligence & Machine Learning">AI & Machine Learning (AIML)</option>
+                  <option value="Data Science & Computing">Data Science & Computing (DSC)</option>
                   <option value="Electronics & Communication">Electronics & Communication (ECE)</option>
                   <option value="Electrical & Electronics">Electrical & Electronics (EEE)</option>
                   <option value="Mechanical Engineering">Mechanical Engineering</option>
@@ -410,7 +410,7 @@ export default function StudentProfile() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 font-normal">
-                  Used for automated OCR extraction and candidate identity verification.
+                  Used for automated document extraction and candidate identity verification.
                 </p>
               </div>
 

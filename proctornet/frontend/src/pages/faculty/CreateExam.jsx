@@ -105,8 +105,8 @@ function AIGeneratorPanel({ onGenerated }) {
           <Sparkles size={18} />
         </div>
         <div>
-          <h3 className="font-semibold text-slate-900 text-sm">AI Question Generator</h3>
-          <p className="text-xs text-slate-500">Upload a PDF or paste notes — Gemini AI will generate your question pool</p>
+          <h3 className="font-semibold text-slate-900 text-sm">Question Assistant</h3>
+          <p className="text-xs text-slate-500">Upload a PDF or paste notes — question assistant will generate your question pool</p>
         </div>
       </div>
 
@@ -977,7 +977,7 @@ export default function CreateExam() {
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Proctoring</p>
                     <p className="text-2xl font-bold text-[#10b981]">STRICT</p>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">WireGuard AI Active</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Integrity Checks Active</p>
                   </div>
                 </div>
 
@@ -1023,11 +1023,11 @@ export default function CreateExam() {
 
                 <div className="space-y-2 text-xs font-bold text-slate-800">
                   {[
-                    { label: 'Continuous Face AI & Camera', active: formData.cameraRequired },
+                    { label: 'Continuous Camera & Face Verification', active: formData.cameraRequired },
                     { label: 'Browser Multi-Tab Lockdown', active: formData.browserLock },
-                    { label: 'Kiosk Fullscreen Enforcement', active: formData.fullScreenMode },
+                    { label: 'Secure Fullscreen Enforcement', active: formData.fullScreenMode },
                     { label: 'Dynamic USN Anti-Leak Watermark', active: formData.watermarkRequired },
-                    { label: 'WireGuard Network Isolation VPN', active: true },
+                    { label: 'Secure Network Isolation', active: true },
                     { label: 'Shuffled Questions & Options', active: formData.randomiseQuestions || formData.randomiseOptions }
                   ].map(sec => (
                     <div key={sec.label} className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-slate-200">

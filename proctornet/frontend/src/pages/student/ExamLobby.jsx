@@ -154,7 +154,7 @@ export default function ExamLobby() {
                   : timeToStart === 0
                   ? 'System security gate is open for student check-in.'
                   : timeToStart <= 300
-                  ? 'Early security verification is active. Complete your WireGuard & hardware check now.'
+                  ? 'Early security verification is active. Complete your device & hardware check now.'
                   : 'Early security check unlocks 5 minutes before scheduled start time.'}
               </p>
             </div>
@@ -211,19 +211,19 @@ export default function ExamLobby() {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Camera size={18} className="text-[#2f80ed] shrink-0" />
-              <span>AI Face Biometrics</span>
+              <span>Live Identity Verification</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Monitor size={18} className="text-[#2f80ed] shrink-0" />
-              <span>Screen Share & Kiosk</span>
+              <span>Screen Share & Full-Screen</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Cpu size={18} className="text-[#2f80ed] shrink-0" />
-              <span>BYOD Agent Check</span>
+              <span>Device Integrity Check</span>
             </div>
             <div className="p-4 rounded-2xl bg-slate-50/75 border border-slate-200 flex items-center gap-3 font-medium text-xs text-slate-800">
               <Wifi size={18} className="text-[#2f80ed] shrink-0" />
-              <span>WireGuard Sandboxing</span>
+              <span>Secure Network Isolation</span>
             </div>
           </div>
 
@@ -297,7 +297,7 @@ export default function ExamLobby() {
                         {!isOver && canStartSecurityCheck && timeToStart > 0 && (
                           <div className="flex items-center gap-2 px-3.5 py-1.5 bg-emerald-50 border border-emerald-200 rounded-full text-[11px] font-bold text-emerald-700">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            Early Checkup Window Open (5 mins prior): Setup WireGuard & complete verification early!
+                            Early Checkup Window Open (5 mins prior): Complete your hardware & identity verification early!
                           </div>
                         )}
 

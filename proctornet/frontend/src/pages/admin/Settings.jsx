@@ -76,10 +76,10 @@ export default function AdminSettings() {
   }
 
   const tabs = [
-    { id: 'face', label: 'Face Verification', icon: Camera, desc: 'AI Face detection & match thresholds' },
-    { id: 'ocr', label: 'ID & OCR Credentials', icon: Key, desc: 'PaddleOCR ID document verification' },
-    { id: 'security', label: 'Security & Probes', icon: Shield, desc: 'VM & Collusion security rules' },
-    { id: 'display', label: 'Display & Watermark', icon: Monitor, desc: 'Watermark & Kiosk lockdown preferences' },
+    { id: 'face', label: 'Face Verification', icon: Camera, desc: 'Identity verification & match thresholds' },
+    { id: 'ocr', label: 'ID & Document Verification', icon: Key, desc: 'Identity document verification' },
+    { id: 'security', label: 'Security & Monitoring', icon: Shield, desc: 'System & pattern security rules' },
+    { id: 'display', label: 'Display & Watermark', icon: Monitor, desc: 'Watermark & secure exam mode preferences' },
   ]
 
   return (
@@ -100,9 +100,9 @@ export default function AdminSettings() {
           <div className="p-3.5 rounded-xl bg-[#ecfdf5] border border-[#dcfce7] text-[#15803d] text-xs font-medium flex items-center justify-between animate-in fade-in duration-200">
             <div className="flex items-center gap-2">
               <CheckCircle2 size={16} className="text-[#16a34a]" />
-              <span>Platform settings updated successfully and deployed to all active clusters.</span>
+              <span>Platform settings updated successfully and applied across the platform.</span>
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#16a34a]">Live Deployed</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#16a34a]">Active</span>
           </div>
         )}
 
@@ -136,9 +136,9 @@ export default function AdminSettings() {
             {activeTab === 'face' && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0f172a]">Face & Biometric Verification</h3>
+                  <h3 className="text-lg font-bold text-[#0f172a]">Face & Identity Verification</h3>
                   <p className="text-xs text-[#64748b] mt-1">
-                    Configure continuous camera identity checks powered by self-hosted Exadel CompreFace REST API.
+                    Configure camera identity checks and candidate verification thresholds.
                   </p>
                 </div>
                 <div className="h-[1px] bg-[#f1f5f9]" />
@@ -147,7 +147,7 @@ export default function AdminSettings() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
                       <p className="text-xs font-semibold text-[#0f172a]">Enable Live Face Verification</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Continuously verify candidate identity via webcam feed.</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Verify candidate identity via camera feed.</p>
                     </div>
                     <Switch
                       checked={!!settings.faceVerificationEnabled}
@@ -162,7 +162,7 @@ export default function AdminSettings() {
                         {settings.faceMatchThreshold}%
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748b]">Minimum similarity score required to pass automatic face verification.</p>
+                    <p className="text-[11px] text-[#64748b]">Minimum confidence score required to pass automatic face verification.</p>
                     <input
                       type="range"
                       min={60}
@@ -180,7 +180,7 @@ export default function AdminSettings() {
                         {settings.reverifyIntervalMins} min
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748b]">Frequency of background biometric probes during live exam sessions.</p>
+                    <p className="text-[11px] text-[#64748b]">Frequency of periodic identity checks during live exam sessions.</p>
                     <input
                       type="range"
                       min={2}
@@ -223,13 +223,13 @@ export default function AdminSettings() {
               </div>
             )}
 
-            {/* TAB 2: ID & OCR Credentials */}
+            {/* TAB 2: ID & Document Verification */}
             {activeTab === 'ocr' && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0f172a]">ID & OCR Document Verification</h3>
+                  <h3 className="text-lg font-bold text-[#0f172a]">ID Document Verification</h3>
                   <p className="text-xs text-[#64748b] mt-1">
-                    Configure institutional ID card optical character recognition rules for student pre-checks.
+                    Configure institutional ID card verification rules for candidate pre-exam checks.
                   </p>
                 </div>
                 <div className="h-[1px] bg-[#f1f5f9]" />
@@ -237,8 +237,8 @@ export default function AdminSettings() {
                 <div className="space-y-5">
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">ID Card OCR Document Verification</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Require students to present and verify institutional ID cards prior to exam admission.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">ID Card Document Verification</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Require candidates to present and verify institutional ID cards prior to exam admission.</p>
                     </div>
                     <Switch
                       checked={!!settings.idCardVerificationEnabled}
@@ -248,12 +248,12 @@ export default function AdminSettings() {
 
                   <div className="space-y-2 p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-[#0f172a]">OCR Name Matching Tolerance</label>
+                      <label className="text-xs font-semibold text-[#0f172a]">Name Matching Tolerance</label>
                       <span className="font-mono text-xs font-bold text-[#2563eb] border border-[#dbeafe] bg-[#eff6ff] px-2 py-0.5 rounded-md">
                         {settings.ocrToleranceThreshold}%
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748b]">Minimum text string similarity between uploaded ID and student registered name.</p>
+                    <p className="text-[11px] text-[#64748b]">Minimum text match confidence between uploaded ID and registered student name.</p>
                     <input
                       type="range"
                       min={50}
@@ -267,7 +267,7 @@ export default function AdminSettings() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
                       <p className="text-xs font-semibold text-[#0f172a]">Strict USN & Department Validation</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Enforce strict character-for-character USN matching from OCR card text.</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Enforce strict character-for-character USN matching from uploaded card.</p>
                     </div>
                     <Switch
                       checked={!!settings.requireUsnMatch}
@@ -277,8 +277,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Allow Manual Biometric Override by Invigilator</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Allow authorized proctors to manually verify and admit candidates if OCR fails.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Allow Manual Identity Override by Invigilator</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Allow authorized proctors to manually verify and admit candidates if automated checks fail.</p>
                     </div>
                     <Switch
                       checked={!!settings.manualBiometricOverrideAllowed}
@@ -289,13 +289,13 @@ export default function AdminSettings() {
               </div>
             )}
 
-            {/* TAB 3: Security & Probes */}
+            {/* TAB 3: Security & Monitoring */}
             {activeTab === 'security' && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0f172a]">Proctoring Security & Machine Audits</h3>
+                  <h3 className="text-lg font-bold text-[#0f172a]">Security & Device Monitoring</h3>
                   <p className="text-xs text-[#64748b] mt-1">
-                    Configure hardware hypervisor detection, collusion detection algorithms, and audio probes.
+                    Configure device compatibility, submission pattern analysis, and audio activity checks.
                   </p>
                 </div>
                 <div className="h-[1px] bg-[#f1f5f9]" />
@@ -303,8 +303,8 @@ export default function AdminSettings() {
                 <div className="space-y-5">
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Virtual Machine & Hypervisor Detection</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Block execution on virtual environments (VirtualBox, VMware, QEMU, SwiftShader).</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Virtual Device & Emulation Check</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Flag unverified virtual display adapters and emulated environments.</p>
                     </div>
                     <Switch
                       checked={!!settings.vmDetectionEnabled}
@@ -314,8 +314,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Collusion Detection Engine</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Detect synchronized answer submission patterns and code similarity across candidates.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Submission Pattern Analysis</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Detect synchronized answer submission patterns across concurrent attempts.</p>
                     </div>
                     <Switch
                       checked={!!settings.collusionDetectionEnabled}
@@ -325,12 +325,12 @@ export default function AdminSettings() {
 
                   <div className="space-y-2 p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-semibold text-[#0f172a]">Collusion Similarity Score Threshold</label>
+                      <label className="text-xs font-semibold text-[#0f172a]">Pattern Correlation Threshold</label>
                       <span className="font-mono text-xs font-bold text-[#2563eb] border border-[#dbeafe] bg-[#eff6ff] px-2 py-0.5 rounded-md">
                         {settings.collusionThreshold}%
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#64748b]">Flag submissions as suspected collusion if code/text cosine similarity exceeds this rate.</p>
+                    <p className="text-[11px] text-[#64748b]">Flag attempts with correlated submission timing or answer choices exceeding this rate.</p>
                     <input
                       type="range"
                       min={50}
@@ -343,8 +343,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Dual-Feed (Webcam + Screen) Probing</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Enforce continuous synchronized screen feed recording alongside candidate webcam video.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Dual Monitoring (Camera & Screen)</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Enforce synchronized screen recording alongside candidate camera feed.</p>
                     </div>
                     <Switch
                       checked={!!settings.dualFeedEnabled}
@@ -354,8 +354,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Hardware Audio Noise Anomaly Probe</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Flag sustained whisper patterns or room chatter using audio frequency analysis.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Audio Activity Monitoring</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Flag sustained room chatter using audio level analysis.</p>
                     </div>
                     <Switch
                       checked={!!settings.audioAnomalyEnabled}
@@ -370,9 +370,9 @@ export default function AdminSettings() {
             {activeTab === 'display' && (
               <div className="space-y-6 animate-in fade-in duration-150">
                 <div>
-                  <h3 className="text-lg font-bold text-[#0f172a]">Display, Watermark & Kiosk Lockdown</h3>
+                  <h3 className="text-lg font-bold text-[#0f172a]">Display, Watermark & Secure Exam Mode</h3>
                   <p className="text-xs text-[#64748b] mt-1">
-                    Configure anti-leak tracking watermarks and kiosk desktop containment parameters.
+                    Configure anti-leak tracking watermarks and full-screen exam mode parameters.
                   </p>
                 </div>
                 <div className="h-[1px] bg-[#f1f5f9]" />
@@ -409,8 +409,8 @@ export default function AdminSettings() {
 
                   <div className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0]">
                     <div>
-                      <p className="text-xs font-semibold text-[#0f172a]">Fullscreen Kiosk Lockdown (Esc Trap)</p>
-                      <p className="text-[11px] text-[#64748b] mt-0.5">Force browser into fullscreen mode and trap Escape key to prevent window minimizing.</p>
+                      <p className="text-xs font-semibold text-[#0f172a]">Secure Full-Screen Exam Mode</p>
+                      <p className="text-[11px] text-[#64748b] mt-0.5">Ensure browser remains in full-screen mode and prompt candidate when leaving window.</p>
                     </div>
                     <Switch
                       checked={!!settings.kioskLockdownEnabled}

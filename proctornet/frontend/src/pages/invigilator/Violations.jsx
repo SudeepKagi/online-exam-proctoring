@@ -32,7 +32,7 @@ const EVENT_CONFIG = {
   copy_attempt: { label: 'Clipboard Copy Attempt', category: 'INPUT', icon: AlertCircle, color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' },
   paste_attempt: { label: 'Clipboard Paste Attempt', category: 'INPUT', icon: AlertCircle, color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' },
   voice_detected: { label: 'Audio / Speech Detected', category: 'AUDIO', icon: Radio, color: 'text-purple-500 bg-purple-500/10 border-purple-500/20' },
-  vpn_disconnect: { label: 'Secure VPN Tunnel Loss', category: 'NETWORK', icon: ShieldAlert, color: 'text-rose-600 bg-rose-600/10 border-rose-600/20' },
+  vpn_disconnect: { label: 'Secure Network Loss', category: 'NETWORK', icon: ShieldAlert, color: 'text-rose-600 bg-rose-600/10 border-rose-600/20' },
   banned_process: { label: 'Blacklisted Process Active', category: 'NETWORK', icon: ShieldAlert, color: 'text-rose-600 bg-rose-600/10 border-rose-600/20' },
   virtual_camera: { label: 'Virtual Camera Injected', category: 'NETWORK', icon: Camera, color: 'text-rose-600 bg-rose-600/10 border-rose-600/20' },
   INVIGILATOR_WARNING: { label: 'Proctor Warning Dispatched', category: 'PROCTOR', icon: MessageSquare, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' }
@@ -371,7 +371,7 @@ export default function InvigilatorViolations() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    toast.success('Violation report exported to CSV')
+    toast.success('Incident audit report exported successfully')
   }
 
   // ── Bulk Actions ──
@@ -437,7 +437,7 @@ export default function InvigilatorViolations() {
               onClick={exportToCSV}
               className="text-xs font-mono gap-1.5 h-9 rounded-xl border-border bg-background hover:bg-neutral-100 dark:hover:bg-neutral-800"
             >
-              <Download size={14} /> Export CSV
+              <Download size={14} /> Export Report
             </Button>
 
             {/* Refresh */}

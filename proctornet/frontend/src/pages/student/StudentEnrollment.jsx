@@ -232,22 +232,22 @@ export default function StudentEnrollment() {
                 <div>
                   <h3 className="text-xs font-bold text-amber-300">Mandatory Profile Completion Required</h3>
                   <p className="text-[11px] text-amber-200/80 mt-0.5">
-                    Per institutional proctoring policies, you must complete your biometric reference enrollment before you are permitted to enter scheduled exams.
+                    Per institutional proctoring policies, you must complete your identity verification profile before you are permitted to enter scheduled exams.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h2 className="text-sm font-bold text-foreground">Biometric Data Consent & Privacy Disclosure</h2>
+                <h2 className="text-sm font-bold text-foreground">Identity Verification & Privacy Disclosure</h2>
                 <div className="text-xs text-foreground/90 space-y-3 leading-relaxed bg-background p-5 rounded-xl border border-border font-mono">
                   <p>
-                    <strong className="text-foreground">What Data is Collected:</strong> Live webcam selfie photo, vector face embeddings, and institutional ID card document.
+                    <strong className="text-foreground">What Data is Collected:</strong> Live camera photo and institutional ID card document.
                   </p>
                   <p>
-                    <strong className="text-foreground">How it is Used:</strong> Face embeddings are processed locally via self-hosted Exadel CompreFace (ArcFace AI) to verify your identity during exam check-in and prevent candidate impersonation.
+                    <strong className="text-foreground">How it is Used:</strong> Your reference photo is compared with your live camera during pre-exam checks to verify your identity and ensure authentic exam participation.
                   </p>
                   <p>
-                    <strong className="text-foreground">Privacy Guarantee:</strong> No data is transmitted to commercial third-party cloud APIs. All vector data remains encrypted on institution servers.
+                    <strong className="text-foreground">Privacy Guarantee:</strong> All verification records remain securely stored within your institution's system.
                   </p>
                 </div>
 
@@ -259,7 +259,7 @@ export default function StudentEnrollment() {
                     className="mt-0.5 w-4 h-4 rounded accent-indigo-500"
                   />
                   <span className="text-xs text-foreground/90">
-                    I explicitly consent to the processing and local vector storage of my biometric face data and ID card for automated exam proctoring identity verification.
+                    I explicitly consent to the processing of my reference photo and ID card for examination identity verification.
                   </span>
                 </label>
               </div>
@@ -344,7 +344,7 @@ export default function StudentEnrollment() {
                       className="text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
                     >
                       {isSubmitting ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-2" /> : null}
-                      Confirm Face Reference
+                      Confirm Identity Photo
                     </Button>
                   </div>
                 )}
@@ -358,7 +358,7 @@ export default function StudentEnrollment() {
               <div>
                 <h2 className="text-sm font-bold text-foreground">Step B: Institutional / Government ID Verification</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Upload a clear image of your ID card. PaddleOCR and MTCNN face-crop engines will parse details automatically.
+                  Upload a clear image of your ID card. Verification checks will parse details automatically.
                 </p>
               </div>
 
@@ -417,9 +417,9 @@ export default function StudentEnrollment() {
                   <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground">Biometric Profile Verified & Locked</h2>
+                  <h2 className="text-xl font-bold text-foreground">Identity Profile Verified & Ready</h2>
                   <p className="text-xs text-muted-foreground max-w-lg mx-auto">
-                    Your reference face embedding and ID document have been verified by system administration. You are eligible to enter scheduled exams.
+                    Your reference photo and ID document have been verified by administration. You are eligible to enter scheduled exams.
                   </p>
                   <div className="pt-2">
                     <Button
@@ -435,7 +435,7 @@ export default function StudentEnrollment() {
                   <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
                     <AlertTriangle className="w-8 h-8" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground">Biometric Verification Rejected</h2>
+                  <h2 className="text-xl font-bold text-foreground">Identity Verification Not Approved</h2>
                   <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 max-w-lg mx-auto font-mono">
                     <strong>Reason:</strong> {user?.rejectionReason || 'Please re-capture clear photos of yourself and your ID card.'}
                   </div>
@@ -444,7 +444,7 @@ export default function StudentEnrollment() {
                       onClick={() => setStep(1)}
                       className="text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white px-6"
                     >
-                      Re-attempt Profile Enrollment
+                      Re-attempt Verification
                     </Button>
                   </div>
                 </div>
@@ -453,13 +453,13 @@ export default function StudentEnrollment() {
                   <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/30 text-primary flex items-center justify-center mx-auto">
                     <RefreshCw className="w-7 h-7 animate-spin" />
                   </div>
-                  <h2 className="text-xl font-bold text-foreground">Biometric Enrollment Under Review</h2>
+                  <h2 className="text-xl font-bold text-foreground">Identity Verification Under Review</h2>
                   <p className="text-xs text-muted-foreground max-w-lg mx-auto">
-                    Your reference face embedding and ID document have been submitted and are pending administrative verification review.
+                    Your reference photo and ID document have been submitted and are pending administrative review.
                   </p>
 
                   <div className="p-4 rounded-xl bg-background border border-border text-xs text-left max-w-md mx-auto space-y-1 font-mono">
-                    <p className="text-primary font-semibold mb-2">PaddleOCR Automated Extraction Summary:</p>
+                    <p className="text-primary font-semibold mb-2">Automated Document Extraction Summary:</p>
                     <p><strong className="text-muted-foreground">Extracted Name:</strong> {ocrResult?.extractedName || user?.name || 'N/A'}</p>
                     <p><strong className="text-muted-foreground">Extracted USN:</strong> {ocrResult?.extractedUsn || user?.usn || 'N/A'}</p>
                     <p><strong className="text-muted-foreground">Match Confidence:</strong> {Math.round((ocrResult?.confidenceScore || 0.95) * 100)}%</p>

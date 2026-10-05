@@ -134,9 +134,9 @@ export default function AdminEnrollmentReview() {
         {/* Top Header & Overview */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-[#0f172a]">Biometrics Verification Queue</h1>
+            <h1 className="text-xl font-bold text-[#0f172a]">Identity Verification Review</h1>
             <p className="text-xs text-[#64748b] mt-0.5">
-              Review and authorize student college ID credentials, webcam selfies, and OCR extractions.
+              Review and authorize student college ID credentials, webcam selfies, and document details.
             </p>
           </div>
 
@@ -153,7 +153,7 @@ export default function AdminEnrollmentReview() {
             <button
               onClick={fetchSubmissions}
               className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-white hover:bg-[#f8fafc] border border-[#e2e8f0] text-[#0f172a] rounded-xl shadow-xs transition-colors cursor-pointer ml-2"
-              title="Refresh Queue"
+              title="Refresh Review List"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
               <span>Refresh</span>
@@ -197,7 +197,7 @@ export default function AdminEnrollmentReview() {
           <div className="text-center py-20 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
             <RefreshCw size={24} className="animate-spin text-[#2563eb] mx-auto mb-3" />
             <p className="text-xs font-bold text-[#0f172a]">Loading verification records...</p>
-            <p className="text-[11px] text-[#64748b] mt-0.5">Fetching latest student biometrics and OCR data.</p>
+            <p className="text-[11px] text-[#64748b] mt-0.5">Fetching latest student identity records and document details.</p>
           </div>
         ) : filteredList.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-[#e2e8f0] shadow-xs">
@@ -315,10 +315,10 @@ export default function AdminEnrollmentReview() {
                       </div>
                     </div>
 
-                    {/* OCR Field Extraction Results */}
+                    {/* Document Field Extraction Results */}
                     <div className="p-4 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs space-y-2 mb-5">
                       <div className="flex items-center justify-between font-bold text-[#0f172a] pb-2 border-b border-[#e2e8f0]">
-                        <span>Identity Verification & OCR Extraction</span>
+                        <span>Identity & Document Verification</span>
                         <span
                           className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                             isFlagged
@@ -332,7 +332,7 @@ export default function AdminEnrollmentReview() {
 
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
-                          <p className="text-[10px] uppercase font-semibold text-[#64748b]">OCR Extracted USN</p>
+                          <p className="text-[10px] uppercase font-semibold text-[#64748b]">Extracted College ID / USN</p>
                           <p className={`font-mono font-bold mt-0.5 text-xs ${
                             (ocr.extractedUsn || '').toLowerCase() === (st.usn || '').toLowerCase()
                               ? 'text-[#10b981]'
@@ -342,7 +342,7 @@ export default function AdminEnrollmentReview() {
                           </p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase font-semibold text-[#64748b]">OCR Extracted Name</p>
+                          <p className="text-[10px] uppercase font-semibold text-[#64748b]">Extracted Student Name</p>
                           <p className="font-semibold text-[#0f172a] mt-0.5 text-xs truncate">
                             {ocr.extractedName || st.name || 'N/A'}
                           </p>

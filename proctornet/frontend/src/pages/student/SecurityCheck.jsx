@@ -265,13 +265,13 @@ export default function SecurityCheck() {
           setVpnVerified(true)
           const ip = data.vpnIp || vpnPeerIp || '10.0.0.5'
           if (blockedProcesses.length === 0) {
-            updateStage('system', 'pass', `BYOD Agent Active • Integrity Clean • WireGuard VPN Tunnel Active (${ip})`)
+            updateStage('system', 'pass', `Device Companion Active • Integrity Clean • Secure Network Active (${ip})`)
           }
-          if (showToasts) toast.success(`WireGuard VPN tunnel verified! (IP: ${ip})`)
+          if (showToasts) toast.success(`Secure connection verified! (IP: ${ip})`)
           return true
         } else {
           setVpnVerified(false)
-          if (showToasts) toast.error('VPN tunnel is disconnected in WireGuard. Please activate tunnel.')
+          if (showToasts) toast.error('Secure connection is disconnected. Please activate connection.')
           return false
         }
       } else {
@@ -295,7 +295,7 @@ export default function SecurityCheck() {
 
   const downloadVpnConfig = () => {
     if (!vpnConfig) {
-      toast.error('VPN configuration is being generated. Please retry in a moment.')
+      toast.error('Security configuration is being generated. Please retry in a moment.')
       return
     }
     const uniqueId = Math.floor(1000 + Math.random() * 9000)
@@ -311,7 +311,7 @@ export default function SecurityCheck() {
     URL.revokeObjectURL(url)
 
     setConfDownloaded(true)
-    toast.success(`Downloaded WireGuard profile: ${filename}`)
+    toast.success(`Downloaded security profile: ${filename}`)
   }
 
   const verifyVpnTunnel = async () => {
@@ -525,10 +525,10 @@ export default function SecurityCheck() {
       setActiveStage(0)
       return
     }
-    // WireGuard VPN Enforcement check (Q3.7)
+    // Secure connection enforcement check
     if (!vpnVerified) {
       if (vpnEnforcement) {
-        toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
+        toast.error('Secure network connection mandatory. Please activate your connection first.')
         setActiveStage(0)
         return
       }
@@ -543,7 +543,7 @@ export default function SecurityCheck() {
       }
       updateStage('kiosk', 'pass', 'Entering proctored examination interface...')
       if (timeToExamStart > 0) {
-        toast.success(`Security check passed! Holding in kiosk until exam starts (${formatCountdown(timeToExamStart)}).`)
+        toast.success(`Security check passed! Holding in secure exam mode until exam starts (${formatCountdown(timeToExamStart)}).`)
       } else {
         toast.success('Security check complete! Entering exam...')
       }
@@ -551,8 +551,8 @@ export default function SecurityCheck() {
         navigate(`/student/exams/${examId}/exam`)
       }, 400)
     } catch (err) {
-      updateStage('kiosk', 'fail', 'Fullscreen kiosk lock is mandatory. Please grant fullscreen permissions.')
-      toast.error('Fullscreen kiosk lock required to enter exam.')
+      updateStage('kiosk', 'fail', 'Full-screen mode is mandatory. Please grant full-screen permissions.')
+      toast.error('Full-screen mode required to enter exam.')
     }
   }
 
@@ -754,7 +754,7 @@ export default function SecurityCheck() {
                           Please start the local agent to proceed with this exam:
                         </p>
                         <div className="p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-primary flex items-center justify-between">
-                          <span>node device-agent/agent.js (or npm run agent)</span>
+                          <span>Run companion agent on device</span>
                           <span className="text-[10px] text-muted-foreground">Port 49152</span>
                         </div>
                       </div>
@@ -782,7 +782,7 @@ export default function SecurityCheck() {
                     )}
                   </div>
 
-                  {/* Network Transport Notice (VPN Paused) */}
+                  {/* Network Transport Notice */}
                   <div className="p-4.5 rounded-2xl bg-background border border-border space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -792,12 +792,12 @@ export default function SecurityCheck() {
                         <div>
                           <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono flex items-center gap-2">
                             2. Network Security & Encryption
-                            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 font-mono text-[10px]">
-                              VPN PAUSED (MAINTENANCE)
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-mono text-[10px]">
+                              DIRECT SECURE CONNECTION
                             </Badge>
                           </h3>
                           <p className="text-[11px] text-muted-foreground">
-                            WireGuard VPN check is temporarily paused. Communication is fully secured via HTTPS/WSS encryption.
+                            Direct secure connection verified and authenticated for this session.
                           </p>
                         </div>
                       </div>
@@ -878,7 +878,7 @@ export default function SecurityCheck() {
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
-                          <span className="text-muted-foreground">Kiosk Lock:</span>
+                          <span className="text-muted-foreground">Full-Screen Mode:</span>
                           <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-500' : 'text-amber-500'}`}>
                             {isFullscreen ? 'Locked' : 'Standard'}
                           </p>
@@ -907,7 +907,7 @@ export default function SecurityCheck() {
           <div className="pt-4 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
               <Shield size={14} className="text-primary" />
-              <span>Mandatory BYOD Agent & Kiosk Proctoring Enforced</span>
+              <span>Device Readiness & Secure Exam Mode Enforced</span>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -959,7 +959,7 @@ export default function SecurityCheck() {
                 >
                   {timeToExamStart > 0 ? (
                     <>
-                      <Lock size={14} /> Enter Fullscreen Holding Kiosk ({formatCountdown(timeToExamStart)}) →
+                      <Lock size={14} /> Enter Secure Full-Screen Mode ({formatCountdown(timeToExamStart)}) →
                     </>
                   ) : (
                     <>

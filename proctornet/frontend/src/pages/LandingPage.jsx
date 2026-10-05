@@ -4,8 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Shield, ChevronRight, Eye, FileText,
   ArrowRight, Monitor, UserCheck, ChevronDown, Check, CheckCircle2,
-  Laptop, Code2, Video, Cpu, Clock, Calendar, Users,
-  KeyRound, User, Sparkles, Download, Phone
+  Laptop, Video, Cpu, Menu, X
 } from 'lucide-react'
 
 // ── Verified Role Portals (Matching AccioJob Course Card Anatomy) ──
@@ -18,36 +17,36 @@ const rolePortals = [
     iconBg: 'bg-[#eff6ff] text-[#2f80ed] border border-[#dbeafe]',
     borderClass: 'border-[#e2e8f0]',
     bottomBadgeBg: 'bg-[#eff6ff] text-[#2563eb] border-t border-[#dbeafe]',
-    bottomText: 'KIOSK ASSESSMENT ENVIRONMENT',
+    bottomText: 'SECURE EXAM ENVIRONMENT',
     icon: UserCheck,
     title: 'Student Exam Portal',
     subtitle: 'Candidate Assessment Workspace',
-    description: 'Take assigned tests in a locked fullscreen kiosk with automated pre-flight system checks, live biometric identity verification, and standardized MCQ assessments.',
+    description: 'Take assigned exams in a secure full-screen exam mode with guided pre-exam checks, identity verification, and objective-type assessments.',
     highlights: [
-      'Fullscreen lockdown & tab switch guard',
-      'Continuous biometric facial check',
-      'Dual-feed webcam & screen monitoring'
+      'Secure full-screen exam mode',
+      'Identity verification before and during exams',
+      'Live camera & screen monitoring'
     ],
     path: '/student/login',
     buttonText: 'Student Login'
   },
   {
     role: 'Faculty',
-    category: 'creators',
+    category: 'faculty',
     themeColor: 'purple',
     headerBg: 'bg-[#f8fafc]',
     iconBg: 'bg-[#f5f3ff] text-[#7c3aed] border border-[#ede9fe]',
     borderClass: 'border-[#e2e8f0]',
     bottomBadgeBg: 'bg-[#faf5ff] text-[#7c3aed] border-t border-[#ede9fe]',
-    bottomText: 'EVALUATION & QUESTION POOL',
+    bottomText: 'EVALUATION & QUESTION BANK',
     icon: FileText,
     title: 'Faculty Exam Suite',
     subtitle: 'Paper Authoring & Evaluation Workspace',
-    description: 'Create and author question papers with AI-assisted generation, parse existing syllabus PDFs automatically, and evaluate student submissions with cosine similarity scoring.',
+    description: 'Create and manage question papers, build exams from a topic or your own material with a question assistant, and review results and integrity reports.',
     highlights: [
-      'LLaMA-powered question generation',
-      'PDF syllabus & question paper parser',
-      'Automated cosine similarity scoring'
+      'Assisted question creation',
+      'Build exams from your material',
+      'Instant results & integrity reports'
     ],
     path: '/faculty/login',
     buttonText: 'Faculty Login'
@@ -60,15 +59,15 @@ const rolePortals = [
     iconBg: 'bg-[#f0fdf4] text-[#16a34a] border border-[#dcfce7]',
     borderClass: 'border-[#e2e8f0]',
     bottomBadgeBg: 'bg-[#f0fdf4] text-[#16a34a] border-t border-[#dcfce7]',
-    bottomText: 'REAL-TIME MULTI-SEAT GRID',
+    bottomText: 'REAL-TIME SUPERVISION',
     icon: Eye,
     title: 'Live Invigilator Grid',
-    subtitle: 'Real-Time Multi-Seat Lab Supervision',
-    description: 'Supervise concurrent student examination sessions through a live 24-seat video matrix, receive instant anomaly alerts, and communicate via direct two-way audio.',
+    subtitle: 'Real-Time Supervision Workspace',
+    description: 'Supervise concurrent exam sessions from a live monitoring grid, receive instant alerts, and message candidates directly.',
     highlights: [
-      '24-seat real-time video stream grid',
-      'Instant anomaly & multi-face alerts',
-      'Two-way audio & candidate dossier'
+      'Live multi-candidate monitoring',
+      'Instant incident alerts',
+      'Candidate details & messaging'
     ],
     path: '/invigilator-login',
     buttonText: 'Invigilator Login'
@@ -85,11 +84,11 @@ const rolePortals = [
     icon: Shield,
     title: 'Administrator Console',
     subtitle: 'User Approvals & System Parameters',
-    description: 'Configure institutional exam policies, approve faculty and student accounts, provision class rosters with bulk CSV imports, and inspect immutable audit event logs.',
+    description: 'Configure exam policies, approve accounts, onboard rosters in bulk, and review a complete audit trail.',
     highlights: [
-      'Role-based access control (RBAC)',
-      '1-click bulk CSV roster provisioning',
-      'Comprehensive security audit vault'
+      'Role-specific permissions',
+      'Bulk roster onboarding',
+      'Complete activity audit trail'
     ],
     path: '/admin/login',
     buttonText: 'Admin Login'
@@ -100,23 +99,23 @@ const rolePortals = [
 const verificationStages = [
   {
     step: '01',
-    title: 'Environment Audit',
-    desc: 'Validates browser compatibility, screen resolution, and single-monitor exclusivity.'
+    title: 'Environment Check',
+    desc: 'Confirms your browser, display and device meet exam requirements.'
   },
   {
     step: '02',
-    title: 'Media Feeds',
-    desc: 'Requests and verifies active webcam video and microphone audio streams.'
+    title: 'Camera & Screen',
+    desc: 'Checks that your camera and screen sharing are working.'
   },
   {
     step: '03',
-    title: 'Biometric Match',
-    desc: 'Compares live camera embeddings against registered student profile photo.'
+    title: 'Identity Match',
+    desc: 'Matches you against your registered profile photo.'
   },
   {
     step: '04',
-    title: 'Kiosk Lockdown',
-    desc: 'Enforces exclusive fullscreen mode, tab switch detection, and window blur traps.'
+    title: 'Secure Exam Mode',
+    desc: 'Starts full-screen mode with focus and window monitoring.'
   }
 ]
 
@@ -124,33 +123,33 @@ const verificationStages = [
 const builtFeatures = [
   {
     icon: UserCheck,
-    title: 'Biometric Face Recognition',
-    desc: 'Continuously verifies candidate identity using DeepFace neural embeddings.'
+    title: 'Identity Verification',
+    desc: 'Confirms the registered candidate is the one taking the exam.'
   },
   {
     icon: Video,
-    title: 'Concurrent Dual Feeds',
-    desc: 'Streams synchronized webcam and full-screen captures directly to proctors.'
+    title: 'Live Camera & Screen Monitoring',
+    desc: 'Lets invigilators supervise candidates in real time.'
   },
   {
     icon: Monitor,
-    title: 'Browser Kiosk Lockdown',
-    desc: 'Detects window blur, tab switching, and fullscreen exits with instant alert flags.'
+    title: 'Secure Exam Mode',
+    desc: 'Flags tab switches, window changes and full-screen exits instantly.'
   },
   {
     icon: CheckCircle2,
-    title: 'Deterministic MCQ Engine',
-    desc: 'High-throughput single-choice assessments with set-based database evaluation.'
+    title: 'Instant Objective Evaluation',
+    desc: 'Fast, accurate scoring for multiple-choice exams.'
   },
   {
     icon: Cpu,
-    title: 'Integrity Correlation Engine',
-    desc: 'Analyzes anomalies, event timing, and submission patterns across candidate attempts.'
+    title: 'Integrity Insights',
+    desc: 'Highlights unusual activity and patterns across attempts.'
   },
   {
     icon: Laptop,
-    title: 'Host Process Companion',
-    desc: 'Background daemon scanning candidate machines for remote desktop software.'
+    title: 'Device Readiness Check',
+    desc: 'Checks the candidate device before the exam.'
   }
 ]
 
@@ -158,23 +157,23 @@ const builtFeatures = [
 const faqs = [
   {
     q: 'How does the system prevent window and tab switching?',
-    a: 'The assessment interface monitors fullscreen state and window visibility events. Attempting to unfocus the exam window triggers an immediate compliance lockdown modal and logs a security event.'
+    a: 'Focus and visibility are monitored; leaving the exam window shows a compliance prompt and is logged.'
   },
   {
     q: 'How is student identity validated during the exam?',
-    a: 'A registered baseline photo is cross-matched against live camera frames during pre-flight checks and periodic session sampling using DeepFace facial embeddings.'
+    a: 'Your registered photo is compared with your live camera during pre-exam checks and, where your institution enables it, periodically during the exam.'
   },
   {
     q: 'What question formats are supported for faculty?',
-    a: 'Faculty create standardized single-correct-choice multiple-choice assessments with 2 to 6 options, custom positive marks, and negative marking rules.'
+    a: 'Single-correct multiple-choice, 2–6 options, positive and negative marking.'
   },
   {
     q: 'What supervisory controls do invigilators have?',
-    a: 'Invigilators monitor a multi-seat live video grid, receive instant violation notifications, inspect candidate incident dossiers, broadcast warnings, and manage session status.'
+    a: 'Live monitoring, instant alerts, incident details, warnings, pause/resume.'
   },
   {
-    q: 'What is the role of the companion device agent?',
-    a: 'The local companion agent scans active background processes for prohibited remote-desktop tools (such as AnyDesk or TeamViewer) and verifies network configuration.'
+    q: 'What is checked during the pre-exam device check?',
+    a: 'A pre-exam check confirms the device is ready and free of prohibited remote-access software.'
   }
 ]
 
@@ -182,6 +181,7 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const { isAuthenticated, role } = useAuth()
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeFaq, setActiveFaq] = useState(0)
   const [selectedTab, setSelectedTab] = useState('all')
   const [activeSection, setActiveSection] = useState('')
@@ -234,9 +234,9 @@ export default function LandingPage() {
 
   const filteredPortals = rolePortals.filter((p) => {
     if (selectedTab === 'all') return true
-    if (selectedTab === 'candidates' && p.role === 'Student') return true
-    if (selectedTab === 'faculty' && p.role === 'Faculty') return true
-    if (selectedTab === 'supervisors' && (p.role === 'Invigilator' || p.role === 'Admin')) return true
+    if (selectedTab === 'candidates') return p.category === 'candidates'
+    if (selectedTab === 'faculty') return p.category === 'faculty'
+    if (selectedTab === 'supervisors') return p.category === 'supervisors'
     return true
   })
 
@@ -247,7 +247,7 @@ export default function LandingPage() {
         <div className="w-full px-6 lg:px-12 h-[72px] flex items-center justify-between">
           {/* Far Left: Brand Logo & Title */}
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <img src="/logo.png" alt="ProctorNet" className="w-9 h-9 object-contain rounded-xl" />
+            <img src="/logo.png" alt="" className="w-9 h-9 object-contain rounded-xl" />
             <div>
               <div className="flex items-center">
                 <span className="text-xl font-bold tracking-tight text-[#18181b]">Proctor</span>
@@ -258,13 +258,13 @@ export default function LandingPage() {
           </div>
 
           {/* Far Right: Nav Links + Action Buttons grouped together (Exact AccioJob Layout) */}
-          <div className="flex items-center gap-8 lg:gap-10">
+          <div className="flex items-center gap-4 lg:gap-10">
             {/* Center-Right Nav Links (In Exact Order of Landing Page Sections) */}
             <nav className="hidden lg:flex items-center gap-8 text-sm font-medium">
               {[
                 { id: 'specs', label: 'Specifications' },
                 { id: 'portals', label: 'Portals' },
-                { id: 'pipeline', label: 'Security Pipeline' },
+                { id: 'pipeline', label: 'Pre-Exam Checks' },
                 { id: 'features', label: 'Features' }
               ].map((item) => {
                 const isActive = activeSection === item.id
@@ -334,8 +334,17 @@ export default function LandingPage() {
               </div>
             </nav>
 
+            {/* Mobile Menu Toggle Button (Fix H-03) */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="lg:hidden p-2 text-[#4b5563] hover:text-[#18181b] rounded-lg border border-[#e5e7eb] cursor-pointer"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+
             {/* Single "Get Started" Button (Direct to Student Portal Login) */}
-            <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-3">
               {isAuthenticated ? (
                 <button
                   onClick={() => navigate(`/${role}/dashboard`)}
@@ -355,6 +364,63 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        {/* Mobile Navigation Drawer (Fix H-03) */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden border-t border-[#e5e7eb] bg-white px-6 py-4 space-y-3 shadow-lg">
+            <a
+              href="#specs"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-medium text-[#4b5563] hover:text-[#18181b]"
+            >
+              Specifications
+            </a>
+            <a
+              href="#portals"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-medium text-[#4b5563] hover:text-[#18181b]"
+            >
+              Portals
+            </a>
+            <a
+              href="#pipeline"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-medium text-[#4b5563] hover:text-[#18181b]"
+            >
+              Pre-Exam Checks
+            </a>
+            <a
+              href="#features"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-medium text-[#4b5563] hover:text-[#18181b]"
+            >
+              Features
+            </a>
+            <a
+              href="#faqs"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-2 text-sm font-medium text-[#4b5563] hover:text-[#18181b]"
+            >
+              FAQs
+            </a>
+            <div className="pt-2 border-t border-[#f1f5f9] flex flex-col gap-2">
+              <Link
+                to="/student/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center bg-[#2f80ed] text-white font-bold py-2.5 rounded-xl text-sm"
+              >
+                Candidate Login
+              </Link>
+              <Link
+                to="/faculty/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full text-center border border-[#e2e8f0] text-[#18181b] font-medium py-2 rounded-xl text-sm"
+              >
+                Faculty Login
+              </Link>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ── Full-Width Hero Section ── */}
@@ -364,13 +430,13 @@ export default function LandingPage() {
           {/* Left Column: Headline, Subtitle, Trust Strip */}
           <div className="lg:col-span-6 space-y-6 text-left">
             <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-bold tracking-tight text-[#18181b] leading-[1.12]">
-              Launch Your Exams with <br />
-              <span className="text-[#2f80ed]">AI-Powered Proctoring</span> & <br />
-              <span className="text-[#1c4d8e]">Gated Integrity</span>
+              Run Secure Exams with <br />
+              <span className="text-[#2f80ed]">Smart Proctoring</span> & <br />
+              <span className="text-[#1c4d8e]">Verified Integrity</span>
             </h1>
 
             <p className="text-base sm:text-lg text-[#52525b] font-medium leading-relaxed">
-              Conduct high-stakes university and college examinations with continuous biometric verification, dual webcam & screen streams, fullscreen kiosk lockdown, and cosine similarity scanning.
+              Conduct high-stakes university and college examinations with identity verification, live camera and screen monitoring, a secure exam mode, and automated integrity checks.
             </p>
 
             {/* Institutional Trust Badges */}
@@ -380,8 +446,8 @@ export default function LandingPage() {
                   <UserCheck size={18} />
                 </div>
                 <div>
-                  <div className="font-bold text-[#18181b]">DeepFace Neural</div>
-                  <div className="text-[11px] text-[#71717a]">Biometric Verification</div>
+                  <div className="font-bold text-[#18181b]">Identity Verification</div>
+                  <div className="text-[11px] text-[#71717a]">Before and during the exam</div>
                 </div>
               </div>
 
@@ -392,8 +458,8 @@ export default function LandingPage() {
                   <Video size={18} />
                 </div>
                 <div>
-                  <div className="font-bold text-[#18181b]">Dual Stream 1080p</div>
-                  <div className="text-[11px] text-[#71717a]">Webcam & Screen</div>
+                  <div className="font-bold text-[#18181b]">Live Monitoring</div>
+                  <div className="text-[11px] text-[#71717a]">Camera & screen</div>
                 </div>
               </div>
 
@@ -404,8 +470,8 @@ export default function LandingPage() {
                   <CheckCircle2 size={18} />
                 </div>
                 <div>
-                  <div className="font-bold text-[#18181b]">Deterministic MCQ</div>
-                  <div className="text-[11px] text-[#71717a]">Scalable Set-Based Grading</div>
+                  <div className="font-bold text-[#18181b]">Instant Evaluation</div>
+                  <div className="text-[11px] text-[#71717a]">Objective exams</div>
                 </div>
               </div>
             </div>
@@ -414,13 +480,12 @@ export default function LandingPage() {
           {/* Right Column: Expansive College Students Showcase Photo */}
           <div className="lg:col-span-6 flex justify-center w-full">
             <div className="relative w-full group">
-              {/* Subtle ambient light-blue halo behind image */}
               <div className="absolute -inset-1.5 bg-gradient-to-tr from-[#2f80ed]/20 via-[#38bdf8]/20 to-[#6366f1]/15 rounded-3xl blur-2xl opacity-70 group-hover:opacity-100 transition duration-500 pointer-events-none" />
               
               <div className="relative w-full bg-white border border-[#e5e7eb] rounded-3xl overflow-hidden shadow-[0_20px_50px_-12px_rgba(16,24,40,0.18)]">
                 <img
                   src="/hero-students.jpg"
-                  alt="ProctorNet College Students"
+                  alt=""
                   className="w-full h-auto max-h-[560px] object-cover object-center rounded-3xl transition-transform duration-500 group-hover:scale-[1.01]"
                   loading="eager"
                 />
@@ -444,26 +509,26 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-white/15 py-9 px-6 text-center">
             <div className="py-4 px-4 flex flex-col items-center justify-center">
               <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">4-Stage</div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Pre-Flight Security</div>
-              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Hardware, camera & biometrics</p>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Pre-Exam Checks</div>
+              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Device, camera & identity</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
-              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Dual Stream</div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Webcam & Screen</div>
-              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Concurrent 1080p feeds</p>
+              <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">Live</div>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Camera & Screen Monitoring</div>
+              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Real-time supervision</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
               <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">100% MCQ</div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Single-Choice Engine</div>
-              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Instant set-based SQL grading</p>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Objective Exams</div>
+              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Automatic evaluation</p>
             </div>
 
             <div className="py-4 px-4 flex flex-col items-center justify-center">
               <div className="text-3xl lg:text-4xl font-bold text-white tracking-tight">4 Portals</div>
-              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Role Consoles</div>
-              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Candidate, Faculty, Proctor & Admin</p>
+              <div className="text-xs font-bold uppercase tracking-wider text-[#93c5fd] mt-1">Role Workspaces</div>
+              <p className="text-[11px] text-white/70 mt-1 font-medium max-w-[220px]">Candidate, Faculty, Invigilator & Admin</p>
             </div>
           </div>
         </div>
@@ -474,143 +539,143 @@ export default function LandingPage() {
         <div className="w-full">
           {/* Section Header */}
           <div className="text-center mb-12">
-          <div className="inline-block">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PORTALS</span>
-            <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
-          </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
-            <span className="text-[#2f80ed]">Candidate</span>, Faculty, and Invigilator Consoles
-          </h2>
-          <p className="text-sm text-[#52525b] mt-2 font-medium max-w-2xl mx-auto">
-            Dedicated role-based workspaces engineered for every participant in the examination lifecycle.
-          </p>
+            <div className="inline-block">
+              <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PORTALS</span>
+              <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
+              <span className="text-[#2f80ed]">Candidate</span>, Faculty, and Invigilator Consoles
+            </h2>
+            <p className="text-sm text-[#52525b] mt-2 font-medium max-w-2xl mx-auto">
+              Dedicated role-based workspaces engineered for every participant in the examination lifecycle.
+            </p>
 
-          {/* Segmented Filter Pills */}
-          <div className="mt-8 inline-flex items-center p-1.5 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl shadow-xs">
-            <button
-              onClick={() => setSelectedTab('all')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedTab === 'all'
-                  ? 'bg-white text-[#2f80ed] shadow-xs'
-                  : 'text-[#52525b] hover:text-[#18181b]'
-              }`}
-            >
-              All Portals
-            </button>
-            <button
-              onClick={() => setSelectedTab('candidates')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedTab === 'candidates'
-                  ? 'bg-white text-[#2f80ed] shadow-xs'
-                  : 'text-[#52525b] hover:text-[#18181b]'
-              }`}
-            >
-              Candidate Console
-            </button>
-            <button
-              onClick={() => setSelectedTab('faculty')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedTab === 'faculty'
-                  ? 'bg-white text-[#2f80ed] shadow-xs'
-                  : 'text-[#52525b] hover:text-[#18181b]'
-              }`}
-            >
-              Faculty Workspace
-            </button>
-            <button
-              onClick={() => setSelectedTab('supervisors')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                selectedTab === 'supervisors'
-                  ? 'bg-white text-[#2f80ed] shadow-xs'
-                  : 'text-[#52525b] hover:text-[#18181b]'
-              }`}
-            >
-              Supervision & Admin
-            </button>
-          </div>
-        </div>
-
-        {/* 4 Cards Grid - Spanning across full width with gap-8 */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
-          {filteredPortals.map((portal) => {
-            const Icon = portal.icon
-            return (
-              <div
-                key={portal.role}
-                className={`bg-white border ${portal.borderClass} rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200`}
+            {/* Segmented Filter Pills (Fix H-03) */}
+            <div className="mt-8 inline-flex items-center p-1.5 bg-[#f1f5f9] border border-[#e2e8f0] rounded-2xl shadow-xs">
+              <button
+                onClick={() => setSelectedTab('all')}
+                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedTab === 'all'
+                    ? 'bg-white text-[#2f80ed] shadow-xs'
+                    : 'text-[#52525b] hover:text-[#18181b]'
+                }`}
               >
-                {/* Header Banner */}
-                <div>
-                  <div className={`${portal.headerBg} p-7 relative border-b ${portal.borderClass}`}>
-                    <div className="flex items-center justify-between">
-                      <div className={`w-12 h-12 rounded-2xl ${portal.iconBg} flex items-center justify-center shadow-xs`}>
-                        <Icon size={24} />
-                      </div>
-                    </div>
+                All Portals
+              </button>
+              <button
+                onClick={() => setSelectedTab('candidates')}
+                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedTab === 'candidates'
+                    ? 'bg-white text-[#2f80ed] shadow-xs'
+                    : 'text-[#52525b] hover:text-[#18181b]'
+                }`}
+              >
+                Candidate Console
+              </button>
+              <button
+                onClick={() => setSelectedTab('faculty')}
+                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedTab === 'faculty'
+                    ? 'bg-white text-[#2f80ed] shadow-xs'
+                    : 'text-[#52525b] hover:text-[#18181b]'
+                }`}
+              >
+                Faculty Workspace
+              </button>
+              <button
+                onClick={() => setSelectedTab('supervisors')}
+                className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  selectedTab === 'supervisors'
+                    ? 'bg-white text-[#2f80ed] shadow-xs'
+                    : 'text-[#52525b] hover:text-[#18181b]'
+                }`}
+              >
+                Supervision & Admin
+              </button>
+            </div>
+          </div>
 
-                    <div className="mt-5">
-                      <h3 className="text-xl font-bold text-[#18181b] tracking-tight">{portal.title}</h3>
-                      <p className="text-xs text-[#64748b] font-normal mt-1">{portal.subtitle}</p>
-                    </div>
-                  </div>
-
-                  {/* Simple Clean Paragraph */}
-                  <div className="p-7">
-                    <p className="text-xs text-[#52525b] leading-relaxed font-normal">
-                      {portal.description}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Bottom Section */}
-                <div>
-                  {/* Key Feature Highlights Checklist (Replaces cramped stats box) */}
-                  <div className="px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5">
-                    {portal.highlights.map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2.5 text-xs text-[#334155] font-medium">
-                        <div className="w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0">
-                          <Check size={10} strokeWidth={3} />
+          {/* 4 Cards Grid - Spanning across full width with gap-8 */}
+          <div className="w-full grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
+            {filteredPortals.map((portal) => {
+              const Icon = portal.icon
+              return (
+                <div
+                  key={portal.role}
+                  className={`bg-white border ${portal.borderClass} rounded-3xl overflow-hidden shadow-[0_4px_16px_-2px_rgba(16,24,40,0.08),0_2px_6px_-2px_rgba(16,24,40,0.04)] flex flex-col justify-between hover:shadow-2xl transition-all duration-200`}
+                >
+                  {/* Header Banner */}
+                  <div>
+                    <div className={`${portal.headerBg} p-7 relative border-b ${portal.borderClass}`}>
+                      <div className="flex items-center justify-between">
+                        <div className={`w-12 h-12 rounded-2xl ${portal.iconBg} flex items-center justify-center shadow-xs`}>
+                          <Icon size={24} />
                         </div>
-                        <span className="leading-snug">{item}</span>
                       </div>
-                    ))}
+
+                      <div className="mt-5">
+                        <h3 className="text-xl font-bold text-[#18181b] tracking-tight">{portal.title}</h3>
+                        <p className="text-xs text-[#64748b] font-normal mt-1">{portal.subtitle}</p>
+                      </div>
+                    </div>
+
+                    {/* Simple Clean Paragraph */}
+                    <div className="p-7">
+                      <p className="text-xs text-[#52525b] leading-relaxed font-normal">
+                        {portal.description}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Single Centered Access Button */}
-                  <div className="p-6 pt-4">
-                    <button
-                      onClick={() => navigate(portal.path)}
-                      className="w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      <span>{portal.buttonText}</span>
-                      <ChevronRight size={15} />
-                    </button>
-                  </div>
+                  {/* Bottom Section */}
+                  <div>
+                    {/* Key Feature Highlights Checklist */}
+                    <div className="px-7 py-4 bg-[#fafbfc] border-t border-b border-[#f1f5f9] space-y-2.5">
+                      {portal.highlights.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2.5 text-xs text-[#334155] font-medium">
+                          <div className="w-4 h-4 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center shrink-0">
+                            <Check size={10} strokeWidth={3} />
+                          </div>
+                          <span className="leading-snug">{item}</span>
+                        </div>
+                      ))}
+                    </div>
 
-                  {/* Light Bottom Ribbon */}
-                  <div className={`${portal.bottomBadgeBg} py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest`}>
-                    {portal.bottomText}
+                    {/* Single Centered Access Button */}
+                    <div className="p-6 pt-4">
+                      <button
+                        onClick={() => navigate(portal.path)}
+                        className="w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] text-white text-xs font-semibold py-3.5 px-4 rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span>{portal.buttonText}</span>
+                        <ChevronRight size={15} />
+                      </button>
+                    </div>
+
+                    {/* Light Bottom Ribbon */}
+                    <div className={`${portal.bottomBadgeBg} py-2.5 px-4 text-center text-[10px] font-bold uppercase tracking-widest`}>
+                      {portal.bottomText}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-      {/* ── Full-Width 4-Stage Security Pipeline Section (Solid White Canvas) ── */}
+      {/* ── Full-Width 4-Stage Security Pipeline Section ── */}
       <section id="pipeline" className="relative w-full py-20 px-6 lg:px-12 bg-white border-b border-[#e5e7eb] overflow-hidden">
         <div className="text-center mb-16">
           <div className="inline-block">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PRE-FLIGHT GATEWAY</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">PRE-EXAM CHECKS</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
-            4-Stage Security Check Pipeline
+            4-Stage Pre-Exam Check Pipeline
           </h2>
           <p className="text-sm text-[#52525b] mt-3 font-medium max-w-2xl mx-auto">
-            Candidates must satisfy all four automated pre-flight security checks before entering the proctored test room.
+            Candidates must satisfy all four pre-exam checks before entering the proctored test room.
           </p>
         </div>
 
@@ -630,18 +695,18 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Full-Width Built-in Proctoring Engines Grid (Solid Off-White Canvas) ── */}
+      {/* ── Full-Width Built-in Proctoring Engines Grid ── */}
       <section id="features" className="relative w-full py-20 px-6 lg:px-12 bg-[#f8f9fa] border-b border-[#e5e7eb] overflow-hidden">
         <div className="text-center mb-16">
           <div className="inline-block">
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">INTEGRITY ENGINES</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#1c4d8e]">INTEGRITY FEATURES</span>
             <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
-            Built-in Proctoring Engines
+            Platform Security & Integrity Services
           </h2>
           <p className="text-sm text-[#52525b] mt-3 font-medium">
-            Multi-layer automated monitoring combining computer vision, desktop kiosk lockdown, and similarity scanning.
+            Layered monitoring that combines identity checks, secure exam mode, and integrity analysis.
           </p>
         </div>
 
@@ -732,11 +797,11 @@ export default function LandingPage() {
         <div className="w-full px-6 lg:px-12 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <img src="/logo.png" alt="ProctorNet Logo" className="w-8 h-8 object-contain rounded-lg shadow-xs" />
+              <img src="/logo.png" alt="" className="w-8 h-8 object-contain rounded-lg shadow-xs" />
               <span className="font-bold text-base text-[#18181b]">ProctorNet</span>
             </div>
             <p className="text-xs text-[#52525b] leading-relaxed">
-              Online examination proctoring platform with AI facial verification, dual-stream monitoring, and browser kiosk lockdown.
+              Online examination proctoring platform with identity verification, live monitoring, and a secure exam mode.
             </p>
           </div>
 
@@ -753,10 +818,10 @@ export default function LandingPage() {
           <div>
             <h4 className="text-xs font-bold text-[#2f80ed] uppercase tracking-wider mb-4">Security Modules</h4>
             <ul className="space-y-2.5 text-xs text-[#52525b]">
-              <li><span>DeepFace Biometric Verification</span></li>
-              <li><span>Fullscreen Kiosk Lockdown</span></li>
-              <li><span>Deterministic MCQ Engine</span></li>
-              <li><span>BYOD Process Companion Agent</span></li>
+              <li><span>Identity Verification</span></li>
+              <li><span>Secure Exam Mode</span></li>
+              <li><span>Instant MCQ Evaluation</span></li>
+              <li><span>Device Readiness Check</span></li>
             </ul>
           </div>
 

@@ -70,10 +70,10 @@ export default function FacultyResults() {
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-      toast.success('CSV Audit Report downloaded successfully!')
+      toast.success('Exam audit report downloaded successfully!')
     } catch (err) {
-      console.error('[Export CSV Error]', err)
-      toast.error('Failed to export CSV report')
+      console.error('[Export Report Error]', err)
+      toast.error('Failed to export audit report')
     }
   }
 
@@ -109,7 +109,7 @@ export default function FacultyResults() {
             onClick={() => handleExportCSV()}
             className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2f80ed] hover:bg-[#2563eb] text-white font-semibold text-xs rounded-xl shadow-xs transition-all self-start sm:self-auto cursor-pointer"
           >
-            <Download size={16} /> Export CSV Audit Report
+            <Download size={16} /> Export Audit Report
           </button>
         </div>
 

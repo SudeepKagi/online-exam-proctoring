@@ -201,7 +201,7 @@ export default function StudentDossier() {
 
                 <div>
                   <div className="flex justify-between font-normal text-slate-700 mb-1">
-                    <span>Network WireGuard Isolation</span>
+                    <span>Secure Network Isolation</span>
                     <span className="text-[#2f80ed] font-semibold">CONFIRMED</span>
                   </div>
                   <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -211,7 +211,7 @@ export default function StudentDossier() {
 
                 <div>
                   <div className="flex justify-between font-normal text-slate-700 mb-1">
-                    <span>Hardware Kiosk Lock</span>
+                    <span>Secure Fullscreen Exam Mode</span>
                     <span className="text-emerald-600 font-semibold">ENFORCED</span>
                   </div>
                   <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">

@@ -218,7 +218,7 @@ export default function CreateStudentAccount() {
               }`}
             >
               <Upload size={14} />
-              <span>Bulk Upload (Excel / CSV)</span>
+              <span>Bulk Roster Onboarding</span>
             </button>
           </div>
         </div>
@@ -309,7 +309,7 @@ export default function CreateStudentAccount() {
                     >
                       <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
                       <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
-                      <option value="Artificial Intelligence & Machine Learning">AI & Machine Learning (AIML)</option>
+                      <option value="Data Science & Computing">Data Science & Computing (DSC)</option>
                       <option value="Electronics & Communication">Electronics & Communication (ECE)</option>
                       <option value="Electrical & Electronics">Electrical & Electronics (EEE)</option>
                       <option value="Mechanical Engineering">Mechanical Engineering</option>
@@ -451,7 +451,7 @@ export default function CreateStudentAccount() {
                 <div>
                   <h2 className="text-sm font-bold text-[#0f172a]">Batch Student Import</h2>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    Upload an Excel (.xlsx, .xls) file containing student rosters to generate student accounts in batch.
+                    Upload a spreadsheet file containing student rosters to generate student accounts in batch.
                   </p>
                 </div>
                 <button
@@ -479,7 +479,7 @@ export default function CreateStudentAccount() {
                   <span className="text-xs font-bold text-[#0f172a]">
                     {bulkFile ? bulkFile.name : 'Click to upload or drag & drop student file'}
                   </span>
-                  <span className="text-[11px] text-[#64748b] mt-1">Supports .xlsx, .xls, and .csv formats (Max 10MB)</span>
+                  <span className="text-[11px] text-[#64748b] mt-1">Supports spreadsheet roster formats (Max 10MB)</span>
                 </label>
 
                 {bulkFile && (

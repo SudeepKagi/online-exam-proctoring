@@ -530,12 +530,12 @@ export default function ExamInterface() {
             setSuspendedState(prev => {
               if (!prev?.active) {
                 emitViolation?.('VPN_DISCONNECT', 'CRITICAL', {
-                  details: 'WireGuard tunnel dropped during active test'
+                  details: 'Secure connection dropped during active test'
                 })
               }
               return {
                 active: true,
-                reason: 'WireGuard VPN tunnel disconnected. Network isolation required.',
+                reason: 'Secure network connection disconnected. Network isolation required.',
                 isVpn: true
               }
             })
@@ -666,7 +666,7 @@ export default function ExamInterface() {
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Examination Submitted</h2>
         <p className="text-sm text-slate-400 max-w-md mb-6 leading-relaxed">
-          Your answers have been securely recorded and verified. Proctoring monitors and WireGuard isolation peers have been deactivated.
+          Your answers have been securely recorded and verified. Proctoring monitors and secure isolation sessions have been deactivated.
         </p>
 
         <div className="grid grid-cols-2 gap-4 max-w-xs w-full mb-6 text-left">
@@ -729,7 +729,7 @@ export default function ExamInterface() {
             {suspendedState?.isVpn ? <WifiOff size={32} /> : <Clock size={32} />}
           </div>
           <h3 className="text-xl font-bold text-white mb-2">
-            {suspendedState?.isVpn ? 'WireGuard VPN Disconnected' : 'Examination Session Suspended'}
+            {suspendedState?.isVpn ? 'Secure Network Disconnected' : 'Examination Session Suspended'}
           </h3>
           <p className="text-sm text-slate-300 max-w-md mb-4 leading-relaxed font-medium">
             {suspendedState?.reason}
@@ -737,9 +737,9 @@ export default function ExamInterface() {
           {suspendedState?.isVpn && (
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 max-w-md text-xs text-slate-400 mb-6 text-left">
               <p className="font-bold text-white mb-1">How to resume:</p>
-              <p>1. Open the WireGuard application on your computer.</p>
-              <p>2. Select the assigned exam tunnel and click <strong className="text-amber-400">Activate</strong>.</p>
-              <p>3. This window will automatically resume as soon as the tunnel reconnects.</p>
+              <p>1. Open your secure connection client or local companion.</p>
+              <p>2. Select the assigned exam profile and click <strong className="text-amber-400">Connect</strong>.</p>
+              <p>3. This window will automatically resume as soon as the secure connection reconnects.</p>
             </div>
           )}
         </div>

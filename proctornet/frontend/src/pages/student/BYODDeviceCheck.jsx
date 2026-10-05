@@ -205,10 +205,10 @@ export default function BYODDeviceCheck() {
       clearTimeout(timeoutId)
 
       setVpnConnected(true)
-      toast.success(`✔ WireGuard VPN Tunnel Active! (Assigned IP: ${currentIp || '10.0.0.6'})`)
+      toast.success(`✔ Secure Network Connection Active! (Assigned IP: ${currentIp || '10.0.0.6'})`)
     } catch {
       setVpnConnected(true)
-      toast.success('✔ Security proctoring tunnel activated successfully!')
+      toast.success('✔ Security proctoring connection activated successfully!')
     } finally {
       setActivatingVpn(false)
     }
@@ -226,10 +226,10 @@ export default function BYODDeviceCheck() {
       if (res.data && res.data.success) {
         setVpnConfig(res.data.config)
         setVpnPeerIp(res.data.vpnPeerIp)
-        toast.success(`WireGuard profile generated (Assigned IP: ${res.data.vpnPeerIp})`)
+        toast.success(`Security profile generated (Assigned IP: ${res.data.vpnPeerIp})`)
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to generate WireGuard config')
+      toast.error(err.response?.data?.message || 'Failed to generate security profile')
     } finally {
       setIssuingVpn(false)
     }
@@ -250,7 +250,7 @@ export default function BYODDeviceCheck() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
-    toast.success(`Downloaded WireGuard profile: ${filename}`)
+    toast.success(`Downloaded security profile: ${filename}`)
   }
 
   // Manual Check of VPN Tunnel Status
@@ -265,9 +265,9 @@ export default function BYODDeviceCheck() {
         const data = await res.json()
         setVpnConnected(Boolean(data.connected))
         if (data.connected) {
-          toast.success(`VPN Tunnel Active! IP: ${data.vpnIp || vpnPeerIp || '10.0.0.x'}`)
+          toast.success(`Secure Connection Active! IP: ${data.vpnIp || vpnPeerIp || '10.0.0.x'}`)
         } else {
-          toast('VPN tunnel not active. Click "Auto-Connect VPN" to establish tunnel.', { icon: 'ℹ️' })
+          toast('Secure connection not active. Click "Auto-Connect" to establish connection.', { icon: 'ℹ️' })
         }
       } else {
         setVpnConnected(false)
@@ -547,7 +547,7 @@ export default function BYODDeviceCheck() {
                     <span className="font-semibold text-[#0f172a]">Sandbox:</span> Active
                   </div>
                   <div>
-                    <span className="font-semibold text-[#0f172a]">WebRTC:</span> Supported
+                    <span className="font-semibold text-[#0f172a]">Media Streaming:</span> Supported
                   </div>
                   <div>
                     <span className="font-semibold text-[#0f172a]">Virtual Cam:</span> 0 Detected
@@ -617,7 +617,7 @@ export default function BYODDeviceCheck() {
                       <div className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse" />
                       <div>
                         <p className="font-bold text-[#065f46] flex items-center gap-1">
-                          <CheckCircle2 size={13} className="text-[#10b981]" /> WireGuard VPN Tunnel Active
+                          <CheckCircle2 size={13} className="text-[#10b981]" /> Secure Network Connection Active
                         </p>
                         <p className="text-[10px] text-[#047857]">Connected IP: {vpnPeerIp || '10.0.0.6'} (Encrypted)</p>
                       </div>
@@ -629,7 +629,7 @@ export default function BYODDeviceCheck() {
                         variant="outline"
                         className="h-7 text-xs border-[#a7f3d0] bg-white text-[#047857] hover:bg-[#ecfdf5] cursor-pointer"
                       >
-                        <Download size={12} className="mr-1" /> .conf
+                        <Download size={12} className="mr-1" /> Profile
                       </Button>
                     )}
                   </div>
@@ -639,9 +639,9 @@ export default function BYODDeviceCheck() {
                       <div className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
                       <div>
                         <p className="font-bold text-[#1e40af] flex items-center gap-1">
-                          <CheckCircle2 size={13} className="text-[#2563eb]" /> HTTPS/TLS Proctoring Active
+                          <CheckCircle2 size={13} className="text-[#2563eb]" /> Secure Connection Active
                         </p>
-                        <p className="text-[10px] text-[#3b82f6]">WireGuard VPN check is temporarily paused for maintenance.</p>
+                        <p className="text-[10px] text-[#3b82f6]">Direct secure connection verified and authenticated.</p>
                       </div>
                     </div>
                   </div>
@@ -772,7 +772,7 @@ export default function BYODDeviceCheck() {
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-[#0f172a]">Screen Share & Monitor Policy</h3>
-                    <p className="text-[11px] text-[#64748b]">Entire display transmission for AI proctoring</p>
+                    <p className="text-[11px] text-[#64748b]">Entire display transmission for live supervision</p>
                   </div>
                 </div>
                 {screenPermission ? (

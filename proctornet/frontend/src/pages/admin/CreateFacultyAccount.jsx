@@ -216,7 +216,7 @@ export default function CreateFacultyAccount() {
               }`}
             >
               <Upload size={14} />
-              <span>Bulk Upload (Excel / CSV)</span>
+              <span>Bulk Roster Onboarding</span>
             </button>
           </div>
         </div>
@@ -432,7 +432,7 @@ export default function CreateFacultyAccount() {
                 <div>
                   <h2 className="text-sm font-bold text-[#0f172a]">Batch Faculty Import</h2>
                   <p className="text-xs text-[#64748b] mt-0.5">
-                    Upload an Excel (.xlsx, .xls) file containing instructor rosters to generate faculty accounts in batch.
+                    Upload a spreadsheet file containing instructor rosters to generate faculty accounts in batch.
                   </p>
                 </div>
                 <button
@@ -460,7 +460,7 @@ export default function CreateFacultyAccount() {
                   <span className="text-xs font-bold text-[#0f172a]">
                     {bulkFile ? bulkFile.name : 'Click to upload or drag & drop faculty file'}
                   </span>
-                  <span className="text-[11px] text-[#64748b] mt-1">Supports .xlsx, .xls, and .csv formats (Max 10MB)</span>
+                  <span className="text-[11px] text-[#64748b] mt-1">Supports spreadsheet roster formats (Max 10MB)</span>
                 </label>
 
                 {bulkFile && (
