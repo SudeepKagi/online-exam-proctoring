@@ -222,10 +222,20 @@ const { rabbitmq } = require('./infra/rabbitmq/client')
 app.use(requestIdMiddleware)
 app.use(loadShed)
 
-// Seamless URL compatibility rewrite: /api/* -> /api/v1/*
+// Seamless URL compatibility rewrite: /api/* or un-prefixed -> /api/v1/*
 app.use((req, res, next) => {
-  if (req.url.startsWith('/api/') && !req.url.startsWith('/api/v1/')) {
-    req.url = req.url.replace('/api/', '/api/v1/')
+  if (
+    !req.url.startsWith('/api/v1') &&
+    !req.url.startsWith('/health') &&
+    !req.url.startsWith('/readyz') &&
+    !req.url.startsWith('/metrics') &&
+    !req.url.startsWith('/socket.io')
+  ) {
+    if (req.url.startsWith('/api/')) {
+      req.url = req.url.replace('/api/', '/api/v1/')
+    } else {
+      req.url = '/api/v1' + (req.url.startsWith('/') ? req.url : '/' + req.url)
+    }
   }
   next()
 })

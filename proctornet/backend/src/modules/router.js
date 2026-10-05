@@ -32,11 +32,25 @@ router.get('/health', (req, res) => {
   })
 })
 
+// Public System Config under /api/v1/config (Q3 Task 7)
+router.get('/config', (req, res) => {
+  const vpnEnforcement = process.env.VPN_ENABLED === 'true' || process.env.VPN_ENFORCEMENT === 'true'
+  res.status(200).json({
+    vpnEnforcement,
+    autosaveMaxBatch: 100,
+    serverTime: new Date().toISOString()
+  })
+})
+
 // Role & Entity-Scoped Subrouters
 router.use('/auth', authController)
 router.use('/admin', adminController)
 router.use('/faculty', facultyController)
 router.use('/student', studentController)
+router.use('/enrollment', (req, res, next) => {
+  req.url = '/enrollment' + req.url
+  studentController(req, res, next)
+})
 router.use('/invigilator', invigilatorController)
 router.use('/notifications', notificationsController)
 

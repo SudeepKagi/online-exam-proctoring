@@ -64,10 +64,18 @@ class AttemptService {
       }
     }
 
-    // 4. Handle terminal / non-active attempt statuses
-    if (attemptStateMachine.isTerminal(attempt.status)) {
+    // 4. Handle terminal / non-active attempt statuses (E-03: Suspended/READY/expired resume must not receive question content)
+    const isExpired = Boolean(attempt.expiresAt && new Date() > new Date(attempt.expiresAt))
+    if (attemptStateMachine.isTerminal(attempt.status) || attempt.status === 'SUSPENDED' || attempt.status === 'READY' || isExpired) {
+      if (isExpired && attempt.status === 'ACTIVE') {
+        attempt.status = 'EXPIRED'
+        await prisma.examAttempt.update({
+          where: { id: attempt.id },
+          data: { status: 'EXPIRED' }
+        }).catch(() => {})
+      }
       return {
-        isTerminal: true,
+        isTerminal: attemptStateMachine.isTerminal(attempt.status) || isExpired,
         attempt: toStudentAttemptDTO(attempt, [])
       }
     }
@@ -186,7 +194,8 @@ class AttemptService {
       throw new ForbiddenError('Access denied: You do not own this attempt')
     }
 
-    if (attemptStateMachine.isTerminal(attempt.status)) {
+    const isExpired = Boolean(attempt.expiresAt && new Date() > new Date(attempt.expiresAt))
+    if (attemptStateMachine.isTerminal(attempt.status) || attempt.status === 'SUSPENDED' || attempt.status === 'READY' || isExpired) {
       return toStudentAttemptDTO(attempt, [])
     }
 

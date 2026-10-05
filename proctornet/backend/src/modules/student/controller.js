@@ -182,7 +182,7 @@ router.patch('/profile', validateBody(updateProfileSchema), async (req, res, nex
 })
 
 // ── Verification ──
-router.post('/verify-face', async (req, res, next) => {
+router.post(['/verify-face', '/exams/:id/verify-face'], async (req, res, next) => {
   try {
     const result = await studentService.verifyFace(req.user.id, req.body)
     res.status(200).json(result)
@@ -191,7 +191,7 @@ router.post('/verify-face', async (req, res, next) => {
   }
 })
 
-router.post('/verify-id', async (req, res, next) => {
+router.post(['/verify-id', '/exams/:id/verify-id'], async (req, res, next) => {
   try {
     const result = await studentService.verifyIdCard(req.user.id, req.body)
     res.status(200).json(result)

@@ -590,5 +590,44 @@ While the codebase contained an advanced `schema.prisma` with rich domain constr
    - Clean, modern modular monolith with unified `/api/v1` namespace and RFC-7807 unified error envelope.
    - Zero legacy cruft, zero global state, zero string-literal role comparisons, and 100% automated test coverage over the route matrix.
 
+---
+
+## 11. Phase Q3: Student Exam Flow on v1 (UI Data Layer & Integrity Hardening)
+
+> *"The client UI is an untrusted rendering layer: never trust client timers, never leak question content before or during suspension, and never confuse a 403 Forbidden with a successful submission."*
+
+1. **Why Start/Resume Attempt Authoritatively via `POST /api/v1/exams/:id/attempt` (Q3.1 & A-02)**:
+   - **The Problem**: In legacy architectures, the frontend guessed attempt IDs from URL params, read static start/end times from exam metadata, and initialized sockets without tying connections to authoritative database attempts. This caused phantom socket rooms, out-of-order writes, and desynchronized timers.
+   - **The Solution**: On mount, `ExamInterface.jsx` calls `POST /api/v1/exams/:id/attempt`. The backend executes a single SQL transition `READY -> ACTIVE`, resolves server time epoch, calculates `expiresAt` based on actual started/extended duration, hydrates existing answers with their respective revisions, and returns `attemptId`.
+   - **Socket Binding (A-02)**: `attemptId` is explicitly passed to `useExamSocket({ examId, attemptId, ... })`. The client joins `attempt:{attemptId}`, ensuring that socket commands (`attempt:suspended`, `attempt:terminated`, `attempt:resumed`) are bound 1:1 to the candidate's exact database attempt record.
+
+2. **Client-Side Autosave Architecture (`AutosaveManager.js`) (Q3.2 & H-02)**:
+   - **Batching & Frequency**: Dirty candidate answers are captured in an in-memory `Map` keyed by `attemptQuestionId`. A background timer flushes batches of $\le 100$ every 5 seconds. Additionally, event listeners on `visibilitychange`, `blur`, and `pagehide` trigger immediate flushes whenever the candidate changes tabs or navigates away.
+   - **Revision Tracking & CAS Reconciliation**: Answers carry an incrementing `revision` number. If the server detects that another request updated the answer first (or network reordering occurred), it responds with `409 Conflict (STALE_REVISION)` containing `currentRevision`. `AutosaveManager` automatically adopts the server's authoritative revision and retries immediately without dropping dirty state.
+   - **30-Second Network Drop Resilience**: On 429, 503, or network timeout, dirty answers are retained in memory with exponential back-off and jitter ($\text{delay} \in [0.8, 1.2] \times \min(16000, \text{backoff} \times 2)$). Answers are never cleared from memory until the server responds with 200 OK.
+   - **Flush-Before-Submit with Stable `Idempotency-Key`**: Before submission, `flushBeforeSubmit()` ensures 100% of dirty answers are pushed to PostgreSQL. The submission is executed via `POST /attempts/:id/submission` using a stable `Idempotency-Key` generated per submission session. If network drops mid-submit, retries reuse the exact same key, eliminating duplicate grading or race conditions.
+   - **Optimistic Submission UI & Release Policy Polling**: The UI immediately transitions to "Submitted" state upon dispatch, preventing candidate double-clicks. It then polls `GET /attempts/:id/result` every 2 seconds (up to 10 attempts). If the exam release policy holds results (`403 Forbidden`), the client displays "Exam submitted successfully" with policy hold notice rather than failing or looping indefinitely.
+
+3. **Precision Timer & Deadline Enforcement (`serverClock.js` & `useExamTimer.js`) (Q3.3 & A-05)**:
+   - **Clock Skew Neutralization**: Local client clocks frequently drift by seconds or minutes. `serverClock` synchronizes with the server time received in every API response, maintaining a rolling average offset $\Delta = T_{\text{server}} - T_{\text{client}}$.
+   - **Recomputed Remaining Time**: Every tick, remaining seconds are recomputed strictly against the server-authoritative deadline:
+     $$\text{remaining} = \max\left(0, \left\lfloor \frac{T_{\text{expiresAt}} - (T_{\text{now}} + \Delta)}{1000} \right\rfloor\right)$$
+   - **Zero Drift & Auto-Submit**: Tab throttling or device sleep does not cause timer drift because time is never decremented naively. If remaining reaches 0 (or deadline is already past upon loading), `autoSubmit` is automatically invoked.
+
+4. **Single Shared Violation Event Catalogue (`shared/violationTypes.json`) (Q3.4 & A-06)**:
+   - **The Anti-Pattern**: Client emitted arbitrary strings (`SCREEN_RECORDING`, `NO_FACE_DETECTED`, `COPY_ATTEMPT`), while backend constants expected different enums (`SCREEN_SHARE_STOPPED`, `NO_FACE`, `KEYBOARD_SHORTCUT`), causing silent validation drops or unclassified flags.
+   - **The Single Source of Truth**: Created `shared/violationTypes.json` containing canonical violation enums, severities, cooldown intervals, and client event mappings.
+   - **Code Generation**: A generator script `scripts/generate-violation-types.js` outputs backend CommonJS (`src/shared/violationTypes.js`) and frontend ES modules (`src/shared/violationTypes.js`).
+   - **Fail-Closed Validation**: Incoming socket and REST violation payloads are validated against the catalogue. Legacy aliases are normalized to canonical enums; unknown types are rejected client-side before sending and rejected server-side with `ValidationError (code: INVALID_VIOLATION_TYPE)`.
+
+5. **Question Leak Prevention (E-03) & Never Treat 403 as Success (H-01) (Q3.5)**:
+   - **E-03 Question Withholding**: When an attempt is `SUSPENDED`, `READY`, or expired, `startOrResumeAttempt` and `getAttemptForStudent` return `questions: []`. A student whose exam has been paused by an invigilator cannot inspect questions in the browser DOM, devtools network tab, or state dumps.
+   - **H-01 Strict Error Code Handling**: Legacy code caught any HTTP error on submit and assumed the exam was finished. If a suspended student submitted and received `403 Forbidden (ATTEMPT_SUSPENDED)`, legacy code falsely displayed "Exam submitted successfully!". In v1, 403 immediately reverts the optimistic submitted state, displays a clear proctor hold overlay, and prevents premature redirect.
+
+6. **Scoped Media State & Server-Driven Config (Q3.7)**:
+   - **Global Scope Elimination**: Replaced `window.screenShareStream` with `proctornet/frontend/src/lib/mediaState.js`, eliminating global namespace pollution and cross-tab media leaks.
+   - **Dynamic Feature Flags**: Replaced hardcoded `VPN_FEATURE_PAUSED = true` in `SecurityCheck.jsx` with dynamic query to `GET /api/v1/config`, reading `vpnEnforcement` directly from server configuration.
+
+
 
 

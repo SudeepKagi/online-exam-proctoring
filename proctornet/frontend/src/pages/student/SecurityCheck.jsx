@@ -11,6 +11,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { setSharedScreenStream, clearSharedScreenStream } from '@/lib/mediaState'
 
 const STAGES = [
   { id: 'system', name: 'BYOD Agent & System Integrity Audit', icon: Cpu, desc: 'Companion agent scan & prohibited application integrity check' },
@@ -58,6 +59,7 @@ export default function SecurityCheck() {
   const [verifyingVpn, setVerifyingVpn] = useState(false)
   const [confDownloaded, setConfDownloaded] = useState(false)
   const [timeToExamStart, setTimeToExamStart] = useState(0)
+  const [vpnEnforcement, setVpnEnforcement] = useState(false)
 
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
@@ -145,6 +147,11 @@ export default function SecurityCheck() {
         setExam(examData)
         const userRes = await api.get('/auth/me')
         setStudent(userRes.data.user)
+
+        const configRes = await api.get('/config').catch(() => ({ data: {} }))
+        if (typeof configRes.data?.vpnEnforcement === 'boolean') {
+          setVpnEnforcement(configRes.data.vpnEnforcement)
+        }
 
         // Automatically start Stage 0: BYOD Agent & System Security Audit
         runSystemAudit()
@@ -368,12 +375,7 @@ export default function SecurityCheck() {
       const isEnteringExam = window.location.pathname.includes('/exam') || window.location.pathname.includes('/student/exam')
       if (!isEnteringExam) {
         stopCamera()
-        if (window.screenShareStream) {
-          try {
-            window.screenShareStream.getTracks().forEach(t => t.stop())
-          } catch (_e) {}
-          window.screenShareStream = null
-        }
+        clearSharedScreenStream()
       }
     }
   }, [])
@@ -390,11 +392,12 @@ export default function SecurityCheck() {
       const track = screenStream.getVideoTracks()[0]
       if (!track) throw new Error('No screen video track found')
 
-      window.screenShareStream = screenStream
+      setSharedScreenStream(screenStream)
       setScreenShared(true)
 
       track.addEventListener('ended', () => {
         setScreenShared(false)
+        clearSharedScreenStream()
         updateStage('media', 'fail', 'Screen sharing disconnected by user.')
         toast.error('Screen sharing is required throughout the exam session.')
       })
@@ -522,14 +525,11 @@ export default function SecurityCheck() {
       setActiveStage(0)
       return
     }
-    // VPN feature is temporarily paused for maintenance
-    const VPN_FEATURE_PAUSED = true
-    if (!vpnVerified) {
-      if (!VPN_FEATURE_PAUSED) {
-        toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
-        setActiveStage(0)
-        return
-      }
+    // WireGuard VPN Enforcement check (Q3.7)
+    if (vpnEnforcement && !vpnVerified) {
+      toast.error('WireGuard VPN tunnel mandatory. Please activate the tunnel first.')
+      setActiveStage(0)
+      return
     }
 
     try {

@@ -1,6 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { redisClient } = require('../../infra/redis/client')
-const { CANONICAL_SEVERITY, FLAG_COOLDOWNS } = require('./constants')
+const { CANONICAL_SEVERITY, FLAG_COOLDOWNS, normalizeViolationType, isValidViolationType } = require('./constants')
 const { violationMicroBatcher } = require('./violationMicroBatcher')
 const { chatMicroBatcher } = require('./chatMicroBatcher')
 const { presenceManager } = require('../../infra/websocket/presence')
@@ -10,7 +10,8 @@ const {
   NotFoundError,
   ForbiddenError,
   ConflictError,
-  TooManyRequestsError
+  TooManyRequestsError,
+  ValidationError
 } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
 const { ROLES, normalizeRole } = require('../../shared/roles')
@@ -23,6 +24,12 @@ class ProctoringService {
    * Record a violation event with Redis cooldown, server-side severity, and micro-batching
    */
   async recordViolation(attemptId, studentId, eventType, metadata = {}, clientTimestamp = null) {
+    // 0. Validate and normalize against single shared catalogue
+    const canonicalType = normalizeViolationType(eventType)
+    if (!canonicalType || !isValidViolationType(canonicalType)) {
+      throw new ValidationError(`Unknown or invalid violation event type: '${eventType}'`)
+    }
+
     // 1. Authoritative check: ownership & ACTIVE status in SQL
     const rows = await prisma.$queryRawUnsafe(`
       SELECT id, exam_id, status, expires_at
@@ -40,8 +47,8 @@ class ProctoringService {
     }
 
     // 2. Cooldown check: Redis SET NX PX
-    const cooldownMs = FLAG_COOLDOWNS[eventType] || FLAG_COOLDOWNS.DEFAULT
-    const cooldownKey = `pn:v1:cooldown:${attemptId}:${eventType}`
+    const cooldownMs = FLAG_COOLDOWNS[canonicalType] || FLAG_COOLDOWNS.DEFAULT
+    const cooldownKey = `pn:v1:cooldown:${attemptId}:${canonicalType}`
     let isCooledDown = false
 
     if (redisClient.client && redisClient.isReady) {
@@ -72,14 +79,14 @@ class ProctoringService {
     }
 
     // 3. Server severity assignment (Never trust client severity)
-    const severity = CANONICAL_SEVERITY[eventType] || 'MEDIUM'
+    const severity = CANONICAL_SEVERITY[canonicalType] || 'MEDIUM'
 
     // 4. Evidence ticket if required and budget allows (Notion 13.10 / Task 7)
     let evidenceUpload = null
     const { isEvidenceRequired, checkEvidenceBudget } = require('../../shared/evidencePolicy')
     const { presignService } = require('../media/presignService')
 
-    if (isEvidenceRequired(eventType)) {
+    if (isEvidenceRequired(canonicalType)) {
       const budget = await checkEvidenceBudget(attemptId, prisma)
       if (budget.allowed) {
         try {
@@ -96,7 +103,7 @@ class ProctoringService {
     // 5. Push to micro-batcher
     await violationMicroBatcher.queue({
       attemptId,
-      eventType,
+      eventType: canonicalType,
       severity,
       metadata,
       clientTimestamp
@@ -104,7 +111,7 @@ class ProctoringService {
 
     return {
       recorded: true,
-      eventType,
+      eventType: canonicalType,
       severity,
       evidenceUpload
     }

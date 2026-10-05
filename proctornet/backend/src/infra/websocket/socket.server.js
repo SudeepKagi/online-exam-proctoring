@@ -250,7 +250,7 @@ function createWebSocketServer(httpServer, options = {}) {
             io.to(`inv:${currentExamId}`).emit('violation:new', {
               attemptId,
               studentId: socket.user.id,
-              eventType,
+              eventType: res.eventType,
               severity: res.severity,
               evidenceUpload: res.evidenceUpload,
               timestamp: new Date().toISOString()
@@ -260,7 +260,7 @@ function createWebSocketServer(httpServer, options = {}) {
             rosterCoalescer.queueDelta(currentExamId, {
               attemptId,
               studentId: socket.user.id,
-              lastViolation: eventType,
+              lastViolation: res.eventType,
               severity: res.severity
             })
           }
