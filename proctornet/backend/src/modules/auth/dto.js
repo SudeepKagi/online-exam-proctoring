@@ -9,6 +9,9 @@ function toUserDto(user, role) {
     semester: user.semester || null,
     usn: user.usn || null,
     employeeId: user.employeeId || null,
+    profileStatus: user.profileStatus || null,
+    approvalStatus: user.approvalStatus || null,
+    mustChangePassword: Boolean(user.mustChangePassword),
     createdAt: user.createdAt
   }
 }

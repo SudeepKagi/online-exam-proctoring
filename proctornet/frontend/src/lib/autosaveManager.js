@@ -25,6 +25,7 @@ export class AutosaveManager {
     this.maxBackoffMs = 16000
     this.stableIdempotencyKey = null
     this.flushTimer = null
+    this.debounceTimer = null
     this.onStateChangeCallbacks = new Set()
 
     this._setupAutoFlush()
@@ -70,6 +71,10 @@ export class AutosaveManager {
       clearInterval(this.flushTimer)
       this.flushTimer = null
     }
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = null
+    }
   }
 
   /**
@@ -85,6 +90,18 @@ export class AutosaveManager {
 
     this.dirtyMap.set(attemptQuestionId, entry)
     this._notifyStateChange()
+
+    // Trigger debounced flush (300ms) so answers persist promptly
+    if (this.debounceTimer) {
+      clearTimeout(this.debounceTimer)
+    }
+    this.debounceTimer = setTimeout(() => {
+      this.debounceTimer = null
+      if (this.dirtyMap.size > 0 && !this.isFlushing && !this.isSubmitting) {
+        this.flush().catch(() => {})
+      }
+    }, 300)
+
     return entry
   }
 
@@ -111,9 +128,9 @@ export class AutosaveManager {
     const payload = {
       answers: snapshot.map(item => ({
         attemptQuestionId: item.attemptQuestionId,
-        selectedOptionId: item.selectedOptionId
-      })),
-      revision: this.currentRevision
+        optionId: item.selectedOptionId || null,
+        revision: item.revision || this.currentRevision || 1
+      }))
     }
 
     try {
@@ -136,8 +153,13 @@ export class AutosaveManager {
         }
       }
 
-      // Bump revision to server authoritative revision
-      if (response.data?.revision) {
+      // Bump revision to highest revision in results if present
+      if (response.data?.results) {
+        const maxRev = response.data.results.reduce((max, r) => Math.max(max, r.revision || 0), this.currentRevision)
+        if (maxRev > this.currentRevision) {
+          this.currentRevision = maxRev
+        }
+      } else if (response.data?.revision) {
         this.currentRevision = response.data.revision
       } else {
         this.currentRevision++

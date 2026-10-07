@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const { prisma } = require('../../infra/postgres/client')
 
 class AuthRepository {
@@ -57,6 +58,7 @@ class AuthRepository {
   async createInvigilatorSession({ examId, invId, idCardPhotoKey, sessionExpiry, ipAddress }) {
     return prisma.invigilatorSession.create({
       data: {
+        id: crypto.randomUUID(),
         examId,
         invId,
         idCardPhotoKey: idCardPhotoKey || 'invigilator-id-verified',

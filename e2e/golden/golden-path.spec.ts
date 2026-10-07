@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import path from 'path'
+const crypto = require('crypto')
 const bcrypt = require(path.resolve(__dirname, '../../proctornet/backend/node_modules/bcryptjs'))
 const { PrismaClient } = require(path.resolve(__dirname, '../../proctornet/backend/node_modules/@prisma/client'))
 
@@ -27,6 +28,7 @@ test.describe('Prompt 2 Golden-Path E2E Verification Suite (§3 Q0.3)', () => {
       where: { email: adminEmail },
       update: { password: hashedAdmin },
       create: {
+        id: crypto.randomUUID(),
         name: 'System Administrator',
         email: adminEmail,
         password: hashedAdmin
@@ -69,6 +71,7 @@ test.describe('Prompt 2 Golden-Path E2E Verification Suite (§3 Q0.3)', () => {
       where: { email: facultyEmail },
       update: { password: hashedPwd, isApproved: true },
       create: {
+        id: crypto.randomUUID(),
         name: 'Prof. Ada Lovelace',
         email: facultyEmail,
         password: hashedPwd,
@@ -83,6 +86,7 @@ test.describe('Prompt 2 Golden-Path E2E Verification Suite (§3 Q0.3)', () => {
       where: { usn: studentUsn },
       update: { password: hashedPwd, approvalStatus: 'APPROVED', profileStatus: 'VERIFIED', departmentCode: 'CSE', semester: 6 },
       create: {
+        id: crypto.randomUUID(),
         name: 'Grace Hopper',
         usn: studentUsn,
         email: studentEmail,
@@ -112,21 +116,23 @@ test.describe('Prompt 2 Golden-Path E2E Verification Suite (§3 Q0.3)', () => {
 
     // Create 10 MCQ questions
     const questionsData = Array.from({ length: 10 }, (_, i) => ({
+      id: crypto.randomUUID(),
       questionText: `Question ${i + 1}: What is the primary characteristic of distributed invariant #${i + 1}?`,
       marks: 10,
       order: i + 1,
       options: {
         create: [
-          { text: `Correct Invariant Specification Option A`, isCorrect: true, order: 1 },
-          { text: `Incorrect Specification Option B`, isCorrect: false, order: 2 },
-          { text: `Incorrect Specification Option C`, isCorrect: false, order: 3 },
-          { text: `Incorrect Specification Option D`, isCorrect: false, order: 4 }
+          { id: crypto.randomUUID(), text: `Correct Invariant Specification Option A`, isCorrect: true, order: 1 },
+          { id: crypto.randomUUID(), text: `Incorrect Specification Option B`, isCorrect: false, order: 2 },
+          { id: crypto.randomUUID(), text: `Incorrect Specification Option C`, isCorrect: false, order: 3 },
+          { id: crypto.randomUUID(), text: `Incorrect Specification Option D`, isCorrect: false, order: 4 }
         ]
       }
     }))
 
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: examTitle,
         subject: 'Advanced Systems Architecture',
         description: 'Golden Path End-to-End Test Examination',
