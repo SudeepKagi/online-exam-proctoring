@@ -1,5 +1,8 @@
 # Dependencies
+node_modules
 node_modules/
+**/node_modules
+**/node_modules/
 __pycache__/
 *.pyc
 *.pyo
@@ -13,10 +16,18 @@ venv/
 !.env.example
 
 # Build outputs
+dist
 dist/
+**/dist
+**/dist/
+build
 build/
+**/build
+**/build/
 *.egg-info/
 *.pt
+*.tar.gz
+*.zip
 
 # Logs
 *.log

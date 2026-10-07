@@ -1,6 +1,12 @@
 # Dependencies
+node_modules
 node_modules/
+**/node_modules
 **/node_modules/
+.pnp
+.pnp.js
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -10,6 +16,7 @@ venv/
 .venv/
 **/venv/
 **/.venv/
+**/__pycache__/
 
 # Environment variables
 .env
@@ -21,10 +28,21 @@ venv/
 .agents/
 
 # Build outputs
+dist
 dist/
+**/dist
+**/dist/
+build
 build/
+**/build
+**/build/
 *.egg-info/
 *.pt
+.next/
+.cache/
+*.tar.gz
+*.tar
+*.zip
 
 # Logs
 *.log
