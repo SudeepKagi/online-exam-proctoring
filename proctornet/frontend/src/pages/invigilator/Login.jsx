@@ -28,13 +28,41 @@ export default function InvigilatorLogin() {
       return
     }
 
-    setLoading(true)
     setErrorState(null)
+
+    if (!form.examId.trim()) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Exam ID',
+        message: 'Please enter the Exam UUID provided for this examination session.'
+      })
+      return
+    }
+
+    if (!form.invId.trim()) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Invigilator ID',
+        message: 'Please enter your Assigned Invigilator ID.'
+      })
+      return
+    }
+
+    if (!form.invPassword) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Password',
+        message: 'Please enter the session access password.'
+      })
+      return
+    }
+
+    setLoading(true)
 
     try {
       const result = await loginInvigilator(form.examId.trim(), form.invId.trim(), form.invPassword)
       if (!result?.success) {
-        const errorMsg = result?.error || 'Invigilator authentication failed. Please check your credentials.'
+        const errorMsg = typeof result?.error === 'string' ? result.error : 'Invigilator authentication failed. Please check your credentials.'
         const isServer = errorMsg.toLowerCase().includes('server') || errorMsg.toLowerCase().includes('connect')
         setErrorState({
           type: isServer ? 'server' : 'credentials',
@@ -45,11 +73,15 @@ export default function InvigilatorLogin() {
       }
       navigate(`/invigilator/live-grid/${result.session.examId}`)
     } catch (err) {
+      const rawError = err.response?.data?.error
+      const message = typeof rawError === 'object' && rawError !== null
+        ? (rawError.message || rawError.code || 'Authentication failed')
+        : (rawError || err.response?.data?.message || err.message || 'Unable to connect to server.')
       const isServer = !err.response || err.response?.status >= 500
       setErrorState({
         type: isServer ? 'server' : 'credentials',
         title: isServer ? 'Server Connection Error' : 'Invalid Credentials',
-        message: err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to server.'
+        message: String(message)
       })
     } finally {
       setLoading(false)

@@ -5,11 +5,15 @@ let socket = null
 export const connectSocket = () => {
   if (socket?.connected) return socket
   
+  const token = typeof window !== 'undefined' ? localStorage.getItem('proctornet_token') : null
+
   socket = io(
     import.meta.env.VITE_SOCKET_URL 
     || (typeof window !== 'undefined' ? window.location.origin : ''),
     {
       withCredentials: true,
+      auth: { token },
+      extraHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: 5,

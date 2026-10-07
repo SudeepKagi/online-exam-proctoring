@@ -9,6 +9,18 @@ const api = axios.create({
   }
 })
 
+// Request interceptor — attach JWT Bearer token if present
+api.interceptors.request.use(
+  (config) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('proctornet_token') : null
+    if (token && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
 // Response interceptor — handle error normalization & 401 session expiry
 api.interceptors.response.use(
   (response) => response,
@@ -31,15 +43,22 @@ api.interceptors.response.use(
       error.config?.url?.includes('/auth/me')
 
     if (error.response?.status === 401 && !isAuthRequest) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('proctornet_token')
+        localStorage.removeItem('proctornet_logged_in')
+      }
+
       const currentPath = window.location.pathname
-      if (currentPath.startsWith('/invigilator')) {
-        window.location.href = '/invigilator-login'
-      } else if (currentPath.startsWith('/admin')) {
-        window.location.href = '/admin/login'
-      } else if (currentPath.startsWith('/faculty')) {
-        window.location.href = '/faculty/login'
-      } else if (currentPath.startsWith('/student') || currentPath.startsWith('/change-password')) {
-        window.location.href = '/student/login'
+      if (!currentPath.includes('/login') && !currentPath.includes('login')) {
+        if (currentPath.startsWith('/invigilator')) {
+          window.location.href = '/invigilator-login'
+        } else if (currentPath.startsWith('/admin')) {
+          window.location.href = '/admin/login'
+        } else if (currentPath.startsWith('/faculty')) {
+          window.location.href = '/faculty/login'
+        } else if (currentPath.startsWith('/student') || currentPath.startsWith('/change-password')) {
+          window.location.href = '/student/login'
+        }
       }
     }
     return Promise.reject(error)

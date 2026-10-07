@@ -15,13 +15,33 @@ export default function FacultyLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setErrorState(null)
 
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Email',
+        message: 'Please enter your faculty email address.'
+      })
+      return
+    }
+
+    if (!password) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Password',
+        message: 'Please enter your faculty password.'
+      })
+      return
+    }
+
+    setLoading(true)
+
     try {
-      const result = await login(email.trim(), password, 'faculty')
+      const result = await login(trimmedEmail, password, 'faculty')
       if (result && !result.success) {
-        const errorMsg = result.error || 'Incorrect email or password. Please try again.'
+        const errorMsg = typeof result.error === 'string' ? result.error : 'Incorrect email or password. Please try again.'
         const isServer = errorMsg.toLowerCase().includes('server') || errorMsg.toLowerCase().includes('connect')
         const isRestricted = errorMsg.toLowerCase().includes('approval') || errorMsg.toLowerCase().includes('suspended') || errorMsg.toLowerCase().includes('rejected')
         setErrorState({
@@ -33,11 +53,15 @@ export default function FacultyLogin() {
       }
       navigate('/faculty/dashboard')
     } catch (err) {
+      const rawError = err.response?.data?.error
+      const message = typeof rawError === 'object' && rawError !== null
+        ? (rawError.message || rawError.code || 'Authentication failed')
+        : (rawError || err.response?.data?.message || err.message || 'Unable to connect to server.')
       const isServer = !err.response || err.response.status >= 500
       setErrorState({
         type: isServer ? 'server' : 'credentials',
         title: isServer ? 'Server Connection Error' : 'Invalid Credentials',
-        message: err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to server.'
+        message: String(message)
       })
     } finally {
       setLoading(false)

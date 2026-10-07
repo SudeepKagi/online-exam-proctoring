@@ -15,13 +15,33 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true)
     setErrorState(null)
 
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Email',
+        message: 'Please enter your administrator email address.'
+      })
+      return
+    }
+
+    if (!password) {
+      setErrorState({
+        type: 'credentials',
+        title: 'Missing Password',
+        message: 'Please enter your administrator password.'
+      })
+      return
+    }
+
+    setLoading(true)
+
     try {
-      const result = await login(email.trim(), password, 'admin')
+      const result = await login(trimmedEmail, password, 'admin')
       if (result && !result.success) {
-        const errorMsg = result.error || 'Incorrect admin email or password. Please try again.'
+        const errorMsg = typeof result.error === 'string' ? result.error : 'Incorrect admin email or password. Please try again.'
         const isServer = errorMsg.toLowerCase().includes('server') || errorMsg.toLowerCase().includes('connect')
         setErrorState({
           type: isServer ? 'server' : 'credentials',
@@ -32,11 +52,15 @@ export default function AdminLogin() {
       }
       navigate('/admin/dashboard')
     } catch (err) {
+      const rawError = err.response?.data?.error
+      const message = typeof rawError === 'object' && rawError !== null
+        ? (rawError.message || rawError.code || 'Authentication failed')
+        : (rawError || err.response?.data?.message || err.message || 'Unable to connect to server.')
       const isServer = !err.response || err.response.status >= 500
       setErrorState({
         type: isServer ? 'server' : 'credentials',
         title: isServer ? 'Server Connection Error' : 'Invalid Credentials',
-        message: err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to server.'
+        message: String(message)
       })
     } finally {
       setLoading(false)
@@ -104,7 +128,7 @@ export default function AdminLogin() {
               name="email"
               value={email}
               onChange={handleEmailChange}
-              placeholder="e.g. admin@university.edu"
+              placeholder="e.g. admin@proctornet.com"
               required
               autoComplete="off"
               autoFocus

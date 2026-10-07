@@ -34,11 +34,22 @@ function authReducer(state, action) {
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(authReducer, initialState)
 
-  // Restore authenticated session from HttpOnly cookie on mount
+  // Restore authenticated session on mount (only if session indicator exists)
   useEffect(() => {
     let isMounted = true
 
     const restoreSession = async () => {
+      const hasToken = typeof window !== 'undefined' ? localStorage.getItem('proctornet_token') : null
+      const hasLoginFlag = typeof window !== 'undefined' ? localStorage.getItem('proctornet_logged_in') : null
+
+      // Guest / unauthenticated visitor: resolve loading immediately without firing noisy /auth/me
+      if (!hasToken && !hasLoginFlag) {
+        if (isMounted) {
+          dispatch({ type: 'SET_LOADING', payload: false })
+        }
+        return
+      }
+
       try {
         const res = await api.get('/auth/me')
         if (res.data?.user && isMounted) {
@@ -50,6 +61,10 @@ export function AuthProvider({ children }) {
           dispatch({ type: 'SET_LOADING', payload: false })
         }
       } catch (_err) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('proctornet_token')
+          localStorage.removeItem('proctornet_logged_in')
+        }
         if (isMounted) {
           dispatch({ type: 'SET_LOADING', payload: false })
         }
@@ -65,7 +80,7 @@ export function AuthProvider({ children }) {
   /**
    * login(credentials, role)
    * Calls the correct auth endpoint based on role.
-   * Server establishes the secure HttpOnly cookie.
+   * Persists JWT in localStorage and cookie.
    */
   const login = async (arg1, arg2, arg3) => {
     let credentials = {}
@@ -91,16 +106,25 @@ export function AuthProvider({ children }) {
 
     try {
       const res = await api.post(endpoints[role], credentials)
-      const { user } = res.data
+      const { user, token } = res.data
+
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('proctornet_token', token)
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('proctornet_logged_in', 'true')
+      }
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user, role } })
-      return { success: true }
+      return { success: true, user }
     } catch (err) {
-      const status     = err.response?.data?.status
+      const rawError = err.response?.data?.error
+      const errorMessage = typeof rawError === 'object' ? rawError?.message : rawError
+      const status     = err.response?.data?.status || (typeof rawError === 'object' ? rawError?.code : null)
       const httpStatus = err.response?.status
 
       if (!err.response) {
-        return { success: false, error: 'Unable to connect to server. Please verify the backend server is running on port 5000.' }
+        return { success: false, error: 'Unable to connect to the authentication server. Please check your internet connection or server status.' }
       }
 
       if (status === 'PENDING_APPROVAL' || status === 'PENDING_ADMIN' || status === 'PENDING_FACULTY') {
@@ -110,27 +134,28 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'Your account has been suspended. Please contact the administrator.' }
       }
       if (status === 'REJECTED') {
-        const reason = err.response?.data?.reason
+        const reason = err.response?.data?.reason || errorMessage
         return { success: false, error: `Registration rejected${reason ? ': ' + reason : '. Contact admin.'}` }
       }
 
       if (httpStatus === 401) {
         return {
           success: false,
-          error: role === 'student' ? 'Invalid USN or password. Please check your credentials.' : 'Incorrect email or password. Please try again.'
+          error: errorMessage || (role === 'student' ? 'Invalid USN or password. Please check your credentials.' : 'Incorrect email or password. Please try again.')
         }
       }
       if (httpStatus === 404) {
         return {
           success: false,
-          error: role === 'student' ? 'No student account found with this USN.' : 'No account found with this email.'
+          error: errorMessage || (role === 'student' ? 'No student account found with this USN.' : 'No account found with this email.')
         }
       }
-      if (httpStatus === 403) return { success: false, error: err.response?.data?.error || 'Access denied.' }
+      if (httpStatus === 403) return { success: false, error: errorMessage || 'Access denied.' }
+      if (httpStatus === 429) return { success: false, error: errorMessage || 'Too many login attempts. Please wait a moment and try again.' }
 
       return {
         success: false,
-        error: err.response?.data?.error || err.response?.data?.message || 'Login failed. Please try again.',
+        error: errorMessage || err.response?.data?.message || err.message || 'Login failed. Please check your credentials and try again.',
       }
     }
   }
@@ -140,6 +165,10 @@ export function AuthProvider({ children }) {
       await api.post('/auth/logout')
     } catch (_err) {
       // Non-critical, proceed with client teardown
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('proctornet_token')
+      localStorage.removeItem('proctornet_logged_in')
     }
     dispatch({ type: 'LOGOUT' })
   }
@@ -169,21 +198,29 @@ export function AuthProvider({ children }) {
   const loginInvigilator = async (examId, invId, invPassword) => {
     try {
       const res = await api.post('/auth/invigilator/login', { examId, invId, invPassword })
-      const { session, user } = res.data
+      const { session, user, token } = res.data
+      if (token && typeof window !== 'undefined') {
+        localStorage.setItem('proctornet_token', token)
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('proctornet_logged_in', 'true')
+      }
       const invUser = user || { id: session.invId, name: `Invigilator ${session.invId}`, examId: session.examId, role: 'invigilator' }
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: invUser, role: 'invigilator' } })
       return { success: true, session }
     } catch (err) {
+      const rawError = err.response?.data?.error
+      const errorMessage = typeof rawError === 'object' ? rawError?.message : rawError
       if (!err.response) {
-        return { success: false, error: 'Unable to connect to server. Please verify the backend server is running on port 5000.' }
+        return { success: false, error: 'Unable to connect to server. Please check your network connection.' }
       }
-      return { success: false, error: err.response?.data?.error || err.response?.data?.message || 'Invigilator authentication failed. Check your credentials.' }
+      return { success: false, error: errorMessage || err.response?.data?.message || 'Invigilator authentication failed. Check your credentials.' }
     }
   }
 
   return (
-    <AuthContext.Provider value={{ ...state, login, loginInvigilator, logout, updateUser, refreshUser, changePassword }}>
+    <AuthContext.Provider value={{ ...state, loading: state.isLoading, login, loginInvigilator, logout, updateUser, refreshUser, changePassword }}>
       {children}
     </AuthContext.Provider>
   )
