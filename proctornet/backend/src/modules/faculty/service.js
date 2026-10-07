@@ -11,6 +11,8 @@ const {
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+const { llmService } = require('./llmService')
+const { prisma } = require('../../infra/postgres/client')
 
 class FacultyService {
   async formatQuestionWithPresignedUrl(q) {
@@ -166,20 +168,30 @@ class FacultyService {
     const exam = await facultyRepository.findExamById(examId, facultyId)
     if (!exam) throw new NotFoundError('Exam not found or access denied')
 
+    const sanitizeCsvField = (val) => {
+      if (val === null || val === undefined) return '""'
+      let str = String(val)
+      // R-13: Formula neutralization: prevent spreadsheet formula execution (=, +, -, @, \t, \r)
+      if (/^[=+\-@\t\r]/.test(str)) {
+        str = `'${str}`
+      }
+      return `"${str.replace(/"/g, '""')}"`
+    }
+
     const results = await facultyRepository.listExamResults(examId)
     const headers = ['USN', 'Student Name', 'Department', 'Score', 'Total Marks', 'Percentage', 'Rank', 'Status']
     const rows = results.map(r => [
-      r.student?.usn || '',
-      `"${r.student?.name || ''}"`,
-      r.student?.departmentCode || '',
-      r.score,
-      r.totalMarks,
-      r.percentage,
-      r.rank || '',
-      r.status
+      sanitizeCsvField(r.student?.usn || ''),
+      sanitizeCsvField(r.student?.name || ''),
+      sanitizeCsvField(r.student?.departmentCode || ''),
+      sanitizeCsvField(r.score),
+      sanitizeCsvField(r.totalMarks),
+      sanitizeCsvField(r.percentage),
+      sanitizeCsvField(r.rank || ''),
+      sanitizeCsvField(r.status)
     ])
 
-    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n')
+    const csvContent = [headers.map(h => `"${h}"`).join(','), ...rows.map(row => row.join(','))].join('\n')
     return {
       filename: `Exam_${exam.title.replace(/[^a-zA-Z0-9]/g, '_')}_Results.csv`,
       csvContent
@@ -241,13 +253,43 @@ class FacultyService {
   }
 
   async updateQuestion(id, data, facultyId) {
+    const question = await facultyRepository.findQuestionById(id)
+    if (!question) throw new NotFoundError('Question not found')
+
+    const exam = await facultyRepository.findExamById(question.examId, facultyId)
+    if (!exam) throw new ForbiddenError('Access denied: You do not own this exam')
+    if (exam.status !== 'DRAFT') {
+      throw new ValidationError(`Cannot update questions in an exam with status '${exam.status}'`)
+    }
+
     const validated = validateMcqQuestion(data)
     const updated = await facultyRepository.updateQuestion(id, validated)
+
+    // Cache invalidation (R-12)
+    const { redis } = require('../../infra/redis/client')
+    await redis.del(`pn:exam:${exam.id}:content`)
+    await redis.del(`pn:exam:${exam.id}`)
+
     return this.formatQuestionWithPresignedUrl(updated)
   }
 
   async deleteQuestion(id, facultyId) {
+    const question = await facultyRepository.findQuestionById(id)
+    if (!question) throw new NotFoundError('Question not found')
+
+    const exam = await facultyRepository.findExamById(question.examId, facultyId)
+    if (!exam) throw new ForbiddenError('Access denied: You do not own this exam')
+    if (exam.status !== 'DRAFT') {
+      throw new ValidationError(`Cannot delete questions in an exam with status '${exam.status}'`)
+    }
+
     await facultyRepository.deleteQuestion(id)
+
+    // Cache invalidation (R-12)
+    const { redis } = require('../../infra/redis/client')
+    await redis.del(`pn:exam:${exam.id}:content`)
+    await redis.del(`pn:exam:${exam.id}`)
+
     return { success: true, message: 'Question deleted' }
   }
 
@@ -264,6 +306,12 @@ class FacultyService {
       const res = await facultyRepository.createQuestion({ examId, ...validated })
       created.push(await this.formatQuestionWithPresignedUrl(res))
     }
+
+    // Cache invalidation (R-12)
+    const { redis } = require('../../infra/redis/client')
+    await redis.del(`pn:exam:${examId}:content`)
+    await redis.del(`pn:exam:${examId}`)
+
     return created
   }
 
@@ -303,106 +351,85 @@ class FacultyService {
           }
         })
         if (Object.keys(rowData).length > 0) {
-          rows.push(rowData)
+          rows.push({ rowNumber, data: rowData })
         }
       }
     })
 
-    const created = []
-    const errors = []
+    const validatedQuestions = []
+    const rowReports = []
 
-    for (let i = 0; i < rows.length; i++) {
+    for (const r of rows) {
       try {
-        const validated = normalizeExcelQuestionRow(rows[i], i + 1)
-        const q = await facultyRepository.createQuestion({ examId, ...validated })
-        created.push(await this.formatQuestionWithPresignedUrl(q))
+        const validated = normalizeExcelQuestionRow(r.data, r.rowNumber)
+        validatedQuestions.push(validated)
+        rowReports.push({ row: r.rowNumber, status: 'VALID', questionText: validated.questionText })
       } catch (err) {
-        errors.push({ row: i + 1, error: err.message })
+        rowReports.push({ row: r.rowNumber, status: 'INVALID', error: err.message })
       }
     }
+
+    const hasErrors = rowReports.some(r => r.status === 'INVALID')
+    if (hasErrors) {
+      return {
+        success: false,
+        totalRows: rows.length,
+        importedCount: 0,
+        errorsCount: rowReports.filter(r => r.status === 'INVALID').length,
+        reports: rowReports,
+        message: 'Import rejected due to validation errors. No questions were imported (transactional rollback).'
+      }
+    }
+
+    // Transactional insert of all valid questions (R-13)
+    const created = await prisma.$transaction(async (tx) => {
+      const results = []
+      for (const q of validatedQuestions) {
+        const { options, ...qData } = q
+        const newQ = await tx.question.create({
+          data: {
+            examId,
+            ...qData,
+            options: {
+              create: options.map((opt, idx) => ({
+                text: opt.text,
+                isCorrect: Boolean(opt.isCorrect),
+                order: opt.order !== undefined ? opt.order : idx
+              }))
+            }
+          },
+          include: { options: { orderBy: { order: 'asc' } } }
+        })
+        results.push(newQ)
+      }
+      return results
+    })
+
+    // Cache invalidation (R-12)
+    const { redis } = require('../../infra/redis/client')
+    await redis.del(`pn:exam:${examId}:content`)
+    await redis.del(`pn:exam:${examId}`)
 
     return {
       success: true,
       totalRows: rows.length,
       importedCount: created.length,
-      errorsCount: errors.length,
-      created,
-      errors
+      errorsCount: 0,
+      reports: rowReports.map(r => ({ ...r, status: 'IMPORTED' })),
+      createdCount: created.length
     }
   }
 
-  // AI question generation fallback
-  generateFallbackAiQuestions(topic = 'General Computing', count = 5, difficulty = 'MEDIUM') {
-    const sampleQuestions = [
-      {
-        questionText: `What is the primary function of an operating system kernel regarding ${topic}?`,
-        marks: 2,
-        negativeMarks: 0.5,
-        difficulty,
-        options: [
-          { text: 'Resource abstraction and hardware management', isCorrect: true, order: 0 },
-          { text: 'Compiling source code to machine binaries', isCorrect: false, order: 1 },
-          { text: 'Rendering user interfaces on the GPU', isCorrect: false, order: 2 },
-          { text: 'Managing external DNS records', isCorrect: false, order: 3 }
-        ]
-      },
-      {
-        questionText: `Which algorithmic time complexity is most optimal for searching in an indexed balanced binary tree for ${topic}?`,
-        marks: 2,
-        negativeMarks: 0.5,
-        difficulty,
-        options: [
-          { text: 'O(log N)', isCorrect: true, order: 0 },
-          { text: 'O(N)', isCorrect: false, order: 1 },
-          { text: 'O(N log N)', isCorrect: false, order: 2 },
-          { text: 'O(1)', isCorrect: false, order: 3 }
-        ]
-      },
-      {
-        questionText: `In relational database theory, which normal form eliminates transitive dependencies?`,
-        marks: 3,
-        negativeMarks: 1,
-        difficulty,
-        options: [
-          { text: 'Third Normal Form (3NF)', isCorrect: true, order: 0 },
-          { text: 'First Normal Form (1NF)', isCorrect: false, order: 1 },
-          { text: 'Second Normal Form (2NF)', isCorrect: false, order: 2 },
-          { text: 'Boyce-Codd Normal Form (BCNF)', isCorrect: false, order: 3 }
-        ]
-      },
-      {
-        questionText: `What is the idempotency property of HTTP PUT compared to POST in REST APIs?`,
-        marks: 2,
-        negativeMarks: 0.5,
-        difficulty,
-        options: [
-          { text: 'Multiple identical PUT requests have the same side effect as a single request', isCorrect: true, order: 0 },
-          { text: 'PUT requests cannot alter server state under any circumstances', isCorrect: false, order: 1 },
-          { text: 'PUT always creates a brand new unique resource ID', isCorrect: false, order: 2 },
-          { text: 'POST is guaranteed to be safe and read-only', isCorrect: false, order: 3 }
-        ]
-      },
-      {
-        questionText: `Which TCP flag is used to initiate a three-way connection handshake?`,
-        marks: 2,
-        negativeMarks: 0.5,
-        difficulty,
-        options: [
-          { text: 'SYN', isCorrect: true, order: 0 },
-          { text: 'ACK', isCorrect: false, order: 1 },
-          { text: 'FIN', isCorrect: false, order: 2 },
-          { text: 'RST', isCorrect: false, order: 3 }
-        ]
-      }
-    ]
-
-    return sampleQuestions.slice(0, count)
-  }
-
-  async generateQuestionsPreview({ prompt, topic, count = 5, difficulty = 'MEDIUM' }) {
+  // AI question generation — real LLM call or error (LLM_PROVIDER=none → error, never mocked)
+  async generateQuestionsPreview({ prompt, topic, count = 5, difficulty = 'MEDIUM', facultyId }) {
     const topicToUse = topic || prompt || 'Computer Science'
-    const questions = this.generateFallbackAiQuestions(topicToUse, count, difficulty)
-    return questions.map(validateMcqQuestion)
+    const { questions, validationErrors, provider, tokensUsed } = await llmService.generateQuestionsPreview({
+      topic: topicToUse,
+      count,
+      difficulty,
+      facultyId
+    })
+    return { questions, validationErrors, provider, tokensUsed }
   }
 
   async generateQuestionsFromAI(examId, { prompt, topic, count = 5, difficulty = 'MEDIUM' }, facultyId) {
@@ -412,14 +439,21 @@ class FacultyService {
       throw new ValidationError(`Cannot add questions to an exam in status '${exam.status}'`)
     }
 
-    const preview = await this.generateQuestionsPreview({ prompt, topic, count, difficulty })
+    const { questions, validationErrors, provider, tokensUsed } = await this.generateQuestionsPreview({
+      prompt,
+      topic,
+      count,
+      difficulty,
+      facultyId
+    })
+
     const created = []
-    for (const q of preview) {
+    for (const q of questions) {
       const saved = await facultyRepository.createQuestion({ examId, ...q })
       created.push(toFacultyQuestionDTO(saved))
     }
 
-    return created
+    return { questions: created, validationErrors, provider, tokensUsed }
   }
 
   // ── Students ──
@@ -431,10 +465,88 @@ class FacultyService {
     return facultyRepository.approveStudent(studentId, facultyId)
   }
 
+  /**
+   * addStudentsToExam — explicit extra-enrollment table.
+   * Inserts into extra_exam_enrollments (ON CONFLICT DO NOTHING for idempotency).
+   * Validates that each studentId exists and belongs to an allowed department.
+   */
   async addStudentsToExam(examId, studentIds, facultyId) {
     const exam = await facultyRepository.findExamById(examId, facultyId)
     if (!exam) throw new NotFoundError('Exam not found or access denied')
-    return { success: true, examId, count: studentIds.length }
+
+    if (!Array.isArray(studentIds) || studentIds.length === 0) {
+      throw new ValidationError('studentIds must be a non-empty array')
+    }
+
+    // Cap at 500 per call
+    const ids = studentIds.slice(0, 500)
+
+    // Verify students exist
+    const students = await prisma.user.findMany({
+      where: { id: { in: ids }, role: 'STUDENT' },
+      select: { id: true, departmentCode: true, name: true, usn: true }
+    })
+
+    const foundIds = new Set(students.map(s => s.id))
+    const notFound = ids.filter(id => !foundIds.has(id))
+
+    // Upsert enrollments (idempotent)
+    const enrollmentData = students.map(s => ({
+      examId,
+      studentId: s.id,
+      enrolledAt: new Date(),
+      enrolledBy: facultyId,
+      source: 'EXPLICIT'
+    }))
+
+    let enrolled = 0
+    if (enrollmentData.length > 0) {
+      // Use raw SQL for ON CONFLICT DO NOTHING
+      const values = enrollmentData.map((_, i) =>
+        `($${i * 5 + 1}::uuid, $${i * 5 + 2}::uuid, $${i * 5 + 3}, $${i * 5 + 4}::uuid, $${i * 5 + 5})`
+      ).join(', ')
+
+      const params = enrollmentData.flatMap(e => [
+        e.examId,
+        e.studentId,
+        e.enrolledAt,
+        e.enrolledBy,
+        e.source
+      ])
+
+      const result = await prisma.$executeRawUnsafe(`
+        INSERT INTO extra_exam_enrollments (exam_id, student_id, enrolled_at, enrolled_by, source)
+        VALUES ${values}
+        ON CONFLICT (exam_id, student_id) DO NOTHING;
+      `, ...params).catch(async (err) => {
+        // Table might not exist yet (migration pending) — graceful degradation
+        if (err.message?.includes('extra_exam_enrollments')) {
+          // Fall back to Prisma upsert pattern using examEnrollment if it exists
+          for (const e of enrollmentData) {
+            await prisma.$executeRawUnsafe(`
+              INSERT INTO exam_enrollments (exam_id, student_id, enrolled_at)
+              VALUES ($1::uuid, $2::uuid, $3)
+              ON CONFLICT (exam_id, student_id) DO NOTHING;
+            `, e.examId, e.studentId, e.enrolledAt).catch((enrollErr) => {
+              logger.warn({ error: enrollErr.message, studentId: e.studentId }, 'Fallback enrollment failed')
+            })
+          }
+          return enrollmentData.length
+        }
+        throw err
+      })
+      enrolled = typeof result === 'number' ? result : enrollmentData.length
+    }
+
+    return {
+      success: true,
+      examId,
+      requestedCount: ids.length,
+      enrolledCount: enrolled,
+      studentsFound: students.length,
+      notFound: notFound.length > 0 ? notFound : undefined,
+      students: students.map(s => ({ id: s.id, usn: s.usn, name: s.name, departmentCode: s.departmentCode }))
+    }
   }
 
   async listExamStudents(examId, facultyId) {

@@ -15,6 +15,7 @@ const {
   ValidationError
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
+const { logger } = require('../../shared/logging')
 
 class AdminService {
   async getDashboard() {
@@ -216,10 +217,28 @@ class AdminService {
   }
 
   async updateSettings(body, userId) {
+    const { policyService } = require('../agent/policyService')
+    const { prisma } = require('../../infra/postgres/client')
+
+    const syncAgentRules = async (key, val) => {
+      if (key === 'vmDetectionEnabled') {
+        try {
+          await prisma.agentRule.updateMany({
+            where: { category: 'VIRTUAL_MACHINE' },
+            data: { enabled: Boolean(val) }
+          })
+          await policyService.getLatestSignedPolicy(true)
+        } catch (err) {
+          logger.warn({ err: err.message }, 'Failed to synchronize agent VM detection rules')
+        }
+      }
+    }
+
     if (body.settings && typeof body.settings === 'object') {
       const results = []
       for (const [key, value] of Object.entries(body.settings)) {
         const updated = await adminRepository.upsertSetting(key, value, userId)
+        await syncAgentRules(key, value)
         results.push(toPlatformSettingDTO(updated))
       }
       return results
@@ -227,6 +246,7 @@ class AdminService {
 
     if (body.key) {
       const updated = await adminRepository.upsertSetting(body.key, body.value, userId)
+      await syncAgentRules(body.key, body.value)
       return toPlatformSettingDTO(updated)
     }
 

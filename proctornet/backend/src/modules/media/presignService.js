@@ -15,10 +15,13 @@ const {
 const {
   ForbiddenError,
   NotFoundError,
-  ValidationError
+  ValidationError,
+  TooManyRequestsError
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
+
+const inMemorySnapshotRateLimits = new Map()
 
 class PresignService {
   /**
@@ -76,6 +79,7 @@ class PresignService {
         break
       }
 
+      case 'FACE_ENROLLMENT':
       case 'IDENTITY_PHOTO':
       case 'PROFILE':
       case 'IDENTITY': {
@@ -90,6 +94,7 @@ class PresignService {
         break
       }
 
+      case 'ID_ENROLLMENT':
       case 'ID_CARD': {
         if (user.role !== ROLES.STUDENT) {
           throw new ForbiddenError('Only candidates may upload student ID cards')
@@ -124,6 +129,17 @@ class PresignService {
 
       default:
         throw new ValidationError(`Unsupported upload purpose: ${purpose}`)
+    }
+
+    // R-06: Record server-issued keys for candidate identity & enrollment uploads
+    if (['IDENTITY_PHOTO', 'PROFILE', 'IDENTITY', 'ID_CARD', 'FACE_ENROLLMENT', 'ID_ENROLLMENT'].includes(normalizedPurpose)) {
+      const { pendingUploadRegistry } = require('./pendingUploads')
+      await pendingUploadRegistry.recordPendingUpload({
+        key,
+        studentId: user.id,
+        purpose: normalizedPurpose,
+        ttlSeconds: 600
+      })
     }
 
     const policy = await createDirectUploadPolicy({
@@ -462,6 +478,117 @@ class PresignService {
       violationId: String(updated.id),
       evidenceKey: primaryKey,
       thumbKey: thumbnailKey
+    }
+  }
+
+  /**
+   * Generate short-lived presigned PUT tickets for adaptive live snapshots (R3 - Snapshot driver)
+   * Fixed keys overwritten per attempt: live/{examId}/{attemptId}/camera.webp | screen.webp
+   * Rate-limited to max 1 ticket per second per attempt
+   */
+  async generateLiveSnapshotTicket(user, { attemptId }) {
+    if (!attemptId) {
+      throw new ValidationError('attemptId is required to generate snapshot ticket')
+    }
+
+    // 1. Authoritative check: ownership & ACTIVE status in SQL
+    const attempt = await prisma.examAttempt.findFirst({
+      where: {
+        id: attemptId,
+        ...(user?.role === ROLES.STUDENT ? { studentId: user.id } : {}),
+        status: 'ACTIVE'
+      },
+      select: { id: true, examId: true, expiresAt: true }
+    })
+
+    if (!attempt) {
+      throw new NotFoundError(`Active exam attempt '${attemptId}' not found or access denied`)
+    }
+
+    if (new Date() > new Date(attempt.expiresAt)) {
+      throw new ForbiddenError('Exam session has expired; snapshots no longer accepted')
+    }
+
+    // 2. Rate limit: 1 request per second per attempt (R3 requirement)
+    const rateLimitKey = `pn:v1:ratelimit:snapshot:${attemptId}`
+    const { redisClient } = require('../../infra/redis/client')
+    let allowed = false
+
+    if (redisClient.client && redisClient.isReady) {
+      try {
+        const res = await redisClient.client.set(rateLimitKey, '1', 'PX', 950, 'NX')
+        allowed = (res === 'OK')
+      } catch (err) {
+        logger.warn({ error: err.message }, 'Redis rate limit check failed for snapshot, falling back')
+      }
+    }
+
+    if (!allowed && (!redisClient.client || !redisClient.isReady)) {
+      const now = Date.now()
+      const last = inMemorySnapshotRateLimits.get(rateLimitKey) || 0
+      if (now - last >= 950) {
+        inMemorySnapshotRateLimits.set(rateLimitKey, now)
+        allowed = true
+      }
+    }
+
+    if (!allowed) {
+      throw new TooManyRequestsError('Snapshot upload rate limit exceeded: maximum 1 per second per attempt', 1)
+    }
+
+    // 3. Fixed keys per attempt (overwritten)
+    const cameraKey = s3Client.buildLiveSnapshotKey(attempt.examId, attemptId, 'camera')
+    const screenKey = s3Client.buildLiveSnapshotKey(attempt.examId, attemptId, 'screen')
+
+    const cameraPutUrl = await s3Client.getPresignedPutUrl(cameraKey, 'image/webp', 120)
+    const screenPutUrl = await s3Client.getPresignedPutUrl(screenKey, 'image/webp', 120)
+
+    return {
+      camera: {
+        key: cameraKey,
+        putUrl: cameraPutUrl,
+        contentType: 'image/webp',
+        maxSizeBytes: 30 * 1024, // target ~15 KB
+        expiresIn: 120
+      },
+      screen: {
+        key: screenKey,
+        putUrl: screenPutUrl,
+        contentType: 'image/webp',
+        maxSizeBytes: 60 * 1024, // target ~30 KB
+        expiresIn: 120
+      }
+    }
+  }
+
+  /**
+   * Presigned read URLs for invigilator live snapshot viewing (R3)
+   */
+  async getLiveSnapshotReadUrls(user, { attemptId, examId }) {
+    if (!attemptId) {
+      throw new ValidationError('attemptId is required to read live snapshots')
+    }
+
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, examId: true, studentId: true }
+    })
+
+    if (!attempt) {
+      throw new NotFoundError(`Exam attempt '${attemptId}' not found`)
+    }
+
+    const resolvedExamId = examId || attempt.examId
+    const cameraKey = s3Client.buildLiveSnapshotKey(resolvedExamId, attemptId, 'camera')
+    const screenKey = s3Client.buildLiveSnapshotKey(resolvedExamId, attemptId, 'screen')
+
+    const cameraUrl = await s3Client.getPresignedReadUrl(cameraKey, 120)
+    const screenUrl = await s3Client.getPresignedReadUrl(screenKey, 120)
+
+    return {
+      cameraUrl,
+      screenUrl,
+      frameAt: Date.now()
     }
   }
 }

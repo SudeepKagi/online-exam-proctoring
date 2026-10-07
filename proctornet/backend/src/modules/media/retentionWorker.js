@@ -3,7 +3,45 @@ const { deleteObjects } = require('../../infra/s3/s3.client')
 const { EVIDENCE_RETENTION_DAYS } = require('../../shared/evidencePolicy')
 const { logger } = require('../../shared/logging')
 
+const RETENTION_LOCK_ID = 987654323
+
 class RetentionWorker {
+  constructor() {
+    this.timer = null
+    this.isRunning = false
+  }
+
+  start(intervalMs = 3600000) {
+    if (this.isRunning) return
+    this.isRunning = true
+    logger.info({ intervalMs }, 'RetentionWorker scheduler started')
+    this.timer = setInterval(() => {
+      this.tick().catch(err => logger.error({ error: err.message }, 'RetentionWorker scheduler error'))
+    }, intervalMs)
+    setTimeout(() => this.tick().catch((err) => logger.debug({ error: err.message }, 'Initial retention check deferred')), 5000)
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
+    this.isRunning = false
+    logger.info('RetentionWorker scheduler stopped')
+  }
+
+  async tick() {
+    const lockRes = await prisma.$queryRawUnsafe(`SELECT pg_try_advisory_lock($1) AS acquired;`, RETENTION_LOCK_ID).catch(() => null)
+    if (!lockRes || !lockRes[0]?.acquired) return
+    try {
+      await this.runRetentionPurge()
+    } finally {
+      await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock($1);`, RETENTION_LOCK_ID).catch((err) => {
+        logger.debug({ error: err.message }, 'Failed releasing retention lock')
+      })
+    }
+  }
+
   /**
    * Purge evidence assets older than retention threshold (default 180 days)
    */

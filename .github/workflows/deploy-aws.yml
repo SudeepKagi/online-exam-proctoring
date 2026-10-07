@@ -1,0 +1,135 @@
+name: Deploy to AWS (Lite Profile)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'proctornet/**'
+      - 'ops/aws/**'
+
+concurrency:
+  group: production-deployment
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build, Package & Deploy via SSM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            proctornet/backend/package-lock.json
+            proctornet/frontend/package-lock.json
+
+      - name: Configure AWS Credentials (OIDC or IAM Secrets)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+
+      - name: Build Frontend SPA
+        run: |
+          echo "Building React Single Page Application..."
+          cd proctornet/frontend
+          npm ci
+          npm run build
+          test -d dist && test -f dist/index.html
+          echo "[✓] Frontend SPA built successfully."
+
+      - name: Package Backend Production Bundle
+        run: |
+          echo "Preparing backend dependencies and Prisma client..."
+          cd proctornet/backend
+          npm ci --omit=dev
+          npx prisma generate
+          echo "[✓] Backend bundle ready."
+
+      - name: Create Versioned Release Archive
+        run: |
+          RELEASE_TAG="release-${{ github.sha }}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+          echo "Creating release archive: ${TAR_FILE}..."
+          tar -czf "${TAR_FILE}" \
+            proctornet/backend \
+            proctornet/frontend/dist
+
+          echo "Uploading release tarball and deploy script to S3..."
+          aws s3 cp "${TAR_FILE}" "s3://${{ secrets.AWS_S3_BUCKET }}/releases/${TAR_FILE}"
+          aws s3 cp ops/aws/scripts/deploy-release.sh "s3://${{ secrets.AWS_S3_BUCKET }}/releases/deploy-release.sh"
+          echo "[✓] Release artifacts uploaded to S3."
+
+      - name: Execute Deployment via AWS SSM Session Manager
+        run: |
+          RELEASE_TAG="release-${{ github.sha }}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+          INSTANCE_ID="${{ secrets.AWS_EC2_INSTANCE_ID }}"
+          BUCKET="${{ secrets.AWS_S3_BUCKET }}"
+
+          echo "Triggering SSM send-command on instance: ${INSTANCE_ID}..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploying ${RELEASE_TAG} with automated health checks" \
+            --parameters "commands=[
+              \"aws s3 cp s3://${BUCKET}/releases/deploy-release.sh /tmp/deploy-release.sh\",
+              \"chmod +x /tmp/deploy-release.sh\",
+              \"/tmp/deploy-release.sh ${TAR_FILE} ${BUCKET}\"
+            ]" \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "SSM Command dispatched with ID: ${COMMAND_ID}"
+          echo "Polling execution status..."
+
+          # Poll SSM command status
+          for i in {1..30}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            echo "Poll attempt ${i}/30: Status=${STATUS}"
+
+            if [ "${STATUS}" = "Success" ]; then
+              echo "=========================================================="
+              echo "[✓] Deployment completed successfully on instance!"
+              echo "=========================================================="
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
+              echo "=========================================================="
+              echo "[x] Deployment failed or automatically rolled back!"
+              echo "=========================================================="
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardErrorContent" \
+                --output text || true
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text || true
+              exit 1
+            fi
+
+            sleep 5
+          done
+
+          echo "[x] Deployment timed out waiting for SSM completion."
+          exit 1

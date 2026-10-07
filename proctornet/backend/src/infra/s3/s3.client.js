@@ -75,6 +75,10 @@ function buildQuestionKey(examId, uuid = crypto.randomUUID()) {
   return `questions/${examId}/${uuid}.webp`
 }
 
+function buildLiveSnapshotKey(examId, attemptId, type = 'camera') {
+  return `live/${examId}/${attemptId}/${type}.webp`
+}
+
 /**
  * Extract canonical S3 key from a full URL or relative path if needed
  */
@@ -273,6 +277,23 @@ async function deleteObjects(keys = []) {
   return await s3Client.send(command)
 }
 
+async function getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 120) {
+  if (!key) return null
+  const canonicalKey = extractS3Key(key)
+  try {
+    const command = new PutObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: canonicalKey,
+      ContentType: contentType,
+      ServerSideEncryption: 'AES256'
+    })
+    return await getSignedUrl(s3Client, command, { expiresIn })
+  } catch (err) {
+    logger.warn({ key, error: err.message }, 'Failed to generate presigned PUT URL')
+    throw err
+  }
+}
+
 module.exports = {
   s3Client,
   BUCKET_NAME,
@@ -280,8 +301,10 @@ module.exports = {
   buildEvidenceKey,
   buildThumbKey,
   buildQuestionKey,
+  buildLiveSnapshotKey,
   extractS3Key,
   getPresignedReadUrl,
+  getPresignedPutUrl,
   batchPresignReadUrls,
   createDirectUploadPolicy,
   headObject,

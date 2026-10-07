@@ -1,0 +1,26 @@
+=== PROMPT 4 PHASE A4: DELIVERY ENDPOINTS & GUARDRAILS EVIDENCE ===
+Timestamp: 2026-10-07T09:43:00Z
+Endpoints: GET /api/v1/agent/manifest, GET /api/v1/agent/download, POST /api/v1/student/agent/pairing-code
+Metrics: agent_downloads_total, agent_pairings_total{scope="PRECHECK|ATTEMPT"}
+CI Stub check: node scripts/ci/check-no-stubs.js
+
+=== ARCHITECTURE & FLOW ===
+1. Manifest Delivery (GET /api/v1/agent/manifest):
+   - Returns official releases per OS (win, mac-arm64, mac-x64, linux), SHA-256 hashes, minimum supported version (1.0.0), and privacy notice policy version.
+2. Direct S3 Download (GET /api/v1/agent/download?os=...):
+   - Generates presigned S3 GET URL via S3Client.
+   - Responds with 302 redirect directly to S3 (zero binary bytes routed through EC2 memory/bandwidth).
+   - Increments agent_downloads_total{os} Prometheus funnel metric without PII.
+3. Practice Pairing / Precheck (POST /api/v1/student/agent/pairing-code):
+   - Authenticated student can generate a scope=PRECHECK Crockford-32 pairing code days before exam day.
+   - Allows testing hardware compatibility and workstation readiness in advance.
+4. Funnel Metrics:
+   - download_clicked: recorded via agent_downloads_total counter.
+   - pair_started: recorded via agent_pairings_total{scope, result} counter.
+   - paired: recorded via agent_sessions gauge.
+   - Zero student PII or process telemetry stored in logs or metrics.
+
+=== STUB SCANNER RESULT ===
+🔍 [CI] Running AST + Regex Stub Scanner (check-no-stubs.js)...
+📊 Scan completed across 286 source files.
+✅ Stub scanner green: zero hardcoded scores, zero stubs, zero unobserved writes, zero fake handlers.

@@ -5,9 +5,34 @@ const { asyncLocalStorage } = require('./context')
 
 const isProduction = process.env.NODE_ENV === 'production'
 
+const SENSITIVE_REDACT_PATHS = [
+  'req.headers.authorization',
+  'req.headers["x-agent-signature"]',
+  'req.headers["x-agent-session"]',
+  'req.headers["x-agent-nonce"]',
+  'req.headers["x-agent-ts"]',
+  'req.body.password',
+  'req.body.token',
+  'req.body.sessionToken',
+  'req.body.sessionKey',
+  'req.body.code',
+  '*.password',
+  '*.token',
+  '*.sessionToken',
+  '*.sessionKey',
+  '*.sessionKeyEnc',
+  '*.code',
+  '*.pairingCode',
+  '*.signature'
+]
+
 const logger = pino({
   level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
   timestamp: pino.stdTimeFunctions.isoTime,
+  redact: {
+    paths: SENSITIVE_REDACT_PATHS,
+    censor: '[REDACTED]'
+  },
   formatters: {
     level(label) {
       return { level: label }
@@ -17,6 +42,10 @@ const logger = pino({
 
 const httpLogger = pinoHttp({
   logger,
+  redact: {
+    paths: SENSITIVE_REDACT_PATHS,
+    censor: '[REDACTED]'
+  },
   genReqId(req) {
     return req.headers['x-request-id'] || req.headers['x-correlation-id'] || crypto.randomUUID()
   },
@@ -56,4 +85,5 @@ module.exports = {
   logger,
   httpLogger,
   requestContextMiddleware,
+  SENSITIVE_REDACT_PATHS
 }

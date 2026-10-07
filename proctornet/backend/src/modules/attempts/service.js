@@ -74,6 +74,10 @@ class AttemptService {
     }
 
     // 4. Handle terminal / non-active attempt statuses (E-03: Suspended/READY/expired resume must not receive question content)
+    if (attempt.status === 'READY' && attempt.exam.deviceAgentPolicy === 'REQUIRED') {
+      throw new ForbiddenError('Device companion check required: An active healthy agent session with no blocking findings (or a staff waiver) is required to start this exam.')
+    }
+
     const isExpired = Boolean(attempt.expiresAt && new Date() > new Date(attempt.expiresAt))
     if (attemptStateMachine.isTerminal(attempt.status) || attempt.status === 'SUSPENDED' || attempt.status === 'READY' || isExpired) {
       if (isExpired && attempt.status === 'ACTIVE') {

@@ -46,3 +46,11 @@ vpn-server/*.conf
 # Playwright
 test-results/
 playwright-report/
+
+# Terraform
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

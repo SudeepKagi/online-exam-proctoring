@@ -22,9 +22,12 @@ function buildDatasourceUrl(role = 'api') {
 
   // Calculate pool limit based on single-node resource budget (Appendix C):
   // Rule: total pool sizes <= 60% of Postgres max_connections (100).
-  // 4 API workers * 10 conns = 40. 2 background workers * 10 conns = 20. Total: 60 conns.
+  // Lite profile enforces connection_limit=5 for memory discipline (R4 item 5).
   const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
-  const poolLimit = isTest ? 20 : (role === 'worker' ? 10 : 15);
+  const isLite = process.env.APP_PROFILE === 'lite' || process.env.PRISMA_CONNECTION_LIMIT === '5'
+  const poolLimit = process.env.PRISMA_CONNECTION_LIMIT
+    ? parseInt(process.env.PRISMA_CONNECTION_LIMIT, 10)
+    : (isLite ? 5 : (isTest ? 20 : (role === 'worker' ? 10 : 15)));
   const poolTimeout = isTest ? 30 : 20; // Allow 30s during high concurrency tests
 
   const urlObj = new URL(url);

@@ -72,6 +72,7 @@ export default function QuestionPool() {
   const [showForm, setShowForm] = useState(false)
   const [editQ, setEditQ] = useState(null)
   const [questionToDelete, setQuestionToDelete] = useState(null)
+  const [llmEnabled, setLlmEnabled] = useState(false)
 
   // AI Generator state
   const [aiTopic, setAiTopic] = useState('')
@@ -97,12 +98,14 @@ export default function QuestionPool() {
   const loadAll = async () => {
     setLoading(true)
     try {
-      const [exRes, qRes] = await Promise.all([
+      const [exRes, qRes, cfgRes] = await Promise.all([
         api.get(`/faculty/exams/${examId}`),
-        api.get(`/faculty/questions/${examId}`)
+        api.get(`/faculty/questions/${examId}`),
+        api.get('/config').catch(() => ({ data: {} }))
       ])
       const exData = exRes.data.exam || exRes.data
       setExam(exData)
+      setLlmEnabled(Boolean(cfgRes.data?.llmEnabled))
       setAiTopic(exData.title || exData.subject || 'Operating Systems')
       setQuestions(qRes.data.questions || qRes.data || [])
     } catch {
@@ -195,9 +198,11 @@ export default function QuestionPool() {
             <p className="text-xs font-mono text-muted-foreground mt-0.5">Subject: {exam?.subject || 'CS301'} • Total Questions: {questions.length}</p>
           </div>
           <div className="flex items-center gap-2 font-mono">
-            <Button size="sm" variant={showAI ? "default" : "outline"} onClick={() => setShowAI(s => !s)} className="text-xs">
-              <Sparkles size={14} className="mr-1.5" /> AI Generator
-            </Button>
+            {llmEnabled && (
+              <Button size="sm" variant={showAI ? "default" : "outline"} onClick={() => setShowAI(s => !s)} className="text-xs">
+                <Sparkles size={14} className="mr-1.5" /> AI Generator
+              </Button>
+            )}
             <Button size="sm" onClick={() => {
               setEditQ(null)
               setForm({

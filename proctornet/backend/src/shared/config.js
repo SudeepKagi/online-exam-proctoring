@@ -1,5 +1,19 @@
 require('dotenv').config()
 
+// ── R4: Memory discipline — guard against multi-instance memory-only cache ────
+const _appInstances = parseInt(process.env.APP_INSTANCES || '1', 10)
+const _cacheDriver = (process.env.CACHE_DRIVER || 'redis').toLowerCase().trim()
+const _queueDriver = (process.env.QUEUE_DRIVER || 'rabbitmq').toLowerCase().trim()
+
+if (_cacheDriver === 'memory' && _appInstances > 1) {
+  // Fatal boot-time guard: in-memory cache cannot be shared across processes
+  console.error(
+    `[FATAL] CACHE_DRIVER=memory is incompatible with APP_INSTANCES=${_appInstances}. ` +
+    'Use CACHE_DRIVER=redis for multi-instance deployments. Exiting.'
+  )
+  process.exit(1)
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -43,7 +57,45 @@ const config = {
 
   // S3 / Object Storage
   s3Bucket: process.env.AWS_S3_BUCKET || 'proctornet-evidence',
-  s3Region: process.env.AWS_REGION || 'us-east-1'
+  s3Region: process.env.AWS_REGION || 'us-east-1',
+
+  // ── R4: Driver Selection ──────────────────────────────────────────────────
+
+  // Media Driver (R3: snapshot [lite/default] | livekit-selfhost | livekit-cloud)
+  get mediaDriver() {
+    if (process.env.MEDIA_DRIVER) {
+      const d = process.env.MEDIA_DRIVER.toLowerCase().trim()
+      if (d === 'snapshot' || d === 'livekit-selfhost' || d === 'livekit-cloud') return d
+    }
+    const profile = (process.env.APP_PROFILE || 'lite').toLowerCase().trim()
+    if (profile === 'lite') return 'snapshot'
+    return process.env.LIVEKIT_URL ? 'livekit-selfhost' : 'snapshot'
+  },
+
+  // Queue Driver: 'rabbitmq' (default) | 'postgres' (lite — in-process outbox dispatch, no broker dependency)
+  queueDriver: _queueDriver === 'postgres' ? 'postgres' : 'rabbitmq',
+
+  // Cache Driver: 'redis' (default) | 'memory' (single-instance lite only — startup guard above)
+  cacheDriver: _cacheDriver === 'memory' ? 'memory' : 'redis',
+
+  // Face Driver: 'rekognition' | 'onnx' | 'off'
+  faceDriver: (process.env.FACE_DRIVER || 'off').toLowerCase().trim(),
+
+  // LLM Provider: 'none' | 'openai' | 'google' | 'anthropic'
+  // When 'none': AI question generation button is hidden in UI, never mocked.
+  llmProvider: (process.env.LLM_PROVIDER || 'none').toLowerCase().trim(),
+  llmApiKey: process.env.LLM_API_KEY || '',
+  llmModel: process.env.LLM_MODEL || '',
+
+  // Per-faculty AI rate limits
+  llmDailyCostCapUsd: parseFloat(process.env.LLM_DAILY_COST_CAP_USD || '5.0'),
+  llmRateLimitPerFacultyPerDay: parseInt(process.env.LLM_RATE_LIMIT_PER_FACULTY_PER_DAY || '20', 10),
+
+  // App scaling
+  appInstances: _appInstances,
+
+  // ── R4: Memory Discipline ────────────────────────────────────────────────
+  prismaConnectionLimit: parseInt(process.env.PRISMA_CONNECTION_LIMIT || '5', 10),
 }
 
 module.exports = config

@@ -7,7 +7,7 @@ const facultyController = require('./faculty/controller')
 const studentController = require('./student/controller')
 const invigilatorController = require('./invigilator/controller')
 const notificationsController = require('./notifications/controller')
-const deviceCheckController = require('./deviceCheck/controller')
+const { agentController } = require('./agent')
 
 // High-Throughput & Specialized Domain Controllers
 const examController = require('./exams/controller')
@@ -44,9 +44,19 @@ router.get('/config', (req, res) => {
     vpnEnforcement = 'off'
   }
 
+  const config = require('../shared/config')
+  const mediaDriver = config.mediaDriver
+
   res.status(200).json({
     vpnEnforcement,
     isVpnEnforced: vpnEnforcement !== 'off',
+    mediaDriver,
+    // R4: AI question generation — UI hides the button when llmEnabled is false
+    llmEnabled: config.llmProvider !== 'none' && Boolean(config.llmApiKey),
+    llmProvider: config.llmProvider,
+    // R4: Driver info (useful for debugging / admin dashboard)
+    queueDriver: config.queueDriver,
+    cacheDriver: config.cacheDriver,
     autosaveMaxBatch: 100,
     serverTime: new Date().toISOString()
   })
@@ -64,8 +74,8 @@ router.use('/enrollment', (req, res, next) => {
 router.use('/invigilator', invigilatorController)
 router.use('/notifications', notificationsController)
 
-// Flat Mounted Subrouters (Device check, Media, Exams, Proctoring, etc.)
-router.use('/', deviceCheckController)
+// Flat Mounted Subrouters (Agent, Media, Exams, Proctoring, etc.)
+router.use('/', agentController)
 router.use('/', examController)
 router.use('/', questionController)
 router.use('/', attemptController)

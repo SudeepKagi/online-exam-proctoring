@@ -198,6 +198,12 @@ export default function CreateExam() {
     correctAnswer: 'A'
   })
 
+  const [llmEnabled, setLlmEnabled] = useState(false)
+
+  useEffect(() => {
+    api.get('/config').then(r => setLlmEnabled(Boolean(r.data?.llmEnabled))).catch(() => {})
+  }, [])
+
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
@@ -604,17 +610,19 @@ export default function CreateExam() {
                     >
                       <Plus size={15} /> Add Manually
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('ai')}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                        activeTab === 'ai'
-                          ? 'bg-[#2f80ed] text-white shadow-xs'
-                          : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Sparkles size={15} /> AI Generate
-                    </button>
+                    {llmEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('ai')}
+                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                          activeTab === 'ai'
+                            ? 'bg-[#2f80ed] text-white shadow-xs'
+                            : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <Sparkles size={15} /> AI Generate
+                      </button>
+                    )}
                   </div>
                 </div>
 

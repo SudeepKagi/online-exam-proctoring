@@ -172,23 +172,13 @@ class StudentService {
   }
 
   async createSupportTicket(studentId, { subject, message, priority, examId }) {
-    return {
-      success: true,
-      ticket: {
-        id: crypto.randomUUID(),
-        studentId,
-        examId: examId || null,
-        subject,
-        message,
-        priority: priority || 'MEDIUM',
-        status: 'OPEN',
-        createdAt: new Date().toISOString()
-      }
-    }
+    const { supportService } = require('../support/supportService')
+    return supportService.createTicket(studentId, { subject, message, priority, examId })
   }
 
   async listSupportTickets(studentId) {
-    return []
+    const { supportService } = require('../support/supportService')
+    return supportService.listTicketsForStudent(studentId)
   }
 
   async submitConsent(studentId) {
@@ -202,6 +192,14 @@ class StudentService {
   async enrollFace(studentId, photoKey) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student not found')
+
+    // R-06 & R-07: Accept only server-issued keys for this student and verify object existence
+    const { pendingUploadRegistry } = require('../media/pendingUploads')
+    await pendingUploadRegistry.verifyAndConsumeUpload({
+      key: photoKey,
+      studentId,
+      purpose: 'FACE_ENROLLMENT'
+    })
 
     // Run server-side enrollment quality gates (1 face, >= 20% height, brightness/sharpness, pose, eyes open, not occluded)
     const quality = await faceVerificationService.validateEnrollmentQuality(photoKey)
@@ -219,6 +217,14 @@ class StudentService {
   async enrollIdDocument(studentId, idKey) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student not found')
+
+    // R-06 & R-07: Accept only server-issued keys for this student and verify object existence
+    const { pendingUploadRegistry } = require('../media/pendingUploads')
+    await pendingUploadRegistry.verifyAndConsumeUpload({
+      key: idKey,
+      studentId,
+      purpose: 'ID_ENROLLMENT'
+    })
 
     // Enrollment photo vs ID-card photo compare is an assistive signal for admin approval queue, not auto-decision
     let idCardMatchSignal = null

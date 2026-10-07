@@ -43,9 +43,14 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
     socket.on('connect', () => {
       setConnected(true)
       socket.emit('inv:join', { examId })
+      // R3: expose socket for IntersectionObserver cadence emitter and frame:update listener
+      window.__invSocket = socket
     })
 
-    socket.on('disconnect', () => setConnected(false))
+    socket.on('disconnect', () => {
+      setConnected(false)
+      window.__invSocket = null
+    })
 
     // ── 500ms Coalesced Roster Delta (P6) ──
     socket.on('roster:delta', (deltas) => {
@@ -88,14 +93,45 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
     return () => {
       socket.disconnect()
       socketRef.current = null
+      window.__invSocket = null
       setConnected(false)
     }
   }, [examId, enabled])
+
+  const sendWarning = (attemptId, message) => {
+    socketRef.current?.emit('warn', { attemptId, message })
+  }
+
+  const sendChat = (examId, studentId, message) => {
+    socketRef.current?.emit('chat', { examId, studentId, message })
+  }
+
+  const pauseStudentExam = (attemptId, reason) => {
+    socketRef.current?.emit('pause', { attemptId, reason })
+  }
+
+  const resumeStudentExam = (attemptId) => {
+    socketRef.current?.emit('resume', { attemptId })
+  }
+
+  const terminateStudentExam = (attemptId, reason) => {
+    socketRef.current?.emit('terminate', { attemptId, reason })
+  }
+
+  const requestStudentStream = (attemptId) => {
+    socketRef.current?.emit('request:stream', { attemptId })
+  }
 
   return {
     socket: socketRef.current,
     connected,
     alerts,
-    chats
+    chats,
+    sendWarning,
+    sendChat,
+    pauseStudentExam,
+    resumeStudentExam,
+    terminateStudentExam,
+    requestStudentStream
   }
 }

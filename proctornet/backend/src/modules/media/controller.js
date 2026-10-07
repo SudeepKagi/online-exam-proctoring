@@ -211,4 +211,49 @@ router.post(
   }
 )
 
+// ──────────────────────────────────────────────────────────────────────────────
+// R3 — Snapshot Driver: Presigned ticket + read routes
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/v1/attempts/:attemptId/snapshots/ticket
+ * Student requests short-lived presigned PUT URLs for camera + screen WebP snapshots.
+ * Rate-limited to 1/s/attempt (enforced inside presignService).
+ */
+router.post(
+  '/attempts/:attemptId/snapshots/ticket',
+  requireAuth,
+  requireRole(ROLES.STUDENT),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const result = await presignService.generateLiveSnapshotTicket(req.user, { attemptId })
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/attempts/:attemptId/snapshots/read
+ * Invigilator/admin fetches fresh presigned GET URLs for live frames.
+ * Query param ?examId= is optional (auto-resolved from attempt if omitted).
+ */
+router.get(
+  '/attempts/:attemptId/snapshots/read',
+  requireAuth,
+  requireRole([ROLES.ADMIN, ROLES.INVIGILATOR, ROLES.FACULTY]),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const { examId } = req.query
+      const result = await presignService.getLiveSnapshotReadUrls(req.user, { attemptId, examId })
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router

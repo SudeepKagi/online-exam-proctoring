@@ -1,5 +1,55 @@
 [
   {
+    "method": "POST",
+    "path": "/api/v1/admin/agent/releases",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/agent/releases)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/agent/releases/:id/revoke",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/agent/releases/:id/revoke)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/agent/releases/revoke",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/agent/releases/revoke)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/admin/agent/rules",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/admin/agent/rules/:id",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (PUT /api/v1/admin/agent/rules/:id)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
     "method": "GET",
     "path": "/api/v1/admin/announcements",
     "auth": "Required",
@@ -381,6 +431,26 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/admin/support/tickets",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/support/tickets/:id",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/support/tickets/:id)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/admin/violations",
     "auth": "Required",
     "role": "admin",
@@ -401,7 +471,67 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/agent/download",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/agent/manifest",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/pair",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/agent/pair)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/agent/report",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/agent/report)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/attempts/:attemptId",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/agent/pairing-code",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/agent/pairing-code)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/agent/status",
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
@@ -428,6 +558,26 @@
     "module": "attempts",
     "effect": "DB row upserted (answers) with CAS revision increment",
     "negativeEffect": "0 answer rows mutated; revision unchanged"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/identity-override",
+    "auth": "Required",
+    "role": "admin, invigilator",
+    "ownerCheck": "Yes",
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/identity-override)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/liveness-challenge",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -458,6 +608,26 @@
     "module": "attempts",
     "effect": "DB row updated (exam_attempts ACTIVE) + audit log",
     "negativeEffect": "Attempt status untouched; 0 audit logs"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/snapshots/read",
+    "auth": "Required",
+    "role": "admin, invigilator, faculty",
+    "ownerCheck": "Yes",
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/snapshots/ticket",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/snapshots/ticket)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -511,10 +681,30 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/verify-identity",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/verify-identity)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/attempts/:attemptId/violations",
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
+    "module": "attempts",
+    "effect": "DB row inserted (violation_events) + flag_count incremented",
+    "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/attempts/:attemptId/violations/:violationId/evidence/complete",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
     "module": "attempts",
     "effect": "DB row inserted (violation_events) + flag_count incremented",
     "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
@@ -671,76 +861,6 @@
   },
   {
     "method": "POST",
-    "path": "/api/v1/device-check",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "DB row mutated (POST /api/v1/device-check)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/device-check/run",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "DB row mutated (POST /api/v1/device-check/run)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/evidence-clip",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "system",
-    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
-    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/exam/device-check",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "DB row mutated (POST /api/v1/exam/device-check)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/exam/evidence-clip",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
-    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/exam/livekit-token",
-    "auth": "Required",
-    "role": "student, invigilator, faculty, admin",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "DB row mutated (POST /api/v1/exam/livekit-token)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/exam/snapshot",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes",
-    "module": "deviceCheck",
-    "effect": "DB row mutated (POST /api/v1/exam/snapshot)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
     "path": "/api/v1/exams",
     "auth": "Required",
     "role": "admin, faculty",
@@ -795,6 +915,16 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/invigilator-credentials/regenerate",
+    "auth": "Required",
+    "role": "admin, faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
     "module": "exams",
     "effect": "DB row created/updated (exams)",
     "negativeEffect": "0 exams mutated"
@@ -1000,6 +1130,16 @@
     "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/invigilator-credentials/regenerate",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
     "method": "PATCH",
     "path": "/api/v1/faculty/exams/:id/publish",
     "auth": "Required",
@@ -1022,6 +1162,16 @@
   {
     "method": "POST",
     "path": "/api/v1/faculty/exams/:id/publish-alt",
+    "auth": "Required",
+    "role": "faculty",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/faculty/exams/:id/regenerate-invigilator",
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
@@ -1311,16 +1461,6 @@
   },
   {
     "method": "POST",
-    "path": "/api/v1/livekit-token",
-    "auth": "Required",
-    "role": "student, invigilator, faculty, admin",
-    "ownerCheck": "Yes",
-    "module": "system",
-    "effect": "DB row mutated (POST /api/v1/livekit-token)",
-    "negativeEffect": "Rejected requests mutate zero rows"
-  },
-  {
-    "method": "POST",
     "path": "/api/v1/media/complete-upload",
     "auth": "Required",
     "role": "Any Authenticated",
@@ -1471,13 +1611,43 @@
   },
   {
     "method": "POST",
-    "path": "/api/v1/snapshot",
+    "path": "/api/v1/staff/attempts/:attemptId/agent/recheck",
+    "auth": "Required",
+    "role": "faculty, invigilator, admin",
+    "ownerCheck": "Yes",
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/staff/attempts/:attemptId/agent/recheck)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/staff/attempts/:attemptId/agent/waiver",
+    "auth": "Required",
+    "role": "faculty, invigilator, admin",
+    "ownerCheck": "Yes",
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/staff/attempts/:attemptId/agent/waiver)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/agent/pairing-code",
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "system",
-    "effect": "DB row mutated (POST /api/v1/snapshot)",
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/agent/pairing-code)",
     "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/student/agent/status",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1718,5 +1888,15 @@
     "module": "system",
     "effect": "S3 presigned URL/POST policy issued + DB ticket created",
     "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/violations/:violationId/evidence/complete",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "DB row inserted (violation_events) + flag_count incremented",
+    "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
   }
 ]

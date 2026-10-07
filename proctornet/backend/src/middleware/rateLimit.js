@@ -1,5 +1,6 @@
 const { RateLimiterRedis, RateLimiterMemory } = require('rate-limiter-flexible')
 const { redis } = require('../infra/redis/client')
+const config = require('../shared/config')
 const { TooManyRequestsError } = require('../shared/errors')
 const { logger } = require('../shared/logging')
 
@@ -8,6 +9,10 @@ function createLimiter(prefix, points, duration) {
     points,
     duration
   })
+
+  if (config.cacheDriver === 'memory') {
+    return memoryLimiter
+  }
 
   // Try Redis-backed limiter with insuranceLimiter falling back to memory
   let limiter = memoryLimiter
@@ -130,6 +135,10 @@ const limitDefault = rateLimit(defaultLimiter, (req) => {
   return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip || '127.0.0.1'}`
 })
 
+const limitPair = rateLimit(createLimiter('agent_pair', 30, 60), (req) => {
+  return `pair:${req.ip || req.connection?.remoteAddress || '127.0.0.1'}`
+})
+
 const routeRateLimiters = {
   login: limitLogin,
   autosave: limitAutosave,
@@ -137,6 +146,7 @@ const routeRateLimiters = {
   violation: limitViolation,
   presign: limitPresign,
   roster: limitRoster,
+  pair: limitPair,
   default: limitDefault
 }
 
@@ -147,6 +157,7 @@ module.exports = {
   limitPresign,
   limitRoster,
   limitDefault,
+  limitPair,
   rateLimit,
   routeRateLimiters
 }

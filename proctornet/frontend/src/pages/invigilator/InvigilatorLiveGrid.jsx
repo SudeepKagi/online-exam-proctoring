@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   Grid, Video, AlertTriangle, MessageSquare, PauseCircle, PlayCircle,
-  Eye, RefreshCw, X, ShieldAlert, Wifi, UserCheck, Search, Filter, LogOut, Monitor
+  Eye, RefreshCw, X, ShieldAlert, Wifi, UserCheck, Search, Filter, LogOut, Monitor, Cpu
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -45,12 +45,46 @@ export default function InvigilatorLiveGrid() {
   const [violationTypeFilter, setViolationTypeFilter] = useState('ALL')
   const [violationPage, setViolationPage] = useState(1)
 
+  // R3: snapshot driver state
+  const [mediaDriver, setMediaDriver] = useState('snapshot') // default, overwritten from /config
+  // snapshotFrames: { [attemptId]: { frameAt: number, cameraUrl: string, screenUrl: string } }
+  const [snapshotFrames, setSnapshotFrames] = useState({})
+  const tileRefs = useRef({}) // attemptId -> DOM element ref (for IntersectionObserver)
+  const observerRef = useRef(null)
+  const visibleTilesRef = useRef(new Set()) // currently intersecting tile attemptIds
+  const focusRefreshTimer = useRef(null)
+
+  // Fetch media driver from /config on mount
+  useEffect(() => {
+    api.get('/config').then(res => {
+      setMediaDriver(res.data?.mediaDriver || 'snapshot')
+    }).catch(() => {})
+  }, [])
+
   // Auth guard: R-09 redirect to login if unauthenticated
   useEffect(() => {
     if (!user) {
       navigate('/invigilator/login')
     }
   }, [user, navigate])
+
+  // ── R3: Snapshot driver — IntersectionObserver + frame:update socket listener ─────
+  const { socket: invSocket } = useInvigilatorSocket
+    ? /* already available via hook below */ {}
+    : {}
+
+  // R3 helper: fetch fresh presigned read URLs for a focused candidate
+  const fetchSnapshotFrame = useCallback(async (attemptId) => {
+    if (!attemptId) return
+    try {
+      const res = await api.get(`/attempts/${attemptId}/snapshots/read`)
+      const { cameraUrl, screenUrl, frameAt } = res.data
+      setSnapshotFrames(prev => ({
+        ...prev,
+        [attemptId]: { cameraUrl, screenUrl, frameAt: frameAt || Date.now() }
+      }))
+    } catch (_) {}
+  }, [])
 
   // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
   const [subscribedTracks, setSubscribedTracks] = useState({})
@@ -202,6 +236,89 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
+  // ── R3: IntersectionObserver — only visible tiles emit tile_visibility ────────
+  // Runs after candidates are rendered; re-runs on page/filter changes.
+  useEffect(() => {
+    if (mediaDriver !== 'snapshot') return
+    if (observerRef.current) observerRef.current.disconnect()
+
+    const { socket: sock } = (typeof useInvigilatorSocket === 'function') ? {} : {}
+
+    const observer = new IntersectionObserver((entries) => {
+      let changed = false
+      entries.forEach(entry => {
+        const attemptId = entry.target.dataset?.candidateId
+        if (!attemptId) return
+        if (entry.isIntersecting) {
+          if (!visibleTilesRef.current.has(attemptId)) {
+            visibleTilesRef.current.add(attemptId)
+            changed = true
+          }
+        } else {
+          if (visibleTilesRef.current.has(attemptId)) {
+            visibleTilesRef.current.delete(attemptId)
+            changed = true
+          }
+        }
+      })
+
+      if (changed) {
+        // Emit to server so it pushes cadence to each visible student
+        const payload = {
+          examId: effectiveExamId,
+          visibleAttemptIds: Array.from(visibleTilesRef.current),
+          focusedAttemptId: selectedCandidate ? (selectedCandidate.attemptId || selectedCandidate.id) : null
+        }
+        // Access socket from hook — emit if connected
+        if (window.__invSocket?.connected) {
+          window.__invSocket.emit('proctor:tile_visibility', payload)
+        }
+      }
+    }, { threshold: 0.1 })
+
+    observerRef.current = observer
+    Object.values(tileRefs.current).forEach(el => { if (el) observer.observe(el) })
+
+    return () => observer.disconnect()
+  }, [mediaDriver, currentCandidates, effectiveExamId, selectedCandidate])
+
+  // ── R3: Listen for frame:update from server ─────────────────────────────────
+  // frame:update: { attemptId, frameAt, examId } — invigilator refreshes cache-busted img src
+  useEffect(() => {
+    if (mediaDriver !== 'snapshot') return
+    const sock = window.__invSocket
+    if (!sock) return
+
+    const handler = ({ attemptId, frameAt }) => {
+      setSnapshotFrames(prev => ({
+        ...prev,
+        [attemptId]: { ...(prev[attemptId] || {}), frameAt: frameAt || Date.now() }
+      }))
+    }
+    sock.on('frame:update', handler)
+    return () => sock.off('frame:update', handler)
+  }, [mediaDriver, window.__invSocket])
+
+  // ── R3: Focus modal snapshot refresh at 1–2 s ──────────────────────────────
+  useEffect(() => {
+    if (mediaDriver !== 'snapshot') return
+    if (focusRefreshTimer.current) {
+      clearInterval(focusRefreshTimer.current)
+      focusRefreshTimer.current = null
+    }
+    if (selectedCandidate) {
+      const attemptId = selectedCandidate.attemptId || selectedCandidate.id
+      fetchSnapshotFrame(attemptId) // immediate
+      focusRefreshTimer.current = setInterval(() => fetchSnapshotFrame(attemptId), 1500)
+    }
+    return () => {
+      if (focusRefreshTimer.current) {
+        clearInterval(focusRefreshTimer.current)
+        focusRefreshTimer.current = null
+      }
+    }
+  }, [selectedCandidate, mediaDriver, fetchSnapshotFrame])
+
   // ── Initialize LiveKit SFU ProctorViewer ──
   useEffect(() => {
     let activeViewer = null
@@ -321,8 +438,53 @@ export default function InvigilatorLiveGrid() {
     }
   }, [currentCandidates, selectedCandidate])
 
+  const [candidateAgentStatus, setCandidateAgentStatus] = useState(null)
+  const [loadingAgentStatus, setLoadingAgentStatus] = useState(false)
+  const [waiverDialog, setWaiverDialog] = useState({ open: false, reason: '' })
+
+  const loadAgentStatus = async (cand) => {
+    const candId = cand.attemptId || cand.id || cand.studentId
+    if (!candId) return
+    setLoadingAgentStatus(true)
+    try {
+      const res = await api.get(`/attempts/${candId}/agent/status`)
+      setCandidateAgentStatus(res.data)
+    } catch {
+      setCandidateAgentStatus(null)
+    } finally {
+      setLoadingAgentStatus(false)
+    }
+  }
+
+  const handleRecheckCompanion = async () => {
+    if (!selectedCandidate) return
+    const candId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
+    try {
+      await api.post(`/staff/attempts/${candId}/agent/recheck`)
+      toast.success('Re-check requested for candidate Exam Device Companion')
+      setTimeout(() => loadAgentStatus(selectedCandidate), 1000)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to request re-check')
+    }
+  }
+
+  const handleGrantWaiver = async () => {
+    if (!selectedCandidate || !waiverDialog.reason.trim()) return
+    const candId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
+    try {
+      await api.post(`/staff/attempts/${candId}/agent/waiver`, { reason: waiverDialog.reason.trim() })
+      toast.success('Exam Device Companion waiver granted')
+      setWaiverDialog({ open: false, reason: '' })
+      loadAgentStatus(selectedCandidate)
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to grant waiver')
+    }
+  }
+
   const handleSelectCandidate = (cand) => {
     setSelectedCandidate(cand)
+    setCandidateAgentStatus(null)
+    loadAgentStatus(cand)
     if (viewerRef.current) {
       viewerRef.current.setFocusCandidate(cand.attemptId || cand.id)
     }
@@ -602,13 +764,36 @@ export default function InvigilatorLiveGrid() {
                         )}
                       </div>
 
-                      {/* Camera Feed Thumbnail */}
-                      <div className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2">
-                        <WebcamFeed
-                          track={tracks.camera}
-                          initialFrame={cand.latestFrame || cand.lastSnapshot || cand.thumbUrl}
-                          className="w-full h-full object-cover"
-                        />
+                      {/* Camera Feed Thumbnail — snapshot or LiveKit */}
+                      <div
+                        ref={el => { tileRefs.current[cand.attemptId || cand.id] = el }}
+                        className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2"
+                      >
+                        {mediaDriver === 'snapshot' ? (
+                          (() => {
+                            const sf = snapshotFrames[cand.attemptId || cand.id]
+                            const fallback = cand.latestFrame || cand.lastSnapshot || cand.thumbUrl
+                            const src = sf?.cameraUrl
+                              ? `${sf.cameraUrl.split('?')[0]}?frameAt=${sf.frameAt}`
+                              : fallback
+                            return src ? (
+                              <img
+                                src={src}
+                                alt={`Live camera — ${cand.usn}`}
+                                className="w-full h-full object-cover"
+                                onError={e => { e.currentTarget.style.display = 'none' }}
+                              />
+                            ) : (
+                              <span className="text-[10px] text-neutral-500 font-mono">No frame yet</span>
+                            )
+                          })()
+                        ) : (
+                          <WebcamFeed
+                            track={tracks.camera}
+                            initialFrame={cand.latestFrame || cand.lastSnapshot || cand.thumbUrl}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
                         {cand.isHotspot && (
                           <span className="absolute top-1.5 right-1.5 bg-[#fffbeb] text-[#b45309] text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[#fde68a]">
                             HOTSPOT
@@ -687,24 +872,105 @@ export default function InvigilatorLiveGrid() {
                 {/* Dual Stream Feeds */}
                 <div className="grid grid-cols-2 gap-3.5">
                   <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
-                    <WebcamFeed
-                      track={getCandidateTracks(selectedCandidate).camera}
-                      initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot || selectedCandidate.thumbUrl}
-                      className="w-full h-full object-cover"
-                    />
+                    {mediaDriver === 'snapshot' ? (() => {
+                      const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
+                      const camSrc = sf?.cameraUrl
+                        ? `${sf.cameraUrl.split('?')[0]}?frameAt=${sf.frameAt}`
+                        : (selectedCandidate.latestFrame || selectedCandidate.lastSnapshot)
+                      return camSrc ? (
+                        <img src={camSrc} alt="Live camera feed" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-neutral-500 font-mono">Awaiting snapshot...</span>
+                      )
+                    })() : (
+                      <WebcamFeed
+                        track={getCandidateTracks(selectedCandidate).camera}
+                        initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot || selectedCandidate.thumbUrl}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
                       <Video size={11} className="text-primary" /> Camera Stream
                     </span>
                   </div>
                   <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
-                    <ScreenFeed
-                      track={getCandidateTracks(selectedCandidate).screen}
-                      initialFrame={selectedCandidate.latestScreen}
-                      className="w-full h-full object-cover"
-                    />
+                    {mediaDriver === 'snapshot' ? (() => {
+                      const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
+                      const scrSrc = sf?.screenUrl
+                        ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}`
+                        : selectedCandidate.latestScreen
+                      return scrSrc ? (
+                        <img src={scrSrc} alt="Live screen feed" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-xs text-neutral-500 font-mono">Awaiting snapshot...</span>
+                      )
+                    })() : (
+                      <ScreenFeed
+                        track={getCandidateTracks(selectedCandidate).screen}
+                        initialFrame={selectedCandidate.latestScreen}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
                       <Monitor size={11} className="text-primary" /> Screen Stream
                     </span>
+                  </div>
+                </div>
+
+                {/* Exam Device Companion Status Card */}
+                <div className="bg-background border border-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                      <Cpu size={16} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-foreground">Exam Device Companion</span>
+                        {candidateAgentStatus?.waiver ? (
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-[10px]">WAIVED</Badge>
+                        ) : candidateAgentStatus?.state === 'HEALTHY' ? (
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">HEALTHY</Badge>
+                        ) : candidateAgentStatus?.state === 'STALE' ? (
+                          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">STALE</Badge>
+                        ) : candidateAgentStatus?.state === 'BLOCKED' ? (
+                          <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-[10px]">BLOCKED</Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px]">NONE / NOT PAIRED</Badge>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {candidateAgentStatus?.findings?.length > 0
+                          ? `${candidateAgentStatus.findings.length} findings: ${candidateAgentStatus.findings.map(f => f.ruleId).join(', ')}`
+                          : candidateAgentStatus?.waiver
+                          ? `Waiver: ${candidateAgentStatus.waiver.reason}`
+                          : candidateAgentStatus?.lastSeenAt
+                          ? `Last seen: ${new Date(candidateAgentStatus.lastSeenAt).toLocaleTimeString()}`
+                          : 'No companion session active'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRecheckCompanion}
+                      disabled={loadingAgentStatus}
+                      className="text-xs font-semibold h-8"
+                    >
+                      <RefreshCw size={12} className={`mr-1.5 ${loadingAgentStatus ? 'animate-spin' : ''}`} />
+                      Re-check Now
+                    </Button>
+                    {!candidateAgentStatus?.waiver && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setWaiverDialog({ open: true, reason: '' })}
+                        className="text-xs font-semibold h-8 border-purple-500/30 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/20"
+                      >
+                        Grant Waiver
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -969,6 +1235,30 @@ export default function InvigilatorLiveGrid() {
               onChange={(e) => setTerminateDialog(prev => ({ ...prev, reason: e.target.value }))}
               placeholder="e.g., Unauthorised secondary device detected, multiple face presence warnings..."
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-rose-500 transition"
+            />
+          </div>
+        </ConfirmDialog>
+
+        {/* Exam Device Companion Staff Waiver Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={waiverDialog.open}
+          title={`Grant Companion Waiver for ${selectedCandidate?.name || 'Candidate'}?`}
+          description={`Granting a waiver permits candidate USN ${selectedCandidate?.usn} to take this exam without an active Exam Device Companion session. This action is permanently audited.`}
+          confirmText="Grant Waiver"
+          cancelText="Cancel"
+          variant="default"
+          onConfirm={handleGrantWaiver}
+          onClose={() => setWaiverDialog({ open: false, reason: '' })}
+        >
+          <div className="space-y-1.5 mt-2">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              Waiver Reason (Required for audit compliance)
+            </label>
+            <input
+              value={waiverDialog.reason}
+              onChange={(e) => setWaiverDialog(prev => ({ ...prev, reason: e.target.value }))}
+              placeholder="e.g., Institution lab managed workstation, verified hardware exemption..."
+              className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary transition"
             />
           </div>
         </ConfirmDialog>

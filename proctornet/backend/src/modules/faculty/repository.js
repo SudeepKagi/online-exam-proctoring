@@ -71,45 +71,68 @@ class FacultyRepository {
   }
 
   async listExamResults(examId) {
-    return prisma.examResult.findMany({
+    const results = await prisma.examResult.findMany({
       where: { examId },
       include: {
-        student: { select: { id: true, name: true, usn: true, departmentCode: true } },
         exam: { select: { id: true, title: true, subject: true, totalMarks: true } },
-        attempt: { select: { flagCount: true, status: true, submittedAt: true } }
+        attempt: {
+          select: {
+            flagCount: true,
+            status: true,
+            submittedAt: true,
+            student: { select: { id: true, name: true, usn: true, departmentCode: true } }
+          }
+        }
       },
       orderBy: { percentage: 'desc' }
     })
+    return results.map(r => ({
+      ...r,
+      student: r.attempt?.student || null
+    }))
   }
 
   async getStudentResult(resultId) {
-    return prisma.examResult.findUnique({
+    const res = await prisma.examResult.findUnique({
       where: { id: resultId },
       include: {
-        student: { select: { id: true, name: true, usn: true, departmentCode: true } },
         exam: { select: { id: true, title: true, subject: true, totalMarks: true, facultyId: true } },
         attempt: {
           include: {
+            student: { select: { id: true, name: true, usn: true, departmentCode: true } },
             answers: true
           }
         }
       }
     })
+    if (!res) return null
+    return {
+      ...res,
+      student: res.attempt?.student || null
+    }
   }
 
   async getStudentResultByExam(examId, studentId) {
-    return prisma.examResult.findFirst({
-      where: { examId, studentId },
+    const res = await prisma.examResult.findFirst({
+      where: {
+        examId,
+        attempt: { studentId }
+      },
       include: {
-        student: { select: { id: true, name: true, usn: true, departmentCode: true } },
         exam: { select: { id: true, title: true, subject: true, totalMarks: true, facultyId: true } },
         attempt: {
           include: {
+            student: { select: { id: true, name: true, usn: true, departmentCode: true } },
             answers: true
           }
         }
       }
     })
+    if (!res) return null
+    return {
+      ...res,
+      student: res.attempt?.student || null
+    }
   }
 
   async listExamQuestions(examId) {
@@ -124,11 +147,14 @@ class FacultyRepository {
 
   async createQuestion(data) {
     const { options, ...qData } = data
+    const crypto = require('crypto')
     return prisma.question.create({
       data: {
+        id: qData.id || crypto.randomUUID(),
         ...qData,
         options: options && options.length > 0 ? {
           create: options.map((opt, idx) => ({
+            id: opt.id || crypto.randomUUID(),
             text: opt.text,
             isCorrect: Boolean(opt.isCorrect),
             order: opt.order !== undefined ? opt.order : idx
@@ -141,20 +167,60 @@ class FacultyRepository {
     })
   }
 
+  async findQuestionById(id) {
+    return prisma.question.findUnique({
+      where: { id },
+      include: { options: { orderBy: { order: 'asc' } } }
+    })
+  }
+
   async updateQuestion(id, data) {
     const { options, ...qData } = data
+    const crypto = require('crypto')
     return prisma.$transaction(async (tx) => {
-      if (options) {
-        await tx.questionOption.deleteMany({ where: { questionId: id } })
-        await tx.questionOption.createMany({
-          data: options.map((opt, idx) => ({
-            questionId: id,
-            text: opt.text,
-            isCorrect: Boolean(opt.isCorrect),
-            order: opt.order !== undefined ? opt.order : idx
-          }))
+      if (options && Array.isArray(options)) {
+        const existingOptions = await tx.questionOption.findMany({
+          where: { questionId: id },
+          orderBy: { order: 'asc' }
         })
+
+        // In-place updates for existing options (R-12)
+        const updateCount = Math.min(existingOptions.length, options.length)
+        for (let i = 0; i < updateCount; i++) {
+          await tx.questionOption.update({
+            where: { id: existingOptions[i].id },
+            data: {
+              text: options[i].text,
+              isCorrect: Boolean(options[i].isCorrect),
+              order: options[i].order !== undefined ? options[i].order : i
+            }
+          })
+        }
+
+        // Create new if options expanded
+        if (options.length > existingOptions.length) {
+          for (let i = updateCount; i < options.length; i++) {
+            await tx.questionOption.create({
+              data: {
+                id: crypto.randomUUID(),
+                questionId: id,
+                text: options[i].text,
+                isCorrect: Boolean(options[i].isCorrect),
+                order: options[i].order !== undefined ? options[i].order : i
+              }
+            })
+          }
+        }
+
+        // Delete excess if options shrunk
+        if (existingOptions.length > options.length) {
+          const excessIds = existingOptions.slice(updateCount).map(o => o.id)
+          await tx.questionOption.deleteMany({
+            where: { id: { in: excessIds } }
+          })
+        }
       }
+
       return tx.question.update({
         where: { id },
         data: qData,

@@ -1,0 +1,69 @@
+CLAIM A7-01: Adversarial Security & Threat Hardening Verified
+Generated: 2026-10-07T10:55:00Z
+Test Framework: Node.js Test Runner (v22.x)
+
+1. ADVERSARIAL TEST SUITE EXECUTION SUMMARY
+================================================================================
+- Command: node --test tests/agent-adversarial.test.js
+- Suites: 8
+- Total Assertions: 16
+- Pass: 16
+- Fail: 0
+- Cancelled: 0
+- Skipped: 0
+- Duration: 20.6s
+
+2. MEASURED ADVERSARIAL TEST VECTORS
+================================================================================
+[PASS] 1. Forged HMAC Signature (Missing Header) -> 401 Unauthorized
+       Tested missing X-Agent-Signature; rejected prior to body parsing.
+[PASS] 2. Forged HMAC Signature (Corrupted Digest) -> 401 Unauthorized
+       Tested tampered signature base64; constant-time comparison rejected.
+[PASS] 3. Forged HMAC Signature (Foreign Secret Key) -> 401 Unauthorized
+       Tested valid signature generated with unauthorized key; rejected.
+[PASS] 4. Clock Skew Attack (Past Timestamp > 60s) -> 400 Bad Request
+       Emitted CLOCK_SKEW error response with serverTime synchronization payload.
+[PASS] 5. Clock Skew Attack (Future Timestamp > 60s) -> 400 Bad Request
+       Emitted CLOCK_SKEW error response with serverTime synchronization payload.
+[PASS] 6. Nonce Replay Attack (Subsequent Packet Reuse) -> 409 Conflict
+       Replayed 64-bit random nonce in valid monotonic sequence; rejected with 409.
+[PASS] 7. Monotonicity Violation (seq <= lastSeq) -> 409 Conflict
+       Emitted non-monotonic sequence number; rejected with 409.
+[PASS] 8. Pairing Code Brute Force / Random Guessing -> 401 Unauthorized
+       Submitted unallocated Crockford-32 random code; rejected with 401.
+[PASS] 9. Expired Pairing Code -> 401 Unauthorized
+       Submitted pairing code past 5-minute TTL window; rejected with 401.
+[PASS] 10. Reused Pairing Code Race / Duplicate -> 409 Conflict
+       Attempted second consumption of single-use code; rejected with 409.
+[PASS] 11. Untrusted Binary Hash (Unknown buildHash) -> 400 Bad Request
+       Presented rogue buildHash not registered in agent_releases; pairing refused.
+[PASS] 12. Deprecated / Revoked Version Gating -> 400 Bad Request
+       Presented agentVersion 0.9.1 below minAgentVersion 1.0.0; upgrade required.
+[PASS] 13. DoS Protection (Oversized Heartbeat Payload > 64KB) -> 400 Bad Request
+       Submitted 70KB heartbeat payload; rejected with payload too large error.
+[PASS] 14. Data-Minimization Violation (Spyware Key Injection) -> 400 Bad Request
+       Tested injection of 'processes', 'windowTitle', 'clipboard', 'keystrokes',
+       and 'screenshot'; all rejected with privacy contract violation error.
+[PASS] 15. Server Log Scrubbing Verification -> Logs Clean
+       Verified that Pino redaction rules censor authorization, x-agent-signature,
+       x-agent-session, x-agent-nonce, sessionKey, and code to [REDACTED].
+[PASS] 16. Red-Team Scripted Fake Agent Simulation -> Audited & Documented
+       Simulated Python/Node spoofing attack; documented honest boundaries in
+       docs/security/AGENT_THREAT_MODEL.md.
+
+3. THREAT MODEL & AUDIT ALIGNMENT
+================================================================================
+- Document: docs/security/AGENT_THREAT_MODEL.md
+- Sections Updated:
+  * §4.1: Empirical test matrix with HTTP status codes and mitigation behaviors.
+  * §4.2: Comprehensive Red-Team Note documenting what is detected (binary hash,
+          HMAC signatures, sequence monotonicity, timestamp drift, heartbeat loss)
+          versus what is accepted as a residual risk on unmanaged student hardware
+          (memory dumping, hypervisor spoofing, hardware splitters).
+  * Defense-in-depth: Residual risk mitigated by continuous multi-modal video/audio
+    proctoring cross-correlation.
+
+EVIDENCE LEDGER:
+Claim: A7-01
+Status: VERIFIED & COMMITTED
+All adversarial vectors tested and verified with 0 failures.

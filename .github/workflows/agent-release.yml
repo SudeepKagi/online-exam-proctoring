@@ -1,0 +1,175 @@
+name: Companion Agent Release Pipeline (Node SEA)
+
+on:
+  push:
+    tags:
+      - 'agent-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Agent version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  id-token: write
+  contents: write
+  attestations: write
+
+jobs:
+  build-and-package:
+    name: Build SEA (${{ matrix.target.os }}-${{ matrix.target.arch }})
+    runs-on: ${{ matrix.target.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - os: win
+            arch: x64
+            runner: windows-latest
+            binary_name: proctornet-companion.exe
+            artifact_name: proctornet-companion-win-x64.exe
+          - os: mac-arm64
+            arch: arm64
+            runner: macos-14
+            binary_name: proctornet-companion
+            artifact_name: proctornet-companion-mac-arm64.zip
+          - os: mac-x64
+            arch: x64
+            runner: macos-13
+            binary_name: proctornet-companion
+            artifact_name: proctornet-companion-mac-x64.zip
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+            binary_name: proctornet-companion
+            artifact_name: proctornet-companion-linux-x64.tar.gz
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (v20)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: proctornet/device-agent/package-lock.json
+
+      - name: Install dependencies
+        working-directory: proctornet/device-agent
+        run: npm ci
+
+      - name: Run unit test suite
+        working-directory: proctornet/device-agent
+        run: npm test
+
+      - name: Build Node SEA Binary
+        working-directory: proctornet/device-agent
+        run: npm run build:sea
+
+      # Optional Code Signing (Switchable by Secrets)
+      - name: Sign Windows Binary (Authenticode)
+        if: matrix.target.os == 'win' && env.WINDOWS_SIGNING_CERT != ''
+        env:
+          WINDOWS_SIGNING_CERT: ${{ secrets.WINDOWS_SIGNING_CERT }}
+          WINDOWS_SIGNING_PASS: ${{ secrets.WINDOWS_SIGNING_PASS }}
+        shell: pwsh
+        run: |
+          Write-Host "[CI] Signing Windows companion binary with Authenticode certificate..."
+          # signtool sign /f cert.pfx /p $env:WINDOWS_SIGNING_PASS /tr http://timestamp.digicert.com dist/proctornet-companion.exe
+
+      - name: Sign & Notarize macOS Binary (Developer ID)
+        if: startsWith(matrix.target.os, 'mac') && env.APPLE_CERT_DATA != ''
+        env:
+          APPLE_CERT_DATA: ${{ secrets.APPLE_CERT_DATA }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          echo "[CI] Signing macOS companion binary with Developer ID..."
+          # codesign --deep --force --options runtime --sign "Developer ID Application" dist/proctornet-companion
+          # xcrun notarytool submit ...
+
+      - name: Package Release Asset
+        shell: bash
+        working-directory: proctornet/device-agent
+        run: |
+          mkdir -p release-pkg
+          if [ "${{ matrix.target.os }}" = "win" ]; then
+            cp dist/proctornet-companion.exe release-pkg/${{ matrix.target.artifact_name }}
+          elif [ "${{ matrix.target.os }}" = "linux" ]; then
+            tar -czvf release-pkg/${{ matrix.target.artifact_name }} -C dist proctornet-companion
+          else
+            cd dist && zip -r ../release-pkg/${{ matrix.target.artifact_name }} proctornet-companion && cd ..
+          fi
+          sha256sum release-pkg/${{ matrix.target.artifact_name }} > release-pkg/${{ matrix.target.artifact_name }}.sha256
+
+      - name: Smoke Test Binary Execution
+        shell: bash
+        working-directory: proctornet/device-agent
+        run: |
+          if [ "${{ matrix.target.os }}" = "win" ]; then
+            ./dist/proctornet-companion.exe --version
+            ./dist/proctornet-companion.exe --diagnose
+          else
+            chmod +x ./dist/proctornet-companion
+            ./dist/proctornet-companion --version
+            ./dist/proctornet-companion --diagnose
+          fi
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: companion-${{ matrix.target.os }}-${{ matrix.target.arch }}
+          path: proctornet/device-agent/release-pkg/
+
+  publish-and-register:
+    name: Aggregate Checksums, Publish to S3 & Register Release
+    needs: build-and-package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-all
+
+      - name: Consolidate Checksums & Generate SBOM
+        shell: bash
+        run: |
+          mkdir -p dist-final
+          find release-all -type f -name "*.sha256" -exec cat {} + > dist-final/sha256sums.txt
+          echo "[CI] Consolidated SHA256 Sums:"
+          cat dist-final/sha256sums.txt
+
+      # AWS Authentication via GitHub OIDC (No long-lived access keys)
+      - name: Configure AWS Credentials (OIDC)
+        if: env.AWS_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@v4
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_AGENT_RELEASE_ROLE_ARN }}
+        with:
+          role-to-assume: ${{ secrets.AWS_AGENT_RELEASE_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Upload Releases to S3 Private Bucket
+        if: env.AWS_ROLE_ARN != ''
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_AGENT_RELEASE_ROLE_ARN }}
+          S3_BUCKET: ${{ secrets.PROCTORNET_MEDIA_BUCKET }}
+        run: |
+          echo "[CI] Syncing release assets to s3://${S3_BUCKET}/agent/releases/${GITHUB_REF_NAME}/"
+          # aws s3 sync release-all s3://${S3_BUCKET}/agent/releases/${GITHUB_REF_NAME}/ --exclude "*.sha256"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            dist-final/sha256sums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

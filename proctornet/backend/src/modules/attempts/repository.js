@@ -23,6 +23,24 @@ class AttemptRepository {
           AND ea.exam_id = $1::uuid
           AND ea.student_id = $2::uuid
           AND ea.status = 'READY'
+          AND (
+            e.device_agent_policy != 'REQUIRED'
+            OR EXISTS (
+              SELECT 1 FROM device_agent_waivers daw WHERE daw.attempt_id = ea.id
+            )
+            OR EXISTS (
+              SELECT 1 FROM agent_sessions ags
+              WHERE ags.attempt_id = ea.id
+                AND ags.state = 'HEALTHY'
+                AND NOT EXISTS (
+                  SELECT 1 FROM agent_findings agf
+                  JOIN agent_rules agr ON agr.id = agf.rule_id
+                  WHERE agf.session_id = ags.id
+                    AND agf.cleared_at IS NULL
+                    AND agr.action = 'BLOCK_START'
+                )
+            )
+          )
         RETURNING ea.*
       ),
       inserted_audit AS (

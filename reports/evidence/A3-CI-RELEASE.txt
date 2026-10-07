@@ -1,0 +1,73 @@
+=== PROMPT 4 PHASE A3: BUILD, SIGN, RELEASE (CI) EVIDENCE ===
+Timestamp: 2026-10-07T09:41:00Z
+Build command: npm run build:sea in proctornet/device-agent
+Binary smoke test: dist/proctornet-companion.exe --version && dist/proctornet-companion.exe --diagnose
+Workflow: .github/workflows/agent-release.yml
+CI Stub check: node scripts/ci/check-no-stubs.js
+
+=== LOCAL SEA BUILD EVIDENCE ===
+> proctornet-device-companion@1.0.0 build:sea
+> node packaging/build-sea.js
+
+[SEA Build] 1. Bundling JavaScript sources via esbuild...
+[SEA Build] 2. Generating sea-config.json...
+[SEA Build] 3. Generating Node SEA blob...
+Wrote single executable preparation blob to proctornet\device-agent\dist\sea-prep.blob
+[SEA Build] 4. Copying host Node runtime binary...
+[SEA Build] 5. Injecting SEA blob via postject...
+Start injection of NODE_SEA_BLOB in proctornet\device-agent\dist\proctornet-companion.exe...
+warning: The signature seems corrupted!
+💉 Injection done!
+[SEA Build] 6. Binary successfully built: proctornet\device-agent\dist\proctornet-companion.exe
+             Size: 85.93 MB (90100736 bytes)
+             SHA-256: 286cac48f3bfcad5e55660cce5767e748c16303c8cf51f7eafcfebae9e0de8da
+[SEA Build] 7. Running smoke test (--version)...
+             Output: ProctorNet Exam Device Companion v1.0.0
+
+=== STANDALONE SMOKE TEST RUN (--diagnose) ===
+====================================================================
+  ProctorNet Exam Device Companion (v1.0.0)
+  Assessment Workstation Integrity Monitor
+====================================================================
+
+  [DIAGNOSTIC MODE]
+  Evaluating local workstation checks...
+
+  Safe Outbound Payload Preview (Data Minimization Enforced):
+  ----------------------------------------------------------
+{
+  "findings": [],
+  "display": {
+    "count": 1
+  },
+  "session": {
+    "remote": false
+  },
+  "vm": {
+    "indicators": []
+  },
+  "cameras": {
+    "virtual": []
+  },
+  "collection": {
+    "ok": true,
+    "errors": []
+  },
+  "seq": 1
+}
+  ----------------------------------------------------------
+  ✓ Privacy Contract Verified: Zero forbidden fields present.
+  ✓ Workstation collection status: OK
+
+=== CI WORKFLOW (.github/workflows/agent-release.yml) ===
+- Tag trigger: agent-v*
+- Multi-OS matrix: windows-latest, macos-14 (arm64), macos-13 (x64), ubuntu-latest
+- Switchable code signing for Windows Authenticode & macOS Developer ID
+- Checksums aggregation into sha256sums.txt
+- S3 upload via GitHub OIDC IAM Role (no static secrets)
+- Release registration & GitHub Release notes
+
+=== STUB SCANNER RESULT ===
+🔍 [CI] Running AST + Regex Stub Scanner (check-no-stubs.js)...
+📊 Scan completed across 286 source files.
+✅ Stub scanner green: zero hardcoded scores, zero stubs, zero unobserved writes, zero fake handlers.

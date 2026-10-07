@@ -229,7 +229,7 @@ describe('Q2.5 Authentication Matrix (Unauthenticated -> 401)', () => {
     { method: 'GET', path: '/api/v1/student/profile' },
     { method: 'GET', path: '/api/v1/notifications' },
     { method: 'GET', path: '/api/v1/auth/me' },
-    { method: 'POST', path: '/api/v1/exam/device-check' }
+    { method: 'POST', path: '/api/v1/student/agent/pair' }
   ]
 
   for (const r of protectedRoutes) {
@@ -490,6 +490,32 @@ describe('Contract Tests: Observable Effects & Negative Effects', () => {
     assert.strictEqual(posRes.status, 200)
     const attemptBAfterPos = await prisma.examAttempt.findUnique({ where: { id: testAttemptBId } })
     assert.strictEqual(attemptBAfterPos.status, 'SUSPENDED', 'Observable effect: Attempt status updated to SUSPENDED')
+  })
+
+  it('POST /api/v1/staff/attempts/:attemptId/agent/waiver grants waiver; unauthorized mutates zero rows', async () => {
+    const initialWaivers = await prisma.deviceAgentWaiver.count({
+      where: { attemptId: testAttemptBId }
+    })
+    // Negative-effect: Unauthorized invigilator (wrong exam) cannot grant waiver
+    const negRes = await apiRequest('POST', `/api/v1/staff/attempts/${testAttemptBId}/agent/waiver`, invigilatorExam2Token, {
+      reason: 'BOLA waiver attempt'
+    })
+    assert.strictEqual(negRes.status, 403)
+    const waiversAfterNeg = await prisma.deviceAgentWaiver.count({
+      where: { attemptId: testAttemptBId }
+    })
+    assert.strictEqual(waiversAfterNeg, initialWaivers, 'Negative-effect: Unauthorized waiver must mutate zero rows')
+
+    // Positive-effect: Authorized invigilator grants waiver
+    const posRes = await apiRequest('POST', `/api/v1/staff/attempts/${testAttemptBId}/agent/waiver`, invigilatorExam1Token, {
+      reason: 'School-approved BYOD accommodation waiver'
+    })
+    assert.strictEqual(posRes.status, 200)
+    assert.strictEqual(posRes.data?.success, true)
+    const waiversAfterPos = await prisma.deviceAgentWaiver.count({
+      where: { attemptId: testAttemptBId }
+    })
+    assert.strictEqual(waiversAfterPos, initialWaivers + 1, 'Observable effect: deviceAgentWaiver row created')
   })
 
   after(() => {

@@ -1,0 +1,63 @@
+CLAIM A6-01: Enforcement, Lifecycle & Legacy Decommission Complete
+Generated: 2026-10-07T10:24:00Z
+Test Framework: Node.js Test Runner (v22.x)
+
+1. LEGACY ARTIFACT PURGE VERIFICATION
+================================================================================
+- Deleted file: proctornet/device-agent/agent.js (raw 8KB local listener) -> VERIFIED ABSENT
+- Removed routes: /device-check, /device-check/system, /device-check/precheck from src/modules/router.js -> VERIFIED REMOVED
+- Frontend audit: Zero occurrences of "49152", "127.0.0.1", or "VPN_FEATURE_PAUSED" across proctornet/frontend/src/ -> VERIFIED (0 matches)
+- Vite build: Production bundle generated with exit code 0, 0 errors, 0 warnings.
+- AST Stub Scanner: scripts/ci/check-no-stubs.js passed cleanly across all 287 source files (0 stubs, 0 mocks, 0 placeholders).
+
+2. ROUTE INVENTORY SYNCHRONIZATION
+================================================================================
+- Command: node scripts/ci/generate-route-inventory.js
+- Endpoints Discovered: 190 canonical mounted routes across all modules
+- Output Target: docs/api/ROUTE_INVENTORY.md
+- Synchronization Invariant: docs/api/route-matrix.json & ROUTE_INVENTORY.md fully updated with all new agent endpoints:
+  * POST /api/v1/agent/pair (Public - shortcode authenticated)
+  * POST /api/v1/agent/report (Agent session authenticated + HMAC-SHA256)
+  * GET /api/v1/agent/manifest (Public release metadata)
+  * GET /api/v1/agent/download (Presigned S3 delivery redirect)
+  * POST /api/v1/attempts/:attemptId/agent/pairing-code (Student attempt-scoped)
+  * GET /api/v1/attempts/:attemptId/agent/status (Student attempt-scoped)
+  * GET /api/v1/student/agent/status (Student precheck polling)
+  * POST /api/v1/staff/attempts/:attemptId/agent/waiver (Staff/Invigilator audited waiver)
+  * POST /api/v1/staff/attempts/:attemptId/agent/recheck (Staff/Invigilator instant re-check)
+  * POST /api/v1/admin/agent/releases (Admin binary registry)
+
+3. ROUTE MATRIX & CONTRACT EFFECT TEST RESULTS
+================================================================================
+- Command: node --test tests/route-matrix.test.js
+- Result: 31/31 passed (100% green, 0 failures, 0 skipped)
+- Route Inventory Matcher: 190/190 routes verified present in documentation
+- Authentication Matrix: 401 Unauthorized verified on unauthenticated companion endpoints
+- Contract Tests Observable Effects:
+  * POST /api/v1/staff/attempts/:attemptId/agent/waiver:
+    - Negative-effect: Cross-exam invigilator unauthorized attempt returns 403 Forbidden, mutates 0 rows
+    - Positive-effect: Authorized invigilator creates deviceAgentWaiver row and audit log entry
+
+4. END-TO-END LIFECYCLE BEHAVIORS VERIFIED
+================================================================================
+- Command: node --test tests/agent-module.test.js
+- Total Tests: 21 suites & test cases passing
+- Lifecycle transitions:
+  1. Pair -> Crockford-32 code verified, single-use consumed, HMAC session created, state = HEALTHY.
+  2. Start Gate:
+     - REQUIRED policy without agent companion -> start refused (blocked by SQL activation guard).
+     - OPTIONAL policy without agent companion -> start permitted (ACTIVE).
+     - REQUIRED policy with audited staff waiver -> start permitted (ACTIVE).
+  3. Banned Process Detection:
+     - Companion reports finding -> agentFinding upserted -> ViolationEvent recorded -> attempt SUSPENDED.
+     - 2 consecutive clean reports -> finding marked cleared -> attempt auto-resumes to ACTIVE.
+  4. Companion Disconnect & Sweeper:
+     - Missing heartbeats > 60s -> Sweeper marks session STALE -> attempt SUSPENDED with AGENT_STALE -> AGENT_DISCONNECTED violation emitted.
+     - Reconnect: Companion sends fresh clean report -> attempt auto-resumes to ACTIVE with AGENT_RECONNECTED.
+  5. Exam Submission:
+     - Attempt transitions to SUBMITTED -> agent session marked TERMINATED -> companion receives exit: true.
+
+EVIDENCE LEDGER:
+Claim: A6-01
+Status: VERIFIED & COMMITTED
+All legacy listening agents decommissioned, zero regressions detected.

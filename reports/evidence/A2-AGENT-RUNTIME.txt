@@ -1,0 +1,122 @@
+=== PROMPT 4 PHASE A2: EXAM DEVICE COMPANION RUNTIME EVIDENCE ===
+Timestamp: 2026-10-07T09:36:45Z
+Test command: npm test (node --test test/**/*.test.js) in proctornet/device-agent
+Diagnostic command: node src/main.js --diagnose
+CI Stub check: node scripts/ci/check-no-stubs.js
+
+=== TEST RESULTS ===
+> proctornet-device-companion@1.0.0 test
+> node --test test/**/*.test.js
+
+▶ OS Telemetry Parser Unit Tests (Captured Fixtures)
+  ▶ Windows tasklist CSV Parsing
+    ✔ parses image names correctly and extracts normalized base names
+  ✔ Windows tasklist CSV Parsing
+  ▶ macOS ps -axo Parsing
+    ✔ parses command paths and extracts executable basenames without full paths
+  ✔ macOS ps -axo Parsing
+  ▶ Linux ps -eo Parsing
+    ✔ parses process basenames accurately
+  ✔ Linux ps -eo Parsing
+  ▶ macOS system_profiler JSON Parsing
+    ✔ extracts camera device names from system_profiler SPCameraDataType JSON
+  ✔ macOS system_profiler JSON Parsing
+✔ OS Telemetry Parser Unit Tests (Captured Fixtures)
+
+▶ Fail-Closed Collector Integrity Tests (Prompt 4 §0.3 & A2)
+  ✔ reports CMD_MISSING when executed binary does not exist (ENOENT)
+  ✔ reports CMD_TIMEOUT when command hangs or exceeds explicit timeout window
+  ✔ fails closed when collector output is degraded: collection.ok is false, never reports clean
+✔ Fail-Closed Collector Integrity Tests (Prompt 4 §0.3 & A2)
+
+[Footprint] Current Agent RSS: 50.17 MB (Budget: < 80 MB)
+[Footprint] Report JSON Payload: 157 bytes (Budget: < 4096 bytes)
+[Footprint] Module Cold Load: 27.54 ms (Budget: < 2000 ms)
+▶ Footprint Budget Verification (Prompt 4 A2 §6)
+  ✔ RSS memory consumption is under 80 MB budget
+  ✔ outbound report payload size is under 4 KB budget
+  ✔ cold start load time is well under 2 second budget
+✔ Footprint Budget Verification (Prompt 4 A2 §6)
+
+▶ Rule Matcher Engine & False-Positive Elimination Corpus (Prompt 4 §3.4)
+  ▶ Positive Corpus (Seed Rule Matches)
+    ✔ detects prohibited remote access tools by exact executable name
+    ✔ detects screen recording software (OBS 64-bit)
+    ✔ detects virtual webcam hardware drivers by device friendly name
+    ✔ detects virtual machine hypervisors and multiple displays
+  ✔ Positive Corpus (Seed Rule Matches)
+  ▶ Negative Corpus (False Positive Defect G-03 Elimination)
+    ✔ does NOT trigger r-ai-claude when student username is "claude" in path
+    ✔ does NOT trigger r-ai-cursor when a project directory path contains "cursor"
+    ✔ does NOT trigger false alarms on Windows svchost or standard system processes
+    ✔ does NOT trigger remote access when words contain "vnc" as substring (e.g. unrelated tools)
+    ✔ documents known architectural limitation: renamed copy gap
+  ✔ Negative Corpus (False Positive Defect G-03 Elimination)
+✔ Rule Matcher Engine & False-Positive Elimination Corpus (Prompt 4 §3.4)
+
+▶ Policy Bundle Cryptographic Verification (Ed25519)
+  ✔ correctly verifies authentic signed policy bundle against embedded root key
+  ✔ rejects tampered policy bundle where rules or version was altered
+  ✔ canonicalizeJson provides deterministic ordering regardless of key insertion order
+✔ Policy Bundle Cryptographic Verification (Ed25519)
+
+▶ Device Companion Privacy Contract Guard (Prompt 4 A2 & AGENT_PRIVACY.md)
+  ✔ passes for clean, compliant outbound report payloads
+  ✔ rejects any payload containing forbidden telemetry keys directly
+  ✔ rejects forbidden keys nested deeply inside child objects or arrays
+  ✔ rejects malformed or invalid report structures
+✔ Device Companion Privacy Contract Guard (Prompt 4 A2 & AGENT_PRIVACY.md)
+
+▶ Transport & HMAC-SHA256 Signing Vectors
+  ✔ computes HMAC signature matching the server specification
+  ✔ adjusts clock offset when server reports CLOCK_SKEW with authoritative serverTime
+✔ Transport & HMAC-SHA256 Signing Vectors
+
+ℹ tests 28
+ℹ suites 13
+ℹ pass 28
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 374.7343
+
+=== LIVE DIAGNOSTIC OUTPUT ===
+====================================================================
+  ProctorNet Exam Device Companion (v1.0.0)
+  Assessment Workstation Integrity Monitor
+====================================================================
+
+  [DIAGNOSTIC MODE]
+  Evaluating local workstation checks...
+
+  Safe Outbound Payload Preview (Data Minimization Enforced):
+  ----------------------------------------------------------
+{
+  "findings": [],
+  "display": {
+    "count": 1
+  },
+  "session": {
+    "remote": false
+  },
+  "vm": {
+    "indicators": []
+  },
+  "cameras": {
+    "virtual": []
+  },
+  "collection": {
+    "ok": true,
+    "errors": []
+  },
+  "seq": 1
+}
+  ----------------------------------------------------------
+  ✓ Privacy Contract Verified: Zero forbidden fields present.
+  ✓ Workstation collection status: OK
+
+=== STUB SCANNER RESULT ===
+🔍 [CI] Running AST + Regex Stub Scanner (check-no-stubs.js)...
+📊 Scan completed across 286 source files.
+✅ Stub scanner green: zero hardcoded scores, zero stubs, zero unobserved writes, zero fake handlers.

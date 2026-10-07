@@ -1,0 +1,48 @@
+PROCTORNET PHASE A0 EVIDENCE: BASELINE, DECISIONS & THREAT MODEL
+Executed: 2026-10-07T13:52:00+05:30
+Branch: feat/a0-baseline-decisions-threat-model
+
+1. ADR INVENTORY RECORDED (docs/adr/)
+- docs/adr/A-001-runtime-sea.md (Node SEA runtime, no native addons, zero-admin)
+- docs/adr/A-002-no-local-http-listener.md (Decommission :49152; outbound HTTPS only)
+- docs/adr/A-003-pairing-by-short-code.md (8-char pairing code, 5m TTL, peppered hash)
+- docs/adr/A-004-signed-versioned-policy.md (Ed25519-signed rules, local matching, hits-only)
+- docs/adr/A-005-exam-agent-policy.md (REQUIRED|OPTIONAL|OFF exam policies, audited staff waivers)
+- docs/adr/A-006-no-vpn-control-from-agent.md (Remove /vpn-activate and temp .conf writes)
+- docs/adr/A-007-trust-and-signing.md (Unsigned pilot builds with instructions; CI switchable signing)
+
+2. SECURITY & PRIVACY SPECIFICATIONS
+- docs/security/AGENT_THREAT_MODEL.md: Comprehensive matrix covering G-01..G-11, honest security claims, fail-closed principles, and trust boundaries.
+- docs/security/AGENT_PRIVACY.md: Strict privacy contract; exhaustive forbidden outbound fields list; --diagnose transparency tool specification.
+
+3. DEVICE AGENT PACKAGE SCAFFOLDING
+- proctornet/device-agent/package.json (Isolated package, Node >= 20.0.0, zero native dependencies)
+- proctornet/device-agent/package-lock.json (Isolated lockfile)
+- proctornet/device-agent/src/main.js (Scaffolded CLI entrypoint)
+- proctornet/device-agent/agent.js (Legacy script preserved until A6 completion)
+
+4. LEGACY DEFECT REPRODUCTION (TEST SUITE RESULTS)
+Command: node --test tests/agent-legacy-gaps.test.js (in proctornet/backend)
+Output:
+▶ Legacy Agent Defects Reproduction (Prompt 4 Phase A0)
+  ▶ G-02: Fail-Open Process Scanning on Error (agent.js:28-32)
+    ✔ resolves empty array [] when process execution fails, treating failure as clean (fail-open) (1.0536ms)
+  ✔ G-02: Fail-Open Process Scanning on Error (agent.js:28-32) (1.7064ms)
+  ▶ G-03: False Positive Matching via line.includes (agent.js:109-114)
+    ✔ falsely flags a candidate with username "claude" in file path (0.2529ms)
+    ✔ falsely flags a benign developer path containing "cursor" (0.1287ms)
+    ✔ falsely flags Windows native clipboard synchronization helper rdpclip.exe (0.1002ms)
+    ✔ falsely flags innocent process words containing substring "vnc" (0.112ms)
+  ✔ G-03: False Positive Matching via line.includes (agent.js:109-114) (0.8301ms)
+  ▶ G-05: Forgeable Client-Supplied Device Check (deviceCheck/controller.js)
+    ✔ accepts unsigned client-supplied JSON and sets agentConnected=true and status=PASSED (611.5021ms)
+  ✔ G-05: Forgeable Client-Supplied Device Check (deviceCheck/controller.js) (612.0283ms)
+✔ Legacy Agent Defects Reproduction (Prompt 4 Phase A0) (615.2108ms)
+ℹ tests 6
+ℹ suites 4
+ℹ pass 6
+ℹ fail 0
+ℹ duration_ms 1227.2513
+
+5. DESIGN LOCK BASELINES
+- reports/evidence/A0-DESIGN-LOCK-BASELINES.md: Structure, styling tokens, palette, and wording invariants documented.

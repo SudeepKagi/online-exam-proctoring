@@ -67,6 +67,17 @@ class ExamService {
       throw new ConflictError(`Exam cannot be published from state '${exam.status}'`)
     }
 
+    // R-14: Publish Schedule Validation
+    if (new Date(exam.endTime) <= new Date(exam.startTime)) {
+      throw new ValidationError('Cannot publish exam: endTime must be strictly after startTime')
+    }
+    if (!exam.duration || exam.duration <= 0) {
+      throw new ValidationError('Cannot publish exam: duration must be greater than 0 minutes')
+    }
+    if (new Date(exam.endTime).getTime() < Date.now()) {
+      throw new ValidationError('Cannot publish exam: exam endTime has already passed')
+    }
+
     if (!exam.questions || exam.questions.length === 0) {
       throw new ValidationError('Cannot publish exam: At least one question is required')
     }
@@ -97,17 +108,30 @@ class ExamService {
 
     const updated = await examRepository.updateStatus(examId, 'PUBLISHED')
 
-    // Trigger pre-warming in background
-    attemptPrewarmJob.prewarmExam(examId).catch((err) => {
-      logger.warn({ error: err.message, examId }, 'Failed to trigger background prewarm')
-    })
+    // R-14: Trigger pre-warming and surface result or error with retry
+    let prewarmResult = null
+    let prewarmError = null
+    try {
+      prewarmResult = await attemptPrewarmJob.prewarmExam(examId)
+    } catch (err) {
+      logger.warn({ error: err.message, examId }, 'Prewarm failed on publish, surfaced for retry')
+      prewarmError = err.message
+    }
+
+    const prewarmStatus = prewarmError ? 'FAILED' : 'SUCCESS'
 
     return {
       ...updated,
       invId: exam.invId,
       rawInvPassword,
       oneTimePassword: rawInvPassword,
-      validUntil
+      validUntil,
+      prewarm: {
+        status: prewarmStatus,
+        prewarmedCount: prewarmResult?.prewarmedCount || 0,
+        error: prewarmError,
+        retryEndpoint: `/api/v1/exams/${examId}/prewarm`
+      }
     }
   }
 

@@ -43,11 +43,14 @@ function createWebSocketServer(httpServer, options = {}) {
   })
 
   // ── Redis Adapter for Multi-Process Horizontal Fan-Out (C-05 / C-06) ──
-  // Always install Redis adapter; instantiate duplicate pub/sub clients with retryStrategy
+  // When CACHE_DRIVER=memory (single-process mode), use default in-memory adapter
   try {
-    const Redis = require('ioredis')
     const config = require('../../shared/config')
-    const pubClient = redisClient.client
+    if (config.cacheDriver === 'memory') {
+      logger.info('Socket.io: using default in-memory adapter (CACHE_DRIVER=memory)')
+    } else {
+      const Redis = require('ioredis')
+      const pubClient = redisClient.client
       ? redisClient.client.duplicate()
       : new Redis(config.redisUrl, {
         keyPrefix: config.redisPrefix,
@@ -59,14 +62,15 @@ function createWebSocketServer(httpServer, options = {}) {
 
     io.adapter(createAdapter(pubClient, subClient))
 
-    Promise.all([
-      pubClient.status === 'ready' ? Promise.resolve() : pubClient.connect().catch(() => {}),
-      subClient.status === 'ready' ? Promise.resolve() : subClient.connect().catch(() => {})
-    ]).then(() => {
-      logger.info('Socket.IO Redis adapter enabled for multi-process scaling')
-    }).catch((err) => {
-      logger.warn({ error: err.message }, 'Socket.IO Redis adapter connection deferred, ioredis will retry')
-    })
+      Promise.all([
+        pubClient.status === 'ready' ? Promise.resolve() : pubClient.connect().catch(() => {}),
+        subClient.status === 'ready' ? Promise.resolve() : subClient.connect().catch(() => {})
+      ]).then(() => {
+        logger.info('Socket.IO Redis adapter enabled for multi-process scaling')
+      }).catch((err) => {
+        logger.warn({ error: err.message }, 'Socket.IO Redis adapter connection deferred, ioredis will retry')
+      })
+    }
   } catch (err) {
     logger.warn({ error: err.message }, 'Failed to configure Redis adapter for Socket.IO')
   }
@@ -442,6 +446,140 @@ function createWebSocketServer(httpServer, options = {}) {
           online: false,
           lastHeartbeatAt: new Date().toISOString()
         })
+      }
+
+      // Clear any focused-decay timer for this socket
+      if (socket._focusDecayTimer) {
+        clearTimeout(socket._focusDecayTimer)
+        socket._focusDecayTimer = null
+      }
+    })
+
+    // ── 7. R3 SNAPSHOT DRIVER: Cadence Events ──────────────────────────────────
+
+    /**
+     * attempt:joined → push initial default cadence to student (30 s ± 3 s jitter)
+     * Piggybacks on attempt:join success; emitted right after the room join ack.
+     */
+    socket.on('attempt:join', async (data) => {
+      // Note: this second handler fires *after* the first; authorisation already ran.
+      const { attemptId } = data || {}
+      if (!attemptId || socket.user?.role !== ROLES.STUDENT) return
+      // Default cadence: 30 s ± 3 s jitter. Client adds jitter itself; we seed it.
+      socket.emit('proctor:cadence', {
+        attemptId,
+        cadenceMs: 30_000,
+        jitterMs: 3_000,
+        reason: 'default',
+        durationMs: null
+      })
+    })
+
+    /**
+     * proctor:tile_visibility (invigilator → server)
+     * Payload: { examId, visibleAttemptIds: string[], focusedAttemptId: string|null }
+     * Server computes target cadence per attempt and pushes proctor:cadence to each
+     * student's attempt room.  Focused attempt decays back to 5 s after 60 s.
+     */
+    socket.on('proctor:tile_visibility', async (data) => {
+      try {
+        const role = socket.user?.role
+        if (![ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR].includes(role)) return
+
+        const { examId, visibleAttemptIds = [], focusedAttemptId = null } = data || {}
+        if (!examId) return
+
+        // Clear previous focused-decay timer on this socket (invigilators only)
+        if (socket._focusDecayTimer) {
+          clearTimeout(socket._focusDecayTimer)
+          socket._focusDecayTimer = null
+        }
+
+        const visibleSet = new Set(visibleAttemptIds)
+
+        // Push cadences: focused > visible > default
+        for (const attemptId of visibleSet) {
+          if (attemptId === focusedAttemptId) continue // handled separately below
+          io.to(`attempt:${attemptId}`).emit('proctor:cadence', {
+            attemptId,
+            cadenceMs: 5_000,
+            jitterMs: 500,
+            reason: 'visible',
+            durationMs: null
+          })
+        }
+
+        if (focusedAttemptId) {
+          io.to(`attempt:${focusedAttemptId}`).emit('proctor:cadence', {
+            attemptId: focusedAttemptId,
+            cadenceMs: 1_500,
+            jitterMs: 200,
+            reason: 'focused',
+            durationMs: 60_000
+          })
+
+          // After 60 s, decay back to 5 s if still visible, else 30 s
+          socket._focusDecayTimer = setTimeout(() => {
+            const decayTarget = visibleSet.has(focusedAttemptId) ? 5_000 : 30_000
+            io.to(`attempt:${focusedAttemptId}`).emit('proctor:cadence', {
+              attemptId: focusedAttemptId,
+              cadenceMs: decayTarget,
+              jitterMs: decayTarget === 30_000 ? 3_000 : 500,
+              reason: 'focus_decay',
+              durationMs: null
+            })
+            socket._focusDecayTimer = null
+          }, 60_000)
+        }
+
+        logger.debug({ examId, visibleCount: visibleSet.size, focusedAttemptId }, 'Cadence pushed for tile visibility')
+      } catch (err) {
+        logger.warn({ error: err.message }, 'proctor:tile_visibility handling error')
+      }
+    })
+
+    /**
+     * snapshot:uploaded (student → server)
+     * Payload: { attemptId, frameAt: number (epoch ms) }
+     * Server fans out frame:update to inv:{examId} for invigilator tiles.
+     * Zero bytes of image data — only metadata.
+     */
+    socket.on('snapshot:uploaded', async (data) => {
+      try {
+        if (socket.user?.role !== ROLES.STUDENT) return
+        const { attemptId, frameAt } = data || {}
+        if (!attemptId || !frameAt) return
+
+        // Authorize scope
+        if (!socket.authorizedAttempts.has(attemptId)) {
+          const attempt = await prisma.examAttempt.findFirst({
+            where: { id: attemptId, studentId: socket.user.id },
+            select: { id: true, examId: true }
+          })
+          if (!attempt) return
+          socket.authorizedAttempts.add(attemptId)
+          socket.activeAttemptId = attemptId
+          socket.activeExamId = attempt.examId
+        }
+
+        const verifiedExamId = socket.activeExamId
+        if (!verifiedExamId) return
+
+        // Fan-out to invigilator room: metadata only, no image bytes
+        io.to(`inv:${verifiedExamId}`).emit('frame:update', {
+          attemptId,
+          frameAt,
+          examId: verifiedExamId
+        })
+
+        // Queue roster delta (frame freshness)
+        rosterCoalescer.queueDelta(verifiedExamId, {
+          attemptId,
+          studentId: socket.user.id,
+          frameAt
+        })
+      } catch (err) {
+        logger.warn({ error: err.message }, 'snapshot:uploaded handling error')
       }
     })
   })

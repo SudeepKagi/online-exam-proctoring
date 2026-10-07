@@ -1,0 +1,31 @@
+{
+  "name": "proctornet-device-companion",
+  "version": "1.0.0",
+  "description": "ProctorNet Exam Device Companion — Unprivileged native assessment workstation monitor",
+  "private": true,
+  "main": "src/main.js",
+  "bin": {
+    "proctornet-companion": "src/main.js"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test test/**/*.test.js",
+    "diagnose": "node src/main.js --diagnose",
+    "build:sea": "node packaging/build-sea.js"
+  },
+  "keywords": [
+    "proctornet",
+    "companion",
+    "assessment",
+    "integrity"
+  ],
+  "author": "ProctorNet Engineering",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

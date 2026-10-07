@@ -1,0 +1,27 @@
+PROCTORNET PROMPT 4 EVIDENCE: PHASE A5 (FRONTEND INTEGRATION)
+Date: 2026-10-07T15:40:00+05:30
+Status: VERIFIED & GREEN
+Claim: A5-01
+
+1. Component Architecture:
+- Created DeviceCompanionPanel.jsx (Card/Button/Badge primitives).
+- States supported: NOT_PAIRED, PAIRING, CONNECTED, DEGRADED, BLOCKED, WAIVED.
+- Integrated into:
+  * proctornet/frontend/src/pages/student/BYODDeviceCheck.jsx
+  * proctornet/frontend/src/pages/student/SecurityCheck.jsx
+  * proctornet/frontend/src/pages/student/ExamInterface.jsx (slim status banner + disconnect protection)
+  * proctornet/frontend/src/pages/invigilator/InvigilatorLiveGrid.jsx (companion status badge, live findings, "Re-check Now" and "Grant Waiver" actions)
+
+2. Decommission of Local Port 49152 & VPN Relay in Frontend:
+- Verified zero occurrences of 127.0.0.1:49152 across all frontend files.
+- Removed VPN_FEATURE_PAUSED constant and all client-side agent scan relays.
+- Exam entry gate asks authoritative server (/attempts/:id/agent/status) whether attempt may start.
+
+3. Privacy & Design Integrity:
+- UI copy convention strictly: "Exam Device Companion" (no WireGuard, localhost, or port numbers in student/staff strings).
+- Student consent checkbox required before companion download.
+- Troubleshooting accordion with SmartScreen and Gatekeeper instructions.
+
+4. AST Stub Scanner & Build:
+- AST stub scanner (check-no-stubs.js): 100% green across all 287 source files.
+- Production Vite build: 0 errors, exit code 0.

@@ -96,6 +96,49 @@ const outboxFailedCounter = new client.Counter({
   registers: [register],
 })
 
+// ── Exam Device Companion Agent Metrics (Prompt 4 / A1) ──
+const agentPairingsTotal = new client.Counter({
+  name: 'agent_pairings_total',
+  help: 'Total number of device agent pairing attempts',
+  labelNames: ['scope', 'result'],
+  registers: [register],
+})
+
+const agentDownloadsTotal = new client.Counter({
+  name: 'agent_downloads_total',
+  help: 'Total number of device agent binary downloads',
+  labelNames: ['os'],
+  registers: [register],
+})
+
+const agentReportsTotal = new client.Counter({
+  name: 'agent_reports_total',
+  help: 'Total number of agent reports received',
+  labelNames: ['result'],
+  registers: [register],
+})
+
+const agentSessionsGauge = new client.Gauge({
+  name: 'agent_sessions',
+  help: 'Current count of device agent sessions by state',
+  labelNames: ['state'],
+  registers: [register],
+})
+
+const agentRejectionsTotal = new client.Counter({
+  name: 'agent_rejections_total',
+  help: 'Total number of agent reports rejected with reasons',
+  labelNames: ['reason'],
+  registers: [register],
+})
+
+const agentFindingsOpenGauge = new client.Gauge({
+  name: 'agent_findings_open',
+  help: 'Number of currently open agent findings by rule category',
+  labelNames: ['category'],
+  registers: [register],
+})
+
 module.exports = {
   register,
   metricsMiddleware,
@@ -103,4 +146,11 @@ module.exports = {
   socketioConnectedGauge,
   eventLoopLagGauge,
   outboxFailedCounter,
+  agentPairingsTotal,
+  agentDownloadsTotal,
+  agentReportsTotal,
+  agentSessionsGauge,
+  agentRejectionsTotal,
+  agentFindingsOpenGauge,
 }
+

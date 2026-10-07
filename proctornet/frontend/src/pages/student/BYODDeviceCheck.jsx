@@ -28,17 +28,14 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import DeviceCompanionPanel from '@/components/agent/DeviceCompanionPanel'
 
 export default function BYODDeviceCheck() {
   const { examId } = useParams()
   const navigate = useNavigate()
 
-  // State: Process & System Scan
-  const [agentConnected, setAgentConnected] = useState(false)
-  const [checkingAgent, setCheckingAgent] = useState(false)
-  const [blockedProcesses, setBlockedProcesses] = useState([])
-  const [virtualCams, setVirtualCams] = useState([])
-  const [systemScanned, setSystemScanned] = useState(false)
+  // State: Exam Device Companion
+  const [companionDetails, setCompanionDetails] = useState(null)
 
   // State: Media Feeds (Camera & Mic)
   const [camPermission, setCamPermission] = useState(false)
@@ -59,15 +56,9 @@ export default function BYODDeviceCheck() {
   const screenVideoRef = useRef(null)
   const screenStreamRef = useRef(null)
 
-  // State: Network & VPN
+  // State: Network
   const [pingLatency, setPingLatency] = useState(null)
   const [checkingNetwork, setCheckingNetwork] = useState(false)
-  const [vpnConfig, setVpnConfig] = useState(null)
-  const [vpnPeerIp, setVpnPeerIp] = useState(null)
-  const [vpnConnected, setVpnConnected] = useState(false)
-  const [checkingVpn, setCheckingVpn] = useState(false)
-  const [issuingVpn, setIssuingVpn] = useState(false)
-  const [activatingVpn, setActivatingVpn] = useState(false)
 
   // Evaluation & Final Readiness
   const [evaluating, setEvaluating] = useState(false)
@@ -87,43 +78,7 @@ export default function BYODDeviceCheck() {
   }, [])
 
   const runSilentHealthCheck = async () => {
-    // 1. Silent latency test
     measureLatency(false)
-
-    // 2. Silent local agent test
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 1200)
-      const res = await fetch('http://127.0.0.1:49152/scan', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-      if (res.ok) {
-        const data = await res.json()
-        setAgentConnected(true)
-        setBlockedProcesses(data.blockedProcesses || [])
-        setVirtualCams(data.virtualCams || [])
-      } else {
-        setAgentConnected(false)
-      }
-    } catch {
-      setAgentConnected(false)
-    } finally {
-      setSystemScanned(true)
-    }
-
-    // 3. Silent VPN test if agent is up
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 1500)
-      const res = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-      if (res.ok) {
-        const data = await res.json()
-        setVpnConnected(Boolean(data.connected))
-        if (data.vpnIp) setVpnPeerIp(data.vpnIp)
-      }
-    } catch {
-      // ignore silently on mount
-    }
   }
 
   // Network Latency Ping
@@ -143,143 +98,7 @@ export default function BYODDeviceCheck() {
     }
   }
 
-  // Manual Re-Scan of Local Processes & Security Environment
-  const scanEnvironment = async () => {
-    setCheckingAgent(true)
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 1800)
-      const res = await fetch('http://127.0.0.1:49152/scan', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-      if (res.ok) {
-        const data = await res.json()
-        setAgentConnected(true)
-        setBlockedProcesses(data.blockedProcesses || [])
-        setVirtualCams(data.virtualCams || [])
-        if ((data.blockedProcesses || []).length === 0) {
-          toast.success('Agent scan clean: No prohibited processes detected!')
-        } else {
-          toast.error(`Warning: ${data.blockedProcesses.length} prohibited processes detected.`)
-        }
-      } else {
-        setAgentConnected(false)
-        setBlockedProcesses([])
-        toast.success('Browser Security Guard Active: No unauthorized hooks detected.')
-      }
-    } catch {
-      setAgentConnected(false)
-      setBlockedProcesses([])
-      toast.success('Browser Security Guard Active: Client sandbox verified.')
-    } finally {
-      setCheckingAgent(false)
-      setSystemScanned(true)
-    }
-  }
 
-  // 1-Click Automatic WireGuard Tunnel Activation for Students
-  const handleAutoConnectVpn = async () => {
-    setActivatingVpn(true)
-    try {
-      let currentConfig = vpnConfig
-      let currentIp = vpnPeerIp
-      if (!currentConfig && examId && examId !== 'demo') {
-        const res = await api.post(`/vpn/issue/${examId}`).catch(() => null)
-        if (res?.data?.success) {
-          currentConfig = res.data.config
-          currentIp = res.data.vpnPeerIp
-          setVpnConfig(res.data.config)
-          setVpnPeerIp(res.data.vpnPeerIp)
-        }
-      }
-
-      // Dispatch 1-click activation request to device-agent
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 3500)
-      const agentRes = await fetch('http://127.0.0.1:49152/vpn-activate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: currentConfig, vpnPeerIp: currentIp }),
-        mode: 'cors',
-        signal: controller.signal
-      }).catch(() => null)
-      clearTimeout(timeoutId)
-
-      setVpnConnected(true)
-      toast.success(`✔ Secure Network Connection Active! (Assigned IP: ${currentIp || '10.0.0.6'})`)
-    } catch {
-      setVpnConnected(true)
-      toast.success('✔ Security proctoring connection activated successfully!')
-    } finally {
-      setActivatingVpn(false)
-    }
-  }
-
-  // Issue / Retrieve WireGuard VPN Profile
-  const handleIssueVpn = async () => {
-    if (!examId || examId === 'demo') {
-      toast('General Practice Mode: Standard HTTPS/WSS proctoring tunnel is fully active.', { icon: '🛡️' })
-      return
-    }
-    setIssuingVpn(true)
-    try {
-      const res = await api.post(`/vpn/issue/${examId}`)
-      if (res.data && res.data.success) {
-        setVpnConfig(res.data.config)
-        setVpnPeerIp(res.data.vpnPeerIp)
-        toast.success(`Security profile generated (Assigned IP: ${res.data.vpnPeerIp})`)
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to generate security profile')
-    } finally {
-      setIssuingVpn(false)
-    }
-  }
-
-  // Download WireGuard .conf file
-  const handleDownloadConf = () => {
-    if (!vpnConfig) return
-    // WireGuard interface name must be <= 15 chars and contain only alphanumeric/underscore
-    const uniqueId = Math.floor(1000 + Math.random() * 9000)
-    const filename = `proctor_${uniqueId}.conf`
-    const blob = new Blob([vpnConfig], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    toast.success(`Downloaded security profile: ${filename}`)
-  }
-
-  // Manual Check of VPN Tunnel Status
-  const checkVpnManual = async () => {
-    setCheckingVpn(true)
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2500)
-      const res = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-      if (res.ok) {
-        const data = await res.json()
-        setVpnConnected(Boolean(data.connected))
-        if (data.connected) {
-          toast.success(`Secure Connection Active! IP: ${data.vpnIp || vpnPeerIp || '10.0.0.x'}`)
-        } else {
-          toast('Secure connection not active. Click "Auto-Connect" to establish connection.', { icon: 'ℹ️' })
-        }
-      } else {
-        setVpnConnected(false)
-        toast('Standard HTTPS proctoring channel verified (Desktop agent idle).', { icon: 'ℹ️' })
-      }
-    } catch {
-      setVpnConnected(false)
-      toast('Standard HTTPS security channel is active for browser proctoring.', { icon: 'ℹ️' })
-    } finally {
-      setCheckingVpn(false)
-    }
-  }
 
   // Test Camera & Microphone
   const startMediaTest = async () => {
@@ -403,31 +222,28 @@ export default function BYODDeviceCheck() {
     setScreenActive(false)
   }
 
+  const companionReady = Boolean(
+    companionDetails &&
+    (companionDetails.state === 'HEALTHY' || companionDetails.state === 'CONNECTED' || companionDetails.waiver) &&
+    (!companionDetails.findings || companionDetails.findings.length === 0)
+  )
+
   // Run Final Full Evaluation
   const handleEvaluateReadiness = async () => {
     setEvaluating(true)
     try {
-      const res = await api.post('/exam/device-check', {
-        studentExamId: examId || null,
-        runningProcesses: blockedProcesses,
-        virtualCams
-      })
-
-      if (res.data.success || res.data.status === 'PASSED') {
+      if (companionReady && camPermission && micPermission && screenPermission) {
         setPassedAll(true)
-        toast.success('BYOD System Readiness Scan 100% Passed!')
+        toast.success('Exam Device Companion & System Readiness 100% Passed!')
       } else {
         setPassedAll(false)
-        toast.error(res.data.message || 'Device readiness evaluation flagged warnings.')
-      }
-    } catch {
-      // Fallback: If media and process checks pass locally
-      if (blockedProcesses.length === 0 && camPermission && screenPermission) {
-        setPassedAll(true)
-        toast.success('BYOD Readiness Verified: All requirements satisfied!')
-      } else {
-        setPassedAll(false)
-        toast.error('Evaluation pending: Please test Camera and Screen Share before final clearance.')
+        if (!companionReady) {
+          toast.error('Companion check incomplete: Please pair the Exam Device Companion.')
+        } else if (!camPermission || !micPermission) {
+          toast.error('Media check incomplete: Please verify camera and microphone permissions.')
+        } else if (!screenPermission) {
+          toast.error('Screen share check incomplete: Please authorize full-screen capture.')
+        }
       }
     } finally {
       setEvaluating(false)
@@ -444,9 +260,9 @@ export default function BYODDeviceCheck() {
 
   // Calculate readiness score
   const checksPassedCount = [
-    blockedProcesses.length === 0,
+    companionReady,
     pingLatency !== null,
-    camPermission,
+    camPermission && micPermission,
     screenPermission
   ].filter(Boolean).length
 
@@ -496,76 +312,11 @@ export default function BYODDeviceCheck() {
 
         {/* 2x2 Grid of Core Diagnostics */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Card 1: Process & System Security */}
-          <Card className="bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe] flex items-center justify-center">
-                    <Terminal size={16} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[#0f172a]">Process & Security Environment</h3>
-                    <p className="text-[11px] text-[#64748b]">Banned remote software & virtual drivers check</p>
-                  </div>
-                </div>
-                {agentConnected ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#10b981] border border-[#a7f3d0]">
-                    AGENT CONNECTED
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
-                    BROWSER GUARD
-                  </span>
-                )}
-              </div>
-
-              <div className="space-y-2.5 my-3.5">
-                {blockedProcesses.length > 0 ? (
-                  <div className="p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[#ef4444] text-xs">
-                    <p className="font-bold flex items-center gap-1.5 mb-1">
-                      <AlertTriangle size={14} /> Prohibited Processes Detected:
-                    </p>
-                    <ul className="list-disc pl-5 space-y-0.5 text-[11px] font-mono">
-                      {blockedProcesses.map((p, i) => (
-                        <li key={i}>{p}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs font-medium text-[#10b981] flex items-center gap-2">
-                    <CheckCircle2 size={16} className="text-[#10b981] shrink-0" />
-                    <span>No prohibited background processes or remote access tools detected</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2 text-[11px] text-[#64748b] bg-[#f8fafc] p-2.5 rounded-xl border border-[#e2e8f0]">
-                  <div>
-                    <span className="font-semibold text-[#0f172a]">Screen:</span> {window.screen.width}x{window.screen.height}
-                  </div>
-                  <div>
-                    <span className="font-semibold text-[#0f172a]">Sandbox:</span> Active
-                  </div>
-                  <div>
-                    <span className="font-semibold text-[#0f172a]">Media Streaming:</span> Supported
-                  </div>
-                  <div>
-                    <span className="font-semibold text-[#0f172a]">Virtual Cam:</span> 0 Detected
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Button
-              onClick={scanEnvironment}
-              disabled={checkingAgent}
-              variant="outline"
-              className="w-full text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 mr-2 text-[#2563eb] ${checkingAgent ? 'animate-spin' : ''}`} />
-              {checkingAgent ? 'Scanning Processes...' : 'Run Security Scan'}
-            </Button>
-          </Card>
+          {/* Card 1: Exam Device Companion */}
+          <DeviceCompanionPanel
+            isPrecheck={true}
+            onStatusChange={(details) => setCompanionDetails(details)}
+          />
 
           {/* Card 2: Network Latency & Connectivity */}
           <Card className="bg-white border border-[#e2e8f0] rounded-2xl shadow-xs p-5 flex flex-col justify-between">
@@ -576,19 +327,13 @@ export default function BYODDeviceCheck() {
                     <Wifi size={16} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-[#0f172a]">Network Latency & Security</h3>
-                    <p className="text-[11px] text-[#64748b]">Proctoring telemetry & encryption channel</p>
+                    <h3 className="text-sm font-bold text-[#0f172a]">Network Latency & Connectivity</h3>
+                    <p className="text-[11px] text-[#64748b]">Proctoring telemetry response time</p>
                   </div>
                 </div>
-                {vpnConnected ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#ecfdf5] text-[#10b981] border border-[#a7f3d0]">
-                    VPN ACTIVE ({vpnPeerIp || '10.0.0.x'})
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
-                    HTTPS SECURED (VPN PAUSED)
-                  </span>
-                )}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#eff6ff] text-[#2563eb] border border-[#dbeafe]">
+                  HTTPS SECURED
+                </span>
               </div>
 
               <div className="space-y-2.5 my-3.5">
@@ -611,64 +356,29 @@ export default function BYODDeviceCheck() {
                   </span>
                 </div>
 
-                {vpnConnected ? (
-                  <div className="p-3 rounded-xl bg-[#ecfdf5] border border-[#a7f3d0] text-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-pulse" />
-                      <div>
-                        <p className="font-bold text-[#065f46] flex items-center gap-1">
-                          <CheckCircle2 size={13} className="text-[#10b981]" /> Secure Network Connection Active
-                        </p>
-                        <p className="text-[10px] text-[#047857]">Connected IP: {vpnPeerIp || '10.0.0.6'} (Encrypted)</p>
-                      </div>
-                    </div>
-                    {vpnConfig && (
-                      <Button
-                        onClick={handleDownloadConf}
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs border-[#a7f3d0] bg-white text-[#047857] hover:bg-[#ecfdf5] cursor-pointer"
-                      >
-                        <Download size={12} className="mr-1" /> Profile
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#dbeafe] text-xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
-                      <div>
-                        <p className="font-bold text-[#1e40af] flex items-center gap-1">
-                          <CheckCircle2 size={13} className="text-[#2563eb]" /> Secure Connection Active
-                        </p>
-                        <p className="text-[10px] text-[#3b82f6]">Direct secure connection verified and authenticated.</p>
-                      </div>
+                <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#dbeafe] text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#2563eb]" />
+                    <div>
+                      <p className="font-bold text-[#1e40af] flex items-center gap-1">
+                        <CheckCircle2 size={13} className="text-[#2563eb]" /> Secure Connection Active
+                      </p>
+                      <p className="text-[10px] text-[#3b82f6]">Direct secure TLS proctoring stream authenticated.</p>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={() => measureLatency(true)}
-                disabled={checkingNetwork}
-                variant="outline"
-                className="flex-1 text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 text-[#2563eb] ${checkingNetwork ? 'animate-spin' : ''}`} />
-                Test Latency
-              </Button>
-              <Button
-                onClick={checkVpnManual}
-                disabled={checkingVpn}
-                variant="outline"
-                className="flex-1 text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5 mr-1.5 text-[#64748b]" />
-                Check Tunnel
-              </Button>
-            </div>
+            <Button
+              onClick={() => measureLatency(true)}
+              disabled={checkingNetwork}
+              variant="outline"
+              className="w-full text-xs font-semibold border-[#e2e8f0] bg-white hover:bg-[#f8fafc] text-[#0f172a] h-9 cursor-pointer"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 text-[#2563eb] ${checkingNetwork ? 'animate-spin' : ''}`} />
+              Test Latency
+            </Button>
           </Card>
 
           {/* Card 3: Interactive Camera & Microphone Feed */}

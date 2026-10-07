@@ -83,6 +83,53 @@ enum ViolationType {
   SCREEN_SHARE_STOPPED
   VPN_DISCONNECT
   VPN_IP_MISMATCH
+  UNAUTHORIZED_APPLICATION
+  VIRTUAL_CAMERA_DETECTED
+  REMOTE_SESSION_DETECTED
+  VIRTUAL_MACHINE_DETECTED
+  MULTIPLE_DISPLAYS
+  AGENT_DISCONNECTED
+  AGENT_TAMPERED
+  AGENT_POLICY_INVALID
+}
+
+enum DeviceAgentPolicy {
+  REQUIRED
+  OPTIONAL
+  OFF
+}
+
+enum AgentPairingScope {
+  PRECHECK
+  ATTEMPT
+}
+
+enum AgentSessionState {
+  NOT_PAIRED
+  PAIRED
+  HEALTHY
+  DEGRADED
+  STALE
+  BLOCKED
+  WAIVED
+}
+
+enum AgentRuleCategory {
+  REMOTE_ACCESS
+  SCREEN_CAPTURE
+  VIRTUAL_CAMERA
+  AI_ASSISTANT
+  VIRTUAL_MACHINE
+  REMOTE_SESSION
+  DISPLAY
+  OTHER
+}
+
+enum AgentRuleAction {
+  FLAG
+  SUSPEND
+  BLOCK_START
+  WARN
 }
 
 enum Severity {
@@ -241,6 +288,7 @@ model Exam {
   aiReverifyInterval Int     @default(10) @map("ai_reverify_interval")
   mobileDetectConfig Json?   @map("mobile_detect_config")
   vpnRequired        Boolean @default(false) @map("vpn_required")
+  deviceAgentPolicy  DeviceAgentPolicy @default(REQUIRED) @map("device_agent_policy")
 
   isPaused        Boolean  @default(false) @map("is_paused")
   pausedBy        String?  @map("paused_by") @db.Uuid
@@ -647,3 +695,117 @@ model BiometricOverrideLog {
 
   @@map("biometric_override_logs")
 }
+
+// -------------------------------------------------------------
+// Exam Device Companion Architecture (Prompt 4 §3.1)
+// -------------------------------------------------------------
+
+model AgentRelease {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  version      String
+  os           String
+  arch         String
+  sha256       String
+  sizeBytes    BigInt    @map("size_bytes")
+  s3Key        String    @map("s3_key")
+  signed       Boolean   @default(false)
+  minSupported Boolean   @default(true) @map("min_supported")
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([version, os, arch])
+  @@map("agent_releases")
+}
+
+model AgentPairing {
+  id        String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope     AgentPairingScope
+  studentId String            @map("student_id") @db.Uuid
+  attemptId String?           @map("attempt_id") @db.Uuid
+  codeHash  String            @map("code_hash")
+  expiresAt DateTime          @map("expires_at") @db.Timestamptz(3)
+  usedAt    DateTime?         @map("used_at") @db.Timestamptz(3)
+  issueIp   String            @map("issue_ip")
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([codeHash])
+  @@map("agent_pairings")
+}
+
+model AgentSession {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope         AgentPairingScope
+  studentId     String            @map("student_id") @db.Uuid
+  attemptId     String?           @map("attempt_id") @db.Uuid
+  tokenHash     String            @unique @map("token_hash")
+  sessionKeyEnc String            @map("session_key_enc")
+  agentVersion  String            @map("agent_version")
+  os            String
+  arch          String
+  buildHash     String            @map("build_hash")
+  deviceId      String            @map("device_id")
+  pairIp        String            @map("pair_ip")
+  lastSeq       Int               @default(0) @map("last_seq")
+  state         AgentSessionState @default(PAIRED)
+  startedAt     DateTime          @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt       DateTime?         @map("ended_at") @db.Timestamptz(3)
+  lastSeenAt    DateTime          @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([studentId, attemptId])
+  @@index([state])
+  @@map("agent_sessions")
+}
+
+model AgentRule {
+  id        String            @id
+  version   Int               @default(1)
+  category  AgentRuleCategory
+  name      String
+  matchers  Json
+  severity  Severity          @default(HIGH)
+  action    AgentRuleAction   @default(FLAG)
+  enabled   Boolean           @default(true)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("agent_rules")
+}
+
+model AgentPolicyVersion {
+  version   Int      @id
+  bundle    Json
+  signature String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("agent_policy_versions")
+}
+
+model AgentFinding {
+  id          BigInt    @id @default(autoincrement())
+  sessionId   String    @map("session_id") @db.Uuid
+  attemptId   String?   @map("attempt_id") @db.Uuid
+  ruleId      String    @map("rule_id")
+  program     String?
+  firstSeenAt DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz(3)
+  lastSeenAt  DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  clearedAt   DateTime? @map("cleared_at") @db.Timestamptz(3)
+  hitCount    Int       @default(1) @map("hit_count")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([sessionId, ruleId])
+  @@index([attemptId])
+  @@map("agent_findings")
+}
+
+model DeviceAgentWaiver {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  attemptId String   @unique @map("attempt_id") @db.Uuid
+  grantedBy String   @map("granted_by") @db.Uuid
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("device_agent_waivers")
+}
+

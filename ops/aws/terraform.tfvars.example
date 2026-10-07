@@ -1,0 +1,26 @@
+# ProctorNet AWS Deployment Configuration Example
+# Copy this file to terraform.tfvars and customize before running terraform apply
+
+aws_region    = "us-east-1"
+environment   = "production"
+project_name  = "proctornet"
+
+# Compute: t3.micro for legacy free-tier; t3.small or c7i-flex.large for credit accounts
+instance_type = "t3.micro"
+
+# Your domain name pointing to the Elastic IP (Caddy will auto-issue Let's Encrypt certificates)
+domain_name   = "exam.youruniversity.edu"
+
+# Alert email for the $5 budget guardrail and CloudWatch alerts
+alert_email   = "devops@youruniversity.edu"
+
+# S3 Bucket name (globally unique)
+bucket_name   = "proctornet-storage-prod-12345"
+
+# Database Configuration:
+# Set to false if using external Supabase / Neon (preferred for zero maintenance)
+# Set to true to provision managed AWS RDS PostgreSQL (db.t3.micro)
+enable_rds    = false
+db_name       = "proctornet"
+db_username   = "proctornet_admin"
+db_password   = "SuperStrongMasterPassword_98765!"

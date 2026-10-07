@@ -6,13 +6,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from routes.ocr import ocr_bp
-from routes.ai_gen import ai_gen_bp
 
 app = Flask(__name__)
 CORS(app)
 
 app.register_blueprint(ocr_bp, url_prefix='/api/ocr')
-app.register_blueprint(ai_gen_bp, url_prefix='/api/ai')
 
 @app.route('/health', methods=['GET'])
 def health_check():

@@ -662,6 +662,52 @@ While the codebase contained an advanced `schema.prisma` with rich domain constr
 - **ExcelJS Worker & 5 MB Cap**: Replaced the vulnerable `xlsx` library with `exceljs` and enforced a strict 5 MB file size limit on bulk upload endpoints.
 - **Presigned Question DTOs**: Exam questions with diagrams return dynamically presigned URLs in DTO mappers rather than exposing raw S3 storage keys.
 
+---
 
+## 13. Phase A0: Exam Device Companion — Baseline, Decisions & Threat Model
 
+> *"A native proctoring agent on student hardware must respect radical data minimization, never open a local port, and never trust client-relayed assertions. Honest security acknowledges that unprivileged client software raises the bar against casual cheating without making impossible claims of being unbypassable."*
+
+### 1. Architecture Shifts (ADRs A-001 through A-007)
+- **Eliminating the Local Inbound Port (A-002)**: The legacy agent listened on `127.0.0.1:49152`. This created severe DNS rebinding and CORS risks (`Access-Control-Allow-Origin: *`), was blocked by modern Chrome Private Network Access (PNA), and exposed a local network attack surface. The redesign uses **outbound HTTPS only**. The web page learns agent state asynchronously from the server.
+- **Short-Code Pairing (A-003)**: Candidates pair their desktop companion by typing a single-use 8-character code displayed on the web portal. The server stores only a peppered HMAC hash of the code with a 5-minute TTL. Upon pairing, the server exchanges the code for a session token and an encrypted per-session HMAC signing key. Student credentials and passwords never touch the agent process.
+- **Ed25519-Signed Policy & Local Matching (A-004)**: Rule definitions are versioned data signed with Ed25519. The companion agent evaluates rules locally in memory and transmits **hits only** (matched rule ID and base executable name). Full process lists, command arguments, window titles, and file paths are strictly prohibited by an automated CI schema gate.
+- **Granular Exam Policy & Staff Waivers (A-005)**: Exams configure `device_agent_policy = REQUIRED | OPTIONAL | OFF`. Authorized invigilators can grant audited waivers for legitimate hardware hardship.
+- **Zero Insecure VPN Shelling (A-006)**: Removed legacy `/vpn-activate` which wrote plaintext private keys to predictable temporary files and shelled out to `wireguard.exe`.
+
+### 2. The Three Catalogued Legacy Defects (Proven by Red Tests)
+- **G-02 (Fail-Open Buffer Overflow)**: Legacy `agent.js` executed `exec('tasklist')` with default 1MB `maxBuffer`. On command failure or buffer overflow, it resolved `[]` (empty list), causing the scanner to report `HEALTHY` with 0 blocked processes—falsely declaring overloaded or failing machines clean.
+- **G-03 (False Positive Naive Matching)**: Legacy `agent.js` checked `line.includes(pattern)` over the entire command line, flagging candidates whose username was `claude`, whose file path contained `cursor`, or who had Windows' native `rdpclip.exe` clipboard helper.
+- **G-05 (Forgeable Client-Supplied Check)**: Legacy `deviceCheck/controller.js` accepted arbitrary JSON from the browser, blindly setting `agentConnected = true` and `status = 'PASSED'` without cryptographic proof or direct communication with any agent.
+
+---
+
+## 14. Phase A1: Exam Device Companion — Server Module & Security Architecture
+
+> *"A native companion reporting to an AWS micro-instance cannot afford database roundtrips on every heartbeat. Cryptographic HMAC verification, an in-memory hot session layer, monotonic sequence guards, and a sweeper daemon turn telemetry into a high-throughput, zero-load system."*
+
+### 1. In-Memory Hot Session Cache (Zero-DB Heartbeats)
+- **The Database Bottleneck**: If 500 candidates report heartbeats every 15 seconds, a naive architecture executes $33\text{ writes/sec}$ to PostgreSQL, thrashing database connections and depleting IOPS on a budget RDS/Supabase instance.
+- **The Hot Cache Solution (`hotSessions` Map)**:
+  - On pairing, the session credentials, AES-256 decrypted session key, and current state are placed into an in-memory `Map<tokenHash, session>`.
+  - Inbound reports verify the HMAC-SHA256 signature and validate monotonic sequences completely in RAM in $< 1\text{ ms}$.
+  - The database is touched **only on state transitions** (when an attempt is suspended due to a new violation, or when a finding is cleared after 2 consecutive clean reports). Clean heartbeats produce **0 PostgreSQL writes**.
+
+### 2. Cryptographic Protocol: HMAC, Monotonic Sequences & Nonce Replay
+- **HMAC-SHA256 Signature Header (`x-agent-signature`)**: Every report signs `METHOD + PATH + SEQ + TIMESTAMP + NONCE + RAW_BODY` using the per-session symmetric key negotiated at pairing.
+- **Monotonic Sequence Rule**: Each report sequence number must satisfy `last_seq < seq <= last_seq + 100`. Out-of-order, stale, or replayed sequence numbers reject with `409 Conflict`.
+- **Clock Skew Check ($\pm 60\text{ s}$)**: Protects against pre-computed replay vectors; out-of-sync agent clocks receive a structured `CLOCK_SKEW` error with authoritative server epoch time.
+- **Nonce Cache**: Bounded set of recently observed nonces rejects duplicate or replayed packets with `409 Conflict`.
+
+### 3. Automated Finding Lifecycle & Attempt Auto-Resume
+- **Open Finding**: If an incoming report detects a prohibited tool (e.g. `r-remote-anydesk`), the server opens an `AgentFinding`, emits a `ViolationEvent`, and transitions the candidate's `ExamAttempt` to `SUSPENDED` (pausing the timer per ADR-004).
+- **Auto-Clear (2 Clean Runs)**: Once the candidate terminates the prohibited software, 2 consecutive clean reports automatically mark the finding `RESOLVED` and auto-resume the attempt back to `ACTIVE`.
+
+### 4. Sweeper Timeout Daemon
+- **Disconnect Detection**: A periodic 15-second sweeper inspects active sessions. If an agent fails to report for $> 60\text{ s}$, the session transitions to `STALE`, logs an `AGENT_DISCONNECTED` violation, and transitions `REQUIRED` policy attempts to `SUSPENDED`.
+- **Seamless Reconnect**: Upon network restoration, the agent's next clean report auto-resumes the candidate's attempt without requiring staff intervention.
+
+### 5. Audited Staff Waivers & BOLA Enforcement
+- **Hardware Hardship Waivers**: Authorized faculty/invigilators can grant an audited `DeviceAgentWaiver` with a mandatory human reason (e.g., student using loaner locked laptop).
+- **BOLA Authorization Boundary**: Student B cannot request pairing codes or view companion status for Student A; Faculty B cannot grant waivers for exams owned by Faculty A. All endpoints enforce strict tenant and role ownership.
 

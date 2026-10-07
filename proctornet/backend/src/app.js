@@ -82,7 +82,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie', 'x-agent-session', 'x-agent-seq', 'x-agent-ts', 'x-agent-nonce', 'x-agent-signature'],
 }
 app.use(cors(corsOptions))
 
@@ -193,22 +193,32 @@ internalApp.get('/readyz', async (req, res) => {
     rabbitmq: 'pending'
   }
 
-  const { redisClient } = require('./infra/redis/client')
-  const { rabbitmq } = require('./infra/rabbitmq/client')
+  const { redisClient: _rc } = require('./infra/redis/client')
+  const { rabbitmq: _rmq } = require('./infra/rabbitmq/client')
+  const cfg = require('./shared/config')
 
   await Promise.allSettled([
     withTimeout(prisma.$queryRawUnsafe('SELECT 1'), 'PostgreSQL')
       .then(() => { checks.postgres = 'ok' })
       .catch((err) => { checks.postgres = `failed: ${err.message}` }),
-    withTimeout(redisClient.ping(), 'Redis')
-      .then((ok) => { checks.redis = ok ? 'ok' : 'failed: ping returned false' })
-      .catch((err) => { checks.redis = `failed: ${err.message}` }),
-    withTimeout(rabbitmq.checkHealth(), 'RabbitMQ')
-      .then((ok) => { checks.rabbitmq = ok ? 'ok' : 'failed: exchange check failed' })
-      .catch((err) => { checks.rabbitmq = `failed: ${err.message}` })
+    // Redis: skip check when CACHE_DRIVER=memory
+    cfg.cacheDriver === 'memory'
+      ? Promise.resolve().then(() => { checks.redis = 'skipped (memory driver)' })
+      : withTimeout(_rc.ping(), 'Redis')
+          .then((ok) => { checks.redis = ok ? 'ok' : 'failed: ping returned false' })
+          .catch((err) => { checks.redis = `failed: ${err.message}` }),
+    // RabbitMQ: skip check when QUEUE_DRIVER=postgres
+    cfg.queueDriver === 'postgres'
+      ? Promise.resolve().then(() => { checks.rabbitmq = 'skipped (postgres queue driver)' })
+      : withTimeout(_rmq.checkHealth(), 'RabbitMQ')
+          .then((ok) => { checks.rabbitmq = ok ? 'ok' : 'failed: exchange check failed' })
+          .catch((err) => { checks.rabbitmq = `failed: ${err.message}` })
   ])
 
-  const isReady = checks.postgres === 'ok' && checks.redis === 'ok' && checks.rabbitmq === 'ok'
+  // Ready if postgres is ok AND optional services are either ok or skipped
+  const isReady = checks.postgres === 'ok' &&
+    (checks.redis === 'ok' || checks.redis?.startsWith('skipped')) &&
+    (checks.rabbitmq === 'ok' || checks.rabbitmq?.startsWith('skipped'))
   const statusCode = isReady ? 200 : 503
 
   return res.status(statusCode).json({
@@ -225,11 +235,14 @@ internalApp.get('/metrics', metricsHandler)
 const v1Router = require('./modules/router')
 const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
-const { outboxPublisher } = require('./infra/rabbitmq/outboxPublisher')
+const { getQueueDriver, registerQueueHandler } = require('./infra/queueDriver')
+const config = require('./shared/config')
 const { evaluationWorker } = require('./modules/results/evaluationWorker')
 const { evidenceWorker } = require('./modules/media/evidenceWorker')
 const { verificationWorker } = require('./modules/media/biometricService')
 const { expirySweeper } = require('./modules/attempts/expirySweeper')
+const { examScheduler } = require('./modules/exams/examScheduler')
+const { retentionWorker } = require('./modules/media/retentionWorker')
 const { vpnWorker } = require('./modules/vpn/vpnWorker')
 const { vpnReconciler } = require('./modules/vpn/vpnReconciler')
 const { violationMicroBatcher } = require('./modules/proctoring/violationMicroBatcher')
@@ -296,7 +309,10 @@ async function gracefulShutdown(signal) {
   // 2. Stop Consumers: stop background polling loops and consumers
   try {
     expirySweeper.stop()
-    outboxPublisher.stop()
+    examScheduler.stop()
+    retentionWorker.stop()
+    const _qd = getQueueDriver()
+    if (_qd && typeof _qd.stop === 'function') _qd.stop()
     rosterCoalescer.stop()
     if (process.env.VPN_ENABLED === 'true') {
       vpnReconciler.stop()
@@ -342,14 +358,13 @@ async function gracefulShutdown(signal) {
   // Wait for intake HTTP servers to finish ongoing requests
   await Promise.all([serverClosePromise, internalClosePromise])
 
-  // 5. Close Pools: disconnect database, redis, and rabbitmq connections
+  // 5. Close Pools: disconnect database, redis, and connections
   try {
-    await Promise.allSettled([
-      prisma.$disconnect(),
-      redisClient.quit(),
-      rabbitmq.close()
-    ])
-    logger.info('All database, redis, and rabbitmq connection pools closed cleanly')
+    const shutdownTasks = [prisma.$disconnect()]
+    if (config.cacheDriver !== 'memory') shutdownTasks.push(redisClient.quit())
+    if (config.queueDriver !== 'postgres') shutdownTasks.push(rabbitmq.close())
+    await Promise.allSettled(shutdownTasks)
+    logger.info('All connection pools closed cleanly')
   } catch (err) {
     logger.warn({ error: err.message }, 'Error closing connection pools')
   }
@@ -391,13 +406,24 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
       console.log(`🔒 Internal listener: http://${INTERNAL_HOST}:${INTERNAL_PORT} (/metrics, /readyz)`)
     })
 
+    // Register in-process handlers when using postgres queue driver
+    if (config.queueDriver === 'postgres') {
+      registerQueueHandler('attempt.submitted', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.submitted', payload: p, ...m }))
+      registerQueueHandler('attempt.expired', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.expired', payload: p, ...m }))
+      registerQueueHandler('attempt.terminated', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.terminated', payload: p, ...m }))
+      registerQueueHandler('evidence.uploaded', (p, m) => evidenceWorker.handleEvent({ type: 'evidence.uploaded', payload: p, ...m }))
+    }
+
     // Start background workers: default false for API processes (C-10)
     if (process.env.START_WORKERS === 'true') {
-      outboxPublisher.start()
+      const queueDispatcher = getQueueDriver()
+      queueDispatcher.start()
       evaluationWorker.start()
       evidenceWorker.start()
       verificationWorker.start()
       expirySweeper.start()
+      examScheduler.start()
+      retentionWorker.start()
 
       // Start WireGuard VPN background workers (flag-gated)
       if (process.env.VPN_ENABLED === 'true') {
@@ -405,6 +431,7 @@ if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
         vpnReconciler.start()
         console.log('🛡️  WireGuard VPN Worker & Reconciler started')
       }
+      console.log(`⚡ Workers started (QUEUE_DRIVER=${config.queueDriver}, CACHE_DRIVER=${config.cacheDriver})`)
     } else {
       console.log('⚡ START_WORKERS=false (default): Background workers delegated to dedicated worker container')
     }

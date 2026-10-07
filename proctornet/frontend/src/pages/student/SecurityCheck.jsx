@@ -12,9 +12,10 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { setSharedScreenStream, clearSharedScreenStream } from '@/lib/mediaState'
+import DeviceCompanionPanel from '@/components/agent/DeviceCompanionPanel'
 
 const STAGES = [
-  { id: 'system', name: 'BYOD Agent & System Integrity Audit', icon: Cpu, desc: 'Companion agent scan & prohibited application integrity check' },
+  { id: 'system', name: 'Exam Device Companion Audit', icon: Cpu, desc: 'Hardware & software proctoring companion check' },
   { id: 'media', name: 'Hardware Media Feeds', icon: Camera, desc: 'Webcam feed mapping & mandatory screen share authorization' },
   { id: 'face', name: 'AI Face Verification', icon: Shield, desc: 'Matching live biometric stream against student profile' },
   { id: 'kiosk', name: 'Fullscreen Kiosk & Terms', icon: Lock, desc: 'Viewport locking & candidate integrity agreement' }
@@ -43,23 +44,11 @@ export default function SecurityCheck() {
 
   const [exam, setExam] = useState(null)
   const [student, setStudent] = useState(null)
+  const [attemptId, setAttemptId] = useState(null)
+  const [companionDetails, setCompanionDetails] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [screenShared, setScreenShared] = useState(false)
-  
-  // BYOD Companion Agent states
-  const [agentConnected, setAgentConnected] = useState(false)
-  const [agentScanning, setAgentScanning] = useState(false)
-  const [blockedProcesses, setBlockedProcesses] = useState([])
-  const [virtualCams, setVirtualCams] = useState([])
-
-  // WireGuard VPN states
-  const [vpnPeerIp, setVpnPeerIp] = useState('')
-  const [vpnConfig, setVpnConfig] = useState('')
-  const [vpnVerified, setVpnVerified] = useState(false)
-  const [verifyingVpn, setVerifyingVpn] = useState(false)
-  const [confDownloaded, setConfDownloaded] = useState(false)
   const [timeToExamStart, setTimeToExamStart] = useState(0)
-  const [vpnEnforcement, setVpnEnforcement] = useState(false)
 
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
@@ -148,13 +137,31 @@ export default function SecurityCheck() {
         const userRes = await api.get('/auth/me')
         setStudent(userRes.data.user)
 
-        const configRes = await api.get('/config').catch(() => ({ data: {} }))
-        if (typeof configRes.data?.vpnEnforcement === 'boolean') {
-          setVpnEnforcement(configRes.data.vpnEnforcement)
+        // Initialize or retrieve attempt
+        try {
+          const attemptRes = await api.post(`/exams/${examId}/attempt`).catch(() => null)
+          if (attemptRes?.data?.id) {
+            setAttemptId(attemptRes.data.id)
+          }
+        } catch {
+          // precheck mode fallback
         }
 
-        // Automatically start Stage 0: BYOD Agent & System Security Audit
-        runSystemAudit()
+        // Audit WebGL Renderer
+        try {
+          const canvas = document.createElement('canvas')
+          const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
+          let renderer = 'Standard GPU'
+          if (gl) {
+            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
+            if (debugInfo) {
+              renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Standard GPU'
+            }
+          }
+          setVmRenderer(renderer)
+        } catch {
+          setVmRenderer('Standard Display')
+        }
       } catch (err) {
         toast.error('Failed to load exam details.')
         navigate('/student/exams')
@@ -168,174 +175,21 @@ export default function SecurityCheck() {
     setStageDetails(prev => ({ ...prev, [key]: detail }))
   }
 
-  // 1. Stage 0: BYOD Companion Agent & System Audit (VPN check paused)
-  const runSystemAudit = async () => {
-    setActiveStage(0)
-    updateStage('system', 'loading', 'Auditing BYOD companion agent and system processes...')
+  // 1. Stage 0: Exam Device Companion Status Listener
+  const handleCompanionStatusChange = (statusData) => {
+    setCompanionDetails(statusData)
+    const isHealthy = statusData?.state === 'HEALTHY' || statusData?.state === 'CONNECTED'
+    const isWaived = Boolean(statusData?.waiver)
+    const findings = statusData?.findings || []
 
-    let assignedIp = '10.0.0.x'
-    let conf = ''
-    try {
-      const vpnRes = await api.post(`/vpn/issue/${examId}`)
-      if (vpnRes.data && vpnRes.data.success) {
-        assignedIp = vpnRes.data.vpnPeerIp || '10.0.0.5'
-        conf = vpnRes.data.config || ''
-        setVpnPeerIp(assignedIp)
-        setVpnConfig(conf)
-      }
-    } catch (vpnErr) {
-      console.warn('VPN issue notice:', vpnErr.message)
-      setVpnPeerIp('10.0.0.2')
-    }
-
-    // Audit WebGL Renderer
-    try {
-      const canvas = document.createElement('canvas')
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl')
-      let renderer = 'Standard GPU'
-      if (gl) {
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info')
-        if (debugInfo) {
-          renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || 'Standard GPU'
-        }
-      }
-      setVmRenderer(renderer)
-    } catch {
-      setVmRenderer('Standard Display')
-    }
-
-    // Check BYOD Agent and system status
-    await scanByodAgent(false)
-  }
-
-  // Scan BYOD Companion Agent
-  const scanByodAgent = async (showToast = false) => {
-    setAgentScanning(true)
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2500)
-      const res = await fetch('http://127.0.0.1:49152/scan', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-
-      if (res.ok) {
-        const data = await res.json()
-        setAgentConnected(true)
-        const blocked = data.blockedProcesses || []
-        const vcams = data.virtualCams || []
-        setBlockedProcesses(blocked)
-        setVirtualCams(vcams)
-
-        if (blocked.length > 0) {
-          updateStage('system', 'fail', `Prohibited background software running: ${blocked.join(', ')}. Terminate these apps to proceed.`)
-          if (showToast) toast.error(`Prohibited apps detected: ${blocked.join(', ')}`)
-          return false
-        }
-
-        // VPN feature is temporarily paused for maintenance — pass Stage 0 once BYOD agent is clean
-        updateStage('system', 'pass', 'BYOD Agent Active • 0 Prohibited Apps • Clean Integrity (VPN Paused)')
-        if (showToast) toast.success('BYOD Agent & System audit cleared!')
-        return true
-      } else {
-        setAgentConnected(false)
-        updateStage('system', 'fail', 'BYOD Companion Agent offline on port 49152. Launch desktop companion to proceed.')
-        if (showToast) toast.error('BYOD Companion Agent unreachable on port 49152.')
-        return false
-      }
-    } catch (err) {
-      setAgentConnected(false)
-      updateStage('system', 'fail', 'BYOD Companion Agent offline on port 49152. Launch desktop companion to proceed.')
-      if (showToast) toast.error('BYOD Companion Agent offline. Start agent on port 49152.')
-      return false
-    } finally {
-      setAgentScanning(false)
-    }
-  }
-
-  // Real VPN connection check calling device agent
-  const checkVpnRealStatus = async (showToasts = false) => {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 2500)
-      const res = await fetch('http://127.0.0.1:49152/vpn-check', { mode: 'cors', signal: controller.signal })
-      clearTimeout(timeoutId)
-
-      if (res.ok) {
-        const data = await res.json()
-        if (data.connected) {
-          setVpnVerified(true)
-          const ip = data.vpnIp || vpnPeerIp || '10.0.0.5'
-          if (blockedProcesses.length === 0) {
-            updateStage('system', 'pass', `Device Companion Active • Integrity Clean • Secure Network Active (${ip})`)
-          }
-          if (showToasts) toast.success(`Secure connection verified! (IP: ${ip})`)
-          return true
-        } else {
-          setVpnVerified(false)
-          if (showToasts) toast.error('Secure connection is disconnected. Please activate connection.')
-          return false
-        }
-      } else {
-        setVpnVerified(false)
-        return false
-      }
-    } catch {
-      setVpnVerified(false)
-      return false
-    }
-  }
-
-  // Continuous background polling every 4 seconds for BYOD Agent and VPN
-  useEffect(() => {
-    if (activeStage !== 0) return
-    const interval = setInterval(() => {
-      scanByodAgent(false)
-    }, 4000)
-    return () => clearInterval(interval)
-  }, [activeStage, vpnConfig])
-
-  const downloadVpnConfig = () => {
-    if (!vpnConfig) {
-      toast.error('Security configuration is being generated. Please retry in a moment.')
-      return
-    }
-    const uniqueId = Math.floor(1000 + Math.random() * 9000)
-    const filename = `proctor_${uniqueId}.conf`
-    const blob = new Blob([vpnConfig], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    setConfDownloaded(true)
-    toast.success(`Downloaded security profile: ${filename}`)
-  }
-
-  const verifyVpnTunnel = async () => {
-    setVerifyingVpn(true)
-    try {
-      try {
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), 2500)
-        await fetch('http://127.0.0.1:49152/vpn-activate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ config: vpnConfig, vpnPeerIp: vpnPeerIp || '10.0.0.5' }),
-          mode: 'cors',
-          signal: controller.signal
-        })
-        clearTimeout(timeoutId)
-      } catch {
-        // Desktop agent fallback
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 1200))
-      await scanByodAgent(true)
-    } finally {
-      setVerifyingVpn(false)
+    if (isWaived) {
+      updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
+    } else if (isHealthy && findings.length === 0) {
+      updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
+    } else if (findings.length > 0) {
+      updateStage('system', 'fail', `Prohibited software detected: ${findings.map(f => f.ruleId).join(', ')}. Please close to proceed.`)
+    } else {
+      updateStage('system', 'loading', 'Waiting for Exam Device Companion to connect...')
     }
   }
 
@@ -530,23 +384,10 @@ export default function SecurityCheck() {
 
   // 4. Stage 3: Lock Fullscreen & Start Exam
   const handleLockAndStartExam = async () => {
-    if (!agentConnected) {
-      toast.error('Mandatory BYOD Companion Agent must be running on port 49152.')
+    if (!stage0Passed) {
+      toast.error('Exam Device Companion must be active and healthy (or waived) to proceed.')
       setActiveStage(0)
       return
-    }
-    if (blockedProcesses.length > 0) {
-      toast.error(`Please close prohibited apps (${blockedProcesses.join(', ')}) before starting.`)
-      setActiveStage(0)
-      return
-    }
-    // Secure connection enforcement check
-    if (!vpnVerified) {
-      if (vpnEnforcement) {
-        toast.error('Secure network connection mandatory. Please activate your connection first.')
-        setActiveStage(0)
-        return
-      }
     }
 
     try {
@@ -571,7 +412,11 @@ export default function SecurityCheck() {
     }
   }
 
-  const stage0Passed = agentConnected && blockedProcesses.length === 0
+  const stage0Passed = Boolean(
+    companionDetails &&
+    (companionDetails.state === 'HEALTHY' || companionDetails.state === 'CONNECTED' || companionDetails.waiver) &&
+    (!companionDetails.findings || companionDetails.findings.length === 0)
+  )
   const allPassed = stage0Passed && stageStatus.media === 'pass' && stageStatus.face === 'pass'
 
   return (
@@ -715,126 +560,14 @@ export default function SecurityCheck() {
                 </div>
               </div>
 
-              {/* STAGE 0: BYOD Companion Agent & System Audit */}
+              {/* STAGE 0: Exam Device Companion Audit */}
               {activeStage === 0 && !stage0Passed ? (
                 <div className="space-y-4 mb-6">
-                  {/* BYOD Agent Diagnostic Card (MANDATORY) */}
-                  <div className={`p-4.5 rounded-2xl border transition-all ${
-                    !agentConnected 
-                      ? 'bg-rose-500/5 border-rose-500/30'
-                      : blockedProcesses.length > 0
-                      ? 'bg-amber-500/5 border-amber-500/30'
-                      : 'bg-emerald-500/5 border-emerald-500/30'
-                  }`}>
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          !agentConnected ? 'bg-rose-500/10 text-rose-500' : blockedProcesses.length > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'
-                        }`}>
-                          <Cpu size={18} />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono flex items-center gap-2">
-                            1. ProctorNet BYOD Companion Agent (Mandatory)
-                            {agentConnected ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px]">CONNECTED (PORT 49152)</Badge>
-                            ) : (
-                              <Badge variant="destructive" className="text-[10px]">AGENT OFFLINE</Badge>
-                            )}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Scans running background processes for remote desktop tools, virtual cams, and unauthorized software.
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        onClick={() => scanByodAgent(true)}
-                        disabled={agentScanning}
-                        size="sm"
-                        variant="outline"
-                        className="text-xs font-mono border-border shrink-0"
-                      >
-                        <RefreshCw size={12} className={`mr-1.5 ${agentScanning ? 'animate-spin' : ''}`} />
-                        {agentScanning ? 'Scanning…' : 'Re-Scan Agent'}
-                      </Button>
-                    </div>
-
-                    {!agentConnected ? (
-                      <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs space-y-2 mt-3">
-                        <p className="font-bold text-rose-600 flex items-center gap-1.5">
-                          <AlertOctagon size={14} /> BYOD Companion Agent is not running on your machine
-                        </p>
-                        <p className="text-muted-foreground">
-                          Please start the local agent to proceed with this exam:
-                        </p>
-                        <div className="p-2.5 bg-background border border-border rounded-lg font-mono text-[11px] text-primary flex items-center justify-between">
-                          <span>Run companion agent on device</span>
-                          <span className="text-[10px] text-muted-foreground">Port 49152</span>
-                        </div>
-                      </div>
-                    ) : blockedProcesses.length > 0 ? (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-2 mt-3">
-                        <p className="font-bold text-amber-600 flex items-center gap-1.5">
-                          <AlertTriangle size={14} /> Prohibited Software Detected Running:
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {blockedProcesses.map(proc => (
-                            <Badge key={proc} variant="destructive" className="text-xs font-mono uppercase">
-                              {proc}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-muted-foreground text-[11px]">
-                          Please terminate these applications in Windows Task Manager / Activity Monitor and click <strong>Re-Scan Agent</strong>.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-2 mt-2">
-                        <CheckCircle2 size={14} />
-                        <span>Integrity Clean: 0 prohibited background processes running.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Network Transport Notice */}
-                  <div className="p-4.5 rounded-2xl bg-background border border-border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                          <Wifi size={16} />
-                        </div>
-                        <div>
-                          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider font-mono flex items-center gap-2">
-                            2. Network Security & Encryption
-                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-mono text-[10px]">
-                              DIRECT SECURE CONNECTION
-                            </Badge>
-                          </h3>
-                          <p className="text-[11px] text-muted-foreground">
-                            Direct secure connection verified and authenticated for this session.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-card border border-border/70 rounded-xl flex items-center justify-between text-xs font-mono text-muted-foreground">
-                      <div className="flex items-center gap-2 text-foreground/90">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                        <span>Encrypted Proctored Transport: Active</span>
-                      </div>
-                      {vpnConfig && (
-                        <Button
-                          onClick={downloadVpnConfig}
-                          variant="ghost"
-                          size="sm"
-                          className="text-[11px] font-mono h-7 text-primary hover:bg-primary/10"
-                        >
-                          <Download size={12} className="mr-1" /> Optional .conf
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <DeviceCompanionPanel
+                    attemptId={attemptId}
+                    isPrecheck={!attemptId}
+                    onStatusChange={handleCompanionStatusChange}
+                  />
                 </div>
               ) : (
                 /* STAGES 1, 2, 3 OR STAGE 0 VERIFIED: Video Feed & Diagnostics */
@@ -875,15 +608,15 @@ export default function SecurityCheck() {
 
                       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
                         <div className="p-2 rounded-lg bg-card border border-border">
-                          <span className="text-muted-foreground">BYOD Agent:</span>
-                          <p className={`font-semibold mt-0.5 ${agentConnected ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {agentConnected ? 'Online (49152)' : 'Offline'}
+                          <span className="text-muted-foreground">Companion:</span>
+                          <p className={`font-semibold mt-0.5 ${companionDetails?.state === 'HEALTHY' || companionDetails?.waiver ? 'text-emerald-500' : 'text-foreground/90'}`}>
+                            {companionDetails?.waiver ? 'Waived' : companionDetails?.state || 'Not Paired'}
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
-                          <span className="text-muted-foreground">Network Security:</span>
+                          <span className="text-muted-foreground">Network:</span>
                           <p className="font-semibold mt-0.5 text-emerald-500">
-                            HTTPS Secure (VPN Paused)
+                            HTTPS Secure
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">

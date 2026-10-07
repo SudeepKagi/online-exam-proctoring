@@ -1,0 +1,47 @@
+=== PROMPT 4 PHASE A1: EXAM DEVICE COMPANION SERVER MODULE EVIDENCE ===
+Timestamp: 2026-10-07T09:23:45Z
+Test command: node --test tests/agent-module.test.js
+CI Stub check: node scripts/ci/check-no-stubs.js
+
+=== TEST RESULTS ===
+✔ Exam Device Companion Server Module (Prompt 4 Phase A1)
+  ✔ Pairing Flow (Code Generation, Peppered Hash, Single Use, Rate Limits)
+    ✔ generates an 8-character Crockford pairing code for an attempt (happy path)
+    ✔ pairs companion agent using code and returns session credentials + signed policy
+    ✔ prevents code reuse: consuming the pairing code a second time returns 409 Conflict
+    ✔ rejects outdated agent versions (< 1.0.0) with 400 Bad Request
+    ✔ enforces pairing code rate limit per student (max 5 active codes)
+  ✔ Report Authentication & Security Rules (HMAC, Seq, Skew, Replay, Privacy)
+    ✔ accepts valid HMAC-signed telemetry report with sequential sequence number
+    ✔ rejects report with invalid HMAC signature with 401 Unauthorized
+    ✔ rejects clock skew exceeding 60 seconds with 400 CLOCK_SKEW and serverTime
+    ✔ rejects non-monotonic sequence numbers (seq <= lastSeq) with 409 Conflict
+    ✔ rejects replayed nonce with 409 Conflict
+    ✔ strictly enforces privacy contract: rejects payload containing forbidden keys (processes)
+  ✔ Finding Lifecycle (Open -> Dedupe -> Clear -> Auto-Resume)
+    ✔ opens new finding, creates ViolationEvent, and transitions ACTIVE attempt to SUSPENDED
+    ✔ clears finding after 2 consecutive clean reports and auto-resumes attempt
+  ✔ Enforcement Hooks & Staff Waivers (REQUIRED vs OPTIONAL vs Waiver)
+    ✔ blocks start for REQUIRED exam when no companion agent is paired
+    ✔ allows start for OPTIONAL exam without companion agent
+    ✔ allows start for REQUIRED exam when audited staff waiver is granted
+  ✔ Sweeper & Heartbeat Disconnect Detection
+    ✔ sweeper transitions session to STALE and attempt to SUSPENDED when heartbeat elapsed > 60s
+    ✔ auto-resumes attempt when disconnected agent reconnects with a fresh clean report
+  ✔ BOLA Cross-Tenant Security Matrix
+    ✔ rejects student B generating pairing code for student A attempt with 403 Forbidden
+    ✔ rejects student B viewing companion status for student A attempt with 403 Forbidden
+    ✔ rejects faculty B granting waiver for faculty A exam attempt with 403 Forbidden
+
+ℹ tests 21
+ℹ suites 7
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+
+=== STUB SCANNER RESULT ===
+🔍 [CI] Running AST + Regex Stub Scanner (check-no-stubs.js)...
+📊 Scan completed across 286 source files.
+✅ Stub scanner green: zero hardcoded scores, zero stubs, zero unobserved writes, zero fake handlers.

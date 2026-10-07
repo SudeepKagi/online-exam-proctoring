@@ -80,6 +80,11 @@ class RedisManager {
   }
 
   _init() {
+    if (config.cacheDriver === 'memory') {
+      logger.info('CACHE_DRIVER=memory: skipping Redis connection; operating purely on in-memory BoundedLruCache')
+      this.isReady = false
+      return
+    }
     try {
       // Primary Redis connection with non-null retry strategy (C-05)
       this.client = new Redis(config.redisUrl, {

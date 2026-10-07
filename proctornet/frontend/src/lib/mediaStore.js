@@ -1,12 +1,19 @@
 /**
  * mediaStore.js
- * Typed reactive media store for candidate WebRTC publisher via LiveKit SFU (Q6).
- * Zero window.* globals, reactive via useSyncExternalStore.
+ * Driver-aware reactive media store (R3).
+ *
+ * mediaDriver === 'snapshot'           → ProctorSnapshotter (direct S3 WebP)
+ * mediaDriver === 'livekit-selfhost'   → ProctorPublisher  (LiveKit SFU)
+ * mediaDriver === 'livekit-cloud'      → ProctorPublisher  (LiveKit Cloud demo)
+ *
+ * The UI never changes design between drivers — only the backing class differs.
+ * Driver is fetched once from /api/v1/config on first startPublisher call.
  */
 
 import { useSyncExternalStore } from 'react'
 import { ConnectionState } from 'livekit-client'
 import { ProctorPublisher } from './proctorMedia'
+import { ProctorSnapshotter } from './proctorSnapshotter'
 import api from '@/utils/api'
 
 export const MEDIA_STATUS = Object.freeze({
@@ -20,11 +27,29 @@ export const MEDIA_STATUS = Object.freeze({
   ERROR: 'ERROR'
 })
 
+// ── Config cache ─────────────────────────────────────────────────────────────
+let _cachedMediaDriver = null
+
+async function resolveMediaDriver() {
+  if (_cachedMediaDriver) return _cachedMediaDriver
+  try {
+    const res = await api.get('/config')
+    _cachedMediaDriver = res.data?.mediaDriver || 'snapshot'
+  } catch {
+    _cachedMediaDriver = 'snapshot'
+  }
+  return _cachedMediaDriver
+}
+
+// ── Store ────────────────────────────────────────────────────────────────────
+
 class MediaStoreManager {
   constructor() {
     this.state = {
       status: MEDIA_STATUS.IDLE,
-      publisher: null,
+      driver: null,           // 'snapshot' | 'livekit-selfhost' | 'livekit-cloud'
+      publisher: null,        // ProctorPublisher instance (livekit drivers)
+      snapshotter: null,      // ProctorSnapshotter instance (snapshot driver)
       screenPublished: false,
       cameraPublished: false,
       isReconnecting: false,
@@ -34,9 +59,7 @@ class MediaStoreManager {
     this.listeners = new Set()
   }
 
-  getSnapshot = () => {
-    return this.state
-  }
+  getSnapshot = () => this.state
 
   subscribe = (listener) => {
     this.listeners.add(listener)
@@ -45,16 +68,58 @@ class MediaStoreManager {
 
   setState(updates) {
     this.state = { ...this.state, ...updates }
-    this.listeners.forEach((listener) => {
-      try {
-        listener(this.state)
-      } catch (_) {}
+    this.listeners.forEach((l) => {
+      try { l(this.state) } catch (_) {}
     })
   }
 
-  /**
-   * Start ProctorPublisher for an active attempt
-   */
+  // ── Snapshot driver ─────────────────────────────────────────────────────
+
+  async startSnapshotter({ examId, attemptId, cameraTrack, screenTrack, socket, onError }) {
+    if (!examId || !attemptId) {
+      throw new Error('examId and attemptId are required to start snapshotter')
+    }
+
+    // Teardown existing session if any
+    if (this.state.snapshotter) {
+      this.state.snapshotter.stop()
+    }
+
+    this.setState({
+      status: MEDIA_STATUS.CONNECTING,
+      driver: 'snapshot',
+      error: null,
+      lastEvent: 'SNAPSHOT_INIT'
+    })
+
+    const snapshotter = new ProctorSnapshotter({
+      examId,
+      attemptId,
+      cameraTrack,
+      screenTrack,
+      socket,
+      onError: (err) => {
+        // Non-fatal: log but never crash the exam
+        this.setState({ error: err.message, lastEvent: 'SnapshotUploadError' })
+        if (onError) onError(err)
+      }
+    })
+
+    snapshotter.start()
+
+    this.setState({
+      snapshotter,
+      status: MEDIA_STATUS.ACTIVE,
+      screenPublished: !!screenTrack,
+      cameraPublished: !!cameraTrack,
+      lastEvent: 'SNAPSHOT_ACTIVE'
+    })
+
+    return snapshotter
+  }
+
+  // ── LiveKit publisher driver ─────────────────────────────────────────────
+
   async startPublisher({ examId, attemptId, onViolation = () => {}, onScreenShareStopped = () => {} }) {
     if (!examId || !attemptId) {
       throw new Error('examId and attemptId are required to start media publisher')
@@ -72,28 +137,17 @@ class MediaStoreManager {
         lastEvent: 'REQUESTING_TOKEN'
       })
 
-      // 1. Authoritative Token Request (D-03 compliant)
-      const tokenRes = await api.post('/proctoring/token', {
-        examId,
-        attemptId
-      })
-
+      // Token request
+      const tokenRes = await api.post('/proctoring/token', { examId, attemptId })
       const { token, wsUrl } = tokenRes.data
-      if (!token) {
-        throw new Error('Failed to retrieve media token from server')
-      }
+      if (!token) throw new Error('Failed to retrieve media token from server')
 
-      // Neutral media path resolution
       const resolvedWsUrl = wsUrl?.startsWith('http') || wsUrl?.startsWith('ws')
         ? wsUrl
         : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${wsUrl || '/media/'}`
 
-      this.setState({
-        status: MEDIA_STATUS.CONNECTING,
-        lastEvent: 'CONNECTING'
-      })
+      this.setState({ status: MEDIA_STATUS.CONNECTING, lastEvent: 'CONNECTING' })
 
-      // 2. Instantiate ProctorPublisher
       const publisher = new ProctorPublisher({
         examId,
         attemptId,
@@ -113,21 +167,12 @@ class MediaStoreManager {
           this.setState({ screenPublished: false, lastEvent: 'SCREEN_SHARE_STOPPED' })
           onScreenShareStopped({ reason })
         },
-        onViolation: ({ eventType, metadata }) => {
-          onViolation({ eventType, metadata })
-        },
-        onError: (type, message) => {
-          this.setState({ error: message, lastEvent: type })
-        }
+        onViolation: ({ eventType, metadata }) => onViolation({ eventType, metadata }),
+        onError: (type, message) => this.setState({ error: message, lastEvent: type })
       })
 
-      this.setState({
-        publisher,
-        status: MEDIA_STATUS.PUBLISHING,
-        lastEvent: 'PUBLISHING'
-      })
+      this.setState({ publisher, status: MEDIA_STATUS.PUBLISHING, lastEvent: 'PUBLISHING' })
 
-      // 3. Connect to SFU and publish screen (primary) + camera (low-bitrate)
       await publisher.connect()
 
       this.setState({
@@ -140,7 +185,6 @@ class MediaStoreManager {
 
       return publisher
     } catch (err) {
-      // "Publish failures are events, not accusations"
       this.setState({
         status: MEDIA_STATUS.ERROR,
         error: err.message || 'Media connection failure',
@@ -151,40 +195,62 @@ class MediaStoreManager {
   }
 
   /**
-   * Re-share screen after user pause/stop
+   * Driver-aware startup — reads /api/v1/config to decide which driver to use.
+   * ExamInterface.jsx calls this unified entry point.
    */
-  async reShareScreen() {
-    if (!this.state.publisher) {
-      throw new Error('No active publisher to re-share screen')
+  async start({ examId, attemptId, cameraTrack, screenTrack, socket,
+                onViolation, onScreenShareStopped, onError }) {
+    const driver = await resolveMediaDriver()
+    this.setState({ driver })
+
+    if (driver === 'snapshot') {
+      return this.startSnapshotter({ examId, attemptId, cameraTrack, screenTrack, socket, onError })
+    } else {
+      // livekit-selfhost or livekit-cloud
+      return this.startPublisher({ examId, attemptId, onViolation, onScreenShareStopped })
     }
+  }
+
+  // ── Re-share screen (livekit driver only) ────────────────────────────────
+
+  async reShareScreen() {
+    if (this.state.driver === 'snapshot') return // no-op for snapshot driver
+    if (!this.state.publisher) throw new Error('No active publisher to re-share screen')
     try {
       await this.state.publisher.reShareScreen()
-      this.setState({
-        screenPublished: true,
-        error: null,
-        lastEvent: 'SCREEN_SHARE_RESUMED'
-      })
+      this.setState({ screenPublished: true, error: null, lastEvent: 'SCREEN_SHARE_RESUMED' })
     } catch (err) {
-      this.setState({
-        error: err.message,
-        lastEvent: 'ReShareFailed'
-      })
+      this.setState({ error: err.message, lastEvent: 'ReShareFailed' })
       throw err
     }
   }
 
-  /**
-   * Clean teardown and release of all hardware devices
-   */
+  // ── Update tracks (snapshot driver only) ────────────────────────────────
+
+  updateTracks({ cameraTrack, screenTrack } = {}) {
+    if (this.state.snapshotter) {
+      this.state.snapshotter.updateTracks({ cameraTrack, screenTrack })
+      this.setState({
+        cameraPublished: !!cameraTrack,
+        screenPublished: !!screenTrack
+      })
+    }
+  }
+
+  // ── Disconnect / cleanup ─────────────────────────────────────────────────
+
   async disconnect() {
+    if (this.state.snapshotter) {
+      this.state.snapshotter.stop()
+    }
     if (this.state.publisher) {
-      try {
-        await this.state.publisher.disconnect()
-      } catch (_) {}
+      try { await this.state.publisher.disconnect() } catch (_) {}
     }
     this.setState({
       status: MEDIA_STATUS.IDLE,
+      driver: null,
       publisher: null,
+      snapshotter: null,
       screenPublished: false,
       cameraPublished: false,
       isReconnecting: false,

@@ -507,53 +507,40 @@ export default function ExamInterface() {
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {})
   }
 
-  // ── 3. Continuous In-Exam WireGuard VPN Monitor (Q3.7) ──
+  // ── 3. Continuous In-Exam Companion Monitor ──
   useEffect(() => {
-    if (!vpnEnforcement) return
-    if (loading || isWaiting || terminalState) return
+    if (loading || isWaiting || terminalState || !attemptId) return
 
-    let vpnTimer = null
-    const checkVpn = async () => {
+    let companionTimer = null
+    const checkCompanion = async () => {
       try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 3000)
-        const res = await fetch('http://127.0.0.1:49152/vpn-check', {
-          mode: 'cors',
-          signal: controller.signal
-        })
-        clearTimeout(timeout)
-
-        if (res.ok) {
-          const data = await res.json()
-          if (!data.connected) {
-            // Tunnel disconnected!
-            setSuspendedState(prev => {
-              if (!prev?.active) {
-                emitViolation?.('VPN_DISCONNECT', 'CRITICAL', {
-                  details: 'Secure connection dropped during active test'
-                })
-              }
-              return {
-                active: true,
-                reason: 'Secure network connection disconnected. Network isolation required.',
-                isVpn: true
-              }
-            })
-          } else {
-            // Connected & Healthy
-            setSuspendedState(prev => (prev?.isVpn ? null : prev))
-          }
+        const res = await api.get(`/attempts/${attemptId}/agent/status`)
+        if (res.data?.state === 'STALE' || res.data?.state === 'DISCONNECTED') {
+          setSuspendedState(prev => {
+            if (!prev?.active) {
+              emitViolation?.('AGENT_DISCONNECTED', 'HIGH', {
+                details: 'Exam Device Companion disconnected during active test'
+              })
+            }
+            return {
+              active: true,
+              reason: 'Exam Device Companion disconnected. Please keep the companion window open.',
+              isCompanion: true
+            }
+          })
+        } else if (res.data?.state === 'HEALTHY' || res.data?.state === 'CONNECTED') {
+          setSuspendedState(prev => (prev?.isCompanion ? null : prev))
         }
       } catch {
-        // Desktop companion agent offline or unreachable
+        // Tolerant on intermittent network hiccups
       }
     }
 
-    vpnTimer = setInterval(checkVpn, 6000)
+    companionTimer = setInterval(checkCompanion, 10000)
     return () => {
-      if (vpnTimer) clearInterval(vpnTimer)
+      if (companionTimer) clearInterval(companionTimer)
     }
-  }, [vpnEnforcement, loading, isWaiting, terminalState, emitViolation])
+  }, [attemptId, loading, isWaiting, terminalState])
 
   // ── 4. Keyboard Shortcut & Clipboard Protection ──
   useEffect(() => {

@@ -70,6 +70,7 @@ export default function ExamDetail() {
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [credentials, setCredentials] = useState(null)
   const [copiedField, setCopiedField] = useState('')
+  const [llmEnabled, setLlmEnabled] = useState(false)
 
   // Question Form State
   const [qForm, setQForm] = useState({
@@ -119,8 +120,12 @@ export default function ExamDetail() {
 
   const fetchExam = async () => {
     try {
-      const res = await api.get(`/faculty/exams/${id}`)
+      const [res, cfgRes] = await Promise.all([
+        api.get(`/faculty/exams/${id}`),
+        api.get('/config').catch(() => ({ data: {} }))
+      ])
       setExam(res.data.exam)
+      setLlmEnabled(Boolean(cfgRes.data?.llmEnabled))
       setLoading(false)
     } catch (err) {
       setError('Failed to fetch exam details.')
@@ -498,7 +503,7 @@ export default function ExamDetail() {
           {activeTab === 'questions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* Premium AI Generator Callout */}
-              {exam.status === 'DRAFT' && (
+              {exam.status === 'DRAFT' && llmEnabled && (
                 <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
