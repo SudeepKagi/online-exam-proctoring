@@ -56,12 +56,24 @@ fi
 
 # 4. Database Migrations (Expand Phase)
 echo "[4/6] Ensuring production dependencies and executing database migrations..."
+if [ -n "$PREV_RELEASE_DIR" ]; then
+    if [ -d "$PREV_RELEASE_DIR/proctornet/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/proctornet/node_modules" ]; then
+        echo "[-] Copying root node_modules cache from $PREV_RELEASE_DIR..."
+        cp -rp "$PREV_RELEASE_DIR/proctornet/node_modules" "$NEW_RELEASE_DIR/proctornet/node_modules"
+    fi
+    if [ -d "$PREV_RELEASE_DIR/proctornet/backend/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/proctornet/backend/node_modules" ]; then
+        echo "[-] Copying backend node_modules cache from $PREV_RELEASE_DIR..."
+        cp -rp "$PREV_RELEASE_DIR/proctornet/backend/node_modules" "$NEW_RELEASE_DIR/proctornet/backend/node_modules"
+    fi
+    chown -R proctornet:proctornet "$NEW_RELEASE_DIR"
+fi
+
 cd "$NEW_RELEASE_DIR/proctornet/backend"
 if [ ! -d "node_modules" ]; then
     echo "[-] Installing production dependencies..."
     sudo -u proctornet npm install --omit=dev --no-audit --no-fund
-    sudo -u proctornet npx prisma generate
 fi
+sudo -u proctornet npx prisma generate
 if sudo -u proctornet npx prisma migrate deploy; then
     echo "[✓] Prisma migrations successfully applied."
 else
