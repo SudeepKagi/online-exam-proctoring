@@ -1,71 +1,7 @@
-const CircuitBreaker = require('opossum')
-const pLimit = require('p-limit')
-const { getObjectBuffer, getPresignedReadUrl } = require('../../infra/s3/s3.client')
+const { faceVerificationService } = require('./faceVerificationService')
 const { rabbitmq } = require('../../infra/rabbitmq/client')
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
-
-// Bulkhead: concurrency capped at 4
-const concurrencyLimiter = pLimit(4)
-
-/**
- * Underlying biometric comparison call
- */
-async function callBiometricEngine(referenceBuffer, probeBuffer) {
-  // If CompreFace or Python service is reachable, call it; otherwise perform feature analysis
-  const comprefaceUrl = process.env.COMPREFACE_URL || 'http://localhost:8000'
-  const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8001'
-
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 2800)
-
-    const response = await fetch(`${pythonUrl}/api/verify-face`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        reference: referenceBuffer.toString('base64'),
-        probe: probeBuffer.toString('base64')
-      }),
-      signal: controller.signal
-    }).finally(() => clearTimeout(timeoutId))
-
-    if (response.ok) {
-      const data = await response.json()
-      return {
-        matched: data.isMatch ?? data.similarity >= 0.7,
-        similarity: data.similarity ?? data.score ?? 0.95
-      }
-    }
-  } catch (err) {
-    logger.debug({ error: err.message }, 'Direct biometric engine unreachable, using simulated feature check')
-  }
-
-  // Graceful fallback for dev/testing: deterministic buffer check
-  const similarity = referenceBuffer.length > 0 && probeBuffer.length > 0 ? 0.95 : 0.0
-  return {
-    matched: similarity >= 0.7,
-    similarity
-  }
-}
-
-// Circuit Breaker: 3s timeout, 50% error threshold, 10s reset
-const breaker = new CircuitBreaker(
-  async (refBuf, probeBuf) => {
-    return concurrencyLimiter(() => callBiometricEngine(refBuf, probeBuf))
-  },
-  {
-    timeout: 3000,
-    errorThresholdPercentage: 50,
-    resetTimeout: 10000,
-    name: 'BiometricServiceBreaker'
-  }
-)
-
-breaker.fallback(() => {
-  logger.warn('Biometric circuit breaker open or timed out; failing closed')
-  return { matched: false, similarity: 0.0, circuitOpen: true }
-})
 
 class BiometricService {
   /**
@@ -78,16 +14,16 @@ class BiometricService {
     }
 
     try {
-      const referenceBuffer = await getObjectBuffer(referenceKey)
-      let probeBuffer
-
-      if (Buffer.isBuffer(probeKeyOrBuffer)) {
-        probeBuffer = probeKeyOrBuffer
-      } else {
-        probeBuffer = await getObjectBuffer(probeKeyOrBuffer)
+      const verifier = faceVerificationService.getVerifier()
+      const result = await verifier.compare(referenceKey, probeKeyOrBuffer)
+      const thresholds = faceVerificationService.getThresholds()
+      const similarity = result.similarity ?? 0.0
+      return {
+        matched: similarity >= thresholds.pass,
+        similarity,
+        requestId: result.requestId,
+        provider: result.provider
       }
-
-      return await breaker.fire(referenceBuffer, probeBuffer)
     } catch (err) {
       logger.error({ error: err.message, referenceKey }, 'Error executing face comparison')
       return { matched: false, similarity: 0.0, error: err.message }
@@ -115,6 +51,7 @@ class BiometricService {
 
 /**
  * Worker consuming from pn.verify (prefetch 2)
+ * Enforces two consecutive mismatches rule before raising violation (ADR-013 / Section R1)
  */
 class VerificationWorker {
   constructor() {
@@ -146,75 +83,27 @@ class VerificationWorker {
       return
     }
 
-    const student = await prisma.student.findUnique({
-      where: { id: studentId },
-      select: { facePhotoKey: true }
-    })
-
-    if (!student || !student.facePhotoKey) {
-      logger.warn({ studentId }, 'Student facePhotoKey missing for reverification')
-      return
-    }
-
-    const result = await biometricService.compareFaces(student.facePhotoKey, frameKey)
-
-    if (!result.matched) {
-      logger.warn({ attemptId, studentId, result }, 'Biometric reverification detected face mismatch!')
-      // Record violation
-      await prisma.violationEvent.create({
-        data: {
-          attemptId,
-          eventType: 'FACE_MISMATCH',
-          severity: 'HIGH',
-          evidenceKey: frameKey,
-          evidenceStatus: 'UPLOADED',
-          source: 'AI_REVERIFY',
-          metadata: { similarity: result.similarity }
-        }
-      })
-    } else {
-      logger.info({ attemptId, studentId, similarity: result.similarity }, 'Biometric reverification matched successfully')
-    }
+    await faceVerificationService.verifyPeriodic({ attemptId, studentId, frameKey })
   }
 }
 
 /**
- * Direct biometric face verification check for students (fail-closed)
+ * Direct biometric face verification check for pre-exam (fail-closed, multi-tier)
  */
-async function verifyFaceBiometrics({ studentId, examId = null, liveFrame }) {
+async function verifyFaceBiometrics({ studentId, attemptId, liveFrame }) {
   if (!liveFrame) {
     return {
       verified: false,
-      matchScore: 0,
+      matchScore: 0.0,
       reason: 'Missing live frame for verification'
     }
   }
 
-  let student = null
-  if (studentId) {
-    try {
-      student = await prisma.student.findUnique({
-        where: { id: studentId },
-        select: { id: true, facePhotoKey: true }
-      })
-    } catch (err) {
-      logger.warn({ error: err.message, studentId }, 'Prisma error fetching student for face verification; failing closed')
-    }
-  }
-
-  if (!student || !student.facePhotoKey) {
-    return {
-      verified: false,
-      matchScore: 0,
-      reason: 'Face verification failed closed: profile biometric record not found'
-    }
-  }
-
-  return {
-    verified: false,
-    matchScore: 0.0,
-    reason: 'Biometric verification pending AWS Rekognition driver (Phase R1)'
-  }
+  return faceVerificationService.verifyPreExam({
+    attemptId,
+    studentId,
+    liveFrameKey: liveFrame
+  })
 }
 
 const biometricService = new BiometricService()
@@ -223,6 +112,6 @@ const verificationWorker = new VerificationWorker()
 module.exports = {
   biometricService,
   verificationWorker,
-  breaker,
-  verifyFaceBiometrics
+  verifyFaceBiometrics,
+  faceVerificationService
 }

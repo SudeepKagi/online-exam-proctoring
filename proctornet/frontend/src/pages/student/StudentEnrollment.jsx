@@ -181,7 +181,7 @@ export default function StudentEnrollment() {
             </p>
           </div>
           <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
-            Exadel CompreFace + PaddleOCR
+            FaceVerifier Engine Active
           </Badge>
         </div>
 
@@ -459,10 +459,10 @@ export default function StudentEnrollment() {
                   </p>
 
                   <div className="p-4 rounded-xl bg-background border border-border text-xs text-left max-w-md mx-auto space-y-1 font-mono">
-                    <p className="text-primary font-semibold mb-2">Automated Document Extraction Summary:</p>
+                    <p className="text-primary font-semibold mb-2">Document Submission Details:</p>
                     <p><strong className="text-muted-foreground">Extracted Name:</strong> {ocrResult?.extractedName || user?.name || 'N/A'}</p>
                     <p><strong className="text-muted-foreground">Extracted USN:</strong> {ocrResult?.extractedUsn || user?.usn || 'N/A'}</p>
-                    <p><strong className="text-muted-foreground">Match Confidence:</strong> {Math.round((ocrResult?.confidenceScore || 0.95) * 100)}%</p>
+                    <p><strong className="text-muted-foreground">Review Status:</strong> Queued for Admin Verification</p>
                   </div>
 
                   <div className="p-3 rounded-xl bg-[#fffbeb] border border-[#fef3c7] text-[#b45309] text-xs max-w-md mx-auto">

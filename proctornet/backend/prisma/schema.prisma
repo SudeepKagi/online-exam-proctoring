@@ -325,7 +325,7 @@ model ExamAttempt {
   answers              Answer[]
   violationEvents      ViolationEvent[]
   examResult           ExamResult?
-  identityVerification IdentityVerification?
+  identityVerifications IdentityVerification[]
   reverifyLogs         ReverificationLog[]
   deviceCheckLogs      DeviceCheckLog[]
 
@@ -526,15 +526,27 @@ model VpnPeer {
 
 model IdentityVerification {
   id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  attemptId          String      @unique @map("attempt_id") @db.Uuid
+  attemptId          String      @map("attempt_id") @db.Uuid
   attempt            ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  liveFaceMatchScore Float       @map("live_face_match_score")
-  idCardOcrUsn       String?     @map("id_card_ocr_usn")
-  idCardMatchResult  Boolean     @map("id_card_match_result")
-  faceWithIdKey      String      @map("face_with_id_key")
-  verifiedAt         DateTime    @default(now()) @map("verified_at") @db.Timestamptz(3)
-  status             String
+  kind               String      @default("PRE_EXAM")
+  provider           String      @default("rekognition")
+  requestId          String?     @map("request_id")
+  similarity         Float?
+  decision           String      @default("PASS")
+  thresholdsUsed     Json?       @map("thresholds_used")
+  modelVersion       String?     @map("model_version")
+  evidenceKeys       Json?       @map("evidence_keys")
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
 
+  // Legacy columns for backward compatibility
+  liveFaceMatchScore Float?      @map("live_face_match_score")
+  idCardOcrUsn       String?     @map("id_card_ocr_usn")
+  idCardMatchResult  Boolean?    @default(true) @map("id_card_match_result")
+  faceWithIdKey      String?     @map("face_with_id_key")
+  verifiedAt         DateTime?   @default(now()) @map("verified_at") @db.Timestamptz(3)
+  status             String?     @default("VERIFIED")
+
+  @@index([attemptId], map: "idx_identity_verifications_attempt_id")
   @@map("identity_verifications")
 }
 

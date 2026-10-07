@@ -30,9 +30,22 @@ const completeUploadSchema = z.object({
   clientTimestamp: z.string().optional()
 }).strict()
 
+const verifyIdentitySchema = z.object({
+  liveFrameKey: z.string().min(1, 'liveFrameKey is required'),
+  challengeId: z.string().uuid().optional().nullable(),
+  burstKeys: z.array(z.string().min(1)).min(2).max(5).optional().nullable()
+}).passthrough()
+
+const identityOverrideSchema = z.object({
+  decision: z.enum(['PASS', 'FAIL']),
+  reason: z.string().min(1, 'reason is required for override')
+}).strict()
+
 module.exports = {
   ALLOWED_CONTENT_TYPES,
   ALLOWED_PURPOSES,
   presignUploadSchema,
-  completeUploadSchema
+  completeUploadSchema,
+  verifyIdentitySchema,
+  identityOverrideSchema
 }

@@ -64,7 +64,7 @@ export default function SecurityCheck() {
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
   const [isFaceProcessing, setIsFaceProcessing] = useState(false)
-  const [faceMatchScore, setFaceMatchScore] = useState(null)
+  const [faceStatus, setFaceStatus] = useState('idle')
   const [vmRenderer, setVmRenderer] = useState('')
 
   const formatCountdown = (seconds) => {
@@ -475,31 +475,39 @@ export default function SecurityCheck() {
           clearInterval(interval)
           const frameBase64 = captureFrameBase64()
 
-          let score = 0.0
           let verified = false
+          let pendingReview = false
+          let decision = 'FAIL'
+          let serviceMessage = ''
           try {
             const verifyRes = await api.post(`/student/exams/${examId}/verify-face`, {
               image: frameBase64
             })
-            if (verifyRes.data?.matchScore !== undefined) {
-              score = Number(verifyRes.data.matchScore) || 0.0
-            }
             verified = Boolean(verifyRes.data?.verified)
+            pendingReview = Boolean(verifyRes.data?.pendingReview)
+            decision = verifyRes.data?.decision || (verified ? 'PASS' : 'FAIL')
+            serviceMessage = verifyRes.data?.message || ''
           } catch (apiErr) {
             console.warn('Biometric backend verification notice:', apiErr.message)
+            serviceMessage = apiErr.response?.data?.message || "We couldn't confirm your identity — retry or call the invigilator."
           }
 
-          setFaceMatchScore(score)
-          if (verified && score >= 0.8) {
-            updateStage('face', 'pass', `Biometric verification passed cleanly (Match Score: ${(score * 100).toFixed(1)}%)`)
-            setIsFaceProcessing(false)
+          setIsFaceProcessing(false)
+          if (verified || decision === 'PASS') {
+            setFaceStatus('verified')
+            updateStage('face', 'pass', 'Identity verified successfully')
             toast.success('Identity verified successfully!')
             setActiveStage(3)
             updateStage('kiosk', 'loading', 'Ready for fullscreen kiosk mode activation')
+          } else if (pendingReview || decision === 'REVIEW') {
+            setFaceStatus('review')
+            updateStage('face', 'loading', 'Waiting for invigilator verification')
+            toast.info('Identity verification is under review. Waiting for invigilator.')
           } else {
-            updateStage('face', 'fail', `Biometric verification failed closed (Match Score: ${(score * 100).toFixed(1)}%). Biometric inference model pending.`)
-            setIsFaceProcessing(false)
-            toast.error('Identity verification failed. Model pending.')
+            setFaceStatus('failed')
+            const displayMsg = serviceMessage || "We couldn't confirm your identity — retry or call the invigilator."
+            updateStage('face', 'fail', displayMsg)
+            toast.error(displayMsg)
           }
         } else {
           if (attempts >= maxAttempts) {
@@ -892,15 +900,27 @@ export default function SecurityCheck() {
                         </div>
                       </div>
 
-                      {faceMatchScore !== null && (
-                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs font-mono">
-                          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 mb-1">
-                            <span>Biometric Match:</span>
-                            <strong className="text-sm">{(faceMatchScore * 100).toFixed(1)}%</strong>
+                      {faceStatus !== 'idle' && (
+                        <div className={`p-3 rounded-xl text-xs font-mono border ${
+                          faceStatus === 'verified'
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                            : faceStatus === 'review'
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                        }`}>
+                          <div className="flex justify-between items-center mb-1">
+                            <span>Identity Status:</span>
+                            <strong className="text-xs uppercase">
+                              {faceStatus === 'verified' ? 'Verified' : faceStatus === 'review' ? 'Waiting for Invigilator' : 'Verification Required'}
+                            </strong>
                           </div>
-                          <div className="w-full bg-card rounded-full h-1.5 overflow-hidden border border-emerald-500/20">
-                            <div className="bg-emerald-500 h-full rounded-full transition-all duration-500" style={{ width: `${faceMatchScore * 100}%` }} />
-                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {faceStatus === 'verified'
+                              ? 'Your live biometric match is confirmed.'
+                              : faceStatus === 'review'
+                              ? 'Waiting for invigilator verification before exam entrance.'
+                              : "We couldn't confirm your identity — retry or call the invigilator."}
+                          </p>
                         </div>
                       )}
                     </Card>

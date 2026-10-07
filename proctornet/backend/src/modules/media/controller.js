@@ -92,4 +92,93 @@ router.get('/media/view', requireAuth, async (req, res, next) => {
   }
 })
 
+const { faceVerificationService } = require('./faceVerificationService')
+const { verifyIdentitySchema, identityOverrideSchema } = require('./validation')
+const { requireRole } = require('../../middleware/authorization')
+const { ROLES } = require('../../shared/roles')
+
+/**
+ * GET /api/v1/attempts/:attemptId/liveness-challenge
+ * Generate random motion challenge for 3-frame burst ("live check")
+ */
+router.get(
+  '/attempts/:attemptId/liveness-challenge',
+  requireAuth,
+  requireRole(ROLES.STUDENT),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const challenge = await faceVerificationService.generateLivenessChallenge(attemptId)
+      return res.status(200).json({ success: true, challenge })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/attempts/:attemptId/verify-identity
+ * Pre-exam facial verification against enrolled profile photo
+ */
+router.post(
+  '/attempts/:attemptId/verify-identity',
+  requireAuth,
+  requireRole(ROLES.STUDENT),
+  validateBody(verifyIdentitySchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const studentId = req.user.id
+      const { liveFrameKey, challengeId, burstKeys } = req.body
+
+      const result = await faceVerificationService.verifyPreExam({
+        attemptId,
+        studentId,
+        liveFrameKey,
+        challengeId,
+        burstKeys
+      })
+
+      return res.status(200).json({
+        success: true,
+        verified: result.verified,
+        pendingReview: result.pendingReview,
+        decision: result.decision,
+        message: result.message
+      })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * POST /api/v1/attempts/:attemptId/identity-override
+ * Invigilator or Admin explicit audited identity override
+ */
+router.post(
+  '/attempts/:attemptId/identity-override',
+  requireAuth,
+  requireRole([ROLES.ADMIN, ROLES.INVIGILATOR]),
+  validateBody(identityOverrideSchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const { decision, reason } = req.body
+
+      const override = await faceVerificationService.overrideVerification({
+        attemptId,
+        operatorId: req.user.id,
+        operatorRole: req.user.role,
+        decision,
+        reason
+      })
+
+      return res.status(200).json({ success: true, override })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router

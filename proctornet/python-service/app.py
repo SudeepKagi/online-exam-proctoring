@@ -5,14 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from routes.face import face_bp
 from routes.ocr import ocr_bp
 from routes.ai_gen import ai_gen_bp
 
 app = Flask(__name__)
 CORS(app)
 
-app.register_blueprint(face_bp, url_prefix='/api/face')
 app.register_blueprint(ocr_bp, url_prefix='/api/ocr')
 app.register_blueprint(ai_gen_bp, url_prefix='/api/ai')
 

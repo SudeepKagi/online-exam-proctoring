@@ -1,11 +1,13 @@
 const studentRepository = require('./repository')
 const { attemptService } = require('../attempts/service')
+const { faceVerificationService } = require('../media/faceVerificationService')
 const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
 const {
   NotFoundError,
   ForbiddenError,
   ValidationError
 } = require('../../shared/errors')
+const { putObject } = require('../../infra/s3/s3.client')
 const crypto = require('crypto')
 
 class StudentService {
@@ -76,18 +78,57 @@ class StudentService {
     return results.map(toStudentResultDTO)
   }
 
-  async verifyFace(studentId, { liveFrame }) {
-    if (!liveFrame) {
-      throw new ValidationError('liveFrame is required for face verification')
+  async verifyFace(studentId, data = {}) {
+    const liveInput = data.liveFrame || data.image || data.liveFrameKey || data.frameKey
+    if (!liveInput) {
+      throw new ValidationError('liveFrame or image is required for face verification')
     }
-    await studentRepository.recordVerificationAuditLog({
-      studentId,
-      checkType: 'FACE_LIVENESS',
-      score: 0.0,
-      status: 'PENDING_ANALYSIS',
-      details: 'Automated liveness evaluation pending real model pipeline'
-    })
-    return { success: true, verified: false, matchScore: 0.0, pending: true }
+
+    let attempt = null
+    if (data.examId) {
+      attempt = await studentRepository.getAttemptByStudentAndExam(studentId, data.examId)
+    } else if (data.attemptId) {
+      attempt = await studentRepository.getAttemptById(data.attemptId)
+    }
+
+    let liveFrameKey = data.liveFrameKey || data.frameKey
+    if (!liveFrameKey && typeof liveInput === 'string') {
+      if (liveInput.startsWith('attempts/') || liveInput.startsWith('evidence/') || liveInput.startsWith('students/')) {
+        liveFrameKey = liveInput
+      } else {
+        const base64Data = liveInput.replace(/^data:image\/\w+;base64,/, '')
+        const buffer = Buffer.from(base64Data, 'base64')
+        const attId = attempt ? attempt.id : 'pre_check'
+        liveFrameKey = `attempts/${attId}/pre_exam_live_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.webp`
+        await putObject(liveFrameKey, buffer, 'image/webp')
+      }
+    }
+
+    if (attempt && liveFrameKey) {
+      const verificationResult = await faceVerificationService.verifyPreExam({
+        attemptId: attempt.id,
+        studentId,
+        liveFrameKey,
+        challengeId: data.challengeId || null,
+        burstKeys: data.burstKeys || null
+      })
+
+      return {
+        success: true,
+        verified: verificationResult.verified,
+        pendingReview: verificationResult.pendingReview,
+        decision: verificationResult.decision,
+        message: verificationResult.message
+      }
+    }
+
+    return {
+      success: true,
+      verified: false,
+      pendingReview: true,
+      decision: 'REVIEW',
+      message: 'Waiting for exam session initialization.'
+    }
   }
 
   async verifyIdCard(studentId, { idCardPhoto }) {
@@ -108,20 +149,26 @@ class StudentService {
     const attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
     if (!attempt) throw new NotFoundError('No attempt found for this exam')
 
-    if (!data.faceWithIdPhoto) {
-      throw new ValidationError('faceWithIdPhoto is required for identity verification')
+    const liveFrameKey = data.faceWithIdPhoto || data.liveFrameKey || data.frameKey
+    if (!liveFrameKey) {
+      throw new ValidationError('faceWithIdPhoto or liveFrameKey is required for identity verification')
     }
 
-    const result = await studentRepository.saveIdentityVerification({
+    const verificationResult = await faceVerificationService.verifyPreExam({
       attemptId: attempt.id,
-      liveFaceMatchScore: data.liveFaceMatchScore ?? 0.0,
-      idCardOcrUsn: data.idCardOcrUsn || null,
-      idCardMatchResult: Boolean(data.idCardMatchResult),
-      faceWithIdKey: data.faceWithIdPhoto,
-      status: data.liveFaceMatchScore >= 0.8 && data.idCardMatchResult ? 'VERIFIED' : 'PENDING'
+      studentId,
+      liveFrameKey,
+      challengeId: data.challengeId || null,
+      burstKeys: data.burstKeys || null
     })
 
-    return { success: true, verification: result }
+    return {
+      success: true,
+      verified: verificationResult.verified,
+      pendingReview: verificationResult.pendingReview,
+      decision: verificationResult.decision,
+      message: verificationResult.message
+    }
   }
 
   async createSupportTicket(studentId, { subject, message, priority, examId }) {
@@ -153,6 +200,15 @@ class StudentService {
   }
 
   async enrollFace(studentId, photoKey) {
+    const student = await studentRepository.getStudentById(studentId)
+    if (!student) throw new NotFoundError('Student not found')
+
+    // Run server-side enrollment quality gates (1 face, >= 20% height, brightness/sharpness, pose, eyes open, not occluded)
+    const quality = await faceVerificationService.validateEnrollmentQuality(photoKey)
+    if (!quality.passed) {
+      throw new ValidationError(quality.reasons.join(' '))
+    }
+
     const updated = await studentRepository.updateStudent(studentId, {
       facePhotoKey: photoKey,
       profileStatus: 'SUBMITTED'
@@ -161,11 +217,31 @@ class StudentService {
   }
 
   async enrollIdDocument(studentId, idKey) {
+    const student = await studentRepository.getStudentById(studentId)
+    if (!student) throw new NotFoundError('Student not found')
+
+    // Enrollment photo vs ID-card photo compare is an assistive signal for admin approval queue, not auto-decision
+    let idCardMatchSignal = null
+    if (student.facePhotoKey) {
+      idCardMatchSignal = await faceVerificationService.compareEnrollmentWithIdCard(student.facePhotoKey, idKey)
+    }
+
     const updated = await studentRepository.updateStudent(studentId, {
       idCardPhotoKey: idKey,
       idDocumentKey: idKey,
       profileStatus: 'SUBMITTED'
     })
+
+    if (idCardMatchSignal) {
+      await studentRepository.recordVerificationAuditLog({
+        studentId,
+        checkType: 'ID_CARD_ENROLLMENT_SIGNAL',
+        score: idCardMatchSignal.similarity,
+        status: idCardMatchSignal.similarity >= 80 ? 'HIGH_MATCH' : 'REQUIRES_MANUAL_REVIEW',
+        details: JSON.stringify(idCardMatchSignal)
+      })
+    }
+
     return toStudentProfileDTO(updated)
   }
 
