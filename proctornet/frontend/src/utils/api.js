@@ -21,6 +21,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+// Helper to safely extract user-facing error strings (avoids React Error #31)
+export function extractErrorMessage(err, fallback = 'An unexpected error occurred') {
+  if (!err) return fallback
+  if (typeof err === 'string') return err
+  const respErr = err.response?.data?.error
+  if (typeof respErr === 'string') return respErr
+  if (respErr && typeof respErr === 'object' && respErr !== null) {
+    return respErr.message || respErr.code || fallback
+  }
+  if (err.response?.data?.message && typeof err.response.data.message === 'string') {
+    return err.response.data.message
+  }
+  if (err.message && typeof err.message === 'string') {
+    return err.message
+  }
+  return fallback
+}
+
 // Response interceptor — handle error normalization & 401 session expiry
 api.interceptors.response.use(
   (response) => response,
@@ -28,9 +46,9 @@ api.interceptors.response.use(
     // Normalize unified error envelope
     if (error.response?.data?.error) {
       const errObj = error.response.data.error
-      if (typeof errObj === 'object') {
+      if (typeof errObj === 'object' && errObj !== null) {
         error.code = errObj.code || error.code
-        error.message = errObj.message || error.message
+        error.message = errObj.message || errObj.code || error.message
         error.details = errObj.details
       } else if (typeof errObj === 'string') {
         error.message = errObj

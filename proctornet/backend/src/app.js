@@ -80,6 +80,9 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
+    if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io)(:\d+)?$/)) {
+      return callback(null, true)
+    }
     if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
       return callback(null, true)
     }

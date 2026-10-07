@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import * as xlsx from 'xlsx'
 import {
   Users, UserPlus, Upload, FileSpreadsheet, Download,
@@ -56,7 +56,11 @@ export default function CreateFacultyAccount() {
 
     setSingleSubmitting(true)
     try {
-      const res = await api.post('/admin/faculty', formData)
+      const payload = {
+        ...formData,
+        departmentCode: formData.department
+      }
+      const res = await api.post('/admin/faculty', payload)
       setCreatedFaculty({
         ...res.data.faculty,
         rawPassword: formData.password
@@ -72,7 +76,7 @@ export default function CreateFacultyAccount() {
         password: ''
       })
     } catch (err) {
-      setSingleError(err.response?.data?.error || err.response?.data?.message || 'Failed to create faculty account.')
+      setSingleError(extractErrorMessage(err, 'Failed to create faculty account.'))
     } finally {
       setSingleSubmitting(false)
     }
@@ -124,12 +128,12 @@ export default function CreateFacultyAccount() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       if (res.data.success) {
-        setRecords(res.data.records || [])
+        setRecords(res.data.rows || res.data.records || [])
       } else {
         setBulkError(res.data.message || 'Could not parse faculty records.')
       }
     } catch (err) {
-      setBulkError(err.response?.data?.message || err.response?.data?.error || 'Failed to parse file.')
+      setBulkError(extractErrorMessage(err, 'Failed to parse file.'))
     } finally {
       setParsing(false)
     }
@@ -142,11 +146,13 @@ export default function CreateFacultyAccount() {
     setBulkError('')
     try {
       const res = await api.post('/admin/bulk-upload/confirm', {
+        type: 'faculty',
         role: 'faculty',
+        accounts: records,
         records
       })
       if (res.data.success) {
-        setCreatedBulkCredentials(res.data.createdCredentials || [])
+        setCreatedBulkCredentials(res.data.createdCredentials || res.data.credentials || [])
         toast.success(`Successfully created ${res.data.createdCount} faculty accounts!`)
         setRecords([])
         setBulkFile(null)
@@ -154,7 +160,7 @@ export default function CreateFacultyAccount() {
         setBulkError(res.data.message || 'Failed to create faculty accounts.')
       }
     } catch (err) {
-      setBulkError(err.response?.data?.message || err.response?.data?.error || 'Failed to create accounts.')
+      setBulkError(extractErrorMessage(err, 'Failed to create accounts.'))
     } finally {
       setBulkCreating(false)
     }
@@ -231,7 +237,7 @@ export default function CreateFacultyAccount() {
               {singleError && (
                 <div className="mb-5 p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] text-xs flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0" />
-                  <span>{singleError}</span>
+                  <span>{typeof singleError === 'object' ? (singleError?.message || JSON.stringify(singleError)) : String(singleError)}</span>
                 </div>
               )}
 
@@ -486,7 +492,7 @@ export default function CreateFacultyAccount() {
               {bulkError && (
                 <div className="p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-[#dc2626] text-xs flex items-center gap-2">
                   <AlertCircle size={15} className="shrink-0" />
-                  <span>{bulkError}</span>
+                  <span>{typeof bulkError === 'object' ? (bulkError?.message || JSON.stringify(bulkError)) : String(bulkError)}</span>
                 </div>
               )}
             </div>

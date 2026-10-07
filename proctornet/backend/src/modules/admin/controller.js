@@ -329,7 +329,9 @@ router.post('/bulk-upload/parse', upload.single('file'), async (req, res, next) 
 
 router.post('/bulk-upload/confirm', validateBody(confirmBulkSchema), async (req, res, next) => {
   try {
-    const result = await adminService.confirmBulkCreate(req.body.type, req.body.accounts)
+    const type = req.body.type || req.body.role
+    const accounts = req.body.accounts || req.body.records
+    const result = await adminService.confirmBulkCreate(type, accounts)
     res.status(200).json(result)
   } catch (err) {
     next(err)

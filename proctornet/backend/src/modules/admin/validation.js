@@ -4,7 +4,8 @@ const createFacultySchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  departmentCode: z.string().min(1).default('CSE'),
+  departmentCode: z.string().optional(),
+  department: z.string().optional(),
   employeeId: z.string().min(1),
   phone: z.string().optional().nullable()
 }).passthrough()
@@ -14,8 +15,9 @@ const createStudentSchema = z.object({
   usn: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  departmentCode: z.string().min(1).default('CSE'),
-  semester: z.number().int().min(1).max(8).default(1),
+  departmentCode: z.string().optional(),
+  department: z.string().optional(),
+  semester: z.union([z.number(), z.string()]).transform(v => parseInt(v, 10)).default(1),
   phone: z.string().optional().nullable()
 }).passthrough()
 
@@ -38,9 +40,15 @@ const createAnnouncementSchema = z.object({
 }).passthrough()
 
 const confirmBulkSchema = z.object({
-  type: z.enum(['students', 'faculty']),
-  accounts: z.array(z.record(z.any())).min(1)
-}).passthrough()
+  type: z.string().optional(),
+  role: z.string().optional(),
+  accounts: z.array(z.record(z.any())).optional(),
+  records: z.array(z.record(z.any())).optional()
+}).passthrough().refine(data => data.type || data.role, {
+  message: "Either 'type' or 'role' is required"
+}).refine(data => (Array.isArray(data.accounts) && data.accounts.length > 0) || (Array.isArray(data.records) && data.records.length > 0), {
+  message: "Accounts list must not be empty"
+})
 
 const overrideEnrollmentSchema = z.object({
   studentId: z.string().uuid(),

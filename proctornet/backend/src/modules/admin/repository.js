@@ -69,9 +69,23 @@ class AdminRepository {
   }
 
   async createFaculty(data) {
+    const { department, ...facultyData } = data
     return prisma.faculty.create({
-      data,
+      data: {
+        id: facultyData.id || crypto.randomUUID(),
+        ...facultyData
+      },
       include: { department: true }
+    })
+  }
+
+  async findFacultyByEmployeeIdOrEmail(employeeId, email) {
+    const conditions = []
+    if (employeeId) conditions.push({ employeeId: String(employeeId).trim() })
+    if (email) conditions.push({ email: String(email).toLowerCase().trim() })
+    if (conditions.length === 0) return null
+    return prisma.faculty.findFirst({
+      where: { OR: conditions }
     })
   }
 
@@ -137,9 +151,23 @@ class AdminRepository {
   }
 
   async createStudent(data) {
+    const { department, ...studentData } = data
     return prisma.student.create({
-      data,
+      data: {
+        id: studentData.id || crypto.randomUUID(),
+        ...studentData
+      },
       include: { department: true }
+    })
+  }
+
+  async findStudentByUsnOrEmail(usn, email) {
+    const conditions = []
+    if (usn) conditions.push({ usn: String(usn).toUpperCase().trim() })
+    if (email) conditions.push({ email: String(email).toLowerCase().trim() })
+    if (conditions.length === 0) return null
+    return prisma.student.findFirst({
+      where: { OR: conditions }
     })
   }
 

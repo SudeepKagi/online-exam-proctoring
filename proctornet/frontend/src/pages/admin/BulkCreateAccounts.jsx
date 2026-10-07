@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import * as xlsx from 'xlsx'
 import {
   Upload, FileSpreadsheet, FileText, CheckCircle2, AlertTriangle,
@@ -47,10 +47,10 @@ export default function BulkCreateAccounts() {
       })
 
       if (res.data.success) {
-        setRecords(res.data.records || [])
+        setRecords(res.data.rows || res.data.records || [])
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to parse file.')
+      setError(extractErrorMessage(err, 'Failed to parse file.'))
     } finally {
       setParsing(false)
     }
@@ -74,18 +74,21 @@ export default function BulkCreateAccounts() {
     setCreating(true)
     setError('')
     try {
+      const type = role === 'student' ? 'students' : role
       const res = await api.post('/admin/bulk-upload/confirm', {
+        type,
         role,
+        accounts: records,
         records,
       })
 
       if (res.data.success) {
-        setCredentials(res.data.credentials || [])
+        setCredentials(res.data.credentials || res.data.createdCredentials || [])
         setRecords([])
         setFile(null)
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Failed to create accounts.')
+      setError(extractErrorMessage(err, 'Failed to create accounts.'))
     } finally {
       setCreating(false)
     }
@@ -232,7 +235,7 @@ export default function BulkCreateAccounts() {
         {error && (
           <div className="p-3 rounded-2xl bg-card border border-border text-xs font-mono text-white flex items-center gap-2">
             <AlertTriangle size={14} className="text-white shrink-0" />
-            <span>{error}</span>
+            <span>{typeof error === 'object' ? (error?.message || JSON.stringify(error)) : String(error)}</span>
           </div>
         )}
 

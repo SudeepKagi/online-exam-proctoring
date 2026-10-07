@@ -17,6 +17,18 @@ const {
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
+function normalizeDepartmentCode(dept) {
+  if (!dept) return 'CSE'
+  const d = String(dept).trim().toUpperCase()
+  if (['CSE', 'CS'].includes(d) || d.includes('COMPUTER')) return 'CSE'
+  if (['ISE', 'IS', 'IT'].includes(d) || d.includes('INFORMATION')) return 'ISE'
+  if (['ECE', 'EC', 'EE', 'EEE'].includes(d) || d.includes('ELECTRONIC')) return 'ECE'
+  if (['MECH', 'ME'].includes(d) || d.includes('MECHANICAL')) return 'MECH'
+  if (['CIVIL', 'CV'].includes(d) || d.includes('CIVIL')) return 'CIVIL'
+  if (['AI_DS', 'AIDS', 'AIML', 'AI/DS', 'AI-DS'].includes(d) || d.includes('ARTIFICIAL') || d.includes('DATA SCIENCE')) return 'AI_DS'
+  return d
+}
+
 class AdminService {
   async getDashboard() {
     return adminRepository.getDashboardStats()
@@ -37,13 +49,26 @@ class AdminService {
   }
 
   async createFaculty(data) {
+    const email = String(data.email || '').toLowerCase().trim()
+    const employeeId = String(data.employeeId || '').trim()
+
+    const existing = await adminRepository.findFacultyByEmployeeIdOrEmail(employeeId, email)
+    if (existing) {
+      if (existing.employeeId === employeeId) {
+        throw new ConflictError('A faculty member with this Employee ID already exists.')
+      }
+      throw new ConflictError('A faculty member with this email already exists.')
+    }
+
     const hashedPassword = await bcrypt.hash(data.password || 'Faculty@123', 10)
+    const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const faculty = await adminRepository.createFaculty({
+      id: data.id || crypto.randomUUID(),
       name: data.name,
-      email: data.email.toLowerCase().trim(),
+      email,
       password: hashedPassword,
-      departmentCode: data.departmentCode || 'CSE',
-      employeeId: data.employeeId,
+      departmentCode: deptCode,
+      employeeId,
       phone: data.phone || null,
       isApproved: true
     })
@@ -92,13 +117,26 @@ class AdminService {
   }
 
   async createStudent(data) {
+    const usn = String(data.usn || '').toUpperCase().trim()
+    const email = String(data.email || '').toLowerCase().trim()
+
+    const existing = await adminRepository.findStudentByUsnOrEmail(usn, email)
+    if (existing) {
+      if (existing.usn === usn) {
+        throw new ConflictError('A candidate with this USN already exists.')
+      }
+      throw new ConflictError('A candidate with this email address already exists.')
+    }
+
     const hashedPassword = await bcrypt.hash(data.password || 'Student@123', 10)
+    const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const student = await adminRepository.createStudent({
+      id: data.id || crypto.randomUUID(),
       name: data.name,
-      usn: data.usn.toUpperCase().trim(),
-      email: data.email.toLowerCase().trim(),
+      usn,
+      email,
       password: hashedPassword,
-      departmentCode: data.departmentCode || 'CSE',
+      departmentCode: deptCode,
       semester: parseInt(data.semester || 1, 10),
       phone: data.phone || null,
       approvalStatus: 'APPROVED',
@@ -323,29 +361,63 @@ class AdminService {
     return rows
   }
 
-  async confirmBulkCreate(type, accounts) {
+  async confirmBulkCreate(type, accounts = []) {
+    const normType = String(type || '').trim().toLowerCase()
+    const isStudent = normType === 'students' || normType === 'student' || normType === ROLES.STUDENT
+    const isFaculty = normType === 'faculty' || normType === 'faculties' || normType === ROLES.FACULTY
     const created = []
     const failed = []
 
-    if (type === 'students') {
-      for (const acc of accounts) {
+    if (isStudent) {
+      for (const raw of accounts) {
         try {
+          const acc = {
+            name: raw.name || raw['Full Name'] || raw.fullName || 'Student',
+            usn: raw.usn || raw.USN || raw.identifier,
+            email: raw.email || raw.Email,
+            departmentCode: raw.departmentCode || raw.department || raw.Department,
+            semester: raw.semester || raw.Semester || 1,
+            phone: raw.phone || raw.Phone || null,
+            password: raw.password || raw.Password || 'Student@123'
+          }
+          if (!acc.usn || !acc.email) {
+            throw new Error('Missing required USN or Email in record')
+          }
           const res = await this.createStudent(acc)
-          created.push(res)
+          created.push({ ...res, tempPassword: acc.password })
         } catch (err) {
-          failed.push({ usn: acc.usn || acc.USN, error: err.message })
+          failed.push({ usn: raw.usn || raw.USN || raw.email || 'unknown', error: err.message })
         }
       }
-    } else if (type === ROLES.FACULTY) {
-      for (const acc of accounts) {
+    } else if (isFaculty) {
+      for (const raw of accounts) {
         try {
+          const acc = {
+            name: raw.name || raw['Full Name'] || raw.fullName || 'Faculty Member',
+            email: raw.email || raw.Email,
+            employeeId: raw.employeeId || raw.EmployeeId || raw['Employee ID'] || raw.identifier,
+            departmentCode: raw.departmentCode || raw.department || raw.Department,
+            phone: raw.phone || raw.Phone || null,
+            password: raw.password || raw.Password || 'Faculty@123'
+          }
+          if (!acc.employeeId || !acc.email) {
+            throw new Error('Missing required Employee ID or Email in record')
+          }
           const res = await this.createFaculty(acc)
-          created.push(res)
+          created.push({ ...res, tempPassword: acc.password })
         } catch (err) {
-          failed.push({ email: acc.email || acc.Email, error: err.message })
+          failed.push({ email: raw.email || raw.Email || 'unknown', error: err.message })
         }
       }
     }
+
+    const credentialsList = created.map(c => ({
+      name: c.name,
+      identifier: c.usn || c.employeeId,
+      email: c.email,
+      department: c.departmentCode || c.department?.code || 'CSE',
+      tempPassword: c.tempPassword || 'Pre-set credentials'
+    }))
 
     return {
       success: true,
@@ -353,7 +425,9 @@ class AdminService {
       createdCount: created.length,
       failedCount: failed.length,
       created,
-      failed
+      failed,
+      credentials: credentialsList,
+      createdCredentials: credentialsList
     }
   }
 
