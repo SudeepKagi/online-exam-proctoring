@@ -15,8 +15,8 @@ import { serverClock } from './serverClock'
 export class AutosaveManager {
   constructor(options = {}) {
     this.attemptId = options.attemptId || null
-    const rawApi = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'
-    this.apiBaseUrl = options.apiBaseUrl || (rawApi.endsWith('/api/v1') ? rawApi : `${rawApi.replace(/\/$/, '')}/api/v1`)
+    const rawApi = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api'
+    this.apiBaseUrl = options.apiBaseUrl || (rawApi.endsWith('/api/v1') ? rawApi : `${rawApi.replace(/\/api\/?$/, '').replace(/\/$/, '')}/api/v1`)
     this.currentRevision = options.initialRevision || 1
     this.dirtyMap = new Map() // attemptQuestionId -> { attemptQuestionId, selectedOptionId, revision, clientTimestamp }
     this.isFlushing = false

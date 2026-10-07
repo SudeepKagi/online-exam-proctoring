@@ -185,6 +185,10 @@ $${CADDY_SITE} {
         }
     }
 
+    handle /socket.io/* {
+        reverse_proxy 127.0.0.1:5000
+    }
+
     handle /healthz {
         reverse_proxy 127.0.0.1:5000
     }

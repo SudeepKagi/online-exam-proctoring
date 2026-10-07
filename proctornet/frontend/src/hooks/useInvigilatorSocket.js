@@ -29,7 +29,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
       return
     }
 
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000'
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (typeof window !== 'undefined' ? window.location.origin : '')
 
     const socket = io(socketUrl, {
       withCredentials: true,

@@ -31,7 +31,12 @@ const allowedOrigins = [
   'http://127.0.0.1:3000'
 ]
 if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL)
+  process.env.FRONTEND_URL.split(',').forEach((u) => {
+    const trimmed = u.trim()
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed)
+    }
+  })
 }
 
 // ── Socket.io WebSocket Plane (P6) ──
@@ -54,7 +59,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com', ...(isProd ? [] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'", ...(isProd ? ['https://*.amazonaws.com'] : ['ws:', 'wss:', 'http://localhost:9000', 'http://127.0.0.1:9000'])],
+      connectSrc: ["'self'", 'ws:', 'wss:', ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
       fontSrc: ["'self'", 'data:'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],

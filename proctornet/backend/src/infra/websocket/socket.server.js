@@ -22,13 +22,26 @@ const { ROLES, normalizeRole } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
 function createWebSocketServer(httpServer, options = {}) {
-  const allowedOrigins = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL]
-    : ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000']
+  const envOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map((u) => u.trim()).filter(Boolean)
+    : []
+  const allowedOrigins = [
+    ...envOrigins,
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000'
+  ]
 
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
+      origin: (origin, callback) => {
+        if (!origin) return callback(null, true)
+        if (allowedOrigins.includes(origin)) return callback(null, true)
+        if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+          return callback(null, true)
+        }
+        return callback(null, false)
+      },
       methods: ['GET', 'POST'],
       credentials: true,
       allowedHeaders: ['Content-Type', 'Authorization', 'cookie']

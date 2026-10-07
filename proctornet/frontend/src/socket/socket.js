@@ -7,7 +7,7 @@ export const connectSocket = () => {
   
   socket = io(
     import.meta.env.VITE_SOCKET_URL 
-    || 'http://localhost:5000',
+    || (typeof window !== 'undefined' ? window.location.origin : ''),
     {
       withCredentials: true,
       transports: ['websocket', 'polling'],
