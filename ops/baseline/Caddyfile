@@ -1,0 +1,52 @@
+{
+    email admin@proctornet.com
+}
+
+http://43.204.45.86, http://43.204.45.86.sslip.io, http://43-204-45-86.sslip.io {
+    redir https://43.204.45.86.sslip.io{uri} permanent
+}
+
+43.204.45.86.sslip.io, 43-204-45-86.sslip.io, 43.204.45.86 {
+    @metrics {
+        path /metrics
+    }
+    respond @metrics "Forbidden" 403
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(self), microphone=(self), display-capture=(self)"
+    }
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:5000
+    }
+
+    handle /rt/* {
+        reverse_proxy 127.0.0.1:5000 {
+            transport http {
+                keepalive 60s
+            }
+        }
+    }
+
+    handle /socket.io/* {
+        reverse_proxy 127.0.0.1:5000
+    }
+
+    handle /healthz {
+        reverse_proxy 127.0.0.1:5000
+    }
+
+    handle /readyz {
+        reverse_proxy 127.0.0.1:9100
+    }
+
+    handle {
+        root * /opt/proctornet/current/proctornet/frontend/dist
+        try_files {path} /index.html
+        file_server
+    }
+}

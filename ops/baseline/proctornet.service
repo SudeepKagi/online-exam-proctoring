@@ -1,0 +1,33 @@
+[Unit]
+Description=ProctorNet Lite Application Service
+After=network.target
+
+[Service]
+Type=simple
+User=proctornet
+WorkingDirectory=/opt/proctornet/current/proctornet/backend
+Environment=NODE_ENV=production
+Environment=PORT=5000
+Environment=APP_PROFILE=lite
+Environment=QUEUE_DRIVER=postgres
+Environment=CACHE_DRIVER=memory
+Environment=MEDIA_DRIVER=snapshot
+Environment=FACE_DRIVER=rekognition
+Environment=START_WORKERS=true
+EnvironmentFile=-/opt/proctornet/shared/.env
+ExecStart=/usr/bin/node --max-old-space-size=384 src/app.js
+Restart=always
+RestartSec=5
+MemoryMax=450M
+
+# Sandboxing & Hardening Flags (Appendix C)
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

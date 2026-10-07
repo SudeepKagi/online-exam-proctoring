@@ -72,3 +72,11 @@ playwright-report/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+
+# Database dumps and local backup archives
+*.sql.gz
+*.json.gz
+baseline_backup.json.gz
+backups/*.dump
+backups/*.sql
+backups/*.json
