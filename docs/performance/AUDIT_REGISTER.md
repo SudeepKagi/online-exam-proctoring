@@ -119,3 +119,19 @@ Severity Definitions:
 | **I-08** | S1 | `backend/src/modules/audit/` | Audit writer commits asynchronously without transactional outbox tie-in, risking lost audit logs on process crashes. | Q4: Dual-write prevention using PostgreSQL single-statement CTEs. |
 | **I-09** | S1 | `frontend/src/pages/invigilator/` | Invigilator live grid and violation viewer still query legacy unindexed endpoints instead of keyset-paginated v1 endpoints. | Q6: Migrate invigilator views to v1 keyset roster & violations endpoints. |
 
+---
+
+## 8. Prompt 3 R0 Re-Audit (§2.5 Files & Real Stack Reconciliation)
+
+| ID | Sev | Codebase Location | Evidence & Verified Vulnerability | Architectural Remedy & R0 Status |
+|---|---|---|---|---|
+| **R0-01** | P1 | `backend/src/modules/media/biometricService.js:132-154` | Fallback branches assigned hardcoded match scores (`similarity = 0.85`) and synthetic keys (`verified-key`). Allowed spoofing/offline bypasses. | **REMEDIATED**: Replaced all fallback branches with strict fail-closed responses (`matched: false, similarity: 0.0`). Zero stubs permitted. |
+| **R0-02** | P1 | `frontend/src/pages/student/SecurityCheck.jsx:136-150` | Fallback simulation assigned synthetic match score `0.96` and confidence `0.95` when verification failed. | **REMEDIATED**: Purged synthetic score assignments; UI displays real verification failure and blocks unauthorized progression. |
+| **R0-03** | P2 | `backend/src/modules/auth/controller.js:140-150` | `POST /api/v1/auth/logout` dispatched `success: true` synchronously without awaiting `authService.logout(req.user?.id)`, failing to guarantee Redis token revocation before returning. | **REMEDIATED**: Handler converted to `async`; explicitly awaits `authService.logout(req.user?.id)`. |
+| **R0-04** | P2 | `backend/src/modules/admin/repository.js:294-298` | `createAnnouncement()` omitted client-side UUID generation for `id`, causing PostgreSQL null-constraint violation (`P2011`). | **REMEDIATED**: Explicitly generates `id: crypto.randomUUID()` in database write payload. |
+| **R0-05** | P2 | `vpnGuard.js`, `violationMicroBatcher.js`, `outboxPublisher.js`, `stateMachine.js`, `expirySweeper.js`, `exams/repository.js`, `biometricService.js` | Unobserved writes inside empty `catch(() => {})` blocks obscured failed database/cache persistence operations. | **REMEDIATED**: Replaced all empty catch blocks with structured `logger.error(...)` and `logger.warn(...)` observability calls. |
+| **R0-06** | P1 | `backend/src/modules/student/controller.js` | Legacy unversioned student routes (`/exams/:id/answer`, `/autosave`, `/submit`, `/evidence`, `/violation`, `/acknowledge`) existed as unmaintained zombie endpoints bypassing v1 idempotency and CAS. | **REMEDIATED**: Purged legacy student endpoints; unified API exclusively on v1 canonical flows (`/attempts/:id/submission`, `/attempts/:id/answers`, `/violations/batch`). |
+| **R0-07** | P1 | `backend/tests/route-matrix.test.js` & `docs/api/ROUTE_INVENTORY.md` | Route tests checked HTTP status codes but did not assert *observable state changes* (database rows, outbox events, negative-effect invariance). | **REMEDIATED**: Contract tests extended with positive effect assertions (DB row created, outbox row queued) and negative effect assertions (BOLA / 403 / 404 mutations strictly 0). |
+| **R0-08** | P2 | `backend/src/modules/invigilator/` & `assertStaffExamAccess` | Invigilator staff scoping permitted non-UUID strings in JWT payload, which caused PostgreSQL UUID casting syntax errors during state machine transitions. | **REMEDIATED**: Normalized token generation and staff scoping to validate standard UUIDs; fail-closed on unassigned/missing exam IDs. |
+
+

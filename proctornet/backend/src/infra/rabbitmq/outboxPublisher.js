@@ -66,8 +66,8 @@ class OutboxPublisher {
         WHERE status = 'PENDING'
           AND next_attempt_at > now() + interval '60 seconds';
       `)
-    } catch {
-      // ignore transient reaper query errors
+    } catch (err) {
+      logger.warn({ error: err.message }, 'Transient reaper query error on startup')
     }
   }
 
@@ -164,12 +164,14 @@ class OutboxPublisher {
             UPDATE outbox_events
             SET status = 'FAILED', attempts = $1, processed_at = now()
             WHERE id = $2;
-          `, nextAttempts, evt.id).catch(() => {})
+          `, nextAttempts, evt.id).catch((dbErr) => {
+            logger.error({ error: dbErr.message, eventId }, 'Failed to mark outbox event status FAILED')
+          })
 
           try {
             outboxFailedCounter.inc({ event_type: evt.event_type || 'unknown' })
-          } catch {
-            // metric increment safe fallback
+          } catch (metricErr) {
+            logger.warn({ error: metricErr.message }, 'Metric increment safe fallback')
           }
 
           logger.error({
@@ -187,7 +189,9 @@ class OutboxPublisher {
                 attempts = attempts + 1,
                 next_attempt_at = now() + ($1 || ' seconds')::interval
             WHERE id = $2;
-          `, String(backoffSeconds), evt.id).catch(() => {})
+          `, String(backoffSeconds), evt.id).catch((dbErr) => {
+            logger.warn({ error: dbErr.message, eventId }, 'Failed to schedule outbox event retry')
+          })
 
           logger.warn({
             eventId,
@@ -213,8 +217,8 @@ class OutboxPublisher {
         SET next_attempt_at = now() + interval '2 seconds'
         WHERE id = $1;
       `, id)
-    } catch {
-      // ignore
+    } catch (err) {
+      logger.warn({ error: err.message, id }, 'Failed to release outbox row delay')
     }
   }
 

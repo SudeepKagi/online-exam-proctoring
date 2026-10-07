@@ -1,0 +1,21 @@
+﻿{"level":"info","time":"2026-10-07T01:35:42.151Z","pid":12776,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T01:35:42.171Z","pid":12776,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T01:35:42.181Z","pid":12776,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+{"level":"info","time":"2026-10-07T01:35:44.551Z","pid":12776,"hostname":"MSI","examId":"cb0c5bf6-13d8-428f-baec-ce8d41d738af","msg":"Starting attempt pre-warming job for exam"}
+{"level":"info","time":"2026-10-07T01:35:45.745Z","pid":12776,"hostname":"MSI","examId":"cb0c5bf6-13d8-428f-baec-ce8d41d738af","eligibleCount":500,"msg":"Found eligible students for pre-warming"}
+{"level":"info","time":"2026-10-07T01:37:53.522Z","pid":12776,"hostname":"MSI","examId":"cb0c5bf6-13d8-428f-baec-ce8d41d738af","totalPrewarmed":500,"msg":"Completed attempt pre-warming job"}
+Pre-warmed 500 student attempts (1,000 questions) in 128984ms
+{"level":"info","time":"2026-10-07T01:37:54.537Z","pid":12776,"hostname":"MSI","examId":"cb0c5bf6-13d8-428f-baec-ce8d41d738af","msg":"Starting attempt pre-warming job for exam"}
+Γû╢ Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attempts)
+  Γ£ö Pre-warm job creates exactly 500 READY attempts before exam start (129995.3458ms)
+{"level":"info","time":"2026-10-07T01:37:55.978Z","pid":12776,"hostname":"MSI","examId":"cb0c5bf6-13d8-428f-baec-ce8d41d738af","eligibleCount":0,"msg":"Found eligible students for pre-warming"}
+  Γ£ö Pre-warm job is strictly idempotent (second run adds 0 duplicates) (2212.6128ms)
+Γ£ö Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attempts) (134720.96ms)
+Γä╣ tests 2
+Γä╣ suites 1
+Γä╣ pass 2
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 135374.5109

@@ -23,6 +23,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create test faculty
     const faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Test Faculty P3',
         email: `faculty-p3-${Date.now()}@test.edu`,
         password: 'hashed_password_placeholder',
@@ -35,6 +36,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create test student
     const student = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Test Student P3',
         usn: `1TESTP3${Math.floor(Math.random() * 10000)}`,
         email: `student-p3-${Date.now()}@test.edu`,
@@ -49,6 +51,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     const now = new Date()
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'P3 Constraint Verification Exam',
         subject: 'Database Systems',
         facultyId: testFacultyId,
@@ -68,6 +71,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create valid test question
     const q = await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExamId,
         questionText: 'Which index type supports full-text trigram similarity search in PostgreSQL?',
         marks: 5,
@@ -81,6 +85,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create test attempt
     const attempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExamId,
         studentId: testStudentId,
         watermarkSeed: `WM-P3-${Date.now()}`,
@@ -92,6 +97,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create test attempt question
     const aq = await prisma.attemptQuestion.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId: testAttemptId,
         questionId: testQuestionId,
         displayOrder: 1,
@@ -184,6 +190,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Insert first correct option
     const opt1 = await prisma.questionOption.create({
       data: {
+        id: crypto.randomUUID(),
         questionId: testQuestionId,
         text: 'GIN index with pg_trgm ops',
         isCorrect: true,
@@ -196,6 +203,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     await assert.rejects(async () => {
       await prisma.questionOption.create({
         data: {
+          id: crypto.randomUUID(),
           questionId: testQuestionId,
           text: 'Second correct option (violation)',
           isCorrect: true,
@@ -214,6 +222,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     await assert.rejects(async () => {
       await prisma.examAttempt.create({
         data: {
+          id: crypto.randomUUID(),
           examId: testExamId,
           studentId: testStudentId,
           watermarkSeed: 'WM-DUPLICATE',
@@ -229,6 +238,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     // Create another question
     const q2 = await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExamId,
         questionText: 'Second question for display order test?',
         marks: 5,
@@ -239,6 +249,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     await assert.rejects(async () => {
       await prisma.attemptQuestion.create({
         data: {
+          id: crypto.randomUUID(),
           attemptId: testAttemptId,
           questionId: q2.id,
           displayOrder: 1, // Already used by testAttemptQuestionId!
@@ -255,6 +266,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
   test('Database rejects duplicate exam_result for same attempt (UNIQUE attempt_id)', async () => {
     const res1 = await prisma.examResult.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId: testAttemptId,
         examId: testExamId,
         score: 45,
@@ -270,6 +282,7 @@ test.describe('P3 Schema & Data Layer — Domain Invariants & DB Constraints', (
     await assert.rejects(async () => {
       await prisma.examResult.create({
         data: {
+          id: crypto.randomUUID(),
           attemptId: testAttemptId,
           examId: testExamId,
           score: 40,

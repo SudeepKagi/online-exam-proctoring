@@ -1,0 +1,60 @@
+﻿{"level":"info","time":"2026-10-07T02:00:02.022Z","pid":32388,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T02:00:02.029Z","pid":32388,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T02:00:02.045Z","pid":32388,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+{"level":"info","time":"2026-10-07T02:00:05.546Z","pid":32388,"hostname":"MSI","msg":"Socket.IO Redis adapter enabled for multi-process scaling"}
+{"level":"info","time":"2026-10-07T02:00:05.549Z","pid":32388,"hostname":"MSI","msg":"Socket.IO Redis adapter enabled for multi-process scaling"}
+Γû╢ P6 Realtime Plane & Invigilator Dashboard
+  Γû╢ 1. Handshake Authentication (Fails Closed)
+    Γ£ö refuses connection when auth token is completely missing (152.0202ms)
+{"level":"warn","time":"2026-10-07T02:00:05.737Z","pid":32388,"hostname":"MSI","error":"jwt expired","msg":"Socket handshake authentication rejected (failed closed)"}
+    Γ£ö refuses connection when auth token is expired or forged (111.4817ms)
+{"level":"info","time":"2026-10-07T02:00:05.816Z","pid":32388,"hostname":"MSI","socketId":"t2Hg1YPi21tgHD8bAAAF","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","role":"student","msg":"Socket client connected"}
+    Γ£ö allows connection when valid student auth token is provided (69.6279ms)
+  Γ£ö 1. Handshake Authentication (Fails Closed) (357.7724ms)
+{"level":"info","time":"2026-10-07T02:00:05.833Z","pid":32388,"hostname":"MSI","socketId":"t2Hg1YPi21tgHD8bAAAF","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","msg":"Socket client disconnected"}
+{"level":"info","time":"2026-10-07T02:00:05.852Z","pid":32388,"hostname":"MSI","socketId":"VseX3NpiLFWllP9LAAAH","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","role":"student","msg":"Socket client connected"}
+  Γû╢ 2. Room Privacy & Isolation
+    Γ£ö allows student to join their own private attempt:{attemptId} room (546.4895ms)
+{"level":"info","time":"2026-10-07T02:00:06.371Z","pid":32388,"hostname":"MSI","socketId":"VseX3NpiLFWllP9LAAAH","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","msg":"Socket client disconnected"}
+{"level":"info","time":"2026-10-07T02:00:06.384Z","pid":32388,"hostname":"MSI","socketId":"iuyOYvjDCsHRH4crAAAJ","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","role":"student","msg":"Socket client connected"}
+    Γ£ö strictly forbids student from joining another student private attempt room (448.2231ms)
+{"level":"info","time":"2026-10-07T02:00:06.840Z","pid":32388,"hostname":"MSI","socketId":"iuyOYvjDCsHRH4crAAAJ","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","msg":"Socket client disconnected"}
+{"level":"info","time":"2026-10-07T02:00:06.849Z","pid":32388,"hostname":"MSI","socketId":"VSY2XOcEPPgUy3iDAAAL","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","role":"faculty","msg":"Socket client connected"}
+{"level":"info","time":"2026-10-07T02:00:07.295Z","pid":32388,"hostname":"MSI","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","role":"faculty","examId":"bca6ac5b-2f12-4155-a4cd-a5ad4643ea42","msg":"Staff joined invigilator room"}
+    Γ£ö allows faculty/invigilator to join inv:{examId} room but blocks unauthorized exams (946.9329ms)
+  Γ£ö 2. Room Privacy & Isolation (1945.8866ms)
+{"level":"info","time":"2026-10-07T02:00:07.815Z","pid":32388,"hostname":"MSI","socketId":"VSY2XOcEPPgUy3iDAAAL","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","msg":"Socket client disconnected"}
+  Γû╢ 3. 500ms Roster Delta Coalescing
+    Γ£ö 1,000 rapid event notifications fired in 1s produce <= 3 roster:delta messages (1135.1226ms)
+  Γ£ö 3. 500ms Roster Delta Coalescing (1135.8633ms)
+{"level":"info","time":"2026-10-07T02:00:08.919Z","pid":32388,"hostname":"MSI","socketId":"knL2ZEtT0Y-jWZFMAAAN","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","role":"faculty","msg":"Socket client connected"}
+{"level":"info","time":"2026-10-07T02:00:09.232Z","pid":32388,"hostname":"MSI","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","role":"faculty","examId":"bca6ac5b-2f12-4155-a4cd-a5ad4643ea42","msg":"Staff joined invigilator room"}
+{"level":"info","time":"2026-10-07T02:00:09.255Z","pid":32388,"hostname":"MSI","socketId":"fMVVSfvBzwit6HHkAAAP","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","role":"student","msg":"Socket client connected"}
+  Γû╢ 4. Multi-Process Horizontal Fan-out & Failover
+    Γ£ö student on Process 1 transmits violation; invigilator on Process 2 receives delta via adapter (3181.9478ms)
+  Γ£ö 4. Multi-Process Horizontal Fan-out & Failover (3182.3791ms)
+{"level":"info","time":"2026-10-07T02:00:12.086Z","pid":32388,"hostname":"MSI","socketId":"fMVVSfvBzwit6HHkAAAP","userId":"43ea67db-0c18-4e4d-90bb-a723a7894c54","msg":"Socket client disconnected"}
+{"level":"info","time":"2026-10-07T02:00:12.087Z","pid":32388,"hostname":"MSI","socketId":"knL2ZEtT0Y-jWZFMAAAN","userId":"c2cd43ca-bd71-497a-b291-2291cf328fc2","msg":"Socket client disconnected"}
+  Γû╢ 5. Presence Tracking & REST Resync
+    Γ£ö records heartbeat, accurately tracks online status, and disconnect marks offline (20.8727ms)
+    Γ£ö GET /api/v1/attempts/:attemptId/state returns authoritative status, expiry, and server clock (363.448ms)
+  Γ£ö 5. Presence Tracking & REST Resync (385.7792ms)
+  Γû╢ 6. Invigilator Endpoints (Keyset Pagination & Zero-Media)
+    Γ£ö GET summary returns correct SQL aggregate and live presence count (608.451ms)
+    Γ£ö GET roster performs keyset pagination on (name, attempt_id) with bounded payload (1493.0006ms)
+    Γ£ö GET violations returns keyset paginated violation stream (1654.1698ms)
+  Γ£ö 6. Invigilator Endpoints (Keyset Pagination & Zero-Media) (3756.6275ms)
+  Γû╢ 7. Staff Action Commands (REST & State Machine)
+    Γ£ö warnCandidate dispatches warning and creates audit log (1426.9455ms)
+    Γ£ö pauseAttempt and resumeAttempt transition state cleanly (3051.1713ms)
+    Γ£ö acknowledgeViolation marks violation acknowledged and audits the action (1864.9485ms)
+  Γ£ö 7. Staff Action Commands (REST & State Machine) (6343.6808ms)
+Γ£ö P6 Realtime Plane & Invigilator Dashboard (22542.7427ms)
+Γä╣ tests 16
+Γä╣ suites 8
+Γä╣ pass 16
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 24028.6122

@@ -1,0 +1,13 @@
+﻿Γû╢ Q1.1 Timezone Matrix & Timestamptz Invariance (E-02)
+  Γ£ö Database default timezone is UTC (271.0942ms)
+  Γ£ö timestamptz columns preserve exact instant regardless of session timezone (2125.3473ms)
+  Γ£ö Relative deadline comparison (expires_at < now()) is session-timezone agnostic (1641.663ms)
+Γ£ö Q1.1 Timezone Matrix & Timestamptz Invariance (E-02) (5391.979ms)
+Γä╣ tests 3
+Γä╣ suites 1
+Γä╣ pass 3
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 5996.693

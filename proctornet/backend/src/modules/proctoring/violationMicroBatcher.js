@@ -207,7 +207,9 @@ class ViolationMicroBatcher {
 
           await prisma.$executeRawUnsafe(`
             UPDATE exam_attempts SET flag_count = flag_count + 1 WHERE id = $1::uuid;
-          `, item.attemptId).catch(() => {})
+          `, item.attemptId).catch((err) => {
+            logger.warn({ error: err.message, attemptId: item.attemptId }, 'Failed to increment flag_count on fallback')
+          })
 
           item.resolve({
             success: true,

@@ -1,0 +1,21 @@
+﻿{"level":"info","time":"2026-10-07T01:28:59.086Z","pid":22344,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T01:28:59.108Z","pid":22344,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T01:28:59.127Z","pid":22344,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+Γû╢ Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07)
+  Γ£ö Exam status is client-immutable via update endpoints (A-07 / B-02) (1938.4676ms)
+{"level":"info","time":"2026-10-07T01:29:03.102Z","pid":22344,"hostname":"MSI","count":3,"msg":"Guarded transition: exams moved to LIVE"}
+{"level":"info","time":"2026-10-07T01:29:03.358Z","pid":22344,"hostname":"MSI","count":2,"msg":"Guarded transition: exams moved to ENDED"}
+  Γ£ö Scheduler transitions PUBLISHED -> LIVE when start_time <= now() < end_time (1569.8695ms)
+{"level":"info","time":"2026-10-07T01:29:05.150Z","pid":22344,"hostname":"MSI","count":1,"msg":"Guarded transition: exams moved to ENDED"}
+  Γ£ö Scheduler transitions LIVE -> ENDED when end_time <= now() (1819.2157ms)
+{"level":"info","time":"2026-10-07T01:29:08.799Z","pid":22344,"hostname":"MSI","count":1,"msg":"Guarded transition: exams moved to EVALUATED"}
+  Γ£ö Scheduler transitions ENDED -> EVALUATED only when all attempts have results (3365.919ms)
+Γ£ö Q1.4 Exam Lifecycle Scheduler & Guarded State Transitions (A-07) (10053.9196ms)
+Γä╣ tests 4
+Γä╣ suites 1
+Γä╣ pass 4
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 12328.2312

@@ -63,8 +63,8 @@ const breaker = new CircuitBreaker(
 )
 
 breaker.fallback(() => {
-  logger.warn('Biometric circuit breaker open or timed out; falling back to non-blocking approval')
-  return { matched: true, similarity: 1.0, circuitOpen: true }
+  logger.warn('Biometric circuit breaker open or timed out; failing closed')
+  return { matched: false, similarity: 0.0, circuitOpen: true }
 })
 
 class BiometricService {
@@ -74,7 +74,7 @@ class BiometricService {
   async compareFaces(referenceKey, probeKeyOrBuffer) {
     if (!referenceKey) {
       logger.warn('Missing reference identity key for biometric comparison')
-      return { matched: true, similarity: 1.0 }
+      return { matched: false, similarity: 0.0 }
     }
 
     try {
@@ -90,7 +90,7 @@ class BiometricService {
       return await breaker.fire(referenceBuffer, probeBuffer)
     } catch (err) {
       logger.error({ error: err.message, referenceKey }, 'Error executing face comparison')
-      return { matched: true, similarity: 1.0, error: err.message }
+      return { matched: false, similarity: 0.0, error: err.message }
     }
   }
 
@@ -197,8 +197,8 @@ async function verifyFaceBiometrics({ studentId, examId = null, liveFrame }) {
         where: { id: studentId },
         select: { id: true, facePhotoKey: true }
       })
-    } catch (_err) {
-      // Prisma error, fail closed below
+    } catch (err) {
+      logger.warn({ error: err.message, studentId }, 'Prisma error fetching student for face verification; failing closed')
     }
   }
 
@@ -211,8 +211,9 @@ async function verifyFaceBiometrics({ studentId, examId = null, liveFrame }) {
   }
 
   return {
-    verified: true,
-    matchScore: 0.95
+    verified: false,
+    matchScore: 0.0,
+    reason: 'Biometric verification pending AWS Rekognition driver (Phase R1)'
   }
 }
 

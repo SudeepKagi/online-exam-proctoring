@@ -92,7 +92,9 @@ class ExpirySweeper {
       }
     } finally {
       if (hasLock) {
-        await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock($1);`, SWEEPER_LOCK_ID).catch(() => {})
+        await prisma.$executeRawUnsafe(`SELECT pg_advisory_unlock($1);`, SWEEPER_LOCK_ID).catch((err) => {
+          logger.warn({ error: err.message }, 'Failed to release sweeper advisory lock')
+        })
       }
     }
   }

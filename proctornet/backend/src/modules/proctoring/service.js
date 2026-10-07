@@ -84,7 +84,7 @@ class ProctoringService {
       metadata,
       clientTimestamp
     })
-    const violationId = batchRes?.violationId || null
+    const violationId = batchRes?.violationId != null ? batchRes.violationId.toString() : null
 
     // 5. Issue the evidence ticket AFTER the row exists and bind key to violationId (C-08/C-09)
     let evidenceUpload = null
@@ -418,7 +418,7 @@ class ProctoringService {
           cursorId = decoded.id
         }
       } catch (err) {
-        // ignore
+        logger.warn({ error: err.message }, 'Invalid keyset cursor supplied')
       }
     }
 

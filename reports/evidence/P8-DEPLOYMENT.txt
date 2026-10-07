@@ -1,0 +1,73 @@
+﻿Γû╢ P8 Deployment Truth Test Suite
+  Γû╢ 1. docker-compose.prod.yml structure
+    Γ£ö 1.1 egress network is defined (G-01) (0.6775ms)
+    Γ£ö 1.2 frontend service present with multi-stage build ref (G-02) (1.3058ms)
+    Γ£ö 1.3 one-shot migrate service with restart:"no" (G-03) (0.7584ms)
+    Γ£ö 1.4 three API replica services defined (0.4588ms)
+    Γ£ö 1.5 worker has heap sizing flag and healthcheck (G-04) (0.658ms)
+    Γ£ö 1.6 UV_THREADPOOL_SIZE=16 in api-common anchor (2.7254ms)
+    Γ£ö 1.7 Redis persistence off (--save "" --appendonly no) (0.9697ms)
+    Γ£ö 1.8 RabbitMQ uses non-management alpine image (0.5353ms)
+    Γ£ö 1.9 livekit is on both internal and egress networks (1.2183ms)
+  Γ£ö 1. docker-compose.prod.yml structure (25.7321ms)
+  Γû╢ 2. docker-compose.override.yml
+    Γ£ö 2.1 rabbitmq override switches to management image in dev (0.4348ms)
+    Γ£ö 2.2 postgres exposes loopback port for local tools (0.9406ms)
+    Γ£ö 2.3 api-1 exposes port 5000 loopback in dev (0.4531ms)
+  Γ£ö 2. docker-compose.override.yml (4.4599ms)
+  Γû╢ 3. Nginx configuration
+    Γ£ö 3.1 server_tokens off in nginx.conf (0.4662ms)
+    Γ£ö 3.2 NAT-aware rate limit zone: >=60r/s with burst >=100 (G-05) (0.6974ms)
+    Γ£ö 3.3 /media/ route proxies to livekit_sfu (F-01) (0.9467ms)
+    Γ£ö 3.4 Content-Security-Policy does not contain unsafe-eval (D-09) (0.6543ms)
+    Γ£ö 3.5 proxy_hide_header X-Powered-By present (0.5846ms)
+    Γ£ö 3.6 /internal/ location returns 403 / deny all (0.3918ms)
+    Γ£ö 3.7 /metrics location returns 403 / deny all (0.246ms)
+    Γ£ö 3.8 upstream api_servers includes api-3 (three replicas) (0.1537ms)
+  Γ£ö 3. Nginx configuration (9.2332ms)
+  Γû╢ 4. Frontend Dockerfile
+    Γ£ö 4.1 multi-stage build: builder stage with npm ci + npm run build (0.468ms)
+    Γ£ö 4.2 brotli pre-compression step in build stage (G-02) (0.1109ms)
+    Γ£ö 4.3 runner stage uses nginxinc/nginx-unprivileged (0.0851ms)
+    Γ£ö 4.4 container exposes 8080 (unprivileged port) (0.1054ms)
+    Γ£ö 4.5 HEALTHCHECK defined in Dockerfile (0.0863ms)
+  Γ£ö 4. Frontend Dockerfile (2.1041ms)
+  Γû╢ 5. Worker heartbeat (G-04)
+    Γ£ö 5.1 worker.js writes /tmp/worker.ready heartbeat file (0.6429ms)
+    Γ£ö 5.2 heartbeat is refreshed on a recurring interval (0.9117ms)
+    Γ£ö 5.3 interval is cleared on graceful shutdown (0.2125ms)
+  Γ£ö 5. Worker heartbeat (G-04) (3.4013ms)
+  Γû╢ 6. Dev startup scripts
+    Γ£ö 6.1 scripts/dev/up.ps1 exists (0.3931ms)
+    Γ£ö 6.2 scripts/dev/up.sh exists (0.2298ms)
+    Γ£ö 6.3 up.ps1 waits for postgres healthcheck before seeding (1.072ms)
+    Γ£ö 6.4 up.ps1 prints access URLs (0.9499ms)
+    Γ£ö 6.5 up.sh prints access URLs (0.7866ms)
+    Γ£ö 6.6 up.sh copies .env.example if .env missing (2.6421ms)
+  Γ£ö 6. Dev startup scripts (6.3483ms)
+  Γû╢ 7. Makefile targets
+    Γ£ö 7.1 smoke target exists (0.2068ms)
+    Γ£ö 7.2 smoke target invokes playwright with @smoke grep (0.1075ms)
+    Γ£ö 7.3 build target exists (0.1097ms)
+    Γ£ö 7.4 test target exists (0.1037ms)
+    Γ£ö 7.5 backup target exists (0.0694ms)
+    Γ£ö 7.6 migrate target exists (0.056ms)
+  Γ£ö 7. Makefile targets (2.0832ms)
+  Γû╢ 8. Backup/restore drill script
+    Γ£ö 8.1 script contains pg_dump invocation (0.1679ms)
+    Γ£ö 8.2 script creates a scratch database (0.0724ms)
+    Γ£ö 8.3 script invokes pg_restore into scratch DB (0.0464ms)
+    Γ£ö 8.4 script compares row counts between source and scratch DB (0.0461ms)
+    Γ£ö 8.5 script drops the scratch database after drill (0.048ms)
+    Γ£ö 8.6 script appends result to docs/qa/ log file (0.0422ms)
+    Γ£ö 8.7 script exits 0 on PASS, 1 on FAIL (0.0492ms)
+  Γ£ö 8. Backup/restore drill script (1.4435ms)
+Γ£ö P8 Deployment Truth Test Suite (55.8373ms)
+Γä╣ tests 47
+Γä╣ suites 9
+Γä╣ pass 47
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 290.8831

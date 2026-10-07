@@ -98,6 +98,7 @@ describe('P6 Realtime Plane & Invigilator Dashboard', () => {
 
     faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Faculty P6 ${suffix}`,
         email: `faculty_p6_${suffix}@test.edu`,
         password: 'hash',
@@ -108,18 +109,20 @@ describe('P6 Realtime Plane & Invigilator Dashboard', () => {
 
     studentA = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Alice Candidate ${suffix}`,
         email: `alice_${suffix}@test.edu`,
         usn: `1DS20CS_${suffix}A`,
         password: 'hash',
         departmentCode: dept.code,
         semester: 6,
-        facePhotoKey: `identity/${studentA ? studentA.id : suffix}/profile-test.webp`
+        facePhotoKey: `identity/${suffix}/profile-test.webp`
       }
     })
 
     studentB = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Bob Candidate ${suffix}`,
         email: `bob_${suffix}@test.edu`,
         usn: `1DS20CS_${suffix}B`,
@@ -131,6 +134,7 @@ describe('P6 Realtime Plane & Invigilator Dashboard', () => {
 
     exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: `P6 Realtime Exam ${suffix}`,
         subject: 'Distributed Systems',
         invId: `INV_P6_${suffix}`,
@@ -148,6 +152,7 @@ describe('P6 Realtime Plane & Invigilator Dashboard', () => {
 
     attemptA = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentA.id,
         status: 'ACTIVE',
@@ -159,6 +164,7 @@ describe('P6 Realtime Plane & Invigilator Dashboard', () => {
 
     attemptB = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentB.id,
         status: 'ACTIVE',

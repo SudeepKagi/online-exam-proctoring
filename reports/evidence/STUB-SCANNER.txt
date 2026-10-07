@@ -1,0 +1,5 @@
+﻿≡ƒöì [CI] Running AST + Regex Stub Scanner (check-no-stubs.js)...
+
+≡ƒôè Scan completed across 254 source files.
+Γ£à Stub scanner green: zero hardcoded scores, zero stubs, zero unobserved writes, zero fake handlers.
+

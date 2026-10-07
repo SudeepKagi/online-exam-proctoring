@@ -64,6 +64,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testFaculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: `VPN Faculty ${suffix}`,
         email: `vpn_fac_${suffix}@test.edu`,
         password: 'hash',
@@ -74,6 +75,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testStudent1 = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `VPN Student 1 ${suffix}`,
         email: `vpn_stu1_${suffix}@test.edu`,
         usn: `1MS21CS_VPN1_${suffix}`,
@@ -86,6 +88,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testStudent2 = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `VPN Student 2 ${suffix}`,
         email: `vpn_stu2_${suffix}@test.edu`,
         usn: `1MS21CS_VPN2_${suffix}`,
@@ -98,6 +101,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testStudent3 = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `VPN Student 3 ${suffix}`,
         email: `vpn_stu3_${suffix}@test.edu`,
         usn: `1MS21CS_VPN3_${suffix}`,
@@ -111,6 +115,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
     const now = new Date()
     testExam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: `VPN Exam ${timestamp}`,
         subject: 'Computer Networks',
         invId: `INV_VPN_${suffix}`,
@@ -127,6 +132,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
     // Create attempts in different states with distinct students
     testAttemptActive = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExam.id,
         studentId: testStudent1.id,
         status: 'ACTIVE',
@@ -137,6 +143,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testAttemptReady = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExam.id,
         studentId: testStudent2.id,
         status: 'READY',
@@ -147,6 +154,7 @@ describe('P8 WireGuard VPN Module Test Suite', () => {
 
     testAttemptTerminated = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: testExam.id,
         studentId: testStudent3.id,
         status: 'TERMINATED',

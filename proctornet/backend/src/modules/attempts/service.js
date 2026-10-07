@@ -81,7 +81,9 @@ class AttemptService {
         await prisma.examAttempt.update({
           where: { id: attempt.id },
           data: { status: 'EXPIRED' }
-        }).catch(() => {})
+        }).catch((err) => {
+          logger.warn({ error: err.message, attemptId: attempt.id }, 'Failed to mark expired status')
+        })
       }
       return {
         isTerminal: attemptStateMachine.isTerminal(attempt.status) || isExpired,

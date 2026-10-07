@@ -5,7 +5,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -13,7 +15,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row inserted (announcements)",
+    "negativeEffect": "0 announcements mutated"
   },
   {
     "method": "DELETE",
@@ -21,7 +25,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row deleted (announcements)",
+    "negativeEffect": "0 announcements mutated"
   },
   {
     "method": "GET",
@@ -29,7 +35,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -37,7 +45,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/bulk-upload/confirm)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -45,7 +55,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/bulk-upload/parse)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -53,7 +65,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -61,7 +75,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -69,7 +85,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "POST",
@@ -77,7 +95,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "POST",
@@ -85,7 +105,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "GET",
@@ -93,7 +115,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -101,7 +125,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -109,7 +135,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -117,7 +145,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -125,7 +155,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "PATCH",
@@ -133,7 +165,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (exam_attempts SUSPENDED) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "PATCH",
@@ -141,7 +175,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (exam_attempts ACTIVE) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -149,7 +185,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -157,7 +195,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -165,7 +205,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/faculty)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "PATCH",
@@ -173,7 +215,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/faculty/:id/approve)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "PATCH",
@@ -181,7 +225,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/faculty/:id/reject)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "PATCH",
@@ -189,7 +235,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/faculty/:id/suspend)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "PATCH",
@@ -197,7 +245,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/faculty/:id/unsuspend)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -205,7 +255,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -213,7 +265,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -221,7 +275,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row mutated (PATCH /api/v1/admin/invigilator-sessions/:id/revoke)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -229,7 +285,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -237,7 +295,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -245,7 +305,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (platform_settings)",
+    "negativeEffect": "0 settings mutated"
   },
   {
     "method": "GET",
@@ -253,7 +315,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -261,7 +325,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "PATCH",
@@ -269,7 +335,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "PATCH",
@@ -277,7 +345,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "PATCH",
@@ -285,7 +355,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "PATCH",
@@ -293,7 +365,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "GET",
@@ -301,7 +375,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -309,7 +385,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -317,7 +395,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "admin"
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -325,7 +405,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PUT",
@@ -333,7 +415,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row upserted (answers) with CAS revision increment",
+    "negativeEffect": "0 answer rows mutated; revision unchanged"
   },
   {
     "method": "PUT",
@@ -341,7 +425,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row upserted (answers) with CAS revision increment",
+    "negativeEffect": "0 answer rows mutated; revision unchanged"
   },
   {
     "method": "POST",
@@ -349,7 +435,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row updated (exam_attempts SUSPENDED) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -357,7 +445,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -365,7 +455,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row updated (exam_attempts ACTIVE) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -373,7 +465,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -381,7 +475,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/state)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -389,7 +485,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row mutated (POST /api/v1/attempts/:attemptId/submission)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -397,7 +495,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row updated (exam_attempts TERMINATED) + Outbox row + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -405,7 +505,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -413,7 +515,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row inserted (violation_events) + flag_count incremented",
+    "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
   },
   {
     "method": "DELETE",
@@ -421,7 +525,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row mutated (vpn_peers / vpn_ip_pool leased or released)",
+    "negativeEffect": "0 VPN leases modified"
   },
   {
     "method": "GET",
@@ -429,7 +535,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -437,7 +545,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "attempts"
+    "module": "attempts",
+    "effect": "DB row mutated (vpn_peers / vpn_ip_pool leased or released)",
+    "negativeEffect": "0 VPN leases modified"
   },
   {
     "method": "GET",
@@ -445,7 +555,9 @@
     "auth": "Required",
     "role": "admin",
     "ownerCheck": "No (Admin Scope)",
-    "module": "audit"
+    "module": "audit",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -453,7 +565,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/admin/login)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -461,7 +575,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/change-password)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -469,7 +585,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/faculty/login)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -477,7 +595,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/faculty/register)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -485,7 +605,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/invigilator/login)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -493,7 +615,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "Session token issued; cookie set",
+    "negativeEffect": "Zero tokens issued; zero cookies set"
   },
   {
     "method": "POST",
@@ -501,7 +625,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "Session cookie cleared; token invalidated",
+    "negativeEffect": "Zero session changes"
   },
   {
     "method": "GET",
@@ -509,7 +635,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -517,7 +645,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/student/login)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -525,7 +655,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "auth"
+    "module": "auth",
+    "effect": "DB row mutated (POST /api/v1/auth/student/register)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -533,7 +665,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "system"
+    "module": "system",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -541,7 +675,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "DB row mutated (POST /api/v1/device-check)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -549,7 +685,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "DB row mutated (POST /api/v1/device-check/run)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -557,7 +695,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "system"
+    "module": "system",
+    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
+    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
   },
   {
     "method": "POST",
@@ -565,7 +705,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "DB row mutated (POST /api/v1/exam/device-check)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -573,7 +715,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
+    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
   },
   {
     "method": "POST",
@@ -581,7 +725,9 @@
     "auth": "Required",
     "role": "student, invigilator, faculty, admin",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "DB row mutated (POST /api/v1/exam/livekit-token)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -589,7 +735,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "deviceCheck"
+    "module": "deviceCheck",
+    "effect": "DB row mutated (POST /api/v1/exam/snapshot)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -597,7 +745,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -605,7 +755,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "exams"
+    "module": "exams",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PUT",
@@ -613,7 +765,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -621,7 +775,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -629,7 +785,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "exams"
+    "module": "exams",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -637,7 +795,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -645,7 +805,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -653,7 +815,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -661,7 +825,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "GET",
@@ -669,7 +835,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -677,7 +845,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "exams"
+    "module": "exams",
+    "effect": "DB row updated (exam_results is_released=true) + Redis emit",
+    "negativeEffect": "0 results modified; 0 emits dispatched"
   },
   {
     "method": "GET",
@@ -685,7 +855,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -693,7 +865,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -701,7 +875,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -709,7 +885,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -717,7 +895,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -725,7 +905,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "POST",
@@ -733,7 +915,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "GET",
@@ -741,7 +925,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "DELETE",
@@ -749,7 +935,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row deleted (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -757,7 +945,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -765,7 +955,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -773,7 +965,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -781,7 +975,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -789,7 +985,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -797,7 +995,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -805,7 +1005,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -813,7 +1015,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -821,7 +1025,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -829,7 +1035,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -837,7 +1045,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row updated (exam_results is_released=true) + Redis emit",
+    "negativeEffect": "0 results modified; 0 emits dispatched"
   },
   {
     "method": "GET",
@@ -845,7 +1055,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -853,7 +1065,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "POST",
@@ -861,7 +1075,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -869,7 +1085,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -877,7 +1095,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "DELETE",
@@ -885,7 +1105,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row deleted (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "PUT",
@@ -893,7 +1115,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "POST",
@@ -901,7 +1125,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "POST",
@@ -909,7 +1135,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row created/updated (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "GET",
@@ -917,7 +1145,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -925,7 +1155,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -933,7 +1165,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -941,7 +1175,9 @@
     "auth": "Required",
     "role": "faculty",
     "ownerCheck": "Yes",
-    "module": "faculty"
+    "module": "faculty",
+    "effect": "DB row updated (students/enrollments approval_status mutated)",
+    "negativeEffect": "0 student records mutated"
   },
   {
     "method": "GET",
@@ -949,7 +1185,9 @@
     "auth": "Public",
     "role": "Public",
     "ownerCheck": "No",
-    "module": "system"
+    "module": "system",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -957,7 +1195,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -965,7 +1205,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row updated (exam_attempts TERMINATED) + Outbox row + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "POST",
@@ -973,7 +1215,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "Audit log row created + Socket notification dispatched",
+    "negativeEffect": "0 audit logs created; 0 notifications dispatched"
   },
   {
     "method": "GET",
@@ -981,7 +1225,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -989,7 +1235,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -997,7 +1245,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row mutated (POST /api/v1/invigilator/login)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1005,7 +1255,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row updated (exam_attempts SUSPENDED) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "POST",
@@ -1013,7 +1265,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row updated (exam_attempts ACTIVE) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "POST",
@@ -1021,7 +1275,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row mutated (POST /api/v1/invigilator/send-warning)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1029,7 +1285,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row updated (exam_attempts TERMINATED) + Outbox row + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -1037,7 +1295,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1045,7 +1305,9 @@
     "auth": "Required",
     "role": "invigilator, faculty, admin",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "invigilator"
+    "module": "invigilator",
+    "effect": "DB row inserted (violation_events) + flag_count incremented",
+    "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
   },
   {
     "method": "POST",
@@ -1053,7 +1315,9 @@
     "auth": "Required",
     "role": "student, invigilator, faculty, admin",
     "ownerCheck": "Yes",
-    "module": "system"
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/livekit-token)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1061,7 +1325,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "media"
+    "module": "media",
+    "effect": "DB row mutated (POST /api/v1/media/complete-upload)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1069,7 +1335,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "media"
+    "module": "media",
+    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
+    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
   },
   {
     "method": "GET",
@@ -1077,7 +1345,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "media"
+    "module": "media",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1085,7 +1355,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "notifications"
+    "module": "notifications",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1093,7 +1365,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "DB row updated (exam_attempts SUSPENDED) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "POST",
@@ -1101,7 +1375,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "DB row updated (exam_attempts ACTIVE) + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "POST",
@@ -1109,7 +1385,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "DB row updated (exam_attempts TERMINATED) + Outbox row + audit log",
+    "negativeEffect": "Attempt status untouched; 0 audit logs"
   },
   {
     "method": "GET",
@@ -1117,7 +1395,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1125,7 +1405,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "Audit log row created + Socket notification dispatched",
+    "negativeEffect": "0 audit logs created; 0 notifications dispatched"
   },
   {
     "method": "GET",
@@ -1133,7 +1415,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1141,7 +1425,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1149,7 +1435,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1157,7 +1445,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "DB row mutated (POST /api/v1/proctoring/token)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1165,7 +1455,9 @@
     "auth": "Required",
     "role": "admin, faculty, invigilator",
     "ownerCheck": "Yes (Exam Session Scoped)",
-    "module": "proctoring"
+    "module": "proctoring",
+    "effect": "DB row inserted (violation_events) + flag_count incremented",
+    "negativeEffect": "0 violation_events inserted; 0 flag counts mutated"
   },
   {
     "method": "DELETE",
@@ -1173,7 +1465,9 @@
     "auth": "Required",
     "role": "admin, faculty",
     "ownerCheck": "Yes (Faculty Exam Owner)",
-    "module": "questions"
+    "module": "questions",
+    "effect": "DB row deleted (questions)",
+    "negativeEffect": "0 questions mutated"
   },
   {
     "method": "POST",
@@ -1181,7 +1475,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "system"
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/snapshot)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1189,7 +1485,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/enrollment/consent)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1197,7 +1495,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/enrollment/face)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1205,7 +1505,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/enrollment/id)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -1213,7 +1515,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1221,7 +1525,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1229,31 +1535,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/acknowledge",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/answer",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/autosave",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1261,7 +1545,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1269,15 +1555,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/evidence",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -1285,7 +1565,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -1293,7 +1575,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -1301,7 +1585,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1309,15 +1595,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/submit",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -1325,7 +1605,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "POST",
@@ -1333,15 +1615,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
-  },
-  {
-    "method": "POST",
-    "path": "/api/v1/student/exams/:id/violation",
-    "auth": "Required",
-    "role": "student",
-    "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -1349,7 +1625,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "PATCH",
@@ -1357,7 +1635,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (PATCH /api/v1/student/profile)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "PUT",
@@ -1365,7 +1645,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (PUT /api/v1/student/profile)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -1373,7 +1655,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1381,7 +1665,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/support/ticket)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "GET",
@@ -1389,7 +1675,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",
@@ -1397,7 +1685,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/verify-face)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1405,7 +1695,9 @@
     "auth": "Required",
     "role": "student",
     "ownerCheck": "Yes (Candidate Identity)",
-    "module": "student"
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/verify-id)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1413,7 +1705,9 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "system"
+    "module": "system",
+    "effect": "DB row mutated (POST /api/v1/uploads/complete)",
+    "negativeEffect": "Rejected requests mutate zero rows"
   },
   {
     "method": "POST",
@@ -1421,6 +1715,8 @@
     "auth": "Required",
     "role": "Any Authenticated",
     "ownerCheck": "No",
-    "module": "system"
+    "module": "system",
+    "effect": "S3 presigned URL/POST policy issued + DB ticket created",
+    "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
   }
 ]

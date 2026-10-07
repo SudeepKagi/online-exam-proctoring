@@ -45,6 +45,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     const pwdHash = await bcrypt.hash('P4TestPassword123!', 10)
     faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'P4 Test Faculty',
         email: `p4_faculty_${Date.now()}@test.edu`,
         password: pwdHash,
@@ -56,6 +57,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // 3. Create Students
     studentA = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Student A',
         email: `student_a_${Date.now()}@test.edu`,
         usn: `USN-A-${Date.now()}`,
@@ -68,6 +70,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     studentB = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Student B',
         email: `student_b_${Date.now()}@test.edu`,
         usn: `USN-B-${Date.now()}`,
@@ -84,6 +87,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'P4 Hot Path Concurrency Exam',
         subject: 'Algorithms',
         facultyId: faculty.id,
@@ -103,6 +107,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     question1 = await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         questionText: 'What is the time complexity of quicksort average case?',
         marks: 10,
@@ -110,10 +115,10 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         order: 1,
         options: {
           create: [
-            { text: 'O(N log N)', isCorrect: true, order: 1 },
-            { text: 'O(N^2)', isCorrect: false, order: 2 },
-            { text: 'O(N)', isCorrect: false, order: 3 },
-            { text: 'O(log N)', isCorrect: false, order: 4 }
+            { id: crypto.randomUUID(), text: 'O(N log N)', isCorrect: true, order: 1 },
+            { id: crypto.randomUUID(), text: 'O(N^2)', isCorrect: false, order: 2 },
+            { id: crypto.randomUUID(), text: 'O(N)', isCorrect: false, order: 3 },
+            { id: crypto.randomUUID(), text: 'O(log N)', isCorrect: false, order: 4 }
           ]
         }
       },
@@ -126,6 +131,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     question2 = await prisma.question.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         questionText: 'What is the space complexity of merge sort?',
         marks: 10,
@@ -133,10 +139,10 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         order: 2,
         options: {
           create: [
-            { text: 'O(N)', isCorrect: true, order: 1 },
-            { text: 'O(1)', isCorrect: false, order: 2 },
-            { text: 'O(log N)', isCorrect: false, order: 3 },
-            { text: 'O(N^2)', isCorrect: false, order: 4 }
+            { id: crypto.randomUUID(), text: 'O(N)', isCorrect: true, order: 1 },
+            { id: crypto.randomUUID(), text: 'O(1)', isCorrect: false, order: 2 },
+            { id: crypto.randomUUID(), text: 'O(log N)', isCorrect: false, order: 3 },
+            { id: crypto.randomUUID(), text: 'O(N^2)', isCorrect: false, order: 4 }
           ]
         }
       },
@@ -182,6 +188,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // Create pre-warmed READY attempt
     const attempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentA.id,
         status: 'READY',
@@ -193,6 +200,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // Setup attempt questions
     const aq1 = await prisma.attemptQuestion.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId: attempt.id,
         questionId: question1.id,
         displayOrder: 1,
@@ -318,6 +326,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // Create new ACTIVE attempt for Student B
     const attemptB = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentB.id,
         status: 'ACTIVE',
@@ -330,6 +339,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     const aqB = await prisma.attemptQuestion.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId: attemptB.id,
         questionId: question1.id,
         displayOrder: 1,
@@ -377,6 +387,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     const pwdHash = await bcrypt.hash('P4TestPassword123!', 10)
     const studentExp = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Student Expired',
         email: `student_exp_${Date.now()}@test.edu`,
         usn: `USN-EXP-${Date.now()}`,
@@ -393,6 +404,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     const expiredAttempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentExp.id,
         status: 'ACTIVE',
@@ -405,6 +417,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     const aqExp = await prisma.attemptQuestion.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId: expiredAttempt.id,
         questionId: question1.id,
         displayOrder: 1,
@@ -430,6 +443,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
     // 3. Test sweeper: create another active attempt expired > 30s ago (satisfying chk_attempt_expiry_after_start)
     const studentSwept = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Student Swept',
         email: `student_swept_${Date.now()}@test.edu`,
         usn: `USN-SWEPT-${Date.now()}`,
@@ -442,6 +456,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
 
     const sweptAttempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentSwept.id,
         status: 'ACTIVE',

@@ -1,0 +1,16 @@
+﻿Γû╢ Architectural & Regression Guardrails
+  Γ£ö Modular domain controllers must export valid Express routers (1802.4403ms)
+  Γ£ö Controllers must have ZERO direct prisma.* database invocations (Service Layer Pattern) (2.5917ms)
+  Γ£ö Controllers should stay within manageable length guidelines (<500 lines) (18.5498ms)
+  Γ£ö Legacy deployment files (render.yaml, vercel.json) must be deleted in Phase Q2 (0.4229ms)
+  Γ£ö VITE_VPN_ENABLED must not exist in any configuration template or frontend source (0.5192ms)
+  Γ£ö SecurityCheck.jsx must enforce mandatory WireGuard tunnel verification with zero bypass (0.6937ms)
+Γ£ö Architectural & Regression Guardrails (1827.9395ms)
+Γä╣ tests 6
+Γä╣ suites 1
+Γä╣ pass 6
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 2105.7676

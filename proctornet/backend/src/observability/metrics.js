@@ -76,8 +76,8 @@ async function metricsHandler(req, res) {
       try {
         const prismaMetrics = await prisma.$metrics.prometheus()
         output += `\n${prismaMetrics}`
-      } catch (_prismaErr) {
-        // Ignore if preview not loaded
+      } catch (prismaErr) {
+        logger.debug({ error: prismaErr.message }, 'Prisma metrics preview not available')
       }
     }
 

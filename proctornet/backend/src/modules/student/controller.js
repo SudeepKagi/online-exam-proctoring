@@ -6,11 +6,10 @@ const { validateBody } = require('../../middleware/validation')
 const {
   updateProfileSchema,
   consentSchema,
-  saveAnswerSchema,
-  submitExamSchema,
   createTicketSchema,
   identityVerifySchema
 } = require('./validation')
+const { ValidationError } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 
 const router = express.Router()
@@ -64,49 +63,7 @@ router.post('/exams/:id/start', async (req, res, next) => {
   }
 })
 
-// ── Answer management ──
-router.post('/exams/:id/answer', validateBody(saveAnswerSchema), async (req, res, next) => {
-  try {
-    const result = await studentService.saveAnswer(req.params.id, req.user.id, req.body)
-    res.status(200).json(result)
-  } catch (err) {
-    next(err)
-  }
-})
 
-router.post('/exams/:id/autosave', validateBody(saveAnswerSchema), async (req, res, next) => {
-  try {
-    const result = await studentService.autoSaveAnswer(req.params.id, req.user.id, req.body)
-    res.status(200).json(result)
-  } catch (err) {
-    next(err)
-  }
-})
-
-// ── Security & evidence ──
-router.post('/exams/:id/evidence', async (req, res, next) => {
-  try {
-    res.status(200).json({ success: true, message: 'Evidence acknowledged' })
-  } catch (err) {
-    next(err)
-  }
-})
-
-router.post('/exams/:id/violation', async (req, res, next) => {
-  try {
-    res.status(200).json({ success: true, message: 'Violation logged' })
-  } catch (err) {
-    next(err)
-  }
-})
-
-router.post('/exams/:id/acknowledge', async (req, res, next) => {
-  try {
-    res.status(200).json({ success: true, message: 'Watermark acknowledged' })
-  } catch (err) {
-    next(err)
-  }
-})
 
 // ── Chat ──
 router.get('/exams/:id/chat', async (req, res, next) => {
@@ -133,15 +90,7 @@ router.post('/exams/:id/chat', async (req, res, next) => {
   }
 })
 
-// ── Submission ──
-router.post('/exams/:id/submit', validateBody(submitExamSchema), async (req, res, next) => {
-  try {
-    const outcome = await studentService.submitExam(req.params.id, req.user.id, req.body.answers)
-    res.status(200).json(outcome)
-  } catch (err) {
-    next(err)
-  }
-})
+
 
 // ── Results ──
 router.get('/results', async (req, res, next) => {
@@ -240,7 +189,10 @@ router.post('/enrollment/consent', validateBody(consentSchema), async (req, res,
 
 router.post('/enrollment/face', async (req, res, next) => {
   try {
-    const photoKey = req.body.facePhotoKey || req.body.key || 'student-face-key'
+    const photoKey = req.body.facePhotoKey || req.body.key
+    if (!photoKey) {
+      throw new ValidationError('facePhotoKey is required')
+    }
     const profile = await studentService.enrollFace(req.user.id, photoKey)
     res.status(200).json({ success: true, student: profile })
   } catch (err) {
@@ -250,7 +202,10 @@ router.post('/enrollment/face', async (req, res, next) => {
 
 router.post('/enrollment/id', async (req, res, next) => {
   try {
-    const idKey = req.body.idCardPhotoKey || req.body.key || 'student-id-key'
+    const idKey = req.body.idCardPhotoKey || req.body.key
+    if (!idKey) {
+      throw new ValidationError('idCardPhotoKey is required')
+    }
     const profile = await studentService.enrollIdDocument(req.user.id, idKey)
     res.status(200).json({ success: true, student: profile })
   } catch (err) {

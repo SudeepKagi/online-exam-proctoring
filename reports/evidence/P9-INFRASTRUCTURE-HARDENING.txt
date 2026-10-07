@@ -1,0 +1,55 @@
+﻿Γû╢ P9 Infrastructure & Hardening Test Suite
+  Γû╢ 1. Docker Compose Production & Dev Linting
+    Γ£ö successfully lints docker-compose.prod.yml with docker compose config (717.1845ms)
+    Γ£ö successfully lints combined prod + dev override config with 127.0.0.1 port bindings (795.4762ms)
+    Γ£ö enforces memory limits, healthchecks, stop_grace_period >= 30s, and init on production services (5.1797ms)
+  Γ£ö 1. Docker Compose Production & Dev Linting (1522.5012ms)
+  Γû╢ 2. Network Boundary & Private Data Services (Task 2)
+    Γ£ö isolates data tier on internal: true network with ZERO published host ports in prod (3.5283ms)
+    Γ£ö dev override binds ports strictly to 127.0.0.1 (localhost only) (2.4516ms)
+  Γ£ö 2. Network Boundary & Private Data Services (Task 2) (6.8331ms)
+  Γû╢ 3. Health & Readiness Probes (/healthz and /readyz)
+    Γ£ö GET /healthz returns 200 OK liveness status immediately (1.6939ms)
+{"level":"info","time":"2026-10-07T02:11:06.133Z","pid":9040,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T02:11:06.246Z","pid":9040,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T02:11:06.255Z","pid":9040,"hostname":"MSI","msg":"Socket.IO Redis adapter enabled for multi-process scaling"}
+{"level":"info","time":"2026-10-07T02:11:06.259Z","pid":9040,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}
+{"level":"info","time":"2026-10-07T02:11:06.280Z","pid":9040,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+{"level":"info","time":"2026-10-07T02:11:06.281Z","pid":9040,"hostname":"MSI","msg":"Asserting RabbitMQ topology and (re)attaching registered consumers"}
+    Γ£ö GET /readyz returns 503 and lists failing dependencies when services are unavailable (1044.6466ms)
+  Γ£ö 3. Health & Readiness Probes (/healthz and /readyz) (1053.7803ms)
+  Γû╢ 4. Nginx Edge Reverse Proxy Hardening (Appendix E)
+    Γ£ö configures least_conn load balancing over api-1 and api-2 with keepalive (8.791ms)
+    Γ£ö configures WebSocket upgrade headers and 3600s persistent timeout on /socket.io/ (29.2992ms)
+    Γ£ö blocks /metrics and /internal/ endpoints from external edge access (11.1179ms)
+    Γ£ö enforces strict Content-Security-Policy (CSP) permitting LiveKit and S3 (14.4886ms)
+    Γ£ö sets 1-year immutable caching on hashed static Vite assets (4.2535ms)
+  Γ£ö 4. Nginx Edge Reverse Proxy Hardening (Appendix E) (69.5225ms)
+  Γû╢ 5. Secret Hygiene & Gitleaks Protection (Task 3 / C-01)
+    Γ£ö ensures .env.example contains all required configuration keys without secrets (2.8792ms)
+    Γ£ö verifies Gitleaks configuration (.gitleaks.toml) is present with allowlists (6.3838ms)
+    Γ£ö ensures docker-compose.prod.yml contains zero hardcoded plaintext passwords (3.4901ms)
+  Γ£ö 5. Secret Hygiene & Gitleaks Protection (Task 3 / C-01) (13.2783ms)
+  Γû╢ 6. Kernel & OS Performance Tuning (Task 5)
+    Γ£ö verifies ops/sysctl.d/99-proctornet.conf contains all required performance keys (1.8621ms)
+  Γ£ö 6. Kernel & OS Performance Tuning (Task 5) (2.1192ms)
+  Γû╢ 7. Database Tuning, WAL Archiving & Restore Drill (Task 6)
+    Γ£ö verifies postgresql.conf contains wal_compression=on and continuous WAL archiving (1.9754ms)
+    Γ£ö verifies automated backup-restore.sh script exists and has valid syntax (2.4838ms)
+    Γ£ö executes live database backup and restoration drill in PostgreSQL (3046.7502ms)
+  Γ£ö 7. Database Tuning, WAL Archiving & Restore Drill (Task 6) (3051.9509ms)
+  Γû╢ 8. Terraform Cloud Infrastructure Skeleton (Task 9)
+    Γ£ö verifies Terraform skeleton files exist with security group rules and IAM instance role (24.4254ms)
+  Γ£ö 8. Terraform Cloud Infrastructure Skeleton (Task 9) (24.7649ms)
+  Γû╢ 9. Operational Runbooks (Task 10)
+    Γ£ö verifies all 5 required operational runbooks and overview documentation exist (60.1681ms)
+  Γ£ö 9. Operational Runbooks (Task 10) (60.5425ms)
+Γ£ö P9 Infrastructure & Hardening Test Suite (5812.8928ms)
+Γä╣ tests 21
+Γä╣ suites 10
+Γä╣ pass 21
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 16981.6231

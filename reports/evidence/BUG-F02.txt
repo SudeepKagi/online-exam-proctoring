@@ -1,0 +1,12 @@
+﻿[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
+Error: No tests found.
+Make sure that arguments are regular expressions matching test files.
+You may need to escape symbols like "$" or "*" and quote the arguments.
+[WebServer] npm error Lifecycle script `dev` failed with error:
+[WebServer] npm error code 1
+[WebServer] npm error path C:\Final year project\online-exam-proctoring\proctornet\frontend
+[WebServer] npm error workspace proctornet-frontend@1.0.0
+[WebServer] npm error location C:\Final year project\online-exam-proctoring\proctornet\frontend
+[WebServer] npm error command failed
+[WebServer] npm error command C:\WINDOWS\system32\cmd.exe /d /s /c vite
+

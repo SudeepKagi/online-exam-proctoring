@@ -1,5 +1,6 @@
 const { questionRepository } = require('./repository')
 const { attemptService } = require('../attempts/service')
+const { logger } = require('../../shared/logging')
 const {
   NotFoundError,
   ForbiddenError,
@@ -27,7 +28,9 @@ class QuestionService {
     const created = await questionRepository.createWithOptions(examId, questionData, options)
 
     // Invalidate exam content cache
-    await attemptService.invalidateExamContentCache(examId).catch(() => {})
+    await attemptService.invalidateExamContentCache(examId).catch((err) => {
+      logger.warn({ error: err.message, examId }, 'Failed to invalidate exam content cache')
+    })
 
     return created
   }
@@ -50,7 +53,9 @@ class QuestionService {
     await questionRepository.deleteById(questionId)
 
     // Invalidate exam content cache
-    await attemptService.invalidateExamContentCache(question.examId).catch(() => {})
+    await attemptService.invalidateExamContentCache(question.examId).catch((err) => {
+      logger.warn({ error: err.message, examId: question.examId }, 'Failed to invalidate exam content cache')
+    })
 
     return { success: true, deletedQuestionId: questionId }
   }

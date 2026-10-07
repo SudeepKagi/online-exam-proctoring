@@ -1,0 +1,41 @@
+﻿{"level":"error","time":"2026-10-07T01:39:20.926Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.$executeRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `23514`. Message: `ERROR: new row for relation \"questions\" violates check constraint \"chk_questions_marks_positive\"\nDETAIL: Failing row contains (90c8f7be-6988-4966-9e95-1e18654cad2d, ef249f64-1f34-4fe4-b7ca-4453f6cba013, Test invalid marks, null, 0, 0, EASY, 2, null, 2026-10-07 01:39:19.992+00).`","target":"$executeRawUnsafe","msg":"Prisma Client Error"}
+Γû╢ P3 Schema & Data Layer ΓÇö Domain Invariants & DB Constraints
+  Γ£ö Database rejects question with marks <= 0 (chk_questions_marks_positive) (470.1769ms)
+{"level":"error","time":"2026-10-07T01:39:21.293Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.$executeRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `23514`. Message: `ERROR: new row for relation \"questions\" violates check constraint \"chk_questions_negative_marks_bound\"\nDETAIL: Failing row contains (8e47439d-1312-4792-96e1-9f93b312d1c2, ef249f64-1f34-4fe4-b7ca-4453f6cba013, Test invalid negative marks, null, 2, 5, EASY, 2, null, 2026-10-07 01:39:20.467+00).`","target":"$executeRawUnsafe","msg":"Prisma Client Error"}
+  Γ£ö Database rejects question where negative_marks > marks (chk_questions_negative_marks_bound) (357.7467ms)
+{"level":"error","time":"2026-10-07T01:39:21.698Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.$executeRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `23514`. Message: `ERROR: new row for relation \"questions\" violates check constraint \"chk_questions_negative_marks_bound\"\nDETAIL: Failing row contains (0c157a4b-287c-4c88-8e26-1f97eb1dc283, ef249f64-1f34-4fe4-b7ca-4453f6cba013, Test negative marks underflow, null, 5, -1, EASY, 2, null, 2026-10-07 01:39:20.819+00).`","target":"$executeRawUnsafe","msg":"Prisma Client Error"}
+  Γ£ö Database rejects question where negative_marks < 0 (chk_questions_negative_marks_bound) (402.7617ms)
+{"level":"error","time":"2026-10-07T01:39:22.130Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.$executeRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `23514`. Message: `ERROR: new row for relation \"questions\" violates check constraint \"chk_questions_text_length\"\nDETAIL: Failing row contains (3a5d0731-2e64-4d1f-bd50-002629c50339, ef249f64-1f34-4fe4-b7ca-4453f6cba013, , null, 5, 1, EASY, 2, null, 2026-10-07 01:39:21.24+00).`","target":"$executeRawUnsafe","msg":"Prisma Client Error"}
+  Γ£ö Database rejects question with empty or oversized text (chk_questions_text_length) (422.6487ms)
+{"level":"error","time":"2026-10-07T01:39:22.622Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.$executeRawUnsafe()` invocation:\n\n\nRaw query failed. Code: `23514`. Message: `ERROR: new row for relation \"question_options\" violates check constraint \"chk_question_options_text_length\"\nDETAIL: Failing row contains (bfb8d687-30ae-4b67-ba32-27d21b088e33, 67d72c80-40fc-4ba8-a253-6c3479129556, , f, 1, 2026-10-07 01:39:21.653+00).`","target":"$executeRawUnsafe","msg":"Prisma Client Error"}
+  Γ£ö Database rejects option with empty or oversized text (chk_question_options_text_length) (491.7191ms)
+{"level":"error","time":"2026-10-07T01:39:23.562Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.questionOption.create()` invocation in\nC:\\Final year project\\online-exam-proctoring\\proctornet\\backend\\tests\\p3-schema-constraints.test.js:204:35\n\n  201 \n  202 // Attempt to insert second correct option for same question\n  203 await assert.rejects(async () => {\nΓåÆ 204   await prisma.questionOption.create(\nUnique constraint failed on the fields: (`question_id`)","target":"questionOption.create","msg":"Prisma Client Error"}
+  Γ£ö Database partial unique index enforces exactly ONE is_correct=true per question (1327.1571ms)
+{"level":"error","time":"2026-10-07T01:39:24.374Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.examAttempt.create()` invocation in\nC:\\Final year project\\online-exam-proctoring\\proctornet\\backend\\tests\\p3-schema-constraints.test.js:223:32\n\n  220 \n  221 test('Database rejects duplicate exam_attempt for same student and exam (UNIQUE exam_id, student_id)', async () => {\n  222   await assert.rejects(async () => {\nΓåÆ 223     await prisma.examAttempt.create(\nUnique constraint failed on the fields: (`exam_id`,`student_id`)","target":"examAttempt.create","msg":"Prisma Client Error"}
+  Γ£ö Database rejects duplicate exam_attempt for same student and exam (UNIQUE exam_id, student_id) (430.794ms)
+{"level":"error","time":"2026-10-07T01:39:25.203Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.attemptQuestion.create()` invocation in\nC:\\Final year project\\online-exam-proctoring\\proctornet\\backend\\tests\\p3-schema-constraints.test.js:250:36\n\n  247 })\n  248 \n  249 await assert.rejects(async () => {\nΓåÆ 250   await prisma.attemptQuestion.create(\nUnique constraint failed on the fields: (`attempt_id`,`display_order`)","target":"attemptQuestion.create","msg":"Prisma Client Error"}
+  Γ£ö Database rejects duplicate display_order in attempt_questions (UNIQUE attempt_id, display_order) (1163.0531ms)
+{"level":"error","time":"2026-10-07T01:39:26.312Z","pid":9996,"hostname":"MSI","prisma_error":"\nInvalid `prisma.examResult.create()` invocation in\nC:\\Final year project\\online-exam-proctoring\\proctornet\\backend\\tests\\p3-schema-constraints.test.js:283:31\n\n  280 assert.ok(res1.id)\n  281 \n  282 await assert.rejects(async () => {\nΓåÆ 283   await prisma.examResult.create(\nUnique constraint failed on the fields: (`attempt_id`)","target":"examResult.create","msg":"Prisma Client Error"}
+  Γ£ö Database rejects duplicate exam_result for same attempt (UNIQUE attempt_id) (1142.2323ms)
+  Γ£ö Admin account is preserved with valid UUID ID and bcrypt hash (434.8832ms)
+  Γ£ö Platform settings are preserved with canonical configuration keys (409.015ms)
+  Γ£ö Canonical departments lookup table contains standard college branches (508.5321ms)
+  Γû╢ EXPLAIN (FORMAT JSON) Hot Query Index Scan Gate
+    Γ£ö Query 1: exam_attempts(exam_id, status) uses index scan (540.675ms)
+    Γ£ö Query 2: exam_attempts(student_id, status) uses index scan (755.7825ms)
+    Γ£ö Query 3: exam_attempts active expiry sweeper uses partial index (464.9127ms)
+    Γ£ö Query 4: attempt_questions(attempt_id, display_order) uses index scan (602.0464ms)
+    Γ£ö Query 5: violation_events(attempt_id, server_timestamp DESC) uses index scan (523.4055ms)
+    Γ£ö Query 6: violation_events pending evidence sweeper uses partial index (482.9263ms)
+    Γ£ö Query 7: chat_messages(exam_id, student_id, id) uses index scan (520.6765ms)
+    Γ£ö Query 8: audit_logs(actor_id, id DESC) uses index scan (612.1553ms)
+  Γ£ö EXPLAIN (FORMAT JSON) Hot Query Index Scan Gate (4506.3725ms)
+Γ£ö P3 Schema & Data Layer ΓÇö Domain Invariants & DB Constraints (18712.1985ms)
+Γä╣ tests 20
+Γä╣ suites 2
+Γä╣ pass 20
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 19104.9974

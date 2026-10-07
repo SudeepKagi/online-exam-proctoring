@@ -1,0 +1,19 @@
+﻿{"level":"info","time":"2026-10-07T01:43:36.510Z","pid":12204,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T01:43:36.580Z","pid":12204,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T01:43:36.587Z","pid":12204,"hostname":"MSI","msg":"Socket.IO Redis adapter enabled for multi-process scaling"}
+{"level":"info","time":"2026-10-07T01:43:36.600Z","pid":12204,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}
+{"level":"info","time":"2026-10-07T01:43:36.611Z","pid":12204,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+{"level":"info","time":"2026-10-07T01:43:36.614Z","pid":12204,"hostname":"MSI","msg":"Asserting RabbitMQ topology and (re)attaching registered consumers"}
+Γû╢ Observability & Telemetry Verification Suite (P0)
+  Γ£ö 1. GET /metrics returns valid Prometheus metrics payload (883.901ms)
+  Γ£ö 2. Request ID Propagation: Echoes incoming X-Request-Id header (30.266ms)
+  Γ£ö 3. Request ID Generation: Generates RFC-compliant UUID when X-Request-Id is omitted (14.8337ms)
+Γ£ö Observability & Telemetry Verification Suite (P0) (931.7995ms)
+Γä╣ tests 3
+Γä╣ suites 1
+Γä╣ pass 3
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 4677.0288

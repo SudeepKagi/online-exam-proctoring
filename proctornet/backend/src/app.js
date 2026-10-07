@@ -156,7 +156,12 @@ app.use('/api', apiLimiter)
 
 // ── Liveness and Readiness Probes (P9 Task 7 / §4.5.5) ──
 app.get('/healthz', (req, res) => {
-  res.type('text/plain').send('ok')
+  res.status(200).json({
+    status: 'ok',
+    service: 'ProctorNet Backend',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  })
 })
 
 app.get('/health', (req, res) => {

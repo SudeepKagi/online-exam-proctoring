@@ -1,0 +1,19 @@
+﻿Γû╢ Phase P1 ΓÇö Data Reset: Keep Admin Only Guardrails Suite
+  Γ£ö 1. CLI Arg Parser correctly parses all safety flags and options (3.4901ms)
+  Γ£ö 2. Host extraction correctly isolates hostname and database name from connection URL (1.0596ms)
+  Γ£ö 3. Safety Guard: Refuses if NODE_ENV=production without explicit --allow-production-i-understand (2.3239ms)
+  Γ£ö 4. Safety Guard: Refuses if DATABASE_URL host is not in allowed hosts list (0.5613ms)
+  Γ£ö 5. Safety Guard: Refuses if typed confirmation does not match database name (493.0716ms)
+  Γ£ö 6. Safety Guard: Refuses execution in non-interactive environment if --confirm is missing (300.6213ms)
+  Γ£ö 7. Dry-Run Mode: Generates plan JSON, prints inventory, and makes zero modifications (311.9112ms)
+  Γ£ö 8. Execution: Preserves Admin, wipes non-admin tables, inserts SYSTEM_RESET, and verifies post-conditions (710.7394ms)
+  Γ£ö 9. Post-reset authentication verification: Admin credentials remain valid and can generate auth token (121.3598ms)
+Γ£ö Phase P1 ΓÇö Data Reset: Keep Admin Only Guardrails Suite (1948.9463ms)
+Γä╣ tests 9
+Γä╣ suites 1
+Γä╣ pass 9
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 2999.8804

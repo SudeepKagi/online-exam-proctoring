@@ -89,7 +89,9 @@ async function vpnGuard(req, res, next) {
       await prisma.$executeRawUnsafe(`
         INSERT INTO violation_events (attempt_id, event_type, severity, source, metadata, server_timestamp)
         VALUES ($1::uuid, 'VPN_IP_MISMATCH'::"ViolationType", 'HIGH'::"Severity", 'SERVER_EVENT', $2::jsonb, now());
-      `, attemptId, JSON.stringify({ message: `IP mismatch: expected ${leasedIp}, got ${clientIp}` })).catch(() => {})
+      `, attemptId, JSON.stringify({ message: `IP mismatch: expected ${leasedIp}, got ${clientIp}` })).catch((err) => {
+        logger.error({ error: err.message, attemptId }, 'Failed to record VPN_IP_MISMATCH violation')
+      })
 
       return res.status(403).json({
         error: {

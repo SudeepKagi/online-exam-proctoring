@@ -188,7 +188,7 @@ class AttemptStateMachine {
           await prisma.$executeRawUnsafe(`
             UPDATE vpn_ip_pool SET attempt_id = null, released_at = now()
             WHERE attempt_id = $1::uuid;
-          `, updated.id).catch(() => {})
+          `, updated.id)
 
           await prisma.$executeRawUnsafe(`
             INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
@@ -196,7 +196,7 @@ class AttemptStateMachine {
           `, JSON.stringify({
             attemptId: updated.id,
             publicKey: activePeer.publicKey
-          })).catch(() => {})
+          }))
         }
       } catch (err) {
         logger.error({ error: err.message, attemptId }, 'Failed post-transition VPN cleanup')

@@ -1,6 +1,7 @@
 const { examRepository } = require('./repository')
 const { attemptPrewarmJob } = require('../attempts/prewarmJob')
 const { attemptService } = require('../attempts/service')
+const { logger } = require('../../shared/logging')
 const bcrypt = require('bcrypt')
 const crypto = require('crypto')
 const {
@@ -72,7 +73,9 @@ class ExamService {
     const updated = await examRepository.updateStatus(examId, 'PUBLISHED')
 
     // Trigger pre-warming in background
-    attemptPrewarmJob.prewarmExam(examId).catch(() => {})
+    attemptPrewarmJob.prewarmExam(examId).catch((err) => {
+      logger.warn({ error: err.message, examId }, 'Failed to trigger background prewarm')
+    })
 
     return updated
   }
@@ -101,7 +104,9 @@ class ExamService {
     })
 
     // Invalidate content cache
-    await attemptService.invalidateExamContentCache(examId).catch(() => {})
+    await attemptService.invalidateExamContentCache(examId).catch((err) => {
+      logger.warn({ error: err.message, examId }, 'Failed to invalidate exam content cache')
+    })
 
     return updated
   }

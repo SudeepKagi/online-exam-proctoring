@@ -475,25 +475,32 @@ export default function SecurityCheck() {
           clearInterval(interval)
           const frameBase64 = captureFrameBase64()
 
-          let score = 0.96
+          let score = 0.0
+          let verified = false
           try {
             const verifyRes = await api.post(`/student/exams/${examId}/verify-face`, {
-              image: frameBase64,
-              clientConfidence: 0.95
+              image: frameBase64
             })
-            if (verifyRes.data?.matchScore) {
-              score = verifyRes.data.matchScore
+            if (verifyRes.data?.matchScore !== undefined) {
+              score = Number(verifyRes.data.matchScore) || 0.0
             }
+            verified = Boolean(verifyRes.data?.verified)
           } catch (apiErr) {
-            console.warn('Biometric backend logging notice:', apiErr.message)
+            console.warn('Biometric backend verification notice:', apiErr.message)
           }
 
           setFaceMatchScore(score)
-          updateStage('face', 'pass', `Biometric verification passed cleanly (Match Score: ${(score * 100).toFixed(1)}%)`)
-          setIsFaceProcessing(false)
-          toast.success('Identity verified successfully!')
-          setActiveStage(3)
-          updateStage('kiosk', 'loading', 'Ready for fullscreen kiosk mode activation')
+          if (verified && score >= 0.8) {
+            updateStage('face', 'pass', `Biometric verification passed cleanly (Match Score: ${(score * 100).toFixed(1)}%)`)
+            setIsFaceProcessing(false)
+            toast.success('Identity verified successfully!')
+            setActiveStage(3)
+            updateStage('kiosk', 'loading', 'Ready for fullscreen kiosk mode activation')
+          } else {
+            updateStage('face', 'fail', `Biometric verification failed closed (Match Score: ${(score * 100).toFixed(1)}%). Biometric inference model pending.`)
+            setIsFaceProcessing(false)
+            toast.error('Identity verification failed. Model pending.')
+          }
         } else {
           if (attempts >= maxAttempts) {
             clearInterval(interval)

@@ -146,8 +146,8 @@ class RedisManager {
             if (key) {
               this.l1Cache.delete(key)
             }
-          } catch {
-            // Ignore malformed invalidation payloads
+          } catch (parseErr) {
+            logger.debug({ error: parseErr.message }, 'Ignored malformed invalidation payload')
           }
         }
       })
@@ -156,7 +156,9 @@ class RedisManager {
         logger.warn({ error: err.message }, 'L1 invalidation Redis subscriber connection error')
       })
 
-      this.subClient.connect().catch(() => {})
+      this.subClient.connect().catch((err) => {
+        logger.warn({ error: err.message }, 'Failed initial subClient connect')
+      })
     } catch (err) {
       logger.warn({ error: err.message }, 'Could not initialize L1 invalidation subscriber')
     }

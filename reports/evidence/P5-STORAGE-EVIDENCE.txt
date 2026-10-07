@@ -1,0 +1,42 @@
+﻿{"level":"info","time":"2026-10-07T01:45:49.838Z","pid":28332,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}
+{"level":"info","time":"2026-10-07T01:45:49.849Z","pid":28332,"hostname":"MSI","msg":"Asserting RabbitMQ topology and (re)attaching registered consumers"}
+Γû╢ P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)
+  Γû╢ Presign Policy Gates
+    Γ£ö rejects presign request when evidence exceeds 300 KB limit (361.0037ms)
+    Γ£ö rejects presign request for unsupported content type (2.4981ms)
+    Γ£ö rejects presign request for another student attempt (BOLA guard) (302.8741ms)
+    Γ£ö issues valid presigned direct upload policy for eligible candidate within budget (736.9298ms)
+    Γ£ö issues valid presigned upload for candidate profile identity photo (<= 2MB) (5.7671ms)
+  Γ£ö Presign Policy Gates (1420.146ms)
+{"level":"info","time":"2026-10-07T01:45:55.165Z","pid":28332,"hostname":"MSI","attemptId":"3c937c4d-b022-4469-8725-a9a5a645c427","key":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/33155022-9c5a-4eea-bcd6-9ee40c618a38.webp","eventId":"2366","msg":"Direct evidence upload completed & enqueued"}
+{"level":"info","time":"2026-10-07T01:45:55.890Z","pid":28332,"hostname":"MSI","eventId":"2366","attemptId":"3c937c4d-b022-4469-8725-a9a5a645c427","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/33155022-9c5a-4eea-bcd6-9ee40c618a38.webp","msg":"Processing uploaded evidence asset"}
+  Γû╢ Direct Upload Complete & Evidence Worker Idempotency
+    Γ£ö finalizes direct upload, writes violation record and enqueues outbox event (1715.2618ms)
+{"level":"info","time":"2026-10-07T01:45:57.080Z","pid":28332,"hostname":"MSI","eventId":"2366","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/33155022-9c5a-4eea-bcd6-9ee40c618a38.webp","thumbKey":"thumbs/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/dd021bb4-84af-4203-a3e6-d5e50e121dbd.webp","msg":"Evidence successfully validated and thumbnail created"}
+{"level":"info","time":"2026-10-07T01:45:57.419Z","pid":28332,"hostname":"MSI","eventId":"2366","attemptId":"3c937c4d-b022-4469-8725-a9a5a645c427","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/33155022-9c5a-4eea-bcd6-9ee40c618a38.webp","msg":"Processing uploaded evidence asset"}
+    Γ£ö evidence worker decodes valid image, generates 320px thumbnail, updates status to UPLOADED (1531.7991ms)
+{"level":"info","time":"2026-10-07T01:45:57.720Z","pid":28332,"hostname":"MSI","eventId":"2366","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/33155022-9c5a-4eea-bcd6-9ee40c618a38.webp","msg":"Evidence already processed and UPLOADED, skipping duplicate"}
+    Γ£ö evidence worker is strictly idempotent when processing same event a second time (574.7332ms)
+{"level":"info","time":"2026-10-07T01:45:58.356Z","pid":28332,"hostname":"MSI","eventId":"2367","attemptId":"3c937c4d-b022-4469-8725-a9a5a645c427","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/4f2438ca-5ba4-4193-abef-9137e3cd04d0.webp","msg":"Processing uploaded evidence asset"}
+{"level":"error","time":"2026-10-07T01:45:58.713Z","pid":28332,"hostname":"MSI","evidenceKey":"evidence/d94a8643-dea7-4ddd-be97-b534f4c70981/3c937c4d-b022-4469-8725-a9a5a645c427/4f2438ca-5ba4-4193-abef-9137e3cd04d0.webp","msg":"Evidence object failed magic byte validation (not valid image)"}
+    Γ£ö corrupt image input marks status FAILED but preserves the violation row intact (1258.6551ms)
+  Γ£ö Direct Upload Complete & Evidence Worker Idempotency (5086.6571ms)
+  Γû╢ Stored-URL Gate & 5-Minute Rounded Presigning
+    Γ£ö verifies that no database column contains persisted presigned URLs or amazonaws links (269.6646ms)
+    Γ£ö generates identical presigned read URLs within 5-minute window for browser caching (21.436ms)
+    Γ£ö batch presigns multiple keys with identical signing window (18.253ms)
+  Γ£ö Stored-URL Gate & 5-Minute Rounded Presigning (311.4175ms)
+{"level":"info","time":"2026-10-07T01:46:00.236Z","pid":28332,"hostname":"MSI","retentionDays":180,"cutoff":"2026-04-10T01:46:00.236Z","msg":"Running evidence retention purge job"}
+{"level":"info","time":"2026-10-07T01:46:01.123Z","pid":28332,"hostname":"MSI","purgedEvents":1,"deletedObjects":1,"cutoff":"2026-04-10T01:46:00.236Z","msg":"Successfully completed evidence retention purge"}
+  Γû╢ Evidence Retention Purge Worker
+    Γ£ö deletes expired evidence objects from S3 and nullifies DB keys while preserving recent events (2494.6111ms)
+  Γ£ö Evidence Retention Purge Worker (2498.6532ms)
+Γ£ö P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker) (14590.5174ms)
+Γä╣ tests 13
+Γä╣ suites 5
+Γä╣ pass 13
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 15147.2438

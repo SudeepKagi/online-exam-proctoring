@@ -17,6 +17,7 @@ test.describe('Q1.1 Timezone Matrix & Timestamptz Invariance (E-02)', () => {
 
     const faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Timezone Faculty',
         email: `tz-faculty-${Date.now()}@test.edu`,
         password: 'hashed_password',
@@ -40,6 +41,7 @@ test.describe('Q1.1 Timezone Matrix & Timestamptz Invariance (E-02)', () => {
 
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'Timezone Invariance Exam',
         subject: 'Timezone Studies',
         facultyId,
@@ -81,6 +83,7 @@ test.describe('Q1.1 Timezone Matrix & Timestamptz Invariance (E-02)', () => {
     // Create student
     const student = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Timezone Student',
         usn: `1TZ${Math.floor(Math.random() * 100000)}`,
         email: `tz-student-${Date.now()}@test.edu`,
@@ -94,6 +97,7 @@ test.describe('Q1.1 Timezone Matrix & Timestamptz Invariance (E-02)', () => {
     const pastExpiresAt = new Date(Date.now() - 120000)
     const attempt = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId,
         studentId: student.id,
         status: 'ACTIVE',

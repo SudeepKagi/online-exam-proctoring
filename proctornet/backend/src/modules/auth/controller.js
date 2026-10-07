@@ -184,9 +184,14 @@ router.get('/me', requireAuth, async (req, res, next) => {
 /**
  * POST /api/v1/auth/logout
  */
-router.post('/logout', (req, res) => {
-  clearAuthCookie(res)
-  res.status(200).json({ success: true, message: 'Logged out successfully' })
+router.post('/logout', async (req, res, next) => {
+  try {
+    await authService.logout(req.user?.id)
+    clearAuthCookie(res)
+    res.status(200).json({ success: true, message: 'Logged out successfully' })
+  } catch (err) {
+    next(err)
+  }
 })
 
 module.exports = router

@@ -1,0 +1,69 @@
+﻿node.exe : [WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be 
+ignored. The following esbuild options were set: `{ drop: [] }`
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([WebServer] Bot... `{ drop: [] }`:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+Running 5 tests using 1 worker
+
+  ok 1 [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:50:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 1: Admin logs in -> creates Department, Faculty, and Student accounts (4.3s)
+  ok 2 [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:102:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 2: Faculty logs in -> creates MCQ exam with 10 questions -> publishes exam (6.8s)
+[WebServer] 8:24:39 am [vite] (client) [console.warn] [Autosave] Save failed (404); retained 1 dirty answers. Retrying 
+in 2326ms
+[WebServer] 8:24:39 am [vite] (client) [console.warn] [ExamInterface] LiveKit publisher startup note: Cannot read 
+properties of undefined (reading 'maxBitrate')
+[WebServer] 8:24:41 am [vite] (client) [console.warn] [Autosave] Save failed (404); retained 1 dirty answers. Retrying 
+in 3740ms
+[WebServer] 8:24:49 am [vite] (client) [console.warn] [Autosave] Save failed (404); retained 1 dirty answers. Retrying 
+in 8988ms
+  x  3 [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:161:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 3: Student completes profile pre-checks -> starts exam -> answers -> resumes -> submits (26.5s)
+  -  4 [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:231:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 4: Invigilator logs in -> views student live -> warns -> pauses -> resumes
+  -  5 [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:246:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 5: Faculty evaluates/releases results and Admin views audit trail
+
+
+  1) [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:161:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 3: Student completes profile pre-checks -> starts exam -> answers -> resumes -> submits 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('text=Answers Saved, text=Saved, text=All changes saved').first()
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('text=Answers Saved, text=Saved, text=All changes saved').first() with timeout 10000ms
+      - waiting for locator('text=Answers Saved, text=Saved, text=All changes saved').first()
+
+
+      190 |     // NOTE: On current main, this fails if ExamInterface posts to legacy /student/exams/:id/autosave (Bug A-01)
+      191 |     const savedIndicator = page.locator('text=Answers Saved, text=Saved, text=All changes saved')
+    > 192 |     await expect(savedIndicator.first()).toBeVisible({ timeout: 10000 })
+          |                                          ^
+      193 |
+      194 |     // 7. Change answer (Option B) to verify mutation
+      195 |     const optionB = page.locator('main button:has-text("B ")').first()
+        at C:\Final year project\online-exam-proctoring\e2e\golden\golden-path.spec.ts:192:42
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\e2e-golden-golden-path-Pro-d8e7e-answers---resumes---submits-chrome\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\e2e-golden-golden-path-Pro-d8e7e-answers---resumes---submits-chrome\error-context.md
+
+    Error Context: test-results\e2e-golden-golden-path-Pro-d8e7e-answers---resumes---submits-chrome\error-context.md
+
+    attachment #4: trace (application/zip) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\e2e-golden-golden-path-Pro-d8e7e-answers---resumes---submits-chrome\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\e2e-golden-golden-path-Pro-d8e7e-answers---resumes---submits-chrome\trace.zip
+
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+  1 failed
+    [chrome] ΓÇ║ e2e\golden\golden-path.spec.ts:161:7 ΓÇ║ Prompt 2 Golden-Path E2E Verification Suite (┬º3 Q0.3) ΓÇ║ Step 3: Student completes profile pre-checks -> starts exam -> answers -> resumes -> submits 
+  2 did not run
+  2 passed (53.6s)

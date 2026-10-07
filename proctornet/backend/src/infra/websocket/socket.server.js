@@ -305,7 +305,7 @@ function createWebSocketServer(httpServer, options = {}) {
           // Forward notification to invigilator room (tickets stripped per C-08/C-09)
           io.to(`inv:${verifiedExamId}`).emit('violation:new', {
             attemptId,
-            violationId: res.violationId,
+            violationId: res.violationId ? String(res.violationId) : null,
             studentId: socket.user.id,
             eventType: res.eventType,
             severity: res.severity,

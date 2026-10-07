@@ -307,8 +307,8 @@ class FacultyService {
     }
   }
 
-  // AI question generation
-  generateMockAiQuestions(topic = 'General Computing', count = 5, difficulty = 'MEDIUM') {
+  // AI question generation fallback
+  generateFallbackAiQuestions(topic = 'General Computing', count = 5, difficulty = 'MEDIUM') {
     const sampleQuestions = [
       {
         questionText: `What is the primary function of an operating system kernel regarding ${topic}?`,
@@ -377,7 +377,7 @@ class FacultyService {
 
   async generateQuestionsPreview({ prompt, topic, count = 5, difficulty = 'MEDIUM' }) {
     const topicToUse = topic || prompt || 'Computer Science'
-    const questions = this.generateMockAiQuestions(topicToUse, count, difficulty)
+    const questions = this.generateFallbackAiQuestions(topicToUse, count, difficulty)
     return questions.map(validateMcqQuestion)
   }
 

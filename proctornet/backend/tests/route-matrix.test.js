@@ -149,12 +149,12 @@ before(async () => {
   testAttemptBId = attemptB.id
 
   // 3. Generate tokens
-  adminToken = signToken({ id: 'admin-rm-1', role: ROLES.ADMIN, email: 'admin@test.edu' })
+  adminToken = signToken({ id: crypto.randomUUID(), role: ROLES.ADMIN, email: 'admin@test.edu' })
   facultyToken = signToken({ id: testFacultyId, role: ROLES.FACULTY, email: faculty.email })
   studentAToken = signToken({ id: testStudentAId, role: ROLES.STUDENT, email: studentA.email })
   studentBToken = signToken({ id: testStudentBId, role: ROLES.STUDENT, email: studentB.email })
-  invigilatorExam1Token = signToken({ id: 'inv-rm-1', role: ROLES.INVIGILATOR, examId: testExamId })
-  invigilatorExam2Token = signToken({ id: 'inv-rm-2', role: ROLES.INVIGILATOR, examId: '00000000-0000-0000-0000-000000000099' })
+  invigilatorExam1Token = signToken({ id: crypto.randomUUID(), role: ROLES.INVIGILATOR, examId: testExamId })
+  invigilatorExam2Token = signToken({ id: crypto.randomUUID(), role: ROLES.INVIGILATOR, examId: '00000000-0000-0000-0000-000000000099' })
 })
 
 after(async () => {
@@ -180,8 +180,8 @@ after(async () => {
   setTimeout(() => process.exit(0), 100)
 })
 
-async function apiRequest(method, urlPath, token = null, body = null) {
-  const headers = { 'Content-Type': 'application/json' }
+async function apiRequest(method, urlPath, token = null, body = null, extraHeaders = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extraHeaders }
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
@@ -330,7 +330,7 @@ describe('D-03: Invigilator Staff Scoping Fail-Closed Enforcement', () => {
   })
 
   it('assertStaffExamAccess rejects invigilator without examId (fail-closed) (403)', async () => {
-    const noExamToken = signToken({ id: 'inv-no-exam', role: ROLES.INVIGILATOR })
+    const noExamToken = signToken({ id: crypto.randomUUID(), role: ROLES.INVIGILATOR })
     const res = await apiRequest('POST', `/api/v1/attempts/${testAttemptAId}/pause`, noExamToken, { reason: 'Test' })
     assert.strictEqual(res.status, 403, 'Invigilator without examId must fail-closed with 403')
   })
@@ -360,6 +360,136 @@ describe('Authorized Access (Right Role/Owner -> 2xx)', () => {
     const res = await apiRequest('GET', '/api/v1/health')
     assert.strictEqual(res.status, 200)
     assert.strictEqual(res.data?.status, 'ok')
+  })
+})
+
+describe('Contract Tests: Observable Effects & Negative Effects', () => {
+  it('POST /api/v1/admin/announcements creates announcement DB row; rejected call mutates zero rows', async () => {
+    const initialCount = await prisma.announcement.count()
+
+    // Negative-effect: Unauthorized request mutates zero rows
+    const negRes = await apiRequest('POST', '/api/v1/admin/announcements', studentAToken, {
+      title: 'Hacked Announcement',
+      content: 'Should not exist'
+    })
+    assert.strictEqual(negRes.status, 403)
+    const countAfterNeg = await prisma.announcement.count()
+    assert.strictEqual(countAfterNeg, initialCount, 'Negative-effect: 403 request must mutate 0 rows')
+
+    // Positive-effect: Authorized admin request creates DB row
+    const posRes = await apiRequest('POST', '/api/v1/admin/announcements', adminToken, {
+      title: 'Contract Test Announcement',
+      message: 'Observable effect verified',
+      target: 'ALL'
+    })
+    assert.strictEqual(posRes.status, 201)
+    const countAfterPos = await prisma.announcement.count()
+    assert.strictEqual(countAfterPos, initialCount + 1, 'Observable effect: DB row must be created')
+
+    // Cleanup
+    if (posRes.data?.announcement?.id) {
+      await prisma.announcement.delete({ where: { id: posRes.data.announcement.id } })
+    }
+  })
+
+  it('PUT /api/v1/attempts/:attemptId/answers saves answer DB row; rejected call mutates zero rows', async () => {
+    // Setup question
+    const q = await prisma.question.create({
+      data: {
+        id: crypto.randomUUID(),
+        examId: testExamId,
+        questionText: 'Contract effect question?',
+        marks: 2,
+        negativeMarks: 0,
+        options: {
+          create: [
+            { id: crypto.randomUUID(), text: 'Option 1', isCorrect: true, order: 0 },
+            { id: crypto.randomUUID(), text: 'Option 2', isCorrect: false, order: 1 }
+          ]
+        }
+      },
+      include: { options: true }
+    })
+    const optId = q.options[0].id
+
+    const aq = await prisma.attemptQuestion.create({
+      data: {
+        id: crypto.randomUUID(),
+        attemptId: testAttemptAId,
+        questionId: q.id,
+        displayOrder: 1,
+        optionOrder: [0, 1]
+      }
+    })
+
+    const initialAnswerCount = await prisma.answer.count({ where: { attemptId: testAttemptAId } })
+
+    // Negative-effect: BOLA Student B trying to answer Student A attempt mutates zero rows
+    const negRes = await apiRequest('PUT', `/api/v1/attempts/${testAttemptAId}/answers`, studentBToken, {
+      answers: [{ attemptQuestionId: aq.id, optionId: optId, revision: 1 }]
+    })
+    assert.ok(negRes.status === 403 || negRes.status === 404, 'Negative-effect: BOLA request must be rejected (403 or 404)')
+    const countAfterNeg = await prisma.answer.count({ where: { attemptId: testAttemptAId } })
+    assert.strictEqual(countAfterNeg, initialAnswerCount, 'Negative-effect: BOLA must mutate 0 answers')
+
+    // Positive-effect: Student A saving answer creates DB row
+    const posRes = await apiRequest('PUT', `/api/v1/attempts/${testAttemptAId}/answers`, studentAToken, {
+      answers: [{ attemptQuestionId: aq.id, optionId: optId, revision: 1 }]
+    })
+    assert.strictEqual(posRes.status, 200)
+    const countAfterPos = await prisma.answer.count({ where: { attemptId: testAttemptAId } })
+    assert.strictEqual(countAfterPos, initialAnswerCount + 1, 'Observable effect: Answer DB row created')
+  })
+
+  it('POST /api/v1/attempts/:attemptId/submission updates attempt status & creates outbox row; rejected call mutates zero rows', async () => {
+    const initialOutboxCount = await prisma.outboxEvent.count({
+      where: { eventType: 'attempt.submitted' }
+    })
+
+    // Negative-effect: BOLA Student B submit attempt A mutates zero outbox rows
+    const negRes = await apiRequest('POST', `/api/v1/attempts/${testAttemptAId}/submission`, studentBToken, {
+      answers: []
+    }, {
+      'Idempotency-Key': crypto.randomUUID()
+    })
+    assert.strictEqual(negRes.status, 403)
+    const outboxAfterNeg = await prisma.outboxEvent.count({
+      where: { eventType: 'attempt.submitted' }
+    })
+    assert.strictEqual(outboxAfterNeg, initialOutboxCount, 'Negative-effect: BOLA submit must create 0 outbox events')
+
+    // Positive-effect: Student A submit transitions attempt to SUBMITTED and creates outbox row
+    const idempKey = crypto.randomUUID()
+    const posRes = await apiRequest('POST', `/api/v1/attempts/${testAttemptAId}/submission`, studentAToken, {
+      answers: []
+    }, {
+      'Idempotency-Key': idempKey
+    })
+    assert.strictEqual(posRes.status, 200)
+    assert.strictEqual(posRes.data?.status, 'SUBMITTED')
+
+    const outboxAfterPos = await prisma.outboxEvent.count({
+      where: { eventType: 'attempt.submitted' }
+    })
+    assert.strictEqual(outboxAfterPos, initialOutboxCount + 1, 'Observable effect: attempt.submitted outbox event created')
+  })
+
+  it('POST /api/v1/attempts/:attemptId/pause updates attempt status to SUSPENDED; unauthorized mutates zero rows', async () => {
+    // Negative-effect: Cross-exam invigilator cannot pause
+    const negRes = await apiRequest('POST', `/api/v1/attempts/${testAttemptBId}/pause`, invigilatorExam2Token, {
+      reason: 'Cross exam pause'
+    })
+    assert.strictEqual(negRes.status, 403)
+    const attemptB = await prisma.examAttempt.findUnique({ where: { id: testAttemptBId } })
+    assert.strictEqual(attemptB.status, 'ACTIVE', 'Negative-effect: Unauthorized pause must leave status unchanged')
+
+    // Positive-effect: Authorized invigilator pauses attempt
+    const posRes = await apiRequest('POST', `/api/v1/attempts/${testAttemptBId}/pause`, invigilatorExam1Token, {
+      reason: 'Staff pause command'
+    })
+    assert.strictEqual(posRes.status, 200)
+    const attemptBAfterPos = await prisma.examAttempt.findUnique({ where: { id: testAttemptBId } })
+    assert.strictEqual(attemptBAfterPos.status, 'SUSPENDED', 'Observable effect: Attempt status updated to SUSPENDED')
   })
 
   after(() => {

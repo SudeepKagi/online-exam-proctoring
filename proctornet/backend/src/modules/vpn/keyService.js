@@ -95,6 +95,7 @@ PersistentKeepalive = ${persistentKeepalive}
 
     const peer = await prisma.vpnPeer.create({
       data: {
+        id: crypto.randomUUID(),
         attemptId,
         studentId,
         ipAddress,

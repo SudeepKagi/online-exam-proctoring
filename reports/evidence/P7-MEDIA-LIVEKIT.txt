@@ -1,0 +1,51 @@
+﻿{"level":"info","time":"2026-10-07T01:42:00.720Z","pid":31808,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T01:42:00.731Z","pid":31808,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T01:42:00.741Z","pid":31808,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+Γû╢ P7 Media Plane: LiveKit SFU Test Suite
+  Γû╢ 1. LiveKit Token Authorization Matrix
+    Γ£ö 1.1 Student receives token with canPublish:true, canSubscribe:false, bounded TTL (567.3845ms)
+    Γ£ö 1.2 BOLA guard: Student cannot request token for another student's attempt (331.9322ms)
+    Γ£ö 1.3 Terminal state guard: Student cannot join media session for TERMINATED attempt (469.2569ms)
+    Γ£ö 1.4 Terminal state guard: Student cannot join media session for SUBMITTED attempt (450.1237ms)
+    Γ£ö 1.5 Invigilator/Faculty receives token with canSubscribe:true, canPublish:false, hidden:true (365.2286ms)
+{"level":"warn","time":"2026-10-07T01:42:07.698Z","pid":31808,"hostname":"MSI","error":"Invalid Compact JWS","msg":"LiveKit webhook signature verification failed"}
+    Γ£ö 1.6 Cross-Exam Scope: Faculty cannot access an exam they do not own (350.1993ms)
+    Γ£ö 1.7 Admin is authorized to access any exam (13.9266ms)
+  Γ£ö 1. LiveKit Token Authorization Matrix (2555.5755ms)
+  Γû╢ 2. LiveKit Webhook Signature Verification & Processing
+    Γ£ö 2.1 Rejects webhook request without Authorization header (7.1118ms)
+    Γ£ö 2.2 Rejects webhook request with invalid / malformed token (5.4321ms)
+    Γ£ö 2.3 Rejects webhook signed with wrong secret (13.2168ms)
+{"level":"warn","time":"2026-10-07T01:42:07.716Z","pid":31808,"hostname":"MSI","error":"signature verification failed","msg":"LiveKit webhook signature verification failed"}
+    Γ£ö 2.4 Rejects tampered webhook payload (sha256 mismatch) (22.7617ms)
+{"level":"warn","time":"2026-10-07T01:42:07.739Z","pid":31808,"hostname":"MSI","error":"sha256 checksum of body does not match","msg":"LiveKit webhook signature verification failed"}
+{"level":"info","time":"2026-10-07T01:42:07.746Z","pid":31808,"hostname":"MSI","eventName":"track_unpublished","room":"exam:013441b6-8a0c-49c6-88fb-2e2a90fdaeb1","participant":"student:46ba2f5d-961e-4954-876b-8fd951c5f353","msg":"LiveKit webhook event received"}
+{"level":"warn","time":"2026-10-07T01:42:09.482Z","pid":31808,"hostname":"MSI","attemptId":"46ba2f5d-961e-4954-876b-8fd951c5f353","msg":"Authoritative SCREEN_SHARE_STOPPED violation recorded from LiveKit webhook"}
+    Γ£ö 2.5 Authoritative track_unpublished for screen share creates SCREEN_SHARE_STOPPED violation (2280.2954ms)
+{"level":"info","time":"2026-10-07T01:42:10.349Z","pid":31808,"hostname":"MSI","eventName":"track_unpublished","room":"exam:013441b6-8a0c-49c6-88fb-2e2a90fdaeb1","participant":"student:46ba2f5d-961e-4954-876b-8fd951c5f353","msg":"LiveKit webhook event received"}
+    Γ£ö 2.6 Webhook debouncing: rapid unpublish events within 5 seconds are coalesced (630.1779ms)
+{"level":"info","time":"2026-10-07T01:42:10.655Z","pid":31808,"hostname":"MSI","eventName":"track_unpublished","room":"exam:013441b6-8a0c-49c6-88fb-2e2a90fdaeb1","participant":"student:f2b79819-010f-4b4c-acba-657d00a4f3b8","msg":"LiveKit webhook event received"}
+    Γ£ö 2.7 Unpublishing non-screen track (e.g. camera) does NOT create SCREEN_SHARE_STOPPED (356.1988ms)
+{"level":"info","time":"2026-10-07T01:42:11.016Z","pid":31808,"hostname":"MSI","eventName":"track_unpublished","room":"exam:013441b6-8a0c-49c6-88fb-2e2a90fdaeb1","participant":"inv:2fcb944c-51ad-4746-b022-491beb7add4e:abc123","msg":"LiveKit webhook event received"}
+    Γ£ö 2.8 Unpublishing from non-student participant (e.g. invigilator) does NOT create violation (11.3732ms)
+  Γ£ö 2. LiveKit Webhook Signature Verification & Processing (3331.8905ms)
+  Γû╢ 3. Attempt State Machine LiveKit Participant Removal
+    Γ£ö 3.1 Transitioning attempt to TERMINATED triggers LiveKit participant removal (486.1832ms)
+  Γ£ö 3. Attempt State Machine LiveKit Participant Removal (486.7419ms)
+  Γû╢ 4. Frontend Configuration & Architecture Contracts
+    Γ£ö 4.1 proctorMedia.js implements VP8 simulcast, bitrate caps, DTX, detail contentHint (5.2771ms)
+    Γ£ö 4.2 proctorViewer.js implements selective subscription and focus layer limits (1.0981ms)
+    Γ£ö 4.3 Complete deletion of legacy mesh and canvas frame-streaming globals (2.6596ms)
+  Γ£ö 4. Frontend Configuration & Architecture Contracts (9.4806ms)
+  Γû╢ 5. Media Capacity Documentation (docs/architecture/media-capacity.md)
+    Γ£ö 5.1 docs/architecture/media-capacity.md exists and contains accurate bandwidth models (3.5288ms)
+  Γ£ö 5. Media Capacity Documentation (docs/architecture/media-capacity.md) (3.801ms)
+Γ£ö P7 Media Plane: LiveKit SFU Test Suite (13193.7708ms)
+Γä╣ tests 20
+Γä╣ suites 6
+Γä╣ pass 20
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 14342.2344

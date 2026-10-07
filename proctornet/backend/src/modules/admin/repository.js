@@ -1,3 +1,4 @@
+const crypto = require('crypto')
 const { prisma } = require('../../infra/postgres/client')
 const { paginate } = require('../../utils/helpers')
 
@@ -293,7 +294,10 @@ class AdminRepository {
 
   async createAnnouncement(data) {
     return prisma.announcement.create({
-      data
+      data: {
+        id: crypto.randomUUID(),
+        ...data
+      }
     })
   }
 

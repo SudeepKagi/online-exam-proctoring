@@ -1,5 +1,6 @@
 const { resultRepository } = require('./repository')
 const { prisma } = require('../../infra/postgres/client')
+const { logger } = require('../../shared/logging')
 const { toStudentResultDTO, toFacultyResultDTO } = require('./dto')
 const {
   NotFoundError,
@@ -98,8 +99,8 @@ class ResultService {
     try {
       const { socketEmitter } = require('../../infra/websocket/emitter')
       socketEmitter.emitToInvigilators(examId, 'exam:results_released', { examId })
-    } catch {
-      // Best-effort notification
+    } catch (emitterErr) {
+      logger.warn({ error: emitterErr.message, examId }, 'Best-effort notification failed')
     }
 
     return { success: true, examId, releasedAt: new Date().toISOString() }

@@ -19,6 +19,7 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
     // 2. Create faculty
     const faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: 'Prewarm Faculty',
         email: `prewarm-fac-${Date.now()}@test.edu`,
         password: 'hashed_password',
@@ -32,6 +33,7 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
     const now = new Date()
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: '500 Candidate Scalability Exam',
         subject: 'Distributed Systems',
         facultyId,
@@ -47,6 +49,7 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
         questions: {
           create: [
             {
+              id: crypto.randomUUID(),
               questionText: 'What ensures database serializability?',
               marks: 10,
               negativeMarks: 2,
@@ -54,14 +57,15 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
               order: 1,
               options: {
                 create: [
-                  { text: 'Strict Two-Phase Locking', isCorrect: true, order: 1 },
-                  { text: 'Dirty Reads', isCorrect: false, order: 2 },
-                  { text: 'Eventual Consistency', isCorrect: false, order: 3 },
-                  { text: 'Optimistic reads only', isCorrect: false, order: 4 }
+                  { id: crypto.randomUUID(), text: 'Strict Two-Phase Locking', isCorrect: true, order: 1 },
+                  { id: crypto.randomUUID(), text: 'Dirty Reads', isCorrect: false, order: 2 },
+                  { id: crypto.randomUUID(), text: 'Eventual Consistency', isCorrect: false, order: 3 },
+                  { id: crypto.randomUUID(), text: 'Optimistic reads only', isCorrect: false, order: 4 }
                 ]
               }
             },
             {
+              id: crypto.randomUUID(),
               questionText: 'Which data structure supports O(1) average lookup?',
               marks: 10,
               negativeMarks: 0,
@@ -69,10 +73,10 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
               order: 2,
               options: {
                 create: [
-                  { text: 'Hash Table', isCorrect: true, order: 1 },
-                  { text: 'Red-Black Tree', isCorrect: false, order: 2 },
-                  { text: 'B-Tree', isCorrect: false, order: 3 },
-                  { text: 'Skip List', isCorrect: false, order: 4 }
+                  { id: crypto.randomUUID(), text: 'Hash Table', isCorrect: true, order: 1 },
+                  { id: crypto.randomUUID(), text: 'Red-Black Tree', isCorrect: false, order: 2 },
+                  { id: crypto.randomUUID(), text: 'B-Tree', isCorrect: false, order: 3 },
+                  { id: crypto.randomUUID(), text: 'Skip List', isCorrect: false, order: 4 }
                 ]
               }
             }
@@ -87,6 +91,7 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
     const baseUsn = `USN${Date.now().toString().slice(-6)}`
     for (let i = 1; i <= BATCH_STUDENTS_COUNT; i++) {
       studentsData.push({
+        id: crypto.randomUUID(),
         name: `Student Scale ${i}`,
         usn: `${baseUsn}-${i.toString().padStart(4, '0')}`,
         email: `student-${baseUsn}-${i}@test.edu`,

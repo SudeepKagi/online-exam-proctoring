@@ -38,6 +38,7 @@ describe('P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)', () => {
 
     faculty = await prisma.faculty.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Faculty P5 ${suffix}`,
         email: `faculty_p5_${suffix}@test.edu`,
         password: 'hash',
@@ -48,6 +49,7 @@ describe('P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)', () => {
 
     studentA = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Student A ${suffix}`,
         email: `studentA_${suffix}@test.edu`,
         usn: `1DS20CS_${suffix}A`,
@@ -59,6 +61,7 @@ describe('P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)', () => {
 
     studentB = await prisma.student.create({
       data: {
+        id: crypto.randomUUID(),
         name: `Student B ${suffix}`,
         email: `studentB_${suffix}@test.edu`,
         usn: `1DS20CS_${suffix}B`,
@@ -70,6 +73,7 @@ describe('P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)', () => {
 
     exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: `P5 Storage Exam ${suffix}`,
         subject: 'Computer Science',
         invId: `INV_P5_${suffix}`,
@@ -87,6 +91,7 @@ describe('P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)', () => {
 
     attemptA = await prisma.examAttempt.create({
       data: {
+        id: crypto.randomUUID(),
         examId: exam.id,
         studentId: studentA.id,
         status: 'ACTIVE',

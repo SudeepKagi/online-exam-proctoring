@@ -1,7 +1,5 @@
 const studentRepository = require('./repository')
 const { attemptService } = require('../attempts/service')
-const { submissionService } = require('../submissions/service')
-const { answerService } = require('../answers/service')
 const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
 const {
   NotFoundError,
@@ -24,8 +22,6 @@ class StudentService {
     const allowed = {}
     if (data.name) allowed.name = data.name
     if (data.phone !== undefined) allowed.phone = data.phone
-    if (data.departmentCode) allowed.departmentCode = data.departmentCode
-    if (data.semester) allowed.semester = parseInt(data.semester, 10)
 
     const updated = await studentRepository.updateStudent(studentId, allowed)
     return toStudentProfileDTO(updated)
@@ -74,42 +70,6 @@ class StudentService {
     return attemptService.startOrResumeAttempt(examId, studentId)
   }
 
-  async saveAnswer(examId, studentId, { questionId, selectedOption }) {
-    let attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
-    if (!attempt) {
-      attempt = await attemptService.startOrResumeAttempt(examId, studentId)
-    }
-
-    if (attempt.status !== 'ACTIVE') {
-      throw new ForbiddenError(`Cannot save answers for attempt in status '${attempt.status}'`)
-    }
-
-    // Use answerService for high-performance atomic write
-    await answerService.saveAnswerBatch(attempt.id, studentId, [
-      { questionId, selectedOption }
-    ])
-
-    return { success: true, attemptId: attempt.id, questionId, selectedOption }
-  }
-
-  async autoSaveAnswer(examId, studentId, payload) {
-    return this.saveAnswer(examId, studentId, payload)
-  }
-
-  async submitExam(examId, studentId, answers = {}) {
-    const attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
-    if (!attempt) throw new NotFoundError('No active attempt found for this exam')
-
-    const answerList = []
-    if (typeof answers === 'object' && answers !== null) {
-      for (const [qid, val] of Object.entries(answers)) {
-        answerList.push({ questionId: qid, selectedOption: val })
-      }
-    }
-
-    const idempotencyKey = crypto.randomUUID()
-    return submissionService.submitAttempt(attempt.id, studentId, idempotencyKey, answerList)
-  }
 
   async getMyResults(studentId) {
     const results = await studentRepository.listResultsForStudent(studentId)
@@ -117,38 +77,48 @@ class StudentService {
   }
 
   async verifyFace(studentId, { liveFrame }) {
+    if (!liveFrame) {
+      throw new ValidationError('liveFrame is required for face verification')
+    }
     await studentRepository.recordVerificationAuditLog({
       studentId,
       checkType: 'FACE_LIVENESS',
-      score: 0.98,
-      status: 'PASSED',
-      details: 'Face verification passed via automated check'
+      score: 0.0,
+      status: 'PENDING_ANALYSIS',
+      details: 'Automated liveness evaluation pending real model pipeline'
     })
-    return { success: true, verified: true, matchScore: 0.98 }
+    return { success: true, verified: false, matchScore: 0.0, pending: true }
   }
 
   async verifyIdCard(studentId, { idCardPhoto }) {
+    if (!idCardPhoto) {
+      throw new ValidationError('idCardPhoto is required for ID card verification')
+    }
     await studentRepository.recordVerificationAuditLog({
       studentId,
       checkType: 'ID_CARD_OCR',
-      score: 1.0,
-      status: 'PASSED',
-      details: 'ID Card document verified'
+      score: 0.0,
+      status: 'PENDING_ANALYSIS',
+      details: 'ID Card OCR evaluation pending real OCR pipeline'
     })
-    return { success: true, verified: true, matchScore: 1.0 }
+    return { success: true, verified: false, matchScore: 0.0, pending: true }
   }
 
   async saveIdentityVerification(examId, studentId, data) {
     const attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
     if (!attempt) throw new NotFoundError('No attempt found for this exam')
 
+    if (!data.faceWithIdPhoto) {
+      throw new ValidationError('faceWithIdPhoto is required for identity verification')
+    }
+
     const result = await studentRepository.saveIdentityVerification({
       attemptId: attempt.id,
-      liveFaceMatchScore: data.liveFaceMatchScore || 0.95,
+      liveFaceMatchScore: data.liveFaceMatchScore ?? 0.0,
       idCardOcrUsn: data.idCardOcrUsn || null,
-      idCardMatchResult: data.idCardMatchResult !== false,
-      faceWithIdKey: data.faceWithIdPhoto || 'verified-key',
-      status: 'VERIFIED'
+      idCardMatchResult: Boolean(data.idCardMatchResult),
+      faceWithIdKey: data.faceWithIdPhoto,
+      status: data.liveFaceMatchScore >= 0.8 && data.idCardMatchResult ? 'VERIFIED' : 'PENDING'
     })
 
     return { success: true, verification: result }

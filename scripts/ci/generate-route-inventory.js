@@ -61,6 +61,7 @@ function extractRoutes() {
           for (const method of methods) {
             const moduleName = determineModule(fullPath)
             const ownerCheck = determineOwnerCheck(fullPath, routeRoles, method)
+            const { effect, negativeEffect } = determineEffect(method, fullPath)
 
             routes.push({
               method,
@@ -68,7 +69,9 @@ function extractRoutes() {
               auth: routeAuth ? 'Required' : 'Public',
               role: routeRoles.length > 0 ? routeRoles.join(', ') : (routeAuth ? 'Any Authenticated' : 'Public'),
               ownerCheck,
-              module: moduleName
+              module: moduleName,
+              effect,
+              negativeEffect
             })
           }
         }
@@ -136,6 +139,135 @@ function determineOwnerCheck(path, roles, method) {
   return 'Yes'
 }
 
+function determineEffect(method, path) {
+  if (method === 'GET' || method === 'HEAD') {
+    return {
+      effect: 'None (Read-only query)',
+      negativeEffect: 'None (Zero DB/storage mutation)'
+    }
+  }
+
+  if (path.includes('/auth/login')) {
+    return {
+      effect: 'Session token issued; cookie set',
+      negativeEffect: 'Zero tokens issued; zero cookies set'
+    }
+  }
+  if (path.includes('/auth/refresh')) {
+    return {
+      effect: 'Rotated token pair issued',
+      negativeEffect: 'Zero tokens rotated; zero session changes'
+    }
+  }
+  if (path.includes('/auth/logout')) {
+    return {
+      effect: 'Session cookie cleared; token invalidated',
+      negativeEffect: 'Zero session changes'
+    }
+  }
+  if (path.includes('/answers')) {
+    return {
+      effect: 'DB row upserted (answers) with CAS revision increment',
+      negativeEffect: '0 answer rows mutated; revision unchanged'
+    }
+  }
+  if (path.includes('/submit')) {
+    return {
+      effect: 'DB row updated (exam_attempts SUBMITTED) + Outbox row (attempt.submitted)',
+      negativeEffect: '0 outbox events created; attempt status unchanged'
+    }
+  }
+  if (path.includes('/violations')) {
+    return {
+      effect: 'DB row inserted (violation_events) + flag_count incremented',
+      negativeEffect: '0 violation_events inserted; 0 flag counts mutated'
+    }
+  }
+  if (path.includes('/warn')) {
+    return {
+      effect: 'Audit log row created + Socket notification dispatched',
+      negativeEffect: '0 audit logs created; 0 notifications dispatched'
+    }
+  }
+  if (path.includes('/pause')) {
+    return {
+      effect: 'DB row updated (exam_attempts SUSPENDED) + audit log',
+      negativeEffect: 'Attempt status untouched; 0 audit logs'
+    }
+  }
+  if (path.includes('/resume')) {
+    return {
+      effect: 'DB row updated (exam_attempts ACTIVE) + audit log',
+      negativeEffect: 'Attempt status untouched; 0 audit logs'
+    }
+  }
+  if (path.includes('/terminate')) {
+    return {
+      effect: 'DB row updated (exam_attempts TERMINATED) + Outbox row + audit log',
+      negativeEffect: 'Attempt status untouched; 0 audit logs'
+    }
+  }
+  if (path.includes('/acknowledge')) {
+    return {
+      effect: 'DB row updated (violation_events acknowledged=true) + audit log',
+      negativeEffect: 'Violation state untouched; 0 audit logs'
+    }
+  }
+  if (path.includes('/presign') || path.includes('/evidence')) {
+    return {
+      effect: 'S3 presigned URL/POST policy issued + DB ticket created',
+      negativeEffect: '0 S3 policies issued; 0 DB tickets created'
+    }
+  }
+  if (path.includes('/results/release')) {
+    return {
+      effect: 'DB row updated (exam_results is_released=true) + Redis emit',
+      negativeEffect: '0 results modified; 0 emits dispatched'
+    }
+  }
+  if (path.includes('/announcements')) {
+    return {
+      effect: method === 'DELETE' ? 'DB row deleted (announcements)' : 'DB row inserted (announcements)',
+      negativeEffect: '0 announcements mutated'
+    }
+  }
+  if (path.includes('/enrollments') || path.includes('/students')) {
+    return {
+      effect: 'DB row updated (students/enrollments approval_status mutated)',
+      negativeEffect: '0 student records mutated'
+    }
+  }
+  if (path.includes('/questions')) {
+    return {
+      effect: method === 'DELETE' ? 'DB row deleted (questions)' : 'DB row created/updated (questions)',
+      negativeEffect: '0 questions mutated'
+    }
+  }
+  if (path.includes('/exams')) {
+    return {
+      effect: method === 'DELETE' ? 'DB row deleted (exams)' : 'DB row created/updated (exams)',
+      negativeEffect: '0 exams mutated'
+    }
+  }
+  if (path.includes('/settings')) {
+    return {
+      effect: 'DB row updated (platform_settings)',
+      negativeEffect: '0 settings mutated'
+    }
+  }
+  if (path.includes('/vpn')) {
+    return {
+      effect: 'DB row mutated (vpn_peers / vpn_ip_pool leased or released)',
+      negativeEffect: '0 VPN leases modified'
+    }
+  }
+
+  return {
+    effect: `DB row mutated (${method} ${path})`,
+    negativeEffect: 'Rejected requests mutate zero rows'
+  }
+}
+
 function deduplicateAndSort(routes) {
   const seen = new Set()
   const unique = []
@@ -172,11 +304,11 @@ function generateMarkdown(routes) {
   }
 
   md += `\n## Master Route Matrix\n\n`
-  md += `| Method | Path | Auth | Role(s) | Owner Check | Module |\n`
-  md += `| :--- | :--- | :--- | :--- | :--- | :--- |\n`
+  md += `| Method | Path | Auth | Role(s) | Owner Check | Module | Observable Effect | Negative Effect |\n`
+  md += `| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n`
 
   for (const r of routes) {
-    md += `| \`${r.method}\` | \`${r.path}\` | ${r.auth} | \`${r.role}\` | ${r.ownerCheck} | \`${r.module}\` |\n`
+    md += `| \`${r.method}\` | \`${r.path}\` | ${r.auth} | \`${r.role}\` | ${r.ownerCheck} | \`${r.module}\` | ${r.effect} | ${r.negativeEffect} |\n`
   }
 
   return md

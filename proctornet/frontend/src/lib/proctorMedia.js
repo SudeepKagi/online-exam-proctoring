@@ -109,7 +109,7 @@ export class ProctorPublisher {
             maxFramerate: 5
           },
           screenShareSimulcastLayers: [
-            new VideoPreset(640, 360, 120_000, 3)
+            { width: 640, height: 360, maxBitrate: 120_000, maxFramerate: 3 }
           ]
         }
       )

@@ -82,7 +82,7 @@ class ExamRepository {
     return prisma.$executeRawUnsafe(
       `SELECT pg_advisory_unlock($1);`,
       lockId
-    ).catch(() => {})
+    )
   }
 
   /**

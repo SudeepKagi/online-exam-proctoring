@@ -1,0 +1,29 @@
+﻿Γû╢ Q3 - Shared Event Catalogue & Strict Validation (A-06)
+  Γ£ö contains all canonical violation enums (0.678ms)
+  Γ£ö normalizes legacy client event types to canonical enums (0.2804ms)
+  Γ£ö validates canonical and alias types accurately (0.2422ms)
+  Γ£ö rejects unknown violation types server-side with ValidationError (3.1217ms)
+  Γ£ö provides severity and cooldown metadata (0.2419ms)
+Γ£ö Q3 - Shared Event Catalogue & Strict Validation (A-06) (5.7306ms)
+Γû╢ Q3 - Suspended/READY/Expired Attempt Question Leak Prevention (E-03)
+  Γ£ö withholds questions when attempt is SUSPENDED (5.5507ms)
+  Γ£ö withholds questions when attempt is READY (waiting lobby) (0.4399ms)
+  Γ£ö withholds questions when attempt is EXPIRED or TERMINATED (0.232ms)
+Γ£ö Q3 - Suspended/READY/Expired Attempt Question Leak Prevention (E-03) (6.5882ms)
+Γû╢ Q3 - AutosaveManager Logic & Network Drop Retention
+  Γ£ö caps batch size to <= 100 items (1.9863ms)
+  Γ£ö retains dirty answers in memory during a 30s network drop / server outage (1.9944ms)
+  Γ£ö reconciles 409 STALE_REVISION conflict via CAS update (0.7046ms)
+  Γ£ö reuses stable Idempotency-Key across submit retries to avoid double submission (0.4574ms)
+Γ£ö Q3 - AutosaveManager Logic & Network Drop Retention (5.644ms)
+Γû╢ Q3 - Results Polling & Release Policy Handling
+  Γ£ö returns HELD_BY_POLICY on 403 Forbidden (0.3037ms)
+Γ£ö Q3 - Results Polling & Release Policy Handling (0.3956ms)
+Γä╣ tests 13
+Γä╣ suites 4
+Γä╣ pass 13
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 369.3857

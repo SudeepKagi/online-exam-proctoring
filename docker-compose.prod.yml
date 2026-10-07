@@ -1,5 +1,5 @@
 # ==============================================================================
-# ProctorNet Production Infrastructure Stack  —  Single Source of Truth
+# ProctorNet Production Infrastructure Stack  --  Single Source of Truth
 # Usage: docker compose -f docker-compose.prod.yml up
 # Dev  : docker compose -f docker-compose.prod.yml -f docker-compose.override.yml up
 # ==============================================================================
@@ -88,7 +88,7 @@ services:
         condition: service_healthy
 
   # ----------------------------------------------------------------------------
-  # Frontend SPA  —  Multi-stage Vite build -> nginx:unprivileged (G-02)
+  # Frontend SPA  --  Multi-stage Vite build -> nginx:unprivileged (G-02)
   # ----------------------------------------------------------------------------
   frontend:
     build:
@@ -98,7 +98,7 @@ services:
     container_name: proctornet-frontend
     restart: unless-stopped
     init: true
-    stop_grace_period: 10s
+    stop_grace_period: 30s
     networks:
       - internal
     mem_limit: 256m
@@ -134,7 +134,7 @@ services:
         condition: service_healthy
 
   # ----------------------------------------------------------------------------
-  # Horizontally Scaled API Pods — three replicas (docs requirement)
+  # Horizontally Scaled API Pods -- three replicas (docs requirement)
   # ----------------------------------------------------------------------------
   api-1:
     <<: *api-common
@@ -238,14 +238,14 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # Private Cache: Redis 7  —  persistence OFF (cache-only mode)
+  # Private Cache: Redis 7  --  persistence OFF (cache-only mode)
   # ----------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: proctornet-redis
     restart: unless-stopped
     init: true
-    stop_grace_period: 10s
+    stop_grace_period: 30s
     networks:
       - internal
     mem_limit: 1024m
@@ -270,7 +270,7 @@ services:
       retries: 3
 
   # ----------------------------------------------------------------------------
-  # Private Event Bus: RabbitMQ 3.12  —  non-management image (G-04)
+  # Private Event Bus: RabbitMQ 3.12  --  non-management image (G-04)
   # ----------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3.12-alpine
@@ -298,7 +298,7 @@ services:
       retries: 5
 
   # ----------------------------------------------------------------------------
-  # Media Plane: LiveKit SFU (Bridge Network Topology — F-01 / G-01 egress)
+  # Media Plane: LiveKit SFU (Bridge Network Topology -- F-01 / G-01 egress)
   # ----------------------------------------------------------------------------
   livekit:
     image: livekit/livekit-server:v1.13.7

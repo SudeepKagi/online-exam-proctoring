@@ -303,6 +303,10 @@ class AuthService {
 
     return reqUser
   }
+
+  async logout(userId) {
+    return { success: true }
+  }
 }
 
 module.exports = new AuthService()

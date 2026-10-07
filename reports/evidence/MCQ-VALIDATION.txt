@@ -1,0 +1,42 @@
+﻿Γû╢ P2 MCQ-Only ΓÇö Question Validation Matrix
+  Γ£ö accepts valid 2-to-6 option MCQ with exactly one correct option (14.7864ms)
+  Γ£ö rejects 0 options (0.6861ms)
+  Γ£ö rejects 1 option (0.2393ms)
+  Γ£ö rejects 7 options (0.2378ms)
+  Γ£ö rejects 0 correct options (0.1969ms)
+  Γ£ö rejects 2 correct options (0.1946ms)
+  Γ£ö rejects negative_marks > marks (0.1547ms)
+  Γ£ö rejects negative_marks < 0 (0.2439ms)
+  Γ£ö rejects empty question text (0.597ms)
+  Γ£ö rejects question text exceeding 5000 chars (0.5671ms)
+  Γ£ö rejects empty option text (0.354ms)
+  Γ£ö rejects option text exceeding 500 chars (0.2038ms)
+Γ£ö P2 MCQ-Only ΓÇö Question Validation Matrix (20.2828ms)
+Γû╢ P2 MCQ-Only ΓÇö Bulk Excel Import Normalizer
+  Γ£ö normalizes valid Excel row into MCQ format (happy path) (0.3854ms)
+  Γ£ö rejects row missing Question text (sad path) (0.4267ms)
+  Γ£ö rejects row where CorrectOption is missing or invalid (sad path) (0.2152ms)
+  Γ£ö rejects row where negativeMarks > marks (sad path) (0.1691ms)
+Γ£ö P2 MCQ-Only ΓÇö Bulk Excel Import Normalizer (1.7917ms)
+{"level":"info","time":"2026-10-07T01:28:41.664Z","pid":8648,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-07T01:28:41.672Z","pid":8648,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-07T01:28:41.682Z","pid":8648,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+Γû╢ P2 MCQ-Only ΓÇö Publish Rejection Guard
+  Γ£ö rejects publishing an exam with 0 questions (400) (2181.8518ms)
+  Γ£ö rejects publishing an exam if any question violates MCQ rules (kills B-04 silent fallback) (1957.6167ms)
+Γ£ö P2 MCQ-Only ΓÇö Publish Rejection Guard (4142.736ms)
+Γû╢ P2 MCQ-Only ΓÇö Student DTO Security Leak Prevention
+  Γ£ö strictly ensures isCorrect is never serialized to student-facing start payloads (7972.2462ms)
+Γ£ö P2 MCQ-Only ΓÇö Student DTO Security Leak Prevention (7975.7093ms)
+{"level":"error","time":"2026-10-07T01:28:55.473Z","pid":8648,"hostname":"MSI","prisma_error":"\nInvalid `prisma.questionOption.create()` invocation in\nC:\\Final year project\\online-exam-proctoring\\proctornet\\backend\\tests\\mcq-validation.test.js:426:39\n\n  423 // 3. Second option with isCorrect=true: MUST throw DB unique index violation!\n  424 await assert.rejects(\n  425   async () => {\nΓåÆ 426     await prisma.questionOption.create(\nUnique constraint failed on the fields: (`question_id`)","target":"questionOption.create","msg":"Prisma Client Error"}
+Γû╢ P2 MCQ-Only ΓÇö Database Partial Unique Index Enforcement
+  Γ£ö enforces exactly one isCorrect=true per question at the database level (2738.1192ms)
+Γ£ö P2 MCQ-Only ΓÇö Database Partial Unique Index Enforcement (2742.0644ms)
+Γä╣ tests 20
+Γä╣ suites 5
+Γä╣ pass 20
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 15717.5655

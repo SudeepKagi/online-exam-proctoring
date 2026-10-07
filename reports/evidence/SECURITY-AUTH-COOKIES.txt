@@ -1,0 +1,40 @@
+﻿Γû╢ 1. HttpOnly Cookie Configuration & Helper Functions
+  Γ£ö generates secure HttpOnly cookie options with Lax SameSite and Root Path (0.8211ms)
+  Γ£ö supports custom maxAge for time-bounded sessions (e.g. invigilator exams) (0.2832ms)
+  Γ£ö setAuthCookie calls res.cookie with AUTH_COOKIE_NAME and secure attributes (0.4201ms)
+  Γ£ö clearAuthCookie calls res.clearCookie with matching security attributes (0.5004ms)
+  Γ£ö parseCookieHeader reliably extracts specific cookies from multi-cookie strings (0.4678ms)
+Γ£ö 1. HttpOnly Cookie Configuration & Helper Functions (4.2185ms)
+Γû╢ 2. Request & Socket Token Extraction Priority
+  Γ£ö extractTokenFromReq prioritizes req.cookies[AUTH_COOKIE_NAME] (0.438ms)
+  Γ£ö extractTokenFromReq falls back to raw headers.cookie when cookie-parser not pre-populated (0.8862ms)
+  Γ£ö extractTokenFromReq falls back to Authorization Bearer for non-browser clients (1.7275ms)
+  Γ£ö extractTokenFromSocket extracts cookie from socket.handshake.headers.cookie (0.6562ms)
+Γ£ö 2. Request & Socket Token Extraction Priority (6.5052ms)
+Γû╢ 3. Authentication Middleware Verification Matrix
+  Γ£ö authenticates valid cookie and populates req.user payload (8.1856ms)
+  Γ£ö rejects request with 401 when no auth cookie or header is provided (0.2666ms)
+  Γ£ö rejects tampered or forged JWT tokens with 401 (2.4919ms)
+  Γ£ö rejects expired JWT tokens with 401 and safe user-facing message (0.8064ms)
+Γ£ö 3. Authentication Middleware Verification Matrix (12.1067ms)
+Γû╢ 4. Role Authorization Gating
+  Γ£ö blocks student role from accessing admin-only routes (403) (0.3486ms)
+  Γ£ö blocks faculty role from accessing admin-only routes (403) (0.1158ms)
+  Γ£ö allows verified student role on student-only routes (0.0977ms)
+Γ£ö 4. Role Authorization Gating (0.6945ms)
+Γû╢ 5. CSRF Origin Defense Verification
+  Γ£ö permits state-changing POST requests from trusted frontend origin (0.16ms)
+  Γ£ö strictly rejects state-changing requests from malicious external origin (0.0866ms)
+Γ£ö 5. CSRF Origin Defense Verification (0.3825ms)
+Γû╢ 6. Zero-Token Storage Security Regression Audit
+  Γ£ö frontend source files must NOT store JWT tokens in localStorage or sessionStorage (2.235ms)
+  Γ£ö frontend environment example must NOT leak backend secrets or private keys (0.8245ms)
+Γ£ö 6. Zero-Token Storage Security Regression Audit (3.2256ms)
+Γä╣ tests 20
+Γä╣ suites 6
+Γä╣ pass 20
+Γä╣ fail 0
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 503.3577
