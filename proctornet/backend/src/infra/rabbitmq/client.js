@@ -48,6 +48,12 @@ class RabbitMQManager {
   }
 
   _init() {
+    if (config.queueDriver === 'postgres') {
+      logger.info('QUEUE_DRIVER=postgres: skipping RabbitMQ connection')
+      this.isReady = false
+      return
+    }
+
     const urls = [config.rabbitmqUrl || 'amqp://localhost:5672']
 
     this.connection = amqp.connect(urls, {

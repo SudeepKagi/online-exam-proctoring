@@ -17,12 +17,21 @@ class SocketEmitterManager {
   }
 
   _init() {
+    if (config.cacheDriver === 'memory') {
+      logger.info('CACHE_DRIVER=memory: skipping Socket.IO Redis emitter')
+      return
+    }
+
     try {
       this.redisClient = new Redis(config.redisUrl, {
         keyPrefix: config.redisPrefix,
         lazyConnect: true,
         maxRetriesPerRequest: 1,
         retryStrategy: (times) => Math.min(times * 200, 5000)
+      })
+
+      this.redisClient.on('error', (err) => {
+        logger.warn({ error: err.message }, 'Socket.IO Redis emitter client error')
       })
 
       this.redisClient.connect().catch((err) => {
