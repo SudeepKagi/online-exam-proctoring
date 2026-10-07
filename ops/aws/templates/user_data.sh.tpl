@@ -39,7 +39,8 @@ apt-get install -y --no-install-recommends \
     unattended-upgrades \
     unzip \
     jq \
-    postgresql-client
+    postgresql-client \
+    awscli
 
 # Enable automatic security patches
 dpkg-reconfigure -plow unattended-upgrades
@@ -189,13 +190,15 @@ $${CADDY_SITE} {
     }
 
     handle /readyz {
-        reverse_proxy 127.0.0.1:5000
+        reverse_proxy 127.0.0.1:9100
     }
 
     # Serve Built Frontend SPA
-    root * /opt/proctornet/current/proctornet/frontend/dist
-    file_server
-    try_files {path} /index.html
+    handle {
+        root * /opt/proctornet/current/proctornet/frontend/dist
+        try_files {path} /index.html
+        file_server
+    }
 }
 EOF
 

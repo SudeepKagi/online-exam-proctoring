@@ -55,8 +55,13 @@ else
 fi
 
 # 4. Database Migrations (Expand Phase)
-echo "[4/6] Executing database migrations (npx prisma migrate deploy)..."
+echo "[4/6] Ensuring production dependencies and executing database migrations..."
 cd "$NEW_RELEASE_DIR/proctornet/backend"
+if [ ! -d "node_modules" ]; then
+    echo "[-] Installing production dependencies..."
+    sudo -u proctornet npm install --omit=dev --no-audit --no-fund
+    sudo -u proctornet npx prisma generate
+fi
 if sudo -u proctornet npx prisma migrate deploy; then
     echo "[✓] Prisma migrations successfully applied."
 else
@@ -75,7 +80,10 @@ echo "[6/6] Verifying service health (/healthz and /readyz)..."
 HEALTHY=false
 for i in {1..15}; do
     HEALTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || true)
-    READY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/readyz || true)
+    READY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9100/readyz || true)
+    if [ "$READY_STATUS" != "200" ]; then
+        READY_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/readyz || true)
+    fi
 
     if [ "$HEALTH_STATUS" = "200" ] && [ "$READY_STATUS" = "200" ]; then
         echo "[✓] Health check passed on attempt $i (healthz=$HEALTH_STATUS, readyz=$READY_STATUS)."
