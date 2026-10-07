@@ -100,6 +100,23 @@ router.get('/exams/:id/credentials', async (req, res, next) => {
   }
 })
 
+router.post(['/exams/:id/invigilator-credentials/regenerate', '/exams/:id/regenerate-invigilator'], async (req, res, next) => {
+  try {
+    const credentials = await facultyService.regenerateInvigilatorCredentials(req.params.id, req.user.id)
+    res.status(200).json({
+      success: true,
+      credentials,
+      invCredentials: {
+        invId: credentials.invId,
+        password: credentials.oneTimePassword,
+        validUntil: credentials.validUntil
+      }
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.post('/exams/:id/duplicate', async (req, res, next) => {
   try {
     const exam = await facultyService.duplicateExam(req.params.id, req.user.id)

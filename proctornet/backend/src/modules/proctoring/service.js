@@ -86,8 +86,8 @@ class ProctoringService {
     })
     const violationId = batchRes?.violationId != null ? batchRes.violationId.toString() : null
 
-    // 5. Issue the evidence ticket AFTER the row exists and bind key to violationId (C-08/C-09)
-    let evidenceUpload = null
+    // 5. Issue the evidence tickets AFTER the row exists and bind key to violationId (C-08/C-09 / R2)
+    let evidenceTickets = null
     const { isEvidenceRequired, checkEvidenceBudget } = require('../../shared/evidencePolicy')
     const { presignService } = require('../media/presignService')
 
@@ -95,12 +95,12 @@ class ProctoringService {
       const budget = await checkEvidenceBudget(attemptId)
       if (budget.allowed) {
         try {
-          evidenceUpload = await presignService.generateUploadPresignedUrl(
+          evidenceTickets = await presignService.generateEvidenceTickets(
             { id: studentId, role: 'student' },
-            { purpose: 'EVIDENCE', attemptId, violationId, contentType: 'image/webp', bytes: 300 * 1024 }
+            { attemptId, violationId, examId: attempt.examId, contentType: 'image/webp' }
           )
         } catch (err) {
-          logger.warn({ attemptId, violationId, error: err.message }, 'Could not generate evidence upload ticket')
+          logger.warn({ attemptId, violationId, error: err.message }, 'Could not generate evidence tickets')
         }
       }
     }
@@ -110,7 +110,8 @@ class ProctoringService {
       violationId,
       eventType: canonicalType,
       severity,
-      evidenceUpload
+      evidenceTickets,
+      evidenceUpload: evidenceTickets?.camera || null
     }
   }
 

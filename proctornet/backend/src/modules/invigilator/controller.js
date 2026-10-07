@@ -7,11 +7,12 @@ const { proctoringService } = require('../proctoring/service')
 const { prisma } = require('../../infra/postgres/client')
 const { NotFoundError } = require('../../shared/errors')
 const { getClientIp } = require('../../utils/helpers')
+const { routeRateLimiters } = require('../../middleware/rateLimit')
 
 const router = express.Router()
 
-// ── Public: Invigilator login ──
-router.post('/login', async (req, res, next) => {
+// ── Public: Invigilator login (Rate limited by IP + invId - R-10) ──
+router.post('/login', routeRateLimiters.login, async (req, res, next) => {
   try {
     const { invId, invPassword, examId } = req.body
     const ipAddress = getClientIp(req)

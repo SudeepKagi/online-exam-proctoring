@@ -32,11 +32,21 @@ router.get('/health', (req, res) => {
   })
 })
 
-// Public System Config under /api/v1/config (Q3 Task 7)
+// Public System Config under /api/v1/config (Q3 Task 7 / R-11)
 router.get('/config', (req, res) => {
-  const vpnEnforcement = process.env.VPN_ENABLED === 'true' || process.env.VPN_ENFORCEMENT === 'true'
+  const rawMode = (process.env.VPN_ENFORCEMENT || (process.env.VPN_ENABLED === 'true' ? 'enforce' : 'off')).toLowerCase().trim()
+  let vpnEnforcement = 'off'
+  if (rawMode === 'enforce' || rawMode === 'true') {
+    vpnEnforcement = 'enforce'
+  } else if (rawMode === 'warn') {
+    vpnEnforcement = 'warn'
+  } else {
+    vpnEnforcement = 'off'
+  }
+
   res.status(200).json({
     vpnEnforcement,
+    isVpnEnforced: vpnEnforcement !== 'off',
     autosaveMaxBatch: 100,
     serverTime: new Date().toISOString()
   })

@@ -89,6 +89,42 @@ class RosterStoreManager {
       })
     })
 
+    // Listen to real-time violation events (R2)
+    socket.on('violation:new', (payload) => {
+      if (!payload) return
+      const attemptId = payload.attemptId || payload.studentId
+      if (!attemptId) return
+
+      startTransition(() => {
+        const existing = this.rosterMap.get(attemptId)
+        if (existing) {
+          const existingEvents = Array.isArray(existing.events) ? existing.events : []
+          const newEvent = {
+            id: payload.id || `ev_${Date.now()}`,
+            eventType: payload.eventType || payload.type || 'Security Flag',
+            type: payload.eventType || payload.type || 'Security Flag',
+            severity: payload.severity || 'MEDIUM',
+            details: payload.details || payload.message,
+            timestamp: payload.serverTimestamp || payload.timestamp || new Date().toISOString(),
+            thumbUrl: payload.thumbUrl,
+            evidenceUrl: payload.evidenceUrl,
+            evidenceStatus: payload.evidenceStatus,
+            metadata: payload.metadata
+          }
+          this.rosterMap.set(attemptId, {
+            ...existing,
+            flagCount: (existing.flagCount || 0) + 1,
+            isHotspot: true,
+            thumbUrl: payload.thumbUrl || existing.thumbUrl,
+            latestFrame: payload.thumbUrl || existing.latestFrame,
+            alerts: [newEvent.type, ...(existing.alerts || [])],
+            events: [newEvent, ...existingEvents]
+          })
+          this._recomputeSnapshot()
+        }
+      })
+    })
+
     this.isListening = true
   }
 

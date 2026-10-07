@@ -12,10 +12,23 @@ const {
 } = require('../../shared/errors')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
+/**
+ * Generate unambiguous password (>= 10 chars, no 0/O/1/I/l) using crypto (R-10)
+ */
+function generateUnambiguousPassword(length = 12) {
+  const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  const bytes = crypto.randomBytes(length)
+  let pass = ''
+  for (let i = 0; i < length; i++) {
+    pass += alphabet[bytes[i] % alphabet.length]
+  }
+  return pass
+}
+
 class ExamService {
   async createExam(data, facultyId) {
     const invId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
-    const rawInvPassword = crypto.randomBytes(6).toString('hex')
+    const rawInvPassword = generateUnambiguousPassword(12)
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
 
     const exam = await examRepository.create({
@@ -28,9 +41,14 @@ class ExamService {
       endTime: new Date(data.endTime)
     })
 
+    const validUntil = new Date(new Date(data.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+
     return {
       ...exam,
-      rawInvPassword
+      invId,
+      rawInvPassword,
+      oneTimePassword: rawInvPassword,
+      validUntil
     }
   }
 
@@ -70,6 +88,13 @@ class ExamService {
       }
     }
 
+    // Generate fresh one-time invigilator password on publish (R-10)
+    const rawInvPassword = generateUnambiguousPassword(12)
+    const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
+    const validUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+
+    await examRepository.update(examId, { invPasswordHash })
+
     const updated = await examRepository.updateStatus(examId, 'PUBLISHED')
 
     // Trigger pre-warming in background
@@ -77,7 +102,69 @@ class ExamService {
       logger.warn({ error: err.message, examId }, 'Failed to trigger background prewarm')
     })
 
-    return updated
+    return {
+      ...updated,
+      invId: exam.invId,
+      rawInvPassword,
+      oneTimePassword: rawInvPassword,
+      validUntil
+    }
+  }
+
+  /**
+   * Regenerate invigilator credentials (R-10)
+   * Invalidates existing sessions, logs audit entry, and returns one-time password
+   */
+  async regenerateInvigilatorCredentials(examId, actorId, actorRole) {
+    const exam = await examRepository.findById(examId)
+    if (!exam) {
+      throw new NotFoundError(`Exam '${examId}' not found`)
+    }
+
+    if (normalizeRole(actorRole) === ROLES.FACULTY && exam.facultyId !== actorId) {
+      throw new ForbiddenError('Access denied: You do not own this exam')
+    }
+
+    const { prisma } = require('../../infra/postgres/client')
+
+    // Invalidate old active sessions
+    await prisma.invigilatorSession.updateMany({
+      where: { examId, isActive: true },
+      data: { isActive: false }
+    })
+
+    const newInvId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+    const rawInvPassword = generateUnambiguousPassword(12)
+    const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
+    const validUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+
+    await examRepository.update(examId, {
+      invId: newInvId,
+      invPasswordHash
+    })
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        actorId,
+        actorRole: normalizeRole(actorRole),
+        action: 'EXAM_INVIGILATOR_CREDENTIALS_REGENERATED',
+        resourceType: 'Exam',
+        resourceId: examId,
+        metadata: { examId, invId: newInvId, validUntil }
+      }
+    }).catch((err) => {
+      logger.warn({ error: err.message, examId }, 'Failed to record audit log for invigilator credentials regeneration')
+    })
+
+    return {
+      success: true,
+      examId,
+      invId: newInvId,
+      rawInvPassword,
+      oneTimePassword: rawInvPassword,
+      validUntil
+    }
   }
 
   async updateExam(examId, data, facultyId, userRole) {
@@ -118,13 +205,14 @@ class ExamService {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
 
-    // Sanitize invPasswordHash
-    const { invPasswordHash, ...safeExam } = exam
+    // Sanitize invPasswordHash and one-time passwords - NEVER returned by any GET (R-10)
+    const { invPasswordHash, rawInvPassword, oneTimePassword, ...safeExam } = exam
     return safeExam
   }
 }
 
 module.exports = {
   ExamService,
-  examService: new ExamService()
+  examService: new ExamService(),
+  generateUnambiguousPassword
 }

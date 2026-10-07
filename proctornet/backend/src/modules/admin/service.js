@@ -151,9 +151,19 @@ class AdminService {
     const exam = await adminRepository.getExamById(id)
     if (!exam) throw new NotFoundError('Exam not found')
 
+    const { prisma } = require('../../infra/postgres/client')
+    const { generateUnambiguousPassword } = require('../exams/service')
+
+    // Invalidate old active sessions
+    await prisma.invigilatorSession.updateMany({
+      where: { examId: id, isActive: true },
+      data: { isActive: false }
+    })
+
     const newInvId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
-    const plainPassword = crypto.randomBytes(6).toString('hex')
+    const plainPassword = generateUnambiguousPassword(12)
     const invPasswordHash = await bcrypt.hash(plainPassword, 10)
+    const validUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
 
     const updated = await adminRepository.updateExam(id, {
       invId: newInvId,
@@ -168,9 +178,12 @@ class AdminService {
     })
 
     return {
+      success: true,
       examId: updated.id,
       invId: newInvId,
-      invPassword: plainPassword
+      invPassword: plainPassword,
+      oneTimePassword: plainPassword,
+      validUntil
     }
   }
 

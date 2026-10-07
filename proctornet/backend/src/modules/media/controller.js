@@ -67,6 +67,36 @@ router.post(
 )
 
 /**
+ * POST /api/v1/violations/:violationId/evidence/complete
+ * POST /api/v1/attempts/:attemptId/violations/:violationId/evidence/complete
+ * Verify uploaded evidence in S3 store and mark as UPLOADED (R2)
+ */
+const handleEvidenceComplete = async (req, res, next) => {
+  try {
+    const violationId = req.params.violationId || req.params.id || req.body.violationId
+    const result = await presignService.completeEvidenceUpload(req.user, {
+      violationId,
+      ...req.body
+    })
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+router.post(
+  '/violations/:violationId/evidence/complete',
+  requireAuth,
+  handleEvidenceComplete
+)
+
+router.post(
+  '/attempts/:attemptId/violations/:violationId/evidence/complete',
+  requireAuth,
+  handleEvidenceComplete
+)
+
+/**
  * GET /api/v1/media/view
  * Read presigned URL (redirect or json)
  */

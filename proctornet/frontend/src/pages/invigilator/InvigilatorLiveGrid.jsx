@@ -40,8 +40,17 @@ export default function InvigilatorLiveGrid() {
   const [showExited, setShowExited] = useState(false)
   const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
   const [activeLightboxImage, setActiveLightboxImage] = useState(null)
-  const [examTitle, setExamTitle] = useState('')
   const [page, setPage] = useState(1)
+  const [violationSeverityFilter, setViolationSeverityFilter] = useState('ALL')
+  const [violationTypeFilter, setViolationTypeFilter] = useState('ALL')
+  const [violationPage, setViolationPage] = useState(1)
+
+  // Auth guard: R-09 redirect to login if unauthenticated
+  useEffect(() => {
+    if (!user) {
+      navigate('/invigilator/login')
+    }
+  }, [user, navigate])
 
   // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
   const [subscribedTracks, setSubscribedTracks] = useState({})
@@ -105,69 +114,91 @@ export default function InvigilatorLiveGrid() {
     }
   })
 
-  // ── Fetch Roster and Summary from V1 API ──
-  const fetchGridData = async () => {
-    setLoading(true)
-    setErrorState(null)
+  // ── Fetch Roster, Summary, and Violations from V1 API (R2) ──
+  const fetchGridData = async (isInitial = false) => {
+    if (isInitial) {
+      setLoading(true)
+      setErrorState(null)
+    }
     try {
       // 1. Fetch Exam details
       const examRes = await api.get(`/invigilator/exam/${effectiveExamId}`).catch(() => null)
       if (examRes?.data?.exam) setExamTitle(examRes.data.exam.title)
 
-      // 2. Fetch v1 Summary & Roster
-      const [summaryRes, rosterRes] = await Promise.all([
+      // 2. Fetch v1 Summary & Roster & Violations
+      const [summaryRes, rosterRes, violationsRes] = await Promise.all([
         api.get(`/proctoring/exams/${effectiveExamId}/summary`).catch(() => null),
-        api.get(`/proctoring/exams/${effectiveExamId}/roster?limit=100`).catch(() => null)
+        api.get(`/proctoring/exams/${effectiveExamId}/roster?limit=100`).catch(() => null),
+        api.get(`/proctoring/exams/${effectiveExamId}/violations?limit=50`).catch(() => null)
       ])
 
       const summary = summaryRes?.data || null
       let rosterItems = rosterRes?.data?.items || []
+      const examViolationsList = violationsRes?.data?.items || []
 
       // Fallback to legacy exam students if v1 roster returned empty in legacy test env
       if (rosterItems.length === 0 && examRes?.data?.students) {
-        rosterItems = examRes.data.students.map((st, i) => ({
-          attemptId: st.attemptId || st.studentId || st.id,
-          studentId: st.studentId || st.id,
-          seatNo: `A-${101 + i}`,
-          usn: st.usn,
-          name: st.name,
-          status: st.status || 'ACTIVE',
-          alerts: (st.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
-          events: st.events || [],
-          isHotspot: (st.flagCount || 0) > 0 || (st.events || []).length > 0,
-          flagCount: st.flagCount || (st.events || []).length || 0,
-          lastSnapshot: st.latestFrame || null,
-          latestFrame: st.latestFrame || null,
-          latestScreen: st.latestScreen || null
-        }))
+        rosterItems = examRes.data.students.map((st, i) => {
+          const candV = examViolationsList.filter(v => v.attemptId === (st.attemptId || st.id || st.studentId))
+          const mergedEvents = (st.events || []).concat(candV)
+          return {
+            attemptId: st.attemptId || st.studentId || st.id,
+            studentId: st.studentId || st.id,
+            seatNo: `A-${101 + i}`,
+            usn: st.usn,
+            name: st.name,
+            status: st.status || 'ACTIVE',
+            alerts: mergedEvents.map(e => e.eventType || e.type || e.details || 'Security Flag'),
+            events: mergedEvents,
+            isHotspot: (st.flagCount || 0) > 0 || mergedEvents.length > 0,
+            flagCount: Math.max(st.flagCount || 0, mergedEvents.length),
+            lastSnapshot: candV[0]?.thumbUrl || st.latestFrame || null,
+            latestFrame: candV[0]?.thumbUrl || st.latestFrame || null,
+            latestScreen: candV[0]?.metadata?.screenUrl || st.latestScreen || null
+          }
+        })
       } else {
-        rosterItems = rosterItems.map((item, i) => ({
-          ...item,
-          id: item.attemptId || item.studentId || item.id,
-          seatNo: item.seatNo || `A-${101 + i}`,
-          alerts: (item.events || []).map(e => e.eventType || e.type || e.details || 'Security Flag'),
-          events: item.events || [],
-          isHotspot: (item.flagCount || 0) > 0,
-          latestFrame: item.thumbUrl || item.latestFrame || null,
-          latestScreen: item.latestScreen || null
-        }))
+        rosterItems = rosterItems.map((item, i) => {
+          const candV = examViolationsList.filter(v => v.attemptId === (item.attemptId || item.id))
+          const existingEvents = item.events || []
+          const mergedEvents = existingEvents.concat(candV.filter(cv => !existingEvents.some(ie => ie.id === cv.id)))
+          return {
+            ...item,
+            id: item.attemptId || item.studentId || item.id,
+            seatNo: item.seatNo || `A-${101 + i}`,
+            alerts: mergedEvents.map(e => e.eventType || e.type || e.details || 'Security Flag'),
+            events: mergedEvents,
+            isHotspot: (item.flagCount || 0) > 0 || mergedEvents.length > 0,
+            latestFrame: candV[0]?.thumbUrl || item.thumbUrl || item.latestFrame || null,
+            latestScreen: candV[0]?.metadata?.screenUrl || item.latestScreen || null
+          }
+        })
       }
 
       rosterStore.initExam(effectiveExamId, rosterItems, summary)
     } catch (err) {
       const status = err.response?.status
       const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unable to connect to exam server.'
-      setErrorState({
-        status,
-        title: status === 403
-          ? 'Invigilator Access Restricted'
-          : status === 404
-          ? 'No Active Examination Assigned'
-          : 'Failed to Synchronize Live Grid',
-        message: msg
-      })
+      if (status === 401) {
+        logout?.()
+        navigate('/invigilator/login')
+        return
+      }
+      if (isInitial) {
+        setErrorState({
+          status,
+          title: status === 403
+            ? 'Invigilator Access Restricted'
+            : status === 404
+            ? 'No Active Examination Assigned'
+            : 'Failed to Synchronize Live Grid',
+          message: msg
+        })
+      }
     } finally {
-      setLoading(false)
+      if (isInitial) {
+        setLoading(false)
+      }
     }
   }
 
@@ -255,10 +286,12 @@ export default function InvigilatorLiveGrid() {
     }
   }, [effectiveExamId])
 
-  // ── Periodic reconciliation sync: Re-sync every 15s to catch persisted db records ──
+  // ── Periodic quiet reconciliation sync every 60s (R2: never resets loading) ──
   useEffect(() => {
-    fetchGridData()
-    const interval = setInterval(fetchGridData, 15000)
+    fetchGridData(true)
+    const interval = setInterval(() => {
+      fetchGridData(false)
+    }, 60000)
     return () => clearInterval(interval)
   }, [effectiveExamId])
 
@@ -309,18 +342,11 @@ export default function InvigilatorLiveGrid() {
       await sendSocketWarning?.(candidateId, warningMsg.trim())
       await api.post(`/proctoring/attempts/${candidateId}/warn`, {
         message: warningMsg.trim()
-      }).catch(async () => {
-        await api.post('/invigilator/send-warning', {
-          examId: effectiveExamId,
-          studentId: candidateId,
-          message: warningMsg.trim()
-        }).catch(() => {})
       })
       toast.success(`Warning dispatched to candidate ${selectedCandidate.name || selectedCandidate.usn}`)
       setWarningMsg('')
-    } catch {
-      toast.success(`Warning dispatched to ${selectedCandidate.name || selectedCandidate.usn}`)
-      setWarningMsg('')
+    } catch (err) {
+      toast.error(`Failed to send warning: ${err.response?.data?.message || err.message}`)
     }
   }
 
@@ -329,16 +355,14 @@ export default function InvigilatorLiveGrid() {
     const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
       await pauseStudentExam?.(candidateId, 'Session paused by proctor.')
-      await api.post(`/proctoring/attempts/${candidateId}/pause`, { reason: 'Session paused by proctor.' }).catch(async () => {
-        await api.post(`/invigilator/pause-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
-      })
+      await api.post(`/proctoring/attempts/${candidateId}/pause`, { reason: 'Session paused by proctor.' })
       toast.success(`Exam session paused for candidate ${cand.name || cand.usn}`)
       rosterStore.updateCandidate(candidateId, { status: 'SUSPENDED' })
       if (selectedCandidate?.id === candidateId || selectedCandidate?.attemptId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'SUSPENDED' }))
       }
-    } catch {
-      toast.error(`Failed to pause session for candidate ${cand.usn}`)
+    } catch (err) {
+      toast.error(`Failed to pause candidate: ${err.response?.data?.message || err.message}`)
     }
   }
 
@@ -347,16 +371,14 @@ export default function InvigilatorLiveGrid() {
     const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
       await resumeStudentExam?.(candidateId)
-      await api.post(`/proctoring/attempts/${candidateId}/resume`).catch(async () => {
-        await api.post(`/invigilator/resume-student/${candidateId}`, { examId: effectiveExamId }).catch(() => {})
-      })
+      await api.post(`/proctoring/attempts/${candidateId}/resume`)
       toast.success(`Exam session resumed for candidate ${cand.name || cand.usn}`)
       rosterStore.updateCandidate(candidateId, { status: 'ACTIVE' })
       if (selectedCandidate?.id === candidateId || selectedCandidate?.attemptId === candidateId) {
         setSelectedCandidate(prev => ({ ...prev, status: 'ACTIVE' }))
       }
-    } catch {
-      toast.error(`Failed to resume session for candidate ${cand.usn}`)
+    } catch (err) {
+      toast.error(`Failed to resume candidate: ${err.response?.data?.message || err.message}`)
     }
   }
 
@@ -367,16 +389,11 @@ export default function InvigilatorLiveGrid() {
     const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
     try {
       await terminateStudentExam?.(candidateId, termReason)
-      await api.post(`/proctoring/attempts/${candidateId}/terminate`, { reason: termReason }).catch(async () => {
-        await api.post(`/invigilator/terminate-student/${candidateId}`, {
-          examId: effectiveExamId,
-          reason: termReason
-        }).catch(() => {})
-      })
-      toast.error(`Exam session terminated for ${candidate.name || candidate.usn}`)
+      await api.post(`/proctoring/attempts/${candidateId}/terminate`, { reason: termReason })
+      toast.success(`Exam session terminated for ${candidate.name || candidate.usn}`)
       rosterStore.updateCandidate(candidateId, { status: 'TERMINATED' })
-    } catch {
-      toast.error('Failed to dispatch termination order.')
+    } catch (err) {
+      toast.error(`Failed to terminate candidate: ${err.response?.data?.message || err.message}`)
     } finally {
       setTerminateDialog({ open: false, candidate: null, reason: '' })
       handleCloseModal()
@@ -549,6 +566,7 @@ export default function InvigilatorLiveGrid() {
                 return (
                   <Card
                     key={cand.id || cand.attemptId}
+                    data-candidate-id={cand.id || cand.attemptId}
                     onClick={() => handleSelectCandidate(cand)}
                     className={`transition-all cursor-pointer p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md ${
                       isTerminated
@@ -690,80 +708,174 @@ export default function InvigilatorLiveGrid() {
                   </div>
                 </div>
 
-                {/* Violations & Proctoring Alerts Panel */}
+                {/* Violations & Proctoring Alerts Panel (R2) */}
                 <div className="bg-background border border-border rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                     <h4 className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <ShieldAlert size={14} className="text-amber-500" />
                       Violation Logs & Telemetry Events ({selectedCandidate.events?.length || 0})
                     </h4>
-                    {selectedCandidate.flagCount > 0 && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        {selectedCandidate.flagCount} Security Strikes
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={violationSeverityFilter}
+                        onChange={(e) => { setViolationSeverityFilter(e.target.value); setViolationPage(1) }}
+                        className="text-[10px] bg-card border border-border rounded-lg px-2 py-1 text-foreground font-medium"
+                      >
+                        <option value="ALL">All Severities</option>
+                        <option value="CRITICAL">Critical</option>
+                        <option value="HIGH">High</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="LOW">Low</option>
+                      </select>
+                      <select
+                        value={violationTypeFilter}
+                        onChange={(e) => { setViolationTypeFilter(e.target.value); setViolationPage(1) }}
+                        className="text-[10px] bg-card border border-border rounded-lg px-2 py-1 text-foreground font-medium max-w-[120px] truncate"
+                      >
+                        <option value="ALL">All Types</option>
+                        <option value="TAB_SWITCH">Tab Switch</option>
+                        <option value="FULLSCREEN_EXIT">Fullscreen Exit</option>
+                        <option value="MULTIPLE_FACES">Multiple Faces</option>
+                        <option value="NO_FACE">No Face</option>
+                        <option value="FACE_MISMATCH">Face Mismatch</option>
+                        <option value="DEVTOOLS_OPENED">DevTools</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {(!selectedCandidate.events || selectedCandidate.events.length === 0) ? (
-                    <div className="py-6 text-center text-xs text-muted-foreground font-medium">
-                      No security violations or proctoring alerts recorded for this candidate.
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
-                      {selectedCandidate.events.map((ev, idx) => (
-                        <div
-                          key={ev.id || idx}
-                          className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-card text-xs font-sans shadow-2xs"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                                  ev.severity === 'HIGH' || ev.severity === 'CRITICAL'
-                                    ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
-                                    : 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
-                                }`}>
-                                  {ev.severity || 'ALERT'}
-                                </span>
-                                <span className="font-bold text-foreground">{ev.type || ev.eventType || 'Security Violation'}</span>
-                              </div>
-                              {ev.details && (
-                                <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{ev.details}</p>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap ml-3">
-                              {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
-                            </span>
-                          </div>
+                  {(() => {
+                    const rawEvents = selectedCandidate.events || []
+                    const filtered = rawEvents.filter(ev => {
+                      if (violationSeverityFilter !== 'ALL' && (ev.severity || 'MEDIUM').toUpperCase() !== violationSeverityFilter) return false
+                      if (violationTypeFilter !== 'ALL' && (ev.type || ev.eventType) !== violationTypeFilter) return false
+                      return true
+                    })
+                    const V_PAGE_SIZE = 4
+                    const totalVPages = Math.max(1, Math.ceil(filtered.length / V_PAGE_SIZE))
+                    const curVPage = Math.min(violationPage, totalVPages)
+                    const pageEvents = filtered.slice((curVPage - 1) * V_PAGE_SIZE, curVPage * V_PAGE_SIZE)
 
-                          {/* Evidence Snapshots */}
-                          {(ev.cameraFrameUrl || ev.screenshotUrl) && (
-                            <div className="flex items-center gap-2 pt-1 border-t border-border/60">
-                              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Snapshots:</span>
-                              {ev.cameraFrameUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveLightboxImage({ src: ev.cameraFrameUrl, title: `Webcam Snapshot — ${ev.type || ev.eventType}` })}
-                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition-colors cursor-pointer"
-                                >
-                                  <Video size={11} /> View Camera
-                                </button>
-                              )}
-                              {ev.screenshotUrl && (
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveLightboxImage({ src: ev.screenshotUrl, title: `Screen Capture — ${ev.type || ev.eventType}` })}
-                                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold transition-colors cursor-pointer"
-                                >
-                                  <Monitor size={11} /> View Screen
-                                </button>
-                              )}
-                            </div>
-                          )}
+                    if (filtered.length === 0) {
+                      return (
+                        <div className="py-6 text-center text-xs text-muted-foreground font-medium">
+                          {rawEvents.length === 0
+                            ? 'No security violations or proctoring alerts recorded for this candidate.'
+                            : 'No violations match the selected filters.'}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )
+                    }
+
+                    return (
+                      <div className="space-y-2.5">
+                        <div className="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+                          {pageEvents.map((ev, idx) => {
+                            const thumbSrc = ev.thumbUrl || ev.cameraFrameUrl || ev.latestFrame
+                            const fullSrc = ev.evidenceUrl || ev.cameraFrameUrl || ev.thumbUrl
+                            const screenSrc = ev.metadata?.screenUrl || ev.screenshotUrl
+
+                            return (
+                              <div
+                                key={ev.id || idx}
+                                className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-card text-xs font-sans shadow-2xs"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                        ev.severity === 'HIGH' || ev.severity === 'CRITICAL'
+                                          ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
+                                          : 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
+                                      }`}>
+                                        {ev.severity || 'ALERT'}
+                                      </span>
+                                      <span className="font-bold text-foreground">{ev.type || ev.eventType || 'Security Violation'}</span>
+                                      {ev.evidenceStatus && (
+                                        <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border">
+                                          {ev.evidenceStatus}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {ev.details && (
+                                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{ev.details}</p>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap ml-3">
+                                    {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+                                  </span>
+                                </div>
+
+                                {/* Evidence Snapshots: 320 px Thumbnail + Lightbox trigger (R2) */}
+                                {(thumbSrc || fullSrc || screenSrc) && (
+                                  <div className="flex items-center gap-3 pt-2 border-t border-border/60">
+                                    {thumbSrc && (
+                                      <div
+                                        onClick={() => setActiveLightboxImage({ src: fullSrc, title: `Evidence Snapshot — ${ev.type || ev.eventType}` })}
+                                        className="w-16 h-10 rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition bg-black flex items-center justify-center shrink-0"
+                                        title="Click to view full image in lightbox"
+                                      >
+                                        <img
+                                          src={thumbSrc}
+                                          alt="Evidence thumbnail"
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      {fullSrc && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveLightboxImage({ src: fullSrc, title: `Webcam Evidence — ${ev.type || ev.eventType}` })}
+                                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          <Video size={11} /> Full Frame Lightbox
+                                        </button>
+                                      )}
+                                      {screenSrc && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setActiveLightboxImage({ src: screenSrc, title: `Screen Capture — ${ev.type || ev.eventType}` })}
+                                          className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold transition-colors cursor-pointer"
+                                        >
+                                          <Monitor size={11} /> Screen Lightbox
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Paginated Violation Navigation */}
+                        {totalVPages > 1 && (
+                          <div className="flex items-center justify-between pt-2 border-t border-border text-[11px] text-muted-foreground">
+                            <span>Page {curVPage} of {totalVPages}</span>
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={curVPage <= 1}
+                                onClick={() => setViolationPage(p => Math.max(1, p - 1))}
+                                className="h-6 px-2 text-[10px]"
+                              >
+                                Prev
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={curVPage >= totalVPages}
+                                onClick={() => setViolationPage(p => Math.min(totalVPages, p + 1))}
+                                className="h-6 px-2 text-[10px]"
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
 
                 {/* Actions Panel */}

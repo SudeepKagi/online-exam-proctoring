@@ -3,8 +3,10 @@ import { io } from 'socket.io-client'
 import toast from 'react-hot-toast'
 import { normalizeViolationType } from '@/shared/violationTypes'
 
+import { reportViolationWithEvidence } from '@/lib/evidenceUploader'
+
 /**
- * useExamSocket Hook (P7 Cleaned / Q3 Integrated)
+ * useExamSocket Hook (P7 Cleaned / Q3 Integrated / R2)
  * Handles Socket.io real-time control plane events (state changes, proctor warnings, chat).
  * Media streaming is handled exclusively by LiveKit SFU (ProctorPublisher) - no media over socket!
  */
@@ -37,7 +39,7 @@ export function useExamSocket({
   const userRef = useRef(user)
   userRef.current = user
 
-  // ── Throttled Violation Emitter (Q3.4 / A-06) ──
+  // ── Throttled Violation Emitter (Q3.4 / A-06 / R2) ──
   const emitViolation = useCallback((type, severity, metadata = {}) => {
     const canonicalType = normalizeViolationType(type)
     if (!canonicalType) {
@@ -52,7 +54,7 @@ export function useExamSocket({
     lastViolationTimeRef.current[canonicalType] = now
     setViolations(v => v + 1)
 
-    // Send control event over socket without image bytes
+    // 1. Send control event over socket without image bytes
     socketRef.current?.emit('violation', {
       examId,
       attemptId,
@@ -60,6 +62,19 @@ export function useExamSocket({
       clientTimestamp: new Date().toISOString(),
       metadata
     })
+
+    // 2. Trigger HTTP violation recording, direct S3 upload, and completion (R2)
+    if (attemptId) {
+      const videoEl = document.querySelector('video')
+      reportViolationWithEvidence({
+        attemptId,
+        eventType: canonicalType,
+        metadata,
+        videoElement: videoEl
+      }).catch((err) => {
+        console.warn('[useExamSocket] Background evidence upload notice:', err.message)
+      })
+    }
   }, [examId, attemptId])
 
   useEffect(() => {

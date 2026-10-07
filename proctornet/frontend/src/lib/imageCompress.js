@@ -245,3 +245,60 @@ export async function compressInWorker(blobOrFile, options = {}) {
     worker.postMessage({ id, bitmap, options }, [bitmap])
   })
 }
+
+/**
+ * Create a client-side thumbnail (320px max dimension, WebP <= 50 KB)
+ * Avoids server-side image processing on the small EC2 box (R2)
+ */
+export async function createThumbnail(source, maxDimension = 320) {
+  return await compressImage(source, {
+    maxWidth: maxDimension,
+    maxHeight: maxDimension,
+    targetBytes: 50 * 1024,
+    hardCapBytes: 100 * 1024,
+    initialQuality: 0.6,
+    minQuality: 0.3
+  })
+}
+
+/**
+ * Capture frame from video element or media stream track
+ */
+export async function captureFrameFromSource(source) {
+  if (!source) return null
+
+  // If source is a MediaStreamTrack
+  if (typeof MediaStreamTrack !== 'undefined' && source instanceof MediaStreamTrack) {
+    if (typeof ImageCapture !== 'undefined') {
+      try {
+        const imageCapture = new ImageCapture(source)
+        return await imageCapture.grabFrame() // returns ImageBitmap
+      } catch {
+        // fallback
+      }
+    }
+  }
+
+  // If source is an HTMLVideoElement
+  if (typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement) {
+    const width = source.videoWidth || 640
+    const height = source.videoHeight || 480
+    if (width === 0 || height === 0) return null
+
+    if (typeof OffscreenCanvas !== 'undefined') {
+      const canvas = new OffscreenCanvas(width, height)
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(source, 0, 0, width, height)
+      return await createImageBitmap(canvas)
+    } else if (typeof document !== 'undefined') {
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(source, 0, 0, width, height)
+      return await createImageBitmap(canvas)
+    }
+  }
+
+  return null
+}

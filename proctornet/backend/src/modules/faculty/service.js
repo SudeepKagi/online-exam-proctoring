@@ -42,7 +42,17 @@ class FacultyService {
 
   async createExam(data, facultyId) {
     const created = await examService.createExam(data, facultyId)
-    return toFacultyExamDTO(created)
+    const dto = toFacultyExamDTO(created)
+    return {
+      ...dto,
+      invId: created.invId,
+      oneTimePassword: created.oneTimePassword,
+      invCredentials: {
+        invId: created.invId,
+        password: created.oneTimePassword,
+        validUntil: created.validUntil
+      }
+    }
   }
 
   async updateExam(id, data, facultyId) {
@@ -62,7 +72,21 @@ class FacultyService {
 
   async publishExam(id, facultyId) {
     const published = await examService.publishExam(id, facultyId, ROLES.FACULTY)
-    return toFacultyExamDTO(published)
+    const dto = toFacultyExamDTO(published)
+    return {
+      ...dto,
+      invId: published.invId,
+      oneTimePassword: published.oneTimePassword,
+      invCredentials: {
+        invId: published.invId,
+        password: published.oneTimePassword,
+        validUntil: published.validUntil
+      }
+    }
+  }
+
+  async regenerateInvigilatorCredentials(id, facultyId) {
+    return await examService.regenerateInvigilatorCredentials(id, facultyId, ROLES.FACULTY)
   }
 
   async getExamCredentials(id, facultyId) {

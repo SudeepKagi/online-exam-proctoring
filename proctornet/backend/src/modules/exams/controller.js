@@ -96,4 +96,27 @@ router.post(
   }
 )
 
+/**
+ * POST /api/v1/exams/:examId/invigilator-credentials/regenerate
+ * Regenerate one-time invigilator access credentials (Faculty / Admin) (R-10)
+ */
+router.post(
+  '/exams/:examId/invigilator-credentials/regenerate',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY']),
+  validateParams(examIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const result = await examService.regenerateInvigilatorCredentials(
+        req.params.examId,
+        req.user.id,
+        req.user.role
+      )
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router

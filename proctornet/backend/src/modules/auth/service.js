@@ -28,6 +28,7 @@ class AuthService {
   }
 
   generateTokens(user, role, extra = {}) {
+    const { expiresIn: customExpiresIn, ...restExtra } = extra
     const canonicalRole = normalizeRole(role) || String(role).toLowerCase()
     const payload = {
       id: user.id,
@@ -36,14 +37,14 @@ class AuthService {
       name: user.name || null,
       departmentCode: user.departmentCode || null,
       semester: user.semester || null,
-      ...extra
+      ...restExtra
     }
 
     const accessToken = jwt.sign(payload, config.jwtSecret, {
-      expiresIn: extra.expiresIn || config.jwtExpiresIn || '15m'
+      expiresIn: customExpiresIn || config.jwtExpiresIn || '15m'
     })
 
-    const refreshToken = jwt.sign({ id: user.id, role: canonicalRole, ...extra }, config.jwtSecret, {
+    const refreshToken = jwt.sign({ id: user.id, role: canonicalRole, ...restExtra }, config.jwtSecret, {
       expiresIn: config.jwtRefreshExpiresIn || '7d'
     })
 
@@ -182,7 +183,13 @@ class AuthService {
       throw new UnauthorizedError('Invalid invigilator credentials')
     }
 
-    const sessionExpiry = new Date(exam.endTime.getTime() + 30 * 60 * 1000)
+    // Invigilator credentials valid until exam end + 24 h (R-10)
+    const maxValidUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000)
+    if (Date.now() > maxValidUntil.getTime()) {
+      throw new UnauthorizedError('Invigilator credentials expired (valid until exam end + 24h)')
+    }
+
+    const sessionExpiry = maxValidUntil
     const secondsUntilExpiry = Math.max(Math.floor((sessionExpiry.getTime() - Date.now()) / 1000), 60)
 
     const session = await authRepository.createInvigilatorSession({
@@ -309,4 +316,6 @@ class AuthService {
   }
 }
 
-module.exports = new AuthService()
+const authServiceInstance = new AuthService()
+authServiceInstance.authService = authServiceInstance
+module.exports = authServiceInstance
