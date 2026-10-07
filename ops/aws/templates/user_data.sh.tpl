@@ -149,30 +149,45 @@ systemctl daemon-reload
 
 echo "=== [8/8] Configuring Caddy Reverse Proxy & Static SPA Serving ==="
 DOMAIN_NAME="${domain_name}"
-if [ "$${DOMAIN_NAME}" = "localhost" ] || [ -z "$${DOMAIN_NAME}" ]; then
-    CADDY_SITE=":80"
-else
-    CADDY_SITE="$${DOMAIN_NAME}, :80"
-fi
 
 cat << EOF > /etc/caddy/Caddyfile
-$${CADDY_SITE} {
-    # Block /metrics externally — accessible only via localhost (127.0.0.1:5000/metrics)
-    @metrics {
-        path /metrics
-    }
-    respond @metrics "Forbidden" 403
+{
+    email admin@proctornet.com
+}
 
-    # Security Headers
+# Redirect raw IP and legacy hostnames to canonical domain
+http://43.204.45.86, http://43.204.45.86.sslip.io, https://43.204.45.86.sslip.io {
+    redir https://$${DOMAIN_NAME}{uri} permanent
+}
+
+$${DOMAIN_NAME} {
+    encode zstd gzip
+
+    # Block internal telemetry endpoints publicly (EDGE-01)
+    handle /metrics* {
+        respond "Not Found" 404
+    }
+
+    handle /readyz* {
+        respond "Not Found" 404
+    }
+
+    # Security Headers & Content-Security-Policy (S1 Specification)
     header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        Strict-Transport-Security "max-age=300"
         X-Content-Type-Options "nosniff"
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "camera=(self), microphone=(self), display-capture=(self)"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com; img-src 'self' data: blob: https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; connect-src 'self' wss://$${DOMAIN_NAME} https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
+        ?X-Request-ID "{uuid}"
     }
 
-    # Proxy API & WebSocket endpoints to Node backend
+    # Request body limit
+    request_body {
+        max_size 10MB
+    }
+
     handle /api/* {
         reverse_proxy 127.0.0.1:5000
     }
@@ -193,13 +208,18 @@ $${CADDY_SITE} {
         reverse_proxy 127.0.0.1:5000
     }
 
-    handle /readyz {
-        reverse_proxy 127.0.0.1:9100
+    @assets {
+        path /assets/*
+    }
+    handle @assets {
+        root * /opt/proctornet/current/proctornet/frontend/dist
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
     }
 
-    # Serve Built Frontend SPA
     handle {
         root * /opt/proctornet/current/proctornet/frontend/dist
+        header Cache-Control "no-store, no-cache, must-revalidate"
         try_files {path} /index.html
         file_server
     }

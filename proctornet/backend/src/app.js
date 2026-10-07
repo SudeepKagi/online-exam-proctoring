@@ -59,7 +59,12 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com', ...(isProd ? [] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: ["'self'", 'ws:', 'wss:', ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
+      connectSrc: [
+        "'self'",
+        'wss://proctornet.duckdns.org',
+        'wss://43.204.45.86.sslip.io',
+        ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000', 'ws://localhost:5000', 'ws://127.0.0.1:5000'])
+      ],
       fontSrc: ["'self'", 'data:'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -70,7 +75,10 @@ app.use(helmet({
 
 const { requestIdMiddleware } = require('./middleware/requestId')
 
-app.use(compression())
+// In production, Caddy handles zstd/gzip compression to save Node CPU (S1 / EDGE-01)
+if (!isProd) {
+  app.use(compression())
+}
 app.use(requestIdMiddleware)
 app.use(requestContextMiddleware)
 app.use(metricsMiddleware)
@@ -80,7 +88,7 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
-    if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io)(:\d+)?$/)) {
+    if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/)) {
       return callback(null, true)
     }
     if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
@@ -90,18 +98,20 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie', 'x-agent-session', 'x-agent-seq', 'x-agent-ts', 'x-agent-nonce', 'x-agent-signature'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie', 'x-agent-session', 'x-agent-seq', 'x-agent-ts', 'x-agent-nonce', 'x-agent-signature', 'x-request-id'],
 }
 app.use(cors(corsOptions))
 
-// Controlled Payload Limits: 10MB standard API (D-6)
+// Controlled Payload Limits: 256KB default API with rawBody verification only for webhook/agent paths (S1 / EDGE-03)
 app.use(express.json({
-  limit: '10mb',
+  limit: '256kb',
   verify: (req, res, buf) => {
-    req.rawBody = buf
+    if (req.path.startsWith('/api/v1/agent') || req.path.startsWith('/internal/livekit')) {
+      req.rawBody = buf
+    }
   }
 }))
-app.use(express.urlencoded({ extended: true, limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '256kb' }))
 
 // ── Internal LiveKit Webhook Endpoint (P7 Task 7.1) ──
 app.post('/internal/livekit/webhook', async (req, res, next) => {
@@ -125,6 +135,7 @@ function csrfProtection(req, res, next) {
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {
     const isAllowed = allowedOrigins.includes(origin) ||
+      Boolean(origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/)) ||
       (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')))
     if (!isAllowed) {
       return res.status(403).json({ error: 'Forbidden origin: Cross-site request rejected.' })
@@ -135,7 +146,7 @@ function csrfProtection(req, res, next) {
 }
 app.use('/api', csrfProtection)
 
-const isLoadTest = process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
+const isLoadTest = !isProd && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: isLoadTest ? 100000 : 600,

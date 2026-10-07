@@ -31,11 +31,11 @@ HTMLEOF
     email admin@proctornet.com
 }
 
-http://43.204.45.86, http://43.204.45.86.sslip.io, http://43-204-45-86.sslip.io {
-    redir https://43.204.45.86.sslip.io{uri} permanent
+http://43.204.45.86, http://43.204.45.86.sslip.io, https://43.204.45.86.sslip.io {
+    redir https://proctornet.duckdns.org{uri} permanent
 }
 
-43.204.45.86.sslip.io, 43-204-45-86.sslip.io, 43.204.45.86 {
+proctornet.duckdns.org {
     handle {
         root * /etc/caddy
         rewrite * /maintenance.html
@@ -45,7 +45,7 @@ http://43.204.45.86, http://43.204.45.86.sslip.io, http://43-204-45-86.sslip.io 
 }
 EOF
 
-    caddy validate --config "$CADDYFILE"
+    caddy validate --adapter caddyfile --config "$CADDYFILE"
     systemctl reload caddy
     echo "[✓] Maintenance mode ENABLED."
 
@@ -57,7 +57,7 @@ elif [ "$MODE" = "off" ]; then
         echo "Warning: No backup Caddyfile found. Retaining current or check template."
     fi
 
-    caddy validate --config "$CADDYFILE"
+    caddy validate --adapter caddyfile --config "$CADDYFILE"
     systemctl reload caddy
     echo "[✓] Maintenance mode DISABLED. Live traffic restored."
 

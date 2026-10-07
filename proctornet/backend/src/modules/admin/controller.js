@@ -327,7 +327,7 @@ router.post('/bulk-upload/parse', upload.single('file'), async (req, res, next) 
   }
 })
 
-router.post('/bulk-upload/confirm', validateBody(confirmBulkSchema), async (req, res, next) => {
+router.post('/bulk-upload/confirm', express.json({ limit: '10mb' }), validateBody(confirmBulkSchema), async (req, res, next) => {
   try {
     const type = req.body.type || req.body.role
     const accounts = req.body.accounts || req.body.records

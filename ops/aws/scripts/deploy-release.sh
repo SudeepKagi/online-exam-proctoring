@@ -82,10 +82,21 @@ else
     exit 1
 fi
 
-# 5. Atomic Symlink Switch & Service Restart
+# 5. Atomic Symlink Switch, Service Restart & Caddy Sync
 echo "[5/6] Atomically switching active symlink and restarting systemd service..."
 ln -sfn "$NEW_RELEASE_DIR" "$CURRENT_LINK"
 systemctl restart proctornet
+
+if [ -f "$NEW_RELEASE_DIR/ops/caddy/Caddyfile" ]; then
+    echo "[-] Syncing Caddy reverse proxy configuration from release..."
+    cp "$NEW_RELEASE_DIR/ops/caddy/Caddyfile" /etc/caddy/Caddyfile
+    if caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile; then
+        systemctl reload caddy || systemctl restart caddy
+        echo "[✓] Caddy configuration successfully validated and reloaded."
+    else
+        echo "[x] WARNING: Caddyfile validation failed! Retaining previous configuration."
+    fi
+fi
 
 # 6. Automated Health Checks with Rollback on Failure
 echo "[6/6] Verifying service health (/healthz and /readyz)..."

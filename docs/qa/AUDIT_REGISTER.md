@@ -18,3 +18,13 @@ See [docs/performance/AUDIT_REGISTER.md](../performance/AUDIT_REGISTER.md) for f
 | **R0-06** | P1 | `backend/src/modules/student/controller.js` | Legacy unversioned student routes (`/exams/:id/answer`, `/autosave`, `/submit`, `/evidence`, `/violation`, `/acknowledge`) existed as unmaintained zombie endpoints bypassing v1 idempotency and CAS. | **REMEDIATED**: Purged legacy student endpoints; unified API exclusively on v1 canonical flows (`/attempts/:id/submission`, `/attempts/:id/answers`, `/violations/batch`). |
 | **R0-07** | P1 | `backend/tests/route-matrix.test.js` & `docs/api/ROUTE_INVENTORY.md` | Route tests checked HTTP status codes but did not assert *observable state changes* (database rows, outbox events, negative-effect invariance). | **REMEDIATED**: Contract tests extended with positive effect assertions (DB row created, outbox row queued) and negative effect assertions (BOLA / 403 / 404 mutations strictly 0). |
 | **R0-08** | P2 | `backend/src/modules/invigilator/` & `assertStaffExamAccess` | Invigilator staff scoping permitted non-UUID strings in JWT payload, which caused PostgreSQL UUID casting syntax errors during state machine transitions. | **REMEDIATED**: Normalized token generation and staff scoping to validate standard UUIDs; fail-closed on unassigned/missing exam IDs. |
+
+---
+
+## Prompt 5 Defect Remediation Register
+
+| ID | Sev | Codebase Location | Evidence & Verified Defect | Architectural Remedy & S1 Status |
+|---|---|---|---|---|
+| **EDGE-01** | S1 | `/etc/caddy/Caddyfile` & `ops/aws/templates/user_data.sh.tpl` | No CSP on the SPA; no `encode` directive (uncompressed assets); `/readyz` and `/metrics` publicly proxied to internal port 9100/5000 revealing telemetry & internal host details; HSTS preload before readiness. | **REMEDIATED (S1)**: Canonical Caddyfile deployed with `encode zstd gzip`, full SPA CSP with exact origins (`wss://`, S3 buckets, font/script CDNs), HSTS ramp-up (`max-age=300`), and dedicated `handle` blocks returning 404 for `/readyz*` and `/metrics*`. |
+| **EDGE-03** | S2 | `backend/src/app.js` | Node `compression()` burned CPU duplicating Caddy; `express.json({limit:'10mb'})` with blanket `rawBody` retention on every request; production CSP had `ws:`/`wss:` wildcards; `LOADTEST_ALLOW` rate-limit bypass had no production guard. | **REMEDIATED (S1)**: Node `compression()` disabled in production; `express.json` default limit reduced to 256KB with `rawBody` conditionally captured only for agent/livekit webhooks; per-route 10MB override on bulk import; exact CSP connect-src origins; rate-limit test bypass guarded with `!isProd`. |
+
