@@ -1,0 +1,401 @@
+[
+    {
+        "File":  "proctornet/backend/tests/agent-adversarial.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  2367,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:40.898Z\",\"pid\":28916,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.admin...."
+    },
+    {
+        "File":  "proctornet/backend/tests/agent-legacy-gaps.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  442,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/agent-module.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  2103,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/architecture.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1462,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/blackbox_browser_security_verification.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1220,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/e2e_lifecycle.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  224,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/exam-lifecycle.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1520,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:47.983Z\",\"pid\":28424,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/live_proctoring_pipeline.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  217,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/mcq-validation.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  816,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:49.016Z\",\"pid\":33284,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/observability.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1962,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/p3-schema-constraints.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  540,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:51.537Z\",\"pid\":12576,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p4-concurrency-write-paths.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  897,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:52.349Z\",\"pid\":32024,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p4-prewarm-500.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  799,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:53.264Z\",\"pid\":30468,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p4-property-grading.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  670,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/p4-state-machine.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  320,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/p5-client-compression.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  662,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/p5-storage-evidence.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  888,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:55.976Z\",\"pid\":25316,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p6-frontend-autosave.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  307,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/p6-realtime-invigilator.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1055,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:57.344Z\",\"pid\":37356,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p7-media-livekit.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  880,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:58.314Z\",\"pid\":3796,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.cr..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p8-vpn-wireguard.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  568,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:43:58.874Z\",\"pid\":5152,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.cr..."
+    },
+    {
+        "File":  "proctornet/backend/tests/p9-infrastructure-hardening.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  3136,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/phase_c_remediation.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1572,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/q3-student-flow.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  251,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/q4-async-resilience.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  705,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:04.528Z\",\"pid\":28952,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/q5-bola-fuzz.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1868,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:06.473Z\",\"pid\":22432,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/r1-face-verification.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  665,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/r2-evidence-invigilator.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1201,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:08.323Z\",\"pid\":37548,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/r3-media-cadence.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  580,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/r4-lite-profile-drivers.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1783,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:10.715Z\",\"pid\":38400,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/reset-keep-admin.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  960,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/route-matrix.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  1914,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:13.612Z\",\"pid\":38088,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "proctornet/backend/tests/security_auth_cookies.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  459,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/backend/tests/services.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  625,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:14.763Z\",\"pid\":36176,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.studen..."
+    },
+    {
+        "File":  "proctornet/backend/tests/timezone-matrix.test.js",
+        "Status":  "FAIL",
+        "ExitCode":  1,
+        "DurationMs":  470,
+        "FirstError":  "{\"level\":\"error\",\"time\":\"2026-10-08T10:44:15.172Z\",\"pid\":39372,\"hostname\":\"MSI\",\"prisma_error\":\"\\nInvalid `prisma.exam.c..."
+    },
+    {
+        "File":  "tests/active_attempts_gate.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  769,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/ai_question_validation.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  382,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/api_client.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  5123,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/approval_auth.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1288,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/ci_workflow_integrity.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  262,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/eligibility_matrix.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  222,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/exam_credentials.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1104,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/feature_truth.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  901,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/p8-deployment-truth.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  2203,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/profile_security.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  645,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/question_immutability.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  1394,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/release_packaging.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  296,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/restart_chaos.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  452,
+        "FirstError":  ""
+    },
+    {
+        "File":  "tests/version_endpoint.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  283,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/collectors.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  228,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/failClosed.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  571,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/falsePositiveCorpus.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  265,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/footprint.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  316,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/matcher.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  233,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/policy.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  305,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/privacy.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  324,
+        "FirstError":  ""
+    },
+    {
+        "File":  "proctornet/device-agent/test/transport.test.js",
+        "Status":  "PASS",
+        "ExitCode":  0,
+        "DurationMs":  434,
+        "FirstError":  ""
+    }
+]

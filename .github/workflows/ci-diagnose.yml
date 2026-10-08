@@ -1,0 +1,288 @@
+name: CI Diagnostic Matrix (Phase C0)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-matrix:
+    name: test (${{ matrix.test_path }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # proctornet/backend/tests (35 files)
+          - category: backend
+            test_path: proctornet/backend/tests/agent-adversarial.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/agent-legacy-gaps.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/agent-module.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/architecture.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/blackbox_browser_security_verification.js
+          - category: backend
+            test_path: proctornet/backend/tests/e2e_lifecycle.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/exam-lifecycle.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/live_proctoring_pipeline.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/mcq-validation.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/observability.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p3-schema-constraints.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p4-concurrency-write-paths.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p4-prewarm-500.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p4-property-grading.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p4-state-machine.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p5-client-compression.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p5-storage-evidence.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p6-frontend-autosave.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p6-realtime-invigilator.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p7-media-livekit.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p8-vpn-wireguard.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/p9-infrastructure-hardening.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/phase_c_remediation.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/q3-student-flow.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/q4-async-resilience.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/q5-bola-fuzz.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/r1-face-verification.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/r2-evidence-invigilator.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/r3-media-cadence.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/r4-lite-profile-drivers.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/reset-keep-admin.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/route-matrix.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/security_auth_cookies.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/services.test.js
+          - category: backend
+            test_path: proctornet/backend/tests/timezone-matrix.test.js
+
+          # Root tests (14 files)
+          - category: root
+            test_path: tests/active_attempts_gate.test.js
+          - category: root
+            test_path: tests/ai_question_validation.test.js
+          - category: root
+            test_path: tests/api_client.test.js
+          - category: root
+            test_path: tests/approval_auth.test.js
+          - category: root
+            test_path: tests/ci_workflow_integrity.test.js
+          - category: root
+            test_path: tests/eligibility_matrix.test.js
+          - category: root
+            test_path: tests/exam_credentials.test.js
+          - category: root
+            test_path: tests/feature_truth.test.js
+          - category: root
+            test_path: tests/p8-deployment-truth.test.js
+          - category: root
+            test_path: tests/profile_security.test.js
+          - category: root
+            test_path: tests/question_immutability.test.js
+          - category: root
+            test_path: tests/release_packaging.test.js
+          - category: root
+            test_path: tests/restart_chaos.test.js
+          - category: root
+            test_path: tests/version_endpoint.test.js
+
+          # Device-agent tests (8 files)
+          - category: agent
+            test_path: proctornet/device-agent/test/collectors.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/failClosed.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/falsePositiveCorpus.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/footprint.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/matcher.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/policy.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/privacy.test.js
+          - category: agent
+            test_path: proctornet/device-agent/test/transport.test.js
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics check_running"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      minio:
+        image: minio/minio:RELEASE.2024-01-31T20-20-33Z
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadminpassword
+        ports:
+          - 9000:9000
+        options: >-
+          server /data
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            proctornet/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          cd proctornet && npm ci
+
+      - name: Migrate & Seed Test Database (if DB-dependent)
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          ADMIN_EMAIL: admin@proctornet.com
+          ADMIN_PASSWORD: Admin@12345
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          node prisma/seed/admin.js
+
+      - name: Run Test (${{ matrix.test_path }})
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672
+          JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
+          AWS_REGION: ap-south-1
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadminpassword
+          AWS_S3_BUCKET_NAME: proctornet-ci-test-bucket
+          S3_BUCKET: proctornet-ci-test-bucket
+          S3_ENDPOINT: http://localhost:9000
+          S3_MOCK: "true"
+          FACE_DRIVER: off
+          AGENT_PAIRING_PEPPER: dummy_ci_pepper_test_secret_at_least_32_chars_123
+          AGENT_POLICY_SIGNING_KEY: dummy_ci_signing_test_secret_at_least_32_chars_456
+          PUBLIC_ORIGIN: http://localhost:5000
+          LIVEKIT_API_KEY: devkey
+          LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
+          VPN_ENABLED: false
+          NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
+        run: |
+          mkdir -p reports/junit reports/logs
+          SAFE_NAME=$(echo "${{ matrix.test_path }}" | tr '/' '_')
+          set +e
+          if [ -f .env.example ] && [ ! -f .env ]; then cp .env.example .env; fi
+          if [ -f proctornet/.env.example ] && [ ! -f proctornet/.env ]; then cp proctornet/.env.example proctornet/.env; fi
+          node --test --test-force-exit --test-reporter=junit --test-reporter-destination="reports/junit/${SAFE_NAME}.xml" "${{ matrix.test_path }}" 2>&1 | tee "reports/logs/${SAFE_NAME}.log"
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "$EXIT_CODE" > "reports/logs/${SAFE_NAME}.exitcode"
+          echo "TEST_EXIT_CODE=$EXIT_CODE"
+          exit $EXIT_CODE
+
+      - name: Upload Test Report & Log Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-${{ strategy.job-index }}
+          path: |
+            reports/junit/**
+            reports/logs/**
+
+  summarize-diagnostics:
+    name: Summarize Diagnostic Matrix Results
+    needs: [diagnose-matrix]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download All Diagnostic Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: diag-*
+          path: all-reports
+
+      - name: Collate Summary Table
+        run: |
+          echo "### 🔬 Phase C0 Diagnostic Matrix Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Test File | Status | Detail / First Error |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+          for logfile in $(find all-reports -name "*.log"); do
+            base=$(basename "$logfile" .log)
+            test_name=$(echo "$base" | tr '_' '/')
+            exitcode_file="$(dirname "$logfile")/${base}.exitcode"
+            status="UNKNOWN"
+            if [ -f "$exitcode_file" ]; then
+              code=$(cat "$exitcode_file" | tr -d ' \n')
+              if [ "$code" = "0" ]; then
+                status="✅ PASS"
+                err="Clean"
+              else
+                status="❌ FAIL ($code)"
+                err=$(grep -E 'ERR_|Error|AssertionError|not ok' "$logfile" | head -n 1 | cut -c 1-120)
+                if [ -z "$err" ]; then err="Non-zero exit ($code)"; fi
+              fi
+            fi
+            echo "| \`$test_name\` | $status | $err |" >> $GITHUB_STEP_SUMMARY
+          done
