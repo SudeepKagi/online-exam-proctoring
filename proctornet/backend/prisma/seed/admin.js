@@ -98,13 +98,9 @@ async function seedAdmin() {
         console.log(`✅ ${backup.data.platformSettings.length} platform setting(s) restored.`)
       }
     } else {
-      const email = process.env.ADMIN_EMAIL
-      const password = process.env.ADMIN_PASSWORD
-      const name = process.env.ADMIN_NAME || 'ProctorNet Admin'
-
-      if (!email || !password) {
-        throw new Error('No backup found and missing ADMIN_EMAIL / ADMIN_PASSWORD in environment.')
-      }
+      const email = process.env.ADMIN_EMAIL || 'admin@proctornet.com'
+      const password = process.env.ADMIN_PASSWORD || 'Admin@12345'
+      const name = process.env.ADMIN_NAME || 'System Administrator'
 
       const hashed = await bcrypt.hash(password, 12)
       const admin = await prisma.admin.upsert({
@@ -116,6 +112,11 @@ async function seedAdmin() {
       console.log(`✅ Admin created/updated from environment: ${email}`)
 
       const defaultSettings = [
+        { key: 'faceVerificationEnabled', value: 'true' },
+        { key: 'faceMatchThreshold', value: '90' },
+        { key: 'watermarkOpacity', value: '20' },
+        { key: 'reverifyIntervalMins', value: '15' },
+        { key: 'vmDetectionEnabled', value: 'true' },
         { key: 'face_match_threshold', value: '0.80' },
         { key: 'reverify_interval_mins', value: '10' },
         { key: 'face_absence_warning_secs', value: '10' },

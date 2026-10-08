@@ -181,6 +181,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          ADMIN_EMAIL: admin@proctornet.com
+          ADMIN_PASSWORD: Admin@12345
         run: |
           npx prisma generate
           npx prisma migrate deploy
