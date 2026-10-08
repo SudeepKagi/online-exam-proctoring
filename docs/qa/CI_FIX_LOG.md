@@ -206,3 +206,18 @@
 * **Root Cause Class:** `Non-Hermetic Test Dependency / Global Module Side-Effects` (`observability.test.js` previously imported the monolithic `../src/app`, dragging in background connection managers for RabbitMQ, Redis pub/sub, Socket.IO adapters, and background workers as module-level side-effects. When testing solely `/metrics` Prometheus output and `X-Request-Id` header handling, background AMQP connection attempts outlived the 99ms test execution, causing asynchronous teardown race conditions).
 * **Resolution:** Decoupled `observability.test.js` completely from `app.js`. Mounted the target middlewares (`metricsMiddleware`, `requestIdMiddleware`) and route handlers (`metricsHandler`) onto an isolated Express instance. Eliminated unnecessary connection pools, external message brokers, and teardown hooks.
 * **Outcome:** Clean, sub-second execution (723ms), 100% hermetic, zero background handle leaks, zero unhandled rejections.
+
+---
+
+### Entry 013: Production Dependency Vulnerability Remediation (`package.json`)
+* **Date/Time:** 2026-10-08 13:05:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37780575732`)
+* **Job / Step:** `Security Audits & Vulnerability Gates` / `Audit Backend Production Dependencies`
+* **Trigger:** Push on `main` (commit `460bed8`)
+* **Exact Diagnostic:** `npm audit --omit=dev --audit-level=high` failed with exit code 1, reporting 7 high-severity vulnerabilities (`nodemailer <= 10.0.5`, `socket.io-parser`, `ws`, `compression`).
+* **Root Cause Class:** `Outdated Production Dependencies / Vulnerability Advisory Trigger` (Historical dependency versions retained unpatched CVEs for email parser vulnerabilities, WebSocket memory exhaustion, and compression leak issues).
+* **Resolution:**
+  1. Ran `npm audit fix` in backend workspace to update subdependencies cleanly.
+  2. Bumped `nodemailer` from `^6.9.3` to `^10.0.16` in `proctornet/backend/package.json` to eliminate unpatched vulnerabilities (GHSA-8vvx-rff5-p5rq, GHSA-v53p-9fqp-m79j, GHSA-r7g4-qg5f-qqm2).
+  3. Synchronized updated lockfiles (`proctornet/package-lock.json` and `proctornet/backend/package-lock.json`).
+* **Outcome:** `npm audit --omit=dev --audit-level=high` reports 0 high/critical vulnerabilities and exits with code 0.
