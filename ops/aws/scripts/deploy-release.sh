@@ -160,6 +160,12 @@ else
     exit 1
 fi
 
+if [ -f "$NEW_RELEASE_DIR/ops/systemd/proctornet.service" ]; then
+    echo "[-] Syncing systemd unit configuration from release..."
+    cp "$NEW_RELEASE_DIR/ops/systemd/proctornet.service" /etc/systemd/system/proctornet.service
+    systemctl daemon-reload
+fi
+
 # 5. Atomic Symlink Switch, Service Restart & Caddy Sync
 echo "[5/6] Atomically switching active symlink and restarting systemd service..."
 ln -sfn "$NEW_RELEASE_DIR" "$CURRENT_LINK"

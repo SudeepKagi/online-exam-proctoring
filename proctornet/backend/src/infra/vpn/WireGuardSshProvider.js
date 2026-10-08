@@ -9,8 +9,6 @@
  * - Zero shell string interpolation vulnerabilities.
  */
 
-const { Client } = require('ssh2')
-const crypto = require('crypto')
 const { VpnProvider } = require('./VpnProvider')
 const { logger } = require('../../shared/logging')
 
@@ -35,6 +33,8 @@ class WireGuardSshProvider extends VpnProvider {
       throw new Error('WireGuardSshProvider: VPN_SERVER_IP is not configured')
     }
 
+    // Lazy load ssh2 only when executing VPN remote commands (S6 / EDGE-02)
+    const { Client } = require('ssh2')
     return new Promise((resolve, reject) => {
       const conn = new Client()
       let timeoutHandle

@@ -174,7 +174,26 @@ app.use('/api', csrfProtection)
 const isLoadTest = !isProd && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isLoadTest ? 100000 : 600,
+  max: (req) => {
+    if (isLoadTest) return 100000
+    let role = req.user?.role?.toLowerCase()
+    if (!role) {
+      const token = extractTokenFromReq(req)
+      if (token) {
+        try {
+          const decoded = verifyToken(token)
+          if (decoded?.role) role = decoded.role.toLowerCase()
+        } catch {
+          // ignore
+        }
+      }
+    }
+    // Per-role budget classes (Phase S3 / FLW-05 / S6)
+    if (role === 'invigilator') return 6000
+    if (role === 'admin' || role === 'faculty') return 3000
+    if (role === 'student') return 1200
+    return 600 // unauthenticated default
+  },
   skip: () => isLoadTest,
   standardHeaders: true,
   legacyHeaders: false,
@@ -193,7 +212,7 @@ const apiLimiter = rateLimit({
     }
     return req.ip
   },
-  message: { error: 'Too many requests for this student session. Please try again shortly.' },
+  message: { error: 'Too many requests for this session. Please try again shortly.' },
 })
 app.use('/api', apiLimiter)
 
@@ -296,20 +315,10 @@ const { rabbitmq } = require('./infra/rabbitmq/client')
 
 app.use(loadShed)
 
-// Seamless URL compatibility rewrite: /api/* or un-prefixed -> /api/v1/*
+// Canonical URL rewrite: seamless /api/* -> /api/v1/* compatibility (EDGE-03)
 app.use((req, res, next) => {
-  if (
-    !req.url.startsWith('/api/v1') &&
-    !req.url.startsWith('/health') &&
-    !req.url.startsWith('/readyz') &&
-    !req.url.startsWith('/metrics') &&
-    !req.url.startsWith('/socket.io')
-  ) {
-    if (req.url.startsWith('/api/')) {
-      req.url = req.url.replace('/api/', '/api/v1/')
-    } else {
-      req.url = '/api/v1' + (req.url.startsWith('/') ? req.url : '/' + req.url)
-    }
+  if (req.url.startsWith('/api/') && !req.url.startsWith('/api/v1/')) {
+    req.url = req.url.replace('/api/', '/api/v1/')
   }
   next()
 })

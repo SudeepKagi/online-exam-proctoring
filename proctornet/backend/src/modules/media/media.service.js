@@ -8,12 +8,19 @@
  */
 
 const crypto = require('crypto')
-const { AccessToken, RoomServiceClient, WebhookReceiver, TrackSource } = require('livekit-server-sdk')
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
 const { ForbiddenError, NotFoundError } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { proctoringService } = require('../proctoring/service')
+
+let _livekit = null
+function getLiveKit() {
+  if (!_livekit) {
+    _livekit = require('livekit-server-sdk')
+  }
+  return _livekit
+}
 
 class MediaService {
   constructor(options = {}) {
@@ -22,11 +29,25 @@ class MediaService {
     this.wsUrl = options.wsUrl || process.env.LIVEKIT_URL || 'ws://localhost:7880'
     this.httpUrl = options.httpUrl || process.env.LIVEKIT_HTTP_URL || this.wsUrl.replace(/^ws/, 'http')
 
-    this.roomServiceClient = options.roomServiceClient || new RoomServiceClient(this.httpUrl, this.apiKey, this.apiSecret)
-    this.webhookReceiver = options.webhookReceiver || new WebhookReceiver(this.apiKey, this.apiSecret)
+    this._roomServiceClient = options.roomServiceClient || null
+    this._webhookReceiver = options.webhookReceiver || null
 
     // Debounce map for SCREEN_SHARE_STOPPED webhook events (5s cooldown)
     this.screenShareCooldowns = new Map()
+  }
+
+  get roomServiceClient() {
+    if (this._roomServiceClient) return this._roomServiceClient
+    const { RoomServiceClient } = getLiveKit()
+    this._roomServiceClient = new RoomServiceClient(this.httpUrl, this.apiKey, this.apiSecret)
+    return this._roomServiceClient
+  }
+
+  get webhookReceiver() {
+    if (this._webhookReceiver) return this._webhookReceiver
+    const { WebhookReceiver } = getLiveKit()
+    this._webhookReceiver = new WebhookReceiver(this.apiKey, this.apiSecret)
+    return this._webhookReceiver
   }
 
   /**
@@ -49,6 +70,7 @@ class MediaService {
    * Issue LiveKit Access Token (Task 7.2)
    */
   async issueToken(user, { examId, attemptId }) {
+    const { AccessToken, TrackSource } = getLiveKit()
     if (!examId) {
       throw new ForbiddenError('examId is required')
     }
@@ -188,6 +210,7 @@ class MediaService {
     logger.info({ eventName, room: room?.name, participant: participant?.identity }, 'LiveKit webhook event received')
 
     if (eventName === 'track_unpublished') {
+      const { TrackSource } = getLiveKit()
       const isScreenShare = track?.source === TrackSource.SCREEN_SHARE || track?.source === 3 || track?.name === 'screen'
       if (isScreenShare && participant?.identity?.startsWith('student:')) {
         const attemptId = participant.identity.replace(/^student:/, '')

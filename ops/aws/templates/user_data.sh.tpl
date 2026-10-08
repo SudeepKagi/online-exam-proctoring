@@ -45,9 +45,9 @@ apt-get install -y --no-install-recommends \
 # Enable automatic security patches
 dpkg-reconfigure -plow unattended-upgrades
 
-echo "=== [4/8] Installing Node.js LTS (v20.x) ==="
+echo "=== [4/8] Installing Node.js LTS (v22.x) ==="
 if ! command -v node &> /dev/null; then
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y nodejs
 fi
 
@@ -127,10 +127,14 @@ Environment=MEDIA_DRIVER=snapshot
 Environment=FACE_DRIVER=rekognition
 Environment=START_WORKERS=true
 EnvironmentFile=-/opt/proctornet/shared/.env
-ExecStart=/usr/bin/node --max-old-space-size=384 src/app.js
-Restart=always
+ExecStart=/usr/bin/node --max-old-space-size=300 src/app.js
+Restart=on-failure
 RestartSec=5
-MemoryMax=450M
+TimeoutStopSec=30
+MemoryMax=650M
+MemorySwapMax=250M
+TasksMax=256
+LimitNOFILE=65535
 
 # Sandboxing & Hardening Flags (Appendix C)
 NoNewPrivileges=true
