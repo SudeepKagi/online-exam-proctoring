@@ -20,12 +20,27 @@ function validate(schemas = {}) {
       }
       next()
     } catch (err) {
-      if (err.errors) {
-        const details = err.errors.map(e => ({
-          path: e.path.join('.'),
+      const issues = err.issues || err.errors
+      if (Array.isArray(issues) && issues.length > 0) {
+        const details = issues.map(e => ({
+          path: Array.isArray(e.path) ? e.path.join('.') : String(e.path || ''),
           message: e.message
         }))
-        return next(new ValidationError('Request validation failed', details))
+        const summary = details.map(d => `${d.path ? d.path + ': ' : ''}${d.message}`).join(', ')
+        return next(new ValidationError(summary || 'Request validation failed', details))
+      }
+      if (typeof err.message === 'string' && err.message.trim().startsWith('[')) {
+        try {
+          const parsed = JSON.parse(err.message)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const details = parsed.map(e => ({
+              path: Array.isArray(e.path) ? e.path.join('.') : String(e.path || ''),
+              message: e.message
+            }))
+            const summary = details.map(d => `${d.path ? d.path + ': ' : ''}${d.message}`).join(', ')
+            return next(new ValidationError(summary || 'Request validation failed', details))
+          }
+        } catch {}
       }
       next(new ValidationError(err.message || 'Validation failed'))
     }

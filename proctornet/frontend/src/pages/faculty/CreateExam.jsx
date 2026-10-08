@@ -204,26 +204,45 @@ export default function CreateExam() {
     api.get('/config').then(r => setLlmEnabled(Boolean(r.data?.llmEnabled))).catch(() => {})
   }, [])
 
+  const getDefaultDatetimes = () => {
+    const now = new Date(Date.now() + 10 * 60000)
+    const end = new Date(now.getTime() + 60 * 60000)
+    const toLocalISO = (d) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const hours = String(d.getHours()).padStart(2, '0')
+      const mins = String(d.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day}T${hours}:${mins}`
+    }
+    return {
+      startTime: toLocalISO(now),
+      endTime: toLocalISO(end)
+    }
+  }
+
+  const initialTimes = getDefaultDatetimes()
+
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
     description: '',
-    startTime: '',
-    endTime: '',
-    duration: 90,
+    startTime: initialTimes.startTime,
+    endTime: initialTimes.endTime,
+    duration: 60,
     totalMarks: 0,
     questionsPerStudent: 0,
     negativeMarking: false,
     negativeValue: 0.25,
-      cameraRequired: true,
-      browserLock: true,
-      fullScreenMode: true,
-      watermarkRequired: true,
-      randomiseQuestions: true,
-      randomiseOptions: true,
-      allowedDepartments: ['CSE'],
-      allowedSemesters: [5]
-    })
+    cameraRequired: true,
+    browserLock: true,
+    fullScreenMode: true,
+    watermarkRequired: true,
+    randomiseQuestions: true,
+    randomiseOptions: true,
+    allowedDepartments: ['CSE'],
+    allowedSemesters: [5]
+  })
 
     const handleChange = (field, val) => {
       setFormData(prev => {
@@ -382,11 +401,40 @@ export default function CreateExam() {
       }
     }
 
-    if (!payload.endTime) {
-      toast.error('End Time is required. Please set start time and duration.')
+    if (!payload.startTime || !payload.endTime) {
+      toast.error('Start Time and End Time are required.')
       setStep(2)
       return
     }
+
+    const startDate = new Date(payload.startTime)
+    const endDate = new Date(payload.endTime)
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      toast.error('Please provide valid start and end dates.')
+      setStep(2)
+      return
+    }
+
+    if (endDate.getTime() <= startDate.getTime()) {
+      toast.error('End Time must be strictly after Start Time.')
+      setStep(2)
+      return
+    }
+
+    if (endDate.getTime() <= Date.now()) {
+      toast.error('Exam End Time must be in the future.')
+      setStep(2)
+      return
+    }
+
+    payload.startTime = startDate.toISOString()
+    payload.endTime = endDate.toISOString()
+    payload.duration = parseInt(payload.duration, 10) || 60
+    payload.totalMarks = parseFloat(payload.totalMarks) || 100
+    payload.questionsPerStudent = parseInt(payload.questionsPerStudent, 10) || 0
+    payload.negativeValue = parseFloat(payload.negativeValue) || 0
+    payload.tabSwitchLimit = parseInt(payload.tabSwitchLimit, 10) || 3
 
     setIsSubmitting(true)
     try {
@@ -394,7 +442,12 @@ export default function CreateExam() {
       const createdExam = res.data.exam
       
       const questionsToUpload = questions.map(({ questionText, options, correctAnswer, marks, negativeMarks, difficulty }) => ({
-        questionText, options, correctAnswer, marks, negativeMarks, difficulty
+        questionText,
+        options,
+        correctAnswer,
+        marks: parseFloat(marks) || 1,
+        negativeMarks: parseFloat(negativeMarks) || 0,
+        difficulty: difficulty || 'MEDIUM'
       }))
 
       await api.post('/faculty/questions/bulk', {

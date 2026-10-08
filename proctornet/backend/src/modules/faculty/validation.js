@@ -1,11 +1,16 @@
 const { z } = require('zod')
 
+const isoDatetime = z.string().refine((val) => {
+  const d = new Date(val)
+  return !isNaN(d.getTime())
+}, { message: 'Invalid ISO datetime' }).transform((val) => new Date(val).toISOString())
+
 const createExamSchema = z.object({
   title: z.string().min(1),
   subject: z.string().min(1),
   description: z.string().optional().nullable(),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
+  startTime: isoDatetime,
+  endTime: isoDatetime,
   duration: z.number().int().positive().default(60),
   totalMarks: z.number().positive().default(100),
   negativeMarking: z.boolean().default(false),

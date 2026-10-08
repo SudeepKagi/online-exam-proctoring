@@ -38,18 +38,45 @@ api.interceptors.request.use(
 // Helper to safely extract user-facing error strings (avoids React Error #31)
 export function extractErrorMessage(err, fallback = 'An unexpected error occurred') {
   if (!err) return fallback
-  if (typeof err === 'string') return err
+  
+  const parseJsonError = (str) => {
+    if (typeof str !== 'string' || !str.trim().startsWith('[')) return null
+    try {
+      const parsed = JSON.parse(str)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(p => `${Array.isArray(p.path) ? p.path.join('.') : (p.path || '')}: ${p.message || 'Invalid'}`).join(', ')
+      }
+    } catch {}
+    return null
+  }
+
+  if (typeof err === 'string') {
+    return parseJsonError(err) || err
+  }
+
   const respErr = err.response?.data?.error
-  if (typeof respErr === 'string') return respErr
+  if (typeof respErr === 'string') {
+    return parseJsonError(respErr) || respErr
+  }
+
   if (respErr && typeof respErr === 'object' && respErr !== null) {
-    return respErr.message || respErr.code || fallback
+    if (Array.isArray(respErr.details) && respErr.details.length > 0) {
+      return respErr.details.map(d => `${d.path ? d.path + ': ' : ''}${d.message}`).join(', ')
+    }
+    if (respErr.message && typeof respErr.message === 'string') {
+      return parseJsonError(respErr.message) || respErr.message
+    }
+    return respErr.code || fallback
   }
+
   if (err.response?.data?.message && typeof err.response.data.message === 'string') {
-    return err.response.data.message
+    return parseJsonError(err.response.data.message) || err.response.data.message
   }
+
   if (err.message && typeof err.message === 'string') {
-    return err.message
+    return parseJsonError(err.message) || err.message
   }
+
   return fallback
 }
 
