@@ -195,11 +195,14 @@
   5. Updated `lifecycle.js` to catch any residual closure error.
 * **Outcome:** Clean lifecycle teardown without escaping asynchronous rejections.
 
+---
 
-
-
-
-
-
-
-
+### Entry 012: Hermetic Decoupling of Observability Suite (`observability.test.js`)
+* **Date/Time:** 2026-10-08 12:55:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37778107674`)
+* **Job / Step:** `Full Test Suite Execution` / `Run Hermetic Autodiscovered Test Suites`
+* **Trigger:** Push on `main` (commit `08d8248`)
+* **Exact Diagnostic:** `observability.test.js:1:1` failed with `Error: A resource generated asynchronous activity after the test ended. This activity created the error "Error: Channel ended, no reply will be forthcoming" which triggered an unhandledRejection event, caught by the test runner.`
+* **Root Cause Class:** `Non-Hermetic Test Dependency / Global Module Side-Effects` (`observability.test.js` previously imported the monolithic `../src/app`, dragging in background connection managers for RabbitMQ, Redis pub/sub, Socket.IO adapters, and background workers as module-level side-effects. When testing solely `/metrics` Prometheus output and `X-Request-Id` header handling, background AMQP connection attempts outlived the 99ms test execution, causing asynchronous teardown race conditions).
+* **Resolution:** Decoupled `observability.test.js` completely from `app.js`. Mounted the target middlewares (`metricsMiddleware`, `requestIdMiddleware`) and route handlers (`metricsHandler`) onto an isolated Express instance. Eliminated unnecessary connection pools, external message brokers, and teardown hooks.
+* **Outcome:** Clean, sub-second execution (723ms), 100% hermetic, zero background handle leaks, zero unhandled rejections.

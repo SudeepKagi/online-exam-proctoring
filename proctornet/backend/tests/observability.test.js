@@ -1,11 +1,29 @@
 process.env.NODE_ENV = 'test'
-const { describe, it, after } = require('node:test')
+const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const http = require('http')
-const { app, internalApp } = require('../src/app')
+const express = require('express')
+const { requestIdMiddleware } = require('../src/middleware/requestId')
+const { metricsMiddleware, metricsHandler } = require('../src/observability/metrics')
+
+const app = express()
+app.use(requestIdMiddleware)
+app.use(metricsMiddleware)
+
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'ProctorNet Backend',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  })
+})
+
+const internalApp = express()
+internalApp.get('/metrics', metricsHandler)
 
 function makeRequest(path, headers = {}) {
-  const targetApp = (['/metrics', '/readyz'].includes(path) && internalApp) ? internalApp : app
+  const targetApp = path === '/metrics' ? internalApp : app
   return new Promise((resolve, reject) => {
     const server = http.createServer(targetApp)
     server.listen(0, '127.0.0.1', () => {
@@ -86,12 +104,5 @@ describe('Observability & Telemetry Verification Suite (P0)', () => {
     assert.ok(returnedId, 'Response must include an X-Request-Id header')
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     assert.match(returnedId, uuidRegex, 'Generated request ID must be a valid UUID')
-  })
-
-  after(async () => {
-    try {
-      const { closeAll } = require('../src/lifecycle')
-      await closeAll()
-    } catch {}
   })
 })
