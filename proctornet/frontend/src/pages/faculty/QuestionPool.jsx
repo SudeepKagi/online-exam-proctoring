@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import ConfirmDialog from '@/components/ui/confirm-dialog'
 import {
@@ -127,7 +127,7 @@ export default function QuestionPool() {
       setShowAI(false)
       loadAll()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'AI question generation failed')
+      toast.error(extractErrorMessage(err, 'AI question generation failed'))
     } finally {
       setAiGenerating(false)
     }
@@ -165,7 +165,7 @@ export default function QuestionPool() {
       setEditQ(null)
       loadAll()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to save question')
+      toast.error(extractErrorMessage(err, 'Failed to save question'))
     }
   }
 

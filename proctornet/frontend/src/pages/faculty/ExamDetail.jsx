@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { FormInput, SelectInput, FormTextarea, SubmitButton, Alert } from '@/components/common/FormComponents'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import ConfirmDialog from '@/components/ui/confirm-dialog'
 
@@ -162,7 +162,7 @@ export default function ExamDetail() {
       setQForm({ questionText: '', marks: '5', negativeMarks: '0', difficulty: 'MEDIUM', options: ['', '', '', ''], correctAnswer: 'A' })
       toast.success('Question added successfully!')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Error adding question')
+      toast.error(extractErrorMessage(err, 'Error adding question'))
     }
   }
 
@@ -173,7 +173,7 @@ export default function ExamDetail() {
       setSelectedStudents([])
       toast.success('Students enrolled successfully!')
     } catch (err) {
-      toast.error('Error enrolling students')
+      toast.error(extractErrorMessage(err, 'Error enrolling students'))
     }
   }
 
@@ -192,7 +192,7 @@ export default function ExamDetail() {
       await fetchExam()
       toast.success('Exam settings saved successfully!')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to save settings')
+      toast.error(extractErrorMessage(err, 'Failed to save settings'))
     } finally {
       setSettingsSaving(false)
     }
@@ -214,7 +214,7 @@ export default function ExamDetail() {
       fetchExam()
       toast.success('Exam published successfully!')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to publish exam.')
+      toast.error(extractErrorMessage(err, 'Failed to publish exam.'))
     }
   }
 
@@ -230,7 +230,7 @@ export default function ExamDetail() {
       setCredentials(res.data.invCredentials)
       setShowCredentialsModal(true)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Could not retrieve credentials. They may have been reset.')
+      toast.error(extractErrorMessage(err, 'Could not retrieve credentials. They may have been reset.'))
     }
   }
 

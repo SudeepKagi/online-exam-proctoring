@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff, User, Hash, Phone, Upload, CheckCircle, ArrowLeft } from 'lucide-react'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 
 const DEPARTMENTS = ['CS', 'ECE', 'ME', 'CV', 'IS', 'EE']
 const DESIGNATIONS = ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer']
@@ -87,7 +87,7 @@ export default function FacultyRegister() {
       await api.post('/auth/faculty/register', payload)
       setSubmitted(true)
     } catch (err) {
-      const msg = err.response?.data?.error || 'Registration failed. Please try again.'
+      const msg = extractErrorMessage(err, 'Registration failed. Please try again.')
       setErrors({ submit: msg })
     } finally {
       setLoading(false)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { extractErrorMessage } from '@/utils/api'
 import { Shield, Lock, CheckCircle2, AlertTriangle, ArrowRight } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -35,7 +36,7 @@ export default function ChangePassword() {
       const targetRole = user?.role || role || 'student'
       navigate(`/${targetRole}/dashboard`)
     } catch (err) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to change password.')
+      setError(extractErrorMessage(err, 'Failed to change password.'))
     } finally {
       setLoading(false)
     }

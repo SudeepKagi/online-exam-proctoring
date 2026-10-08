@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import ErrorState from '@/components/common/ErrorState'
 import { getErrorMessage } from '@/utils/errorUtils'
@@ -121,7 +121,7 @@ export default function AdminExams() {
       const res = await api.get(`/admin/exams/${exam.id}/invigilator-credentials`)
       setSelectedCredentials(res.data)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to fetch invigilator credentials.')
+      toast.error(extractErrorMessage(err, 'Failed to fetch invigilator credentials.'))
       setCredentialsModalOpen(false)
     } finally {
       setCredLoading(false)
@@ -137,7 +137,7 @@ export default function AdminExams() {
       setSelectedCredentials(res.data)
       toast.success('Invigilator access password regenerated successfully!')
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to regenerate credentials.')
+      toast.error(extractErrorMessage(err, 'Failed to regenerate credentials.'))
     } finally {
       setCredResetting(false)
     }

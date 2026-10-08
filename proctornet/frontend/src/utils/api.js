@@ -81,6 +81,9 @@ api.interceptors.response.use(
         error.code = errObj.code || error.code
         error.message = errObj.message || errObj.code || error.message
         error.details = errObj.details
+        // Store raw error object in errorObject, but convert error to string message to prevent React #31
+        error.response.data.errorObject = errObj
+        error.response.data.error = errObj.message || errObj.code || 'An unexpected error occurred'
       } else if (typeof errObj === 'string') {
         error.message = errObj
       }

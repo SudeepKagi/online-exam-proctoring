@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import { toast } from 'react-hot-toast'
 import {
   AlertTriangle, ShieldAlert, ShieldCheck, Search, RefreshCw, Eye, X,
@@ -327,7 +327,7 @@ export default function InvigilatorViolations() {
       setTerminateReason('')
     } catch (err) {
       console.error('Failed to execute proctor action', err)
-      toast.error(err.response?.data?.error || 'Failed to execute action')
+      toast.error(extractErrorMessage(err, 'Failed to execute action'))
     } finally {
       setActionLoading(false)
     }

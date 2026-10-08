@@ -60,14 +60,25 @@ class FacultyRepository {
   }
 
   async listResultsForFaculty(facultyId) {
-    return prisma.examResult.findMany({
+    const results = await prisma.examResult.findMany({
       where: { exam: { facultyId } },
       include: {
-        student: { select: { id: true, name: true, usn: true, departmentCode: true } },
-        exam: { select: { id: true, title: true, subject: true, totalMarks: true } }
+        exam: { select: { id: true, title: true, subject: true, totalMarks: true } },
+        attempt: {
+          select: {
+            flagCount: true,
+            status: true,
+            submittedAt: true,
+            student: { select: { id: true, name: true, usn: true, departmentCode: true } }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' }
     })
+    return results.map(r => ({
+      ...r,
+      student: r.attempt?.student || null
+    }))
   }
 
   async listExamResults(examId) {

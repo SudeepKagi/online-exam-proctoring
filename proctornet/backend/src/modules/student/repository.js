@@ -121,7 +121,7 @@ class StudentRepository {
   async listResultsForStudent(studentId) {
     return prisma.examResult.findMany({
       where: {
-        studentId,
+        attempt: { studentId },
         isReleased: true
       },
       include: {

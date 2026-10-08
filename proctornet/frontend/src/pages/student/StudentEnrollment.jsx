@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   ShieldCheck,
@@ -109,7 +109,7 @@ export default function StudentEnrollment() {
       toast.success('Biometric consent recorded.')
       setStep(2)
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || err.message || 'Failed to submit consent.')
+      toast.error(extractErrorMessage(err, 'Failed to submit consent.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -128,7 +128,7 @@ export default function StudentEnrollment() {
       stopCamera()
       setStep(3)
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || err.message || 'Face enrollment failed. Please retry.')
+      toast.error(extractErrorMessage(err, 'Face enrollment failed. Please retry.'))
     } finally {
       setIsSubmitting(false)
     }
@@ -160,7 +160,7 @@ export default function StudentEnrollment() {
       await refreshUser()
       setStep(4)
     } catch (err) {
-      toast.error(err.response?.data?.error?.message || err.message || 'ID document submission failed.')
+      toast.error(extractErrorMessage(err, 'ID document submission failed.'))
     } finally {
       setIsSubmitting(false)
     }

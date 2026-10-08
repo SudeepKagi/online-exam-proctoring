@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import {
   BookOpen, Calendar, Search, Play, Camera, Lock, Building,
@@ -163,7 +163,7 @@ export default function StudentExams() {
       })
       .catch(err => {
         console.error(err)
-        setError(err.response?.data?.error || err.response?.data?.message || 'Unable to connect to exam server. Please verify backend connectivity.')
+        setError(extractErrorMessage(err, 'Unable to connect to exam server. Please verify backend connectivity.'))
       })
       .finally(() => setLoading(false))
   }, [])

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -127,29 +127,30 @@ export default function StudentProfile() {
 
     setSaving(true)
     try {
-      const payload = {
-        name,
-        usn,
-        email,
-        phone,
-        department,
-        semester,
-        facePhotoUrl,
-        idCardPhotoUrl
-      }
       if (newPassword) {
-        payload.currentPassword = currentPassword
-        payload.newPassword = newPassword
+        if (!currentPassword) {
+          toast.error('Current password is required to change your password.')
+          setSaving(false)
+          return
+        }
+        await api.post('/auth/change-password', {
+          currentPassword,
+          newPassword
+        })
       }
 
-      await api.put('/student/profile', payload)
+      await api.put('/student/profile', {
+        name,
+        phone
+      })
+
       toast.success('Profile credentials updated successfully.')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       await refreshUser()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update profile.')
+      toast.error(extractErrorMessage(err, 'Failed to update profile.'))
     } finally {
       setSaving(false)
     }

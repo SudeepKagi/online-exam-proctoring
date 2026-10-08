@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import { toast } from 'react-hot-toast'
 import { AlertTriangle, Search, RefreshCw, Eye, X } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -44,7 +44,7 @@ export default function AdminViolations() {
       setViolations(res.data.violations || res.data || [])
     } catch (err) {
       console.error('Failed to load violations', err)
-      toast.error(err.response?.data?.error || 'Failed to load violations')
+      toast.error(extractErrorMessage(err, 'Failed to load violations'))
     } finally {
       setLoading(false)
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
   UserCheck,
@@ -62,7 +62,7 @@ export default function AdminEnrollmentReview() {
       toast.success('Biometric profile approved and locked.')
       fetchSubmissions()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to approve enrollment.')
+      toast.error(extractErrorMessage(err, 'Failed to approve enrollment.'))
     } finally {
       setActionLoading(false)
     }
@@ -83,7 +83,7 @@ export default function AdminEnrollmentReview() {
       setSelectedStudent(null)
       fetchSubmissions()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to reject enrollment.')
+      toast.error(extractErrorMessage(err, 'Failed to reject enrollment.'))
     } finally {
       setActionLoading(false)
     }
@@ -108,7 +108,7 @@ export default function AdminEnrollmentReview() {
       setSelectedStudent(null)
       fetchSubmissions()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to override status.')
+      toast.error(extractErrorMessage(err, 'Failed to override status.'))
     } finally {
       setActionLoading(false)
     }

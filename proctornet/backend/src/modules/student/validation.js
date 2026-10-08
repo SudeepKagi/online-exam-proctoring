@@ -3,7 +3,7 @@ const { z } = require('zod')
 const updateProfileSchema = z.object({
   name: z.string().optional(),
   phone: z.string().optional().nullable()
-}).strict()
+}).passthrough()
 
 const consentSchema = z.object({
   consentGiven: z.boolean().refine(val => val === true, 'Consent must be explicitly accepted')

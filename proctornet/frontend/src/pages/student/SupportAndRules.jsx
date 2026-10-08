@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import toast from 'react-hot-toast'
 import {
@@ -107,7 +107,7 @@ export default function SupportAndRules() {
       })
       fetchTickets()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to submit ticket')
+      toast.error(extractErrorMessage(err, 'Failed to submit ticket'))
     } finally {
       setSubmittingTicket(false)
     }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import { toast } from 'react-hot-toast'
 import { Save, ArrowLeft, Shield, Clock, Users, CheckCircle, Plus, Trash2, HelpCircle, Sparkles, Upload, Loader2, FileText, RefreshCw, CheckCircle2 } from 'lucide-react'
 
@@ -93,7 +93,7 @@ function AIGeneratorPanel({ onGenerated }) {
       setStep('done')
       onGenerated(newQuestions)
     } catch (err) {
-      toast.error(err.response?.data?.error || 'AI generation failed')
+      toast.error(extractErrorMessage(err, 'AI generation failed'))
       setStep('preview')
     } finally { setGenerating(false) }
   }
@@ -406,7 +406,7 @@ export default function CreateExam() {
       toast.success('Exam deployed successfully!')
       setSuccessData(publishRes.data)
     } catch(err) {
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to create exam')
+      toast.error(extractErrorMessage(err, 'Failed to create exam'))
     } finally {
       setIsSubmitting(false)
     }

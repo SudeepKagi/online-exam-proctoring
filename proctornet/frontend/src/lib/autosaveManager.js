@@ -206,9 +206,10 @@ export class AutosaveManager {
     } catch (err) {
       this.isFlushing = false
       const status = err.response?.status
-      const errorData = err.response?.data?.error || {}
+      const errorData = err.response?.data?.errorObject || (typeof err.response?.data?.error === 'object' ? err.response?.data?.error : {})
+      const errorCode = err.code || errorData.code
 
-      if (status === 409 && (errorData.code === 'STALE_REVISION' || errorData.currentRevision)) {
+      if (status === 409 && (errorCode === 'STALE_REVISION' || errorData.currentRevision)) {
         // Reconcile stale revision: adopt server's current revision and retry immediately
         this.currentRevision = errorData.currentRevision || (this.currentRevision + 1)
         console.warn(`[Autosave] 409 Stale revision encountered; reconciling to revision ${this.currentRevision}`)

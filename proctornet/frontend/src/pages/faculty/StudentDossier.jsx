@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import api from '@/utils/api'
+import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import ErrorState from '@/components/common/ErrorState'
 import DashboardLayout from '@/components/common/DashboardLayout'
@@ -29,7 +29,7 @@ export default function StudentDossier() {
       setResult(res.data.result || res.data)
     } catch (err) {
       console.error('[StudentDossier] Fetch error:', err)
-      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to load candidate dossier.')
+      setError(extractErrorMessage(err, 'Failed to load candidate dossier.'))
     } finally {
       setLoading(false)
     }
@@ -52,7 +52,7 @@ export default function StudentDossier() {
       toast.success('Grade finalized and released to candidate!')
       fetchDossier()
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to finalize grade.')
+      toast.error(extractErrorMessage(err, 'Failed to finalize grade.'))
     } finally {
       setFinalizing(false)
     }
