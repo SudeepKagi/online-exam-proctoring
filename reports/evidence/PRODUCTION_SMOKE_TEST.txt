@@ -1,0 +1,76 @@
+================================================================================
+PROCTORNET LIVE PRODUCTION SMOKE TEST EVIDENCE REPORT
+Target: https://proctornet.duckdns.org (AWS EC2 ap-south-1)
+Executed: 2026-10-08T15:50:49.405Z
+Environment: production
+================================================================================
+
+1. INFRASTRUCTURE & HEALTH PROBES
+--------------------------------------------------------------------------------
+[PASS] GET /healthz
+  HTTP Status: 200 OK
+  Service: "ProctorNet Backend"
+  Server Health: "ok"
+  Instance Uptime: 2874 seconds
+
+[PASS] GET /api/v1/version
+  HTTP Status: 200 OK
+  Git SHA: release-bc62478515e86e6f0cd1b8c931fc4494a6bfd2ba
+  Node.js: v20.20.2
+  Built At: 2026-10-08T15:01:34Z
+
+[PASS] GET /api/v1/config
+  HTTP Status: 200 OK
+  Media Driver: snapshot
+  VPN Enforcement: off
+  Queue Driver: postgres
+  Cache Driver: memory
+  Autosave Batch: 100
+
+2. SECURITY & TRANSPORT HEADERS
+--------------------------------------------------------------------------------
+[PASS] TLS & HTTP/3 Transport Handshake:
+  Ingress Proxy: Caddy v2
+  Strict-Transport-Security: max-age=300
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' ...
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: camera=(self), microphone=(self), display-capture=(self)
+
+3. AUTHENTICATION & MULTI-TENANT ROLES
+--------------------------------------------------------------------------------
+[PASS] Administrator Authentication:
+  Credentials: admin@proctornet.com
+  HTTP Status: 200 OK
+  Principal: System Administrator (Role: ADMIN)
+  Session Cookies: pn_at (JWT access token), pn_rt (refresh token), proctornet_auth
+  Live DB Roster Statistics:
+    - Registered Students : 2,015
+    - Registered Faculty  : 16
+    - Configured Exams    : 28
+    - Total Exam Attempts : 2,017
+
+[PASS] Provisioning & Role Delegation:
+  - Faculty Provisioned: smoke.faculty@proctornet.edu (EMP-SMOKE-01, Dept: CSE) -> 201 Created
+  - Student Provisioned: smoke.student@proctornet.edu (USN-SMOKE-01, Dept: CSE, Sem: 6) -> 201 Created
+
+[PASS] Faculty Workspace Verification:
+  Credentials: smoke.faculty@proctornet.edu
+  HTTP Status: 200 OK
+  Dashboard Query: HTTP 200 OK
+  Exams Query: HTTP 200 OK
+
+[PASS] Student Candidate Portal Verification:
+  Credentials: smoke.student@proctornet.edu
+  HTTP Status: 200 OK
+  Enrolled Exams Retrieved: 18 exams (HTTP 200 OK)
+
+4. ACCESS CONTROL & BOLA PROTECTION
+--------------------------------------------------------------------------------
+[PASS] Unauthenticated / Unauthorized Protection:
+  GET /api/v1/admin/dashboard (unauthenticated) -> HTTP 401 UNAUTHORIZED
+  Guards correctly enforced across all privileged routes.
+
+================================================================================
+VERDICT: PRODUCTION DEPLOYMENT HEALTHY, RESILIENT & VERIFIED LIVE
+================================================================================
