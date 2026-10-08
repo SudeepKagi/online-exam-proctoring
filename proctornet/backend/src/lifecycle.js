@@ -83,13 +83,17 @@ async function closeAll() {
   try {
     const pgMod = getLoadedModule('./infra/postgres/client')
     if (pgMod?.prisma?.$disconnect) await pgMod.prisma.$disconnect()
-  } catch {}
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Failed to cleanly disconnect Prisma during teardown')
+  }
 
   // 5. Destroy S3 client and keep-alive HTTP/HTTPS sockets if active
   try {
     const s3Mod = getLoadedModule('./infra/s3/s3.client')
     if (s3Mod?.destroy) s3Mod.destroy()
-  } catch {}
+  } catch (err) {
+    logger.warn({ error: err.message }, 'Failed to cleanly destroy S3 client during teardown')
+  }
 }
 
 module.exports = {
