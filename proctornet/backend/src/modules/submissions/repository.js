@@ -114,9 +114,9 @@ class SubmissionRepository {
 
       // 6. Record idempotency key in the SAME transaction
       await tx.$executeRawUnsafe(`
-        INSERT INTO idempotency_keys (key, request_hash, response_status, response_body, expires_at, created_at)
-        VALUES ($1, $2, 200, $3::jsonb, now() + interval '24 hours', now())
-        ON CONFLICT (key) DO NOTHING;
+        INSERT INTO idempotency_keys (scope, key, request_hash, response_status, response_body, expires_at, created_at)
+        VALUES ('global', $1, $2, 200, $3::jsonb, now() + interval '24 hours', now())
+        ON CONFLICT (scope, key) DO NOTHING;
       `, idempotencyKey, requestHash, JSON.stringify(responsePayload))
 
       return {
