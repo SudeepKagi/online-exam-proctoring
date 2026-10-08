@@ -8,8 +8,15 @@ const { rosterCoalescer } = require('./infra/websocket/rosterCoalescer')
 const cors       = require('cors')
 const helmet     = require('helmet')
 const compression = require('compression')
-const rateLimit   = require('express-rate-limit')
 const { prisma }  = require('./infra/postgres/client')
+
+// ── Global BigInt Serialization Handler (Phase S2 / Edge-09) ──
+// Prevents TypeError: Do not know how to serialize a BigInt on models with BigInt IDs (e.g. AuditLog, ChatMessage)
+if (!BigInt.prototype.toJSON) {
+  BigInt.prototype.toJSON = function () {
+    return this.toString()
+  }
+}
 
 const app    = express()
 const server = http.createServer(app)

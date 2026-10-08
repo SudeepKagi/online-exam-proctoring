@@ -289,7 +289,12 @@ class AdminRepository {
       prisma.auditLog.count({ where })
     ])
 
-    return { logs, total, page: parseInt(page, 10), totalPages: Math.ceil(total / take) }
+    return {
+      logs: logs.map(l => ({ ...l, id: l.id != null ? l.id.toString() : l.id })),
+      total,
+      page: parseInt(page, 10),
+      totalPages: Math.ceil(total / take)
+    }
   }
 
   // ── Violations ──
