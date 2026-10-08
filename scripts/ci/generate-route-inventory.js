@@ -10,6 +10,12 @@ const path = require('path')
 
 process.env.NODE_ENV = 'test'
 process.env.START_WORKERS = 'false'
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://postgres:password@localhost:5432/dummy?schema=public'
+}
+if (!process.env.JWT_SECRET) {
+  process.env.JWT_SECRET = 'dummy_secret_for_route_inventory_introspection_32_bytes'
+}
 
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const INVENTORY_FILE = path.join(REPO_ROOT, 'docs/api/ROUTE_INVENTORY.md')

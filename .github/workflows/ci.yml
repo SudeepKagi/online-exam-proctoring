@@ -60,6 +60,8 @@ jobs:
       - name: Route Inventory Drift Check (generate-route-inventory.js --check)
         env:
           NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/dummy?schema=public
+          JWT_SECRET: dummy_secret_for_route_inventory_introspection_32_bytes
         run: node scripts/ci/generate-route-inventory.js --check
 
   # ----------------------------------------------------------------------------
