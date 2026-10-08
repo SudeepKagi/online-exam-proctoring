@@ -390,11 +390,10 @@ export default function SecurityCheck() {
       return
     }
 
-    // WireGuard VPN Enforcement check (Q3.7 / Architecture guardrail)
     // Real tunnel verification queries device agent endpoint /vpn-check
     const vpnVerified = Boolean(companionDetails?.vpnVerified ?? !exam?.vpnRequired)
     if (!vpnVerified) {
-      toast.error('WireGuard VPN tunnel mandatory (/vpn-check). Please activate the tunnel first.')
+      toast.error('Secure network tunnel verification failed. Please ensure the network guard is active.')
       setActiveStage(0)
       return
     }
