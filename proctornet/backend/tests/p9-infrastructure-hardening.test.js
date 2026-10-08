@@ -34,7 +34,7 @@
 
 process.env.NODE_ENV = 'test'
 
-const { describe, it } = require('node:test')
+const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const fs = require('fs')
 const path = require('path')
@@ -55,6 +55,22 @@ describe('P9 Infrastructure & Hardening Test Suite', () => {
   // 1. Docker Compose Configuration & Linting
   // --------------------------------------------------------------------------
   describe('1. Docker Compose Production & Dev Linting', () => {
+    let tempEnvCreated = false
+    const rootEnv = path.join(rootDir, '.env')
+
+    before(() => {
+      if (!fs.existsSync(rootEnv) && fs.existsSync(envExamplePath)) {
+        fs.copyFileSync(envExamplePath, rootEnv)
+        tempEnvCreated = true
+      }
+    })
+
+    after(() => {
+      if (tempEnvCreated && fs.existsSync(rootEnv)) {
+        try { fs.unlinkSync(rootEnv) } catch {}
+      }
+    })
+
     it('successfully lints docker-compose.prod.yml with docker compose config', () => {
       assert.ok(fs.existsSync(prodComposePath), 'docker-compose.prod.yml must exist at repository root')
 

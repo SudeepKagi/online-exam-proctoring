@@ -211,6 +211,7 @@ jobs:
           LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
           VPN_ENABLED: false
         run: |
+          if [ ! -f ../../.env ]; then cp ../../.env.example ../../.env; fi
           node --test --test-force-exit tests/route-matrix.test.js
           node --test --test-force-exit tests/q5-bola-fuzz.test.js
           node --test --test-force-exit tests/q3-student-flow.test.js
@@ -255,6 +256,7 @@ jobs:
           FACE_DRIVER: off
           NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
         run: |
+          if [ ! -f .env ]; then cp .env.example .env; fi
           node tests/approval_auth.test.js
           node tests/profile_security.test.js
           node tests/exam_credentials.test.js
