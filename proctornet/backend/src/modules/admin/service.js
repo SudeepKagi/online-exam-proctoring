@@ -255,6 +255,9 @@ class AdminService {
   }
 
   async updateSettings(body, userId) {
+    if (!body || typeof body !== 'object') {
+      throw new ValidationError('Expected settings object or key/value pair')
+    }
     const { policyService } = require('../agent/policyService')
     const { prisma } = require('../../infra/postgres/client')
 
@@ -282,10 +285,20 @@ class AdminService {
       return results
     }
 
-    if (body.key) {
+    if (body.key !== undefined) {
       const updated = await adminRepository.upsertSetting(body.key, body.value, userId)
       await syncAgentRules(body.key, body.value)
       return toPlatformSettingDTO(updated)
+    }
+
+    if (body && typeof body === 'object' && Object.keys(body).length > 0) {
+      const results = []
+      for (const [key, value] of Object.entries(body)) {
+        const updated = await adminRepository.upsertSetting(key, value, userId)
+        await syncAgentRules(key, value)
+        results.push(toPlatformSettingDTO(updated))
+      }
+      return results
     }
 
     throw new ValidationError('Expected settings object or key/value pair')
@@ -363,8 +376,8 @@ class AdminService {
 
   async confirmBulkCreate(type, accounts = []) {
     const normType = String(type || '').trim().toLowerCase()
-    const isStudent = normType === 'students' || normType === 'student' || normType === ROLES.STUDENT
-    const isFaculty = normType === 'faculty' || normType === 'faculties' || normType === ROLES.FACULTY
+    const isStudent = normType === 'students' || normType === ROLES.STUDENT.toLowerCase() || normType === ROLES.STUDENT
+    const isFaculty = normType === 'faculties' || normType === ROLES.FACULTY.toLowerCase() || normType === ROLES.FACULTY
     const created = []
     const failed = []
 

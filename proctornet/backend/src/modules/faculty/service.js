@@ -462,6 +462,17 @@ class FacultyService {
   }
 
   async approveStudent(studentId, facultyId) {
+    const [faculty, student] = await Promise.all([
+      facultyRepository.findFacultyById(facultyId),
+      facultyRepository.findStudentById(studentId)
+    ])
+    if (!faculty) throw new NotFoundError('Faculty not found')
+    if (!student) throw new NotFoundError('Student not found')
+
+    if (faculty.departmentCode !== student.departmentCode) {
+      throw new ForbiddenError('Faculty can only approve students from their own department')
+    }
+
     return facultyRepository.approveStudent(studentId, facultyId)
   }
 

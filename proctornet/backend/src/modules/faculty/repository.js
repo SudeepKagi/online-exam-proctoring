@@ -273,6 +273,20 @@ class FacultyRepository {
       orderBy: { createdAt: 'asc' }
     })
   }
+
+  async findFacultyById(id) {
+    if (!id) return null
+    return prisma.faculty.findUnique({
+      where: { id }
+    })
+  }
+
+  async findStudentById(id) {
+    if (!id) return null
+    return prisma.student.findUnique({
+      where: { id }
+    })
+  }
 }
 
 module.exports = new FacultyRepository()

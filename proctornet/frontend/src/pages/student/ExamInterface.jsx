@@ -28,6 +28,7 @@ import ExamHeader from '@/components/exam/ExamHeader'
 import QuestionPanel from '@/components/exam/QuestionPanel'
 import ExamSidebar from '@/components/exam/ExamSidebar'
 import { FullscreenComplianceOverlay, ExamWaitingLobby } from '@/components/exam/ComplianceOverlay'
+import WatermarkCanvas from '@/components/student/WatermarkCanvas'
 
 export default function ExamInterface() {
   const { id: examId } = useParams()
@@ -603,8 +604,8 @@ export default function ExamInterface() {
         return
       }
 
-      // Block Ctrl+C / Ctrl+V / Ctrl+X outside editable inputs
-      if (e.ctrlKey && ['c', 'v', 'x'].includes(e.key.toLowerCase())) {
+      // Block Ctrl+C / Ctrl+V / Ctrl+X / Ctrl+A outside editable inputs
+      if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(e.key.toLowerCase())) {
         const targetTag = e.target.tagName?.toLowerCase()
         const isEditable = targetTag === 'input' || targetTag === 'textarea' || e.target.isContentEditable
         if (!isEditable) {
@@ -618,11 +619,26 @@ export default function ExamInterface() {
       e.preventDefault()
     }
 
+    const handleClipboardEvent = (e) => {
+      const targetTag = e.target?.tagName?.toLowerCase()
+      const isEditable = targetTag === 'input' || targetTag === 'textarea' || e.target?.isContentEditable
+      if (!isEditable) {
+        e.preventDefault()
+        emitViolation?.('KEYBOARD_SHORTCUT', 'LOW', { action: 'clipboard_' + e.type })
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
     document.addEventListener('contextmenu', handleContextMenu)
+    document.addEventListener('copy', handleClipboardEvent)
+    document.addEventListener('cut', handleClipboardEvent)
+    document.addEventListener('paste', handleClipboardEvent)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       document.removeEventListener('contextmenu', handleContextMenu)
+      document.removeEventListener('copy', handleClipboardEvent)
+      document.removeEventListener('cut', handleClipboardEvent)
+      document.removeEventListener('paste', handleClipboardEvent)
     }
   }, [loading, isWaiting, terminalState, emitViolation])
 
@@ -749,6 +765,11 @@ export default function ExamInterface() {
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none relative">
+      {/* Dynamic Anti-Leak Forensic Watermark (FLW-10 / BUG-J02) */}
+      {(exam?.watermarkRequired ?? true) && (
+        <WatermarkCanvas text={user?.usn ? `${user.usn} • ${user.name || ''}` : 'PROCTORNET'} />
+      )}
+
       {/* Hidden capture elements */}
       <video ref={captureVideoRef} autoPlay muted playsInline className="hidden" />
       <canvas ref={canvasRef} className="hidden" />

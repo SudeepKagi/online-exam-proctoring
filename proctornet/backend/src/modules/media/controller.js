@@ -96,9 +96,179 @@ router.post(
   handleEvidenceComplete
 )
 
+const { prisma } = require('../../infra/postgres/client')
+const { ForbiddenError, NotFoundError } = require('../../shared/errors')
+const { logger } = require('../../shared/logging')
+
+/**
+ * Authorize read access to media assets based on user role and resource ownership (FLW-04)
+ */
+async function authorizeMediaView(user, key) {
+  if (!user || !key) throw new ForbiddenError('Access denied: Missing user or asset key')
+  const role = user.role?.toUpperCase()
+
+  // 1. Identity / Enrollment keys:
+  // e.g. identity/{studentId}/... or students/{studentId}/...
+  const identityMatch = key.match(/^(?:identity|students)\/([^/]+)/)
+  if (identityMatch) {
+    const studentId = identityMatch[1]
+
+    if (role === ROLES.STUDENT) {
+      if (user.id !== studentId) {
+        throw new ForbiddenError('Access denied: You can only view your own identity media')
+      }
+      return true
+    }
+
+    if (role === ROLES.FACULTY) {
+      const studentAttempt = await prisma.examAttempt.findFirst({
+        where: {
+          studentId,
+          exam: { facultyId: user.id }
+        },
+        select: { id: true, examId: true }
+      })
+      if (!studentAttempt) {
+        throw new ForbiddenError('Access denied: Student is not in your exam scope')
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          role: 'FACULTY',
+          action: 'MEDIA_IDENTITY_VIEW',
+          targetId: studentId,
+          details: { key, examId: studentAttempt.examId }
+        }
+      }).catch(err => logger.warn({ error: err.message }, 'Failed to record identity view audit log'))
+
+      return true
+    }
+
+    if (role === ROLES.INVIGILATOR) {
+      const studentAttempt = await prisma.examAttempt.findFirst({
+        where: {
+          studentId,
+          examId: user.examId
+        },
+        select: { id: true }
+      })
+      if (!studentAttempt) {
+        throw new ForbiddenError('Access denied: Student is not in your assigned examination')
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          role: 'INVIGILATOR',
+          action: 'MEDIA_IDENTITY_VIEW',
+          targetId: studentId,
+          details: { key, examId: user.examId }
+        }
+      }).catch(err => logger.warn({ error: err.message }, 'Failed to record identity view audit log'))
+
+      return true
+    }
+
+    if (role === ROLES.ADMIN) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          role: 'ADMIN',
+          action: 'MEDIA_IDENTITY_VIEW',
+          targetId: studentId,
+          details: { key }
+        }
+      }).catch(err => logger.warn({ error: err.message }, 'Failed to record identity view audit log'))
+
+      return true
+    }
+
+    throw new ForbiddenError('Access denied')
+  }
+
+  // 2. Evidence / Thumbs / Live / Attempt frames:
+  // e.g. evidence/{examId}/{attemptId}/... or thumbs/{examId}/{attemptId}/... or live/{examId}/{attemptId}/... or attempts/{attemptId}/...
+  const attemptMatch = key.match(/^(?:evidence|thumbs|live)\/([^/]+)\/([^/]+)/) || key.match(/^attempts\/([^/]+)/)
+  if (attemptMatch) {
+    const isAttemptDirect = key.startsWith('attempts/')
+    const attemptId = isAttemptDirect ? attemptMatch[1] : attemptMatch[2]
+
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      select: { id: true, studentId: true, examId: true, exam: { select: { facultyId: true } } }
+    })
+
+    if (!attempt) {
+      throw new NotFoundError('Associated attempt not found')
+    }
+
+    if (role === ROLES.STUDENT) {
+      if (attempt.studentId !== user.id) {
+        throw new ForbiddenError('Access denied: You do not own this attempt media')
+      }
+      return true
+    }
+
+    if (role === ROLES.FACULTY) {
+      if (attempt.exam?.facultyId !== user.id) {
+        throw new ForbiddenError('Access denied: You do not own the exam for this attempt media')
+      }
+      return true
+    }
+
+    if (role === ROLES.INVIGILATOR) {
+      if (attempt.examId !== user.examId) {
+        throw new ForbiddenError('Access denied: Attempt does not belong to your assigned examination')
+      }
+      return true
+    }
+
+    if (role === ROLES.ADMIN) {
+      return true
+    }
+
+    throw new ForbiddenError('Access denied')
+  }
+
+  // 3. Question images:
+  // questions/{examId}/...
+  const questionMatch = key.match(/^questions\/([^/]+)/)
+  if (questionMatch) {
+    const examId = questionMatch[1]
+    if (role === ROLES.ADMIN) return true
+
+    if (role === ROLES.FACULTY) {
+      const exam = await prisma.exam.findFirst({
+        where: { id: examId, facultyId: user.id },
+        select: { id: true }
+      })
+      if (!exam) throw new ForbiddenError('Access denied: You do not own this exam')
+      return true
+    }
+
+    if (role === ROLES.INVIGILATOR) {
+      if (user.examId !== examId) throw new ForbiddenError('Access denied: Exam scope mismatch')
+      return true
+    }
+
+    if (role === ROLES.STUDENT) {
+      const attempt = await prisma.examAttempt.findFirst({
+        where: { examId, studentId: user.id },
+        select: { id: true }
+      })
+      if (!attempt) throw new ForbiddenError('Access denied: You do not have an attempt for this exam')
+      return true
+    }
+  }
+
+  // Deny by default for any unknown prefix / pattern (FLW-04)
+  throw new ForbiddenError(`Access denied: Media asset '${key}' is not authorized`)
+}
+
 /**
  * GET /api/v1/media/view
- * Read presigned URL (redirect or json)
+ * Read presigned URL (redirect or json) with strict BOLA authorization (FLW-04)
  */
 router.get('/media/view', requireAuth, async (req, res, next) => {
   try {
@@ -107,7 +277,11 @@ router.get('/media/view', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Missing key parameter' } })
     }
 
-    const url = await getPresignedReadUrl(key, 600)
+    // BOLA Authorization Gate (FLW-04)
+    await authorizeMediaView(req.user, key)
+
+    // Short TTL (120s per FLW-04)
+    const url = await getPresignedReadUrl(key, 120)
     if (!url) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Unable to resolve media asset' } })
     }
@@ -116,7 +290,7 @@ router.get('/media/view', requireAuth, async (req, res, next) => {
       return res.redirect(302, url)
     }
 
-    return res.status(200).json({ key, url, expiresIn: 600 })
+    return res.status(200).json({ key, url, expiresIn: 120 })
   } catch (err) {
     next(err)
   }

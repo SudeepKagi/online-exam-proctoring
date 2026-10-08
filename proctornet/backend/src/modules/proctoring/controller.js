@@ -359,5 +359,55 @@ router.post(
   }
 )
 
+/**
+ * POST /api/v1/proctoring/exams/:id/snapshots/read
+ * Batch endpoint for live frames (FLW-05)
+ * Accepts up to 24 attempt IDs, returns URLs + frameAt
+ */
+router.post(
+  '/proctoring/exams/:id/snapshots/read',
+  requireAuth,
+  requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
+  validateParams(examIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const examId = req.params.id
+      await proctoringService.assertStaffExamAccess(req.user, examId)
+
+      const attemptIds = Array.isArray(req.body.attemptIds) ? req.body.attemptIds.slice(0, 24) : []
+      if (attemptIds.length === 0) {
+        return res.status(200).json({ success: true, snapshots: {}, frameAt: Date.now() })
+      }
+
+      const s3Client = require('../../infra/s3/s3.client')
+      const snapshots = {}
+      await Promise.all(
+        attemptIds.map(async (attemptId) => {
+          try {
+            const cameraKey = s3Client.buildLiveSnapshotKey(examId, attemptId, 'camera')
+            const screenKey = s3Client.buildLiveSnapshotKey(examId, attemptId, 'screen')
+            const [cameraUrl, screenUrl] = await Promise.all([
+              s3Client.getPresignedReadUrl(cameraKey, 120),
+              s3Client.getPresignedReadUrl(screenKey, 120)
+            ])
+            snapshots[attemptId] = {
+              cameraUrl,
+              screenUrl,
+              frameAt: Date.now()
+            }
+          } catch (err) {
+            snapshots[attemptId] = { error: err.message, cameraUrl: null, screenUrl: null, frameAt: Date.now() }
+          }
+        })
+      )
+
+      return res.status(200).json({ success: true, snapshots, frameAt: Date.now() })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
 module.exports = router
+
 

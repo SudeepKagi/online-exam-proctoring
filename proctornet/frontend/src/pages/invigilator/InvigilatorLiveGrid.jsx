@@ -86,6 +86,22 @@ export default function InvigilatorLiveGrid() {
     } catch (_) {}
   }, [])
 
+  // FLW-05 helper: batch fetch fresh presigned read URLs for visible candidates (up to 24)
+  const fetchBatchSnapshots = useCallback(async (attemptIds) => {
+    if (!attemptIds || attemptIds.length === 0 || !effectiveExamId) return
+    try {
+      const res = await api.post(`/proctoring/exams/${effectiveExamId}/snapshots/read`, {
+        attemptIds: attemptIds.slice(0, 24)
+      })
+      if (res.data?.snapshots) {
+        setSnapshotFrames(prev => ({
+          ...prev,
+          ...res.data.snapshots
+        }))
+      }
+    } catch (_) {}
+  }, [effectiveExamId])
+
   // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
   const [subscribedTracks, setSubscribedTracks] = useState({})
   const viewerRef = useRef(null)
@@ -263,10 +279,14 @@ export default function InvigilatorLiveGrid() {
       })
 
       if (changed) {
+        const visibleList = Array.from(visibleTilesRef.current)
+        // Fetch batch snapshots for visible tiles (FLW-05)
+        fetchBatchSnapshots(visibleList)
+
         // Emit to server so it pushes cadence to each visible student
         const payload = {
           examId: effectiveExamId,
-          visibleAttemptIds: Array.from(visibleTilesRef.current),
+          visibleAttemptIds: visibleList,
           focusedAttemptId: selectedCandidate ? (selectedCandidate.attemptId || selectedCandidate.id) : null
         }
         // Access socket from hook — emit if connected
@@ -280,7 +300,7 @@ export default function InvigilatorLiveGrid() {
     Object.values(tileRefs.current).forEach(el => { if (el) observer.observe(el) })
 
     return () => observer.disconnect()
-  }, [mediaDriver, currentCandidates, effectiveExamId, selectedCandidate])
+  }, [mediaDriver, currentCandidates, effectiveExamId, selectedCandidate, fetchBatchSnapshots])
 
   // ── R3: Listen for frame:update from server ─────────────────────────────────
   // frame:update: { attemptId, frameAt, examId } — invigilator refreshes cache-busted img src

@@ -6,7 +6,7 @@ export const authChannel = typeof window !== 'undefined' && 'BroadcastChannel' i
   : null
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api',
   timeout: 30000,
   withCredentials: true, // Automatically sends HttpOnly cookies: pn_at, pn_rt
   headers: {

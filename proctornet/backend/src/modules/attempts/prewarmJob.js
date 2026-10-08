@@ -1,5 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { createSeededRng, shuffleArray } = require('./repository')
+const { SQL_ELIGIBILITY_WHERE } = require('../exams/eligibility')
 const { attemptService } = require('./service')
 const { logger } = require('../../shared/logging')
 const crypto = require('crypto')
@@ -46,10 +47,7 @@ class AttemptPrewarmJob {
       SELECT s.id, s.usn, s.department_code, s.semester
       FROM students s
       JOIN exams e ON e.id = $1::uuid
-      WHERE s.is_suspended = false
-        AND s.approval_status = 'APPROVED'
-        AND (cardinality(e.allowed_departments) = 0 OR s.department_code = ANY(e.allowed_departments))
-        AND (cardinality(e.allowed_semesters) = 0 OR s.semester = ANY(e.allowed_semesters))
+      WHERE ${SQL_ELIGIBILITY_WHERE}
         AND NOT EXISTS (
           SELECT 1 FROM exam_attempts ea
           WHERE ea.exam_id = e.id AND ea.student_id = s.id

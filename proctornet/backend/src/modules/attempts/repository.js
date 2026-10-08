@@ -1,4 +1,5 @@
 const { prisma } = require('../../infra/postgres/client')
+const { SQL_ELIGIBILITY_WHERE } = require('../exams/eligibility')
 const crypto = require('crypto')
 
 class AttemptRepository {
@@ -227,10 +228,7 @@ class AttemptRepository {
       FROM students s
       JOIN exams e ON e.id = $1::uuid
       WHERE s.id = $2::uuid
-        AND s.is_suspended = false
-        AND s.approval_status = 'APPROVED'
-        AND (cardinality(e.allowed_departments) = 0 OR s.department_code = ANY(e.allowed_departments))
-        AND (cardinality(e.allowed_semesters) = 0 OR s.semester = ANY(e.allowed_semesters));
+        AND ${SQL_ELIGIBILITY_WHERE};
     `
     const rows = await prisma.$queryRawUnsafe(sql, examId, studentId)
     return rows && rows.length > 0 ? rows[0] : null

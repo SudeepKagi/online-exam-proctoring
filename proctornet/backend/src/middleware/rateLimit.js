@@ -51,8 +51,15 @@ const presignLimiter = createLimiter('presign', 20, 60)
 // 5. Roster: 60 per minute per invigilator
 const rosterLimiter = createLimiter('roster', 60, 60)
 
-// 6. Default: 300 per minute
-const defaultLimiter = createLimiter('default', 300, 60)
+// 6. Role-Based Budget Limiters (FLW-05 - 15-minute budget classes)
+// Student: 1,200 per 15 min (80/min)
+const studentBudgetLimiter = createLimiter('budget_student', 1200, 900)
+// Invigilator: 6,000 per 15 min (400/min - eliminates live grid tile starvation)
+const invigilatorBudgetLimiter = createLimiter('budget_invigilator', 6000, 900)
+// Admin/Faculty: 3,000 per 15 min (200/min)
+const staffBudgetLimiter = createLimiter('budget_staff', 3000, 900)
+// Anonymous / unauthenticated: 300 per 60s
+const anonymousLimiter = createLimiter('budget_anon', 300, 60)
 
 function shouldBypass() {
   if (process.env.FORCE_RATE_LIMIT === '1') return false
@@ -131,9 +138,39 @@ const limitRoster = rateLimit(rosterLimiter, (req) => {
   return `roster:${userId}`
 })
 
-const limitDefault = rateLimit(defaultLimiter, (req) => {
-  return req.user?.id ? `user:${req.user.id}` : `ip:${req.ip || '127.0.0.1'}`
-})
+const limitDefault = async (req, res, next) => {
+  if (shouldBypass()) return next()
+
+  const role = req.user?.role?.toUpperCase?.()
+  let limiter = anonymousLimiter
+  let key = `anon:${req.ip || '127.0.0.1'}`
+
+  if (req.user?.id) {
+    if (role === 'INVIGILATOR') {
+      limiter = invigilatorBudgetLimiter
+      key = `inv:${req.user.id}`
+    } else if (role === 'STUDENT') {
+      limiter = studentBudgetLimiter
+      key = `stu:${req.user.id}`
+    } else if (role === 'FACULTY' || role === 'ADMIN') {
+      limiter = staffBudgetLimiter
+      key = `staff:${req.user.id}`
+    } else {
+      limiter = studentBudgetLimiter
+      key = `user:${req.user.id}`
+    }
+  }
+
+  try {
+    await limiter.consume(key)
+    next()
+  } catch (rejRes) {
+    if (rejRes instanceof Error) return next()
+    const secs = Math.round(rejRes.msBeforeNext / 1000) || 1
+    res.setHeader('Retry-After', String(secs))
+    next(new TooManyRequestsError(`Rate budget exceeded for ${role || 'guest'}, retry in ${secs}s`, secs))
+  }
+}
 
 const limitPair = rateLimit(createLimiter('agent_pair', 30, 60), (req) => {
   return `pair:${req.ip || req.connection?.remoteAddress || '127.0.0.1'}`

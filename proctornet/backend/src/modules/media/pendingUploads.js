@@ -80,6 +80,7 @@ class PendingUploadRegistry {
 
     // 1. Check DB issuance
     let valid = false
+    let recordPurpose = null
     try {
       const rows = await prisma.$queryRawUnsafe(`
         SELECT id, student_id AS "studentId", purpose, status, expires_at AS "expiresAt"
@@ -89,6 +90,7 @@ class PendingUploadRegistry {
 
       if (rows && rows.length > 0) {
         valid = true
+        recordPurpose = rows[0].purpose
       }
     } catch (err) {
       logger.debug({ error: err.message }, 'DB pending_uploads lookup failed, falling back to memory')
@@ -99,12 +101,19 @@ class PendingUploadRegistry {
       const mem = this._memoryRegistry.get(key)
       if (mem && mem.studentId === studentId && mem.status === 'PENDING' && mem.expiresAt > Date.now()) {
         valid = true
+        recordPurpose = mem.purpose
       }
     }
 
     if (!valid) {
       throw new ForbiddenError(
-        `Invalid or unissued upload key '${key}'. Enrollment accepts only keys directly issued by the server for this student.`
+        `Invalid or unissued upload key '${key}'. Direct uploads accept only single-use keys issued by the server for this student.`
+      )
+    }
+
+    if (purpose && recordPurpose && recordPurpose.toUpperCase() !== purpose.toUpperCase()) {
+      throw new ForbiddenError(
+        `Upload purpose mismatch for key '${key}'. Issued for '${recordPurpose}', cannot consume for '${purpose}'.`
       )
     }
 
@@ -112,7 +121,7 @@ class PendingUploadRegistry {
     try {
       const exists = await headObject(key)
       if (!exists) {
-        throw new ValidationError(`Object '${key}' was not found in storage. Direct upload to S3 must complete before finalizing enrollment.`)
+        throw new ValidationError(`Object '${key}' was not found in storage. Direct upload to S3 must complete before finalizing.`)
       }
     } catch (err) {
       if (err instanceof ValidationError) throw err

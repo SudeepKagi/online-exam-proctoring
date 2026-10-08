@@ -1,4 +1,5 @@
 const { prisma } = require('../../infra/postgres/client')
+const { isStudentEligible } = require('../exams/eligibility')
 
 class StudentRepository {
   async getStudentById(id) {
@@ -17,11 +18,9 @@ class StudentRepository {
   }
 
   async listAvailableExamsForStudent(student) {
-    return prisma.exam.findMany({
+    const exams = await prisma.exam.findMany({
       where: {
-        status: { in: ['PUBLISHED', 'LIVE', 'ENDED', 'EVALUATED'] },
-        allowedDepartments: { has: student.departmentCode },
-        allowedSemesters: { has: student.semester }
+        status: { in: ['PUBLISHED', 'LIVE', 'ENDED', 'EVALUATED'] }
       },
       include: {
         attempts: {
@@ -30,6 +29,7 @@ class StudentRepository {
       },
       orderBy: { startTime: 'desc' }
     })
+    return exams.filter(exam => isStudentEligible(exam, student))
   }
 
   async getExamById(examId) {

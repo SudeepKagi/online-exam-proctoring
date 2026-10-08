@@ -127,12 +127,31 @@ class PresignService {
         break
       }
 
+      case 'LIVE_FRAME': {
+        if (user.role !== ROLES.STUDENT) {
+          throw new ForbiddenError('Only candidates may upload live proctoring frames')
+        }
+        if (!attemptId) {
+          throw new ValidationError('attemptId is required for LIVE_FRAME uploads')
+        }
+        const attempt = await prisma.examAttempt.findFirst({
+          where: { id: attemptId, studentId: user.id },
+          select: { id: true, examId: true, status: true }
+        })
+        if (!attempt) {
+          throw new NotFoundError('Exam attempt not found')
+        }
+        maxAllowedBytes = 500 * 1024
+        key = `attempts/${attemptId}/live_${Date.now()}_${require('crypto').randomBytes(4).toString('hex')}.webp`
+        break
+      }
+
       default:
         throw new ValidationError(`Unsupported upload purpose: ${purpose}`)
     }
 
-    // R-06: Record server-issued keys for candidate identity & enrollment uploads
-    if (['IDENTITY_PHOTO', 'PROFILE', 'IDENTITY', 'ID_CARD', 'FACE_ENROLLMENT', 'ID_ENROLLMENT'].includes(normalizedPurpose)) {
+    // R-06 / FLW-03: Record server-issued keys for candidate identity & enrollment & live frame uploads
+    if (['IDENTITY_PHOTO', 'PROFILE', 'IDENTITY', 'ID_CARD', 'FACE_ENROLLMENT', 'ID_ENROLLMENT', 'LIVE_FRAME'].includes(normalizedPurpose)) {
       const { pendingUploadRegistry } = require('./pendingUploads')
       await pendingUploadRegistry.recordPendingUpload({
         key,
@@ -539,6 +558,22 @@ class PresignService {
     // 3. Fixed keys per attempt (overwritten)
     const cameraKey = s3Client.buildLiveSnapshotKey(attempt.examId, attemptId, 'camera')
     const screenKey = s3Client.buildLiveSnapshotKey(attempt.examId, attemptId, 'screen')
+
+    // FLW-03: Register live snapshot keys in pendingUploadRegistry
+    const { pendingUploadRegistry } = require('./pendingUploads')
+    await pendingUploadRegistry.recordPendingUpload({
+      key: cameraKey,
+      studentId: user?.id || attempt.studentId,
+      purpose: 'LIVE_FRAME',
+      ttlSeconds: 120
+    }).catch(() => {})
+
+    await pendingUploadRegistry.recordPendingUpload({
+      key: screenKey,
+      studentId: user?.id || attempt.studentId,
+      purpose: 'LIVE_FRAME',
+      ttlSeconds: 120
+    }).catch(() => {})
 
     const cameraPutUrl = await s3Client.getPresignedPutUrl(cameraKey, 'image/webp', 120)
     const screenPutUrl = await s3Client.getPresignedPutUrl(screenKey, 'image/webp', 120)

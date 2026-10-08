@@ -5,7 +5,7 @@ const { requireAuth } = require('../../middleware/authentication')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
 const { z } = require('zod')
 const { validateBody } = require('../../middleware/validation')
-const { ForbiddenError, UnauthorizedError } = require('../../shared/errors')
+const { ForbiddenError, UnauthorizedError, NotFoundError } = require('../../shared/errors')
 const { getClientIp } = require('../../utils/helpers')
 
 const router = express.Router()
@@ -141,6 +141,9 @@ router.post('/faculty/login', routeRateLimiters.login, validateBody(loginSchema)
  * POST /api/v1/auth/faculty/register (Disabled in production)
  */
 router.post('/faculty/register', (req, res, next) => {
+  if (process.env.ALLOW_SELF_REGISTRATION !== 'true') {
+    return next(new NotFoundError('Endpoint not found'))
+  }
   next(new ForbiddenError('Public self-registration is disabled. Accounts are managed by System Administration.'))
 })
 
@@ -179,6 +182,9 @@ router.post('/student/login', routeRateLimiters.login, validateBody(studentLogin
  * POST /api/v1/auth/student/register (Disabled in production)
  */
 router.post('/student/register', (req, res, next) => {
+  if (process.env.ALLOW_SELF_REGISTRATION !== 'true') {
+    return next(new NotFoundError('Endpoint not found'))
+  }
   next(new ForbiddenError('Public self-registration is disabled. Accounts are managed by System Administration.'))
 })
 

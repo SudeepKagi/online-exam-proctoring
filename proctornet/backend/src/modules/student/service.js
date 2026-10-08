@@ -2,13 +2,12 @@ const studentRepository = require('./repository')
 const { attemptService } = require('../attempts/service')
 const { faceVerificationService } = require('../media/faceVerificationService')
 const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
+const { isStudentEligible } = require('../exams/eligibility')
 const {
   NotFoundError,
   ForbiddenError,
   ValidationError
 } = require('../../shared/errors')
-const { putObject } = require('../../infra/s3/s3.client')
-const crypto = require('crypto')
 
 class StudentService {
   async getProfile(studentId) {
@@ -20,6 +19,20 @@ class StudentService {
   async updateProfile(studentId, data) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student profile not found')
+
+    if (student.profileStatus === 'LOCKED') {
+      throw new ForbiddenError('Profile is locked and cannot be modified')
+    }
+
+    if (data.usn !== undefined && data.usn !== student.usn) {
+      throw new ForbiddenError('Modifying USN is strictly prohibited')
+    }
+    if (data.email !== undefined && data.email !== student.email) {
+      throw new ForbiddenError('Modifying institutional email is strictly prohibited')
+    }
+    if (data.profileStatus !== undefined || data.approvalStatus !== undefined) {
+      throw new ForbiddenError('Modifying verification or approval status is strictly prohibited')
+    }
 
     const allowed = {}
     if (data.name) allowed.name = data.name
@@ -54,11 +67,11 @@ class StudentService {
 
     const attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
 
+    const isEligible = isStudentEligible(exam, student)
     return {
       exam: toStudentExamDTO(exam, attempt),
       student: toStudentProfileDTO(student),
-      isEligible: (exam.allowedDepartments || []).includes(student.departmentCode) &&
-                  (exam.allowedSemesters || []).includes(student.semester),
+      isEligible,
       attempt: attempt ? {
         id: attempt.id,
         status: attempt.status,
@@ -79,9 +92,9 @@ class StudentService {
   }
 
   async verifyFace(studentId, data = {}) {
-    const liveInput = data.liveFrame || data.image || data.liveFrameKey || data.frameKey
+    const liveInput = data.liveFrameKey || data.frameKey || data.liveFrame || data.image
     if (!liveInput) {
-      throw new ValidationError('liveFrame or image is required for face verification')
+      throw new ValidationError('liveFrameKey is required for face verification')
     }
 
     let attempt = null
@@ -92,17 +105,25 @@ class StudentService {
     }
 
     let liveFrameKey = data.liveFrameKey || data.frameKey
-    if (!liveFrameKey && typeof liveInput === 'string') {
-      if (liveInput.startsWith('attempts/') || liveInput.startsWith('evidence/') || liveInput.startsWith('students/')) {
-        liveFrameKey = liveInput
-      } else {
-        const base64Data = liveInput.replace(/^data:image\/\w+;base64,/, '')
-        const buffer = Buffer.from(base64Data, 'base64')
-        const attId = attempt ? attempt.id : 'pre_check'
-        liveFrameKey = `attempts/${attId}/pre_exam_live_${Date.now()}_${crypto.randomBytes(4).toString('hex')}.webp`
-        await putObject(liveFrameKey, buffer, 'image/webp')
-      }
+    if (!liveFrameKey && typeof liveInput === 'string' && (liveInput.startsWith('attempts/') || liveInput.startsWith('live/'))) {
+      liveFrameKey = liveInput
     }
+
+    if (!liveFrameKey) {
+      // Reject raw base64 through API (FLW-03)
+      if (typeof liveInput === 'string' && liveInput.startsWith('data:image')) {
+        throw new ValidationError('Direct base64 image uploads are rejected. Use server-issued presigned upload tickets (purpose: LIVE_FRAME).')
+      }
+      throw new ValidationError('Valid liveFrameKey is required for face verification')
+    }
+
+    // FLW-03: Live frames must come from server-issued, attempt-bound upload tickets
+    const { pendingUploadRegistry } = require('../media/pendingUploads')
+    await pendingUploadRegistry.verifyAndConsumeUpload({
+      key: liveFrameKey,
+      studentId,
+      purpose: 'LIVE_FRAME'
+    })
 
     if (attempt && liveFrameKey) {
       const verificationResult = await faceVerificationService.verifyPreExam({
@@ -132,17 +153,28 @@ class StudentService {
   }
 
   async verifyIdCard(studentId, { idCardPhoto }) {
-    if (!idCardPhoto) {
-      throw new ValidationError('idCardPhoto is required for ID card verification')
-    }
+    const student = await studentRepository.getStudentById(studentId)
+    if (!student) throw new NotFoundError('Student not found')
+
+    // FLW-02: ID-card photo is uploaded at enrollment and verified by admin.
+    // At exam time only the live face check runs.
+    const isEnrolledAndVerified = student.profileStatus === 'VERIFIED' || student.approvalStatus === 'APPROVED'
+
     await studentRepository.recordVerificationAuditLog({
       studentId,
       checkType: 'ID_CARD_OCR',
-      score: 0.0,
-      status: 'PENDING_ANALYSIS',
-      details: 'ID Card OCR evaluation pending real OCR pipeline'
+      score: isEnrolledAndVerified ? 1.0 : 0.0,
+      status: isEnrolledAndVerified ? 'VERIFIED_DURING_ENROLLMENT' : 'PENDING_ANALYSIS',
+      details: isEnrolledAndVerified ? 'ID card verified during enrollment by admin' : 'Pending enrollment review'
     })
-    return { success: true, verified: false, matchScore: 0.0, pending: true }
+
+    return {
+      success: true,
+      verified: isEnrolledAndVerified,
+      matchScore: student.faceMatchScore || 1.0,
+      pending: !isEnrolledAndVerified,
+      message: isEnrolledAndVerified ? 'ID card verified during enrollment.' : 'Pending enrollment review.'
+    }
   }
 
   async saveIdentityVerification(examId, studentId, data) {
@@ -153,6 +185,14 @@ class StudentService {
     if (!liveFrameKey) {
       throw new ValidationError('faceWithIdPhoto or liveFrameKey is required for identity verification')
     }
+
+    // FLW-03: Verify server-issued ticket
+    const { pendingUploadRegistry } = require('../media/pendingUploads')
+    await pendingUploadRegistry.verifyAndConsumeUpload({
+      key: liveFrameKey,
+      studentId,
+      purpose: 'LIVE_FRAME'
+    })
 
     const verificationResult = await faceVerificationService.verifyPreExam({
       attemptId: attempt.id,
@@ -183,8 +223,7 @@ class StudentService {
 
   async submitConsent(studentId) {
     const updated = await studentRepository.updateStudent(studentId, {
-      consentTimestamp: new Date(),
-      profileStatus: 'CONSENT_GIVEN'
+      consentTimestamp: new Date()
     })
     return toStudentProfileDTO(updated)
   }
