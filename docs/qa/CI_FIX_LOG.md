@@ -162,6 +162,23 @@
 * **Resolution:** Replaced `powershell.exe` with `process.execPath` running a 5000ms delay (`setTimeout`). Works deterministically and portably across Linux, Windows, and macOS.
 * **Outcome:** Test passes in 278ms on all operating systems.
 
+---
+
+### Entry 010: S3 Client Mock Store Honoring in Ops Reset Script (`reset-keep-admin.js`)
+* **Date/Time:** 2026-10-08 12:30:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37775824957`)
+* **Job / Step:** `Full Test Suite Execution` / `Run Hermetic Autodiscovered Test Suites`
+* **Trigger:** Push on `main` (commit `bdd120a`)
+* **Exact Diagnostic:** `reset-keep-admin.test.js:256:3` failed with `InvalidAccessKeyId: The AWS Access Key Id you provided does not exist in our records.`
+* **Root Cause Class:** `Environment Leak / Missing Mock Interceptor` (`reset-keep-admin.js` instantiated raw `@aws-sdk/client-s3` `S3Client` directly without checking `process.env.S3_MOCK === 'true'`. In CI where dummy AWS credentials (`dummy_ci_test_access_key_12345`) are configured, S3 bucket scanning attempted outbound calls to AWS, resulting in authentication rejections).
+* **Resolution:**
+  1. Updated `getS3Client()` in `reset-keep-admin.js` to detect `process.env.S3_MOCK === 'true' || (process.env.NODE_ENV === 'test' && !process.env.S3_ENDPOINT)` and return an in-memory mock client backed by `src/infra/s3/s3.client.js`'s `_mockStore`.
+  2. Wrapped `ListObjectsV2Command` in a fail-safe try/catch block.
+  3. Added `customS3Client` dependency injection support to `runReset`.
+  4. Added test 10 to `reset-keep-admin.test.js` verifying clean scanning and purging against the mock store.
+* **Outcome:** All 58 test suites (including `reset-keep-admin.test.js`) pass hermetically with dummy credentials. Zero outbound AWS network calls.
+
+
 
 
 

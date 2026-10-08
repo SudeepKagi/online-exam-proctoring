@@ -7,6 +7,7 @@ const {
   parseArgs,
   parseDatabaseTarget,
   getTableCounts,
+  getS3Client,
   runReset,
   DEFAULT_ALLOWED_HOSTS,
   PRESERVED_TABLES,
@@ -351,4 +352,30 @@ describe('Phase P1 — Data Reset: Keep Admin Only Guardrails Suite', () => {
     const valid = await bcrypt.compare(rawPassword, passwordHash)
     assert.equal(valid, true, 'Admin password bcrypt comparison must succeed')
   })
+
+  it('10. S3 Storage Mocking: honors S3_MOCK and cleanly purges stored keys without AWS connection', async () => {
+    const s3Infra = require('../src/infra/s3/s3.client')
+    s3Infra._mockStore.set('evidence/exam-1/attempt-1/snapshot.webp', Buffer.from('fake-data'))
+    s3Infra._mockStore.set('live/exam-1/attempt-1/camera.webp', Buffer.from('fake-data'))
+    s3Infra._mockStore.set('other/unrelated.webp', Buffer.from('fake-data'))
+
+    const s3Client = getS3Client()
+    assert.ok(s3Client, 'S3 Client must be instantiated in mock mode')
+    assert.equal(s3Client.isMock, true, 'S3 Client must operate as mock in test mode')
+
+    const { scanS3Objects, purgeS3Objects } = require('../scripts/ops/reset-keep-admin')
+    const scan = await scanS3Objects(s3Client, 'test-bucket', ['evidence/', 'live/'], false)
+    assert.equal(scan.toDelete.length, 2)
+    assert.equal(scan.countsByPrefix['evidence/'], 1)
+    assert.equal(scan.countsByPrefix['live/'], 1)
+
+    const purgedCount = await purgeS3Objects(s3Client, 'test-bucket', scan.toDelete)
+    assert.equal(purgedCount, 2)
+    assert.equal(s3Infra._mockStore.has('evidence/exam-1/attempt-1/snapshot.webp'), false)
+    assert.equal(s3Infra._mockStore.has('live/exam-1/attempt-1/camera.webp'), false)
+    assert.equal(s3Infra._mockStore.has('other/unrelated.webp'), true)
+
+    s3Infra.clearMockStore()
+  })
 })
+

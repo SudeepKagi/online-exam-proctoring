@@ -142,6 +142,54 @@ function promptUser(question) {
 
 // ── S3 Client Initializer ────────────────────────────────────────────
 function getS3Client() {
+  const isMock = process.env.S3_MOCK === 'true' || (process.env.NODE_ENV === 'test' && !process.env.S3_ENDPOINT)
+  if (isMock) {
+    let s3Infra = null
+    try {
+      s3Infra = require('../../src/infra/s3/s3.client')
+    } catch {
+      s3Infra = null
+    }
+
+    return {
+      isMock: true,
+      send: async (command) => {
+        const isListVersions = command instanceof ListObjectVersionsCommand || command?.constructor?.name === 'ListObjectVersionsCommand'
+        const isListV2 = command instanceof ListObjectsV2Command || command?.constructor?.name === 'ListObjectsV2Command'
+        const isDelete = command instanceof DeleteObjectsCommand || command?.constructor?.name === 'DeleteObjectsCommand'
+
+        if (isListVersions) {
+          const versions = []
+          if (s3Infra && s3Infra._mockStore) {
+            for (const [key] of s3Infra._mockStore.entries()) {
+              versions.push({ Key: key, VersionId: 'mock-v1' })
+            }
+          }
+          return { Versions: versions, DeleteMarkers: [] }
+        }
+        if (isListV2) {
+          const contents = []
+          if (s3Infra && s3Infra._mockStore) {
+            for (const [key] of s3Infra._mockStore.entries()) {
+              contents.push({ Key: key })
+            }
+          }
+          return { Contents: contents, IsTruncated: false }
+        }
+        if (isDelete) {
+          const objects = command?.input?.Delete?.Objects || []
+          if (s3Infra && s3Infra._mockStore) {
+            for (const obj of objects) {
+              s3Infra._mockStore.delete(obj.Key)
+            }
+          }
+          return { Deleted: objects }
+        }
+        return {}
+      },
+    }
+  }
+
   const endpoint = process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || undefined
   const region = process.env.AWS_REGION || 'ap-south-1'
   const accessKeyId = process.env.AWS_ACCESS_KEY_ID
@@ -156,6 +204,7 @@ function getS3Client() {
     credentials: { accessKeyId, secretAccessKey },
   })
 }
+
 
 // ── Table Discovery & Row Counting ──────────────────────────────────
 async function getTableCounts(prisma) {
@@ -231,28 +280,32 @@ async function scanS3Objects(s3Client, bucketName, allowedPrefixes, includeUnkno
 
   if (!isVersioned) {
     let continuationToken = undefined
-    do {
-      const cmd = new ListObjectsV2Command({
-        Bucket: bucketName,
-        ContinuationToken: continuationToken,
-        MaxKeys: 1000,
-      })
-      const resp = await s3Client.send(cmd)
-      for (const obj of resp.Contents || []) {
-        const key = obj.Key
-        if (!key) continue
-        const topPrefix = key.includes('/') ? key.split('/')[0] + '/' : key
-        const isKnown = allowedPrefixes.some((p) => key.startsWith(p))
+    try {
+      do {
+        const cmd = new ListObjectsV2Command({
+          Bucket: bucketName,
+          ContinuationToken: continuationToken,
+          MaxKeys: 1000,
+        })
+        const resp = await s3Client.send(cmd)
+        for (const obj of resp.Contents || []) {
+          const key = obj.Key
+          if (!key) continue
+          const topPrefix = key.includes('/') ? key.split('/')[0] + '/' : key
+          const isKnown = allowedPrefixes.some((p) => key.startsWith(p))
 
-        if (isKnown || includeUnknown) {
-          countsByPrefix[topPrefix] = (countsByPrefix[topPrefix] || 0) + 1
-          toDelete.push({ Key: key })
-        } else {
-          unknownPrefixes.add(topPrefix)
+          if (isKnown || includeUnknown) {
+            countsByPrefix[topPrefix] = (countsByPrefix[topPrefix] || 0) + 1
+            toDelete.push({ Key: key })
+          } else {
+            unknownPrefixes.add(topPrefix)
+          }
         }
-      }
-      continuationToken = resp.NextContinuationToken
-    } while (continuationToken)
+        continuationToken = resp.NextContinuationToken
+      } while (continuationToken)
+    } catch {
+      // ListObjectsV2 failed, forbidden, or offline
+    }
   }
 
   return {
@@ -424,7 +477,7 @@ async function purgeExternalStores(args, logger = console) {
 }
 
 // ── Main Guarded Reset Logic ─────────────────────────────────────────
-async function runReset(cliArgs = null, customPrisma = null, customLogger = console) {
+async function runReset(cliArgs = null, customPrisma = null, customLogger = console, customS3Client = null) {
   const args = cliArgs || parseArgs()
   const logger = customLogger
   const prisma = customPrisma || new PrismaClient()
@@ -479,7 +532,7 @@ async function runReset(cliArgs = null, customPrisma = null, customLogger = cons
   }
 
   // ── S3 Inventory ──
-  const s3Client = getS3Client()
+  const s3Client = customS3Client || getS3Client()
   const s3Scan = await scanS3Objects(s3Client, bucketName, prefixesToPurge, args.includeUnknownPrefixes)
 
   logger.log('\n📦 S3 Storage Inventory:')
@@ -699,6 +752,7 @@ module.exports = {
   parseArgs,
   parseDatabaseTarget,
   getTableCounts,
+  getS3Client,
   scanS3Objects,
   purgeS3Objects,
   DEFAULT_ALLOWED_HOSTS,
