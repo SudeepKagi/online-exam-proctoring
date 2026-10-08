@@ -39,11 +39,18 @@ const clientConfig = {
 }
 
 // In production: no static keys — use EC2 instance role / default credential provider chain
-// In dev/test: use env keys if provided
-if (!IS_PROD && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-  clientConfig.credentials = {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+// In dev/test: use env keys if provided, or dummy fallback in test mode
+if (!IS_PROD) {
+  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    clientConfig.credentials = {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+    }
+  } else if (process.env.NODE_ENV === 'test') {
+    clientConfig.credentials = {
+      accessKeyId: 'dummy_ci_test_access_key_12345',
+      secretAccessKey: 'dummy_ci_test_secret_key_12345'
+    }
   }
 }
 
@@ -54,6 +61,10 @@ if (process.env.S3_ENDPOINT) {
 }
 
 const s3Client = new S3Client(clientConfig)
+
+// In-memory mock store for CI and offline test environments without active MinIO/AWS S3
+const USE_MOCK = !IS_PROD && (process.env.S3_MOCK === 'true' || (process.env.NODE_ENV === 'test' && !process.env.S3_ENDPOINT))
+const mockStore = new Map()
 
 // ────────────────────────────────────────────────────────────
 // ADR-011 Key Construction Schemes (Keys, not URLs)
@@ -222,6 +233,20 @@ async function createDirectUploadPolicy({ key, contentType, maxSizeBytes, expire
 
 async function headObject(key) {
   const canonicalKey = extractS3Key(key)
+  if (USE_MOCK) {
+    const item = mockStore.get(canonicalKey)
+    if (!item) {
+      const err = new Error('NotFound')
+      err.name = 'NotFound'
+      err.$metadata = { httpStatusCode: 404 }
+      throw err
+    }
+    return {
+      ContentLength: item.buffer.length,
+      ContentType: item.contentType,
+      LastModified: item.lastModified
+    }
+  }
   const command = new HeadObjectCommand({
     Bucket: BUCKET_NAME,
     Key: canonicalKey
@@ -231,6 +256,16 @@ async function headObject(key) {
 
 async function getObjectBuffer(key) {
   const canonicalKey = extractS3Key(key)
+  if (USE_MOCK) {
+    const item = mockStore.get(canonicalKey)
+    if (!item) {
+      const err = new Error('NoSuchKey')
+      err.name = 'NoSuchKey'
+      err.$metadata = { httpStatusCode: 404 }
+      throw err
+    }
+    return item.buffer
+  }
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,
     Key: canonicalKey
@@ -245,6 +280,15 @@ async function getObjectBuffer(key) {
 
 async function putObject(key, buffer, contentType = 'image/webp') {
   const canonicalKey = extractS3Key(key)
+  if (USE_MOCK) {
+    const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+    mockStore.set(canonicalKey, {
+      buffer: buf,
+      contentType,
+      lastModified: new Date()
+    })
+    return { ETag: '"mock-etag"', VersionId: 'mock-version' }
+  }
   const command = new PutObjectCommand({
     Bucket: BUCKET_NAME,
     Key: canonicalKey,
@@ -257,6 +301,10 @@ async function putObject(key, buffer, contentType = 'image/webp') {
 
 async function deleteObject(key) {
   const canonicalKey = extractS3Key(key)
+  if (USE_MOCK) {
+    mockStore.delete(canonicalKey)
+    return {}
+  }
   const command = new DeleteObjectCommand({
     Bucket: BUCKET_NAME,
     Key: canonicalKey
@@ -266,6 +314,15 @@ async function deleteObject(key) {
 
 async function deleteObjects(keys = []) {
   if (!keys || keys.length === 0) return { Deleted: [] }
+  if (USE_MOCK) {
+    const deleted = []
+    for (const k of keys) {
+      const canonicalKey = extractS3Key(k)
+      mockStore.delete(canonicalKey)
+      deleted.push({ Key: canonicalKey })
+    }
+    return { Deleted: deleted }
+  }
   const objects = keys.map((k) => ({ Key: extractS3Key(k) }))
   const command = new DeleteObjectsCommand({
     Bucket: BUCKET_NAME,
@@ -311,5 +368,7 @@ module.exports = {
   getObjectBuffer,
   putObject,
   deleteObject,
-  deleteObjects
+  deleteObjects,
+  _mockStore: mockStore,
+  clearMockStore: () => mockStore.clear()
 }

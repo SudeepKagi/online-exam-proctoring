@@ -198,7 +198,11 @@ jobs:
           RABBITMQ_URL: amqp://guest:guest@localhost:5672
           JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
           AWS_REGION: ap-south-1
+          AWS_ACCESS_KEY_ID: dummy_ci_test_access_key_12345
+          AWS_SECRET_ACCESS_KEY: dummy_ci_test_secret_key_12345
+          AWS_S3_BUCKET_NAME: proctornet-ci-test-bucket
           S3_BUCKET: proctornet-ci-test-bucket
+          S3_MOCK: "true"
           FACE_DRIVER: off
           AGENT_PAIRING_PEPPER: dummy_ci_pepper_test_secret_at_least_32_chars_123
           AGENT_POLICY_SIGNING_KEY: dummy_ci_signing_test_secret_at_least_32_chars_456
@@ -243,7 +247,11 @@ jobs:
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
           AWS_REGION: ap-south-1
+          AWS_ACCESS_KEY_ID: dummy_ci_test_access_key_12345
+          AWS_SECRET_ACCESS_KEY: dummy_ci_test_secret_key_12345
+          AWS_S3_BUCKET_NAME: proctornet-ci-test-bucket
           S3_BUCKET: proctornet-ci-test-bucket
+          S3_MOCK: "true"
           FACE_DRIVER: off
           NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
         run: |
