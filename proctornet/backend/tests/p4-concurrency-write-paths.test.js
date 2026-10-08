@@ -101,7 +101,8 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         allowedSemesters: [6],
         invId: `INV-${Date.now()}`,
         invPasswordHash: pwdHash,
-        status: 'PUBLISHED'
+        status: 'PUBLISHED',
+        deviceAgentPolicy: 'OFF'
       }
     })
 
