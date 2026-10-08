@@ -18,6 +18,7 @@ $agentTests = if (Test-Path "$repoRoot\proctornet\device-agent\test") {
 } else { @() }
 
 $allTests = @($backendTests) + @($rootTests) + @($agentTests)
+$allTests = @($allTests | Sort-Object { if ($_ -like "*ci_workflow_integrity*") { 0 } else { 1 } })
 Write-Host "Discovered $($allTests.Count) test files across workspaces." -ForegroundColor Cyan
 
 # Hermetic Test Environment Configuration (matching CI services)

@@ -102,5 +102,18 @@
      - `generate-route-inventory.js --check`: 194 endpoints verified, perfectly aligned.
 * **Outcome:** All quality, migration, and test execution gates passed 100% with zero regressions.
 
+---
+
+### Entry 006: Phase C4 Fast Local Clean-Room Replica Parity
+* **Date/Time:** 2026-10-08 12:10:00 UTC
+* **Workflow / Test Run:** Local Clean-Room Diagnostic Runners (`local-ci.ps1` and `local-ci.sh`)
+* **Branch:** `feature/c4-local-replica`
+* **Discovered Issues & Resolutions:**
+  1. **Shell Parity Alignment:** Updated `scripts/ci/local-ci.sh` with exact matching environment configuration (`DATABASE_URL`, `DIRECT_URL`, `REDIS_URL`, `RABBITMQ_URL`, `AGENT_PAIRING_PEPPER`, `AGENT_POLICY_SIGNING_KEY`).
+  2. **Fast-Fail Ordering:** Ensured `tests/ci_workflow_integrity.test.js` is prioritized first in `local-ci.ps1` to surface workflow drift in < 350ms.
+  3. **Local Diagnostic Artifacts:** Test logs written to `reports/diagnostics/` and structured JSON results written to `reports/local-ci-summary.json`.
+* **Outcome:** Clean-room local scripts operate with 100% parity to GitHub Actions runner environments.
+
+
 
 

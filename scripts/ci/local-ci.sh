@@ -12,11 +12,17 @@ REPORT_DIR="$REPO_ROOT/reports/diagnostics"
 mkdir -p "$REPORT_DIR"
 
 export NODE_ENV="test"
+export DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5433/proctornet_test?schema=public}"
+export DIRECT_URL="${DIRECT_URL:-postgresql://postgres:postgres@localhost:5433/proctornet_test?schema=public}"
+export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
+export RABBITMQ_URL="${RABBITMQ_URL:-amqp://guest:guest@localhost:5672}"
 export AWS_REGION="ap-south-1"
 export S3_MOCK="true"
 export FACE_DRIVER="off"
 export VPN_ENABLED="false"
 export JWT_SECRET="dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345"
+export AGENT_PAIRING_PEPPER="dummy_ci_pepper_test_secret_at_least_32_chars_123"
+export AGENT_POLICY_SIGNING_KEY="dummy_ci_signing_test_secret_at_least_32_chars_456"
 export NODE_PATH="$REPO_ROOT/proctornet/backend/node_modules:$REPO_ROOT/proctornet/node_modules"
 
 TEST_FILES=()
