@@ -14,11 +14,16 @@ process.env.START_WORKERS = 'false'
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const INVENTORY_FILE = path.join(REPO_ROOT, 'docs/api/ROUTE_INVENTORY.md')
 
-// Ensure backend node_modules is resolvable when script is executed from repo root
-const backendNodeModules = path.join(REPO_ROOT, 'proctornet/backend/node_modules')
-if (fs.existsSync(backendNodeModules)) {
+// Ensure backend and workspace node_modules are resolvable when script is executed from repo root
+const candidateDirs = [
+  path.join(REPO_ROOT, 'proctornet/backend/node_modules'),
+  path.join(REPO_ROOT, 'proctornet/node_modules'),
+  path.join(REPO_ROOT, 'node_modules')
+]
+const existingDirs = candidateDirs.filter(d => fs.existsSync(d))
+if (existingDirs.length > 0) {
   const Module = require('module')
-  process.env.NODE_PATH = (process.env.NODE_PATH ? process.env.NODE_PATH + path.delimiter : '') + backendNodeModules
+  process.env.NODE_PATH = (process.env.NODE_PATH ? process.env.NODE_PATH + path.delimiter : '') + existingDirs.join(path.delimiter)
   Module._initPaths()
 }
 

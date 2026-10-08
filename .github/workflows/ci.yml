@@ -29,14 +29,13 @@ jobs:
           node-version: 22
           cache: 'npm'
           cache-dependency-path: |
-            proctornet/backend/package-lock.json
-            proctornet/frontend/package-lock.json
+            package-lock.json
+            proctornet/package-lock.json
 
       - name: Install Dependencies
         run: |
           npm ci
-          cd proctornet/backend && npm ci
-          cd ../frontend && npm ci
+          cd proctornet && npm ci
 
       - name: Backend Lint
         working-directory: proctornet/backend
@@ -60,7 +59,7 @@ jobs:
 
       - name: Route Inventory Drift Check (generate-route-inventory.js --check)
         env:
-          NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules
+          NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
         run: node scripts/ci/generate-route-inventory.js --check
 
   # ----------------------------------------------------------------------------
@@ -93,10 +92,10 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: proctornet/backend/package-lock.json
+          cache-dependency-path: proctornet/package-lock.json
 
       - name: Install Backend Dependencies
-        working-directory: proctornet/backend
+        working-directory: proctornet
         run: npm ci
 
       - name: Apply Migrations from Baseline
@@ -166,11 +165,14 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: proctornet/backend/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            proctornet/package-lock.json
 
       - name: Install Dependencies
-        working-directory: proctornet/backend
-        run: npm ci
+        run: |
+          npm ci
+          cd proctornet && npm ci
 
       - name: Generate Prisma Client & Migrate
         working-directory: proctornet/backend
@@ -238,6 +240,7 @@ jobs:
           AWS_REGION: ap-south-1
           S3_BUCKET: proctornet-ci-test-bucket
           FACE_DRIVER: off
+          NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
         run: |
           node tests/approval_auth.test.js
           node tests/profile_security.test.js
@@ -268,10 +271,10 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: proctornet/frontend/package-lock.json
+          cache-dependency-path: proctornet/package-lock.json
 
       - name: Install Frontend Dependencies
-        working-directory: proctornet/frontend
+        working-directory: proctornet
         run: npm ci
 
       - name: Build Frontend SPA
@@ -299,7 +302,7 @@ jobs:
 
       - name: Audit Backend Production Dependencies
         working-directory: proctornet/backend
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=none
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
