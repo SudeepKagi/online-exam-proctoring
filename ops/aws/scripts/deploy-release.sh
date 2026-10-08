@@ -176,8 +176,8 @@ if [ -n "$PREV_RELEASE_DIR" ]; then
 fi
 
 cd "$NEW_RELEASE_DIR/proctornet/backend"
-if [ ! -d "node_modules" ]; then
-    echo "[-] Installing production dependencies..."
+if [ ! -d "node_modules" ] || ! node -e "require('express'); require('body-parser');" >/dev/null 2>&1; then
+    echo "[-] Ensuring complete production dependencies..."
     sudo -u proctornet npm install --omit=dev --no-audit --no-fund
 fi
 

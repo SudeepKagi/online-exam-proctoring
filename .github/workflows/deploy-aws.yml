@@ -61,8 +61,9 @@ jobs:
       - name: Package Backend Production Bundle with Pinned Prisma
         run: |
           echo "Preparing backend production dependencies and generating Prisma client..."
-          cd proctornet/backend
+          cd proctornet
           npm ci --omit=dev
+          cd backend
           npx prisma generate
           echo "[✓] Backend bundle ready."
 
@@ -85,6 +86,7 @@ jobs:
           echo "Creating release archive: ${TAR_FILE}..."
           tar -czf "${TAR_FILE}" \
             proctornet/backend \
+            proctornet/node_modules \
             proctornet/frontend/dist \
             shared \
             ops/caddy/Caddyfile \
