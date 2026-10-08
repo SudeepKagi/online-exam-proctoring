@@ -265,7 +265,12 @@ class AdminRepository {
     return prisma.platformSetting.upsert({
       where: { key },
       update: { value: String(value), updatedBy },
-      create: { key, value: String(value), updatedBy }
+      create: {
+        id: crypto.randomUUID(),
+        key,
+        value: String(value),
+        updatedBy
+      }
     })
   }
 

@@ -1,18 +1,18 @@
-﻿node:internal/modules/cjs/loader:1424
-  throw err;
-  ^
-System.Management.Automation.RemoteException
-Error: Cannot find module 'C:\Final year project\online-exam-proctoring\tests\exam_credentials.test.js'
-    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
-    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
-    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
-    at Module._load (node:internal/modules/cjs/loader:1227:37)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
-    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
-    at node:internal/main/run_main_module:33:47 {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: []
-}
-System.Management.Automation.RemoteException
-Node.js v24.12.0
+▶ BUG-B07: Cryptographic Invigilator Credentials & Publish Guard
+  ✔ rejects publishing an exam with invalid MCQ questions (12.1143ms)
+{"level":"info","time":"2026-10-08T01:44:29.233Z","pid":38352,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"info","time":"2026-10-08T01:44:29.239Z","pid":38352,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
+{"level":"info","time":"2026-10-08T01:44:29.279Z","pid":38352,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}
+{"level":"info","time":"2026-10-08T01:44:29.307Z","pid":38352,"hostname":"MSI","examId":"11111111-1111-1111-1111-111111111111","msg":"Starting attempt pre-warming job for exam"}
+{"level":"warn","time":"2026-10-08T01:44:30.232Z","pid":38352,"hostname":"MSI","examId":"11111111-1111-1111-1111-111111111111","msg":"Cannot prewarm: Exam not found"}
+  ✔ generates unambiguous one-time credentials upon successful publish (1107.6569ms)
+  ✔ regenerates invigilator credentials and enforces faculty ownership (154.3417ms)
+✔ BUG-B07: Cryptographic Invigilator Credentials & Publish Guard (1277.0523ms)
+ℹ tests 3
+ℹ suites 1
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1289.5241

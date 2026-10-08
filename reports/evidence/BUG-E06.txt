@@ -1,18 +1,16 @@
-﻿node:internal/modules/cjs/loader:1424
-  throw err;
-  ^
-System.Management.Automation.RemoteException
-Error: Cannot find module 'C:\Final year project\online-exam-proctoring\tests\question_immutability.test.js'
-    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
-    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
-    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
-    at Module._load (node:internal/modules/cjs/loader:1227:37)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
-    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
-    at node:internal/main/run_main_module:33:47 {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: []
-}
-System.Management.Automation.RemoteException
-Node.js v24.12.0
+▶ BUG-E06: Question Immutability After Publish & In-Place Option Updates
+  ✔ blocks creating questions in published or non-draft exams with ConflictError (13.2056ms)
+  ✔ blocks deleting questions in non-draft exams with ConflictError (0.4645ms)
+  ✔ blocks updating or deleting questions through facultyService when exam is not DRAFT (0.4863ms)
+  ✔ updates options in-place in facultyRepository without deleting existing option IDs (1.2089ms)
+✔ BUG-E06: Question Immutability After Publish & In-Place Option Updates (18.5908ms)
+{"level":"info","time":"2026-10-08T01:44:31.770Z","pid":17856,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"warn","time":"2026-10-08T01:44:31.774Z","pid":17856,"hostname":"MSI","error":"Connection is closed.","msg":"Initial Redis connection failed; caching will use bounded LRU L1 fallback"}
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35.3576

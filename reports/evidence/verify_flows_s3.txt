@@ -1,0 +1,13 @@
+# ProctorNet Phase S3 (Flow Fixes) Verification Evidence
+Target: https://proctornet.duckdns.org
+Timestamp: 2026-10-08T01:42:43.225Z
+Summary: 8/8 Passed
+
+[PASS] S3-01: Live backend healthz probe (status: 200)
+[PASS] S3-02: FLW-07: Public student registration returns 404 NotFoundError (status: 404)
+[PASS] S3-03: FLW-07: Public faculty registration returns 404 NotFoundError (status: 404)
+[PASS] S3-04: FLW-04: Unauthenticated media view access rejected (status: 401)
+[PASS] S3-05: FLW-05: Batch snapshot read endpoint exists and enforces auth (status: 401)
+[PASS] S3-06: Admin login authenticates and sets pn_at and pn_rt cookies (status: 200)
+[PASS] S3-07: FLW-10 / BUG-J02: Admin settings flat dictionary update succeeds (status: 200, items: 3)
+[PASS] S3-08: Admin settings list retrieval succeeds (status: 200, count: 9)

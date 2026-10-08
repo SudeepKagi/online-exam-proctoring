@@ -1,0 +1,32 @@
+▶ FLW-08: Unified Exam Eligibility Matrix
+  ▶ Department matching
+    ✔ approves student with exact department code match (1.0495ms)
+    ✔ approves student with case-insensitive department matching (cse vs CSE) (0.4663ms)
+    ✔ approves any student department when allowedDepartments contains ALL (0.3067ms)
+    ✔ approves any student department when allowedDepartments is empty (0.8759ms)
+    ✔ rejects student whose department is not in allowedDepartments (0.2842ms)
+  ✔ Department matching (5.5248ms)
+  ▶ Semester matching
+    ✔ approves student with matching semester integer (0.2708ms)
+    ✔ approves student with string semester matching integer array (0.2546ms)
+    ✔ approves any semester when allowedSemesters contains 0 (0.5071ms)
+    ✔ approves any semester when allowedSemesters is empty (0.3037ms)
+    ✔ rejects student whose semester is not in allowedSemesters (0.343ms)
+  ✔ Semester matching (2.1441ms)
+  ▶ Student state invariants
+    ✔ strictly rejects suspended student regardless of department and semester (0.2215ms)
+    ✔ strictly rejects non-approved students (PENDING, REJECTED, SUSPENDED) (0.1944ms)
+    ✔ returns false for null exam or student (0.1827ms)
+  ✔ Student state invariants (1.5361ms)
+  ▶ SQL WHERE clause integrity
+    ✔ verifies SQL_ELIGIBILITY_WHERE covers suspension, approval, departments, and semesters (0.2991ms)
+  ✔ SQL WHERE clause integrity (0.4043ms)
+✔ FLW-08: Unified Exam Eligibility Matrix (10.6258ms)
+ℹ tests 14
+ℹ suites 5
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 21.9072

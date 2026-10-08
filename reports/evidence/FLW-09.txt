@@ -1,0 +1,20 @@
+▶ FLW-09: Server Restart & Chaos Resilience
+  ▶ Attempt Expiry & Permutation Immutability Across Restarts
+    ✔ ensures in-flight attempt preserves exact expiresAt and startedAt across simulated restarts (14.6469ms)
+    ✔ ensures question order permutations are deterministic from shuffleSeed (1.0096ms)
+  ✔ Attempt Expiry & Permutation Immutability Across Restarts (16.5375ms)
+  ▶ Session Survivability Across Node Restarts
+    ✔ verifies JWT token remains valid and verifiable without depending on in-memory state (5.3347ms)
+  ✔ Session Survivability Across Node Restarts (5.6847ms)
+  ▶ Grace Period Invariant
+    ✔ respects default 300s grace period (0.5486ms)
+  ✔ Grace Period Invariant (0.7498ms)
+✔ FLW-09: Server Restart & Chaos Resilience (24.0636ms)
+ℹ tests 4
+ℹ suites 4
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 31.5875

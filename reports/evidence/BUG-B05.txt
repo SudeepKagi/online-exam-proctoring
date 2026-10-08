@@ -1,18 +1,15 @@
-﻿node:internal/modules/cjs/loader:1424
-  throw err;
-  ^
-System.Management.Automation.RemoteException
-Error: Cannot find module 'C:\Final year project\online-exam-proctoring\tests\approval_auth.test.js'
-    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
-    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
-    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
-    at Module._load (node:internal/modules/cjs/loader:1227:37)
-    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
-    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
-    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)
-    at node:internal/main/run_main_module:33:47 {
-  code: 'MODULE_NOT_FOUND',
-  requireStack: []
-}
-System.Management.Automation.RemoteException
-Node.js v24.12.0
+▶ BUG-B05: Faculty Department Approval Authorization
+  ✔ approves student when faculty and student belong to the same department (14.4439ms)
+  ✔ rejects approval with ForbiddenError if faculty department differs from student department (1.2127ms)
+  ✔ throws NotFoundError if student or faculty does not exist (1.7081ms)
+✔ BUG-B05: Faculty Department Approval Authorization (23.4787ms)
+{"level":"info","time":"2026-10-08T01:44:28.155Z","pid":33832,"hostname":"MSI","msg":"Connected to Redis server"}
+{"level":"warn","time":"2026-10-08T01:44:28.162Z","pid":33832,"hostname":"MSI","error":"Connection is closed.","msg":"Initial Redis connection failed; caching will use bounded LRU L1 fallback"}
+ℹ tests 3
+ℹ suites 1
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 46.5371
