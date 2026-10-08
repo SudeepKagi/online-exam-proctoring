@@ -42,9 +42,15 @@ function checkLinks() {
       let resolvedTarget
       if (cleanTarget.startsWith('file:///')) {
         // file URI
-        let cleaned = decodeURIComponent(cleanTarget.replace('file:///', ''))
-        // Windows path handling
-        resolvedTarget = path.normalize(cleaned)
+        let cleaned = decodeURIComponent(cleanTarget.replace(/^file:\/\/\/?/, ''))
+        const repoMarker = 'online-exam-proctoring/'
+        const markerIdx = cleaned.indexOf(repoMarker)
+        if (markerIdx !== -1) {
+          const relPath = cleaned.substring(markerIdx + repoMarker.length)
+          resolvedTarget = path.resolve(repoRoot, relPath)
+        } else {
+          resolvedTarget = path.normalize(cleaned)
+        }
       } else if (cleanTarget.startsWith('/')) {
         resolvedTarget = path.join(repoRoot, cleanTarget)
       } else {
