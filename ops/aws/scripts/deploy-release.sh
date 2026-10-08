@@ -17,22 +17,32 @@ EXPECTED_SHA=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --override)
-            OVERRIDE_REASON="$2"
-            shift 2
+            if [ $# -ge 2 ] && [ -n "$2" ]; then
+                OVERRIDE_REASON="$2"
+                shift 2
+            else
+                shift 1
+            fi
             ;;
         --override-b64)
-            if [ -n "$2" ]; then
+            if [ $# -ge 2 ] && [ -n "$2" ]; then
                 OVERRIDE_REASON=$(echo "$2" | base64 -d 2>/dev/null || echo "$2")
+                shift 2
+            else
+                shift 1
             fi
-            shift 2
             ;;
         --expected-sha)
-            EXPECTED_SHA="$2"
-            shift 2
+            if [ $# -ge 2 ] && [ -n "$2" ]; then
+                EXPECTED_SHA="$2"
+                shift 2
+            else
+                shift 1
+            fi
             ;;
         *)
             # Ignore unexpected args
-            shift
+            shift 1
             ;;
     esac
 done

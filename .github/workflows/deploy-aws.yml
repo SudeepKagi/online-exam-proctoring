@@ -118,7 +118,11 @@ jobs:
           payload=$(jq -n --arg tar "$TAR_FILE" --arg bucket "$BUCKET" --arg sha "$HEAD_SHA" --arg ovr "$OVERRIDE_REASON" \
             '{commands: ["aws s3 cp s3://\($bucket)/releases/deploy-release.sh /tmp/deploy-release.sh",
                          "chmod 0700 /tmp/deploy-release.sh",
-                         "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --override-b64 \($ovr|@base64)"]}')
+                         (if ($ovr | length > 0) then
+                            "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --override-b64 \($ovr|@base64)"
+                          else
+                            "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha)"
+                          end)]}')
 
           echo "Triggering SSM send-command on instance: ${INSTANCE_ID}..."
           COMMAND_ID=$(aws ssm send-command \
