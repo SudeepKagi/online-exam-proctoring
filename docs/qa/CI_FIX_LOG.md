@@ -244,3 +244,25 @@
      - Documented honest capacity tiers (Lite: 100–250, Standard: 500–1,000, Multi-Node: 1,000–10,000).
      - Addressed start/submit bursts, PostgreSQL connection pool formulas, WebRTC 8s snapshot fallback, and AWS Rekognition token-bucket discipline.
 * **Outcome:** Production release packaging and deployment gates secured against injection, session forgery, and schema drift.
+---
+
+### Entry 015: AWS Production Release Deployment Verification & Workspace Hoisting Parity
+* **Date/Time:** 2026-10-08 15:05:00 UTC
+* **Workflow:** `Deploy to AWS (Production Release)` (Run `37796534430`)
+* **Job / Step:** `Build, Package & Deploy via SSM` / `Execute Deployment via AWS SSM Session Manager`
+* **Trigger:** Production environment review approval on `main` (commit `bc62478`)
+* **Exact Diagnostic:**
+  - Initial deployment run (`37792564088`) exited status 1 during SSM execution due to:
+    1. Bash CLI argument shift bounds error in `deploy-release.sh` when `--override-b64` was not provided.
+    2. Missing transitive hoisted workspace dependency (`body-parser`) in backend tarball when systemd launched `node src/app.js`.
+    3. Active exam attempts check detected 7 legacy test attempts (`expiresAt: null`) lingering in EC2 PostgreSQL.
+* **Root Cause Class:** `Monorepo Dependency Hoisting / CLI Option Parsing / Stale Active Attempts State`
+* **Resolution:**
+  1. Hardened option parser in `deploy-release.sh` with `[ $# -ge 2 ]` bounds checking and pre-startup module resolution verification (`node -e "require('express'); require('body-parser');"`).
+  2. Updated `deploy-aws.yml` to package parent `proctornet/node_modules` into release tarball alongside `proctornet/backend` to bundle hoisted workspace packages.
+  3. Cleaned up legacy unexpired test attempts on EC2 PostgreSQL via Prisma client migration script.
+  4. Configured GitHub Actions OIDC role assumption (`arn:aws:iam::858109978489:role/proctornet-github-actions-deploy`) with least-privilege SSM + S3 permissions.
+* **Verification & Live Status:**
+  - SSM command dispatched and completed with status `Success`.
+  - Service restarted cleanly via systemd; automated health checks `/healthz` returned HTTP 200 `{"status":"ok"}`.
+  - Live version endpoint `https://proctornet.duckdns.org/api/v1/version` confirmed running commit `bc62478515e86e6f0cd1b8c931fc4494a6bfd2ba`.
