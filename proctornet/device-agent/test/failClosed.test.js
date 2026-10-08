@@ -11,8 +11,8 @@ describe('Fail-Closed Collector Integrity Tests (Prompt 4 §0.3 & A2)', () => {
   })
 
   it('reports CMD_TIMEOUT when command hangs or exceeds explicit timeout window', async () => {
-    // Under Windows, powershell Start-Sleep 5 with a 200ms timeout triggers timeout
-    const res = await safeExec('powershell.exe', ['-Command', 'Start-Sleep -Seconds 5'], 200)
+    // Cross-platform timeout test using currently executing Node runtime
+    const res = await safeExec(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], 200)
     assert.equal(res.ok, false)
     assert.equal(res.code, 'CMD_TIMEOUT')
   })

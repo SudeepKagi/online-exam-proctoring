@@ -150,6 +150,19 @@
   2. Annotated all teardown catch blocks with explicit intentionality comments (`/* ignore on teardown */`).
 * **Outcome:** Clean lint run across backend codebase.
 
+---
+
+### Entry 009: Cross-Platform Collector Timeout Test (`failClosed.test.js`)
+* **Date/Time:** 2026-10-08 12:25:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37775299385`)
+* **Job / Step:** `Full Test Suite Execution` / `Run Hermetic Autodiscovered Test Suites`
+* **Trigger:** Push on `main` (commit `f60e70b`)
+* **Exact Diagnostic:** `failClosed.test.js:13:3` failed with `actual: 'CMD_MISSING', expected: 'CMD_TIMEOUT'`.
+* **Root Cause Class:** `Environment-Dependent Test` (`failClosed.test.js` executed `powershell.exe -Command Start-Sleep -Seconds 5` to trigger a command timeout; on Linux CI runners `powershell.exe` does not exist, triggering `ENOENT`/`CMD_MISSING` instead of `CMD_TIMEOUT`).
+* **Resolution:** Replaced `powershell.exe` with `process.execPath` running a 5000ms delay (`setTimeout`). Works deterministically and portably across Linux, Windows, and macOS.
+* **Outcome:** Test passes in 278ms on all operating systems.
+
+
 
 
 
