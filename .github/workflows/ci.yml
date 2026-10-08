@@ -34,6 +34,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
+          npm ci
           cd proctornet/backend && npm ci
           cd ../frontend && npm ci
 
@@ -110,7 +111,7 @@ jobs:
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate diff \
-            --from-migrations prisma/migrations \
+            --from-schema-datasource prisma/schema.prisma \
             --to-schema-datamodel prisma/schema.prisma \
             --exit-code
 
@@ -186,12 +187,12 @@ jobs:
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           RABBITMQ_URL: amqp://guest:guest@localhost:5672
-          JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes_long_12345
+          JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
           AWS_REGION: ap-south-1
           S3_BUCKET: proctornet-ci-test-bucket
           FACE_DRIVER: off
-          AGENT_PAIRING_PEPPER: ci_pepper_test_secret_at_least_32_chars_123
-          AGENT_POLICY_SIGNING_KEY: ci_signing_test_secret_at_least_32_chars_456
+          AGENT_PAIRING_PEPPER: dummy_ci_pepper_test_secret_at_least_32_chars_123
+          AGENT_POLICY_SIGNING_KEY: dummy_ci_signing_test_secret_at_least_32_chars_456
           PUBLIC_ORIGIN: http://localhost:5000
           LIVEKIT_API_KEY: devkey
           LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
@@ -231,7 +232,7 @@ jobs:
           NODE_ENV: test
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-          JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes_long_12345
+          JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
           AWS_REGION: ap-south-1
           S3_BUCKET: proctornet-ci-test-bucket
           FACE_DRIVER: off

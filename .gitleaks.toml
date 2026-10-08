@@ -16,6 +16,7 @@ paths = [
   '''^proctornet/frontend/\.env\.example$''',
   '''^proctornet/python-service/\.env\.example$''',
   '''^ops/terraform/terraform\.tfvars\.example$''',
+  '''^\.github/workflows/.*''',
   '''^tests/.*''',
   '''^proctornet/backend/tests/.*''',
   '''^docs/.*''',
