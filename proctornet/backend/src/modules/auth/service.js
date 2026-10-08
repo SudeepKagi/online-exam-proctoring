@@ -285,6 +285,8 @@ class AuthService {
 
     return {
       user: userDto,
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
       session: {
         id: legacySession.id,
         examId,
