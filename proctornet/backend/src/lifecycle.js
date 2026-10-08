@@ -66,7 +66,7 @@ async function closeAll() {
   // 3. Disconnect transport and queue connections if active
   try {
     const rmqMod = getLoadedModule('./infra/rabbitmq/client')
-    if (rmqMod?.rabbitmq?.close) await rmqMod.rabbitmq.close()
+    if (rmqMod?.rabbitmq?.close) await rmqMod.rabbitmq.close().catch(() => {})
   } catch {}
 
   try {

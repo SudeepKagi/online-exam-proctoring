@@ -43,6 +43,7 @@ class RabbitMQManager {
 
     // Registered consumer catalog for auto-(re)attaching on every (re)connect
     this.consumers = new Map() // queueKey -> { handler, options, prefetch }
+    this.isClosing = false
 
     this._init()
   }
@@ -79,14 +80,42 @@ class RabbitMQManager {
       logger.warn({ err: params.err?.message }, 'RabbitMQ connect failed; retrying in background')
     })
 
+    this.connection.on('error', (err) => {
+      this.isReady = false
+      if (this.isClosing || err?.message?.includes('Channel ended') || err?.message?.includes('Connection closed')) {
+        return
+      }
+      logger.warn({ err: err?.message }, 'RabbitMQ connection error')
+    })
+
     // Create confirm channel with auto-setup
     this.channelWrapper = this.connection.createChannel({
       json: true,
       setup: async (channel) => {
-        logger.info('Asserting RabbitMQ topology and (re)attaching registered consumers')
-        await this._assertTopology(channel)
-        await this._reattachConsumers(channel)
+        if (this.isClosing) return
+        try {
+          logger.info('Asserting RabbitMQ topology and (re)attaching registered consumers')
+          await this._assertTopology(channel)
+          await this._reattachConsumers(channel)
+        } catch (err) {
+          if (this.isClosing || err?.message?.includes('Channel ended') || err?.message?.includes('Connection closed')) {
+            logger.warn({ err: err?.message }, 'RabbitMQ topology setup interrupted by channel/connection closure')
+            return
+          }
+          throw err
+        }
       }
+    })
+
+    this.channelWrapper.on('error', (err) => {
+      if (this.isClosing || err?.message?.includes('Channel ended') || err?.message?.includes('Connection closed')) {
+        return
+      }
+      logger.warn({ err: err?.message }, 'RabbitMQ channel error')
+    })
+
+    this.channelWrapper.on('close', () => {
+      this.isReady = false
     })
   }
 
@@ -292,19 +321,42 @@ class RabbitMQManager {
     this.consumers.set(queueKey, { handler, options })
 
     // If channel is already alive, attach immediately
-    if (this.channelWrapper) {
-      await this.channelWrapper.addSetup(async (channel) => {
-        await this._bindConsumerOnChannel(channel, queueKey, handler, options)
-      })
+    if (this.channelWrapper && !this.isClosing) {
+      try {
+        await this.channelWrapper.addSetup(async (channel) => {
+          if (this.isClosing) return
+          try {
+            await this._bindConsumerOnChannel(channel, queueKey, handler, options)
+          } catch (err) {
+            if (this.isClosing || err?.message?.includes('Channel ended') || err?.message?.includes('Connection closed')) {
+              return
+            }
+            throw err
+          }
+        })
+      } catch (err) {
+        if (!this.isClosing) throw err
+      }
     }
   }
 
   async close() {
+    this.isClosing = true
+    this.isReady = false
     try {
-      if (this.channelWrapper) await this.channelWrapper.close()
-      if (this.connection) await this.connection.close()
+      if (this.channelWrapper) {
+        this.channelWrapper.removeAllListeners('error')
+        await this.channelWrapper.close().catch(() => {})
+      }
+      if (this.connection) {
+        this.connection.removeAllListeners('error')
+        await this.connection.close().catch(() => {})
+      }
     } catch {
       // ignore close errors
+    } finally {
+      this.channelWrapper = null
+      this.connection = null
     }
   }
 

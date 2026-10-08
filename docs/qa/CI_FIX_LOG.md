@@ -178,6 +178,24 @@
   4. Added test 10 to `reset-keep-admin.test.js` verifying clean scanning and purging against the mock store.
 * **Outcome:** All 58 test suites (including `reset-keep-admin.test.js`) pass hermetically with dummy credentials. Zero outbound AWS network calls.
 
+---
+
+### Entry 011: RabbitMQ Channel Teardown Unhandled Rejection Prevention (`client.js`)
+* **Date/Time:** 2026-10-08 12:35:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37777141729`)
+* **Job / Step:** `Full Test Suite Execution` / `Run Hermetic Autodiscovered Test Suites`
+* **Trigger:** Push on `main` (commit `f023ba5`)
+* **Exact Diagnostic:** `observability.test.js:1:1` failed with `Error: A resource generated asynchronous activity after the test ended. This activity created the error "Error: Channel ended, no reply will be forthcoming" which triggered an unhandledRejection event, caught by the test runner.`
+* **Root Cause Class:** `Teardown Race Condition / Unhandled Rejection` (In tests requiring `app.js` with active RabbitMQ, when `closeAll()` is invoked at test completion, `channelWrapper.close()` terminates the underlying `amqplib` channel while background topology assertion/binding RPCs were still awaiting replies. `amqplib` aborts in-flight RPCs with `Channel ended, no reply will be forthcoming`. Because `setup` did not catch channel closures and `channelWrapper` lacked a dedicated error listener, the rejection escaped as an `unhandledRejection`).
+* **Resolution:**
+  1. Added `this.isClosing` lifecycle guard to `RabbitMQManager`.
+  2. Wrapped `setup` and `addSetup` callbacks in try/catch blocks that explicitly suppress channel-closure errors during teardown.
+  3. Attached resilient error listeners to both `channelWrapper` and `connection`.
+  4. Updated `close()` to remove error listeners and safely await `channelWrapper.close().catch(() => {})`.
+  5. Updated `lifecycle.js` to catch any residual closure error.
+* **Outcome:** Clean lifecycle teardown without escaping asynchronous rejections.
+
+
 
 
 
