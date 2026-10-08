@@ -7,7 +7,8 @@
 
 const { tokenService } = require('../modules/auth/tokenService')
 
-const AUTH_COOKIE_NAME = 'pn_at'
+const AUTH_COOKIE_NAME = 'proctornet_auth'
+const ACCESS_COOKIE_NAME = 'pn_at'
 const LEGACY_COOKIE_NAME = 'proctornet_auth'
 const DEFAULT_MAX_AGE_MS = 15 * 60 * 1000 // 15 minutes default for access token
 
@@ -47,18 +48,37 @@ function getAuthCookieOptions(maxAgeMs, req = null) {
 
 /**
  * Set the authentication cookie on the response.
- * Delegates to tokenService.setSessionCookies
  */
 function setAuthCookie(res, token, maxAgeMs) {
-  tokenService.setSessionCookies(res, { accessToken: token })
+  if (!res || typeof res.cookie !== 'function') return
+  const options = getAuthCookieOptions(maxAgeMs, res.req)
+  res.cookie(AUTH_COOKIE_NAME, token, options)
 }
 
 /**
  * Clear the authentication cookie on the response.
- * Delegates to tokenService.clearSessionCookies
  */
 function clearAuthCookie(res) {
-  tokenService.clearSessionCookies(res)
+  if (!res || typeof res.clearCookie !== 'function') return
+  const req = res.req
+  const isProd = process.env.NODE_ENV === 'production'
+  const sameSite = process.env.COOKIE_SAMESITE || 'lax'
+
+  let secure = false
+  if (process.env.COOKIE_SECURE === 'true') {
+    secure = true
+  } else if (process.env.COOKIE_SECURE === 'false') {
+    secure = false
+  } else if (isProd && req) {
+    secure = Boolean(req.secure || req.headers?.['x-forwarded-proto'] === 'https')
+  }
+
+  res.clearCookie(AUTH_COOKIE_NAME, {
+    httpOnly: true,
+    secure,
+    sameSite,
+    path: '/',
+  })
 }
 
 /**
@@ -101,14 +121,14 @@ function extractTokenFromSocket(socket) {
   // 1. Read from socket handshake headers cookie
   const handshakeCookie = socket.handshake?.headers?.cookie
   if (handshakeCookie) {
-    const token = parseCookieHeader(handshakeCookie, AUTH_COOKIE_NAME) || parseCookieHeader(handshakeCookie, LEGACY_COOKIE_NAME)
+    const token = parseCookieHeader(handshakeCookie, ACCESS_COOKIE_NAME) || parseCookieHeader(handshakeCookie, AUTH_COOKIE_NAME) || parseCookieHeader(handshakeCookie, LEGACY_COOKIE_NAME)
     if (token) return token
   }
 
   // 2. Read from underlying HTTP request cookie (if present)
   const reqCookie = socket.request?.headers?.cookie
   if (reqCookie) {
-    const token = parseCookieHeader(reqCookie, AUTH_COOKIE_NAME) || parseCookieHeader(reqCookie, LEGACY_COOKIE_NAME)
+    const token = parseCookieHeader(reqCookie, ACCESS_COOKIE_NAME) || parseCookieHeader(reqCookie, AUTH_COOKIE_NAME) || parseCookieHeader(reqCookie, LEGACY_COOKIE_NAME)
     if (token) return token
   }
 
@@ -126,6 +146,7 @@ function extractTokenFromSocket(socket) {
 
 module.exports = {
   AUTH_COOKIE_NAME,
+  ACCESS_COOKIE_NAME,
   LEGACY_COOKIE_NAME,
   DEFAULT_MAX_AGE_MS,
   getAuthCookieOptions,
