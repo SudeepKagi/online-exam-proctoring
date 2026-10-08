@@ -330,12 +330,10 @@ jobs:
           load: true
           tags: proctornet-backend-scan:${{ github.sha }}
 
+      - name: Install Trivy CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
       - name: Scan Container Image with Trivy
-        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
-        with:
-          image-ref: proctornet-backend-scan:${{ github.sha }}
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL'
+        run: |
+          trivy image --format table --exit-code 1 --ignore-unfixed --vuln-type os,library --severity CRITICAL proctornet-backend-scan:${{ github.sha }}
