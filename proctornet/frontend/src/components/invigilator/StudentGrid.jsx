@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Video, Monitor, AlertTriangle, Eye, ShieldAlert, CheckCircle2 } from 'lucide-react'
+import { Video, Monitor, AlertTriangle, Eye, ShieldAlert, CheckCircle2, Users } from 'lucide-react'
 
 export function WebcamFeed({ track, initialFrame, fallbackPhoto, className, fallbackSize = 14 }) {
   const videoNodeRef = useRef(null)

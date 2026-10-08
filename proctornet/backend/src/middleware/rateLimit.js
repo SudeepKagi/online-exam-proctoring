@@ -3,6 +3,7 @@ const { redis } = require('../infra/redis/client')
 const config = require('../shared/config')
 const { TooManyRequestsError } = require('../shared/errors')
 const { logger } = require('../shared/logging')
+const { ROLES, normalizeRole } = require('../shared/roles')
 
 function createLimiter(prefix, points, duration) {
   const memoryLimiter = new RateLimiterMemory({
@@ -141,18 +142,18 @@ const limitRoster = rateLimit(rosterLimiter, (req) => {
 const limitDefault = async (req, res, next) => {
   if (shouldBypass()) return next()
 
-  const role = req.user?.role?.toUpperCase?.()
+  const role = normalizeRole(req.user?.role)
   let limiter = anonymousLimiter
   let key = `anon:${req.ip || '127.0.0.1'}`
 
   if (req.user?.id) {
-    if (role === 'INVIGILATOR') {
+    if (role === ROLES.INVIGILATOR) {
       limiter = invigilatorBudgetLimiter
       key = `inv:${req.user.id}`
-    } else if (role === 'STUDENT') {
+    } else if (role === ROLES.STUDENT) {
       limiter = studentBudgetLimiter
       key = `stu:${req.user.id}`
-    } else if (role === 'FACULTY' || role === 'ADMIN') {
+    } else if (role === ROLES.FACULTY || role === ROLES.ADMIN) {
       limiter = staffBudgetLimiter
       key = `staff:${req.user.id}`
     } else {

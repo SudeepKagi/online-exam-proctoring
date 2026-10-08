@@ -67,7 +67,10 @@ export default function ExamInterface() {
 
   const streamRef = useRef(null)
   const screenStreamRef = useRef(null)
-  const tabInstanceId = useRef(Math.random().toString(36).substring(2))
+  const tabInstanceId = useRef(null)
+  if (!tabInstanceId.current) {
+    tabInstanceId.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'tab-' + Date.now()
+  }
   const autosaveRef = useRef(new AutosaveManager())
 
   // ── 0. Subscribe to Autosave Manager Status ──
@@ -325,11 +328,11 @@ export default function ExamInterface() {
   useEffect(() => {
     if (terminalState) {
       if (streamRef.current) {
-        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) { /* ignore */ }
         streamRef.current = null
       }
       if (screenStreamRef.current) {
-        try { screenStreamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) {}
+        try { screenStreamRef.current.getTracks().forEach(t => t.stop()) } catch (_e) { /* ignore */ }
         screenStreamRef.current = null
       }
       clearSharedScreenStream()
@@ -648,12 +651,12 @@ export default function ExamInterface() {
       if (streamRef.current) {
         try {
           streamRef.current.getTracks().forEach(track => track.stop())
-        } catch {}
+        } catch { /* ignore */ }
       }
       if (screenStreamRef.current) {
         try {
           screenStreamRef.current.getTracks().forEach(track => track.stop())
-        } catch {}
+        } catch { /* ignore */ }
       }
       clearSharedScreenStream()
     }

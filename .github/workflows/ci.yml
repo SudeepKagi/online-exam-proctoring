@@ -8,38 +8,60 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/sudeepkagi/online-exam-proctoring/backend
-  FRONTEND_IMAGE: ghcr.io/sudeepkagi/online-exam-proctoring/frontend
 
 jobs:
   # ----------------------------------------------------------------------------
-  # Stage 1: Code Quality & Linting
+  # Stage 1: Code Quality, Linting & Architecture Integrity Gates
   # ----------------------------------------------------------------------------
-  lint:
-    name: Lint & Code Style
+  quality:
+    name: Lint & Architecture Gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: proctornet/backend/package-lock.json
+          cache-dependency-path: |
+            proctornet/backend/package-lock.json
+            proctornet/frontend/package-lock.json
 
-      - name: Install Backend Dependencies
-        working-directory: proctornet/backend
-        run: npm ci
+      - name: Install Dependencies
+        run: |
+          cd proctornet/backend && npm ci
+          cd ../frontend && npm ci
 
-      - name: Check Backend Linting
+      - name: Backend Lint
         working-directory: proctornet/backend
-        run: npm run lint || true
+        run: npm run lint
+
+      - name: Frontend Lint
+        working-directory: proctornet/frontend
+        run: npm run lint
+
+      - name: Check No Stubs (check-no-stubs.js)
+        run: node scripts/ci/check-no-stubs.js
+
+      - name: Check No Legacy Code (check-no-legacy.js)
+        run: node scripts/ci/check-no-legacy.js
+
+      - name: Check Doc Links Integrity (check-doc-links.js)
+        run: node scripts/ci/check-doc-links.js
+
+      - name: Scan Banned Vocabulary (scan-banned-terms.js)
+        run: node scripts/ci/scan-banned-terms.js
+
+      - name: Route Inventory Drift Check (generate-route-inventory.js --check)
+        run: node scripts/ci/generate-route-inventory.js --check
 
   # ----------------------------------------------------------------------------
-  # Stage 2: Database Migration Integrity
+  # Stage 2: Database Migration Integrity & Clean Replay
   # ----------------------------------------------------------------------------
   migrations:
     name: Database Migration & Schema Alignment
@@ -60,48 +82,44 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
           cache-dependency-path: proctornet/backend/package-lock.json
 
-      - name: Install Dependencies
+      - name: Install Backend Dependencies
         working-directory: proctornet/backend
         run: npm ci
 
-      - name: Apply Migrations
+      - name: Apply Migrations from Baseline
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: npx prisma migrate deploy
 
-      - name: Verify No Schema Drift
+      - name: Verify Strict Migration Diff (Zero Schema Drift)
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate diff \
-            --from-schema-datasource prisma/schema.prisma \
+            --from-migrations prisma/migrations \
             --to-schema-datamodel prisma/schema.prisma \
-            --script > diff.sql
-          if grep -E "CREATE TABLE|DROP TABLE|ALTER TABLE.*DROP COLUMN|ALTER TABLE.*ADD COLUMN" diff.sql; then
-            echo "❌ Schema drift detected!"
-            cat diff.sql
-            exit 1
-          else
-            echo "✅ Schema is aligned."
-          fi
+            --exit-code
 
   # ----------------------------------------------------------------------------
-  # Stage 3: Automated Test Suites
+  # Stage 3: Full Automated Test Suites (Unit, Integration, Security, Resilience)
   # ----------------------------------------------------------------------------
   test:
-    name: Unit & Integration Tests
-    needs: [lint, migrations]
+    name: Full Test Suite Execution
+    needs: [quality, migrations]
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -137,8 +155,11 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
@@ -148,13 +169,16 @@ jobs:
         working-directory: proctornet/backend
         run: npm ci
 
-      - name: Generate Prisma Client
+      - name: Generate Prisma Client & Migrate
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-        run: npx prisma generate
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
 
-      - name: Run Test Suites
+      - name: Run Backend Integration & Security Tests
         working-directory: proctornet/backend
         env:
           NODE_ENV: test
@@ -162,112 +186,135 @@ jobs:
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           RABBITMQ_URL: amqp://guest:guest@localhost:5672
-          JWT_SECRET: test_ci_secret_at_least_64_bytes_super_secure_proctornet_2026
+          JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes_long_12345
+          AWS_REGION: ap-south-1
+          S3_BUCKET: proctornet-ci-test-bucket
+          FACE_DRIVER: off
+          AGENT_PAIRING_PEPPER: ci_pepper_test_secret_at_least_32_chars_123
+          AGENT_POLICY_SIGNING_KEY: ci_signing_test_secret_at_least_32_chars_456
+          PUBLIC_ORIGIN: http://localhost:5000
           LIVEKIT_API_KEY: devkey
           LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
           VPN_ENABLED: false
         run: |
-          npx prisma migrate deploy
+          node --test --test-force-exit tests/route-matrix.test.js
+          node --test --test-force-exit tests/q5-bola-fuzz.test.js
+          node --test --test-force-exit tests/q3-student-flow.test.js
+          node --test --test-force-exit tests/q4-async-resilience.test.js
+          node --test --test-force-exit tests/p3-schema-constraints.test.js
           node --test --test-force-exit tests/p4-state-machine.test.js
+          node --test --test-force-exit tests/p4-concurrency-write-paths.test.js
+          node --test --test-force-exit tests/p4-prewarm-500.test.js
           node --test --test-force-exit tests/p5-client-compression.test.js
+          node --test --test-force-exit tests/p5-storage-evidence.test.js
           node --test --test-force-exit tests/p6-frontend-autosave.test.js
+          node --test --test-force-exit tests/p6-realtime-invigilator.test.js
           node --test --test-force-exit tests/p7-media-livekit.test.js
           node --test --test-force-exit tests/p8-vpn-wireguard.test.js
+          node --test --test-force-exit tests/p9-infrastructure-hardening.test.js
+          node --test --test-force-exit tests/r1-face-verification.test.js
+          node --test --test-force-exit tests/r2-evidence-invigilator.test.js
+          node --test --test-force-exit tests/r3-media-cadence.test.js
+          node --test --test-force-exit tests/r4-lite-profile-drivers.test.js
+          node --test --test-force-exit tests/agent-adversarial.test.js
+          node --test --test-force-exit tests/agent-legacy-gaps.test.js
+          node --test --test-force-exit tests/agent-module.test.js
+          node --test --test-force-exit tests/architecture.test.js
+          node --test --test-force-exit tests/exam-lifecycle.test.js
+          node --test --test-force-exit tests/mcq-validation.test.js
+          node --test --test-force-exit tests/observability.test.js
+          node --test --test-force-exit tests/security_auth_cookies.test.js
+          node --test --test-force-exit tests/timezone-matrix.test.js
+
+      - name: Run Root Flow & Security Unit Test Suites
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          JWT_SECRET: ci_test_jwt_secret_must_be_at_least_32_bytes_long_12345
+          AWS_REGION: ap-south-1
+          S3_BUCKET: proctornet-ci-test-bucket
+          FACE_DRIVER: off
+        run: |
+          node tests/approval_auth.test.js
+          node tests/profile_security.test.js
+          node tests/exam_credentials.test.js
+          node tests/question_immutability.test.js
+          node tests/ai_question_validation.test.js
+          node tests/api_client.test.js
+          node tests/feature_truth.test.js
+          node tests/eligibility_matrix.test.js
+          node tests/restart_chaos.test.js
+          node tests/version_endpoint.test.js
+          node tests/active_attempts_gate.test.js
+          node tests/ci_workflow_integrity.test.js
 
   # ----------------------------------------------------------------------------
-  # Stage 4: Container Build & Vulnerability Scan
+  # Stage 4: Frontend Production Build & Asset Verification
   # ----------------------------------------------------------------------------
-  build-and-scan:
-    name: Docker Build & Trivy Security Scan
-    needs: [test]
+  build-frontend:
+    name: Frontend Build & Asset Verification
+    needs: [quality]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Downcase repository for container registry
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: proctornet/frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: proctornet/frontend
+        run: npm ci
+
+      - name: Build Frontend SPA
+        working-directory: proctornet/frontend
         run: |
-          echo "BACKEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> $GITHUB_ENV
-          echo "FRONTEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/frontend" >> $GITHUB_ENV
+          npm run build
+          test -d dist && test -f dist/index.html
+          echo "[✓] Frontend production bundle verified."
+
+  # ----------------------------------------------------------------------------
+  # Stage 5: Security Audits & Vulnerability Scans
+  # ----------------------------------------------------------------------------
+  security-scan:
+    name: Security Audits & Vulnerability Gates
+    needs: [test, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Audit Backend Production Dependencies
+        working-directory: proctornet/backend
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Run npm audit (Production Dependencies)
-        working-directory: proctornet/backend
-        run: npm audit --omit=dev || true
-
-      - name: Build Backend Container
+      - name: Build Backend Container for Scanning
         uses: docker/build-push-action@v5
         with:
           context: ./proctornet/backend
           file: ./proctornet/backend/Dockerfile
           load: true
-          tags: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          tags: proctornet-backend-scan:${{ github.sha }}
 
-      - name: Scan Backend Container with Trivy
-        uses: aquasecurity/trivy-action@master
+      - name: Scan Container Image with Trivy
+        uses: aquasecurity/trivy-action@18f2510ee396bbf400402947b394f2dd8c87dbb0
         with:
-          image-ref: ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          image-ref: proctornet-backend-scan:${{ github.sha }}
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Build Frontend Container
-        uses: docker/build-push-action@v5
-        with:
-          context: ./proctornet/frontend
-          file: ./proctornet/frontend/Dockerfile
-          load: true
-          tags: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-
-  # ----------------------------------------------------------------------------
-  # Stage 5: Push Immutable Tags & Deployment Hook
-  # ----------------------------------------------------------------------------
-  deploy:
-    name: Publish Image & Deploy Trigger
-    needs: [build-and-scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Downcase repository for container registry
-        run: |
-          echo "BACKEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/backend" >> $GITHUB_ENV
-          echo "FRONTEND_IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/frontend" >> $GITHUB_ENV
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and Push Backend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./proctornet/backend
-          file: ./proctornet/backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.BACKEND_IMAGE }}:${{ github.sha }}
-            ${{ env.BACKEND_IMAGE }}:latest
-
-      - name: Build and Push Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./proctornet/frontend
-          file: ./proctornet/frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            ${{ env.FRONTEND_IMAGE }}:latest
-
-      - name: Output Deployment Metadata
-        run: |
-          echo "✅ Production artifacts successfully published to GHCR:"
-          echo "   Backend:  ${{ env.BACKEND_IMAGE }}:${{ github.sha }}"
-          echo "   Frontend: ${{ env.FRONTEND_IMAGE }}:${{ github.sha }}"
-          echo "   Deploy via: docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d --no-deps"
+          severity: 'CRITICAL'

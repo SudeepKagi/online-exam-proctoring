@@ -146,7 +146,7 @@ function csrfProtection(req, res, next) {
 
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {
-    let originHost = ''
+    let originHost
     try {
       originHost = new URL(origin).host.toLowerCase()
     } catch {

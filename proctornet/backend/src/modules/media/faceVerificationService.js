@@ -224,7 +224,9 @@ class FaceVerificationService {
     // One-time challenge consumption
     try {
       await redisClient.del(`pn:liveness:${challengeId}`)
-    } catch (_) {}
+    } catch (_) {
+      // ignore Redis cache cleanup error
+    }
 
     if (!passed) {
       return {
@@ -362,8 +364,8 @@ class FaceVerificationService {
 
     // 5. Apply multi-tier decision rules
     const similarity = compareResult.similarity ?? 0.0
-    let decision = DECISIONS.FAIL
-    let message = ''
+    let decision
+    let message
 
     if (similarity >= thresholds.pass) {
       decision = DECISIONS.PASS
@@ -415,7 +417,7 @@ class FaceVerificationService {
     }
 
     const verifier = this.getVerifier()
-    let similarity = 0.0
+    let similarity
 
     try {
       const compareResult = await verifier.compare(student.facePhotoKey, frameKey)
@@ -468,7 +470,9 @@ class FaceVerificationService {
         // Reset counter after raising violation
         try {
           await redisClient.del(mismatchKey)
-        } catch (_) {}
+        } catch (_) {
+          // ignore Redis cache cleanup error
+        }
 
         return { matched: false, violationRaised: true }
       }
@@ -478,7 +482,9 @@ class FaceVerificationService {
       // Match restored: reset consecutive mismatch counter
       try {
         await redisClient.del(mismatchKey)
-      } catch (_) {}
+      } catch (_) {
+        // ignore Redis cache cleanup error
+      }
 
       return { matched: true, violationRaised: false }
     }

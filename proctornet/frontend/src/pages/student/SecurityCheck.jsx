@@ -332,7 +332,7 @@ export default function SecurityCheck() {
           let verified = false
           let pendingReview = false
           let decision = 'FAIL'
-          let serviceMessage = ''
+          let serviceMessage
           try {
             const verifyRes = await api.post(`/student/exams/${examId}/verify-face`, {
               image: frameBase64
@@ -343,7 +343,7 @@ export default function SecurityCheck() {
             serviceMessage = verifyRes.data?.message || ''
           } catch (apiErr) {
             console.warn('Biometric backend verification notice:', apiErr.message)
-            serviceMessage = apiErr.response?.data?.message || "We couldn't confirm your identity — retry or call the invigilator."
+            serviceMessage = apiErr.response?.data?.message || ''
           }
 
           setIsFaceProcessing(false)
@@ -671,30 +671,7 @@ export default function SecurityCheck() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {activeStage === 0 && !stage0Passed && (
-                <Button 
-                  onClick={() => scanByodAgent(true)}
-                  disabled={agentScanning}
-                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-5 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
-                >
-                  <RefreshCw size={14} className={`mr-1.5 ${agentScanning ? 'animate-spin' : ''}`} />
-                  {agentScanning ? 'Auditing Environment...' : 'Re-Check BYOD Agent'}
-                </Button>
-              )}
-
-              {activeStage === 0 && stage0Passed && (
-                <Button 
-                  onClick={() => {
-                    setActiveStage(1)
-                    startCamera()
-                  }}
-                  className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center justify-center gap-1.5"
-                >
-                  Proceed to Hardware & Media Check →
-                </Button>
-              )}
-
-              {activeStage === 1 && !screenShared && (
+              {!screenShared && (
                 <Button 
                   onClick={requestScreenShare}
                   className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer"

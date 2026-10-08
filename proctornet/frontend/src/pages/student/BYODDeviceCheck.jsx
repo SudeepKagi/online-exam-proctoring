@@ -363,7 +363,7 @@ export default function BYODDeviceCheck() {
                       <p className="font-bold text-[#1e40af] flex items-center gap-1">
                         <CheckCircle2 size={13} className="text-[#2563eb]" /> Secure Connection Active
                       </p>
-                      <p className="text-[10px] text-[#3b82f6]">Direct secure TLS proctoring stream authenticated.</p>
+                      <p className="text-[10px] text-[#3b82f6]">Direct secure proctoring stream authenticated.</p>
                     </div>
                   </div>
                 </div>
@@ -588,52 +588,27 @@ export default function BYODDeviceCheck() {
 
         {/* Exam Entrance Action Banner */}
         {passedAll && (
-          <div className={`p-5 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300 ${
-            vpnConnected
-              ? 'bg-[#ecfdf5] border-[#a7f3d0]'
-              : 'bg-[#fff1f2] border-[#fecdd3]'
-          }`}>
+          <div className="p-5 rounded-2xl border-2 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300 bg-[#ecfdf5] border-[#a7f3d0]">
             <div className="flex items-center gap-3 text-xs">
-              <div className={`w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 ${
-                vpnConnected ? 'bg-[#10b981]' : 'bg-[#f43f5e]'
-              }`}>
-                {vpnConnected ? <CheckCircle2 size={20} /> : <Lock size={20} />}
+              <div className="w-10 h-10 rounded-xl text-white flex items-center justify-center shrink-0 bg-[#10b981]">
+                <CheckCircle2 size={20} />
               </div>
               <div>
                 <p className="font-bold text-[#0f172a] text-sm">
-                  {vpnConnected
-                    ? 'All BYOD Device & VPN Isolation Checks Passed!'
-                    : 'VPN Tunnel Disconnected — Entrance Locked'}
+                  All Pre-Exam Device & Integrity Checks Passed!
                 </p>
                 <p className="text-[#64748b] mt-0.5">
-                  {vpnConnected
-                    ? 'Your workstation is fully isolated via WireGuard VPN and cleared for live examination.'
-                    : 'WireGuard VPN connection is strictly required before entering the proctored exam.'}
+                  Your workstation is verified and cleared for live examination.
                 </p>
               </div>
             </div>
 
-            {vpnConnected ? (
-              <Button
-                onClick={handleProceed}
-                className="w-full sm:w-auto text-xs font-bold px-6 bg-[#10b981] hover:bg-[#059669] text-white shadow-xs cursor-pointer h-10"
-              >
-                Proceed to Live Lobby <ArrowRight className="w-4 h-4 ml-1.5" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleAutoConnectVpn}
-                disabled={activatingVpn}
-                className="w-full sm:w-auto text-xs font-bold px-6 bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-xs cursor-pointer h-10 flex items-center justify-center gap-1.5"
-              >
-                {activatingVpn ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                )}
-                {activatingVpn ? 'Connecting Tunnel...' : '⚡ Auto-Connect VPN & Unlock Exam'}
-              </Button>
-            )}
+            <Button
+              onClick={handleProceed}
+              className="w-full sm:w-auto text-xs font-bold px-6 bg-[#10b981] hover:bg-[#059669] text-white shadow-xs cursor-pointer h-10"
+            >
+              Proceed to Live Lobby <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Button>
           </div>
         )}
       </div>

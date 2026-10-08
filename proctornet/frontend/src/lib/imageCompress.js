@@ -42,7 +42,7 @@ export async function compressImage(source, options = {}) {
     preferWebp = true
   } = options
 
-  let bitmap = null
+  let bitmap
   let shouldCloseBitmap = false
 
   if (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) {

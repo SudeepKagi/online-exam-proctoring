@@ -1,12 +1,16 @@
-name: Deploy to AWS (Lite Profile)
+name: Deploy to AWS (Production Release)
 
 on:
-  workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ["ProctorNet CI/CD Pipeline"]
     branches: [main]
-    paths:
-      - 'proctornet/**'
-      - 'ops/aws/**'
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      override_reason:
+        description: 'Reason to bypass exam-aware active attempts gate (if any)'
+        required: false
+        default: ''
 
 concurrency:
   group: production-deployment
@@ -15,27 +19,31 @@ concurrency:
 jobs:
   deploy:
     name: Build, Package & Deploy via SSM
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://proctornet.duckdns.org
 
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js 20 LTS
+      - name: Set up Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: |
             proctornet/backend/package-lock.json
             proctornet/frontend/package-lock.json
 
-      - name: Configure AWS Credentials (OIDC or IAM Secrets)
+      - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
 
       - name: Build Frontend SPA
         run: |
@@ -46,26 +54,40 @@ jobs:
           test -d dist && test -f dist/index.html
           echo "[✓] Frontend SPA built successfully."
 
-      - name: Package Backend Production Bundle
+      - name: Package Backend Production Bundle with Pinned Prisma
         run: |
-          echo "Preparing backend dependencies and Prisma client..."
+          echo "Preparing backend production dependencies and generating Prisma client..."
           cd proctornet/backend
           npm ci --omit=dev
           npx prisma generate
           echo "[✓] Backend bundle ready."
 
-      - name: Create Versioned Release Archive
+      - name: Generate Version Metadata & Create Release Archive
         run: |
           RELEASE_TAG="release-${{ github.sha }}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
+          
+          echo "Creating VERSION metadata file..."
+          cat <<EOF > VERSION
+          {
+            "version": "${RELEASE_TAG}",
+            "gitSha": "${{ github.sha }}",
+            "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+
           echo "Creating release archive: ${TAR_FILE}..."
           tar -czf "${TAR_FILE}" \
             proctornet/backend \
-            proctornet/frontend/dist
+            proctornet/frontend/dist \
+            shared \
+            ops/caddy/Caddyfile \
+            VERSION
 
           echo "Uploading release tarball and deploy script to S3..."
-          aws s3 cp "${TAR_FILE}" "s3://${{ secrets.AWS_S3_BUCKET }}/releases/${TAR_FILE}"
-          aws s3 cp ops/aws/scripts/deploy-release.sh "s3://${{ secrets.AWS_S3_BUCKET }}/releases/deploy-release.sh"
+          BUCKET="${{ secrets.AWS_S3_BUCKET }}"
+          aws s3 cp "${TAR_FILE}" "s3://${BUCKET}/releases/${TAR_FILE}"
+          aws s3 cp ops/aws/scripts/deploy-release.sh "s3://${BUCKET}/releases/deploy-release.sh"
           echo "[✓] Release artifacts uploaded to S3."
 
       - name: Execute Deployment via AWS SSM Session Manager
@@ -74,16 +96,22 @@ jobs:
           TAR_FILE="${RELEASE_TAG}.tar.gz"
           INSTANCE_ID="${{ secrets.AWS_EC2_INSTANCE_ID }}"
           BUCKET="${{ secrets.AWS_S3_BUCKET }}"
+          OVERRIDE="${{ github.event.inputs.override_reason || '' }}"
+
+          OVERRIDE_ARG=""
+          if [ -n "${OVERRIDE}" ]; then
+            OVERRIDE_ARG="--override '${OVERRIDE}'"
+          fi
 
           echo "Triggering SSM send-command on instance: ${INSTANCE_ID}..."
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
             --document-name "AWS-RunShellScript" \
-            --comment "Deploying ${RELEASE_TAG} with automated health checks" \
+            --comment "Deploying ${RELEASE_TAG} (exam-aware gate & rollback enabled)" \
             --parameters "commands=[
               \"aws s3 cp s3://${BUCKET}/releases/deploy-release.sh /tmp/deploy-release.sh\",
               \"chmod +x /tmp/deploy-release.sh\",
-              \"/tmp/deploy-release.sh ${TAR_FILE} ${BUCKET}\"
+              \"/tmp/deploy-release.sh ${TAR_FILE} ${BUCKET} ${OVERRIDE_ARG} --expected-sha ${{ github.sha }}\"
             ]" \
             --output text \
             --query "Command.CommandId")
@@ -91,15 +119,14 @@ jobs:
           echo "SSM Command dispatched with ID: ${COMMAND_ID}"
           echo "Polling execution status..."
 
-          # Poll SSM command status
-          for i in {1..30}; do
+          for i in {1..35}; do
             STATUS=$(aws ssm get-command-invocation \
               --command-id "${COMMAND_ID}" \
               --instance-id "${INSTANCE_ID}" \
               --query "Status" \
               --output text 2>/dev/null || echo "Pending")
 
-            echo "Poll attempt ${i}/30: Status=${STATUS}"
+            echo "Poll attempt ${i}/35: Status=${STATUS}"
 
             if [ "${STATUS}" = "Success" ]; then
               echo "=========================================================="

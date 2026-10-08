@@ -320,6 +320,25 @@ function main() {
   console.log(`📊 Found ${routes.length} canonical endpoints across mounted modules.`)
 
   const markdown = generateMarkdown(routes)
+  const isCheckMode = process.argv.includes('--check')
+
+  if (isCheckMode) {
+    if (!fs.existsSync(INVENTORY_FILE)) {
+      console.error(`❌ [Inventory] Inventory file does not exist: ${path.relative(REPO_ROOT, INVENTORY_FILE)}`)
+      process.exit(1)
+    }
+    const current = fs.readFileSync(INVENTORY_FILE, 'utf8')
+    const stripTs = s => s.trim().replace(/\r\n/g, '\n').replace(/> \*\*Generation Timestamp:\*\* `[^`]+`\n/, '')
+    const normalizedCurrent = stripTs(current)
+    const normalizedGenerated = stripTs(markdown)
+    if (normalizedCurrent !== normalizedGenerated) {
+      console.error('❌ [Inventory] ROUTE_INVENTORY.md is out of sync with code! Run "node scripts/ci/generate-route-inventory.js" to update.')
+      process.exit(1)
+    }
+    console.log('✅ [Inventory] ROUTE_INVENTORY.md is perfectly aligned with codebase.')
+    process.exit(0)
+  }
+
   fs.mkdirSync(path.dirname(INVENTORY_FILE), { recursive: true })
   fs.writeFileSync(INVENTORY_FILE, markdown, 'utf8')
   console.log(`✅ [Inventory] Written successfully to: ${path.relative(REPO_ROOT, INVENTORY_FILE)}`)

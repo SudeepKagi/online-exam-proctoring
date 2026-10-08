@@ -8,6 +8,7 @@ const {
   ForbiddenError
 } = require('../../shared/errors')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+const { logger } = require('../../shared/logging')
 
 class AttemptService {
   async attachPresignedImageUrls(questions) {

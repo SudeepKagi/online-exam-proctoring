@@ -1,8 +1,8 @@
 # ProctorNet API Route Inventory (Canonical v1 Monolith)
 
 > **Auto-generated from code:** Generated via `scripts/ci/generate-route-inventory.js` from mounted Express routers.
-> **Generation Timestamp:** `2026-10-07T10:14:05.936Z`
-> **Total Endpoints:** `190` across `13` domain modules.
+> **Generation Timestamp:** `2026-10-08T02:00:12.462Z`
+> **Total Endpoints:** `194` across `13` domain modules.
 
 ## Modules Summary
 
@@ -11,16 +11,16 @@
 | `admin` | 47 |
 | `attempts` | 23 |
 | `audit` | 1 |
-| `auth` | 10 |
+| `auth` | 12 |
 | `exams` | 12 |
 | `faculty` | 35 |
 | `invigilator` | 12 |
 | `media` | 3 |
 | `notifications` | 1 |
-| `proctoring` | 10 |
+| `proctoring` | 11 |
 | `questions` | 1 |
 | `student` | 24 |
-| `system` | 11 |
+| `system` | 12 |
 
 ## Master Route Matrix
 
@@ -108,7 +108,9 @@
 | `POST` | `/api/v1/auth/invigilator/login` | Public | `Public` | No | `auth` | DB row mutated (POST /api/v1/auth/invigilator/login) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/auth/login` | Public | `Public` | No | `auth` | Session token issued; cookie set | Zero tokens issued; zero cookies set |
 | `POST` | `/api/v1/auth/logout` | Public | `Public` | No | `auth` | Session cookie cleared; token invalidated | Zero session changes |
+| `POST` | `/api/v1/auth/logout-all` | Required | `Any Authenticated` | No | `auth` | Session cookie cleared; token invalidated | Zero session changes |
 | `GET` | `/api/v1/auth/me` | Required | `Any Authenticated` | No | `auth` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `POST` | `/api/v1/auth/refresh` | Public | `Public` | No | `auth` | Rotated token pair issued | Zero tokens rotated; zero session changes |
 | `POST` | `/api/v1/auth/student/login` | Public | `Public` | No | `auth` | DB row mutated (POST /api/v1/auth/student/login) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/auth/student/register` | Public | `Public` | No | `auth` | DB row mutated (POST /api/v1/auth/student/register) | Rejected requests mutate zero rows |
 | `GET` | `/api/v1/config` | Public | `Public` | No | `system` | None (Read-only query) | None (Zero DB/storage mutation) |
@@ -184,6 +186,7 @@
 | `GET` | `/api/v1/proctoring/exams/:examId/roster` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/proctoring/exams/:examId/summary` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/proctoring/exams/:examId/violations` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `POST` | `/api/v1/proctoring/exams/:id/snapshots/read` | Required | `admin, faculty, invigilator` | Yes (Faculty Exam Owner) | `proctoring` | DB row created/updated (exams) | 0 exams mutated |
 | `POST` | `/api/v1/proctoring/token` | Required | `Any Authenticated` | No | `proctoring` | DB row mutated (POST /api/v1/proctoring/token) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/proctoring/violations/:violationId/acknowledge` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | DB row inserted (violation_events) + flag_count incremented | 0 violation_events inserted; 0 flag counts mutated |
 | `DELETE` | `/api/v1/questions/:questionId` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `questions` | DB row deleted (questions) | 0 questions mutated |
@@ -215,4 +218,5 @@
 | `POST` | `/api/v1/student/verify-id` | Required | `student` | Yes (Candidate Identity) | `student` | DB row mutated (POST /api/v1/student/verify-id) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/uploads/complete` | Required | `Any Authenticated` | No | `system` | DB row mutated (POST /api/v1/uploads/complete) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/uploads/presign` | Required | `Any Authenticated` | No | `system` | S3 presigned URL/POST policy issued + DB ticket created | 0 S3 policies issued; 0 DB tickets created |
+| `GET` | `/api/v1/version` | Public | `Public` | No | `system` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/violations/:violationId/evidence/complete` | Required | `Any Authenticated` | No | `system` | DB row inserted (violation_events) + flag_count incremented | 0 violation_events inserted; 0 flag counts mutated |

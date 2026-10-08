@@ -30,7 +30,8 @@ function buildDatasourceUrl(role = 'api') {
     : (isLite ? 5 : (isTest ? 20 : (role === 'worker' ? 10 : 15)));
   const poolTimeout = isTest ? 30 : 20; // Allow 30s during high concurrency tests
 
-  const urlObj = new URL(url);
+  const cleanUrl = (url || '').trim().replace(/^["']|["']$/g, '');
+  const urlObj = new URL(cleanUrl);
   if (!urlObj.searchParams.has('connection_limit')) {
     urlObj.searchParams.set('connection_limit', poolLimit.toString());
   }

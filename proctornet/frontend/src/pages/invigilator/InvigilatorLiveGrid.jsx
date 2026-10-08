@@ -34,6 +34,7 @@ export default function InvigilatorLiveGrid() {
   const rosterSnapshot = useRosterStore()
   const [loading, setLoading] = useState(true)
   const [errorState, setErrorState] = useState(null)
+  const [examTitle, setExamTitle] = useState('')
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [warningMsg, setWarningMsg] = useState('')
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)

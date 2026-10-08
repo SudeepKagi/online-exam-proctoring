@@ -104,12 +104,12 @@ export function AuthProvider({ children }) {
    * Uses HttpOnly cookies for session state (Zero-localStorage policy).
    */
   const login = async (arg1, arg2, arg3) => {
-    let credentials = {}
-    let role = 'student'
+    let credentials
+    let role
 
     if (typeof arg1 === 'object' && arg1 !== null) {
       credentials = arg1
-      role = arg2
+      role = arg2 || 'student'
     } else {
       role = arg3 || 'student'
       if (role === 'student') {

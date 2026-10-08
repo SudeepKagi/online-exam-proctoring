@@ -820,6 +820,16 @@
     "negativeEffect": "Zero session changes"
   },
   {
+    "method": "POST",
+    "path": "/api/v1/auth/logout-all",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "auth",
+    "effect": "Session cookie cleared; token invalidated",
+    "negativeEffect": "Zero session changes"
+  },
+  {
     "method": "GET",
     "path": "/api/v1/auth/me",
     "auth": "Required",
@@ -828,6 +838,16 @@
     "module": "auth",
     "effect": "None (Read-only query)",
     "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/auth/refresh",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "auth",
+    "effect": "Rotated token pair issued",
+    "negativeEffect": "Zero tokens rotated; zero session changes"
   },
   {
     "method": "POST",
@@ -1581,6 +1601,16 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/proctoring/exams/:id/snapshots/read",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Faculty Exam Owner)",
+    "module": "proctoring",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/proctoring/token",
     "auth": "Required",
     "role": "Any Authenticated",
@@ -1888,6 +1918,16 @@
     "module": "system",
     "effect": "S3 presigned URL/POST policy issued + DB ticket created",
     "negativeEffect": "0 S3 policies issued; 0 DB tickets created"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/version",
+    "auth": "Public",
+    "role": "Public",
+    "ownerCheck": "No",
+    "module": "system",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "POST",

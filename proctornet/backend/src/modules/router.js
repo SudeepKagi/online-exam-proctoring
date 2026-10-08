@@ -32,6 +32,12 @@ router.get('/health', (req, res) => {
   })
 })
 
+// Build & Release Version Metadata under /api/v1/version (S5 / CI-10)
+router.get('/version', (req, res) => {
+  const { getVersion } = require('../utils/version')
+  res.status(200).json(getVersion())
+})
+
 // Public System Config under /api/v1/config (Q3 Task 7 / R-11)
 router.get('/config', (req, res) => {
   const rawMode = (process.env.VPN_ENFORCEMENT || (process.env.VPN_ENABLED === 'true' ? 'enforce' : 'off')).toLowerCase().trim()
@@ -40,8 +46,6 @@ router.get('/config', (req, res) => {
     vpnEnforcement = 'enforce'
   } else if (rawMode === 'warn') {
     vpnEnforcement = 'warn'
-  } else {
-    vpnEnforcement = 'off'
   }
 
   const config = require('../shared/config')

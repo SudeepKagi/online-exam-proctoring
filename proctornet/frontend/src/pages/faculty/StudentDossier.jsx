@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
 import ErrorState from '@/components/common/ErrorState'
+import DashboardLayout from '@/components/common/DashboardLayout'
 import {
   ArrowLeft, Printer, CheckCircle2, ShieldAlert, Award,
   Clock, AlertTriangle, FileText, User, BookOpen, Check

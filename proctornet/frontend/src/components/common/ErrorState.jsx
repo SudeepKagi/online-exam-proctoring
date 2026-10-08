@@ -1,6 +1,12 @@
 import React from 'react'
 import { AlertTriangle, WifiOff, RefreshCw, Lock, HelpCircle } from 'lucide-react'
 
+const ICONS = {
+  network: WifiOff,
+  auth: Lock,
+  general: AlertTriangle
+}
+
 export default function ErrorState({
   title = 'Unable to load data',
   message = 'An unexpected error occurred while communicating with the service.',
@@ -8,18 +14,7 @@ export default function ErrorState({
   onRetry,
   className = ''
 }) {
-  const getIcon = () => {
-    switch (category) {
-      case 'network':
-        return WifiOff
-      case 'auth':
-        return Lock
-      default:
-        return AlertTriangle
-    }
-  }
-
-  const Icon = getIcon()
+  const Icon = ICONS[category] || AlertTriangle
 
   return (
     <div className={`w-full py-12 px-6 flex flex-col items-center justify-center text-center font-sans ${className}`}>

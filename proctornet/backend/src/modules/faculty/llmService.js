@@ -53,8 +53,8 @@ async function _incrementAndCheck(facultyId, estimatedCostUsd) {
   const costKey = _costKey(facultyId)
   const ttlSeconds = 86400 // expires at midnight + buffer
 
-  let callCount = 1
-  let totalCost = estimatedCostUsd
+  let callCount
+  let totalCost
 
   try {
     // Atomic increment in Redis
@@ -266,7 +266,7 @@ class LLMService {
     }
 
     let rawText
-    let actualTokens = estimatedTokens
+    let actualTokens
 
     try {
       if (config.llmProvider === 'openai') {

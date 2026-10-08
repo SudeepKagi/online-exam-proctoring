@@ -37,12 +37,9 @@ export default function QuestionPanel({
   if (Array.isArray(rawOpts) && rawOpts.length > 0) {
     optionsList = rawOpts.map((opt, i) => {
       const letter = String.fromCharCode(65 + i)
-      let text = ''
-      if (typeof opt === 'object' && opt !== null) {
-        text = opt.text || opt.optionText || opt.label || opt.value || JSON.stringify(opt)
-      } else {
-        text = String(opt)
-      }
+      const text = (typeof opt === 'object' && opt !== null)
+        ? (opt.text || opt.optionText || opt.label || opt.value || JSON.stringify(opt))
+        : String(opt)
       return { letter, text: String(text).trim(), id: opt?.id }
     }).filter(o => o.text)
   } else if (typeof rawOpts === 'object' && rawOpts !== null) {

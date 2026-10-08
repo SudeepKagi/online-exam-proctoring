@@ -1,6 +1,7 @@
 const client = require('prom-client')
 const { monitorEventLoopDelay } = require('perf_hooks')
 const { prisma } = require('../infra/postgres/client')
+const { logger } = require('../shared/logging')
 
 // Global Registry
 const register = new client.Registry()

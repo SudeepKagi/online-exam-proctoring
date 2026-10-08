@@ -13,6 +13,7 @@ const { ROLES } = require('../../shared/roles')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const { llmService } = require('./llmService')
 const { prisma } = require('../../infra/postgres/client')
+const { logger } = require('../../shared/logging')
 
 class FacultyService {
   async formatQuestionWithPresignedUrl(q) {
