@@ -86,8 +86,8 @@ function createWebSocketServer(httpServer, options = {}) {
 
       const { onClose } = require('../../lifecycle')
       onClose('socket.io:redis-adapter', async () => {
-        try { pubClient.disconnect(false) } catch {}
-        try { subClient.disconnect(false) } catch {}
+        try { pubClient.disconnect(false) } catch { /* ignore on teardown */ }
+        try { subClient.disconnect(false) } catch { /* ignore on teardown */ }
       })
 
       io.adapter(createAdapter(pubClient, subClient))

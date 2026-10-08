@@ -77,7 +77,7 @@ class SocketEmitterManager {
     if (this.redisClient) {
       try {
         this.redisClient.disconnect(false)
-      } catch {}
+      } catch { /* ignore on teardown */ }
       this.redisClient = null
     }
     this.emitter = null

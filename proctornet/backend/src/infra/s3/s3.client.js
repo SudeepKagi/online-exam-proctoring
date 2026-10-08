@@ -360,10 +360,10 @@ module.exports = {
   httpsAgent,
   httpAgent,
   destroy: () => {
-    try { s3Client.destroy() } catch {}
-    try { requestHandler.destroy() } catch {}
-    try { httpsAgent.destroy() } catch {}
-    try { httpAgent.destroy() } catch {}
+    try { s3Client.destroy() } catch { /* ignore on teardown */ }
+    try { requestHandler.destroy() } catch { /* ignore on teardown */ }
+    try { httpsAgent.destroy() } catch { /* ignore on teardown */ }
+    try { httpAgent.destroy() } catch { /* ignore on teardown */ }
   },
   BUCKET_NAME,
   buildIdentityKey,

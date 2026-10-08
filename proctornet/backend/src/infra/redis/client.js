@@ -347,8 +347,8 @@ class RedisManager {
           this.subClient.quit(),
           new Promise((resolve) => setTimeout(resolve, 300))
         ])
-      } catch (_err) {}
-      try { this.subClient.disconnect(false) } catch {}
+      } catch (_err) { /* ignore during disconnect */ }
+      try { this.subClient.disconnect(false) } catch { /* ignore on teardown */ }
       this.subClient = null
     }
     if (this.client) {
@@ -357,8 +357,8 @@ class RedisManager {
           this.client.quit(),
           new Promise((resolve) => setTimeout(resolve, 300))
         ])
-      } catch (_err) {}
-      try { this.client.disconnect(false) } catch {}
+      } catch (_err) { /* ignore during disconnect */ }
+      try { this.client.disconnect(false) } catch { /* ignore on teardown */ }
       this.client = null
     }
     this.isReady = false

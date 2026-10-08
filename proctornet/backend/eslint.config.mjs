@@ -19,6 +19,7 @@ export default defineConfig([
     },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^(req|res|next|_)', varsIgnorePattern: '^_' }],
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-dupe-keys': 'error',
       'no-dupe-args': 'error',
       'no-redeclare': 'error',

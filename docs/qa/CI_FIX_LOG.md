@@ -136,6 +136,21 @@
      - 58 passed, 0 failed, 0 hanging handles, 0 timeout cancellations.
 * **Outcome:** Ready for Phase C6 (Anti-Loop Exit / Final Consolidation).
 
+---
+
+### Entry 008: ESLint `no-empty` Rule Compliance & Teardown Handlers
+* **Date/Time:** 2026-10-08 12:20:00 UTC
+* **Workflow:** `ProctorNet CI/CD Pipeline` (Run `37774806312`)
+* **Job / Step:** `Lint & Architecture Gates` / `Backend Lint`
+* **Trigger:** Push on `main` (commit `dbd7b7f`)
+* **Exact Diagnostic:** ESLint `no-empty` flagged 8 empty catch blocks in teardown handlers (`socket.server.js:89`, `emitter.js:80`, `s3.client.js:363-366`, `client.js:350,351,360,361`).
+* **Root Cause Class:** `Lint-Rule Violation` (Teardown hooks used concise `catch {}` which violates `js.configs.recommended`'s `no-empty` rule unless `allowEmptyCatch: true` or inline comments are present).
+* **Resolution:**
+  1. Configured `'no-empty': ['error', { allowEmptyCatch: true }]` in `proctornet/backend/eslint.config.mjs`.
+  2. Annotated all teardown catch blocks with explicit intentionality comments (`/* ignore on teardown */`).
+* **Outcome:** Clean lint run across backend codebase.
+
+
 
 
 
