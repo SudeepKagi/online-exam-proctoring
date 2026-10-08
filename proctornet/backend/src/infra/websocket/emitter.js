@@ -72,6 +72,16 @@ class SocketEmitterManager {
   emitToInvigilators(examId, event, payload) {
     return this.emitToRoom(`inv:${examId}`, event, payload)
   }
+
+  async close() {
+    if (this.redisClient) {
+      try {
+        this.redisClient.disconnect(false)
+      } catch {}
+      this.redisClient = null
+    }
+    this.emitter = null
+  }
 }
 
 const socketEmitter = new SocketEmitterManager()

@@ -116,9 +116,8 @@ describe('BUG-J02: Feature-Truth Audit & Admin Settings Wire-Up', () => {
 
   after(async () => {
     try {
-      const { redis } = require('../proctornet/backend/src/infra/redis/client')
-      if (redis && redis.disconnect) redis.disconnect()
+      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      await closeAll()
     } catch {}
-    setTimeout(() => process.exit(0), 50).unref()
   })
 })

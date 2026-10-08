@@ -19,6 +19,7 @@ const { verifyToken } = require('./utils/jwt')
 const { extractTokenFromReq } = require('./utils/cookies')
 const { requestContextMiddleware, logger } = require('./observability/logger')
 const { metricsMiddleware, metricsHandler } = require('./observability/metrics')
+const { ROLES } = require('./shared/roles')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
@@ -189,9 +190,9 @@ const apiLimiter = rateLimit({
       }
     }
     // Per-role budget classes (Phase S3 / FLW-05 / S6)
-    if (role === 'invigilator') return 6000
-    if (role === 'admin' || role === 'faculty') return 3000
-    if (role === 'student') return 1200
+    if (role === ROLES.INVIGILATOR) return 6000
+    if (role === ROLES.ADMIN || role === ROLES.FACULTY) return 3000
+    if (role === ROLES.STUDENT) return 1200
     return 600 // unauthenticated default
   },
   skip: () => isLoadTest,

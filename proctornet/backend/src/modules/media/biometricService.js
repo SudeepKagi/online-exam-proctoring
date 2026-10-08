@@ -99,11 +99,24 @@ async function verifyFaceBiometrics({ studentId, attemptId, liveFrame }) {
     }
   }
 
-  return faceVerificationService.verifyPreExam({
-    attemptId,
-    studentId,
-    liveFrameKey: liveFrame
-  })
+  try {
+    const res = await faceVerificationService.verifyPreExam({
+      attemptId,
+      studentId,
+      liveFrameKey: liveFrame
+    })
+    return {
+      verified: res.verified === true,
+      matchScore: typeof res.matchScore === 'number' ? res.matchScore : 0.0,
+      reason: res.message || res.reason || (res.verified ? 'Verified' : 'Verification failed')
+    }
+  } catch (err) {
+    return {
+      verified: false,
+      matchScore: 0.0,
+      reason: `Biometric verification failed closed: ${err.message}`
+    }
+  }
 }
 
 const biometricService = new BiometricService()

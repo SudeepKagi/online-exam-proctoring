@@ -342,15 +342,26 @@ class RedisManager {
 
   async disconnect() {
     if (this.subClient) {
-      try { await this.subClient.quit() } catch (_err) {
-        // Ignored during disconnection
-      }
+      try {
+        await Promise.race([
+          this.subClient.quit(),
+          new Promise((resolve) => setTimeout(resolve, 300))
+        ])
+      } catch (_err) {}
+      try { this.subClient.disconnect(false) } catch {}
+      this.subClient = null
     }
     if (this.client) {
-      try { await this.client.quit() } catch (_err) {
-        // Ignored during disconnection
-      }
+      try {
+        await Promise.race([
+          this.client.quit(),
+          new Promise((resolve) => setTimeout(resolve, 300))
+        ])
+      } catch (_err) {}
+      try { this.client.disconnect(false) } catch {}
+      this.client = null
     }
+    this.isReady = false
   }
 
   async ping() {

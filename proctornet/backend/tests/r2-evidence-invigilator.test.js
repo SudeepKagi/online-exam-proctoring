@@ -461,4 +461,17 @@ describe('R2 — Evidence & Invigilator Experience Test Suite', () => {
       assert.deepEqual(evaluateConfig(undefined, 'false'), { vpnEnforcement: 'off', isVpnEnforced: false })
     })
   })
+
+  after(async () => {
+    try {
+      if (testAttempt?.id) await prisma.examAttempt.deleteMany({ where: { id: testAttempt.id } }).catch(() => {})
+      if (testExam?.id) await prisma.exam.deleteMany({ where: { id: testExam.id } }).catch(() => {})
+      if (testStudent?.id) await prisma.student.deleteMany({ where: { id: testStudent.id } }).catch(() => {})
+      if (testFaculty?.id) await prisma.faculty.deleteMany({ where: { id: testFaculty.id } }).catch(() => {})
+      await prisma.department.deleteMany({ where: { code: 'R2-TEST' } }).catch(() => {})
+    } catch {}
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll().catch(() => {})
+  })
 })
+

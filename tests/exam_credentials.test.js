@@ -161,9 +161,8 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
 
   after(async () => {
     try {
-      const { redis } = require('../proctornet/backend/src/infra/redis/client')
-      if (redis && redis.disconnect) redis.disconnect()
+      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      await closeAll()
     } catch {}
-    setTimeout(() => process.exit(0), 50).unref()
   })
 })

@@ -22,8 +22,8 @@ Write-Host "Discovered $($allTests.Count) test files across workspaces." -Foregr
 
 # Hermetic Test Environment Configuration (matching CI services)
 $env:NODE_ENV = "test"
-$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/proctornet?schema=public"
-$env:DIRECT_URL = "postgresql://postgres:postgres@localhost:5433/proctornet?schema=public"
+$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/proctornet_test?schema=public"
+$env:DIRECT_URL = "postgresql://postgres:postgres@localhost:5433/proctornet_test?schema=public"
 $env:REDIS_URL = "redis://127.0.0.1:6379"
 $env:RABBITMQ_URL = "amqp://guest:guest@localhost:5672"
 $env:AWS_REGION = "ap-south-1"

@@ -51,4 +51,23 @@
   ✖ 47 problems (4 errors, 43 warnings)
   ```
 * **Root Cause Class:** `Lint-Rule Violation` (Custom AST rule `no-restricted-syntax` forbids literal role string comparisons like `'invigilator'`, `'student'`, `'faculty'`; requires `ROLES.INVIGILATOR` from `src/shared/roles.js`).
-* **Status:** Scheduled for correction in Phase C1/C2 (no product code changes permitted during C0).
+* **Status:** Resolved in Phase C1 (`app.js:192-194` converted to canonical `ROLES.*` constants).
+
+---
+
+### Entry 003: Phase C1 Honest & Safe Tests Verification
+* **Date/Time:** 2026-10-08 11:45:00 UTC
+* **Workflow / Test Run:** Clean-Room Autodiscovery Test Suite (`node scripts/ci/run-tests.js`)
+* **Branch:** `feature/c1-honest-safe-tests`
+* **Test Inventory:** 57 tests autodiscovered across root (`tests/`), backend (`proctornet/backend/tests/`), and device agent (`proctornet/device-agent/test/`). Zero active exclusions in `tests/EXCLUDED.md`.
+* **Discovered Issues & Resolutions:**
+  1. **Test DB Safety Guard (C1.1):** Enforced in `tests/helpers/env.js` and `proctornet/backend/tests/helpers/env.js`. Blocks any run targeting non-test database with exit code 2.
+  2. **Deterministic Releases Overwrite Bug (C1.2):** `tests/helpers/seed.js` upserted multiple releases against `@@unique([version, os, arch])` with identical keys, overwriting `test-build-hash-a1` with subsequent hashes. Resolved by assigning unique arch descriptors (`x64-lifecycle`, `x64-sweeper`) and UUID primary keys.
+  3. **Open TCP Handles & Keepalive Leaks (C1.4):**
+     - S3 `@smithy/node-http-handler` keepalive socket pools cleanly destroyed via `s3Client.destroy()`.
+     - Redis `client` and `subClient` cleanly disconnected via `disconnect(false)`.
+     - Socket.IO Redis adapter (`socket.server.js`) and worker emitter (`emitter.js`) error handlers added and hooked into `lifecycle.closeAll()`.
+     - All `process.exit(0)` calls removed across tests.
+  4. **Autodiscovery Runner (C1.6 / C1.7):** Replaced hardcoded lists in `.github/workflows/ci.yml` and `package.json` with `node scripts/ci/run-tests.js`.
+* **Outcome:** **57 passed, 0 failed (100% pass rate)** in clean-room replica with zero hanging handles or unhandled rejections.
+

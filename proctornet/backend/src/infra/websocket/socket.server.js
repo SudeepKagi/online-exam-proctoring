@@ -75,9 +75,22 @@ function createWebSocketServer(httpServer, options = {}) {
         maxRetriesPerRequest: 1,
         retryStrategy: (n) => Math.min(n * 200, 5000)
       })
-    const subClient = pubClient.duplicate()
+      const subClient = pubClient.duplicate()
 
-    io.adapter(createAdapter(pubClient, subClient))
+      pubClient.on('error', (err) => {
+        logger.warn({ error: err.message }, 'Socket.IO Redis adapter pubClient error')
+      })
+      subClient.on('error', (err) => {
+        logger.warn({ error: err.message }, 'Socket.IO Redis adapter subClient error')
+      })
+
+      const { onClose } = require('../../lifecycle')
+      onClose('socket.io:redis-adapter', async () => {
+        try { pubClient.disconnect(false) } catch {}
+        try { subClient.disconnect(false) } catch {}
+      })
+
+      io.adapter(createAdapter(pubClient, subClient))
 
       Promise.all([
         pubClient.status === 'ready' ? Promise.resolve() : pubClient.connect().catch(() => {}),

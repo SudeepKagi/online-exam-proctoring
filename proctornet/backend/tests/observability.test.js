@@ -88,7 +88,10 @@ describe('Observability & Telemetry Verification Suite (P0)', () => {
     assert.match(returnedId, uuidRegex, 'Generated request ID must be a valid UUID')
   })
 
-  after(() => {
-    setTimeout(() => process.exit(0), 100).unref()
+  after(async () => {
+    try {
+      const { closeAll } = require('../src/lifecycle')
+      await closeAll()
+    } catch {}
   })
 })

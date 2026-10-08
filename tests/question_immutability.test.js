@@ -170,9 +170,8 @@ describe('BUG-E06: Question Immutability After Publish & In-Place Option Updates
 
   after(async () => {
     try {
-      const { redis } = require('../proctornet/backend/src/infra/redis/client')
-      if (redis && redis.disconnect) redis.disconnect()
+      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      await closeAll()
     } catch {}
-    setTimeout(() => process.exit(0), 50).unref()
   })
 })

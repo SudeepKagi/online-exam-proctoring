@@ -19,17 +19,20 @@ const REGION = process.env.AWS_REGION || 'ap-south-1'
 const IS_PROD = process.env.NODE_ENV === 'production'
 
 // Configure NodeHttpHandler with connection pooling and timeouts (Notion 13.10)
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 100
+})
+const httpAgent = new http.Agent({
+  keepAlive: true,
+  maxSockets: 100
+})
+
 const requestHandler = new NodeHttpHandler({
   connectionTimeout: 2000,
   socketTimeout: 5000,
-  httpsAgent: new https.Agent({
-    keepAlive: true,
-    maxSockets: 100
-  }),
-  httpAgent: new http.Agent({
-    keepAlive: true,
-    maxSockets: 100
-  })
+  httpsAgent,
+  httpAgent
 })
 
 const clientConfig = {
@@ -353,6 +356,15 @@ async function getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 1
 
 module.exports = {
   s3Client,
+  requestHandler,
+  httpsAgent,
+  httpAgent,
+  destroy: () => {
+    try { s3Client.destroy() } catch {}
+    try { requestHandler.destroy() } catch {}
+    try { httpsAgent.destroy() } catch {}
+    try { httpAgent.destroy() } catch {}
+  },
   BUCKET_NAME,
   buildIdentityKey,
   buildEvidenceKey,

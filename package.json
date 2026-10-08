@@ -11,7 +11,7 @@
     "commitlint": "commitlint --edit",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,json,md}\"",
-    "test": "npm test --prefix proctornet/backend",
+    "test": "node scripts/ci/run-tests.js",
     "test:e2e": "playwright test",
     "check:doc-links": "node scripts/ci/check-doc-links.js",
     "check:no-stubs": "node scripts/ci/check-no-stubs.js",
@@ -30,6 +30,7 @@
     "husky": "^9.1.7",
     "prettier": "^3.5.2",
     "seedrandom": "^3.0.5",
-    "socket.io-client": "^4.8.4"
+    "socket.io-client": "^4.8.4",
+    "yaml": "^2.9.1"
   }
 }

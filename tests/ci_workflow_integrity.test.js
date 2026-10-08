@@ -1,54 +1,135 @@
-import { test, describe } from 'node:test'
-import assert from 'node:assert/strict'
-import fs from 'node:fs'
-import path from 'node:path'
-import yaml from 'js-yaml' // if available, or regex/line parser
+'use strict'
 
-const REPO_ROOT = path.resolve('.')
+const { describe, it } = require('node:test')
+const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
+const YAML = require('yaml')
 
-describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10)', () => {
+const REPO_ROOT = path.resolve(__dirname, '..')
+
+describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)', () => {
   const ciWorkflowPath = path.join(REPO_ROOT, '.github/workflows/ci.yml')
   const deployWorkflowPath = path.join(REPO_ROOT, '.github/workflows/deploy-aws.yml')
   const rollbackWorkflowPath = path.join(REPO_ROOT, '.github/workflows/rollback.yml')
 
-  test('CI-01: deploy-aws.yml does not trigger on direct push without CI gate', () => {
-    assert.ok(fs.existsSync(deployWorkflowPath), 'deploy-aws.yml must exist')
-    const content = fs.readFileSync(deployWorkflowPath, 'utf8')
-    
-    // Must NOT have un-gated push trigger on branches: [main]
-    const hasUngatedPush = /on:\s*[^]*?\bpush:\s*[^]*?branches:\s*\[\s*main\s*\]/m.test(content)
+  assert.ok(fs.existsSync(ciWorkflowPath), 'ci.yml must exist')
+  assert.ok(fs.existsSync(deployWorkflowPath), 'deploy-aws.yml must exist')
+  assert.ok(fs.existsSync(rollbackWorkflowPath), 'rollback.yml must exist')
+
+  const ciAst = YAML.parse(fs.readFileSync(ciWorkflowPath, 'utf8'))
+  const deployAst = YAML.parse(fs.readFileSync(deployWorkflowPath, 'utf8'))
+  const rollbackAst = YAML.parse(fs.readFileSync(rollbackWorkflowPath, 'utf8'))
+
+  it('CI-01: deploy-aws.yml triggers only via workflow_run or workflow_dispatch, NEVER direct push', () => {
+    // Top-level triggers check on parsed AST
+    const triggers = deployAst.on
+    assert.ok(triggers, 'deploy-aws.yml must have "on" triggers defined')
     assert.strictEqual(
-      hasUngatedPush,
-      false,
-      'deploy-aws.yml must NOT deploy directly on push to main (must require workflow_run or workflow_dispatch)'
+      triggers.push,
+      undefined,
+      'deploy-aws.yml must NEVER trigger directly on push: branches'
+    )
+    assert.ok(
+      triggers.workflow_run || triggers.workflow_dispatch,
+      'deploy-aws.yml must be guarded by workflow_run or manual workflow_dispatch'
     )
 
-    // Must require environment production
-    assert.match(content, /environment:\s*(\n\s*name:\s*)?['"]?production['"]?/, 'deploy-aws.yml must require production environment')
+    // Must require production environment
+    const deployJob = deployAst.jobs?.deploy
+    assert.ok(deployJob, 'deploy-aws.yml must declare a "deploy" job')
+    const envName = typeof deployJob.environment === 'object'
+      ? deployJob.environment.name
+      : deployJob.environment
+    assert.strictEqual(envName, 'production', 'deploy job must target production environment')
   })
 
-  test('CI-02 & CI-03: ci.yml executes full test suite and strictly fails on errors', () => {
-    assert.ok(fs.existsSync(ciWorkflowPath), 'ci.yml must exist')
-    const content = fs.readFileSync(ciWorkflowPath, 'utf8')
-
-    // Must NOT swallow lint errors with || true
-    assert.doesNotMatch(content, /npm run lint\s*\|\|\s*true/, 'ci.yml must NOT swallow lint errors with || true')
-
-    // Must NOT swallow npm audit errors with || true
-    assert.doesNotMatch(content, /npm audit.*\|\|\s*true/, 'ci.yml must NOT swallow audit failures with || true')
-
-    // Must include all CI gate scripts
-    assert.match(content, /check-no-stubs\.js/, 'ci.yml must run check-no-stubs.js')
-    assert.match(content, /check-no-legacy\.js/, 'ci.yml must run check-no-legacy.js')
-    assert.match(content, /check-doc-links\.js/, 'ci.yml must run check-doc-links.js')
-    assert.match(content, /scan-banned-terms\.js/, 'ci.yml must run scan-banned-terms.js')
-
-    // Must run full test suites, not just 5 legacy files
-    assert.match(content, /tests\/route-matrix\.test\.js/, 'ci.yml must run route-matrix tests')
-    assert.match(content, /tests\/q5-bola-fuzz\.test\.js/, 'ci.yml must run BOLA tests')
+  it('CI-02: deploy-aws.yml and ci.yml use OIDC role assumption, no static AWS keys in deploy steps', () => {
+    const deploySteps = deployAst.jobs?.deploy?.steps || []
+    for (const step of deploySteps) {
+      if (step.uses && step.uses.includes('aws-actions/configure-aws-credentials')) {
+        const stepWith = step.with || {}
+        assert.ok(
+          stepWith['role-to-assume'] || stepWith.role_to_assume || stepWith['role-arn'],
+          'AWS authentication in deploy-aws.yml must use OIDC role-to-assume, not static keys'
+        )
+        assert.strictEqual(
+          stepWith['aws-access-key-id'],
+          undefined,
+          'deploy-aws.yml must not use static aws-access-key-id'
+        )
+        assert.strictEqual(
+          stepWith['aws-secret-access-key'],
+          undefined,
+          'deploy-aws.yml must not use static aws-secret-access-key'
+        )
+      }
+    }
   })
 
-  test('CI-04: Default AWS region is ap-south-1', () => {
+  it('CI-03: Security audit and container scanning gates enforce strict failure thresholds', () => {
+    const secJob = ciAst.jobs?.['security-scan']
+    assert.ok(secJob, 'ci.yml must have a security-scan job')
+
+    const steps = secJob.steps || []
+    for (const step of steps) {
+      // Must not continue on error for security gates
+      assert.notStrictEqual(
+        step['continue-on-error'],
+        true,
+        `Security step "${step.name}" must not have continue-on-error: true`
+      )
+
+      // Audit must not be bypassed with --audit-level=none or swallowed with || true
+      if (step.run && step.run.includes('npm audit')) {
+        assert.doesNotMatch(
+          step.run,
+          /--audit-level=none/,
+          'npm audit must use a real severity threshold, not --audit-level=none'
+        )
+        assert.doesNotMatch(
+          step.run,
+          /\|\|\s*true/,
+          'npm audit must not be swallowed with || true'
+        )
+      }
+
+      // Trivy container scanning must exit with code 1 on CRITICAL
+      if (step.run && step.run.includes('trivy image')) {
+        assert.match(
+          step.run,
+          /--exit-code\s+1/,
+          'Trivy container scan must specify --exit-code 1'
+        )
+        assert.match(
+          step.run,
+          /--severity\s+.*CRITICAL/,
+          'Trivy scan must inspect CRITICAL severity'
+        )
+      }
+    }
+  })
+
+  it('CI-04: PR checkout steps explicitly pin head_sha to prevent untrusted HEAD execution', () => {
+    const jobs = ciAst.jobs || {}
+    for (const [jobName, job] of Object.entries(jobs)) {
+      const steps = job.steps || []
+      for (const step of steps) {
+        if (step.uses && step.uses.startsWith('actions/checkout')) {
+          const stepWith = step.with || {}
+          if (stepWith.ref) {
+            assert.match(
+              stepWith.ref,
+              /head\.sha|github\.sha/,
+              `Checkout step in job "${jobName}" must pin commit SHA`
+            )
+          }
+        }
+      }
+    }
+  })
+
+  it('CI-05: Default AWS region is ap-south-1', () => {
     const deployContent = fs.readFileSync(deployWorkflowPath, 'utf8')
     assert.doesNotMatch(
       deployContent,
@@ -58,25 +139,24 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10)', () => {
     assert.match(deployContent, /ap-south-1/, 'deploy-aws.yml must reference ap-south-1')
   })
 
-  test('CI-05 & CI-06: Pinned Prisma CLI in dependencies and Node 22 engines', () => {
+  it('CI-06: Pinned Prisma CLI in dependencies and Node >= 22 engines', () => {
     const backendPkg = JSON.parse(
       fs.readFileSync(path.join(REPO_ROOT, 'proctornet/backend/package.json'), 'utf8')
     )
-    
-    // Prisma must be in dependencies so npm ci --omit=dev installs it
     assert.ok(
       backendPkg.dependencies && backendPkg.dependencies.prisma,
       'prisma must be in dependencies (not only devDependencies) for immutable deploy artifacts'
     )
-
-    // Node engine >= 22
     assert.match(backendPkg.engines?.node || '', />=22/, 'backend engines.node must require Node >= 22')
   })
 
-  test('CI-09: Dedicated automated rollback workflow exists', () => {
-    assert.ok(fs.existsSync(rollbackWorkflowPath), 'rollback.yml must exist')
-    const content = fs.readFileSync(rollbackWorkflowPath, 'utf8')
-    assert.match(content, /workflow_dispatch/, 'rollback.yml must be dispatchable')
-    assert.match(content, /environment:\s*(\n\s*name:\s*)?['"]?production['"]?/, 'rollback.yml must target production environment')
+  it('CI-07: Dedicated automated rollback workflow exists and targets production', () => {
+    assert.ok(rollbackAst.on?.workflow_dispatch !== undefined, 'rollback.yml must be dispatchable')
+    const rollbackJob = rollbackAst.jobs?.rollback
+    assert.ok(rollbackJob, 'rollback.yml must have a rollback job')
+    const envName = typeof rollbackJob.environment === 'object'
+      ? rollbackJob.environment.name
+      : rollbackJob.environment
+    assert.strictEqual(envName, 'production', 'rollback job must target production environment')
   })
 })

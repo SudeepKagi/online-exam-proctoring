@@ -188,8 +188,7 @@ jobs:
           npx prisma migrate deploy
           node prisma/seed/admin.js
 
-      - name: Run Backend Integration & Security Tests
-        working-directory: proctornet/backend
+      - name: Run Hermetic Autodiscovered Test Suites
         env:
           NODE_ENV: test
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
@@ -197,6 +196,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
           RABBITMQ_URL: amqp://guest:guest@localhost:5672
           JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
+          REFRESH_SECRET: dummy_ci_refresh_secret_at_least_32_bytes_long_12345
           AWS_REGION: ap-south-1
           AWS_ACCESS_KEY_ID: dummy_ci_test_access_key_12345
           AWS_SECRET_ACCESS_KEY: dummy_ci_test_secret_key_12345
@@ -210,65 +210,7 @@ jobs:
           LIVEKIT_API_KEY: devkey
           LIVEKIT_API_SECRET: secretsecretsecretsecretsecretsecret
           VPN_ENABLED: false
-        run: |
-          if [ ! -f ../../.env ]; then cp ../../.env.example ../../.env; fi
-          node --test --test-force-exit tests/route-matrix.test.js
-          node --test --test-force-exit tests/q5-bola-fuzz.test.js
-          node --test --test-force-exit tests/q3-student-flow.test.js
-          node --test --test-force-exit tests/q4-async-resilience.test.js
-          node --test --test-force-exit tests/p3-schema-constraints.test.js
-          node --test --test-force-exit tests/p4-state-machine.test.js
-          node --test --test-force-exit tests/p4-concurrency-write-paths.test.js
-          node --test --test-force-exit tests/p4-prewarm-500.test.js
-          node --test --test-force-exit tests/p5-client-compression.test.js
-          node --test --test-force-exit tests/p5-storage-evidence.test.js
-          node --test --test-force-exit tests/p6-frontend-autosave.test.js
-          node --test --test-force-exit tests/p6-realtime-invigilator.test.js
-          node --test --test-force-exit tests/p7-media-livekit.test.js
-          node --test --test-force-exit tests/p8-vpn-wireguard.test.js
-          node --test --test-force-exit tests/p9-infrastructure-hardening.test.js
-          node --test --test-force-exit tests/r1-face-verification.test.js
-          node --test --test-force-exit tests/r2-evidence-invigilator.test.js
-          node --test --test-force-exit tests/r3-media-cadence.test.js
-          node --test --test-force-exit tests/r4-lite-profile-drivers.test.js
-          node --test --test-force-exit tests/agent-adversarial.test.js
-          node --test --test-force-exit tests/agent-legacy-gaps.test.js
-          node --test --test-force-exit tests/agent-module.test.js
-          node --test --test-force-exit tests/architecture.test.js
-          node --test --test-force-exit tests/exam-lifecycle.test.js
-          node --test --test-force-exit tests/mcq-validation.test.js
-          node --test --test-force-exit tests/observability.test.js
-          node --test --test-force-exit tests/security_auth_cookies.test.js
-          node --test --test-force-exit tests/timezone-matrix.test.js
-
-      - name: Run Root Flow & Security Unit Test Suites
-        env:
-          NODE_ENV: test
-          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-          JWT_SECRET: dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345
-          AWS_REGION: ap-south-1
-          AWS_ACCESS_KEY_ID: dummy_ci_test_access_key_12345
-          AWS_SECRET_ACCESS_KEY: dummy_ci_test_secret_key_12345
-          AWS_S3_BUCKET_NAME: proctornet-ci-test-bucket
-          S3_BUCKET: proctornet-ci-test-bucket
-          S3_MOCK: "true"
-          FACE_DRIVER: off
-          NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
-        run: |
-          if [ ! -f .env ]; then cp .env.example .env; fi
-          node tests/approval_auth.test.js
-          node tests/profile_security.test.js
-          node tests/exam_credentials.test.js
-          node tests/question_immutability.test.js
-          node tests/ai_question_validation.test.js
-          node tests/api_client.test.js
-          node tests/feature_truth.test.js
-          node tests/eligibility_matrix.test.js
-          node tests/restart_chaos.test.js
-          node tests/version_endpoint.test.js
-          node tests/active_attempts_gate.test.js
-          node tests/ci_workflow_integrity.test.js
+        run: node scripts/ci/run-tests.js
 
   # ----------------------------------------------------------------------------
   # Stage 4: Frontend Production Build & Asset Verification
@@ -317,7 +259,7 @@ jobs:
 
       - name: Audit Backend Production Dependencies
         working-directory: proctornet/backend
-        run: npm audit --omit=dev --audit-level=none
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -162,11 +162,19 @@ describe('A7 — Companion Adversarial Security & Threat Hardening Suite', () =>
     })
     adminToken = signToken({ id: adminUser.id, role: ROLES.ADMIN, email: adminUser.email })
 
-    await policyService.seedRulesIfEmpty()
+    const { seedReference } = require('./helpers/seed')
+    await seedReference()
 
-    await prisma.agentRelease.deleteMany({}).catch(() => {})
-    await prisma.agentRelease.create({
-      data: {
+    await prisma.agentRelease.upsert({
+      where: {
+        version_os_arch: { version: '1.0.0', os: 'win', arch: 'x64' }
+      },
+      update: {
+        sha256: 'official-adv-release-hash',
+        s3Key: 'releases/win-x64.exe',
+        revokedAt: null
+      },
+      create: {
         version: '1.0.0',
         os: 'win',
         arch: 'x64',
@@ -174,7 +182,7 @@ describe('A7 — Companion Adversarial Security & Threat Hardening Suite', () =>
         s3Key: 'releases/win-x64.exe',
         sizeBytes: BigInt(85930000)
       }
-    })
+    }).catch(() => {})
   })
 
   // ── 1. Forged HMAC Signatures ──
@@ -575,10 +583,10 @@ describe('A7 — Companion Adversarial Security & Threat Hardening Suite', () =>
 
   after(async () => {
     agentSweeper.stop()
-    await prisma.agentRelease.deleteMany({}).catch(() => {})
     if (server) {
       await new Promise((resolve) => server.close(resolve))
     }
-    setTimeout(() => process.exit(0), 1000).unref()
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll()
   })
 })

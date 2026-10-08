@@ -139,13 +139,9 @@ describe('R4 — Lite Profile & Multi-Driver Architecture Test Suite', () => {
       // Best-effort cleanup
     } finally {
       try {
-        const { redis } = require('../src/infra/redis/client')
-        if (redis && typeof redis.quit === 'function') await redis.quit().catch(() => {})
-        const { rabbitmqManager } = require('../src/infra/queue/rabbitmqManager')
-        if (rabbitmqManager && typeof rabbitmqManager.close === 'function') await rabbitmqManager.close().catch(() => {})
-        await prisma.$disconnect().catch(() => {})
+        const { closeAll } = require('../src/lifecycle')
+        await closeAll().catch(() => {})
       } catch {}
-      setTimeout(() => process.exit(0), 500).unref()
     }
   })
 

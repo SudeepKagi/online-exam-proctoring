@@ -174,10 +174,8 @@ after(async () => {
     }
     await new Promise((resolve) => server.close(resolve)).catch(() => {})
   }
-  const { redisClient } = require('../src/infra/redis/client')
-  await redisClient.quit().catch(() => {})
-  await prisma.$disconnect().catch(() => {})
-  setTimeout(() => process.exit(0), 100)
+  const { closeAll } = require('../src/lifecycle')
+  await closeAll()
 })
 
 async function apiRequest(method, urlPath, token = null, body = null, extraHeaders = {}) {
@@ -518,8 +516,9 @@ describe('Contract Tests: Observable Effects & Negative Effects', () => {
     assert.strictEqual(waiversAfterPos, initialWaivers + 1, 'Observable effect: deviceAgentWaiver row created')
   })
 
-  after(() => {
+  after(async () => {
     if (server) server.close()
-    setTimeout(() => process.exit(0), 100).unref()
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll()
   })
 })

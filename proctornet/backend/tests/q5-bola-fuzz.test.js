@@ -246,11 +246,11 @@ after(async () => {
       await prisma.faculty.deleteMany({ where: { departmentCode: deptCode } }).catch(() => {})
       await prisma.department.delete({ where: { code: deptCode } }).catch(() => {})
     }
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll().catch(() => {})
   } catch {
     // Ignore teardown errors
   }
-
-  setTimeout(() => process.exit(0), 200).unref()
 })
 
 describe('BOLA Fuzz Testing Suite (Q5 Security Remediation)', () => {

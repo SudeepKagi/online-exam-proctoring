@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test'
 process.env.START_WORKERS = 'false'
+require('./helpers/env')
 
 const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert/strict')
@@ -168,11 +169,9 @@ describe('Exam Device Companion Server Module (Prompt 4 Phase A1)', () => {
     })
     adminToken = signToken({ id: adminUser.id, role: ROLES.ADMIN, email: adminUser.email })
 
-    // Seed agent rules
-    await policyService.seedRulesIfEmpty()
-
-    // Ensure clean releases table for integration tests
-    await prisma.agentRelease.deleteMany({}).catch(() => {})
+    // Seed agent rules & releases
+    const { seedReference } = require('./helpers/seed')
+    await seedReference()
   })
 
   after(async () => {
@@ -203,10 +202,10 @@ describe('Exam Device Companion Server Module (Prompt 4 Phase A1)', () => {
     if (facultyA) await prisma.faculty.deleteMany({ where: { id: facultyA.id } }).catch(() => {})
     if (facultyB) await prisma.faculty.deleteMany({ where: { id: facultyB.id } }).catch(() => {})
     if (adminUser) await prisma.admin.deleteMany({ where: { id: adminUser.id } }).catch(() => {})
-    await prisma.agentRelease.deleteMany({}).catch(() => {})
 
     if (server) await new Promise((res) => server.close(res))
-    setTimeout(() => process.exit(0), 1000).unref()
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll()
   })
 
   // ── 1. Pairing Tests ──
@@ -702,6 +701,7 @@ describe('Exam Device Companion Server Module (Prompt 4 Phase A1)', () => {
     if (server) {
       await new Promise((resolve) => server.close(resolve))
     }
-    process.exit(0)
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll()
   })
 })
