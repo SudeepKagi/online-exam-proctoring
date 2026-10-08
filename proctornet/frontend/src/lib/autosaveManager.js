@@ -1,22 +1,20 @@
 /**
  * autosaveManager.js
- * Robust client-side autosave manager (Notion 13.6/13.7 & Task 8).
+ * Robust client-side autosave manager (Notion 13.6/13.7 & Task 8 / Phase S2).
  * - Dirty map keyed by attemptQuestionId
  * - Automatic background flush every 5s + on visibilitychange/blur
  * - Revision tracking with 409 STALE_REVISION reconciliation
  * - Exponential backoff with jitter on 429/503/network failure
- * - Retains uncommitted dirty state in memory on failure
+ * - Retains uncommitted dirty state in memory and sessionStorage on failure
  * - Flush-before-submit with stable, reusable Idempotency-Key
  */
 
-import axios from 'axios'
+import api from '@/utils/api'
 import { serverClock } from './serverClock'
 
 export class AutosaveManager {
   constructor(options = {}) {
     this.attemptId = options.attemptId || null
-    const rawApi = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '/api'
-    this.apiBaseUrl = options.apiBaseUrl || (rawApi.endsWith('/api/v1') ? rawApi : `${rawApi.replace(/\/api\/?$/, '').replace(/\/$/, '')}/api/v1`)
     this.currentRevision = options.initialRevision || 1
     this.dirtyMap = new Map() // attemptQuestionId -> { attemptQuestionId, selectedOptionId, revision, clientTimestamp }
     this.isFlushing = false
@@ -29,11 +27,41 @@ export class AutosaveManager {
     this.onStateChangeCallbacks = new Set()
 
     this._setupAutoFlush()
+    if (this.attemptId) {
+      this._restoreFromSessionStorage()
+    }
   }
 
   setAttemptId(attemptId, revision = 1) {
     this.attemptId = attemptId
     this.currentRevision = revision
+    this._restoreFromSessionStorage()
+  }
+
+  _persistToSessionStorage() {
+    if (typeof sessionStorage !== 'undefined' && this.attemptId) {
+      try {
+        const arr = Array.from(this.dirtyMap.entries())
+        sessionStorage.setItem(`pn_autosave_${this.attemptId}`, JSON.stringify(arr))
+      } catch (_e) {}
+    }
+  }
+
+  _restoreFromSessionStorage() {
+    if (typeof sessionStorage !== 'undefined' && this.attemptId) {
+      try {
+        const raw = sessionStorage.getItem(`pn_autosave_${this.attemptId}`)
+        if (raw) {
+          const entries = JSON.parse(raw)
+          for (const [k, v] of entries) {
+            if (!this.dirtyMap.has(k)) {
+              this.dirtyMap.set(k, v)
+            }
+          }
+          this._notifyStateChange()
+        }
+      } catch (_e) {}
+    }
   }
 
   _setupAutoFlush() {
@@ -89,6 +117,7 @@ export class AutosaveManager {
     }
 
     this.dirtyMap.set(attemptQuestionId, entry)
+    this._persistToSessionStorage()
     this._notifyStateChange()
 
     // Trigger debounced flush (300ms) so answers persist promptly
@@ -134,10 +163,10 @@ export class AutosaveManager {
     }
 
     try {
-      const response = await axios.put(
-        `${this.apiBaseUrl}/attempts/${this.attemptId}/answers`,
+      const response = await api.put(
+        `/attempts/${this.attemptId}/answers`,
         payload,
-        { withCredentials: true, timeout: 5000 }
+        { timeout: 5000 }
       )
 
       // Sync server clock from response
@@ -152,6 +181,9 @@ export class AutosaveManager {
           this.dirtyMap.delete(item.attemptQuestionId)
         }
       }
+
+      // Update sessionStorage cache
+      this._persistToSessionStorage()
 
       // Bump revision to highest revision in results if present
       if (response.data?.results) {
@@ -202,28 +234,19 @@ export class AutosaveManager {
   }
 
   /**
-   * Flush before submit guarantee
-   */
-  async flushBeforeSubmit() {
-    if (this.dirtyMap.size > 0) {
-      await this.flush()
-    }
-  }
-
-  /**
-   * Get or initialize stable Idempotency-Key for the submit session (Task 8)
+   * Stable Idempotency-Key across retries for submitAttempt (Task 8 / Q3.2)
    */
   getStableIdempotencyKey() {
     if (!this.stableIdempotencyKey) {
-      this.stableIdempotencyKey = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      this.stableIdempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
-        : `sub_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+        : `sub_${this.attemptId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     }
     return this.stableIdempotencyKey
   }
 
   /**
-   * Submit exam attempt with idempotency guarantee
+   * Submit attempt with mandatory flush-before-submit and stable idempotency key
    */
   async submitAttempt() {
     if (this.isSubmitting) {
@@ -234,26 +257,34 @@ export class AutosaveManager {
     this._notifyStateChange()
 
     try {
-      // 1. Flush any pending dirty answers
-      await this.flushBeforeSubmit()
+      // 1. Mandatory Flush-Before-Submit (Task 8 / Q3.2)
+      if (this.dirtyMap.size > 0) {
+        try {
+          await this.flush()
+        } catch (flushErr) {
+          console.warn('[Autosave] Non-fatal flush error prior to submission; proceeding with final submission:', flushErr.message)
+        }
+      }
 
       // 2. Stable Idempotency-Key reused across retries (Task 8 / Q3.2)
       const idempotencyKey = this.getStableIdempotencyKey()
 
-      const response = await axios.post(
-        `${this.apiBaseUrl}/attempts/${this.attemptId}/submission`,
+      const response = await api.post(
+        `/attempts/${this.attemptId}/submission`,
         {},
         {
           headers: {
             'Idempotency-Key': idempotencyKey
           },
-          withCredentials: true,
           timeout: 10000
         }
       )
 
       this.isSubmitting = false
       this.stableIdempotencyKey = null // Clear on definitive success
+      if (typeof sessionStorage !== 'undefined' && this.attemptId) {
+        sessionStorage.removeItem(`pn_autosave_${this.attemptId}`)
+      }
       this._notifyStateChange()
 
       return response.data
@@ -272,9 +303,9 @@ export class AutosaveManager {
     if (!this.attemptId) return null
     for (let i = 0; i < maxAttempts; i++) {
       try {
-        const res = await axios.get(
-          `${this.apiBaseUrl}/attempts/${this.attemptId}/result`,
-          { withCredentials: true, timeout: 5000 }
+        const res = await api.get(
+          `/attempts/${this.attemptId}/result`,
+          { timeout: 5000 }
         )
         if (res.data) {
           return res.data

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
-import api from '@/utils/api'
+import api, { authChannel } from '@/utils/api'
 
 const AuthContext = createContext()
 
@@ -39,11 +39,10 @@ export function AuthProvider({ children }) {
     let isMounted = true
 
     const restoreSession = async () => {
-      const hasToken = typeof window !== 'undefined' ? localStorage.getItem('proctornet_token') : null
       const hasLoginFlag = typeof window !== 'undefined' ? localStorage.getItem('proctornet_logged_in') : null
 
       // Guest / unauthenticated visitor: resolve loading immediately without firing noisy /auth/me
-      if (!hasToken && !hasLoginFlag) {
+      if (!hasLoginFlag) {
         if (isMounted) {
           dispatch({ type: 'SET_LOADING', payload: false })
         }
@@ -62,8 +61,8 @@ export function AuthProvider({ children }) {
         }
       } catch (_err) {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('proctornet_token')
           localStorage.removeItem('proctornet_logged_in')
+          localStorage.removeItem('proctornet_role')
         }
         if (isMounted) {
           dispatch({ type: 'SET_LOADING', payload: false })
@@ -72,6 +71,28 @@ export function AuthProvider({ children }) {
     }
 
     restoreSession()
+
+    // Multi-tab sync via BroadcastChannel('pn-auth') (SES-05)
+    if (authChannel) {
+      const handleAuthMessage = (event) => {
+        const { type, payload } = event.data || {}
+        if (type === 'LOGIN' && payload?.user) {
+          dispatch({ type: 'LOGIN_SUCCESS', payload })
+        } else if (type === 'LOGOUT') {
+          dispatch({ type: 'LOGOUT' })
+        } else if (type === 'REFRESH') {
+          api.get('/auth/me').then(res => {
+            if (res.data?.user) dispatch({ type: 'UPDATE_USER', payload: res.data.user })
+          }).catch(() => {})
+        }
+      }
+      authChannel.addEventListener('message', handleAuthMessage)
+      return () => {
+        isMounted = false
+        authChannel.removeEventListener('message', handleAuthMessage)
+      }
+    }
+
     return () => {
       isMounted = false
     }
@@ -80,7 +101,7 @@ export function AuthProvider({ children }) {
   /**
    * login(credentials, role)
    * Calls the correct auth endpoint based on role.
-   * Persists JWT in localStorage and cookie.
+   * Uses HttpOnly cookies for session state (Zero-localStorage policy).
    */
   const login = async (arg1, arg2, arg3) => {
     let credentials = {}
@@ -98,6 +119,14 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // Role switching protection in single browser origin (SES-05)
+    if (state.isAuthenticated && state.user && state.role && state.role.toLowerCase() !== role.toLowerCase()) {
+      return {
+        success: false,
+        error: `A session for ${state.role.toUpperCase()} is currently active. Please sign out before logging in as a ${role.toUpperCase()}.`
+      }
+    }
+
     const endpoints = {
       admin:   '/auth/admin/login',
       faculty: '/auth/faculty/login',
@@ -106,14 +135,17 @@ export function AuthProvider({ children }) {
 
     try {
       const res = await api.post(endpoints[role], credentials)
-      const { user, token } = res.data
+      const { user } = res.data
 
-      if (token && typeof window !== 'undefined') {
-        localStorage.setItem('proctornet_token', token)
-      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('proctornet_logged_in', 'true')
+        localStorage.setItem('proctornet_role', role)
       }
+
+      authChannel?.postMessage({
+        type: 'LOGIN',
+        payload: { user, role }
+      })
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user, role } })
       return { success: true, user }
@@ -167,9 +199,10 @@ export function AuthProvider({ children }) {
       // Non-critical, proceed with client teardown
     }
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('proctornet_token')
       localStorage.removeItem('proctornet_logged_in')
+      localStorage.removeItem('proctornet_role')
     }
+    authChannel?.postMessage({ type: 'LOGOUT' })
     dispatch({ type: 'LOGOUT' })
   }
 
@@ -196,16 +229,29 @@ export function AuthProvider({ children }) {
   }
 
   const loginInvigilator = async (examId, invId, invPassword) => {
+    // Role switching protection
+    if (state.isAuthenticated && state.user && state.role && state.role.toLowerCase() !== 'invigilator') {
+      return {
+        success: false,
+        error: `A session for ${state.role.toUpperCase()} is currently active. Please sign out before logging in as an invigilator.`
+      }
+    }
+
     try {
       const res = await api.post('/auth/invigilator/login', { examId, invId, invPassword })
-      const { session, user, token } = res.data
-      if (token && typeof window !== 'undefined') {
-        localStorage.setItem('proctornet_token', token)
-      }
+      const { session, user } = res.data
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('proctornet_logged_in', 'true')
+        localStorage.setItem('proctornet_role', 'invigilator')
       }
+
       const invUser = user || { id: session.invId, name: `Invigilator ${session.invId}`, examId: session.examId, role: 'invigilator' }
+
+      authChannel?.postMessage({
+        type: 'LOGIN',
+        payload: { user: invUser, role: 'invigilator' }
+      })
 
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: invUser, role: 'invigilator' } })
       return { success: true, session }
@@ -231,4 +277,3 @@ export const useAuth = () => {
   if (!context) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }
-

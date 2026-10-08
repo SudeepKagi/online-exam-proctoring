@@ -13,6 +13,7 @@ const { Server } = require('socket.io')
 const { createAdapter } = require('@socket.io/redis-adapter')
 const { verifyToken } = require('../../utils/jwt')
 const { extractTokenFromSocket } = require('../../utils/cookies')
+const { tokenService } = require('../../modules/auth/tokenService')
 const { prisma } = require('../postgres/client')
 const { redisClient } = require('../redis/client')
 const { presenceManager } = require('./presence')
@@ -94,7 +95,7 @@ function createWebSocketServer(httpServer, options = {}) {
   // Bind coalescer to this IO instance
   rosterCoalescer.setIO(io)
 
-  // ── Fail-Closed Handshake Authentication Middleware (Task 1) ──
+  // ── Fail-Closed Handshake Authentication Middleware (Phase S2 / SES-09) ──
   io.use(async (socket, next) => {
     try {
       const authHeader = socket.handshake.headers?.authorization
@@ -105,9 +106,15 @@ function createWebSocketServer(httpServer, options = {}) {
         return next(new Error('AUTHENTICATION_FAILED: Missing authentication credentials'))
       }
 
-      const decoded = verifyToken(token)
+      let decoded
+      try {
+        decoded = tokenService.verifyAccessToken(token)
+      } catch (err) {
+        return next(new Error(`AUTHENTICATION_FAILED: ${err.message || 'Invalid or expired token'}`))
+      }
+
       if (!decoded || !decoded.id) {
-        return next(new Error('AUTHENTICATION_FAILED: Invalid or expired token'))
+        return next(new Error('AUTHENTICATION_FAILED: Malformed token payload'))
       }
 
       const role = normalizeRole(decoded.role)
@@ -115,9 +122,21 @@ function createWebSocketServer(httpServer, options = {}) {
         return next(new Error('AUTHENTICATION_FAILED: Invalid or unrecognized role in token'))
       }
 
+      // Validate session state against database / bounded cache
+      if (decoded.sid) {
+        const sessionCheck = await tokenService.validateSession(decoded.sid, decoded.epoch)
+        if (!sessionCheck.valid) {
+          return next(new Error(`AUTHENTICATION_FAILED: Session ${sessionCheck.reason || 'revoked or expired'}`))
+        }
+      }
+
       socket.user = {
         id: decoded.id,
         role,
+        sid: decoded.sid || null,
+        familyId: decoded.familyId || null,
+        epoch: decoded.epoch ?? null,
+        exp: decoded.exp ?? null,
         examId: decoded.examId || null,
         name: decoded.name || null,
         usn: decoded.usn || null
@@ -138,6 +157,56 @@ function createWebSocketServer(httpServer, options = {}) {
   // ── Connection Handler & Event Plane ──
   io.on('connection', (socket) => {
     logger.info({ socketId: socket.id, userId: socket.user?.id, role: socket.user?.role }, 'Socket client connected')
+
+    // Automatically join user and session private rooms
+    if (socket.user?.id) {
+      socket.join(`user:${socket.user.id}`)
+      if (socket.user.role === ROLES.STUDENT) {
+        socket.join(`student:${socket.user.id}`)
+      }
+    }
+    if (socket.user?.sid) {
+      socket.join(`sid:${socket.user.sid}`)
+    }
+
+    // Schedule auth:expiring notification 60s before token expiration (Phase S2)
+    if (socket.user?.exp) {
+      const remainingMs = (socket.user.exp * 1000) - Date.now()
+      const warningDelayMs = Math.max(remainingMs - 60000, 0)
+      if (warningDelayMs > 0 && warningDelayMs < 900000) {
+        const warnTimer = setTimeout(() => {
+          if (socket.connected) {
+            socket.emit('auth:expiring', {
+              expiresInSec: 60,
+              sid: socket.user?.sid
+            })
+          }
+        }, warningDelayMs)
+        socket.on('disconnect', () => clearTimeout(warnTimer))
+      }
+    }
+
+    // Periodic session liveness check (every 30s) to enforce suspension / logout / revocation
+    if (socket.user?.sid) {
+      const checkInterval = setInterval(async () => {
+        if (!socket.connected) {
+          clearInterval(checkInterval)
+          return
+        }
+        try {
+          const check = await tokenService.validateSession(socket.user.sid, socket.user.epoch)
+          if (!check.valid) {
+            logger.warn({ sid: socket.user.sid, userId: socket.user.id, reason: check.reason }, 'Socket session revoked; disconnecting socket')
+            socket.emit('session:revoked', { reason: check.reason || 'REVOKED' })
+            socket.disconnect(true)
+            clearInterval(checkInterval)
+          }
+        } catch {
+          // ignore transient database glitches
+        }
+      }, 30000)
+      socket.on('disconnect', () => clearInterval(checkInterval))
+    }
 
     // ── 1. STUDENT: Join Private Attempt Room (Task 2) ──
     socket.on('attempt:join', async (data, ack) => {

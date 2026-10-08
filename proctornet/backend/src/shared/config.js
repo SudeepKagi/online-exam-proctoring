@@ -31,13 +31,13 @@ const config = {
   // RabbitMQ
   rabbitmqUrl: process.env.RABBITMQ_URL || 'amqp://guest:guest@127.0.0.1:5672',
 
-  // Authentication & Security
-  jwtSecret: process.env.JWT_SECRET || 'proctornet-super-secret-key-production-ready',
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
-  jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-  cookieName: 'proctornet_token',
-  bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
-  hashConcurrencyLimit: parseInt(process.env.HASH_CONCURRENCY_LIMIT || '10', 10),
+  // Authentication & Security (Phase S2)
+  jwtSecret: process.env.JWT_SECRET,
+  jwtExpiresIn: '15m',
+  jwtRefreshExpiresIn: '12h',
+  cookieName: 'pn_at',
+  bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || ((process.env.APP_PROFILE || 'lite') === 'lite' ? '10' : '12'), 10),
+  hashConcurrencyLimit: parseInt(process.env.HASH_CONCURRENCY_LIMIT || ((process.env.APP_PROFILE || 'lite') === 'lite' ? '2' : '10'), 10),
 
   // Exam Lifecycle & Timing
   attemptPrewarmMinutes: parseInt(process.env.ATTEMPT_PREWARM_MINUTES || '30', 10),
@@ -55,9 +55,9 @@ const config = {
   maxInflightRequests: parseInt(process.env.MAX_INFLIGHT_REQUESTS || '1000', 10),
   maxEventLoopDelayMs: parseInt(process.env.MAX_EVENT_LOOP_DELAY_MS || '200', 10),
 
-  // S3 / Object Storage
-  s3Bucket: process.env.AWS_S3_BUCKET || 'proctornet-evidence',
-  s3Region: process.env.AWS_REGION || 'us-east-1',
+  // S3 / Object Storage (Unified S3_BUCKET env)
+  s3Bucket: process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || 'proctornet-evidence',
+  s3Region: process.env.AWS_REGION || 'ap-south-1',
 
   // ── R4: Driver Selection ──────────────────────────────────────────────────
 

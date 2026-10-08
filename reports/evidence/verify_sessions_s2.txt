@@ -1,0 +1,40 @@
+==========================================================
+ Phase S2: Sessions & Authentication Verification Suite
+ Target Domain: https://proctornet.duckdns.org
+ Timestamp: 2026-10-08T00:54:11.185Z
+==========================================================
+
+--- SECTION 1: Boot-Time Validator Invariants ---
+ [PASS] validateConfig rejects known insecure default secrets
+
+--- SECTION 2: Single Token Authority & Cryptography ---
+ [PASS] Token signs and verifies cleanly via single authority
+ [PASS] Access token has 15-minute expiry envelope (900 seconds)
+
+--- SECTION 3: Dual-Cookie Envelope Specification ---
+ [PASS] pn_at cookie set with HttpOnly, SameSite=lax, Path=/, Max-Age=900s
+ [PASS] pn_rt cookie set with HttpOnly, SameSite=lax, Path=/api/v1/auth, Max-Age=43200s
+
+--- SECTION 4: Refresh Rotation & Family Reuse Detection ---
+ [PASS] Initial session creates valid AuthSession in database
+ [PASS] Token rotation successfully issues new access token & refresh token in same family
+{"level":"warn","time":"2026-10-08T00:54:14.202Z","pid":35768,"hostname":"MSI","sid":"0889910b-81ad-4601-98dc-5fa073595682","familyId":"89b28884-ec69-44bd-a8c9-964050d4dabf","userId":"e53cc719-7ae3-40ba-9565-7b66b8871864","msg":"SECURITY ALERT: Refresh token reuse detected! Revoking all sessions in token family."}
+ [PASS] Refresh token reuse triggers immediate family revocation (SES-02)
+ [PASS] Family termination immediately revokes all descendant sessions in DB
+
+--- SECTION 5: Zero-LocalStorage Policy ---
+ [PASS] Built frontend bundle contains zero occurrences of proctornet_token
+
+--- SECTION 6: Live Production Endpoints (HTTPS) ---
+ [PASS] Cross-origin state-changing POST rejected with 403 Forbidden origin (SES-08)
+ [PASS] Admin login over HTTPS returns 200 OK
+ [PASS] Admin login sets pn_at with Secure; HttpOnly; SameSite=Lax; Path=/
+ [PASS] Admin login sets pn_rt with Secure; HttpOnly; SameSite=Lax; Path=/api/v1/auth
+ [PASS] Production admin login JSON body contains NO token (SES-03)
+ [PASS] /api/v1/auth/me authenticates via HttpOnly pn_at cookie
+ [PASS] /api/v1/auth/refresh rotates session and issues new cookies
+ [PASS] /api/v1/auth/logout revokes session and returns cleared cookies
+
+==========================================================
+ Verification Complete: 18/18 checks PASSED
+==========================================================

@@ -1,8 +1,8 @@
 /**
  * socketClient.js
- * Production-hardened Socket.io client singleton.
+ * Production-hardened Socket.io client singleton (Phase S2 / Appendix C).
  * - Transport: pure WebSocket only (no polling)
- * - Automatic auth token injection
+ * - Cookie-based handshake authentication (withCredentials: true)
  * - Reconnect -> REST resync notification channel
  */
 
@@ -11,36 +11,15 @@ import { io } from 'socket.io-client'
 let socketInstance = null
 const resyncHandlers = new Set()
 
-export function getAuthToken() {
-  // Check cookie or localStorage/sessionStorage
-  try {
-    const directToken = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (directToken) return directToken
-
-    const cookies = document.cookie.split(';')
-    for (const c of cookies) {
-      const [k, v] = c.trim().split('=')
-      if (['student_token', 'faculty_token', 'admin_token', 'inv_token', 'token'].includes(k)) {
-        return decodeURIComponent(v)
-      }
-    }
-  } catch (e) {
-    // ignore
-  }
-  return null
-}
-
 export function initSocketClient(options = {}) {
   if (socketInstance) return socketInstance
 
-  const token = options.token || getAuthToken()
   const socketUrl = import.meta.env.VITE_SOCKET_URL || window.location.origin
 
   socketInstance = io(socketUrl, {
     transports: ['websocket'], // WebSocket only (Task 1 / 8)
     autoConnect: true,
-    auth: { token },
-    withCredentials: true,
+    withCredentials: true, // Attaches pn_at and pn_rt cookies automatically
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,

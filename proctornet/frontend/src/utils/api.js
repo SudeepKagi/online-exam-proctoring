@@ -1,21 +1,35 @@
 import axios from 'axios'
 
+// Multi-tab auth synchronization channel (Phase S2 / SES-05)
+export const authChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('pn-auth')
+  : null
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
   timeout: 30000,
-  withCredentials: true,
+  withCredentials: true, // Automatically sends HttpOnly cookies: pn_at, pn_rt
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
   }
 })
 
-// Request interceptor — attach JWT Bearer token if present
+// Request interceptor: add unique X-Request-ID and optional Idempotency-Key
 api.interceptors.request.use(
   (config) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('proctornet_token') : null
-    if (token && !config.headers.Authorization) {
-      config.headers.Authorization = `Bearer ${token}`
+    // Generate UUID / random ID for tracing if not set
+    if (!config.headers['X-Request-ID']) {
+      config.headers['X-Request-ID'] = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
     }
+
+    // Attach Idempotency-Key for state-mutating operations if provided
+    if (['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase()) && config.idempotencyKey) {
+      config.headers['Idempotency-Key'] = config.idempotencyKey
+    }
+
     return config
   },
   (error) => Promise.reject(error)
@@ -39,10 +53,27 @@ export function extractErrorMessage(err, fallback = 'An unexpected error occurre
   return fallback
 }
 
-// Response interceptor — handle error normalization & 401 session expiry
+// Silent Refresh Queue Management
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve()
+    }
+  })
+  failedQueue = []
+}
+
+// Response interceptor: handle silent refresh, error normalization, and non-destructive exam re-auth
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config
+
     // Normalize unified error envelope
     if (error.response?.data?.error) {
       const errObj = error.response.data.error
@@ -55,33 +86,86 @@ api.interceptors.response.use(
       }
     }
 
-    const isAuthRequest =
-      error.config?.url?.includes('/login') ||
-      error.config?.url?.includes('/register') ||
-      error.config?.url?.includes('/auth/me')
+    const isAuthUrl =
+      originalRequest?.url?.includes('/auth/login') ||
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/logout') ||
+      originalRequest?.url?.includes('/register')
 
-    if (error.response?.status === 401 && !isAuthRequest) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('proctornet_token')
-        localStorage.removeItem('proctornet_logged_in')
+    // Handle 401 Unauthorized via Silent Refresh (SES-04 / S2)
+    if (error.response?.status === 401 && !isAuthUrl && !originalRequest?._retry) {
+      if (isRefreshing) {
+        // Queue concurrent requests while refresh is in flight
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        })
+          .then(() => api(originalRequest))
+          .catch((err) => Promise.reject(err))
       }
 
-      const currentPath = window.location.pathname
-      if (!currentPath.includes('/login') && !currentPath.includes('login')) {
-        if (currentPath.startsWith('/invigilator')) {
-          window.location.href = '/invigilator-login'
-        } else if (currentPath.startsWith('/admin')) {
-          window.location.href = '/admin/login'
-        } else if (currentPath.startsWith('/faculty')) {
-          window.location.href = '/faculty/login'
-        } else if (currentPath.startsWith('/student') || currentPath.startsWith('/change-password')) {
-          window.location.href = '/student/login'
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        // Execute silent refresh against /api/v1/auth/refresh
+        await api.post('/auth/refresh', {})
+        isRefreshing = false
+        processQueue(null)
+        // Broadcast token refreshed to other tabs
+        authChannel?.postMessage({ type: 'REFRESH' })
+        // Retry original failed request
+        return api(originalRequest)
+      } catch (refreshErr) {
+        isRefreshing = false
+        processQueue(refreshErr)
+
+        // Session refresh completely failed: check if user is taking an active exam
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+        const isExamActive =
+          pathname.includes('/exam') ||
+          (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('pn_active_attempt'))
+
+        if (isExamActive) {
+          // EXAM-AWARE: Never do a hard redirect during an active exam! (SES-04)
+          // Broadcast non-destructive re-auth modal event on the current page
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('pn:exam-reauth-required', {
+                detail: {
+                  message: 'Your session ended — sign in to continue without losing your answers.',
+                  originalRequest
+                }
+              })
+            )
+          }
+          return Promise.reject(refreshErr)
         }
+
+        // Non-exam view: perform clean logout and redirect
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('proctornet_logged_in')
+          localStorage.removeItem('proctornet_role')
+          authChannel?.postMessage({ type: 'LOGOUT' })
+
+          if (!pathname.includes('/login') && !pathname.includes('login')) {
+            if (pathname.startsWith('/invigilator')) {
+              window.location.href = '/invigilator-login'
+            } else if (pathname.startsWith('/admin')) {
+              window.location.href = '/admin/login'
+            } else if (pathname.startsWith('/faculty')) {
+              window.location.href = '/faculty/login'
+            } else if (pathname.startsWith('/student') || pathname.startsWith('/change-password')) {
+              window.location.href = '/student/login'
+            }
+          }
+        }
+
+        return Promise.reject(refreshErr)
       }
     }
+
     return Promise.reject(error)
   }
 )
 
 export default api
-

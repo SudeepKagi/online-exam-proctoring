@@ -169,13 +169,35 @@ model Department {
 }
 
 model Admin {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name               String
+  email              String   @unique
+  password           String
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@map("admins")
+}
+
+model AuthSession {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  role         Role
+  examId       String?   @map("exam_id") @db.Uuid
+  familyId     String    @default(dbgenerated("gen_random_uuid()")) @map("family_id") @db.Uuid
+  refreshHash  String    @unique @map("refresh_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt   DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(3)
+  revokeReason String?   @map("revoke_reason")
+  ip           String?
+  userAgent    String?   @map("user_agent")
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([refreshHash])
+  @@map("auth_sessions")
 }
 
 model PlatformSetting {

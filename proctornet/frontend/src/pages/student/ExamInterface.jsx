@@ -58,6 +58,12 @@ export default function ExamInterface() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error'
 
+  // ── Non-Destructive Re-Authentication Modal State (Phase S2 / SES-04) ──
+  const [showReauthModal, setShowReauthModal] = useState(false)
+  const [reauthPassword, setReauthPassword] = useState('')
+  const [reauthLoading, setReauthLoading] = useState(false)
+  const [reauthError, setReauthError] = useState('')
+
   const streamRef = useRef(null)
   const screenStreamRef = useRef(null)
   const tabInstanceId = useRef(Math.random().toString(36).substring(2))
@@ -79,6 +85,41 @@ export default function ExamInterface() {
       manager.destroy()
     }
   }, [])
+
+  // ── Non-Destructive Session Expiry Listener (Phase S2 / SES-04) ──
+  useEffect(() => {
+    const handleReauth = () => {
+      setShowReauthModal(true)
+    }
+    window.addEventListener('pn:exam-reauth-required', handleReauth)
+    return () => {
+      window.removeEventListener('pn:exam-reauth-required', handleReauth)
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('pn_active_attempt')
+      }
+    }
+  }, [])
+
+  const handleReauthSubmit = async (e) => {
+    e?.preventDefault()
+    if (!reauthPassword) return
+    setReauthLoading(true)
+    setReauthError('')
+    try {
+      await api.post('/auth/student/login', {
+        usn: user?.usn,
+        password: reauthPassword
+      })
+      setShowReauthModal(false)
+      setReauthPassword('')
+      toast.success('Session restored. Resuming examination...')
+      autosaveRef.current.flush().catch(() => {})
+    } catch (err) {
+      setReauthError(err.response?.data?.error?.message || err.message || 'Incorrect password')
+    } finally {
+      setReauthLoading(false)
+    }
+  }
 
   // ── Multi-Tab Concurrency Guard ──
   useEffect(() => {
@@ -327,6 +368,9 @@ export default function ExamInterface() {
         setAttemptId(attempt.id)
         setExpiresAt(attempt.expiresAt)
         autosaveRef.current.setAttemptId(attempt.id)
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('pn_active_attempt', attempt.id)
+        }
 
         // Authoritative State Check
         if (attempt.status === 'SUBMITTED' || attempt.isSubmitted) {
@@ -791,6 +835,58 @@ export default function ExamInterface() {
         loading={submitting}
         onConfirm={() => handleSubmit(false)}
       />
+
+      {/* Non-Destructive Re-Auth Modal (SES-04 / S2) */}
+      {showReauthModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-xl bg-slate-900 border border-slate-800 p-6 shadow-2xl text-slate-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-lg bg-amber-500/10 text-amber-400">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-white">Session Security Check</h3>
+                <p className="text-xs text-slate-400">Your session ended. Re-authenticate to resume.</p>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 mb-4">
+              Your exam state and uncommitted answers are preserved in buffer. Please enter your password to continue without losing your answers.
+            </p>
+
+            <form onSubmit={handleReauthSubmit} className="space-y-4">
+              {reauthError && (
+                <div className="p-3 text-xs rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
+                  {reauthError}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">
+                  Candidate Password ({user?.usn || 'USN'})
+                </label>
+                <input
+                  type="password"
+                  value={reauthPassword}
+                  onChange={(e) => setReauthPassword(e.target.value)}
+                  placeholder="Enter your account password"
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 text-sm rounded-lg bg-slate-800 border border-slate-700 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={reauthLoading || !reauthPassword}
+                className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {reauthLoading ? 'Verifying...' : 'Restore Session & Resume Exam'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

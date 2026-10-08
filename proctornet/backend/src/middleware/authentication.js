@@ -1,18 +1,32 @@
-const jwt = require('jsonwebtoken')
-const config = require('../shared/config')
+/**
+ * authentication.js
+ * Primary authentication middleware for ProctorNet API routes (Phase S2 Stabilization).
+ * Validates access token and verifies active session state via tokenService.
+ */
+
+const { tokenService } = require('../modules/auth/tokenService')
 const { UnauthorizedError } = require('../shared/errors')
-const { extractTokenFromReq } = require('../utils/cookies')
+const { normalizeRole } = require('../shared/roles')
 
-const { ROLES, normalizeRole } = require('../shared/roles')
-
-function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
   try {
-    const token = extractTokenFromReq(req)
+    const token = tokenService.extractAccessToken(req)
     if (!token) {
       throw new UnauthorizedError('Authentication token missing or invalid')
     }
 
-    const decoded = jwt.verify(token, config.jwtSecret)
+    let decoded
+    try {
+      decoded = tokenService.verifyAccessToken(token)
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        const error = new UnauthorizedError('Session expired, please re-authenticate')
+        error.code = 'TOKEN_EXPIRED'
+        return next(error)
+      }
+      return next(new UnauthorizedError('Invalid authentication signature'))
+    }
+
     if (!decoded || !decoded.id || !decoded.role) {
       throw new UnauthorizedError('Malformed authentication credentials')
     }
@@ -22,9 +36,21 @@ function authenticate(req, res, next) {
       throw new UnauthorizedError('Invalid user role in credentials')
     }
 
+    // Fast-path server-side session revocation & epoch check (TTL <= 30s)
+    if (decoded.sid) {
+      const validation = await tokenService.validateSession(decoded.sid, decoded.epoch)
+      if (!validation.valid) {
+        const error = new UnauthorizedError('Session has been revoked or expired')
+        error.code = 'SESSION_REVOKED'
+        return next(error)
+      }
+    }
+
     req.user = {
       id: decoded.id,
       role,
+      sid: decoded.sid || null,
+      familyId: decoded.familyId || null,
       email: decoded.email,
       name: decoded.name,
       departmentCode: decoded.departmentCode,
@@ -34,12 +60,6 @@ function authenticate(req, res, next) {
 
     next()
   } catch (err) {
-    if (err.name === 'TokenExpiredError') {
-      return next(new UnauthorizedError('Session expired, please re-authenticate'))
-    }
-    if (err.name === 'JsonWebTokenError') {
-      return next(new UnauthorizedError('Invalid authentication signature'))
-    }
     next(err)
   }
 }

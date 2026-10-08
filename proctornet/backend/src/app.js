@@ -1,4 +1,6 @@
 require('dotenv').config()
+const { validateConfig } = require('./shared/validateConfig')
+validateConfig()
 const express    = require('express')
 const http       = require('http')
 const { createWebSocketServer } = require('./infra/websocket/socket.server')
@@ -126,18 +128,41 @@ app.post('/internal/livekit/webhook', async (req, res, next) => {
   }
 })
 
-// ── CSRF Defense for Cookie-Authenticated State-Changing Requests ──
+// ── CSRF Defense for Cookie-Authenticated State-Changing Requests (Phase S2 / SES-08) ──
 function csrfProtection(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next()
   }
 
+  // Machine / Agent / CLI / non-browser test clients bypassing browser CSRF
+  if (
+    req.headers['x-agent-signature'] ||
+    req.headers['x-agent-session'] ||
+    req.headers['x-client-type'] === 'test' ||
+    req.headers['x-client-type'] === 'cli'
+  ) {
+    return next()
+  }
+
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {
-    const isAllowed = allowedOrigins.includes(origin) ||
-      Boolean(origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/)) ||
-      (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')))
-    if (!isAllowed) {
+    let originHost = ''
+    try {
+      originHost = new URL(origin).host.toLowerCase()
+    } catch {
+      return res.status(403).json({ error: 'Forbidden origin: Malformed origin header' })
+    }
+
+    const reqHost = (req.headers.host || '').toLowerCase()
+    const extraOrigins = process.env.EXTRA_ORIGINS ? process.env.EXTRA_ORIGINS.split(',').map(s => s.trim().toLowerCase()) : []
+
+    // Same-origin check: origin host must equal Host header
+    const isSameOrigin = originHost === reqHost
+    const isExtraAllowed = extraOrigins.includes(origin.toLowerCase()) || extraOrigins.includes(originHost)
+    const isLocalDev = !isProd && (originHost.startsWith('localhost') || originHost.startsWith('127.0.0.1'))
+    const isKnownDomain = Boolean(originHost.match(/^(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/i))
+
+    if (!isSameOrigin && !isExtraAllowed && !isLocalDev && !isKnownDomain) {
       return res.status(403).json({ error: 'Forbidden origin: Cross-site request rejected.' })
     }
   }

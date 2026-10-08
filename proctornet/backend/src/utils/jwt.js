@@ -1,30 +1,26 @@
-const jwt = require('jsonwebtoken')
-
-const SECRET     = process.env.JWT_SECRET || 'proctornet_default_jwt_signing_secret_key_2026'
-const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
-
 /**
- * Sign a JWT token
- * @param {object} payload - { id, role, examId? }
- * @param {string} expiresIn - override default expiry
+ * jwt.js
+ * Legacy wrapper delegating exclusively to tokenService (Phase S2 / SES-01).
+ * Hardcoded secrets and long-lived 7-day token defaults are removed.
  */
-function signToken(payload, expiresIn = EXPIRES_IN) {
-  return jwt.sign(payload, SECRET, { expiresIn })
+
+const { tokenService, ACCESS_TOKEN_TTL_SEC } = require('../modules/auth/tokenService')
+
+function signToken(payload, expiresIn = ACCESS_TOKEN_TTL_SEC) {
+  return tokenService.signAccessToken(payload, expiresIn)
 }
 
-/**
- * Verify a JWT token
- * @returns decoded payload or throws error
- */
 function verifyToken(token) {
-  return jwt.verify(token, SECRET)
+  return tokenService.verifyAccessToken(token)
 }
 
-/**
- * Decode without verifying (for logging only)
- */
 function decodeToken(token) {
+  const jwt = require('jsonwebtoken')
   return jwt.decode(token)
 }
 
-module.exports = { signToken, verifyToken, decodeToken }
+module.exports = {
+  signToken,
+  verifyToken,
+  decodeToken
+}
