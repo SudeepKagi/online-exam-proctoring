@@ -159,4 +159,24 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)',
       : rollbackJob.environment
     assert.strictEqual(envName, 'production', 'rollback job must target production environment')
   })
+
+  it('CI-08: Test suite safety & hygiene — zero process.exit or unbounded deleteMany({}) in test files (SEC-2 / C7.2)', () => {
+    const { discoverTests } = require('../scripts/ci/run-tests')
+    const allTests = discoverTests()
+    assert.ok(allTests.length > 50, 'Discovered test suites must be populated')
+
+    for (const testPath of allTests) {
+      const content = fs.readFileSync(testPath, 'utf8')
+      assert.doesNotMatch(
+        content,
+        /process\.exit\s*\(/,
+        `Test file "${path.relative(REPO_ROOT, testPath)}" must not invoke process.exit`
+      )
+      assert.doesNotMatch(
+        content,
+        /\.deleteMany\s*\(\s*\{\s*\}\s*\)/,
+        `Test file "${path.relative(REPO_ROOT, testPath)}" must not perform unbounded deleteMany({})`
+      )
+    }
+  })
 })

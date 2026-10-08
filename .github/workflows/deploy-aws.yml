@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Set up Node.js 22 LTS
         uses: actions/setup-node@v4
@@ -65,15 +67,17 @@ jobs:
           echo "[✓] Backend bundle ready."
 
       - name: Generate Version Metadata & Create Release Archive
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
-          RELEASE_TAG="release-${{ github.sha }}"
+          RELEASE_TAG="release-${HEAD_SHA}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
           
           echo "Creating VERSION metadata file..."
           cat <<EOF > VERSION
           {
             "version": "${RELEASE_TAG}",
-            "gitSha": "${{ github.sha }}",
+            "gitSha": "${HEAD_SHA}",
             "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           }
           EOF
@@ -93,28 +97,35 @@ jobs:
           echo "[✓] Release artifacts uploaded to S3."
 
       - name: Execute Deployment via AWS SSM Session Manager
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+          BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          OVERRIDE_REASON: ${{ github.event.inputs.override_reason || '' }}
         run: |
-          RELEASE_TAG="release-${{ github.sha }}"
+          RELEASE_TAG="release-${HEAD_SHA}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
-          INSTANCE_ID="${{ secrets.AWS_EC2_INSTANCE_ID }}"
-          BUCKET="${{ secrets.AWS_S3_BUCKET }}"
-          OVERRIDE="${{ github.event.inputs.override_reason || '' }}"
 
-          OVERRIDE_ARG=""
-          if [ -n "${OVERRIDE}" ]; then
-            OVERRIDE_ARG="--override '${OVERRIDE}'"
+          # Strict regex validation on override reason to prevent command injection (§1 DEP-2 / C5.4)
+          if [ -n "${OVERRIDE_REASON}" ]; then
+            if ! [[ "${OVERRIDE_REASON}" =~ ^[A-Za-z0-9\ ._:,-]{1,120}$ ]]; then
+              echo "[x] Error: Invalid override reason. Must match ^[A-Za-z0-9 ._:,-]{1,120}$"
+              exit 1
+            fi
           fi
+
+          echo "Encoding SSM payload safely via jq without string interpolation (Appendix C)..."
+          payload=$(jq -n --arg tar "$TAR_FILE" --arg bucket "$BUCKET" --arg sha "$HEAD_SHA" --arg ovr "$OVERRIDE_REASON" \
+            '{commands: ["aws s3 cp s3://\($bucket)/releases/deploy-release.sh /tmp/deploy-release.sh",
+                         "chmod 0700 /tmp/deploy-release.sh",
+                         "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --override-b64 \($ovr|@base64)"]}')
 
           echo "Triggering SSM send-command on instance: ${INSTANCE_ID}..."
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${INSTANCE_ID}" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploying ${RELEASE_TAG} (exam-aware gate & rollback enabled)" \
-            --parameters "commands=[
-              \"aws s3 cp s3://${BUCKET}/releases/deploy-release.sh /tmp/deploy-release.sh\",
-              \"chmod +x /tmp/deploy-release.sh\",
-              \"/tmp/deploy-release.sh ${TAR_FILE} ${BUCKET} ${OVERRIDE_ARG} --expected-sha ${{ github.sha }}\"
-            ]" \
+            --parameters "${payload}" \
             --output text \
             --query "Command.CommandId")
 

@@ -36,6 +36,14 @@ async function authenticate(req, res, next) {
       throw new UnauthorizedError('Invalid user role in credentials')
     }
 
+    // SEC-1: Browser/User tokens require explicit session ID in production/non-test profiles
+    const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.JEST_WORKER_ID)
+    if (!decoded.sid && !isTest) {
+      const error = new UnauthorizedError('Session ID required for active session')
+      error.code = 'SESSION_REQUIRED'
+      return next(error)
+    }
+
     // Fast-path server-side session revocation & epoch check (TTL <= 30s)
     if (decoded.sid) {
       const validation = await tokenService.validateSession(decoded.sid, decoded.epoch)

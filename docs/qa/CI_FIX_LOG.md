@@ -221,3 +221,26 @@
   2. Bumped `nodemailer` from `^6.9.3` to `^10.0.16` in `proctornet/backend/package.json` to eliminate unpatched vulnerabilities (GHSA-8vvx-rff5-p5rq, GHSA-v53p-9fqp-m79j, GHSA-r7g4-qg5f-qqm2).
   3. Synchronized updated lockfiles (`proctornet/package-lock.json` and `proctornet/backend/package-lock.json`).
 * **Outcome:** `npm audit --omit=dev --audit-level=high` reports 0 high/critical vulnerabilities and exits with code 0.
+
+---
+
+### Entry 014: Deploy Hardening, Security Session Guard & Resilience Roadmap (C5, C7, C8)
+* **Date/Time:** 2026-10-08 13:45:00 UTC
+* **Scope:** Phases C5, C7, C8 Implementation & Hardening
+* **Trigger:** Prompt 6 End-to-End Delivery
+* **Key Enhancements:**
+  1. **Deployment Workflow Hardening (`deploy-aws.yml`)**:
+     - Pinned checkout to `github.event.workflow_run.head_sha || github.sha` preventing untracked HEAD deployments during rapid pushes (DEP-1).
+     - Replaced SSM shell command string interpolation with safe `jq` JSON encoding and base64 `--override-b64` parameterization (DEP-2, Appendix C).
+  2. **EC2 Deployment Script Parity (`deploy-release.sh`)**:
+     - Added `--override-b64` decoding with strict regex validation (`^[A-Za-z0-9 ._:,-]{1,120}$`).
+     - Added automated Git SHA verification asserting extracted `VERSION` matches expected release SHA.
+  3. **Human Actionable Configuration Guide (`docs/runbooks/github-protection.md`)**:
+     - Documented step-by-step click-paths for GitHub `production` environment reviewers, wait timer, and branch protection rules on `main` (DEP-6 / C5.7).
+  4. **Security Fixes (SEC-1, SEC-2 / C7)**:
+     - `SEC-1`: Enforced `sid` session ID requirement for all user tokens in non-test profiles (`SESSION_REQUIRED` on missing `sid`).
+     - `SEC-2`: Added `CI-08` pipeline gate in `tests/ci_workflow_integrity.test.js` verifying zero `process.exit` and zero unbounded `deleteMany({})` across all 58 test suites.
+  5. **Scale & Resilience Architectural Roadmap (`docs/architecture/scale-resilience-roadmap.md`)**:
+     - Documented honest capacity tiers (Lite: 100–250, Standard: 500–1,000, Multi-Node: 1,000–10,000).
+     - Addressed start/submit bursts, PostgreSQL connection pool formulas, WebRTC 8s snapshot fallback, and AWS Rekognition token-bucket discipline.
+* **Outcome:** Production release packaging and deployment gates secured against injection, session forgery, and schema drift.

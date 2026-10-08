@@ -20,6 +20,12 @@ while [[ $# -gt 0 ]]; do
             OVERRIDE_REASON="$2"
             shift 2
             ;;
+        --override-b64)
+            if [ -n "$2" ]; then
+                OVERRIDE_REASON=$(echo "$2" | base64 -d 2>/dev/null || echo "$2")
+            fi
+            shift 2
+            ;;
         --expected-sha)
             EXPECTED_SHA="$2"
             shift 2
@@ -31,8 +37,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [ -n "$OVERRIDE_REASON" ]; then
+    if ! [[ "$OVERRIDE_REASON" =~ ^[A-Za-z0-9\ ._:,-]{1,120}$ ]]; then
+        echo "[x] Error: Invalid override reason format."
+        exit 1
+    fi
+fi
+
 if [ -z "$RELEASE_TARBALL" ] || [ -z "$BUCKET_NAME" ]; then
-    echo "Usage: $0 <release-tarball-name> <s3-bucket-name> [--override <reason>] [--expected-sha <sha>]"
+    echo "Usage: $0 <release-tarball-name> <s3-bucket-name> [--override <reason> | --override-b64 <b64>] [--expected-sha <sha>]"
     exit 1
 fi
 
@@ -95,6 +108,21 @@ aws s3 cp "s3://$BUCKET_NAME/releases/$RELEASE_TARBALL" "/tmp/$RELEASE_TARBALL"
 echo "[2/6] Extracting release payload..."
 tar -xzf "/tmp/$RELEASE_TARBALL" -C "$NEW_RELEASE_DIR"
 rm -f "/tmp/$RELEASE_TARBALL"
+
+# Verify EXPECTED_SHA against extracted VERSION file (§1 DEP-1 / C5.1)
+if [ -n "$EXPECTED_SHA" ]; then
+    if [ -f "$NEW_RELEASE_DIR/VERSION" ]; then
+        DEPLOYED_SHA=$(grep '"gitSha"' "$NEW_RELEASE_DIR/VERSION" | cut -d '"' -f 4 || true)
+        if [ "$DEPLOYED_SHA" != "$EXPECTED_SHA" ]; then
+            echo "[x] Git SHA verification failed: expected $EXPECTED_SHA, got $DEPLOYED_SHA"
+            rm -rf "$NEW_RELEASE_DIR"
+            exit 1
+        fi
+        echo "[✓] Git SHA verified against release payload: $DEPLOYED_SHA"
+    else
+        echo "[-] Warning: $NEW_RELEASE_DIR/VERSION missing, skipping SHA verification."
+    fi
+fi
 
 # Ensure correct permissions
 chown -R proctornet:proctornet "$NEW_RELEASE_DIR"
