@@ -13,7 +13,8 @@ import {
   RoomEvent,
   Track,
   VideoQuality,
-  ConnectionState
+  ConnectionState,
+  VideoPreset
 } from 'livekit-client'
 
 export class ProctorPublisher {
@@ -109,13 +110,14 @@ export class ProctorPublisher {
             maxFramerate: 5
           },
           screenShareSimulcastLayers: [
-            { width: 640, height: 360, maxBitrate: 120_000, maxFramerate: 3 }
+            new VideoPreset(640, 360, 120_000, 3)
           ]
         }
       )
 
       const screenPub = this.room.localParticipant.getTrackPublication(Track.Source.ScreenShare)
       this.screenTrack = screenPub?.track
+
 
       if (this.screenTrack?.mediaStreamTrack) {
         this.screenTrack.mediaStreamTrack.onended = () => {

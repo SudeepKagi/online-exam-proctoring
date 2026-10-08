@@ -29,7 +29,7 @@
 | **Q3-06**  | §3 Q3.6 | Student pages (exams, lobby, results, profile/enrolment) on v1 endpoints | `npm run build` | 2026-10-05T02:41:08Z | PASSED | `proctornet/frontend/src/pages/student/` |
 | **Q3-07**  | §3 Q3.7 | Remove window.screenShareStream & read vpnEnforcement from /config | `npm run build` | 2026-10-05T02:41:08Z | PASSED | `proctornet/frontend/src/lib/mediaState.js` |
 | **BUG-A02** | Integration | Plumb attemptId into useExamSocket & assert room join | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/hooks/useExamSocket.js` |
-| **BUG-A03** | Integration | Student ExamInterface publishes LiveKit stream | `npx playwright test tests/e2e/media-sfu.spec.js` | 2026-10-07T02:20:00Z | FAILED | [#BUG-A03](https://github.com/SudeepKagi/online-exam-proctoring/issues/BUG-A03) (`reports/evidence/BUG-A03.txt`) |
+| **BUG-A03** | Integration | Student ExamInterface publishes LiveKit stream | `npx playwright test tests/e2e/media-sfu.spec.js` | 2026-10-08T15:25:39Z | PASSED | `reports/evidence/BUG-A03.txt` |
 | **BUG-A04** | Integration | Error envelope unification frontend ↔ backend | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/backend/src/shared/errors.js` |
 | **BUG-A05** | Integration | Exam countdown timer derived from expiresAt + serverClock | `node --test tests/p6-frontend-autosave.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/hooks/useExamTimer.js` |
 | **BUG-A06** | Integration | Shared violation event catalogue & socket validation | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `shared/violationTypes.json` |
@@ -82,9 +82,9 @@
 | **BUG-G07** | Infra | Secret scanning of git history with gitleaks | `gitleaks detect --verbose` | 2026-10-05T07:15:30Z | PASSED | `docs/qa/gitleaks_audit.json` |
 | **BUG-H01** | Frontend | Submit error handling fix: never treat 403 as success | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
 | **BUG-H02** | Frontend | Integrate autosaveManager (batching, CAS, debounce) | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
-| **BUG-H03** | Frontend | Fix landing page tab filter & mobile navigation | `npx playwright test tests/e2e/landing-nav.spec.js` | 2026-10-07T02:20:00Z | FAILED | [#BUG-H03](https://github.com/SudeepKagi/online-exam-proctoring/issues/BUG-H03) (`reports/evidence/BUG-H03.txt`) |
+| **BUG-H03** | Frontend | Fix landing page tab filter & mobile navigation | `npx playwright test tests/e2e/landing-nav.spec.js` | 2026-10-08T15:20:19Z | PASSED | `reports/evidence/BUG-H03.txt` |
 | **BUG-H04** | Frontend | Server-driven vpnEnforcement configuration flag | `node --test tests/q3-student-flow.test.js` | 2026-10-05T02:40:00Z | PASSED | `proctornet/frontend/src/pages/student/ExamInterface.jsx` |
-| **BUG-H05** | Frontend | Deterministic leader tab election & graceful face model fallback | `npx playwright test tests/e2e/tab-guard.spec.js` | 2026-10-07T02:20:00Z | FAILED | [#BUG-H05](https://github.com/SudeepKagi/online-exam-proctoring/issues/BUG-H05) (`reports/evidence/BUG-H05.txt`) |
+| **BUG-H05** | Frontend | Deterministic leader tab election & graceful face model fallback | `npx playwright test tests/e2e/tab-guard.spec.js` | 2026-10-08T15:20:55Z | PASSED | `reports/evidence/BUG-H05.txt` |
 | **BUG-H06** | Frontend | Axios client interceptors for Idempotency-Key & Request-ID | `node tests/api_client.test.js` | 2026-10-08T01:44:33Z | PASSED | `reports/evidence/BUG-H06.txt` |
 | **BUG-J01** | Integrity | Documentation link integrity CI checker | `node scripts/ci/check-doc-links.js` | 2026-10-05T10:38:05Z | PASSED | `scripts/ci/check-doc-links.js` |
 | **BUG-J02** | Abstraction | Feature-truth audit of setting toggles (wire or remove) | `node tests/feature_truth.test.js` | 2026-10-08T01:44:34Z | PASSED | `reports/evidence/BUG-J02.txt` |

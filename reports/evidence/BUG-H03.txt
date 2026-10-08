@@ -1,5 +1,8 @@
-﻿[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
-Error: No tests found.
-Make sure that arguments are regular expressions matching test files.
-You may need to escape symbols like "$" or "*" and quote the arguments.
+[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
 
+Running 2 tests using 1 worker
+
+  ok 1 [chrome] › tests\e2e\landing-nav.spec.js:4:3 › BUG-H03 — Landing Page Tab Filter & Mobile Navigation › Landing page role portal tabs filter role cards accurately (2.6s)
+  ok 2 [chrome] › tests\e2e\landing-nav.spec.js:56:3 › BUG-H03 — Landing Page Tab Filter & Mobile Navigation › Mobile viewport navigation menu toggles correctly and renders login links (2.1s)
+
+  2 passed (13.8s)

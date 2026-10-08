@@ -1,5 +1,8 @@
-﻿[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
-Error: No tests found.
-Make sure that arguments are regular expressions matching test files.
-You may need to escape symbols like "$" or "*" and quote the arguments.
+[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
 
+Running 2 tests using 1 worker
+
+  ok 1 [chrome] › tests\e2e\tab-guard.spec.js:4:3 › BUG-H05 — Deterministic Leader Tab Election & Graceful Face Model Fallback › Deterministic multi-tab concurrency guard blocks secondary duplicate tabs via BroadcastChannel (3.3s)
+  ok 2 [chrome] › tests\e2e\tab-guard.spec.js:60:3 › BUG-H05 — Deterministic Leader Tab Election & Graceful Face Model Fallback › Graceful face model fallback catches unavailable models without crashing or false violations (1.7s)
+
+  2 passed (12.6s)

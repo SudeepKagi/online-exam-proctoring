@@ -1,5 +1,7 @@
-﻿[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
-Error: No tests found.
-Make sure that arguments are regular expressions matching test files.
-You may need to escape symbols like "$" or "*" and quote the arguments.
+[WebServer] Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ drop: [] }`
 
+Running 1 test using 1 worker
+
+  ok 1 [chrome] › tests\e2e\media-sfu.spec.js:24:3 › BUG-A03 — Student ExamInterface Publishes LiveKit Stream › Student publisher initializes with media token and publishes camera stream to LiveKit SFU (3.9s)
+
+  1 passed (48.0s)
