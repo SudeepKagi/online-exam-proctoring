@@ -59,6 +59,8 @@ jobs:
         run: node scripts/ci/scan-banned-terms.js
 
       - name: Route Inventory Drift Check (generate-route-inventory.js --check)
+        env:
+          NODE_PATH: proctornet/backend/node_modules
         run: node scripts/ci/generate-route-inventory.js --check
 
   # ----------------------------------------------------------------------------

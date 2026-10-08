@@ -14,6 +14,18 @@ process.env.START_WORKERS = 'false'
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const INVENTORY_FILE = path.join(REPO_ROOT, 'docs/api/ROUTE_INVENTORY.md')
 
+// Ensure backend node_modules is resolvable when script is executed from repo root
+const backendNodeModules = path.join(REPO_ROOT, 'proctornet/backend/node_modules')
+if (fs.existsSync(backendNodeModules)) {
+  const Module = require('module')
+  if (Module.globalPaths && !Module.globalPaths.includes(backendNodeModules)) {
+    Module.globalPaths.push(backendNodeModules)
+  }
+  if (!module.paths.includes(backendNodeModules)) {
+    module.paths.push(backendNodeModules)
+  }
+}
+
 function extractRoutes() {
   const v1Router = require('../../proctornet/backend/src/modules/router')
   const routes = []
