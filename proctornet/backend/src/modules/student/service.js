@@ -1,4 +1,5 @@
 const studentRepository = require('./repository')
+const { prisma } = require('../../infra/postgres/client')
 const { attemptService } = require('../attempts/service')
 const { faceVerificationService } = require('../media/faceVerificationService')
 const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
@@ -27,16 +28,55 @@ class StudentService {
     if (data.usn !== undefined && data.usn !== student.usn) {
       throw new ForbiddenError('Modifying USN is strictly prohibited')
     }
-    if (data.email !== undefined && data.email !== student.email) {
-      throw new ForbiddenError('Modifying institutional email is strictly prohibited')
-    }
     if (data.profileStatus !== undefined || data.approvalStatus !== undefined) {
       throw new ForbiddenError('Modifying verification or approval status is strictly prohibited')
     }
 
     const allowed = {}
-    if (data.name) allowed.name = data.name
-    if (data.phone !== undefined) allowed.phone = data.phone
+    if (data.name && typeof data.name === 'string' && data.name.trim()) {
+      allowed.name = data.name.trim()
+    }
+    if (data.phone !== undefined) {
+      allowed.phone = data.phone ? String(data.phone).trim() : null
+    }
+    if (data.email && typeof data.email === 'string' && data.email.trim() !== student.email) {
+      const emailTrimmed = data.email.trim().toLowerCase()
+      const existing = await prisma.student.findUnique({ where: { email: emailTrimmed } })
+      if (existing && existing.id !== studentId) {
+        throw new ValidationError('This institutional email address is already in use by another student')
+      }
+      allowed.email = emailTrimmed
+    }
+    if (data.semester !== undefined) {
+      const sem = parseInt(data.semester, 10)
+      if (!isNaN(sem) && sem >= 1 && sem <= 8) {
+        allowed.semester = sem
+      }
+    }
+
+    const deptInput = data.departmentCode || data.department
+    if (deptInput && typeof deptInput === 'string') {
+      const codeOrName = deptInput.trim()
+      const matchedDept = await prisma.department.findFirst({
+        where: {
+          OR: [
+            { code: { equals: codeOrName, mode: 'insensitive' } },
+            { name: { equals: codeOrName, mode: 'insensitive' } },
+            { name: { contains: codeOrName, mode: 'insensitive' } }
+          ]
+        }
+      })
+      if (matchedDept) {
+        allowed.departmentCode = matchedDept.code
+      }
+    }
+
+    if (data.facePhotoKey || data.facePhotoUrl) {
+      allowed.facePhotoKey = data.facePhotoKey || data.facePhotoUrl
+    }
+    if (data.idCardPhotoKey || data.idCardPhotoUrl) {
+      allowed.idCardPhotoKey = data.idCardPhotoKey || data.idCardPhotoUrl
+    }
 
     const updated = await studentRepository.updateStudent(studentId, allowed)
     return toStudentProfileDTO(updated)

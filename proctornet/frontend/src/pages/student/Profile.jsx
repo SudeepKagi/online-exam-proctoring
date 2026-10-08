@@ -55,10 +55,10 @@ export default function StudentProfile() {
         setUsn(s.usn || user?.usn || '')
         setEmail(s.email || user?.email || '')
         setPhone(s.phone || '')
-        setDepartment(s.department || 'Computer Science & Engineering')
+        setDepartment(s.departmentCode || s.department || 'ECE')
         setSemester(s.semester || 1)
-        setFacePhotoUrl(s.facePhotoUrl || user?.facePhotoUrl || '')
-        setIdCardPhotoUrl(s.idCardPhotoUrl || user?.idCardPhotoUrl || '')
+        setFacePhotoUrl(s.facePhotoKey || s.facePhotoUrl || user?.facePhotoUrl || '')
+        setIdCardPhotoUrl(s.idCardPhotoKey || s.idCardPhotoUrl || user?.idCardPhotoUrl || '')
       }
     } catch (err) {
       console.warn('Failed to load profile details:', err)
@@ -139,16 +139,25 @@ export default function StudentProfile() {
         })
       }
 
-      await api.put('/student/profile', {
-        name,
-        phone
-      })
+      const payload = {
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone ? phone.trim() : null,
+        departmentCode: department,
+        department,
+        semester: Number(semester)
+      }
+      if (facePhotoUrl) payload.facePhotoUrl = facePhotoUrl
+      if (idCardPhotoUrl) payload.idCardPhotoUrl = idCardPhotoUrl
+
+      await api.put('/student/profile', payload)
 
       toast.success('Profile credentials updated successfully.')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
       await refreshUser()
+      await fetchProfile()
     } catch (err) {
       toast.error(extractErrorMessage(err, 'Failed to update profile.'))
     } finally {
@@ -219,17 +228,20 @@ export default function StudentProfile() {
                 <input
                   type="text"
                   value={name}
-                  disabled
-                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-700 font-medium cursor-not-allowed"
+                  onChange={e => setName(e.target.value)}
+                  required
+                  placeholder="Enter candidate full name"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">University USN / Roll No.</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">University USN / Roll No. (Official)</label>
                 <input
                   type="text"
                   value={usn}
                   disabled
+                  title="USN is bound to official university registry and cannot be modified"
                   className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono uppercase text-slate-700 font-medium cursor-not-allowed"
                 />
               </div>
@@ -263,13 +275,12 @@ export default function StudentProfile() {
                   onChange={e => setDepartment(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
                 >
-                  <option value="Computer Science & Engineering">Computer Science & Engineering (CSE)</option>
-                  <option value="Information Science & Engineering">Information Science & Engineering (ISE)</option>
-                  <option value="Data Science & Computing">Data Science & Computing (DSC)</option>
-                  <option value="Electronics & Communication">Electronics & Communication (ECE)</option>
-                  <option value="Electrical & Electronics">Electrical & Electronics (EEE)</option>
-                  <option value="Mechanical Engineering">Mechanical Engineering</option>
-                  <option value="Civil Engineering">Civil Engineering</option>
+                  <option value="ECE">Electronics & Communication Engineering (ECE)</option>
+                  <option value="CSE">Computer Science & Engineering (CSE)</option>
+                  <option value="ISE">Information Science & Engineering (ISE)</option>
+                  <option value="AIML">Artificial Intelligence & Machine Learning (AIML)</option>
+                  <option value="ME">Mechanical Engineering (ME)</option>
+                  <option value="CV">Civil Engineering (CV)</option>
                 </select>
               </div>
 

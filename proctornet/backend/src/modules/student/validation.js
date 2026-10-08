@@ -2,7 +2,15 @@ const { z } = require('zod')
 
 const updateProfileSchema = z.object({
   name: z.string().optional(),
-  phone: z.string().optional().nullable()
+  phone: z.string().optional().nullable(),
+  email: z.string().email().optional(),
+  department: z.string().optional(),
+  departmentCode: z.string().optional(),
+  semester: z.union([z.number(), z.string()]).optional(),
+  facePhotoUrl: z.string().optional().nullable(),
+  facePhotoKey: z.string().optional().nullable(),
+  idCardPhotoUrl: z.string().optional().nullable(),
+  idCardPhotoKey: z.string().optional().nullable()
 }).passthrough()
 
 const consentSchema = z.object({
