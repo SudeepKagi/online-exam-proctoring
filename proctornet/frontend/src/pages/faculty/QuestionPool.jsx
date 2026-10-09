@@ -198,11 +198,10 @@ export default function QuestionPool() {
             <p className="text-xs font-mono text-muted-foreground mt-0.5">Subject: {exam?.subject || 'CS301'} • Total Questions: {questions.length}</p>
           </div>
           <div className="flex items-center gap-2 font-mono">
-            {llmEnabled && (
-              <Button size="sm" variant={showAI ? "default" : "outline"} onClick={() => setShowAI(s => !s)} className="text-xs">
-                <Sparkles size={14} className="mr-1.5" /> AI Generator
-              </Button>
-            )}
+            <Button size="sm" variant={showAI ? "default" : "outline"} onClick={() => setShowAI(s => !s)} className="text-xs">
+              <Sparkles size={14} className="mr-1.5" /> AI Generator
+              {!llmEnabled && <span className="ml-1 text-[10px] opacity-75">(Setup)</span>}
+            </Button>
             <Button size="sm" onClick={() => {
               setEditQ(null)
               setForm({
@@ -219,6 +218,12 @@ export default function QuestionPool() {
         {/* AI Generator Panel */}
         {showAI && (
           <Card className="bg-primary/5 border-primary/20 p-5 rounded-2xl">
+            {!llmEnabled && (
+              <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 space-y-0.5">
+                <span className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> LLM Provider Configuration Required</span>
+                <p className="text-[11px] opacity-90">To activate AI generation, configure <code className="font-mono bg-amber-500/20 px-1 rounded">LLM_PROVIDER</code> and <code className="font-mono bg-amber-500/20 px-1 rounded">LLM_API_KEY</code> on the server.</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
@@ -271,11 +276,11 @@ export default function QuestionPool() {
               <div className="flex items-end">
                 <Button
                   onClick={handleGenerateAI}
-                  disabled={aiGenerating}
+                  disabled={!llmEnabled || aiGenerating}
                   className="w-full text-xs font-bold"
                 >
                   {aiGenerating ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Sparkles size={14} className="mr-1.5" />}
-                  {aiGenerating ? 'Generating Questions…' : `Generate ${aiCount} Questions`}
+                  {!llmEnabled ? 'Configure LLM Key' : aiGenerating ? 'Generating Questions…' : `Generate ${aiCount} Questions`}
                 </Button>
               </div>
             </div>

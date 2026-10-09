@@ -235,7 +235,8 @@ router.post('/exams/:examId/ai-generate', validateBody(aiGenerateSchema), async 
 router.post('/exams/ai-generate-preview', validateBody(aiGenerateSchema), async (req, res, next) => {
   try {
     const preview = await facultyService.generateQuestionsPreview(req.body)
-    res.status(200).json({ success: true, count: preview.length, preview })
+    const questions = preview?.questions || (Array.isArray(preview) ? preview : [])
+    res.status(200).json({ success: true, count: questions.length, questions, preview })
   } catch (err) {
     next(err)
   }

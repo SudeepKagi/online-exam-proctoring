@@ -9,7 +9,7 @@ const DEPARTMENTS = ['CSE', 'ECE', 'ME', 'CV', 'ISE', 'EEE']
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 // ── AI Generator Panel for Wizard ─────────────────────────────
-function AIGeneratorPanel({ onGenerated }) {
+function AIGeneratorPanel({ onGenerated, llmEnabled }) {
   const [file, setFile] = useState(null)
   const [extractedText, setExtractedText] = useState('')
   const [numMCQ, setNumMCQ] = useState(5)
@@ -84,7 +84,7 @@ function AIGeneratorPanel({ onGenerated }) {
         marksPerMCQ: parseFloat(marksPerMCQ)
       })
       
-      const newQuestions = res.data.questions || []
+      const newQuestions = res.data.questions || res.data.preview?.questions || (Array.isArray(res.data.preview) ? res.data.preview : [])
       if (newQuestions.length === 0) {
         throw new Error('No questions returned')
       }
@@ -109,6 +109,19 @@ function AIGeneratorPanel({ onGenerated }) {
           <p className="text-xs text-slate-500">Upload a PDF or paste notes — question assistant will generate your question pool</p>
         </div>
       </div>
+
+      {!llmEnabled && (
+        <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+          <Sparkles size={16} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="space-y-0.5">
+            <p className="font-bold text-amber-900">LLM Provider Configuration Required</p>
+            <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
+              Automated question generation requires an active AI provider (Google Gemini, OpenAI, or Anthropic).
+              Configure <code className="bg-amber-100/90 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">LLM_PROVIDER</code> and <code className="bg-amber-100/90 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">LLM_API_KEY</code> on the server to enable generation.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* PDF Upload */}
       <div
@@ -169,10 +182,14 @@ function AIGeneratorPanel({ onGenerated }) {
             className="text-xs text-[#2f80ed] hover:underline flex items-center gap-1 font-bold"><RefreshCw size={12} /> Generate more</button>
         </div>
       ) : (
-        <button onClick={handleGenerate} disabled={generating || extractedText.trim().length < 50}
-          className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+        <button
+          onClick={handleGenerate}
+          disabled={!llmEnabled || generating || extractedText.trim().length < 50}
+          title={!llmEnabled ? 'Configure LLM_PROVIDER in server environment to enable generation' : ''}
+          className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+        >
           {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
+          {!llmEnabled ? 'Configure LLM API Key to Enable Generation' : generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
         </button>
       )}
     </div>
@@ -663,19 +680,22 @@ export default function CreateExam() {
                     >
                       <Plus size={15} /> Add Manually
                     </button>
-                    {llmEnabled && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('ai')}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 ${
-                          activeTab === 'ai'
-                            ? 'bg-[#2f80ed] text-white shadow-xs'
-                            : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
-                        }`}
-                      >
-                        <Sparkles size={15} /> AI Generate
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('ai')}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        activeTab === 'ai'
+                          ? 'bg-[#2f80ed] text-white shadow-xs'
+                          : 'bg-[#f8fafc] border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Sparkles size={15} /> AI Generate
+                      {!llmEnabled && (
+                        <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-200 px-1.5 py-0.2 rounded font-bold">
+                          Config Needed
+                        </span>
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -760,7 +780,7 @@ export default function CreateExam() {
                     </button>
                   </div>
                 ) : (
-                  <AIGeneratorPanel onGenerated={handleAIGenerated} />
+                  <AIGeneratorPanel onGenerated={handleAIGenerated} llmEnabled={llmEnabled} />
                 )}
               </div>
             </div>

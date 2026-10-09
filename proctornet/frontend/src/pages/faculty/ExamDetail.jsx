@@ -503,7 +503,7 @@ export default function ExamDetail() {
           {activeTab === 'questions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {/* Premium AI Generator Callout */}
-              {exam.status === 'DRAFT' && llmEnabled && (
+              {exam.status === 'DRAFT' && (
                 <div style={{ 
                   display: 'flex', 
                   justifyContent: 'space-between', 
@@ -531,7 +531,14 @@ export default function ExamDetail() {
                       <Icon name="bolt" size={24} />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--on-surface)' }}>AI-Supported Question Generator & Pool</h4>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--on-surface)', display: 'flex', alignItems: 'center' }}>
+                        AI-Supported Question Generator & Pool
+                        {!llmEnabled && (
+                          <span style={{ fontSize: '0.6875rem', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', padding: '0.15rem 0.5rem', borderRadius: '6px', fontWeight: 700, marginLeft: '0.5rem' }}>
+                            Config Needed
+                          </span>
+                        )}
+                      </h4>
                       <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--on-surface-variant)', marginTop: '0.25rem', lineHeight: '1.4' }}>
                         Generate exam questions instantly from lecture notes or PDFs using Gemini AI, or manage the advanced question pool.
                       </p>
