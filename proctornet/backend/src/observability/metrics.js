@@ -140,6 +140,20 @@ const agentFindingsOpenGauge = new client.Gauge({
   registers: [register],
 })
 
+// ── Autosave Metrics (Prompt 7 / T1) ──
+const autosaveItemsTotal = new client.Counter({
+  name: 'autosave_items_total',
+  help: 'Total number of autosave item attempts by result status',
+  labelNames: ['result'],
+  registers: [register],
+})
+
+const autosaveConflictsTotal = new client.Counter({
+  name: 'autosave_conflicts_total',
+  help: 'Total number of optimistic concurrency conflicts on autosave',
+  registers: [register],
+})
+
 module.exports = {
   register,
   metricsMiddleware,
@@ -153,5 +167,7 @@ module.exports = {
   agentSessionsGauge,
   agentRejectionsTotal,
   agentFindingsOpenGauge,
+  autosaveItemsTotal,
+  autosaveConflictsTotal,
 }
 

@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-C01
+Command: node --test tests/q4-async-resilience.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T01:23:35Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ﻿{"level":"info","time":"2026-10-07T01:22:24.702Z","pid":26252,"hostname":"MSI","msg":"Connected to Redis server"}
 {"level":"info","time":"2026-10-07T01:22:24.716Z","pid":26252,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
 {"level":"info","time":"2026-10-07T01:22:24.720Z","pid":26252,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}

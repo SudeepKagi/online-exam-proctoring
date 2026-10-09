@@ -1,4 +1,11 @@
 ================================================================================
+EVIDENCE ARTIFACT: S5-01
+Command: node --test tests/ci_workflow_integrity.test.js tests/active_attempts_gate.test.js tests/version_endpoint.test.js tests/release_packaging.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T02:28:30Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
+================================================================================
 PROCTORNET S5 CI/CD PIPELINE OVERHAUL VERIFICATION REPORT
 Timestamp: 2026-10-08T02:28:30Z
 Target: https://proctornet.duckdns.org (EC2 Instance i-0d242d962823f0a89, ap-south-1)

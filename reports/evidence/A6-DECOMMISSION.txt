@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: A6-01
+Command: node --test tests/route-matrix.test.js && node --test tests/agent-module.test.js && node scripts/ci/check-no-stubs.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T10:24:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 CLAIM A6-01: Enforcement, Lifecycle & Legacy Decommission Complete
 Generated: 2026-10-07T10:24:00Z
 Test Framework: Node.js Test Runner (v22.x)

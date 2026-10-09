@@ -11,6 +11,10 @@ const {
   toSaveAnswerResponseDTO,
   toBatchSaveAnswersResponseDTO
 } = require('./dto')
+const {
+  autosaveItemsTotal,
+  autosaveConflictsTotal
+} = require('../../observability/metrics')
 
 class AnswerService {
   /**
@@ -27,6 +31,7 @@ class AnswerService {
     )
 
     if (updatedRevision !== null) {
+      autosaveItemsTotal.inc({ result: 'OK' })
       return toSaveAnswerResponseDTO(updatedRevision)
     }
 
@@ -38,6 +43,11 @@ class AnswerService {
       optionId,
       revision
     )
+
+    autosaveItemsTotal.inc({ result: diag.failure || 'ERROR' })
+    if (diag.failure === 'STALE_REVISION') {
+      autosaveConflictsTotal.inc()
+    }
 
     switch (diag.failure) {
       case 'NOT_FOUND':
@@ -86,6 +96,12 @@ class AnswerService {
     }
 
     const results = await answerRepository.saveBatchAnswers(attemptId, studentId, answers)
+    for (const res of results) {
+      autosaveItemsTotal.inc({ result: res.status || (res.success ? 'OK' : 'ERROR') })
+      if (res.status === 'STALE_REVISION') {
+        autosaveConflictsTotal.inc()
+      }
+    }
     return toBatchSaveAnswersResponseDTO(results)
   }
 }

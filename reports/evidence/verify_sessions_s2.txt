@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: S2-01
+Command: node scripts/ops/verify-sessions-s2.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T00:54:15Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ==========================================================
  Phase S2: Sessions & Authentication Verification Suite
  Target Domain: https://proctornet.duckdns.org

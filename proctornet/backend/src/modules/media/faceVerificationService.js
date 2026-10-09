@@ -536,6 +536,28 @@ class FaceVerificationService {
       }
     })
 
+    // Emit identity:decision to attempt room
+    try {
+      const { socketEmitter } = require('../../infra/websocket/emitter')
+      socketEmitter.emitToAttempt(attemptId, 'identity:decision', {
+        attemptId,
+        decision,
+        verified: decision === 'PASS',
+        reason
+      })
+    } catch (_) {}
+    try {
+      const { io } = require('../../app')
+      if (io) {
+        io.to(`attempt:${attemptId}`).emit('identity:decision', {
+          attemptId,
+          decision,
+          verified: decision === 'PASS',
+          reason
+        })
+      }
+    } catch (_) {}
+
     return overrideRecord
   }
 

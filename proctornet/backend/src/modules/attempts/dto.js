@@ -24,7 +24,7 @@ function toStudentAttemptDTO(attempt, questionsWithAnswers = []) {
       marks: q.marks,
       negativeMarks: q.negativeMarks || 0,
       selectedOptionId: q.selectedOptionId || null,
-      revision: q.revision || 1,
+      revision: typeof q.revision === 'number' ? q.revision : (q.selectedOptionId ? 1 : 0),
       options: sanitizedOptions
     }
   })

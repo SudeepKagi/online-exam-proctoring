@@ -1,11 +1,12 @@
 /**
  * autosaveManager.js
- * Robust client-side autosave manager (Notion 13.6/13.7 & Task 8 / Phase S2).
- * - Dirty map keyed by attemptQuestionId
- * - Automatic background flush every 5s + on visibilitychange/blur
- * - Revision tracking with 409 STALE_REVISION reconciliation
- * - Exponential backoff with jitter on 429/503/network failure
- * - Retains uncommitted dirty state in memory and sessionStorage on failure
+ * Robust client-side autosave manager (Notion 13.6/13.7 & Task 8 / Phase S2 / Truth Pass T1).
+ * - Per-answer revision tracking via revisionByAqId (CAS: revision = expected)
+ * - Per-item batch result handling (deletes OK, reconciles STALE_REVISION, surfaces terminal errors)
+ * - Single cancellable retry timer with exponential backoff and jitter (no unbounded recursion)
+ * - Respects Retry-After headers and caps retry attempts per item
+ * - SessionStorage keyed by attempt with schema versioning and outdated entry pruning
+ * - Proper lifecycle teardown removing all listeners and timers
  * - Flush-before-submit with stable, reusable Idempotency-Key
  */
 
@@ -15,8 +16,9 @@ import { serverClock } from './serverClock'
 export class AutosaveManager {
   constructor(options = {}) {
     this.attemptId = options.attemptId || null
-    this.currentRevision = options.initialRevision || 1
-    this.dirtyMap = new Map() // attemptQuestionId -> { attemptQuestionId, selectedOptionId, revision, clientTimestamp }
+    this.revisionByAqId = new Map() // attemptQuestionId -> confirmed revision (unanswered = 0)
+    this.dirtyMap = new Map() // attemptQuestionId -> { attemptQuestionId, selectedOptionId, expectedRevision, clientTimestamp, attempts }
+    this.terminalErrors = new Map() // attemptQuestionId -> { attemptQuestionId, status, error, timestamp }
     this.isFlushing = false
     this.isSubmitting = false
     this.backoffMs = 1000
@@ -24,7 +26,25 @@ export class AutosaveManager {
     this.stableIdempotencyKey = null
     this.flushTimer = null
     this.debounceTimer = null
+    this.retryTimer = null
     this.onStateChangeCallbacks = new Set()
+
+    // Bound listeners for clean destruction
+    this._onVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden' && this.dirtyMap.size > 0) {
+        this.flush().catch(() => {})
+      }
+    }
+    this._onBlur = () => {
+      if (this.dirtyMap.size > 0) {
+        this.flush().catch(() => {})
+      }
+    }
+    this._onPageHide = () => {
+      if (this.dirtyMap.size > 0) {
+        this.flush().catch(() => {})
+      }
+    }
 
     this._setupAutoFlush()
     if (this.attemptId) {
@@ -32,17 +52,41 @@ export class AutosaveManager {
     }
   }
 
-  setAttemptId(attemptId, revision = 1) {
+  /**
+   * Set or update current active attempt and optionally hydrate question revisions
+   */
+  setAttemptId(attemptId, questions = []) {
     this.attemptId = attemptId
-    this.currentRevision = revision
+    if (Array.isArray(questions) && questions.length > 0) {
+      this.setQuestionRevisions(questions)
+    }
     this._restoreFromSessionStorage()
+    this._notifyStateChange()
+  }
+
+  /**
+   * Hydrate per-question server revisions (unanswered = 0)
+   */
+  setQuestionRevisions(questions = []) {
+    if (!Array.isArray(questions)) return
+    for (const q of questions) {
+      const aqId = q.attemptQuestionId || q.id || q.questionId
+      if (aqId) {
+        const rev = typeof q.revision === 'number' ? q.revision : (q.selectedOptionId ? 1 : 0)
+        this.revisionByAqId.set(aqId, rev)
+      }
+    }
   }
 
   _persistToSessionStorage() {
     if (typeof sessionStorage !== 'undefined' && this.attemptId) {
       try {
-        const arr = Array.from(this.dirtyMap.entries())
-        sessionStorage.setItem(`pn_autosave_${this.attemptId}`, JSON.stringify(arr))
+        const payload = {
+          version: 1,
+          attemptId: this.attemptId,
+          entries: Array.from(this.dirtyMap.entries())
+        }
+        sessionStorage.setItem(`pn_autosave_${this.attemptId}`, JSON.stringify(payload))
       } catch (_e) {}
     }
   }
@@ -52,45 +96,42 @@ export class AutosaveManager {
       try {
         const raw = sessionStorage.getItem(`pn_autosave_${this.attemptId}`)
         if (raw) {
-          const entries = JSON.parse(raw)
-          for (const [k, v] of entries) {
-            if (!this.dirtyMap.has(k)) {
-              this.dirtyMap.set(k, v)
+          const parsed = JSON.parse(raw)
+          // Ensure schema version matches and attemptId is correct
+          if (parsed && parsed.version === 1 && parsed.attemptId === this.attemptId && Array.isArray(parsed.entries)) {
+            for (const [k, v] of parsed.entries) {
+              const confirmedRev = this.revisionByAqId.get(k)
+              // If server has already confirmed a higher revision, drop stale client entry
+              if (typeof confirmedRev === 'number' && typeof v.expectedRevision === 'number' && v.expectedRevision < confirmedRev) {
+                continue
+              }
+              if (!this.dirtyMap.has(k)) {
+                this.dirtyMap.set(k, {
+                  ...v,
+                  expectedRevision: confirmedRev ?? v.expectedRevision ?? 0
+                })
+              }
             }
+            this._notifyStateChange()
           }
-          this._notifyStateChange()
         }
       } catch (_e) {}
     }
   }
 
   _setupAutoFlush() {
-    // 1. Periodic 5-second background flush (Task 8 / Q3.2)
+    // 1. Periodic 5-second background flush
     this.flushTimer = setInterval(() => {
       if (this.dirtyMap.size > 0 && !this.isFlushing && !this.isSubmitting) {
         this.flush().catch(() => {})
       }
     }, 5000)
 
-    // 2. Immediate flush on tab blur, visibility change, or pagehide (Q3.2)
+    // 2. Immediate flush on tab blur, visibility change, or pagehide
     if (typeof window !== 'undefined') {
-      window.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && this.dirtyMap.size > 0) {
-          this.flush().catch(() => {})
-        }
-      })
-
-      window.addEventListener('blur', () => {
-        if (this.dirtyMap.size > 0) {
-          this.flush().catch(() => {})
-        }
-      })
-
-      window.addEventListener('pagehide', () => {
-        if (this.dirtyMap.size > 0) {
-          this.flush().catch(() => {})
-        }
-      })
+      document.addEventListener('visibilitychange', this._onVisibilityChange)
+      window.addEventListener('blur', this._onBlur)
+      window.addEventListener('pagehide', this._onPageHide)
     }
   }
 
@@ -103,20 +144,37 @@ export class AutosaveManager {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
     }
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
+
+    if (typeof window !== 'undefined') {
+      document.removeEventListener('visibilitychange', this._onVisibilityChange)
+      window.removeEventListener('blur', this._onBlur)
+      window.removeEventListener('pagehide', this._onPageHide)
+    }
   }
 
   /**
    * Record candidate answer selection
    */
   recordAnswer(attemptQuestionId, selectedOptionId) {
+    const existing = this.dirtyMap.get(attemptQuestionId)
+    const expectedRevision = this.revisionByAqId.get(attemptQuestionId) ?? 0
+
     const entry = {
       attemptQuestionId,
       selectedOptionId,
-      revision: this.currentRevision,
-      clientTimestamp: new Date(serverClock.now()).toISOString()
+      expectedRevision: existing ? existing.expectedRevision : expectedRevision,
+      clientTimestamp: new Date(serverClock.now()).toISOString(),
+      attempts: existing ? existing.attempts : 0
     }
 
     this.dirtyMap.set(attemptQuestionId, entry)
+    // Clear any previous terminal error for this question on user interaction
+    this.terminalErrors.delete(attemptQuestionId)
+
     this._persistToSessionStorage()
     this._notifyStateChange()
 
@@ -142,7 +200,29 @@ export class AutosaveManager {
   }
 
   /**
-   * Flush all dirty answers to backend
+   * Schedule retry with single timer and jittered exponential backoff
+   */
+  _scheduleRetry(delayMs) {
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+    }
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null
+      if (this.dirtyMap.size > 0 && !this.isFlushing && !this.isSubmitting) {
+        this.flush().catch(() => {})
+      }
+    }, delayMs)
+  }
+
+  _calculateBackoff() {
+    const jitter = 0.8 + 0.4 * Math.random()
+    const nextDelay = Math.min(this.maxBackoffMs, this.backoffMs * 2) * jitter
+    this.backoffMs = Math.min(this.maxBackoffMs, this.backoffMs * 2)
+    return Math.round(nextDelay)
+  }
+
+  /**
+   * Flush dirty answers to backend (capped at 100 per batch)
    */
   async flush() {
     if (!this.attemptId || this.dirtyMap.size === 0 || this.isFlushing) {
@@ -150,15 +230,21 @@ export class AutosaveManager {
     }
 
     this.isFlushing = true
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
     this._notifyStateChange()
 
-    // Take snapshot of dirty items (batch <= 100 per Q3.2)
+    // Take snapshot of dirty items (batch <= 100)
     const snapshot = Array.from(this.dirtyMap.values()).slice(0, 100)
     const payload = {
       answers: snapshot.map(item => ({
         attemptQuestionId: item.attemptQuestionId,
         optionId: item.selectedOptionId || null,
-        revision: item.revision || this.currentRevision || 1
+        revision: typeof item.expectedRevision === 'number'
+          ? item.expectedRevision
+          : (this.revisionByAqId.get(item.attemptQuestionId) ?? 0)
       }))
     }
 
@@ -174,60 +260,132 @@ export class AutosaveManager {
         serverClock.synchronize(response.data.serverTime)
       }
 
-      // On 200 SUCCESS: remove successfully saved entries from dirty map
-      for (const item of snapshot) {
-        const currentInMap = this.dirtyMap.get(item.attemptQuestionId)
-        if (currentInMap && currentInMap.clientTimestamp === item.clientTimestamp) {
-          this.dirtyMap.delete(item.attemptQuestionId)
-        }
-      }
+      const results = response.data?.results || []
+      let okCount = 0
+      let conflictCount = 0
 
-      // Update sessionStorage cache
-      this._persistToSessionStorage()
+      if (Array.isArray(results) && results.length > 0) {
+        for (const resItem of results) {
+          const aqId = resItem.attemptQuestionId
+          const snapshotItem = snapshot.find(s => s.attemptQuestionId === aqId)
 
-      // Bump revision to highest revision in results if present
-      if (response.data?.results) {
-        const maxRev = response.data.results.reduce((max, r) => Math.max(max, r.revision || 0), this.currentRevision)
-        if (maxRev > this.currentRevision) {
-          this.currentRevision = maxRev
+          if (resItem.status === 'OK' || resItem.success === true) {
+            okCount++
+            const confirmedRev = typeof resItem.revision === 'number'
+              ? resItem.revision
+              : ((this.revisionByAqId.get(aqId) ?? 0) + 1)
+            this.revisionByAqId.set(aqId, confirmedRev)
+
+            // Remove from dirty map only if client hasn't modified it again since flush started
+            const currentInMap = this.dirtyMap.get(aqId)
+            if (currentInMap && snapshotItem && currentInMap.clientTimestamp === snapshotItem.clientTimestamp) {
+              this.dirtyMap.delete(aqId)
+            } else if (currentInMap) {
+              // User made a newer selection during save; update expectedRevision for next flush
+              currentInMap.expectedRevision = confirmedRev
+            }
+            this.terminalErrors.delete(aqId)
+          } else if (resItem.status === 'STALE_REVISION') {
+            conflictCount++
+            // Adopt server's current revision for this question only
+            const currentRev = typeof resItem.currentRevision === 'number'
+              ? resItem.currentRevision
+              : ((this.revisionByAqId.get(aqId) ?? 0) + 1)
+            this.revisionByAqId.set(aqId, currentRev)
+
+            const currentInMap = this.dirtyMap.get(aqId)
+            if (currentInMap) {
+              currentInMap.expectedRevision = currentRev
+              currentInMap.attempts = (currentInMap.attempts || 0) + 1
+              if (currentInMap.attempts > 5) {
+                this.terminalErrors.set(aqId, {
+                  attemptQuestionId: aqId,
+                  status: 'CONFLICT_LIMIT_EXCEEDED',
+                  error: 'Multiple conflict retries exceeded. Please review selection.',
+                  timestamp: Date.now()
+                })
+              }
+            }
+          } else {
+            // Terminal error: INVALID_OPTION, EXPIRED, NOT_ACTIVE, FORBIDDEN
+            this.terminalErrors.set(aqId, {
+              attemptQuestionId: aqId,
+              status: resItem.status || 'ERROR',
+              error: resItem.error || 'Answer rejected',
+              timestamp: Date.now()
+            })
+            // Remove from dirty map so we do not loop forever, but keep in terminalErrors for UI
+            this.dirtyMap.delete(aqId)
+          }
         }
-      } else if (response.data?.revision) {
-        this.currentRevision = response.data.revision
       } else {
-        this.currentRevision++
+        // Fallback if results array missing: treat snapshot as saved
+        for (const item of snapshot) {
+          const currentInMap = this.dirtyMap.get(item.attemptQuestionId)
+          if (currentInMap && currentInMap.clientTimestamp === item.clientTimestamp) {
+            this.dirtyMap.delete(item.attemptQuestionId)
+          }
+        }
+        okCount = snapshot.length
       }
 
-      // Reset exponential backoff on success
-      this.backoffMs = 1000
-      this.isFlushing = false
-      this._notifyStateChange()
+      this._persistToSessionStorage()
+      if (okCount > 0) {
+        this.backoffMs = 1000 // Reset backoff on any success
+      }
 
-      return { saved: snapshot.length, status: 'SUCCESS', revision: this.currentRevision }
+      this.isFlushing = false
+
+      // If items remain dirty (e.g. STALE_REVISION re-queued or new edits during flush), schedule retry
+      if (this.dirtyMap.size > 0) {
+        const delay = conflictCount > 0 ? this._calculateBackoff() : 1000
+        this._scheduleRetry(delay)
+      }
+
+      this._notifyStateChange()
+      return { saved: okCount, status: 'SUCCESS' }
     } catch (err) {
       this.isFlushing = false
       const status = err.response?.status
       const errorData = err.response?.data?.errorObject || (typeof err.response?.data?.error === 'object' ? err.response?.data?.error : {})
       const errorCode = err.code || errorData.code
 
-      if (status === 409 && (errorCode === 'STALE_REVISION' || errorData.currentRevision)) {
-        // Reconcile stale revision: adopt server's current revision and retry immediately
-        this.currentRevision = errorData.currentRevision || (this.currentRevision + 1)
-        console.warn(`[Autosave] 409 Stale revision encountered; reconciling to revision ${this.currentRevision}`)
+      // If batch returned 409 with item-level results
+      if (status === 409 && Array.isArray(errorData.results)) {
+        for (const resItem of errorData.results) {
+          const aqId = resItem.attemptQuestionId
+          if (resItem.status === 'STALE_REVISION') {
+            const currentRev = typeof resItem.currentRevision === 'number'
+              ? resItem.currentRevision
+              : ((this.revisionByAqId.get(aqId) ?? 0) + 1)
+            this.revisionByAqId.set(aqId, currentRev)
+            const currentInMap = this.dirtyMap.get(aqId)
+            if (currentInMap) {
+              currentInMap.expectedRevision = currentRev
+              currentInMap.attempts = (currentInMap.attempts || 0) + 1
+            }
+          }
+        }
+        const delay = this._calculateBackoff()
+        console.warn(`[Autosave] 409 Conflict encountered; reconciling revisions and retrying in ${delay}ms`)
+        this._scheduleRetry(delay)
         this._notifyStateChange()
-        return this.flush()
+        return { saved: 0, status: 'CONFLICT' }
       }
 
-      // On 429, 503, or network outage: retain dirty map in memory and back off (Task 8)
-      const jitter = 0.8 + 0.4 * Math.random()
-      const nextDelay = Math.min(this.maxBackoffMs, this.backoffMs * 2) * jitter
-      this.backoffMs = Math.min(this.maxBackoffMs, this.backoffMs * 2)
-
-      console.warn(`[Autosave] Save failed (${status || err.message}); retained ${this.dirtyMap.size} dirty answers. Retrying in ${Math.round(nextDelay)}ms`)
-      setTimeout(() => {
-        if (this.dirtyMap.size > 0 && !this.isFlushing) {
-          this.flush().catch(() => {})
+      // Check Retry-After header for rate limiting (429) or maintenance (503)
+      let retryDelay = null
+      const retryAfterHeader = err.response?.headers?.['retry-after']
+      if (retryAfterHeader) {
+        const parsedSecs = parseInt(retryAfterHeader, 10)
+        if (!isNaN(parsedSecs) && parsedSecs > 0) {
+          retryDelay = parsedSecs * 1000
         }
-      }, nextDelay)
+      }
+
+      const nextDelay = retryDelay || this._calculateBackoff()
+      console.warn(`[Autosave] Save failed (${status || err.message}); retained ${this.dirtyMap.size} dirty answers. Retrying in ${nextDelay}ms`)
+      this._scheduleRetry(nextDelay)
 
       this._notifyStateChange()
       throw err
@@ -336,7 +494,7 @@ export class AutosaveManager {
       dirtyCount: this.dirtyMap.size,
       isFlushing: this.isFlushing,
       isSubmitting: this.isSubmitting,
-      revision: this.currentRevision
+      terminalErrors: Array.from(this.terminalErrors.values())
     }
     for (const cb of this.onStateChangeCallbacks) {
       try {
@@ -347,3 +505,4 @@ export class AutosaveManager {
     }
   }
 }
+

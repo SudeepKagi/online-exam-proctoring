@@ -19,12 +19,9 @@ const KNOWN_DEFAULTS = new Set([
   'proctornet'
 ])
 
-// Normalize S3 environment variable names across the codebase
+// Canonical S3 bucket name (§Prompt 7 T4)
 if (!process.env.S3_BUCKET && process.env.AWS_S3_BUCKET) {
   process.env.S3_BUCKET = process.env.AWS_S3_BUCKET
-}
-if (!process.env.AWS_S3_BUCKET && process.env.S3_BUCKET) {
-  process.env.AWS_S3_BUCKET = process.env.S3_BUCKET
 }
 
 const isProd = process.env.NODE_ENV === 'production'

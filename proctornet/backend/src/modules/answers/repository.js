@@ -7,9 +7,14 @@ class AnswerRepository {
   async saveAnswer(attemptId, studentId, attemptQuestionId, selectedOptionId, expectedRevision) {
     const sql = `
       WITH guard AS (
-        SELECT aq.id AS attempt_question_id, a.id AS attempt_id
+        SELECT
+          aq.id AS attempt_question_id,
+          a.id AS attempt_id,
+          ans.id AS existing_answer_id,
+          ans.revision AS current_revision
         FROM exam_attempts a
         JOIN attempt_questions aq ON aq.attempt_id = a.id
+        LEFT JOIN answers ans ON ans.attempt_question_id = aq.id
         WHERE a.id = $1::uuid
           AND a.student_id = $2::uuid
           AND a.status = 'ACTIVE'
@@ -19,6 +24,11 @@ class AnswerRepository {
             SELECT 1 FROM question_options o
             WHERE o.id = $4::uuid AND o.question_id = aq.question_id
           ))
+          AND (
+            (ans.id IS NULL AND ($5::int = 0 OR $5::int = 1))
+            OR
+            (ans.id IS NOT NULL AND ans.revision = $5::int)
+          )
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), attempt_id, attempt_question_id, $4::uuid, 1, now()
@@ -27,7 +37,6 @@ class AnswerRepository {
         SET selected_option_id = EXCLUDED.selected_option_id,
             revision = answers.revision + 1,
             saved_at = now()
-        WHERE answers.revision = $5::int
       RETURNING answers.revision;
     `
 
@@ -90,7 +99,7 @@ class AnswerRepository {
 
     // Status check
     if (diag.status !== 'ACTIVE') {
-      return { failure: 'INVALID_STATE', message: `Attempt is in state '${diag.status}', not ACTIVE`, currentStatus: diag.status }
+      return { failure: 'NOT_ACTIVE', message: `Attempt is in state '${diag.status}', not ACTIVE`, currentStatus: diag.status }
     }
 
     // Deadline check
@@ -108,12 +117,21 @@ class AnswerRepository {
       return { failure: 'INVALID_OPTION', message: `Option '${selectedOptionId}' is not valid for this question` }
     }
 
-    // Stale revision check
+    // Stale revision check (unanswered row = 0, existing row = current_revision)
+    const currentRev = diag.current_revision !== null ? diag.current_revision : 0
+    if (diag.current_revision === null && expectedRevision > 1) {
+      return {
+        failure: 'STALE_REVISION',
+        message: `Stale answer revision: expected ${expectedRevision}, current is 0`,
+        currentRevision: 0,
+        expectedRevision
+      }
+    }
     if (diag.current_revision !== null && diag.current_revision !== expectedRevision) {
       return {
         failure: 'STALE_REVISION',
-        message: `Stale answer revision: expected ${expectedRevision}, current is ${diag.current_revision}`,
-        currentRevision: diag.current_revision,
+        message: `Stale answer revision: expected ${expectedRevision}, current is ${currentRev}`,
+        currentRevision: currentRev,
         expectedRevision
       }
     }
@@ -127,9 +145,16 @@ class AnswerRepository {
   async saveBatchAnswers(attemptId, studentId, items, client = prisma) {
     if (!items || items.length === 0) return []
 
-    const qIds = items.map(i => i.attemptQuestionId)
-    const optIds = items.map(i => i.optionId || null)
-    const revs = items.map(i => i.revision)
+    // De-duplicate items by attemptQuestionId in-memory (last write wins) and cap at 100
+    const itemMap = new Map()
+    for (const item of items) {
+      itemMap.set(item.attemptQuestionId, item)
+    }
+    const dedupedItems = Array.from(itemMap.values()).slice(0, 100)
+
+    const qIds = dedupedItems.map(i => i.attemptQuestionId)
+    const optIds = dedupedItems.map(i => i.optionId || null)
+    const revs = dedupedItems.map(i => i.revision)
 
     const sql = `
       WITH input AS (
@@ -144,10 +169,13 @@ class AnswerRepository {
           i.attempt_question_id,
           a.id AS attempt_id,
           i.selected_option_id,
-          i.expected_revision
+          i.expected_revision,
+          ans.id AS existing_answer_id,
+          ans.revision AS current_revision
         FROM input i
         JOIN attempt_questions aq ON aq.id = i.attempt_question_id
         JOIN exam_attempts a ON a.id = aq.attempt_id
+        LEFT JOIN answers ans ON ans.attempt_question_id = i.attempt_question_id
         WHERE a.id = $1::uuid
           AND a.student_id = $2::uuid
           AND a.status = 'ACTIVE'
@@ -156,6 +184,11 @@ class AnswerRepository {
             SELECT 1 FROM question_options o
             WHERE o.id = i.selected_option_id AND o.question_id = aq.question_id
           ))
+          AND (
+            (ans.id IS NULL AND (i.expected_revision = 0 OR i.expected_revision = 1))
+            OR
+            (ans.id IS NOT NULL AND ans.revision = i.expected_revision)
+          )
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), g.attempt_id, g.attempt_question_id, g.selected_option_id, 1, now()
@@ -164,10 +197,6 @@ class AnswerRepository {
         SET selected_option_id = EXCLUDED.selected_option_id,
             revision = answers.revision + 1,
             saved_at = now()
-        WHERE answers.revision = (
-          SELECT g2.expected_revision FROM guard g2
-          WHERE g2.attempt_question_id = answers.attempt_question_id
-        )
       RETURNING answers.attempt_question_id, answers.revision;
     `
 
@@ -182,33 +211,36 @@ class AnswerRepository {
 
     const updatedMap = new Map((updatedRows || []).map(r => [r.attempt_question_id, r.revision]))
 
-    // Construct per-item results
+    // Construct per-item results with deterministic per-item status
     const results = []
-    for (const item of items) {
+    for (const item of dedupedItems) {
       if (updatedMap.has(item.attemptQuestionId)) {
         results.push({
           attemptQuestionId: item.attemptQuestionId,
+          status: 'OK',
           success: true,
           revision: updatedMap.get(item.attemptQuestionId)
         })
       } else {
-        let diag = { error: 'STALE_REVISION_OR_INVALID_OPTION' }
-        if (items.length <= 5) {
-          try {
-            diag = await this.diagnoseSaveFailure(
-              attemptId,
-              studentId,
-              item.attemptQuestionId,
-              item.optionId,
-              item.revision
-            )
-          } catch {
-            // ignore diagnose failure
-          }
+        let diag
+        try {
+          diag = await this.diagnoseSaveFailure(
+            attemptId,
+            studentId,
+            item.attemptQuestionId,
+            item.optionId,
+            item.revision
+          )
+        } catch (e) {
+          diag = { failure: 'UNKNOWN', message: e.message }
         }
+
+        const status = diag?.failure || 'ERROR'
         results.push({
           attemptQuestionId: item.attemptQuestionId,
+          status,
           success: false,
+          currentRevision: diag?.currentRevision !== undefined ? diag.currentRevision : null,
           error: diag
         })
       }

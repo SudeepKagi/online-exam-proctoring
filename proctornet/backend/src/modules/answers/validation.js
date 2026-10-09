@@ -11,13 +11,13 @@ const saveAnswerParamsSchema = z.object({
 
 const saveAnswerBodySchema = z.object({
   optionId: z.string().uuid('Invalid option ID format').nullable(),
-  revision: z.number().int().min(1, 'Revision must be >= 1')
+  revision: z.number().int().min(0, 'Revision must be >= 0')
 }).strict()
 
 const batchAnswerItemSchema = z.object({
   attemptQuestionId: z.string().uuid('Invalid question ID format'),
   optionId: z.string().uuid('Invalid option ID format').nullable(),
-  revision: z.number().int().min(1, 'Revision must be >= 1')
+  revision: z.number().int().min(0, 'Revision must be >= 0')
 }).strict()
 
 const batchSaveAnswersBodySchema = z.object({

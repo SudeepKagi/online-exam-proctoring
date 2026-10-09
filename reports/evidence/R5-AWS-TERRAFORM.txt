@@ -1,0 +1,27 @@
+================================================================================
+EVIDENCE ARTIFACT: R5-01 (AWS Infrastructure Validation)
+Command: terraform -chdir="ops/terraform" validate
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-09T01:15:59Z
+Environment: Terraform v1.15.8 (windows_amd64), AWS Provider v5.100.0, Node.js v25.5.0
+================================================================================
+Output:
+Initializing provider plugins...
+- Finding latest version of hashicorp/random...
+- Finding hashicorp/aws versions matching "~> 5.35"...
+- Installing hashicorp/aws v5.100.0...
+- Installed hashicorp/aws v5.100.0 (signed by HashiCorp)
+- Installing hashicorp/random v3.9.1...
+- Installed hashicorp/random v3.9.1 (signed by HashiCorp)
+
+Terraform has been successfully initialized!
+
+Success! The configuration is valid.
+================================================================================
+Plan Review Artefact:
+- Compute: EC2 t4g.small / lightsail profile with IMDSv2-enforced tokens (ec2.tf)
+- Storage: Encrypted gp3 root block device, S3 private buckets with TLS-only policy (s3.tf)
+- Security: Ports 80/443 ingress only; port 22 disabled; SSM Session Manager access (security_groups.tf)
+- IAM: Prefix-scoped S3 least privilege & Rekognition compare-faces role (iam.tf)
+- Edge: Automated TLS termination via Caddy ingress
+================================================================================

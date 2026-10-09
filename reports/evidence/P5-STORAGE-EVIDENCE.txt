@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-C08
+Command: node --test tests/p5-storage-evidence.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T01:45:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ﻿{"level":"info","time":"2026-10-07T01:45:49.838Z","pid":28332,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}
 {"level":"info","time":"2026-10-07T01:45:49.849Z","pid":28332,"hostname":"MSI","msg":"Asserting RabbitMQ topology and (re)attaching registered consumers"}
 Γû╢ P5 Storage & Evidence Pipeline (S3, Direct Upload, Worker)

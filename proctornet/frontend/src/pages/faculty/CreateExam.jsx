@@ -114,10 +114,9 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Sparkles size={16} className="text-amber-600 mt-0.5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-bold text-amber-900">LLM Provider Configuration Required</p>
+            <p className="font-bold text-amber-900">Automated Generation Configuration Required</p>
             <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
-              Automated question generation requires an active AI provider (Google Gemini, OpenAI, or Anthropic).
-              Configure <code className="bg-amber-100/90 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">LLM_PROVIDER</code> and <code className="bg-amber-100/90 text-amber-900 px-1 py-0.5 rounded font-mono text-[10px]">LLM_API_KEY</code> on the server to enable generation.
+              Automated question generation requires an active provider key configured on the server.
             </p>
           </div>
         </div>

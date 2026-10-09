@@ -577,7 +577,7 @@ export default function InvigilatorViolations() {
                 <option value="FACE">👤 Face & Biometrics</option>
                 <option value="BROWSER">🖥️ Browser & Screen</option>
                 <option value="AUDIO">🎙️ Audio & Voice</option>
-                <option value="NETWORK">🛡️ Network & BYOD Agent</option>
+                <option value="NETWORK">🛡️ Network & Device Companion</option>
                 <option value="INPUT">⌨️ Keyboard & Clipboard</option>
               </select>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import * as faceapi from 'face-api.js'
 import api from '@/utils/api'
@@ -6,19 +6,20 @@ import toast from 'react-hot-toast'
 import { 
   Shield, Camera, Wifi, Monitor, CheckCircle2, XCircle, 
   Loader2, ArrowRight, Lock, Key, Cpu, RefreshCw, AlertTriangle, Play, Sparkles, Check, Download,
-  ExternalLink, Clock, FileDown, CheckCircle, Info, AlertOctagon, Terminal
+  ExternalLink, Clock, FileDown, CheckCircle, Info, AlertOctagon, Terminal, PhoneCall
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { setSharedScreenStream, clearSharedScreenStream } from '@/lib/mediaState'
 import DeviceCompanionPanel from '@/components/agent/DeviceCompanionPanel'
+import { connectSocket, getSocket } from '@/socket/socket'
 
 const STAGES = [
   { id: 'system', name: 'Exam Device Companion Audit', icon: Cpu, desc: 'Hardware & software proctoring companion check' },
   { id: 'media', name: 'Hardware Media Feeds', icon: Camera, desc: 'Webcam feed mapping & mandatory screen share authorization' },
-  { id: 'face', name: 'AI Face Verification', icon: Shield, desc: 'Matching live biometric stream against student profile' },
-  { id: 'kiosk', name: 'Fullscreen Kiosk & Terms', icon: Lock, desc: 'Viewport locking & candidate integrity agreement' }
+  { id: 'face', name: 'Candidate Biometric Verification', icon: Shield, desc: 'Matching live biometric stream against student profile' },
+  { id: 'lock', name: 'Full-screen Assessment Lock & Terms', icon: Lock, desc: 'Viewport locking & candidate integrity agreement' }
 ]
 
 export default function SecurityCheck() {
@@ -27,25 +28,27 @@ export default function SecurityCheck() {
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const canvasRef = useRef(null)
+  const reviewPollTimeoutRef = useRef(null)
 
   const [activeStage, setActiveStage] = useState(0)
   const [stageStatus, setStageStatus] = useState({
     system: 'pending', // pending | loading | pass | fail
     media: 'pending',
     face: 'pending',
-    kiosk: 'pending'
+    lock: 'pending'
   })
   const [stageDetails, setStageDetails] = useState({
     system: 'Waiting to start...',
     media: 'Waiting to start...',
     face: 'Waiting to start...',
-    kiosk: 'Waiting to start...'
+    lock: 'Waiting to start...'
   })
 
   const [exam, setExam] = useState(null)
   const [student, setStudent] = useState(null)
   const [attemptId, setAttemptId] = useState(null)
   const [companionDetails, setCompanionDetails] = useState(null)
+  const [vpnStatus, setVpnStatus] = useState(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [screenShared, setScreenShared] = useState(false)
   const [timeToExamStart, setTimeToExamStart] = useState(0)
@@ -53,8 +56,11 @@ export default function SecurityCheck() {
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
   const [isFaceProcessing, setIsFaceProcessing] = useState(false)
-  const [faceStatus, setFaceStatus] = useState('idle')
+  const [faceStatus, setFaceStatus] = useState('idle') // idle | verified | review | failed
+  const [reviewElapsed, setReviewElapsed] = useState(0)
   const [vmRenderer, setVmRenderer] = useState('')
+
+  const isHttpsSecure = typeof window !== 'undefined' ? (window.isSecureContext || window.location.protocol === 'https:') : false
 
   const formatCountdown = (seconds) => {
     if (seconds <= 0) return '00:00'
@@ -78,9 +84,24 @@ export default function SecurityCheck() {
     return () => clearInterval(timer)
   }, [timeToExamStart])
 
+  // Timer for review wait elapsed seconds
+  useEffect(() => {
+    if (faceStatus !== 'review') {
+      setReviewElapsed(0)
+      return
+    }
+    const timer = setInterval(() => {
+      setReviewElapsed(prev => prev + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [faceStatus])
+
   useEffect(() => {
     return () => {
       stopCamera()
+      if (reviewPollTimeoutRef.current) {
+        clearTimeout(reviewPollTimeoutRef.current)
+      }
     }
   }, [])
 
@@ -90,14 +111,14 @@ export default function SecurityCheck() {
       const active = !!document.fullscreenElement
       setIsFullscreen(active)
       if (active) {
-        updateStage('kiosk', 'pass', 'Kiosk fullscreen lock active')
+        updateStage('lock', 'pass', 'Full-screen assessment lock active')
       }
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
-  // Initial load
+  // Initial load: uses readiness check (never starts the exam clock!)
   useEffect(() => {
     const loadExamAndStudent = async () => {
       try {
@@ -137,13 +158,19 @@ export default function SecurityCheck() {
         const userRes = await api.get('/auth/me')
         setStudent(userRes.data.user)
 
-        // Initialize or retrieve attempt
+        // Initialize or retrieve readiness attempt (Separated from real attempt activation per T2)
         try {
-          const attemptRes = await api.post(`/exams/${examId}/attempt`).catch(() => null)
-          if (attemptRes?.data?.id) {
-            setAttemptId(attemptRes.data.id)
+          const readinessRes = await api.post(`/exams/${examId}/readiness`).catch(() => null)
+          const resolvedAttemptId = readinessRes?.data?.attemptId || readinessRes?.data?.id
+          if (resolvedAttemptId) {
+            setAttemptId(resolvedAttemptId)
+            // Query truthful VPN status
+            try {
+              const vpnRes = await api.get(`/attempts/${resolvedAttemptId}/vpn-status`)
+              setVpnStatus(vpnRes.data)
+            } catch (_) {}
           }
-        } catch {
+        } catch (_) {
           // precheck mode fallback
         }
 
@@ -168,7 +195,7 @@ export default function SecurityCheck() {
       }
     }
     loadExamAndStudent()
-  }, [examId])
+  }, [examId, navigate])
 
   const updateStage = (key, status, detail) => {
     setStageStatus(prev => ({ ...prev, [key]: status }))
@@ -259,30 +286,139 @@ export default function SecurityCheck() {
       updateStage('media', 'pass', 'Webcam and Screen Share Streams Authorized cleanly')
       toast.success('Screen share stream active!')
       setActiveStage(2)
-      runAiFaceVerification()
+      runBiometricVerification()
     } catch (err) {
       updateStage('media', 'fail', 'Screen sharing authorization was declined or cancelled.')
       toast.error('You must share your entire screen to proceed with this exam.')
     }
   }
 
-  const captureFrameBase64 = () => {
-    if (!videoRef.current) return null
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!canvas) return null
-
-    canvas.width = video.videoWidth || 640
-    canvas.height = video.videoHeight || 480
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    return canvas.toDataURL('image/jpeg', 0.9)
+  // Capture canvas image as WebP Blob (FLW-03)
+  const captureFrameBlob = () => {
+    return new Promise((resolve) => {
+      if (!videoRef.current || !canvasRef.current) return resolve(null)
+      const video = videoRef.current
+      const canvas = canvasRef.current
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob(
+        (blob) => resolve(blob),
+        'image/webp',
+        0.85
+      )
+    })
   }
 
-  // 3. Stage 2: AI Face Verification
-  const runAiFaceVerification = async () => {
+  // Client Quality Gate: Luminance (40-220), Laplacian sharpness (variance >= 15), Face size (>=20% frame)
+  const evaluateFrameQuality = (canvas, detection) => {
+    const ctx = canvas.getContext('2d')
+    const { width, height } = canvas
+    const imgData = ctx.getImageData(0, 0, width, height)
+    const d = imgData.data
+
+    // 1. Luminance Check
+    let sumL = 0
+    const totalPx = width * height
+    for (let i = 0; i < d.length; i += 4) {
+      sumL += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
+    }
+    const avgLum = sumL / totalPx
+    if (avgLum < 40) {
+      return { ok: false, message: 'Lighting is too dark. Please ensure proper room illumination.' }
+    }
+    if (avgLum > 220) {
+      return { ok: false, message: 'Lighting is too bright or washed out. Please reduce direct backlight.' }
+    }
+
+    // 2. Laplacian Sharpness (Downsampled grid variance)
+    let lapSum = 0
+    let lapSq = 0
+    let count = 0
+    for (let y = 1; y < height - 1; y += 2) {
+      for (let x = 1; x < width - 1; x += 2) {
+        const idx = (y * width + x) * 4
+        const c = 0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2]
+        const top = 0.299 * d[((y - 1) * width + x) * 4] + 0.587 * d[((y - 1) * width + x) * 4 + 1] + 0.114 * d[((y - 1) * width + x) * 4 + 2]
+        const btm = 0.299 * d[((y + 1) * width + x) * 4] + 0.587 * d[((y + 1) * width + x) * 4 + 1] + 0.114 * d[((y + 1) * width + x) * 4 + 2]
+        const l = 0.299 * d[(y * width + (x - 1)) * 4] + 0.587 * d[(y * width + (x - 1)) * 4 + 1] + 0.114 * d[(y * width + (x - 1)) * 4 + 2]
+        const r = 0.299 * d[(y * width + (x + 1)) * 4] + 0.587 * d[(y * width + (x + 1)) * 4 + 1] + 0.114 * d[(y * width + (x + 1)) * 4 + 2]
+        const val = top + btm + l + r - 4 * c
+        lapSum += val
+        lapSq += val * val
+        count++
+      }
+    }
+    const mean = lapSum / (count || 1)
+    const variance = (lapSq / (count || 1)) - (mean * mean)
+    if (variance < 15) {
+      return { ok: false, message: 'Camera image is too blurry. Please focus the lens and hold still.' }
+    }
+
+    // 3. Face Height Check (>= 20% of frame)
+    if (detection?.box) {
+      const faceHeightRatio = detection.box.height / height
+      if (faceHeightRatio < 0.20) {
+        return { ok: false, message: 'Face is too far from camera. Please position closer to the screen.' }
+      }
+    }
+
+    return { ok: true }
+  }
+
+  // Handle Review Decision transition (from Socket or Poll)
+  const handleReviewDecision = useCallback((decision, reason) => {
+    if (decision === 'PASS') {
+      if (reviewPollTimeoutRef.current) clearTimeout(reviewPollTimeoutRef.current)
+      setFaceStatus('verified')
+      updateStage('face', 'pass', 'Identity verified successfully by invigilator')
+      toast.success('Identity verified by invigilator!')
+      setActiveStage(3)
+      updateStage('lock', 'loading', 'Ready for full-screen assessment lock activation')
+    } else if (decision === 'FAIL') {
+      if (reviewPollTimeoutRef.current) clearTimeout(reviewPollTimeoutRef.current)
+      setFaceStatus('failed')
+      updateStage('face', 'fail', reason || 'Identity verification declined by invigilator')
+      toast.error(reason || 'Identity verification declined by invigilator')
+    }
+  }, [])
+
+  // Start polling for invigilator decision during review
+  const startReviewPolling = useCallback((activeAttemptId) => {
+    if (!activeAttemptId) return
+    let delay = 3000
+    let cancelled = false
+
+    const poll = async () => {
+      if (cancelled) return
+      try {
+        const res = await api.get(`/attempts/${activeAttemptId}/identity-status`)
+        const decision = res.data?.decision || (res.data?.verified ? 'PASS' : null)
+        if (decision === 'PASS' || decision === 'FAIL') {
+          handleReviewDecision(decision, res.data?.reason)
+          return
+        }
+      } catch (_) {}
+
+      if (!cancelled) {
+        delay = Math.min(10000, Math.round(delay * 1.5))
+        reviewPollTimeoutRef.current = setTimeout(poll, delay)
+      }
+    }
+
+    reviewPollTimeoutRef.current = setTimeout(poll, delay)
+    return () => {
+      cancelled = true
+      if (reviewPollTimeoutRef.current) clearTimeout(reviewPollTimeoutRef.current)
+    }
+  }, [handleReviewDecision])
+
+  // 3. Stage 2: Candidate Biometric Verification (FLW-03: Presigned frame upload & quality gate)
+  const runBiometricVerification = async () => {
+    if (reviewPollTimeoutRef.current) clearTimeout(reviewPollTimeoutRef.current)
     setActiveStage(2)
-    updateStage('face', 'loading', 'Initializing neural face detection models...')
+    updateStage('face', 'loading', 'Initializing biometric face detection...')
     setIsFaceProcessing(true)
 
     try {
@@ -313,37 +449,87 @@ export default function SecurityCheck() {
           return
         }
 
-        let hasLocalFace = false
+        let detection = null
         try {
           if (faceModelsLoaded && faceapi.nets.tinyFaceDetector.params) {
-            const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 }))
-            if (detection) hasLocalFace = true
-          } else {
-            hasLocalFace = true
+            detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 }))
           }
-        } catch {
-          hasLocalFace = true
-        }
+        } catch (_) {}
 
-        if (hasLocalFace) {
+        if (detection || !faceModelsLoaded) {
           clearInterval(interval)
-          const frameBase64 = captureFrameBase64()
+
+          // 1. Capture WebP Blob
+          const blob = await captureFrameBlob()
+          if (!blob) {
+            updateStage('face', 'fail', 'Failed to capture frame from webcam.')
+            setIsFaceProcessing(false)
+            return
+          }
+
+          // 2. Client Quality Gate
+          const quality = evaluateFrameQuality(canvasRef.current, detection)
+          if (!quality.ok) {
+            updateStage('face', 'fail', quality.message)
+            setIsFaceProcessing(false)
+            toast.error(quality.message)
+            return
+          }
 
           let verified = false
           let pendingReview = false
           let decision = 'FAIL'
-          let serviceMessage
+          let serviceMessage = ''
+
           try {
-            const verifyRes = await api.post(`/student/exams/${examId}/verify-face`, {
-              image: frameBase64
+            // FLW-03: Server-issued presigned upload ticket
+            const presignRes = await api.post('/media/presign-upload', {
+              purpose: 'LIVE_FRAME',
+              attemptId,
+              contentType: 'image/webp',
+              bytes: blob.size
             })
+
+            const { putUrl, postUrl, fields, key } = presignRes.data
+
+            // Upload directly to S3 / MinIO
+            if (putUrl) {
+              const uploadRes = await fetch(putUrl, {
+                method: 'PUT',
+                body: blob,
+                headers: { 'Content-Type': 'image/webp' }
+              })
+              if (!uploadRes.ok) throw new Error(`Presigned PUT failed: ${uploadRes.status}`)
+            } else if (postUrl) {
+              const fd = new FormData()
+              if (fields) {
+                Object.entries(fields).forEach(([k, v]) => fd.append(k, v))
+              }
+              fd.append('file', blob)
+              const uploadRes = await fetch(postUrl, { method: 'POST', body: fd })
+              if (!uploadRes.ok) throw new Error(`Presigned POST failed: ${uploadRes.status}`)
+            }
+
+            // Verify identity using server-issued key
+            let verifyRes
+            try {
+              verifyRes = await api.post(`/attempts/${attemptId}/verify-identity`, {
+                liveFrameKey: key
+              })
+            } catch (_) {
+              verifyRes = await api.post(`/student/exams/${examId}/verify-face`, {
+                liveFrameKey: key,
+                attemptId
+              })
+            }
+
             verified = Boolean(verifyRes.data?.verified)
             pendingReview = Boolean(verifyRes.data?.pendingReview)
             decision = verifyRes.data?.decision || (verified ? 'PASS' : 'FAIL')
             serviceMessage = verifyRes.data?.message || ''
           } catch (apiErr) {
             console.warn('Biometric backend verification notice:', apiErr.message)
-            serviceMessage = apiErr.response?.data?.message || ''
+            serviceMessage = apiErr.response?.data?.message || apiErr.message || ''
           }
 
           setIsFaceProcessing(false)
@@ -352,11 +538,27 @@ export default function SecurityCheck() {
             updateStage('face', 'pass', 'Identity verified successfully')
             toast.success('Identity verified successfully!')
             setActiveStage(3)
-            updateStage('kiosk', 'loading', 'Ready for fullscreen kiosk mode activation')
+            updateStage('lock', 'loading', 'Ready for full-screen assessment lock activation')
           } else if (pendingReview || decision === 'REVIEW') {
             setFaceStatus('review')
             updateStage('face', 'loading', 'Waiting for invigilator verification')
-            toast.info('Identity verification is under review. Waiting for invigilator.')
+            toast('Identity verification is under review. Waiting for invigilator.')
+
+            // Connect socket & listen on attempt room
+            try {
+              const socket = connectSocket()
+              if (socket && attemptId) {
+                socket.emit('attempt:join', { attemptId })
+                socket.on('identity:decision', (data) => {
+                  if (data?.attemptId === attemptId) {
+                    handleReviewDecision(data.decision, data.reason)
+                  }
+                })
+              }
+            } catch (_) {}
+
+            // Start polling with exponential backoff (3s -> 10s)
+            startReviewPolling(attemptId)
           } else {
             setFaceStatus('failed')
             const displayMsg = serviceMessage || "We couldn't confirm your identity — retry or call the invigilator."
@@ -382,7 +584,21 @@ export default function SecurityCheck() {
     }
   }
 
-  // 4. Stage 3: Lock Fullscreen & Start Exam
+  // Call Invigilator assistance action
+  const handleAskInvigilator = async () => {
+    try {
+      await api.post('/student/support/ticket', {
+        examId,
+        subject: 'Biometric verification under review',
+        message: `Candidate ${student?.name || 'Student'} (${student?.usn || student?.id}) requests review approval for exam session.`
+      }).catch(() => null)
+      toast.success('Invigilator notified. They will review your stream momentarily.')
+    } catch (_) {
+      toast.success('Invigilator notified.')
+    }
+  }
+
+  // 4. Stage 3: Lock Fullscreen & Start Exam (Activates attempt and starts clock)
   const handleLockAndStartExam = async () => {
     if (!stage0Passed) {
       toast.error('Exam Device Companion must be active and healthy (or waived) to proceed.')
@@ -390,22 +606,24 @@ export default function SecurityCheck() {
       return
     }
 
-    // Real tunnel verification queries device agent endpoint /vpn-check
-    const vpnVerified = Boolean(companionDetails?.vpnVerified ?? !exam?.vpnRequired)
-    if (!vpnVerified) {
+    // Real tunnel verification queries real backend vpn-status
+    if (exam?.vpnRequired && vpnStatus && !vpnStatus.vpnVerified) {
       toast.error('Secure network tunnel verification failed. Please ensure the network guard is active.')
       setActiveStage(0)
       return
     }
 
     try {
+      // Real attempt activation starts the exam clock
+      await api.post(`/exams/${examId}/attempt`)
+
       if (document.documentElement.requestFullscreen) {
         await document.documentElement.requestFullscreen()
       }
       if (!document.fullscreenElement) {
         throw new Error('Fullscreen request was not granted by the browser.')
       }
-      updateStage('kiosk', 'pass', 'Entering proctored examination interface...')
+      updateStage('lock', 'pass', 'Entering proctored examination interface...')
       if (timeToExamStart > 0) {
         toast.success(`Security check passed! Holding in secure exam mode until exam starts (${formatCountdown(timeToExamStart)}).`)
       } else {
@@ -415,7 +633,7 @@ export default function SecurityCheck() {
         navigate(`/student/exams/${examId}/exam`)
       }, 400)
     } catch (err) {
-      updateStage('kiosk', 'fail', 'Full-screen mode is mandatory. Please grant full-screen permissions.')
+      updateStage('lock', 'fail', 'Full-screen mode is mandatory. Please grant full-screen permissions.')
       toast.error('Full-screen mode required to enter exam.')
     }
   }
@@ -508,7 +726,7 @@ export default function SecurityCheck() {
                 </span>
                 <h2 className="text-2xl font-bold text-foreground mt-2.5">{exam?.title}</h2>
                 <p className="text-xs text-muted-foreground mt-1 font-normal max-w-lg mx-auto">
-                  Your BYOD Agent, webcam, screen share, and biometric identity are fully cleared. Please remain in place until the exam session opens.
+                  Your Device Companion, webcam, screen share, and biometric identity are fully cleared. Please remain in place until the exam session opens.
                 </p>
               </div>
 
@@ -529,11 +747,11 @@ export default function SecurityCheck() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full max-w-xl text-xs font-mono">
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="truncate text-foreground/90 font-medium">BYOD Agent: Active</span>
+                  <span className="truncate text-foreground/90 font-medium">Device Companion: Active</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="truncate text-foreground/90 font-medium">Network: HTTPS Secure</span>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isHttpsSecure ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <span className="truncate text-foreground/90 font-medium">Network: {isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -596,7 +814,7 @@ export default function SecurityCheck() {
                     {isFaceProcessing && (
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
                         <Loader2 size={32} className="text-primary animate-spin mb-2" />
-                        <p className="text-xs font-mono text-white font-semibold">Running Biometric Model Match...</p>
+                        <p className="text-xs font-mono text-white font-semibold">Verifying Biometric Stream...</p>
                       </div>
                     )}
                   </div>
@@ -623,8 +841,8 @@ export default function SecurityCheck() {
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
                           <span className="text-muted-foreground">Network:</span>
-                          <p className="font-semibold mt-0.5 text-emerald-500">
-                            HTTPS Secure
+                          <p className={`font-semibold mt-0.5 ${isHttpsSecure ? 'text-emerald-500' : 'text-amber-500'}`}>
+                            {isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
@@ -659,9 +877,29 @@ export default function SecurityCheck() {
                             {faceStatus === 'verified'
                               ? 'Your live biometric match is confirmed.'
                               : faceStatus === 'review'
-                              ? 'Waiting for invigilator verification before exam entrance.'
+                              ? `Waiting for invigilator verification before exam entrance (${formatCountdown(reviewElapsed)} elapsed).`
                               : "We couldn't confirm your identity — retry or call the invigilator."}
                           </p>
+                          {faceStatus === 'review' && (
+                            <div className="mt-3 flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={handleAskInvigilator}
+                                className="text-[10px] font-mono h-7 px-2.5 border-amber-500/40 text-amber-300 hover:bg-amber-500/10"
+                              >
+                                <PhoneCall size={12} className="mr-1" /> Ask Invigilator
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                onClick={runBiometricVerification}
+                                className="text-[10px] font-mono h-7 px-2.5"
+                              >
+                                <RefreshCw size={12} className="mr-1" /> Retry
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </Card>
@@ -679,7 +917,16 @@ export default function SecurityCheck() {
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {!screenShared && (
+              {!streamRef.current && activeStage === 1 && (
+                <Button 
+                  onClick={startCamera}
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer"
+                >
+                  <Camera size={14} className="mr-2" /> Start Camera
+                </Button>
+              )}
+
+              {streamRef.current && !screenShared && activeStage === 1 && (
                 <Button 
                   onClick={requestScreenShare}
                   className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary text-white px-6 h-10 rounded-xl cursor-pointer"
@@ -690,10 +937,10 @@ export default function SecurityCheck() {
 
               {stageStatus.face === 'fail' && (
                 <Button
-                  onClick={runAiFaceVerification}
+                  onClick={runBiometricVerification}
                   className="w-full sm:w-auto text-xs font-mono font-bold bg-rose-600 hover:bg-rose-500 text-white px-6 h-10 rounded-xl shadow-lg shadow-rose-600/20 cursor-pointer"
                 >
-                  <RefreshCw size={14} className="mr-2" /> Retry Face Verification
+                  <RefreshCw size={14} className="mr-2" /> Retry Biometric Verification
                 </Button>
               )}
 

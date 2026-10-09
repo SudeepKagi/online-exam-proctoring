@@ -57,12 +57,18 @@ jobs:
       - name: Scan Banned Vocabulary (scan-banned-terms.js)
         run: node scripts/ci/scan-banned-terms.js
 
+      - name: Check No Source-Grep Tests (check-no-source-grep-tests.js)
+        run: node scripts/ci/check-no-source-grep-tests.js
+
       - name: Route Inventory Drift Check (generate-route-inventory.js --check)
         env:
           NODE_PATH: ${{ github.workspace }}/proctornet/backend/node_modules:${{ github.workspace }}/proctornet/node_modules
           DATABASE_URL: postgresql://postgres:password@localhost:5432/dummy?schema=public
           JWT_SECRET: dummy_secret_for_route_inventory_introspection_32_bytes
         run: node scripts/ci/generate-route-inventory.js --check
+
+      - name: Check Claims Ledger Integrity (check-ledger.js)
+        run: node scripts/ci/check-ledger.js
 
   # ----------------------------------------------------------------------------
   # Stage 2: Database Migration Integrity & Clean Replay
@@ -279,3 +285,70 @@ jobs:
       - name: Scan Container Image with Trivy
         run: |
           trivy image --format table --exit-code 1 --ignore-unfixed --vuln-type os,library --severity CRITICAL proctornet-backend-scan:${{ github.sha }}
+
+  # ----------------------------------------------------------------------------
+  # Stage 6: Release Packaging & Artifact Publishing (Build Once)
+  # ----------------------------------------------------------------------------
+  package:
+    name: Package Release Bundle (Build Once)
+    needs: [test, build-frontend, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            proctornet/package-lock.json
+
+      - name: Build Frontend SPA
+        working-directory: proctornet
+        run: |
+          npm ci
+          cd frontend
+          npm run build
+          test -d dist && test -f dist/index.html
+
+      - name: Package Backend Production Dependencies
+        working-directory: proctornet
+        run: |
+          npm ci --omit=dev
+          cd backend
+          npx prisma generate
+
+      - name: Create Version Metadata & Archive Bundle
+        run: |
+          RELEASE_TAG="release-${{ github.sha }}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+
+          cat <<EOF > VERSION
+          {
+            "version": "${RELEASE_TAG}",
+            "gitSha": "${{ github.sha }}",
+            "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+
+          tar -czf "${TAR_FILE}" \
+            proctornet/backend \
+            proctornet/node_modules \
+            proctornet/frontend/dist \
+            shared \
+            ops/caddy/Caddyfile \
+            VERSION
+
+          sha256sum "${TAR_FILE}" > "${TAR_FILE}.sha256"
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: |
+            release-${{ github.sha }}.tar.gz
+            release-${{ github.sha }}.tar.gz.sha256
+          retention-days: 14

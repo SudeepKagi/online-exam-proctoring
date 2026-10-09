@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-F03
+Command: node --test tests/p6-realtime-invigilator.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T02:00:12Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ﻿{"level":"info","time":"2026-10-07T02:00:02.022Z","pid":32388,"hostname":"MSI","msg":"Connected to Redis server"}
 {"level":"info","time":"2026-10-07T02:00:02.029Z","pid":32388,"hostname":"MSI","msg":"Redis client is ready to accept commands"}
 {"level":"info","time":"2026-10-07T02:00:02.045Z","pid":32388,"hostname":"MSI","channel":"pn:l1:invalidate","msg":"Subscribed to L1 cache invalidation channel"}

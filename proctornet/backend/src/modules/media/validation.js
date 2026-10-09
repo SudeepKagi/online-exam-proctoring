@@ -6,6 +6,10 @@ const ALLOWED_PURPOSES = [
   'ID_CARD',
   'EVIDENCE',
   'QUESTION_IMAGE',
+  'LIVE_FRAME',
+  'live_frame',
+  'FACE_ENROLLMENT',
+  'ID_ENROLLMENT',
   'evidence',
   'identity',
   'profile'

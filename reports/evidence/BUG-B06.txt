@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-B06
+Command: node tests/profile_security.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:28Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-B06: Student Profile Guard Security
   ✔ blocks updating USN with ForbiddenError (13.9429ms)
   ✔ blocks updating institutional email with ForbiddenError (0.3561ms)

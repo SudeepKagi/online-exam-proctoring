@@ -147,8 +147,8 @@ export default function StudentProfile() {
         department,
         semester: Number(semester)
       }
-      if (facePhotoUrl) payload.facePhotoUrl = facePhotoUrl
-      if (idCardPhotoUrl) payload.idCardPhotoUrl = idCardPhotoUrl
+      if (facePhotoUrl) payload.facePhotoKey = facePhotoUrl
+      if (idCardPhotoUrl) payload.idCardPhotoKey = idCardPhotoUrl
 
       await api.put('/student/profile', payload)
 
@@ -278,7 +278,7 @@ export default function StudentProfile() {
                   <option value="ECE">Electronics & Communication Engineering (ECE)</option>
                   <option value="CSE">Computer Science & Engineering (CSE)</option>
                   <option value="ISE">Information Science & Engineering (ISE)</option>
-                  <option value="AIML">Artificial Intelligence & Machine Learning (AIML)</option>
+                  <option value="AIML">Intelligent Systems & Data Engineering (AIML)</option>
                   <option value="ME">Mechanical Engineering (ME)</option>
                   <option value="CV">Civil Engineering (CV)</option>
                 </select>

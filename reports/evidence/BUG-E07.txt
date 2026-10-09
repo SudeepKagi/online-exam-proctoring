@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-E07
+Command: node tests/ai_question_validation.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:32Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-E07: AI Question Preview Validation
   ✔ rejects question with missing unambiguous correct option (0 correct) (1.3067ms)
   ✔ rejects question with multiple correct options (>1 correct) (0.2412ms)

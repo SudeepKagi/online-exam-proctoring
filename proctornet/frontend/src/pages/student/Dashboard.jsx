@@ -101,7 +101,7 @@ export default function StudentDashboard() {
               className="bg-blue-50 hover:bg-blue-100 text-[#2f80ed] text-xs font-semibold py-2.5 px-4 rounded-xl border border-blue-200 transition-colors cursor-pointer flex items-center gap-2"
             >
               <ShieldCheck size={16} />
-              <span>BYOD Diagnostic</span>
+              <span>System Diagnostics</span>
             </button>
             <button
               onClick={() => navigate('/student/exams')}

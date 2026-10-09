@@ -16,6 +16,7 @@
     "generate": "npx prisma generate",
     "studio": "npx prisma studio",
     "ops:reset-keep-admin": "node scripts/ops/reset-keep-admin.js",
+    "ops:bootstrap-admin": "node scripts/ops/bootstrap-admin.js",
     "ops:dlq-replay": "node scripts/ops/dlq-replay.js",
     "ops:dead-replay": "node scripts/ops/dlq-replay.js",
     "ops:dead-replay-pg": "node -e \"require('./src/infra/postgres/pgQueueDispatcher').pgQueueDispatcher.replayFailed(200).then(r=>console.log('Replayed',r,'events')).catch(console.error).finally(()=>process.exit())\""

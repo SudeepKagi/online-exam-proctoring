@@ -18,8 +18,30 @@ const express = require('express')
 const router = express.Router()
 
 /**
+ * POST /api/v1/exams/:examId/readiness
+ * Initialize READY attempt without starting clock (Pre-exam security check)
+ */
+router.post(
+  '/exams/:examId/readiness',
+  requireAuth,
+  requireRole(ROLES.STUDENT),
+  validateParams(examIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { examId } = req.params
+      const studentId = req.user.id
+
+      const result = await attemptService.getOrCreateReadinessAttempt(examId, studentId)
+      return res.status(200).json(result.attempt)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
  * POST /api/v1/exams/:examId/attempt
- * Start or resume exam attempt (Student)
+ * Start or resume exam attempt (Student activation)
  */
 router.post(
   '/exams/:examId/attempt',
@@ -33,6 +55,96 @@ router.post(
 
       const result = await attemptService.startOrResumeAttempt(examId, studentId)
       return res.status(200).json(result.attempt)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/attempts/:attemptId/vpn-status
+ * Server-verified VPN tunnel status
+ */
+router.get(
+  '/attempts/:attemptId/vpn-status',
+  requireAuth,
+  validateParams(attemptIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const attempt = await prisma.examAttempt.findUnique({
+        where: { id: attemptId },
+        include: { exam: true }
+      })
+      if (!attempt) throw new NotFoundError('Attempt not found')
+
+      const isVpnEnabled = process.env.VPN_ENABLED === 'true'
+      const isEnforcing = (process.env.VPN_ENFORCEMENT || '').toLowerCase() === 'enforce'
+      const vpnRequired = Boolean(attempt.exam?.vpnRequired)
+
+      if (!vpnRequired || !isVpnEnabled || !isEnforcing) {
+        return res.status(200).json({
+          required: false,
+          verified: true,
+          message: 'VPN tunnel is not required for this exam.'
+        })
+      }
+
+      const lease = await prisma.vpnIpPool.findFirst({
+        where: { attemptId }
+      })
+      const verified = Boolean(lease && lease.ip)
+
+      return res.status(200).json({
+        required: true,
+        verified,
+        leasedIp: lease?.ip || null,
+        message: verified ? 'VPN tunnel active and verified.' : 'No active VPN tunnel lease found.'
+      })
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/attempts/:attemptId/identity-status
+ * Polling fallback for identity verification decisions (REVIEW -> PASS/FAIL)
+ */
+router.get(
+  '/attempts/:attemptId/identity-status',
+  requireAuth,
+  validateParams(attemptIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const { attemptId } = req.params
+      const attempt = await prisma.examAttempt.findUnique({
+        where: { id: attemptId }
+      })
+      if (!attempt) throw new NotFoundError('Attempt not found')
+
+      const latestVerification = await prisma.identityVerification.findFirst({
+        where: { attemptId },
+        orderBy: { createdAt: 'desc' }
+      })
+
+      if (!latestVerification) {
+        return res.status(200).json({
+          decision: 'PENDING',
+          verified: false,
+          pendingReview: false
+        })
+      }
+
+      const decision = latestVerification.decision
+      return res.status(200).json({
+        decision,
+        verified: decision === 'PASS',
+        pendingReview: decision === 'REVIEW',
+        status: latestVerification.status,
+        provider: latestVerification.provider,
+        reason: latestVerification.thresholdsUsed?.reason || null
+      })
     } catch (err) {
       next(err)
     }

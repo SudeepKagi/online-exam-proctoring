@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-J02
+Command: node tests/feature_truth.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:34Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-J02: Feature-Truth Audit & Admin Settings Wire-Up
   ✔ supports receiving and saving a flat settings object (19.0001ms)
   ✔ supports single key/value setting update (0.6545ms)

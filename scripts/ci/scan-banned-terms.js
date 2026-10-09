@@ -23,8 +23,9 @@ const BANNED_PATTERNS = [
   { category: 'realtime/media', pattern: /\b(webrtc|sfu|livekit|socket\.?io|websocket|simulcast|vp8|vp9|av1|stun|turn|ice|codec|bitrate|1080p|720p)\b/i },
   { category: 'network/security', pattern: /\b(wireguard|jwt|bcrypt|argon|rbac|csrf|cors|tls|ssl|hash(ing)?|encrypt(ion|ed)?\s+with)\b/i },
   { category: 'network/security (vpn)', pattern: /\bvpn(?!\s*required)\b/i },
-  { category: 'ai/vision/nlp', pattern: /\b(deepface|compreface|exadel|face-?api|tensorflow|onnx|paddle(ocr)?|tesseract|ocr|llama|llm|groq|openai|gpt|gemini|claude|neural|embedding|cosine|similarity\s+(score|scan)|machine\s+learning|model\s+name)\b/i },
-  { category: 'formats/ops', pattern: /\b(csv|xlsx|json|rest(\s+api)?|api\s+key|set-?based|sql\s+grading|kiosk|hypervisor|swiftshader|virtualbox|vmware|qemu|anydesk|teamviewer)\b/i }
+  { category: 'device/agent', pattern: /\b(byod|kiosk|swiftshader|hypervisor|virtualbox|vmware|qemu|anydesk|teamviewer)\b/i },
+  { category: 'ai/vision/nlp', pattern: /\b(deepface|compreface|exadel|face-?api|tensorflow|onnx|paddle(ocr)?|tesseract|ocr|llama|llm|groq|openai|gpt|gemini|claude|neural|model\s+match|embedding|cosine|similarity\s+(score|scan)|machine\s+learning|model\s+name)\b/i },
+  { category: 'formats/ops', pattern: /\b(csv|xlsx|json|rest(\s+api)?|api\s+key|set-?based|sql\s+grading)\b/i }
 ];
 
 // Extract candidate user-visible text blocks from file content
@@ -62,22 +63,24 @@ function extractUserVisibleStrings(content, filePath) {
       }
     }
 
-    // 3. Check for toasts, alerts, and notifications
-    const toastMatches = line.match(/toast\.(?:error|success|info|warn|warning)\s*\(\s*([`'"][^`'"]+[`'"])/g);
+    // 3. Check for toasts, alerts, notifications, and stage status messages
+    const toastMatches = line.match(/(?:toast(?:\.(?:error|success|info|warn|warning))?|alert|confirm|updateStage)\s*\(\s*(?:[^,()]+,\s*[^,()]+,\s*)?([`'"][^`'"]+[`'"])/g);
     if (toastMatches) {
       for (const m of toastMatches) {
-        const str = m.replace(/^toast\.\w+\s*\(\s*[`'"]/, '').replace(/[`'"]\s*$/, '');
-        candidates.push({ text: str, line: idx + 1, type: 'toast' });
+        const strMatch = m.match(/[`'"]([^`'"]+)[`'"]\s*\)?$/);
+        if (strMatch && strMatch[1]) {
+          candidates.push({ text: strMatch[1], line: idx + 1, type: 'notification' });
+        }
       }
     }
 
-    // 4. Check for user-facing object literals (label, desc, description, message, subtitle)
-    const objPropMatches = line.match(/(?:label|desc|description|message|reason|details|sub|subtitle)\s*:\s*[`'"]([^`'"]+)[`'"]/gi);
+    // 4. Check for user-facing object literals (name, label, desc, description, message, reason, details, sub, subtitle)
+    const objPropMatches = line.match(/(?:name|label|desc|description|message|reason|details|sub|subtitle)\s*:\s*[`'"]([^`'"]+)[`'"]/gi);
     if (objPropMatches) {
       for (const m of objPropMatches) {
         const str = m.replace(/^[a-zA-Z]+\s*:\s*[`'"]/, '').replace(/[`'"]$/, '');
         // Exclude internal error codes or log levels (e.g. desc: 'asc')
-        if (str.length > 2 && !['asc', 'desc', 'success', 'error', 'info', 'warn'].includes(str)) {
+        if (str.length > 2 && !['asc', 'desc', 'success', 'error', 'info', 'warn', 'system', 'media', 'face', 'kiosk'].includes(str)) {
           candidates.push({ text: str, line: idx + 1, type: 'property' });
         }
       }

@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: A0-01
+Command: node --test tests/agent-legacy-gaps.test.js && npm run check:no-stubs
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T13:52:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 PROCTORNET PHASE A0 EVIDENCE: BASELINE, DECISIONS & THREAT MODEL
 Executed: 2026-10-07T13:52:00+05:30
 Branch: feat/a0-baseline-decisions-threat-model

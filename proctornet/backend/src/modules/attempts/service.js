@@ -27,6 +27,23 @@ class AttemptService {
    * 1 round-trip fast path for pre-warmed READY attempts.
    */
   async startOrResumeAttempt(examId, studentId) {
+    // 0. Promote any unattached healthy PRECHECK session to student's attempt before activation
+    const existingAttempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+    if (existingAttempt) {
+      await prisma.agentSession.updateMany({
+        where: {
+          studentId,
+          scope: 'PRECHECK',
+          state: 'HEALTHY',
+          attemptId: null
+        },
+        data: {
+          attemptId: existingAttempt.id,
+          scope: 'ATTEMPT'
+        }
+      }).catch(() => {})
+    }
+
     // 1. Fast-path: Update READY -> ACTIVE in single SQL statement
     let attempt = await attemptRepository.activateReadyAttempt(examId, studentId)
 
@@ -252,6 +269,75 @@ class AttemptService {
 
     const presignedQuestions = await this.attachPresignedImageUrls(assembledQuestions)
     return toStudentAttemptDTO(attempt, presignedQuestions)
+  }
+
+  /**
+   * Idempotent pre-check readiness (creates READY attempt, never starts the clock)
+   */
+  async getOrCreateReadinessAttempt(examId, studentId) {
+    let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+    if (!attempt) {
+      const eligible = await attemptRepository.checkStudentEligibility(examId, studentId)
+      if (!eligible) {
+        throw new ForbiddenError('You are not eligible to take this exam or the exam is not currently active')
+      }
+
+      const exam = await prisma.exam.findUnique({
+        where: { id: examId },
+        include: {
+          questions: {
+            include: { options: true }
+          }
+        }
+      })
+
+      if (!exam) {
+        throw new NotFoundError(`Exam '${examId}' not found`)
+      }
+
+      if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
+        throw new ForbiddenError(`Exam is not open for pre-check (status: ${exam.status})`)
+      }
+
+      if (new Date() > exam.endTime) {
+        throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
+      }
+
+      const precheckMinutes = parseInt(process.env.PRECHECK_OPEN_MINUTES || '30', 10)
+      const precheckOpenTime = new Date(exam.startTime.getTime() - precheckMinutes * 60 * 1000)
+      if (new Date() < precheckOpenTime) {
+        throw new ForbiddenError(`Pre-check opens ${precheckMinutes} minutes before exam start (${exam.startTime.toISOString()})`)
+      }
+
+      attempt = await attemptRepository.createReadyAttempt(
+        examId,
+        studentId,
+        exam,
+        exam.questions
+      )
+    }
+
+    // Promote any unattached healthy PRECHECK session to this attempt
+    try {
+      await prisma.agentSession.updateMany({
+        where: {
+          studentId,
+          scope: 'PRECHECK',
+          state: 'HEALTHY',
+          attemptId: null
+        },
+        data: {
+          attemptId: attempt.id,
+          scope: 'ATTEMPT'
+        }
+      })
+    } catch (err) {
+      logger.warn({ studentId, error: err.message }, 'Failed to promote PRECHECK companion session')
+    }
+
+    return {
+      attempt: toStudentAttemptDTO(attempt, [])
+    }
   }
 
   /**

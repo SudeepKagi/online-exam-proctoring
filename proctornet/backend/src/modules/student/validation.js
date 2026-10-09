@@ -7,9 +7,7 @@ const updateProfileSchema = z.object({
   department: z.string().optional(),
   departmentCode: z.string().optional(),
   semester: z.union([z.number(), z.string()]).optional(),
-  facePhotoUrl: z.string().optional().nullable(),
   facePhotoKey: z.string().optional().nullable(),
-  idCardPhotoUrl: z.string().optional().nullable(),
   idCardPhotoKey: z.string().optional().nullable()
 }).passthrough()
 

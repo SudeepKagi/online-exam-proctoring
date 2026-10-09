@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: DOD-10
+Command: node --test tests/p8-vpn-wireguard.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-09T01:15:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ﻿{"level":"info","time":"2026-10-07T01:48:34.646Z","pid":28548,"hostname":"MSI","msg":"RabbitMQ connection established via connection manager"}
 {"level":"info","time":"2026-10-07T01:48:34.656Z","pid":28548,"hostname":"MSI","msg":"Asserting RabbitMQ topology and (re)attaching registered consumers"}
 {"level":"debug","time":"2026-10-07T01:48:35.561Z","pid":28548,"hostname":"MSI","existingCount":1200,"targetCount":1200,"msg":"[IPAM] Pool already sufficiently seeded"}

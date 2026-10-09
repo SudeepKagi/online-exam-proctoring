@@ -1,0 +1,21 @@
+Command: node --test proctornet/backend/tests/t1-autosave-correctness.test.js
+Git SHA: c6342516ada39323900193146d30a97dda68bd14
+Timestamp: 2026-10-09T03:00:00Z
+Environment: Local clean-room replica (Windows 11, Node.js v25, PostgreSQL 16)
+
+▶ Phase T1: Autosave Correctness against Real PostgreSQL + API
+  ✔ (a) Answer Q1, Q2, change Q1, change Q2 (global-revision bug fix) -> all 4 saves succeed
+  ✔ (b) Two tabs editing the same question -> loser reconciles CAS conflict, no storm, last choice persists
+  ✔ (c) Batch with mixed OK / STALE / INVALID -> only OK removed, others retained or surfaced
+  ✔ (d) 429/503 storms -> bounded request rate with exponential backoff and jitter
+  ✔ (e) Property test (fast-check): random interleavings of edits and flushes persist acknowledged saves (17245.2655ms)
+  ✔ (f) SessionStorage mid-exam restore -> outdated entries pruned, dirty entries restored and persisted (2256.1365ms)
+✔ Phase T1: Autosave Correctness against Real PostgreSQL + API (38695.8097ms)
+ℹ tests 6
+ℹ suites 1
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 40685.9793

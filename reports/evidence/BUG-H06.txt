@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-H06
+Command: node tests/api_client.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:33Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-H06: Axios Client Interceptors for Idempotency-Key & Request-ID
   ✔ automatically adds X-Request-ID to outgoing requests (1.1885ms)
   ✔ attaches Idempotency-Key header on state-mutating requests (POST, PUT, PATCH, DELETE) (0.5165ms)

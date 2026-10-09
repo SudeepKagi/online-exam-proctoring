@@ -220,8 +220,8 @@ export default function QuestionPool() {
           <Card className="bg-primary/5 border-primary/20 p-5 rounded-2xl">
             {!llmEnabled && (
               <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 space-y-0.5">
-                <span className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> LLM Provider Configuration Required</span>
-                <p className="text-[11px] opacity-90">To activate AI generation, configure <code className="font-mono bg-amber-500/20 px-1 rounded">LLM_PROVIDER</code> and <code className="font-mono bg-amber-500/20 px-1 rounded">LLM_API_KEY</code> on the server.</p>
+                <span className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Automated Generation Configuration Required</span>
+                <p className="text-[11px] opacity-90">To activate automated question generation, configure server generation credentials.</p>
               </div>
             )}
             <div className="flex items-center justify-between mb-3">

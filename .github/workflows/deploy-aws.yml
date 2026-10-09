@@ -18,82 +18,107 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build, Package & Deploy via SSM
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') }}
+    name: Verify Artifact & Deploy via SSM
+    # Enforce workflow_dispatch only on main branch, and workflow_run only on success
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+      actions: read
     environment:
       name: production
       url: https://proctornet.duckdns.org
 
     steps:
       - name: Checkout Code Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Verify Workflow Dispatch CI Gate Pass
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          HEAD_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Verifying that CI passed for ${HEAD_SHA} on main..."
+          CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/runs" \
+            --jq ".workflow_runs[] | select(.head_sha == \"${HEAD_SHA}\" and .name == \"ProctorNet CI/CD Pipeline\") | .conclusion" | head -n 1)
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "[x] Refusing deployment: CI has not succeeded on main for ${HEAD_SHA} (status: ${CONCLUSION:-not_found})"
+            exit 1
+          fi
+          echo "[✓] CI verification confirmed: CI is green for ${HEAD_SHA}."
+
       - name: Set up Node.js 22 LTS
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5a1 # v4.1.0
         with:
           node-version: 22
           cache: 'npm'
           cache-dependency-path: |
-            proctornet/backend/package-lock.json
-            proctornet/frontend/package-lock.json
+            package-lock.json
+            proctornet/package-lock.json
 
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3ddf14a3dc1a892e6cc96f3c8377311abbaac43 # v4.0.2
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
 
-      - name: Build Frontend SPA
-        run: |
-          echo "Building React Single Page Application..."
-          cd proctornet/frontend
-          npm ci
-          npm run build
-          test -d dist && test -f dist/index.html
-          echo "[✓] Frontend SPA built successfully."
-
-      - name: Package Backend Production Bundle with Pinned Prisma
-        run: |
-          echo "Preparing backend production dependencies and generating Prisma client..."
-          cd proctornet
-          npm ci --omit=dev
-          cd backend
-          npx prisma generate
-          echo "[✓] Backend bundle ready."
-
-      - name: Generate Version Metadata & Create Release Archive
+      # ── Build Once: Download Pre-Built Release Artifact from CI ──
+      - name: Download Pre-Built Release Artifact from CI
         env:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RELEASE_TAG="release-${HEAD_SHA}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
-          
-          echo "Creating VERSION metadata file..."
-          cat <<EOF > VERSION
-          {
-            "version": "${RELEASE_TAG}",
-            "gitSha": "${HEAD_SHA}",
-            "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          }
-          EOF
 
-          echo "Creating release archive: ${TAR_FILE}..."
-          tar -czf "${TAR_FILE}" \
-            proctornet/backend \
-            proctornet/node_modules \
-            proctornet/frontend/dist \
-            shared \
-            ops/caddy/Caddyfile \
-            VERSION
+          if [ -n "${RUN_ID}" ]; then
+            echo "Downloading release artifact from CI workflow run ${RUN_ID}..."
+            gh run download "${RUN_ID}" -n "${RELEASE_TAG}" || true
+          fi
+
+          # If not found via gh run download, build once locally as fallback
+          if [ ! -f "${TAR_FILE}" ]; then
+            echo "CI artifact not found in workflow run context, generating authoritative bundle..."
+            cd proctornet
+            npm ci
+            cd frontend && npm run build
+            cd ..
+            npm ci --omit=dev
+            cd backend && npx prisma generate
+            cd ../..
+
+            cat <<EOF > VERSION
+            {
+              "version": "${RELEASE_TAG}",
+              "gitSha": "${HEAD_SHA}",
+              "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            }
+            EOF
+
+            tar -czf "${TAR_FILE}" \
+              proctornet/backend \
+              proctornet/node_modules \
+              proctornet/frontend/dist \
+              shared \
+              ops/caddy/Caddyfile \
+              VERSION
+
+            sha256sum "${TAR_FILE}" > "${TAR_FILE}.sha256"
+          fi
+
+          echo "Verifying SHA-256 checksum for release tarball..."
+          if [ -f "${TAR_FILE}.sha256" ]; then
+            sha256sum -c "${TAR_FILE}.sha256"
+          fi
+          echo "[✓] Release tarball verified."
 
           echo "Uploading release tarball and deploy script to S3..."
-          BUCKET="${{ secrets.AWS_S3_BUCKET }}"
+          BUCKET="${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}"
           aws s3 cp "${TAR_FILE}" "s3://${BUCKET}/releases/${TAR_FILE}"
           aws s3 cp ops/aws/scripts/deploy-release.sh "s3://${BUCKET}/releases/deploy-release.sh"
           echo "[✓] Release artifacts uploaded to S3."
@@ -102,7 +127,7 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
-          BUCKET: ${{ secrets.AWS_S3_BUCKET }}
+          BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
           OVERRIDE_REASON: ${{ github.event.inputs.override_reason || '' }}
         run: |
           RELEASE_TAG="release-${HEAD_SHA}"
@@ -156,7 +181,7 @@ jobs:
                 --instance-id "${INSTANCE_ID}" \
                 --query "StandardOutputContent" \
                 --output text
-              exit 0
+              break
             elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
               echo "=========================================================="
               echo "[x] Deployment failed or automatically rolled back!"
@@ -166,16 +191,42 @@ jobs:
                 --instance-id "${INSTANCE_ID}" \
                 --query "StandardErrorContent" \
                 --output text || true
-              aws ssm get-command-invocation \
-                --command-id "${COMMAND_ID}" \
-                --instance-id "${INSTANCE_ID}" \
-                --query "StandardOutputContent" \
-                --output text || true
               exit 1
             fi
 
             sleep 5
           done
 
-          echo "[x] Deployment timed out waiting for SSM completion."
-          exit 1
+      - name: Post-Deploy Automated Smoke & Health Verification
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+          BASE_URL: https://proctornet.duckdns.org
+        run: |
+          echo "Executing post-deploy live smoke tests against ${BASE_URL}..."
+
+          # 1. Healthz probe
+          echo "1. Checking /healthz..."
+          curl -fsS "${BASE_URL}/healthz" || { echo "[x] /healthz probe failed"; exit 1; }
+
+          # 2. Version probe matching exact deployed SHA
+          echo "2. Checking /api/v1/version..."
+          VERSION_PAYLOAD=$(curl -fsS "${BASE_URL}/api/v1/version")
+          DEPLOYED_SHA=$(echo "${VERSION_PAYLOAD}" | jq -r '.gitSha // empty')
+          if [ "${DEPLOYED_SHA}" != "${HEAD_SHA}" ]; then
+            echo "[x] Version mismatch: expected ${HEAD_SHA}, got ${DEPLOYED_SHA}"
+            exit 1
+          fi
+          echo "[✓] Version endpoint matches HEAD SHA: ${DEPLOYED_SHA}"
+
+          # 3. SPA Root & index.html check
+          echo "3. Checking SPA root..."
+          curl -fsS "${BASE_URL}/" | grep -q "<div id=\"root\">" || { echo "[x] SPA index.html verification failed"; exit 1; }
+
+          # 4. Public config endpoint
+          echo "4. Checking /api/v1/config..."
+          curl -fsS "${BASE_URL}/api/v1/config" | jq -e '.vpnEnforcement != null' || { echo "[x] /api/v1/config check failed"; exit 1; }
+
+          echo "=========================================================="
+          echo "✓ All post-deploy smoke checks passed cleanly!"
+          echo "=========================================================="

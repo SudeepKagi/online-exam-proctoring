@@ -12,8 +12,15 @@ function toSaveAnswerResponseDTO(revision) {
 
 function toBatchSaveAnswersResponseDTO(results) {
   return {
-    success: results.every(r => r.success),
-    results
+    success: results.every(r => r.status === 'OK' || r.success === true),
+    results: results.map(r => ({
+      attemptQuestionId: r.attemptQuestionId,
+      status: r.status || (r.success ? 'OK' : 'ERROR'),
+      success: r.status === 'OK' || r.success === true,
+      revision: r.revision,
+      currentRevision: r.currentRevision,
+      error: r.error
+    }))
   }
 }
 

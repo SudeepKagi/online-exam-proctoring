@@ -111,3 +111,18 @@ The GitHub Actions workflow uses OpenID Connect (OIDC) rather than static long-l
   ]
 }
 ```
+
+---
+
+## 4. Human Verification Sign-Off Checklist (HUMAN_REQUIRED)
+
+To be completed by repository administrator before closing release gate:
+
+- [ ] **Production Environment Reviewers:** Required reviewers configured for `production` environment.
+  - *Verifier / Timestamp:* `________________________`
+  - *Screenshot Reference:* `[Attach environment protection settings screenshot]`
+- [ ] **Main Branch Protection:** Status checks `Lint & Architecture Gates`, `Database Migration & Schema Alignment`, `Full Test Suite Execution`, and `Security Audits & Vulnerability Gates` required. Direct push blocked.
+  - *Verifier / Timestamp:* `________________________`
+  - *Screenshot Reference:* `[Attach branch protection settings screenshot]`
+- [ ] **Deploy Gate Verification:** Confirming `deploy-aws.yml` runs only on successful CI run or manual dispatch from `main` with green CI.
+

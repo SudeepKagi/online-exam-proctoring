@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-B05
+Command: node tests/approval_auth.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:28Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-B05: Faculty Department Approval Authorization
   ✔ approves student when faculty and student belong to the same department (14.4439ms)
   ✔ rejects approval with ForbiddenError if faculty department differs from student department (1.2127ms)

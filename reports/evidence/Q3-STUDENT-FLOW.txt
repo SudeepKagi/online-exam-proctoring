@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-E05
+Command: node --test tests/q3-student-flow.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T01:20:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ﻿Γû╢ Q3 - Shared Event Catalogue & Strict Validation (A-06)
   Γ£ö contains all canonical violation enums (0.678ms)
   Γ£ö normalizes legacy client event types to canonical enums (0.2804ms)

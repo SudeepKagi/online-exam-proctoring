@@ -172,6 +172,84 @@ class AttemptRepository {
   }
 
   /**
+   * Create an idempotent READY attempt for pre-check readiness (never starts the clock)
+   */
+  async createReadyAttempt(examId, studentId, exam, questions) {
+    return prisma.$transaction(async (tx) => {
+      // 1. Double check attempt existence with lock
+      const existing = await tx.examAttempt.findUnique({
+        where: { examId_studentId: { examId, studentId } },
+        include: { exam: true }
+      })
+      if (existing) return existing
+
+      const shuffleSeed = crypto.randomBytes(16).toString('hex')
+      const watermarkSeed = crypto.randomBytes(8).toString('hex')
+
+      // Insert attempt with READY status (never starts clock)
+      const createdRows = await tx.$queryRawUnsafe(`
+        INSERT INTO exam_attempts (
+          id, exam_id, student_id, status, started_at, expires_at,
+          watermark_seed, shuffle_seed, created_at
+        )
+        VALUES (
+          gen_random_uuid(), $1::uuid, $2::uuid, 'READY', null, null,
+          $3, $4, now()
+        )
+        ON CONFLICT (exam_id, student_id) DO NOTHING
+        RETURNING *;
+      `, examId, studentId, watermarkSeed, shuffleSeed)
+
+      let attempt = createdRows && createdRows.length > 0 ? createdRows[0] : null
+      if (!attempt) {
+        return tx.examAttempt.findUnique({
+          where: { examId_studentId: { examId, studentId } },
+          include: { exam: true }
+        })
+      }
+
+      // Generate shuffled attempt questions
+      if (questions && questions.length > 0) {
+        const rng = createSeededRng(shuffleSeed)
+        const shuffledQuestions = [...questions]
+        shuffleArray(shuffledQuestions, rng)
+
+        const selectedQuestions = (exam.questionsPerStudent > 0 && exam.questionsPerStudent < shuffledQuestions.length)
+          ? shuffledQuestions.slice(0, exam.questionsPerStudent)
+          : shuffledQuestions
+
+        if (selectedQuestions.length > 0) {
+          const valuePlaceholders = []
+          const params = [attempt.id]
+          let paramIdx = 2
+
+          for (let i = 0; i < selectedQuestions.length; i++) {
+            const q = selectedQuestions[i]
+            const optionOrder = (q.options || []).map((_, idx) => idx)
+            if (exam.randomiseOptions) {
+              shuffleArray(optionOrder, rng)
+            }
+
+            valuePlaceholders.push(`(gen_random_uuid(), $1::uuid, $${paramIdx}::uuid, $${paramIdx + 1}, $${paramIdx + 2}::smallint[])`)
+            params.push(q.id, i + 1, optionOrder)
+            paramIdx += 3
+          }
+
+          const sql = `
+            INSERT INTO attempt_questions (id, attempt_id, question_id, display_order, option_order)
+            VALUES ${valuePlaceholders.join(',\n')}
+            ON CONFLICT (attempt_id, question_id) DO NOTHING;
+          `
+          await tx.$executeRawUnsafe(sql, ...params)
+        }
+      }
+
+      attempt.exam = exam
+      return attempt
+    }, { maxWait: 5000, timeout: 15000 })
+  }
+
+  /**
    * Fetch attempt questions with stored answers for student session
    */
   async getAttemptQuestionsWithAnswers(attemptId) {
@@ -182,7 +260,7 @@ class AttemptRepository {
         aq.display_order AS "displayOrder",
         aq.option_order AS "optionOrder",
         a.selected_option_id AS "selectedOptionId",
-        COALESCE(a.revision, 1) AS revision
+        COALESCE(a.revision, 0) AS revision
       FROM attempt_questions aq
       LEFT JOIN answers a ON a.attempt_question_id = aq.id
       WHERE aq.attempt_id = $1::uuid

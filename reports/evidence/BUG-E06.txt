@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: BUG-E06
+Command: node tests/question_immutability.test.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-08T01:44:31Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 ▶ BUG-E06: Question Immutability After Publish & In-Place Option Updates
   ✔ blocks creating questions in published or non-draft exams with ConflictError (13.2056ms)
   ✔ blocks deleting questions in non-draft exams with ConflictError (0.4645ms)

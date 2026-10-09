@@ -371,7 +371,7 @@ export default function ExamInterface() {
 
         setAttemptId(attempt.id)
         setExpiresAt(attempt.expiresAt)
-        autosaveRef.current.setAttemptId(attempt.id)
+        autosaveRef.current.setAttemptId(attempt.id, attempt.questions || [])
         if (typeof sessionStorage !== 'undefined') {
           sessionStorage.setItem('pn_active_attempt', attempt.id)
         }
@@ -459,11 +459,7 @@ export default function ExamInterface() {
 
           // Hydrate previously saved answers + revisions (Q3.1)
           const hydratedAnswers = {}
-          let maxRevision = 1
           for (const q of (attempt.questions || [])) {
-            if (q.revision && q.revision > maxRevision) {
-              maxRevision = q.revision
-            }
             if (q.selectedOptionId) {
               let matchedLetter = null
               const matchedOpt = (q.options || []).find((opt, i) => {
@@ -476,7 +472,7 @@ export default function ExamInterface() {
 
               const targetVal = {
                 selected: matchedLetter || matchedOpt?.text || q.selectedOptionId,
-                revision: q.revision || 1
+                revision: q.revision || 0
               }
 
               if (q.attemptQuestionId) hydratedAnswers[q.attemptQuestionId] = targetVal
@@ -485,7 +481,7 @@ export default function ExamInterface() {
           }
           setAnswers(hydratedAnswers)
           if (autosaveRef.current) {
-            autosaveRef.current.currentRevision = maxRevision
+            autosaveRef.current.setQuestionRevisions(attempt.questions || [])
           }
         }
       } catch (err) {
@@ -501,6 +497,7 @@ export default function ExamInterface() {
     initExam()
     return () => {
       if (interval) clearInterval(interval)
+      autosaveRef.current?.destroy()
     }
   }, [examId, navigate])
 

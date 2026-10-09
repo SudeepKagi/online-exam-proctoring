@@ -71,11 +71,11 @@ class StudentService {
       }
     }
 
-    if (data.facePhotoKey || data.facePhotoUrl) {
-      allowed.facePhotoKey = data.facePhotoKey || data.facePhotoUrl
+    if (data.facePhotoKey) {
+      allowed.facePhotoKey = data.facePhotoKey
     }
-    if (data.idCardPhotoKey || data.idCardPhotoUrl) {
-      allowed.idCardPhotoKey = data.idCardPhotoKey || data.idCardPhotoUrl
+    if (data.idCardPhotoKey) {
+      allowed.idCardPhotoKey = data.idCardPhotoKey
     }
 
     const updated = await studentRepository.updateStudent(studentId, allowed)

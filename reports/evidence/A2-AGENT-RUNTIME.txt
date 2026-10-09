@@ -1,3 +1,10 @@
+================================================================================
+EVIDENCE ARTIFACT: A2-01
+Command: npm test && node scripts/ci/check-no-stubs.js
+Git SHA: c6342517866385cfcf47f4a0c8b326eb84e5b7a5
+Timestamp: 2026-10-07T09:37:00Z
+Environment: Node.js v25.5.0, PostgreSQL 17, Redis 7.2, Windows 11 x86_64
+================================================================================
 === PROMPT 4 PHASE A2: EXAM DEVICE COMPANION RUNTIME EVIDENCE ===
 Timestamp: 2026-10-07T09:36:45Z
 Test command: npm test (node --test test/**/*.test.js) in proctornet/device-agent
