@@ -7,7 +7,7 @@ const { TestVerifierDriver } = require('./testDriver')
 let currentVerifier = null
 
 function createFaceVerifier(driverType = null, options = {}) {
-  const driver = driverType || process.env.FACE_DRIVER || process.env.FACE_VERIFIER_DRIVER || DRIVERS.REKOGNITION
+  const driver = driverType || process.env.FACE_VERIFIER_DRIVER || process.env.FACE_DRIVER || DRIVERS.REKOGNITION
 
   switch (driver.toLowerCase()) {
     case DRIVERS.REKOGNITION:
