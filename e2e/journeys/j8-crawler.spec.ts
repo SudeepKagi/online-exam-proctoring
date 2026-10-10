@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from '../helpers/actors'
+import { api } from '../helpers/api'
 import fs from 'fs'
 import path from 'path'
 
