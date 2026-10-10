@@ -1,6 +1,7 @@
 const { prisma } = require('../../infra/postgres/client')
 const { ConflictError, NotFoundError } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
+const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
 
 /**
  * Strict Exam Attempt State Machine (ADR-004 / Notion 13.15 / C-04)
@@ -29,7 +30,7 @@ class AttemptStateMachine {
       reason = null,
       metadata = {},
       isGuardedStart = false,
-      graceSeconds = parseInt(process.env.EXAM_GRACE_SECONDS || process.env.SUBMIT_GRACE_SECONDS || '300', 10)
+      graceSeconds = EXAM_CLOCK_CONFIG.endGrace
     } = options
 
     const target = toStatus.toUpperCase()

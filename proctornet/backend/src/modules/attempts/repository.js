@@ -1,5 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { SQL_ELIGIBILITY_WHERE } = require('../exams/eligibility')
+const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
 const crypto = require('crypto')
 
 class AttemptRepository {
@@ -8,7 +9,7 @@ class AttemptRepository {
    * 1 round trip: updates READY -> ACTIVE returning the row.
    */
   async activateReadyAttempt(examId, studentId) {
-    const graceSeconds = parseInt(process.env.EXAM_GRACE_SECONDS || process.env.SUBMIT_GRACE_SECONDS || '300', 10)
+    const graceSeconds = EXAM_CLOCK_CONFIG.endGrace
     const sql = `
       WITH updated_attempt AS (
         UPDATE exam_attempts ea

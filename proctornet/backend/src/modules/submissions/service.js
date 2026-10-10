@@ -37,7 +37,8 @@ class SubmissionService {
       return existing.body
     }
 
-    const submitGraceSeconds = parseInt(process.env.SUBMIT_GRACE_SECONDS || '10', 10)
+    const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
+    const submitGraceSeconds = EXAM_CLOCK_CONFIG.submitGrace
 
     // 2. Execute transactional submit with row locking
     const result = await submissionRepository.submitAttemptTransaction(

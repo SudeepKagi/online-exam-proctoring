@@ -1,5 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
+const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
 
 const SWEEPER_LOCK_ID = 987654321
 
@@ -54,17 +55,18 @@ class ExpirySweeper {
         hasLock = false
       }
 
-      // 2. Set-based update: find ACTIVE attempts past expires_at + 30s grace
+      // 2. Set-based update: find ACTIVE attempts past expires_at + sweepGrace (§P9 F8)
+      const sweepGraceSeconds = EXAM_CLOCK_CONFIG.sweepGrace
       const updateSql = `
         UPDATE exam_attempts
         SET status = 'EXPIRED'
         WHERE status = 'ACTIVE'
           AND expires_at IS NOT NULL
-          AND expires_at < (now() - interval '30 seconds')
+          AND expires_at < (now() - ($1 || ' seconds')::interval)
         RETURNING id, exam_id, student_id;
       `
 
-      const expiredAttempts = await prisma.$queryRawUnsafe(updateSql)
+      const expiredAttempts = await prisma.$queryRawUnsafe(updateSql, sweepGraceSeconds)
 
       if (expiredAttempts && expiredAttempts.length > 0) {
         logger.info({ count: expiredAttempts.length }, 'Sweeper identified expired exam attempts')

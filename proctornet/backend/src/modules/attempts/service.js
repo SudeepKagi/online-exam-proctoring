@@ -103,10 +103,9 @@ class AttemptService {
 
     attempt.exam = exam
 
-    // Submit grace window (defaults to 10s or SUBMIT_GRACE_SECONDS)
-    const submitGraceSeconds = parseInt(process.env.SUBMIT_GRACE_SECONDS || '10', 10)
-    const expiresAtWithGrace = attempt.expiresAt ? new Date(new Date(attempt.expiresAt).getTime() + submitGraceSeconds * 1000) : null
-    const isExpired = Boolean(expiresAtWithGrace && new Date() > expiresAtWithGrace)
+    // Submit grace window governed by unified examClock (§P9 F8)
+    const { canSubmitAttempt } = require('../exams/examClock')
+    const isExpired = Boolean(attempt.expiresAt && !canSubmitAttempt(attempt.expiresAt))
 
     if (attemptStateMachine.isTerminal(attempt.status) || attempt.status === 'SUSPENDED' || attempt.status === 'READY' || isExpired) {
       if (isExpired && attempt.status === 'ACTIVE') {

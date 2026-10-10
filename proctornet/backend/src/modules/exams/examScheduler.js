@@ -97,8 +97,9 @@ class ExamScheduler {
           }
         }
 
-        // Expire SUSPENDED attempts at end_time + grace and enqueue evaluation
-        const graceSeconds = parseInt(process.env.EXAM_GRACE_SECONDS || '300', 10)
+        // Expire SUSPENDED attempts at end_time + grace and enqueue evaluation (§P9 F3/F8)
+        const { EXAM_CLOCK_CONFIG } = require('./examClock')
+        const graceSeconds = EXAM_CLOCK_CONFIG.endGrace
         const expiredSuspendedAttempts = await prisma.$queryRawUnsafe(`
           UPDATE exam_attempts ea
           SET status = 'EXPIRED',
