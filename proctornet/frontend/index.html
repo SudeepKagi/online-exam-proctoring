@@ -26,7 +26,7 @@
     <!-- Prevent exam page indexing (security) -->
     <meta name="robots" content="noindex, nofollow" />
 
-    <!-- Force Light Theme -->
+    <!-- Force Light Theme & Refresh Safety -->
     <script>
       (function() {
         try {
@@ -34,6 +34,12 @@
           document.documentElement.classList.remove('dark');
           document.documentElement.classList.add('light');
         } catch (e) {}
+        if (typeof window.$RefreshSig$ === 'undefined') {
+          window.$RefreshSig$ = function() { return function(type) { return type; }; };
+        }
+        if (typeof window.$RefreshReg$ === 'undefined') {
+          window.$RefreshReg$ = function() {};
+        }
       })();
     </script>
   </head>

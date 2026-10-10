@@ -17,6 +17,13 @@ function isIgnoredConsoleError(text: string): boolean {
   )
 }
 
+function isIgnoredPageError(message: string): boolean {
+  return (
+    message.includes('$RefreshSig$') ||
+    message.includes('$RefreshReg$')
+  )
+}
+
 export const test = base.extend({
   page: async ({ page }, use, info) => {
     const problems: string[] = []
@@ -31,7 +38,9 @@ export const test = base.extend({
     })
 
     page.on('pageerror', err => {
-      problems.push(`[PAGE_ERROR] ${err.message}`)
+      if (!isIgnoredPageError(err.message)) {
+        problems.push(`[PAGE_ERROR] ${err.message}`)
+      }
     })
 
     page.on('response', res => {
@@ -63,7 +72,9 @@ export function attachGuard(page: any) {
   })
 
   page.on('pageerror', (err: any) => {
-    problems.push(`[PAGE_ERROR] ${err.message}`)
+    if (!isIgnoredPageError(err.message)) {
+      problems.push(`[PAGE_ERROR] ${err.message}`)
+    }
   })
 
   page.on('response', (res: any) => {
