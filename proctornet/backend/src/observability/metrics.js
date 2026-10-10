@@ -72,6 +72,14 @@ async function metricsHandler(req, res) {
   try {
     let output = await register.metrics()
 
+    // Update outbox failed count gauge (§P9 F1)
+    try {
+      const failedRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM outbox_events WHERE status = 'FAILED';`)
+      if (failedRows && failedRows[0]) {
+        outboxFailedGauge.set(failedRows[0].count)
+      }
+    } catch {}
+
     // Append Prisma native metrics if enabled
     if (prisma?.$metrics) {
       try {
@@ -89,11 +97,24 @@ async function metricsHandler(req, res) {
   }
 }
 
-// ── Outbox Failed Events Counter (Q4 Task 3) ──
+// ── Outbox Failed Events Counter (Q4 Task 3 & P9 F1) ──
 const outboxFailedCounter = new client.Counter({
   name: 'pn_outbox_failed_total',
   help: 'Total number of permanently failed outbox events',
   labelNames: ['event_type'],
+  registers: [register],
+})
+
+const unhandledOutboxEventCounter = new client.Counter({
+  name: 'pn_outbox_unhandled_events_total',
+  help: 'Total number of unhandled outbox events encountered',
+  labelNames: ['event_type'],
+  registers: [register],
+})
+
+const outboxFailedGauge = new client.Gauge({
+  name: 'pn_outbox_failed_rows',
+  help: 'Count of outbox_events currently in status FAILED',
   registers: [register],
 })
 
@@ -168,6 +189,8 @@ module.exports = {
   socketioConnectedGauge,
   eventLoopLagGauge,
   outboxFailedCounter,
+  unhandledOutboxEventCounter,
+  outboxFailedGauge,
   agentPairingsTotal,
   agentDownloadsTotal,
   agentReportsTotal,

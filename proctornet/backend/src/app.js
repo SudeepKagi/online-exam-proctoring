@@ -313,7 +313,7 @@ internalApp.get('/metrics', metricsHandler)
 const v1Router = require('./modules/router')
 const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
-const { getQueueDriver, registerQueueHandler } = require('./infra/queueDriver')
+const { getQueueDriver, registerQueueHandler, registerAllHandlers } = require('./infra/queueDriver')
 const config = require('./shared/config')
 const { evaluationWorker } = require('./modules/results/evaluationWorker')
 const { evidenceWorker } = require('./modules/media/evidenceWorker')
@@ -475,13 +475,8 @@ if ((isDirectRun || process.env.NODE_ENV !== 'test') && !process.env.JEST_WORKER
       console.log(`🔒 Internal listener: http://${INTERNAL_HOST}:${INTERNAL_PORT} (/metrics, /readyz)`)
     })
 
-    // Register in-process handlers when using postgres queue driver
-    if (config.queueDriver === 'postgres') {
-      registerQueueHandler('attempt.submitted', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.submitted', payload: p, ...m }))
-      registerQueueHandler('attempt.expired', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.expired', payload: p, ...m }))
-      registerQueueHandler('attempt.terminated', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.terminated', payload: p, ...m }))
-      registerQueueHandler('evidence.uploaded', (p, m) => evidenceWorker.handleEvent({ type: 'evidence.uploaded', payload: p, ...m }))
-    }
+    // Single registration point called at boot for all outbox event types (§P9 F1)
+    registerAllHandlers()
 
     // Start background workers: default false for API processes (C-10)
     if (process.env.START_WORKERS === 'true') {

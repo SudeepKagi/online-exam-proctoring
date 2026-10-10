@@ -13,6 +13,11 @@ class EvaluationWorker {
     if (this.isStarted) return
     this.isStarted = true
 
+    if (process.env.QUEUE_DRIVER === 'postgres') {
+      logger.info('EvaluationWorker: in-process postgres queue driver active, broker consumer skipped')
+      return
+    }
+
     logger.info('Starting EvaluationWorker for asynchronous grading')
 
     // Try consuming from RabbitMQ queue 'evaluation'
@@ -23,6 +28,15 @@ class EvaluationWorker {
     } catch (err) {
       logger.warn({ error: err.message }, 'Could not immediately start RabbitMQ evaluation consumer; will retry')
     }
+  }
+
+  /**
+   * Handle an outbox event dispatched by pgQueueDispatcher or broker
+   */
+  async handleEvent({ type, payload, eventId }) {
+    const p = payload || {}
+    const stableId = eventId || (p.attemptId ? `${type}:${p.attemptId}` : `${type}:${Date.now()}`)
+    return this.processEvent({ type, payload: p, eventId: stableId })
   }
 
   /**

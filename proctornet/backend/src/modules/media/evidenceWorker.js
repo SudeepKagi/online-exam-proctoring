@@ -40,6 +40,11 @@ class EvidenceWorker {
     if (this.isStarted) return
     this.isStarted = true
 
+    if (process.env.QUEUE_DRIVER === 'postgres') {
+      logger.info('EvidenceWorker: in-process postgres queue driver active, broker consumer skipped')
+      return
+    }
+
     logger.info('Starting EvidenceWorker for asynchronous thumbnail generation and validation')
 
     try {
@@ -54,6 +59,15 @@ class EvidenceWorker {
   async stop() {
     this.isStarted = false
     this.consumerTag = null
+  }
+
+  /**
+   * Handle an outbox event dispatched by pgQueueDispatcher or broker
+   */
+  async handleEvent({ type, payload, eventId }) {
+    const p = payload || {}
+    const stableId = eventId || (p.violationId ? `${type}:${p.violationId}` : (p.attemptId ? `${type}:${p.attemptId}` : `${type}:${Date.now()}`))
+    return this.processEvent({ type, payload: p, eventId: stableId })
   }
 
   /**

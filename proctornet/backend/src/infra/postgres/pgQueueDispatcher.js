@@ -16,7 +16,7 @@
 
 const { prisma } = require('../postgres/client')
 const { logger } = require('../../shared/logging')
-const { outboxFailedCounter } = require('../../observability/metrics')
+const { outboxFailedCounter, unhandledOutboxEventCounter } = require('../../observability/metrics')
 
 // ── Retry schedule (seconds) with per-step jitter ────────────────────────────
 const RETRY_SCHEDULE_S = [5, 30, 300] // 5s → 30s → 5min
@@ -24,12 +24,19 @@ const MAX_ATTEMPTS = RETRY_SCHEDULE_S.length + 1 // 4 total; 4th → DEAD
 const ADVISORY_LOCK_ID = 5839201n // Arbitrary stable int64 for Postgres advisory lock
 
 // ── In-process handler registry ──────────────────────────────────────────────
-// Handlers are registered lazily at startup to avoid circular require() issues.
+const KNOWN_OUTBOX_EVENT_TYPES = [
+  'attempt.submitted',
+  'attempt.expired',
+  'attempt.terminated',
+  'evidence.uploaded',
+  'vpn.peer.provision',
+  'vpn.peer.deprovision'
+]
+const IGNORED_EVENT_TYPES = new Set()
 const handlers = new Map()
 
 /**
  * Register an event type → async handler function.
- * Called once during server startup (e.g., in evaluationWorker, evidenceWorker, etc.)
  */
 function registerHandler(eventType, fn) {
   if (typeof fn !== 'function') throw new TypeError(`Handler for "${eventType}" must be a function`)
@@ -37,20 +44,70 @@ function registerHandler(eventType, fn) {
   logger.info({ eventType }, 'PgQueueDispatcher: handler registered')
 }
 
-// ── Default handler registrations (lazy, avoids circular deps) ────────────────
-function _ensureDefaultHandlers() {
-  if (handlers.size > 0) return // Already registered
-  try {
-    const { evaluationWorker } = require('../../modules/results/evaluationWorker')
-    registerHandler('attempt.submitted', (payload) => evaluationWorker.handleEvent({ type: 'attempt.submitted', payload }))
-    registerHandler('attempt.expired', (payload) => evaluationWorker.handleEvent({ type: 'attempt.expired', payload }))
-    registerHandler('attempt.terminated', (payload) => evaluationWorker.handleEvent({ type: 'attempt.terminated', payload }))
-  } catch { /* module not available in this context */ }
+/**
+ * Single registration point called at boot for all outbox events.
+ * Enforces boot assertions: all handlers are functions, all known outbox types are handled or explicitly ignored.
+ */
+function registerAllHandlers() {
+  handlers.clear()
+  IGNORED_EVENT_TYPES.clear()
 
-  try {
-    const { evidenceWorker } = require('../../modules/media/evidenceWorker')
-    registerHandler('evidence.uploaded', (payload) => evidenceWorker.handleEvent({ type: 'evidence.uploaded', payload }))
-  } catch { /* module not available */ }
+  const { evaluationWorker } = require('../../modules/results/evaluationWorker')
+  const { evidenceWorker } = require('../../modules/media/evidenceWorker')
+
+  registerHandler('attempt.submitted', (payload, meta) =>
+    evaluationWorker.handleEvent({ type: 'attempt.submitted', payload, eventId: meta?.eventId })
+  )
+  registerHandler('attempt.expired', (payload, meta) =>
+    evaluationWorker.handleEvent({ type: 'attempt.expired', payload, eventId: meta?.eventId })
+  )
+  registerHandler('attempt.terminated', (payload, meta) =>
+    evaluationWorker.handleEvent({ type: 'attempt.terminated', payload, eventId: meta?.eventId })
+  )
+  registerHandler('evidence.uploaded', (payload, meta) =>
+    evidenceWorker.handleEvent({ type: 'evidence.uploaded', payload, eventId: meta?.eventId })
+  )
+
+  if (process.env.VPN_ENABLED === 'true') {
+    try {
+      const { vpnWorker } = require('../../modules/vpn/vpnWorker')
+      registerHandler('vpn.peer.provision', (payload, meta) =>
+        vpnWorker.handleEvent({ type: 'vpn.peer.provision', payload, eventId: meta?.eventId })
+      )
+      registerHandler('vpn.peer.deprovision', (payload, meta) =>
+        vpnWorker.handleEvent({ type: 'vpn.peer.deprovision', payload, eventId: meta?.eventId })
+      )
+    } catch (err) {
+      logger.warn({ error: err.message }, 'Failed to register VPN outbox handlers')
+    }
+  } else {
+    IGNORED_EVENT_TYPES.add('vpn.peer.provision')
+    IGNORED_EVENT_TYPES.add('vpn.peer.deprovision')
+  }
+
+  // Boot-time assertion: every registered handler is a function
+  for (const [evtType, fn] of handlers.entries()) {
+    if (typeof fn !== 'function') {
+      throw new TypeError(`Boot assertion failed: Handler for "${evtType}" is not a function`)
+    }
+  }
+
+  // Boot-time assertion: every known event type is either handled or ignored
+  for (const knownType of KNOWN_OUTBOX_EVENT_TYPES) {
+    if (!handlers.has(knownType) && !IGNORED_EVENT_TYPES.has(knownType)) {
+      throw new Error(`Boot assertion failed: Event type "${knownType}" has no registered handler and is not ignored`)
+    }
+  }
+
+  logger.info({
+    registered: Array.from(handlers.keys()),
+    ignored: Array.from(IGNORED_EVENT_TYPES)
+  }, 'PgQueueDispatcher: registerAllHandlers complete')
+}
+
+function _ensureDefaultHandlers() {
+  if (handlers.size > 0) return
+  registerAllHandlers()
 }
 
 // ── PgQueueDispatcher class ───────────────────────────────────────────────────
@@ -177,16 +234,35 @@ class PgQueueDispatcher {
 
       const handler = handlers.get(eventType)
       if (!handler) {
-        // Unknown event type: mark PUBLISHED (no handler = intentionally ignored)
-        logger.warn({ eventId, eventType }, 'PgQueueDispatcher: no handler registered, marking as PUBLISHED')
+        if (IGNORED_EVENT_TYPES.has(eventType)) {
+          logger.info({ eventId, eventType }, 'PgQueueDispatcher: explicitly ignored event type, marking PUBLISHED')
+          await prisma.$executeRawUnsafe(`
+            UPDATE outbox_events
+            SET status = 'PUBLISHED', processed_at = now()
+            WHERE id = $1;
+          `, evt.id).catch((err) => {
+            logger.warn({ eventId, error: err.message }, 'Failed to mark ignored event as published')
+          })
+          dispatched++
+          continue
+        }
+
+        // Unknown event type: record error + Prometheus counter, mark FAILED
+        logger.error({ eventId, eventType }, 'PgQueueDispatcher: UNKNOWN event type encountered, marking FAILED')
+        try {
+          unhandledOutboxEventCounter.inc({ event_type: eventType })
+          outboxFailedCounter.inc({ event_type: eventType })
+        } catch (metricErr) {
+          logger.debug({ error: metricErr.message }, 'Metric increment skipped')
+        }
+
         await prisma.$executeRawUnsafe(`
           UPDATE outbox_events
-          SET status = 'PUBLISHED', processed_at = now()
-          WHERE id = $1;
-        `, evt.id).catch((err) => {
-          logger.warn({ eventId, error: err.message }, 'Failed to mark unhandled event as published')
+          SET status = 'FAILED', last_error = $1, processed_at = now()
+          WHERE id = $2;
+        `, `Unknown event type: ${eventType}`, evt.id).catch((err) => {
+          logger.error({ eventId, error: err.message }, 'Failed to mark unhandled event as FAILED')
         })
-        dispatched++
         continue
       }
 
@@ -279,5 +355,9 @@ const pgQueueDispatcher = new PgQueueDispatcher()
 module.exports = {
   pgQueueDispatcher,
   PgQueueDispatcher,
-  registerHandler
+  registerHandler,
+  registerAllHandlers,
+  KNOWN_OUTBOX_EVENT_TYPES,
+  IGNORED_EVENT_TYPES,
+  handlers
 }
