@@ -68,7 +68,12 @@ export default defineConfig({
         COOKIE_SECURE: 'false',
         E2E_PROFILE: 'prod-parity',
         AGENT_PAIRING_PEPPER: process.env.AGENT_PAIRING_PEPPER || 'dummy_e2e_pairing_pepper_secret_32_characters_min',
-        AGENT_POLICY_SIGNING_KEY: process.env.AGENT_POLICY_SIGNING_KEY || 'dummy_e2e_policy_signing_key_32_characters_min'
+        AGENT_POLICY_SIGNING_KEY: process.env.AGENT_POLICY_SIGNING_KEY || 'dummy_e2e_policy_signing_key_32_characters_min',
+        ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
+        ...(process.env.DIRECT_URL ? { DIRECT_URL: process.env.DIRECT_URL } : {}),
+        ...(process.env.JWT_SECRET ? { JWT_SECRET: process.env.JWT_SECRET } : {}),
+        ...(process.env.S3_BUCKET ? { S3_BUCKET: process.env.S3_BUCKET } : {}),
+        ...(process.env.REDIS_URL ? { REDIS_URL: process.env.REDIS_URL } : {})
       },
       timeout: 30000,
       reuseExistingServer: !process.env.CI,

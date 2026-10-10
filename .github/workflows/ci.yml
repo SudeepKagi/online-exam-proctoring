@@ -520,7 +520,7 @@ jobs:
           else
             echo "[CI] Running PR gate journeys (J1, J3, J4, J6, J10)..."
             xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test \
-              e2e/journeys/j1-onboarding-approval.spec.ts \
+              e2e/journeys/j1-onboarding.spec.ts \
               e2e/journeys/j3-student-happy-path.spec.ts \
               e2e/journeys/j4-identity-paths.spec.ts \
               e2e/journeys/j6-security-negative.spec.ts \
