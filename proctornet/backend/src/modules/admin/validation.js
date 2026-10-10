@@ -56,6 +56,11 @@ const overrideEnrollmentSchema = z.object({
   reason: z.string().min(1)
 }).passthrough()
 
+const createDepartmentSchema = z.object({
+  code: z.string().min(1).max(16),
+  name: z.string().min(1).max(128)
+}).passthrough()
+
 module.exports = {
   createFacultySchema,
   createStudentSchema,
@@ -63,5 +68,7 @@ module.exports = {
   updateSettingsSchema,
   createAnnouncementSchema,
   confirmBulkSchema,
-  overrideEnrollmentSchema
+  overrideEnrollmentSchema,
+  createDepartmentSchema
 }
+

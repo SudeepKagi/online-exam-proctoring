@@ -466,6 +466,15 @@ class AdminService {
 
     return toStudentAdminDTO(updated)
   }
+
+  // ── Departments ──
+  async listDepartments() {
+    return adminRepository.listDepartments()
+  }
+
+  async createDepartment(data) {
+    return adminRepository.createDepartment(data)
+  }
 }
 
 module.exports = new AdminService()

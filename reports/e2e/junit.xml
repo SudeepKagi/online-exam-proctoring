@@ -1,0 +1,14 @@
+<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="49.588898">
+<testsuite name="journeys\j2-exam-authoring.spec.ts" timestamp="2026-10-10T01:12:24.226Z" hostname="chromium" tests="1" failures="0" skipped="0" time="42.22" errors="0">
+<testcase name="J2: Exam Authoring Journey (Prompt 8 §2 U4) › J2: Faculty creates exam wizard (validation errors) -&gt; 10 MCQs + bulk import -&gt; publish -&gt; invigilator creds one-time -&gt; edit refused" classname="journeys\j2-exam-authoring.spec.ts" time="42.22">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+<system-out>
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791594745188", enabled=true
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

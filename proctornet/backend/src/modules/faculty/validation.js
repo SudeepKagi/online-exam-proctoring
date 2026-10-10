@@ -5,7 +5,7 @@ const isoDatetime = z.string().refine((val) => {
   return !isNaN(d.getTime())
 }, { message: 'Invalid ISO datetime' }).transform((val) => new Date(val).toISOString())
 
-const createExamSchema = z.object({
+const baseExamSchema = z.object({
   title: z.string().min(1),
   subject: z.string().min(1),
   description: z.string().optional().nullable(),
@@ -29,7 +29,20 @@ const createExamSchema = z.object({
   vpnRequired: z.boolean().default(false)
 }).passthrough()
 
-const updateExamSchema = createExamSchema.partial()
+const updateExamSchema = baseExamSchema.partial()
+
+const createExamSchema = baseExamSchema
+  .refine((data) => new Date(data.endTime) > new Date(data.startTime), {
+    message: 'End time must be after start time',
+    path: ['endTime']
+  })
+  .refine((data) => {
+    const windowMinutes = (new Date(data.endTime).getTime() - new Date(data.startTime).getTime()) / (60 * 1000)
+    return data.duration <= windowMinutes
+  }, {
+    message: 'Duration cannot exceed exam window',
+    path: ['duration']
+  })
 
 const aiGenerateSchema = z.object({
   prompt: z.string().min(1).optional(),

@@ -444,6 +444,13 @@ export default function CreateExam() {
       return
     }
 
+    const windowMinutes = (endDate.getTime() - startDate.getTime()) / 60000
+    if (Number(payload.duration) > windowMinutes) {
+      toast.error('Duration cannot exceed the exam time window.')
+      setStep(2)
+      return
+    }
+
     payload.startTime = startDate.toISOString()
     payload.endTime = endDate.toISOString()
     payload.duration = parseInt(payload.duration, 10) || 60

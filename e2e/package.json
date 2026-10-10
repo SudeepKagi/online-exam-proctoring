@@ -1,0 +1,16 @@
+{
+  "name": "proctornet-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ProctorNet Deterministic Human Journeys & AI Explorer Suite",
+  "scripts": {
+    "test:journeys": "playwright test journeys/",
+    "test:ai": "playwright test ai/",
+    "test:all": "playwright test"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.63.0",
+    "seedrandom": "^3.0.5"
+  }
+}

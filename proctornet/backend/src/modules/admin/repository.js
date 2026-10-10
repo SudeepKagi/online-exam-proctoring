@@ -357,6 +357,21 @@ class AdminRepository {
       }
     })
   }
+
+  // ── Departments ──
+  async listDepartments() {
+    return prisma.department.findMany({
+      orderBy: { code: 'asc' }
+    })
+  }
+
+  async createDepartment({ code, name }) {
+    return prisma.department.upsert({
+      where: { code: String(code).trim().toUpperCase() },
+      update: { name: String(name).trim() },
+      create: { code: String(code).trim().toUpperCase(), name: String(name).trim() }
+    })
+  }
 }
 
 module.exports = new AdminRepository()

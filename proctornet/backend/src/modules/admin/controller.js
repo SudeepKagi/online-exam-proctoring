@@ -11,7 +11,8 @@ const {
   updateSettingsSchema,
   createAnnouncementSchema,
   confirmBulkSchema,
-  overrideEnrollmentSchema
+  overrideEnrollmentSchema,
+  createDepartmentSchema
 } = require('./validation')
 const { ROLES } = require('../../shared/roles')
 
@@ -20,6 +21,25 @@ const router = express.Router()
 
 // All admin routes require ADMIN role
 router.use(requireAuth, requireRole(ROLES.ADMIN))
+
+// ── Departments ──
+router.get('/departments', async (req, res, next) => {
+  try {
+    const departments = await adminService.listDepartments()
+    res.status(200).json({ success: true, departments })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/departments', validateBody(createDepartmentSchema), async (req, res, next) => {
+  try {
+    const department = await adminService.createDepartment(req.body)
+    res.status(201).json({ success: true, department })
+  } catch (err) {
+    next(err)
+  }
+})
 
 // ── Dashboard ──
 router.get('/dashboard', async (req, res, next) => {
