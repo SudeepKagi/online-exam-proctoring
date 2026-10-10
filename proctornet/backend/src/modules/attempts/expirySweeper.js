@@ -93,7 +93,7 @@ class ExpirySweeper {
         SELECT ea.id, ea.exam_id, ea.student_id, ea.status
         FROM exam_attempts ea
         WHERE ea.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
-          AND ea.updated_at < (now() - interval '60 seconds')
+          AND COALESCE(ea.submitted_at, ea.expires_at, ea.suspended_at, ea.started_at, ea.created_at) < (now() - interval '60 seconds')
           AND NOT EXISTS (
             SELECT 1 FROM exam_results er WHERE er.attempt_id = ea.id
           )

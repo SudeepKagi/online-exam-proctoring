@@ -64,6 +64,8 @@ async function createTestExam(overrides = {}) {
       invPasswordHash: 'sample-hash',
       allowedDepartments: ['CSE'],
       allowedSemesters: [6],
+      cameraRequired: false,
+      deviceAgentPolicy: 'OFF',
       ...overrides
     }
   })
@@ -321,7 +323,10 @@ describe('P2 MCQ-Only — Student DTO Security Leak Prevention', () => {
         usn: '1MS22CS' + Math.floor(100 + Math.random() * 899),
         password: 'hashed-password-sample',
         departmentCode: 'CSE',
-        semester: 6
+        semester: 6,
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-dto-student.jpg'
       }
     })
 

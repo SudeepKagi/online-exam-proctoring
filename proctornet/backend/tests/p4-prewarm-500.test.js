@@ -99,6 +99,8 @@ test.describe('Q1.5 Pre-warming Scalability & Idempotency Gate (500 READY Attemp
         departmentCode: uniqueDept,
         semester: 6,
         approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-scale.jpg',
         isSuspended: false
       })
     }
