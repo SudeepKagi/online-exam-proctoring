@@ -32,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout Code Repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
@@ -52,7 +52,7 @@ jobs:
           echo "[✓] CI verification confirmed: CI is green for ${HEAD_SHA}."
 
       - name: Set up Node.js 22 LTS
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5a1 # v4.1.0
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
@@ -61,7 +61,7 @@ jobs:
             proctornet/package-lock.json
 
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@e3ddf14a3dc1a892e6cc96f3c8377311abbaac43 # v4.0.2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
