@@ -258,9 +258,9 @@ class PgQueueDispatcher {
 
         await prisma.$executeRawUnsafe(`
           UPDATE outbox_events
-          SET status = 'FAILED', last_error = $1, processed_at = now()
-          WHERE id = $2;
-        `, `Unknown event type: ${eventType}`, evt.id).catch((err) => {
+          SET status = 'FAILED', processed_at = now()
+          WHERE id = $1;
+        `, evt.id).catch((err) => {
           logger.error({ eventId, error: err.message }, 'Failed to mark unhandled event as FAILED')
         })
         continue
