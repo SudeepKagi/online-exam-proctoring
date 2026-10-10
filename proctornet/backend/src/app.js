@@ -461,7 +461,8 @@ process.on('SIGINT', () => handleSignal('SIGINT'))
 
 // ── Start server ──
 const PORT = process.env.PORT || 5000
-if (process.env.NODE_ENV !== 'test' && !process.env.JEST_WORKER_ID) {
+const isDirectRun = require.main === module
+if ((isDirectRun || process.env.NODE_ENV !== 'test') && !process.env.JEST_WORKER_ID) {
   server.listen(PORT, async () => {
     console.log(`\n🚀 ProctorNet Backend running on port ${PORT}`)
     console.log(`📊 Health: http://localhost:${PORT}/health`)

@@ -68,14 +68,18 @@ export default defineConfig({
         S3_MOCK: 'true'
       },
       timeout: 30000,
-      reuseExistingServer: true
+      reuseExistingServer: true,
+      stdout: 'pipe',
+      stderr: 'pipe'
     },
     {
       command: 'npm run dev',
       cwd: 'proctornet/frontend',
       url: 'http://localhost:5173',
       timeout: 30000,
-      reuseExistingServer: true
+      reuseExistingServer: true,
+      stdout: 'pipe',
+      stderr: 'pipe'
     }
   ]
 })
