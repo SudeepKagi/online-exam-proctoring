@@ -225,6 +225,13 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
         })
       }
 
+      // Ensure candidate identity is verified (PASS) before starting the exam
+      const overrideRes = await api.for(admin).postRaw(`/api/v1/attempts/${attemptId}/identity-override`, {
+        decision: 'PASS',
+        reason: 'Precheck PASS for candidate'
+      })
+      expect(overrideRes.status).toBe(200)
+
       // Enter Exam: Activates attempt and navigates to /exam
       await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
       await student.page.goto(`/student/exams/${examId}/exam`)

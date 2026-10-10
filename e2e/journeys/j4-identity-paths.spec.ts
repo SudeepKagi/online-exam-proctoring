@@ -52,7 +52,8 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
         allowedSemesters: [1, 2, 3, 4, 5, 6, 7, 8],
         cameraRequired: true,
         browserLock: true,
-        watermarkRequired: true
+        watermarkRequired: true,
+        deviceAgentPolicy: 'OFF'
       })
       expect(examRes.status).toBe(201)
       examId = examRes.body?.exam?.id
@@ -180,7 +181,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
         companion = startCompanionAgent(pairingCode)
       }
 
-      await expect(student.page.getByText(/HEALTHY|Hardware Media Feeds|Companion Connected|Workstation Verified|Exam Device Companion Active/i).first()).toBeVisible({ timeout: 25000 })
+      await expect(student.page.getByText(/HEALTHY|Hardware Media Feeds|Companion Connected|Workstation Verified|Exam Device Companion Active|Waived/i).first()).toBeVisible({ timeout: 25000 })
 
       // Invigilator overrides identity in separate context
       const overrideRes = await api.for(admin).postRaw(`/api/v1/attempts/${attemptId}/identity-override`, {

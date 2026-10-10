@@ -134,13 +134,13 @@ test.describe('J10: Exam Lifecycle, Scheduler, and Results Certification (ยงP9 ย
       expect([200, 400, 403]).toContain(readinessRes.status)
 
       // 5. Test release results gate before EVALUATED (must be blocked)
-      const prematureRelease = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${examId}/release-results`, {})
+      const prematureRelease = await api.for(faculty).patchRaw(`/api/v1/faculty/exams/${examId}/results/release`, {})
       expect([400, 409, 422]).toContain(prematureRelease.status)
 
       // 6. Test audited force release
-      const forcedRelease = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${examId}/release-results`, {
+      const forcedRelease = await api.for(faculty).patchRaw(`/api/v1/faculty/exams/${examId}/results/release`, {
         force: true,
-        reason: 'Authorized department coordinator early release'
+        forceReason: 'Authorized department coordinator early release'
       })
       expect([200, 409]).toContain(forcedRelease.status)
 
