@@ -5,7 +5,7 @@
  */
 
 const { tokenService } = require('../modules/auth/tokenService')
-const { UnauthorizedError } = require('../shared/errors')
+const { UnauthorizedError, ForbiddenError } = require('../shared/errors')
 const { normalizeRole } = require('../shared/roles')
 
 async function authenticate(req, res, next) {
@@ -63,7 +63,19 @@ async function authenticate(req, res, next) {
       name: decoded.name,
       departmentCode: decoded.departmentCode,
       semester: decoded.semester,
-      examId: decoded.examId || null
+      examId: decoded.examId || null,
+      mustChangePassword: Boolean(decoded.mustChangePassword)
+    }
+
+    // F5: Enforce password change server-side
+    if (req.user.mustChangePassword) {
+      const url = req.originalUrl || req.url || ''
+      const isAllowed = url.includes('/api/v1/auth/change-password') ||
+                        url.includes('/api/v1/auth/logout') ||
+                        url.includes('/api/v1/auth/me')
+      if (!isAllowed) {
+        throw new ForbiddenError('Password change required before accessing other resources', 'PASSWORD_CHANGE_REQUIRED')
+      }
     }
 
     next()

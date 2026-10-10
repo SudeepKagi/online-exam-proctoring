@@ -29,6 +29,10 @@ function normalizeDepartmentCode(dept) {
   return d
 }
 
+function generateTempPassword() {
+  return crypto.randomBytes(6).toString('base64url') + '@A1'
+}
+
 class AdminService {
   async getDashboard() {
     return adminRepository.getDashboardStats()
@@ -60,7 +64,9 @@ class AdminService {
       throw new ConflictError('A faculty member with this email already exists.')
     }
 
-    const hashedPassword = await bcrypt.hash(data.password || 'Faculty@123', 10)
+    const isGenerated = !data.password
+    const tempPassword = isGenerated ? generateTempPassword() : String(data.password)
+    const hashedPassword = await bcrypt.hash(tempPassword, 10)
     const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const faculty = await adminRepository.createFaculty({
       id: data.id || crypto.randomUUID(),
@@ -70,9 +76,14 @@ class AdminService {
       departmentCode: deptCode,
       employeeId,
       phone: data.phone || null,
+      mustChangePassword: isGenerated || Boolean(data.mustChangePassword),
       isApproved: true
     })
-    return toFacultyAdminDTO(faculty)
+    const dto = toFacultyAdminDTO(faculty)
+    if (isGenerated) {
+      dto.tempPassword = tempPassword
+    }
+    return dto
   }
 
   async approveFaculty(id, approverId) {
@@ -128,7 +139,9 @@ class AdminService {
       throw new ConflictError('A candidate with this email address already exists.')
     }
 
-    const hashedPassword = await bcrypt.hash(data.password || 'Student@123', 10)
+    const isGenerated = !data.password
+    const tempPassword = isGenerated ? generateTempPassword() : String(data.password)
+    const hashedPassword = await bcrypt.hash(tempPassword, 10)
     const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const student = await adminRepository.createStudent({
       id: data.id || crypto.randomUUID(),
@@ -139,10 +152,15 @@ class AdminService {
       departmentCode: deptCode,
       semester: parseInt(data.semester || 1, 10),
       phone: data.phone || null,
+      mustChangePassword: isGenerated || Boolean(data.mustChangePassword),
       approvalStatus: 'PENDING',
       profileStatus: 'PENDING'
     })
-    return toStudentAdminDTO(student)
+    const dto = toStudentAdminDTO(student)
+    if (isGenerated) {
+      dto.tempPassword = tempPassword
+    }
+    return dto
   }
 
   async approveStudent(id, approverId) {
@@ -391,13 +409,13 @@ class AdminService {
             departmentCode: raw.departmentCode || raw.department || raw.Department,
             semester: raw.semester || raw.Semester || 1,
             phone: raw.phone || raw.Phone || null,
-            password: raw.password || raw.Password || 'Student@123'
+            password: raw.password || raw.Password || undefined
           }
           if (!acc.usn || !acc.email) {
             throw new Error('Missing required USN or Email in record')
           }
           const res = await this.createStudent(acc)
-          created.push({ ...res, tempPassword: acc.password })
+          created.push(res)
         } catch (err) {
           failed.push({ usn: raw.usn || raw.USN || raw.email || 'unknown', error: err.message })
         }
@@ -411,13 +429,13 @@ class AdminService {
             employeeId: raw.employeeId || raw.EmployeeId || raw['Employee ID'] || raw.identifier,
             departmentCode: raw.departmentCode || raw.department || raw.Department,
             phone: raw.phone || raw.Phone || null,
-            password: raw.password || raw.Password || 'Faculty@123'
+            password: raw.password || raw.Password || undefined
           }
           if (!acc.employeeId || !acc.email) {
             throw new Error('Missing required Employee ID or Email in record')
           }
           const res = await this.createFaculty(acc)
-          created.push({ ...res, tempPassword: acc.password })
+          created.push(res)
         } catch (err) {
           failed.push({ email: raw.email || raw.Email || 'unknown', error: err.message })
         }

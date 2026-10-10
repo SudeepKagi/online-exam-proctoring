@@ -88,7 +88,7 @@ class AuthRepository {
   async updateAdminPassword(id, hashedPassword) {
     return prisma.admin.update({
       where: { id },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword, mustChangePassword: false }
     })
   }
 
