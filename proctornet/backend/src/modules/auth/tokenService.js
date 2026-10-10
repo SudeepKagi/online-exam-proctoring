@@ -425,7 +425,7 @@ class TokenService {
     if (!res || typeof res.cookie !== 'function') return
 
     const isProd = process.env.NODE_ENV === 'production'
-    const isSecure = process.env.COOKIE_SECURE === 'true' || Boolean(isProd && res.req?.secure)
+    const isSecure = isProd || process.env.COOKIE_SECURE === 'true' || Boolean(res.req?.secure)
 
     // Access token cookie
     res.cookie('pn_at', accessToken, {
@@ -471,7 +471,7 @@ class TokenService {
     if (!res || typeof res.clearCookie !== 'function') return
 
     const isProd = process.env.NODE_ENV === 'production'
-    const isSecure = process.env.COOKIE_SECURE === 'true' || Boolean(isProd && res.req?.secure)
+    const isSecure = isProd || process.env.COOKIE_SECURE === 'true' || Boolean(res.req?.secure)
 
     res.clearCookie('pn_at', {
       httpOnly: true,

@@ -37,22 +37,40 @@ const { ROLES } = require('./shared/roles')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5174',
-  'http://localhost:5175',
-  'http://127.0.0.1:5175',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000'
-]
+const allowedOrigins = []
+
+// Configure exact origins from environment
+if (process.env.ALLOWED_ORIGINS) {
+  process.env.ALLOWED_ORIGINS.split(',').forEach((u) => {
+    const trimmed = u.trim()
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed)
+    }
+  })
+}
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',').forEach((u) => {
     const trimmed = u.trim()
     if (trimmed && !allowedOrigins.includes(trimmed)) {
       allowedOrigins.push(trimmed)
     }
+  })
+}
+
+// In local non-production, allow standard Vite / React dev ports
+if (!isProd) {
+  const localDevOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ]
+  localDevOrigins.forEach((o) => {
+    if (!allowedOrigins.includes(o)) allowedOrigins.push(o)
   })
 }
 
@@ -105,9 +123,6 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
-    if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/)) {
-      return callback(null, true)
-    }
     if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
       return callback(null, true)
     }
@@ -143,27 +158,36 @@ app.post('/internal/livekit/webhook', async (req, res, next) => {
   }
 })
 
-// ── CSRF Defense for Cookie-Authenticated State-Changing Requests (Phase S2 / SES-08) ──
+// ── CSRF Defense for Cookie-Authenticated State-Changing Requests (Phase S2 / SES-08 & §P9 F6) ──
 function csrfProtection(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next()
   }
 
-  // Machine / Agent / CLI / non-browser test clients bypassing browser CSRF
-  if (
-    req.headers['x-agent-signature'] ||
-    req.headers['x-agent-session'] ||
-    req.headers['x-client-type'] === 'test' ||
-    req.headers['x-client-type'] === 'cli'
-  ) {
+  const hasCookieAuth = Boolean(
+    req.cookies?.pn_at ||
+    req.cookies?.proctornet_auth ||
+    (req.headers.cookie && (req.headers.cookie.includes('pn_at=') || req.headers.cookie.includes('proctornet_auth=')))
+  )
+
+  // 1. x-client-type is ONLY allowed to bypass in non-production environments (§P9 F6)
+  if (!isProd && (req.headers['x-client-type'] === 'test' || req.headers['x-client-type'] === 'cli')) {
+    return next()
+  }
+
+  // 2. Agent headers can ONLY bypass on /api/v1/agent/* routes, and NEVER for cookie-authenticated browser requests
+  const isAgentRoute = req.originalUrl?.startsWith('/api/v1/agent') || req.path?.startsWith('/api/v1/agent') || req.baseUrl?.startsWith('/api/v1/agent')
+  if (!hasCookieAuth && isAgentRoute && (req.headers['x-agent-signature'] || req.headers['x-agent-session'])) {
     return next()
   }
 
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {
     let originHost
+    let originObj
     try {
-      originHost = new URL(origin).host.toLowerCase()
+      originObj = new URL(origin)
+      originHost = originObj.host.toLowerCase()
     } catch {
       return res.status(403).json({ error: 'Forbidden origin: Malformed origin header' })
     }
@@ -173,11 +197,10 @@ function csrfProtection(req, res, next) {
 
     // Same-origin check: origin host must equal Host header
     const isSameOrigin = originHost === reqHost
-    const isExtraAllowed = extraOrigins.includes(origin.toLowerCase()) || extraOrigins.includes(originHost)
+    const isExplicitAllowed = allowedOrigins.includes(origin) || allowedOrigins.includes(originObj.origin) || extraOrigins.includes(origin.toLowerCase()) || extraOrigins.includes(originHost)
     const isLocalDev = !isProd && (originHost.startsWith('localhost') || originHost.startsWith('127.0.0.1'))
-    const isKnownDomain = Boolean(originHost.match(/^(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/i))
 
-    if (!isSameOrigin && !isExtraAllowed && !isLocalDev && !isKnownDomain) {
+    if (!isSameOrigin && !isExplicitAllowed && !isLocalDev) {
       return res.status(403).json({ error: 'Forbidden origin: Cross-site request rejected.' })
     }
   }
