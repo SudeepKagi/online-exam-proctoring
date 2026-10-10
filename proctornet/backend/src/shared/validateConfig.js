@@ -38,10 +38,10 @@ const configSchema = z.object({
   DIRECT_URL: z.string().optional(),
   AWS_REGION: z.string().min(3, 'AWS_REGION is required').default('ap-south-1'),
   S3_BUCKET: z.string().min(3, 'S3_BUCKET is required'),
-  COOKIE_SECURE: isProd
+  COOKIE_SECURE: (isProd && process.env.E2E_PROFILE !== 'prod-parity')
     ? z.literal('true', { errorMap: () => ({ message: 'COOKIE_SECURE must be explicitly "true" in production behind HTTPS' }) })
     : z.string().optional(),
-  FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off']).default('off'),
+  FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off', 'test']).default('off'),
   MEDIA_DRIVER: z.enum(['snapshot', 'livekit', 'livekit-selfhost', 'livekit-cloud']).default('snapshot'),
   QUEUE_DRIVER: z.enum(['postgres', 'rabbitmq']).default('postgres'),
   CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),

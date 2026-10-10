@@ -64,7 +64,11 @@ export default defineConfig({
         QUEUE_DRIVER: 'postgres',
         START_WORKERS: 'true',
         FACE_DRIVER: 'test',
-        NODE_ENV: 'production'
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'false',
+        E2E_PROFILE: 'prod-parity',
+        AGENT_PAIRING_PEPPER: process.env.AGENT_PAIRING_PEPPER || 'dummy_e2e_pairing_pepper_secret_32_characters_min',
+        AGENT_POLICY_SIGNING_KEY: process.env.AGENT_POLICY_SIGNING_KEY || 'dummy_e2e_policy_signing_key_32_characters_min'
       },
       timeout: 30000,
       reuseExistingServer: !process.env.CI,

@@ -509,6 +509,9 @@ jobs:
           CACHE_DRIVER: memory
           FACE_DRIVER: test
           NODE_ENV: production
+          COOKIE_SECURE: "false"
+          AGENT_PAIRING_PEPPER: dummy_ci_pepper_test_secret_at_least_32_chars_123
+          AGENT_POLICY_SIGNING_KEY: dummy_ci_signing_test_secret_at_least_32_chars_456
           HEADED: 'false'
         run: |
           if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
