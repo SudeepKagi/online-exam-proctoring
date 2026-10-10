@@ -60,7 +60,7 @@ async function seedAdmin() {
     console.log('✅ Canonical departments seeded/verified.')
 
     // 2. Locate backup or fall back to env
-    const backup = findLatestAdminBackup()
+    const backup = !process.env.ADMIN_PASSWORD && process.env.NODE_ENV !== 'test' ? findLatestAdminBackup() : null
     let primaryAdminId = null
 
     if (backup) {
@@ -99,7 +99,7 @@ async function seedAdmin() {
       }
     } else {
       const email = process.env.ADMIN_EMAIL || 'admin@proctornet.com'
-      const password = process.env.ADMIN_PASSWORD || 'Admin@12345'
+      const password = process.env.ADMIN_PASSWORD || 'Admin@123'
       const name = process.env.ADMIN_NAME || 'System Administrator'
 
       const hashed = await bcrypt.hash(password, 12)

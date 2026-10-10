@@ -64,7 +64,8 @@ export default defineConfig({
         QUEUE_DRIVER: 'postgres',
         START_WORKERS: 'false',
         LOADTEST_ALLOW: '1',
-        DISABLE_RATE_LIMIT: '1'
+        DISABLE_RATE_LIMIT: '1',
+        S3_MOCK: 'true'
       },
       timeout: 30000,
       reuseExistingServer: true

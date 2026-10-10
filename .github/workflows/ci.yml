@@ -457,20 +457,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        command: server /data
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -495,7 +481,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           ADMIN_EMAIL: admin@proctornet.com
-          ADMIN_PASSWORD: Admin@12345
+          ADMIN_PASSWORD: Admin@123
         run: |
           npx prisma generate
           npx prisma migrate deploy
@@ -507,11 +493,13 @@ jobs:
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: super_secure_ci_test_jwt_secret_key_32_chars_minimum
+          ADMIN_EMAIL: admin@proctornet.com
+          ADMIN_PASSWORD: Admin@123
           S3_BUCKET: proctornet-ci-bucket
           AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
-          S3_ENDPOINT: http://localhost:9000
+          AWS_ACCESS_KEY_ID: dummy_key
+          AWS_SECRET_ACCESS_KEY: dummy_secret
+          S3_MOCK: "true"
           NODE_ENV: test
           HEADED: 'false'
         run: |
