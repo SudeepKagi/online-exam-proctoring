@@ -1,0 +1,12 @@
+﻿COMMAND: node --test tests/u1-profile-identity-security.test.js
+GIT SHA: 9ff0543875699e01424738b7615075bd01db5c34
+DATE: 2026-10-10T05:29:51Z
+
+EVIDENCE: Reproduced 7 security regression failures (S1 FLW-08/R-07 identity bypass and eligibility tampering)
+- Student was able to change departmentCode (200 OK instead of 403 FIELD_NOT_ALLOWED)
+- Student was able to change semester (200 OK instead of 403 FIELD_NOT_ALLOWED)
+- Student was able to change email (200 OK instead of 403 FIELD_NOT_ALLOWED)
+- Student was able to inject arbitrary facePhotoKey (200 OK instead of 403 FIELD_NOT_ALLOWED)
+- Student was able to inject arbitrary idCardPhotoKey (200 OK instead of 403 FIELD_NOT_ALLOWED)
+- Schema accepted arbitrary unknown fields (200 OK instead of 400 Validation Error)
+- Staff-approved re-enrollment endpoint was missing (404 Not Found)

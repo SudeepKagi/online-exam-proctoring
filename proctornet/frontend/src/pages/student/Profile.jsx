@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api, { extractErrorMessage } from '@/utils/api'
@@ -36,11 +36,6 @@ export default function StudentProfile() {
   const [facePhotoUrl, setFacePhotoUrl] = useState('')
   const [idCardPhotoUrl, setIdCardPhotoUrl] = useState('')
 
-  // Webcam capture modal state
-  const videoRef = useRef(null)
-  const [isCameraActive, setIsCameraActive] = useState(false)
-  const [stream, setStream] = useState(null)
-
   useEffect(() => {
     fetchProfile()
   }, [])
@@ -70,54 +65,6 @@ export default function StudentProfile() {
     }
   }
 
-  // Webcam controls for Face Photo
-  const startCamera = async () => {
-    try {
-      setIsCameraActive(true)
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      setStream(mediaStream)
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
-    } catch (err) {
-      toast.error('Unable to access camera for face capture')
-      setIsCameraActive(false)
-    }
-  }
-
-  const capturePhoto = () => {
-    if (!videoRef.current) return
-    const canvas = document.createElement('canvas')
-    canvas.width = videoRef.current.videoWidth || 640
-    canvas.height = videoRef.current.videoHeight || 480
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
-    setFacePhotoUrl(dataUrl)
-    stopCamera()
-    toast.success('New biometric photo captured.')
-  }
-
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop())
-      setStream(null)
-    }
-    setIsCameraActive(false)
-  }
-
-  const handleIdUpload = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setIdCardPhotoUrl(reader.result)
-        toast.success('ID card photo uploaded.')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (newPassword && newPassword !== confirmPassword) {
@@ -141,18 +88,12 @@ export default function StudentProfile() {
 
       const payload = {
         name: name.trim(),
-        email: email.trim(),
-        phone: phone ? phone.trim() : null,
-        departmentCode: department,
-        department,
-        semester: Number(semester)
+        phone: phone ? phone.trim() : null
       }
-      if (facePhotoUrl) payload.facePhotoKey = facePhotoUrl
-      if (idCardPhotoUrl) payload.idCardPhotoKey = idCardPhotoUrl
 
       await api.put('/student/profile', payload)
 
-      toast.success('Profile credentials updated successfully.')
+      toast.success('Profile presentation details updated successfully.')
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
@@ -251,9 +192,9 @@ export default function StudentProfile() {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all"
+                  disabled
+                  title="Institutional email address is verified and administrative-only"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-normal text-slate-600 cursor-not-allowed"
                 />
               </div>
 
@@ -269,32 +210,25 @@ export default function StudentProfile() {
               </div>
 
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Department / Stream</label>
-                <select
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Department / Stream (Official)</label>
+                <input
+                  type="text"
                   value={department}
-                  onChange={e => setDepartment(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
-                >
-                  <option value="ECE">Electronics & Communication Engineering (ECE)</option>
-                  <option value="CSE">Computer Science & Engineering (CSE)</option>
-                  <option value="ISE">Information Science & Engineering (ISE)</option>
-                  <option value="AIML">Intelligent Systems & Data Engineering (AIML)</option>
-                  <option value="ME">Mechanical Engineering (ME)</option>
-                  <option value="CV">Civil Engineering (CV)</option>
-                </select>
+                  disabled
+                  title="Department allocation is managed by university administration"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-normal text-slate-600 cursor-not-allowed"
+                />
               </div>
 
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Current Semester</label>
-                <select
-                  value={semester}
-                  onChange={e => setSemester(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-normal text-slate-900 focus:bg-white focus:border-[#2f80ed] focus:outline-none transition-all cursor-pointer"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                    <option key={s} value={s}>Semester {s}</option>
-                  ))}
-                </select>
+                <label className="text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5 block">Current Semester (Official)</label>
+                <input
+                  type="text"
+                  value={`Semester ${semester}`}
+                  disabled
+                  title="Semester enrollment is bound to official university records"
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-normal text-slate-600 cursor-not-allowed"
+                />
               </div>
             </div>
           </div>
@@ -401,11 +335,11 @@ export default function StudentProfile() {
 
               <button
                 type="button"
-                onClick={startCamera}
-                className="w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2f80ed] text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                onClick={() => navigate('/student/enrollment')}
+                className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
-                <Camera size={15} />
-                <span>Re-capture Live Photo</span>
+                <ShieldCheck size={15} className="text-emerald-600" />
+                <span>Biometric Enrollment & Verification Portal</span>
               </button>
             </div>
 
@@ -441,16 +375,14 @@ export default function StudentProfile() {
                 )}
               </div>
 
-              <label className="w-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-center">
-                <Upload size={15} />
-                <span>Upload New ID Card</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleIdUpload}
-                  className="hidden"
-                />
-              </label>
+              <button
+                type="button"
+                onClick={() => navigate('/student/enrollment')}
+                className="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold py-2.5 px-4 rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-center"
+              >
+                <ShieldCheck size={15} className="text-purple-600" />
+                <span>Official Document Verification Portal</span>
+              </button>
             </div>
           </div>
 
@@ -466,43 +398,6 @@ export default function StudentProfile() {
             </button>
           </div>
         </form>
-
-        {/* Modal for Camera Capture */}
-        {isCameraActive && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-            <div className="bg-white border border-[#e2e8f0] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-[#0f172a]">Live Webcam Facial Capture</h3>
-                <button onClick={stopCamera} className="text-[#94a3b8] hover:text-[#0f172a] text-xs cursor-pointer">
-                  Cancel
-                </button>
-              </div>
-
-              <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center">
-                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                <div className="absolute inset-0 border-2 border-[#2f80ed]/40 rounded-xl pointer-events-none" />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="px-4 py-2 border border-[#e2e8f0] text-[#64748b] hover:bg-[#f8fafc] text-xs font-semibold rounded-xl cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={capturePhoto}
-                  className="px-5 py-2 bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-semibold rounded-xl cursor-pointer flex items-center gap-1.5"
-                >
-                  <Camera size={14} />
-                  <span>Capture Photo</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </DashboardLayout>
   )

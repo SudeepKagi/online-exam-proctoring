@@ -33,6 +33,7 @@ enum ProfileStatus {
   VERIFIED
   REJECTED
   LOCKED
+  RE_ENROLL_PENDING
 }
 
 enum ExamStatus {

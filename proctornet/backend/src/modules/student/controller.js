@@ -103,6 +103,41 @@ router.get('/results', async (req, res, next) => {
 })
 
 // ── Profile ──
+const FORBIDDEN_STUDENT_PROFILE_FIELDS = [
+  'departmentCode',
+  'department',
+  'semester',
+  'email',
+  'facePhotoKey',
+  'idCardPhotoKey',
+  'facePhotoUrl',
+  'idCardPhotoUrl',
+  'usn',
+  'approvalStatus',
+  'profileStatus',
+  'isSuspended',
+  'faceMatchScore',
+  'approvedBy',
+  'approvedAt'
+]
+
+function rejectForbiddenProfileFields(req, res, next) {
+  if (req.body && typeof req.body === 'object') {
+    for (const field of FORBIDDEN_STUDENT_PROFILE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'FIELD_NOT_ALLOWED',
+            message: `Modifying field '${field}' is strictly prohibited for students. Presentation fields (name, phone) only.`
+          }
+        })
+      }
+    }
+  }
+  next()
+}
+
 router.get('/profile', async (req, res, next) => {
   try {
     const profile = await studentService.getProfile(req.user.id)
@@ -112,7 +147,7 @@ router.get('/profile', async (req, res, next) => {
   }
 })
 
-router.put('/profile', validateBody(updateProfileSchema), async (req, res, next) => {
+router.put('/profile', rejectForbiddenProfileFields, validateBody(updateProfileSchema), async (req, res, next) => {
   try {
     const profile = await studentService.updateProfile(req.user.id, req.body)
     res.status(200).json({ success: true, student: profile })
@@ -121,9 +156,18 @@ router.put('/profile', validateBody(updateProfileSchema), async (req, res, next)
   }
 })
 
-router.patch('/profile', validateBody(updateProfileSchema), async (req, res, next) => {
+router.patch('/profile', rejectForbiddenProfileFields, validateBody(updateProfileSchema), async (req, res, next) => {
   try {
     const profile = await studentService.updateProfile(req.user.id, req.body)
+    res.status(200).json({ success: true, student: profile })
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.post('/re-enrollment-request', async (req, res, next) => {
+  try {
+    const profile = await studentService.requestReEnrollment(req.user.id, req.body || {})
     res.status(200).json({ success: true, student: profile })
   } catch (err) {
     next(err)

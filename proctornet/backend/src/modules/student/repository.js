@@ -134,8 +134,9 @@ class StudentRepository {
   async recordVerificationAuditLog({ studentId, attemptId, checkType, score, status, details }) {
     return prisma.verificationAuditLog.create({
       data: {
+        id: require('crypto').randomUUID(),
         studentId,
-        attemptId,
+        attemptId: attemptId || null,
         checkType,
         score,
         status,

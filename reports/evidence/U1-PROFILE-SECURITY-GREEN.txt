@@ -1,0 +1,37 @@
+PROCTORNET TRUTH-FIRST EVIDENCE RECORD
+======================================
+ID: U1-PROFILE-SECURITY-GREEN
+Timestamp: 2026-10-10T00:08:02Z
+Base SHA: 9ff0543875699e01424738b7615075bd01db5c34
+Environment: Local clean-room PostgreSQL + Node.js v20.18.0 (Windows)
+Status: PASSED
+
+COMMAND:
+node --test tests/u1-profile-identity-security.test.js
+
+OUTPUT TAIL:
+✔ 1. Student cannot change departmentCode (rejected with 403 FIELD_NOT_ALLOWED)
+✔ 2. Student cannot change semester (rejected with 403 FIELD_NOT_ALLOWED)
+✔ 3. Student cannot change email directly (rejected with 403 FIELD_NOT_ALLOWED)
+✔ 4. Student cannot inject facePhotoKey / facePhotoUrl into updateProfile
+✔ 5. Student cannot inject idCardPhotoKey into updateProfile
+✔ 6. Unknown fields are rejected by strict validation schema (400)
+✔ 7. Verified student cannot swap reference photo via enrollment endpoint without approval
+✔ 8. Staff-approved re-enrollment flow transitions to RE_ENROLL_PENDING and preserves old photo
+✔ 9. Legitimate presentation fields (name, phone) update successfully
+✔ 10. Exam eligibility list remains strictly unchanged after tampering attempt
+✔ Phase U1: Profile & Identity Regression Security Hotfix (§U1) (12804.1524ms)
+ℹ tests 10
+ℹ suites 1
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14728.9074
+
+VERIFIED FIXES:
+1. `modules/student/validation.js`: Strict presentation whitelist for `updateProfileSchema`.
+2. `modules/student/controller.js`: Middleware `rejectForbiddenProfileFields` actively rejecting tampering attempts with 403 FIELD_NOT_ALLOWED. Added staff-audited `re-enrollment-request` endpoint.
+3. `modules/student/service.js`: Precludes modifying eligibility and direct photo key mutation. Prevents photo swaps once profile is `VERIFIED`. Introduced `RE_ENROLL_PENDING` transition with staff approval workflow and audit logs.
+4. `frontend/src/pages/student/Profile.jsx`: Locked official fields (USN, Email, Dept, Semester) as read-only; replaced in-situ photo bypass with Biometric Verification Portal redirection.

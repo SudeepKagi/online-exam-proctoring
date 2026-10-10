@@ -22,14 +22,25 @@ class StudentService {
     if (!student) throw new NotFoundError('Student profile not found')
 
     if (student.profileStatus === 'LOCKED') {
-      throw new ForbiddenError('Profile is locked and cannot be modified')
+      throw new ForbiddenError('Profile is locked and cannot be modified', 'FORBIDDEN')
     }
 
-    if (data.usn !== undefined && data.usn !== student.usn) {
-      throw new ForbiddenError('Modifying USN is strictly prohibited')
-    }
-    if (data.profileStatus !== undefined || data.approvalStatus !== undefined) {
-      throw new ForbiddenError('Modifying verification or approval status is strictly prohibited')
+    // Strict Field Policy (§U1): Students may change only presentation fields (name, phone).
+    // Not email, usn, departmentCode, semester, approvalStatus, profileStatus, isSuspended, or photos.
+    const forbiddenFields = [
+      'departmentCode', 'department', 'semester', 'email',
+      'facePhotoKey', 'idCardPhotoKey', 'facePhotoUrl', 'idCardPhotoUrl',
+      'usn', 'approvalStatus', 'profileStatus', 'isSuspended',
+      'faceMatchScore', 'approvedBy', 'approvedAt'
+    ]
+
+    for (const field of forbiddenFields) {
+      if (data[field] !== undefined) {
+        throw new ForbiddenError(
+          `Modifying field '${field}' is strictly prohibited for students. Presentation fields (name, phone) only.`,
+          'FIELD_NOT_ALLOWED'
+        )
+      }
     }
 
     const allowed = {}
@@ -38,44 +49,6 @@ class StudentService {
     }
     if (data.phone !== undefined) {
       allowed.phone = data.phone ? String(data.phone).trim() : null
-    }
-    if (data.email && typeof data.email === 'string' && data.email.trim() !== student.email) {
-      const emailTrimmed = data.email.trim().toLowerCase()
-      const existing = await prisma.student.findUnique({ where: { email: emailTrimmed } })
-      if (existing && existing.id !== studentId) {
-        throw new ValidationError('This institutional email address is already in use by another student')
-      }
-      allowed.email = emailTrimmed
-    }
-    if (data.semester !== undefined) {
-      const sem = parseInt(data.semester, 10)
-      if (!isNaN(sem) && sem >= 1 && sem <= 8) {
-        allowed.semester = sem
-      }
-    }
-
-    const deptInput = data.departmentCode || data.department
-    if (deptInput && typeof deptInput === 'string') {
-      const codeOrName = deptInput.trim()
-      const matchedDept = await prisma.department.findFirst({
-        where: {
-          OR: [
-            { code: { equals: codeOrName, mode: 'insensitive' } },
-            { name: { equals: codeOrName, mode: 'insensitive' } },
-            { name: { contains: codeOrName, mode: 'insensitive' } }
-          ]
-        }
-      })
-      if (matchedDept) {
-        allowed.departmentCode = matchedDept.code
-      }
-    }
-
-    if (data.facePhotoKey) {
-      allowed.facePhotoKey = data.facePhotoKey
-    }
-    if (data.idCardPhotoKey) {
-      allowed.idCardPhotoKey = data.idCardPhotoKey
     }
 
     const updated = await studentRepository.updateStudent(studentId, allowed)
@@ -272,6 +245,13 @@ class StudentService {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student not found')
 
+    if (student.profileStatus === 'VERIFIED') {
+      throw new ForbiddenError(
+        'Student biometric identity is already VERIFIED. Changing reference photos requires a staff-approved re-enrollment request.',
+        'RE_ENROLLMENT_REQUIRED'
+      )
+    }
+
     // R-06 & R-07: Accept only server-issued keys for this student and verify object existence
     const { pendingUploadRegistry } = require('../media/pendingUploads')
     await pendingUploadRegistry.verifyAndConsumeUpload({
@@ -293,9 +273,52 @@ class StudentService {
     return toStudentProfileDTO(updated)
   }
 
+  async requestReEnrollment(studentId, { reason } = {}) {
+    const student = await studentRepository.getStudentById(studentId)
+    if (!student) throw new NotFoundError('Student not found')
+
+    if (student.profileStatus !== 'VERIFIED') {
+      throw new ValidationError('Re-enrollment requests are only permitted for VERIFIED candidates')
+    }
+
+    const updated = await studentRepository.updateStudent(studentId, {
+      profileStatus: 'RE_ENROLL_PENDING',
+      rejectionReason: reason ? String(reason).trim() : 'Candidate requested biometric re-enrollment'
+    })
+
+    await studentRepository.recordVerificationAuditLog({
+      studentId,
+      checkType: 'RE_ENROLLMENT_REQUEST',
+      score: 1.0,
+      status: 'RE_ENROLL_PENDING',
+      details: reason ? JSON.stringify({ reason }) : 'Candidate requested biometric re-enrollment'
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        actorId: studentId,
+        actorRole: 'student',
+        studentId: studentId,
+        action: 'RE_ENROLLMENT_REQUESTED',
+        resourceType: 'student',
+        resourceId: studentId,
+        metadata: reason ? { reason: String(reason).slice(0, 500) } : { reason: 'Re-enrollment requested by student' }
+      }
+    })
+
+    return toStudentProfileDTO(updated)
+  }
+
   async enrollIdDocument(studentId, idKey) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student not found')
+
+    if (student.profileStatus === 'VERIFIED') {
+      throw new ForbiddenError(
+        'Student identity is already VERIFIED. Changing ID document requires staff approval.',
+        'RE_ENROLLMENT_REQUIRED'
+      )
+    }
 
     // R-06 & R-07: Accept only server-issued keys for this student and verify object existence
     const { pendingUploadRegistry } = require('../media/pendingUploads')
