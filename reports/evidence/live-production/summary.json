@@ -1,0 +1,37 @@
+{
+  "target": "https://proctornet.duckdns.org",
+  "timestamp": "2026-10-10T14:37:07.189Z",
+  "steps": [
+    {
+      "step": "Landing Page",
+      "status": "PASS",
+      "httpStatus": 200,
+      "title": "ProctorNet — Online Exam Proctoring",
+      "screenshot": "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-01-landing.png"
+    },
+    {
+      "step": "Admin Dashboard Login & Render",
+      "status": "PASS",
+      "url": "https://proctornet.duckdns.org/admin/dashboard",
+      "screenshot": "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-03-admin-dashboard.png"
+    },
+    {
+      "step": "Admin Faculty View",
+      "status": "PASS",
+      "url": "https://proctornet.duckdns.org/admin/faculty",
+      "screenshot": "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-04-admin-faculty.png"
+    },
+    {
+      "step": "Admin Students View",
+      "status": "PASS",
+      "url": "https://proctornet.duckdns.org/admin/students",
+      "screenshot": "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-05-admin-students.png"
+    },
+    {
+      "step": "Admin Settings View",
+      "status": "PASS",
+      "url": "https://proctornet.duckdns.org/admin/settings",
+      "screenshot": "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-06-admin-settings.png"
+    }
+  ]
+}

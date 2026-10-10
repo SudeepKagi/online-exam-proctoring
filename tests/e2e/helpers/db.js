@@ -14,12 +14,14 @@ async function setupE2EFixture() {
   const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123'
   const hashedAdminPassword = await bcrypt.hash(adminPassword, 10)
 
+  const crypto = require('crypto')
   const admin = await prisma.admin.upsert({
     where: { email: adminEmail },
     update: {
       password: hashedAdminPassword
     },
     create: {
+      id: crypto.randomUUID(),
       name: 'ProctorNet Admin',
       email: adminEmail,
       password: hashedAdminPassword
@@ -44,6 +46,7 @@ async function setupE2EFixture() {
       isApproved: true
     },
     create: {
+      id: crypto.randomUUID(),
       name: 'E2E Prof Turing',
       email: 'e2e.faculty@proctornet.test',
       password: hashedPassword,
@@ -62,6 +65,7 @@ async function setupE2EFixture() {
       profileStatus: 'VERIFIED'
     },
     create: {
+      id: crypto.randomUUID(),
       name: 'Alice E2E Candidate',
       usn: '1MS22CS001',
       email: 'alice.e2e@proctornet.test',
@@ -96,6 +100,7 @@ async function setupE2EFixture() {
   } else {
     const exam = await prisma.exam.create({
       data: {
+        id: crypto.randomUUID(),
         title: 'E2E Golden Path Verification Exam',
         subject: 'Distributed Systems',
         description: 'Automated E2E Verification Examination',
@@ -114,41 +119,44 @@ async function setupE2EFixture() {
         questions: {
           create: [
             {
+              id: crypto.randomUUID(),
               questionText: 'What does CAS stand for in concurrent programming?',
               marks: 10,
               order: 1,
               options: {
                 create: [
-                  { text: 'Compare-And-Swap', isCorrect: true, order: 1 },
-                  { text: 'Control-And-Set', isCorrect: false, order: 2 },
-                  { text: 'Compute-And-Store', isCorrect: false, order: 3 },
-                  { text: 'Cache-Allocation-State', isCorrect: false, order: 4 }
+                  { id: crypto.randomUUID(), text: 'Compare-And-Swap', isCorrect: true, order: 1 },
+                  { id: crypto.randomUUID(), text: 'Control-And-Set', isCorrect: false, order: 2 },
+                  { id: crypto.randomUUID(), text: 'Compute-And-Store', isCorrect: false, order: 3 },
+                  { id: crypto.randomUUID(), text: 'Cache-Allocation-State', isCorrect: false, order: 4 }
                 ]
               }
             },
             {
+              id: crypto.randomUUID(),
               questionText: 'Which protocol is primarily used for WebRTC signaling?',
               marks: 10,
               order: 2,
               options: {
                 create: [
-                  { text: 'WebSocket / HTTP', isCorrect: true, order: 1 },
-                  { text: 'BGP', isCorrect: false, order: 2 },
-                  { text: 'SNMP', isCorrect: false, order: 3 },
-                  { text: 'FTP', isCorrect: false, order: 4 }
+                  { id: crypto.randomUUID(), text: 'WebSocket / HTTP', isCorrect: true, order: 1 },
+                  { id: crypto.randomUUID(), text: 'BGP', isCorrect: false, order: 2 },
+                  { id: crypto.randomUUID(), text: 'SNMP', isCorrect: false, order: 3 },
+                  { id: crypto.randomUUID(), text: 'FTP', isCorrect: false, order: 4 }
                 ]
               }
             },
             {
+              id: crypto.randomUUID(),
               questionText: 'In distributed systems, which architecture avoids full-mesh O(N^2) WebRTC topologies?',
               marks: 10,
               order: 3,
               options: {
                 create: [
-                  { text: 'Selective Forwarding Unit (SFU)', isCorrect: true, order: 1 },
-                  { text: 'Direct P2P Full Mesh', isCorrect: false, order: 2 },
-                  { text: 'Flooding Protocol', isCorrect: false, order: 3 },
-                  { text: 'Gossip Multiplexing', isCorrect: false, order: 4 }
+                  { id: crypto.randomUUID(), text: 'Selective Forwarding Unit (SFU)', isCorrect: true, order: 1 },
+                  { id: crypto.randomUUID(), text: 'Direct P2P Full Mesh', isCorrect: false, order: 2 },
+                  { id: crypto.randomUUID(), text: 'Flooding Protocol', isCorrect: false, order: 3 },
+                  { id: crypto.randomUUID(), text: 'Gossip Multiplexing', isCorrect: false, order: 4 }
                 ]
               }
             }

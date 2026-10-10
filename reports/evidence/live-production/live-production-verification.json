@@ -1,0 +1,55 @@
+{
+  "target": "https://proctornet.duckdns.org",
+  "timestamp": "2026-10-10T14:48:28.284Z",
+  "journeys": [
+    {
+      "role": "ADMIN",
+      "status": "PASS",
+      "steps": [
+        "Landing",
+        "Auth",
+        "Dashboard",
+        "Faculty Roster",
+        "Student Roster",
+        "Exams"
+      ],
+      "screenshots": [
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j1-01-landing.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j1-02-admin-dashboard.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j1-03-admin-faculty.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j1-04-admin-students.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j1-05-admin-exams.png"
+      ]
+    },
+    {
+      "role": "FACULTY",
+      "status": "PASS",
+      "steps": [
+        "Faculty Login",
+        "Faculty Dashboard",
+        "Faculty Exams"
+      ],
+      "screenshots": [
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j2-01-faculty-dashboard.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j2-02-faculty-exams.png"
+      ]
+    },
+    {
+      "role": "STUDENT",
+      "status": "PASS",
+      "steps": [
+        "Student Login",
+        "Student Dashboard",
+        "Student Exams",
+        "Student Profile",
+        "Student Results"
+      ],
+      "screenshots": [
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j3-01-student-dashboard.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j3-02-student-exams.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j3-03-student-profile.png",
+        "C:\\Final year project\\online-exam-proctoring\\reports\\evidence\\live-production\\prod-j3-04-student-results.png"
+      ]
+    }
+  ]
+}
