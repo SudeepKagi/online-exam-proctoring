@@ -27,11 +27,20 @@ class StudentService {
 
     // Strict Field Policy (§U1): Students may change only presentation fields (name, phone).
     // Not email, usn, departmentCode, semester, approvalStatus, profileStatus, isSuspended, or photos.
+    if (data.usn !== undefined) {
+      throw new ForbiddenError('Modifying USN is strictly prohibited for students.', 'FIELD_NOT_ALLOWED')
+    }
+    if (data.email !== undefined) {
+      throw new ForbiddenError('Modifying institutional email is strictly prohibited for students.', 'FIELD_NOT_ALLOWED')
+    }
+    if (data.approvalStatus !== undefined || data.profileStatus !== undefined) {
+      throw new ForbiddenError('Modifying verification or approval status is strictly prohibited for students.', 'FIELD_NOT_ALLOWED')
+    }
+
     const forbiddenFields = [
-      'departmentCode', 'department', 'semester', 'email',
+      'departmentCode', 'department', 'semester',
       'facePhotoKey', 'idCardPhotoKey',
-      'usn', 'approvalStatus', 'profileStatus', 'isSuspended',
-      'faceMatchScore', 'approvedBy', 'approvedAt'
+      'isSuspended', 'faceMatchScore', 'approvedBy', 'approvedAt'
     ]
 
     for (const field of forbiddenFields) {
