@@ -15,7 +15,19 @@
  */
 
 const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../../proctornet/backend/.env') })
+
+const backendDir = path.resolve(__dirname, '../../proctornet/backend')
+const proctornetDir = path.resolve(__dirname, '../../proctornet')
+if (!process.env.NODE_PATH) {
+  process.env.NODE_PATH = `${path.join(backendDir, 'node_modules')}${path.delimiter}${path.join(proctornetDir, 'node_modules')}`
+  require('module').Module._initPaths()
+}
+
+try {
+  require('dotenv').config({ path: path.resolve(backendDir, '.env') })
+} catch {
+  // Ignore if dotenv is not required or env is already loaded
+}
 const { prisma } = require('../../proctornet/backend/src/infra/postgres/client')
 
 async function checkOutboxHealth() {
@@ -37,13 +49,13 @@ async function checkOutboxHealth() {
     if (failedCount > 0) {
       console.error(`[HEALTH VIOLATION] FAILED outbox events: ${failedCount} (expected: 0)`)
       const failedBreakdown = await prisma.$queryRawUnsafe(`
-        SELECT event_type, COUNT(*)::int as count, MIN(last_error) as sample_error
+        SELECT event_type, COUNT(*)::int as count
         FROM outbox_events
         WHERE status = 'FAILED'
         GROUP BY event_type;
       `)
       for (const row of failedBreakdown) {
-        console.error(`  - Type: ${row.event_type}, Count: ${row.count}, Error: ${row.sample_error}`)
+        console.error(`  - Type: ${row.event_type}, Count: ${row.count}`)
       }
       hasViolations = true
     } else {
@@ -70,7 +82,7 @@ async function checkOutboxHealth() {
       SELECT COUNT(*)::int as count
       FROM exam_attempts ea
       WHERE ea.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
-        AND ea.updated_at < NOW() - INTERVAL '90 seconds'
+        AND COALESCE(ea.submitted_at, ea.created_at) < NOW() - INTERVAL '90 seconds'
         AND NOT EXISTS (
           SELECT 1 FROM exam_results er WHERE er.attempt_id = ea.id
         );
@@ -79,10 +91,10 @@ async function checkOutboxHealth() {
     if (terminalWithoutResultCount > 0) {
       console.error(`[HEALTH VIOLATION] Terminal attempts without results (>90s old): ${terminalWithoutResultCount} (expected: 0)`)
       const sampleAttempts = await prisma.$queryRawUnsafe(`
-        SELECT ea.id, ea.exam_id, ea.student_id, ea.status, ea.updated_at
+        SELECT ea.id, ea.exam_id, ea.student_id, ea.status, COALESCE(ea.submitted_at, ea.created_at) as timestamp
         FROM exam_attempts ea
         WHERE ea.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
-          AND ea.updated_at < NOW() - INTERVAL '90 seconds'
+          AND COALESCE(ea.submitted_at, ea.created_at) < NOW() - INTERVAL '90 seconds'
           AND NOT EXISTS (
             SELECT 1 FROM exam_results er WHERE er.attempt_id = ea.id
           )
