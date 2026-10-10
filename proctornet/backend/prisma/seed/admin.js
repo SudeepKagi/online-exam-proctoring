@@ -99,14 +99,16 @@ async function seedAdmin() {
       }
     } else {
       const email = process.env.ADMIN_EMAIL || 'admin@proctornet.com'
-      const password = process.env.ADMIN_PASSWORD || 'Admin@123'
+      const isRandom = !process.env.ADMIN_PASSWORD
+      const crypto = require('crypto')
+      const password = process.env.ADMIN_PASSWORD || (crypto.randomBytes(8).toString('hex') + '@A1')
       const name = process.env.ADMIN_NAME || 'System Administrator'
 
       const hashed = await bcrypt.hash(password, 12)
       const admin = await prisma.admin.upsert({
         where: { email },
-        update: { name, password: hashed },
-        create: { name, email, password: hashed }
+        update: { name, password: hashed, mustChangePassword: isRandom },
+        create: { name, email, password: hashed, mustChangePassword: isRandom }
       })
       primaryAdminId = admin.id
       console.log(`✅ Admin created/updated from environment: ${email}`)

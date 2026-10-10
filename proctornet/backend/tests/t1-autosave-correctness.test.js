@@ -282,7 +282,9 @@ describe('Phase T1: Autosave Correctness against Real PostgreSQL + API', () => {
         password: 'password',
         departmentCode: deptCode,
         semester: 6,
-        approvalStatus: 'APPROVED'
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-student.jpg'
       }
     })
     testStudentId = student.id
@@ -306,6 +308,7 @@ describe('Phase T1: Autosave Correctness against Real PostgreSQL + API', () => {
         invId: `INV-T1-${Date.now()}`,
         invPasswordHash: 'hash',
         status: 'PUBLISHED',
+        cameraRequired: false,
         deviceAgentPolicy: 'OFF' // Bypass companion agent guard for unit flow
       }
     })

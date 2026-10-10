@@ -246,7 +246,7 @@ class FaceVerificationService {
    * Pre-exam verification: runs detect + compare with multi-tier decision logic
    * PASS >= T_pass | REVIEW T_review <= s < T_pass | FAIL < T_review | ERROR -> REVIEW (fail-closed)
    */
-  async verifyPreExam({ attemptId, studentId, liveFrameKey, challengeId = null, burstKeys = null }) {
+  async verifyPreExam({ attemptId, studentId, liveFrameKey, challengeId = null, burstKeys = null, testFixture = null, simulateProviderOutage = false }) {
     const thresholds = this.getThresholds()
 
     // 1. Fetch student enrolled face photo key
@@ -261,6 +261,36 @@ class FaceVerificationService {
         verified: false,
         pendingReview: false,
         message: 'No enrolled biometric profile found. Please complete identity enrollment before taking the exam.'
+      }
+    }
+
+    // Check retry cap: if candidate has reached maximum retries, fail-closed to REVIEW (J4)
+    const MAX_VERIFY_RETRIES = parseInt(process.env.MAX_IDENTITY_RETRIES || '3', 10)
+    if (attemptId) {
+      const priorAttempts = await prisma.identityVerification.count({
+        where: { attemptId, kind: 'PRE_EXAM' }
+      })
+      if (priorAttempts >= MAX_VERIFY_RETRIES) {
+        await this._persistVerificationRecord({
+          attemptId,
+          kind: 'PRE_EXAM',
+          provider: 'policy',
+          requestId: null,
+          similarity: 0.0,
+          decision: DECISIONS.REVIEW,
+          thresholdsUsed: thresholds,
+          modelVersion: 'none',
+          evidenceKeys: [liveFrameKey].filter(Boolean),
+          errorCode: 'RETRY_CAP_EXCEEDED'
+        })
+
+        return {
+          decision: DECISIONS.REVIEW,
+          verified: false,
+          pendingReview: true,
+          message: 'Maximum identity verification attempts exceeded. Waiting for invigilator verification.',
+          errorCode: 'RETRY_CAP_EXCEEDED'
+        }
       }
     }
 
@@ -337,7 +367,10 @@ class FaceVerificationService {
     // 4. Compare live frame with reference enrollment photo
     let compareResult
     try {
-      compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey)
+      if (simulateProviderOutage) {
+        throw new Error('Simulated biometric provider outage')
+      }
+      compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey, { testFixture })
     } catch (err) {
       logger.error({ error: err.message, attemptId }, 'Verifier error on compare; failing closed to REVIEW')
       await this._persistVerificationRecord({

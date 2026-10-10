@@ -37,16 +37,17 @@ const { ROLES } = require('./shared/roles')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
 const isProd = process.env.NODE_ENV === 'production'
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'http://localhost:5174',
-  'http://127.0.0.1:5174',
-  'http://localhost:5175',
-  'http://127.0.0.1:5175',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000'
-]
+const allowedOrigins = []
+
+// Configure exact origins from environment
+if (process.env.ALLOWED_ORIGINS) {
+  process.env.ALLOWED_ORIGINS.split(',').forEach((u) => {
+    const trimmed = u.trim()
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed)
+    }
+  })
+}
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',').forEach((u) => {
     const trimmed = u.trim()
@@ -56,11 +57,30 @@ if (process.env.FRONTEND_URL) {
   })
 }
 
+// In local non-production, allow standard Vite / React dev ports
+if (!isProd) {
+  const localDevOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174',
+    'http://localhost:5175',
+    'http://127.0.0.1:5175',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ]
+  localDevOrigins.forEach((o) => {
+    if (!allowedOrigins.includes(o)) allowedOrigins.push(o)
+  })
+}
+
 // ── Socket.io WebSocket Plane (P6) ──
 const io = createWebSocketServer(server)
 
 // Make io available to routes via app locals
 app.set('io', io)
+const { proctoringService } = require('./modules/proctoring/service')
+proctoringService.setIO(io)
 
 // ── Reverse Proxy & Trust Headers ──
 app.disable('x-powered-by')
@@ -105,9 +125,6 @@ const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true)
     if (allowedOrigins.includes(origin)) return callback(null, true)
-    if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/)) {
-      return callback(null, true)
-    }
     if (!isProd && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
       return callback(null, true)
     }
@@ -143,27 +160,36 @@ app.post('/internal/livekit/webhook', async (req, res, next) => {
   }
 })
 
-// ── CSRF Defense for Cookie-Authenticated State-Changing Requests (Phase S2 / SES-08) ──
+// ── CSRF Defense for Cookie-Authenticated State-Changing Requests (Phase S2 / SES-08 & §P9 F6) ──
 function csrfProtection(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
     return next()
   }
 
-  // Machine / Agent / CLI / non-browser test clients bypassing browser CSRF
-  if (
-    req.headers['x-agent-signature'] ||
-    req.headers['x-agent-session'] ||
-    req.headers['x-client-type'] === 'test' ||
-    req.headers['x-client-type'] === 'cli'
-  ) {
+  const hasCookieAuth = Boolean(
+    req.cookies?.pn_at ||
+    req.cookies?.proctornet_auth ||
+    (req.headers.cookie && (req.headers.cookie.includes('pn_at=') || req.headers.cookie.includes('proctornet_auth=')))
+  )
+
+  // 1. x-client-type is ONLY allowed to bypass in non-production environments (§P9 F6)
+  if (!isProd && (req.headers['x-client-type'] === 'test' || req.headers['x-client-type'] === 'cli')) {
+    return next()
+  }
+
+  // 2. Agent headers can ONLY bypass on /api/v1/agent/* routes, and NEVER for cookie-authenticated browser requests
+  const isAgentRoute = req.originalUrl?.startsWith('/api/v1/agent') || req.path?.startsWith('/api/v1/agent') || req.baseUrl?.startsWith('/api/v1/agent')
+  if (!hasCookieAuth && isAgentRoute && (req.headers['x-agent-signature'] || req.headers['x-agent-session'])) {
     return next()
   }
 
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {
     let originHost
+    let originObj
     try {
-      originHost = new URL(origin).host.toLowerCase()
+      originObj = new URL(origin)
+      originHost = originObj.host.toLowerCase()
     } catch {
       return res.status(403).json({ error: 'Forbidden origin: Malformed origin header' })
     }
@@ -173,11 +199,10 @@ function csrfProtection(req, res, next) {
 
     // Same-origin check: origin host must equal Host header
     const isSameOrigin = originHost === reqHost
-    const isExtraAllowed = extraOrigins.includes(origin.toLowerCase()) || extraOrigins.includes(originHost)
+    const isExplicitAllowed = allowedOrigins.includes(origin) || allowedOrigins.includes(originObj.origin) || extraOrigins.includes(origin.toLowerCase()) || extraOrigins.includes(originHost)
     const isLocalDev = !isProd && (originHost.startsWith('localhost') || originHost.startsWith('127.0.0.1'))
-    const isKnownDomain = Boolean(originHost.match(/^(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io|.*\.duckdns\.org)(:\d+)?$/i))
 
-    if (!isSameOrigin && !isExtraAllowed && !isLocalDev && !isKnownDomain) {
+    if (!isSameOrigin && !isExplicitAllowed && !isLocalDev) {
       return res.status(403).json({ error: 'Forbidden origin: Cross-site request rejected.' })
     }
   }
@@ -313,7 +338,7 @@ internalApp.get('/metrics', metricsHandler)
 const v1Router = require('./modules/router')
 const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
-const { getQueueDriver, registerQueueHandler } = require('./infra/queueDriver')
+const { getQueueDriver, registerQueueHandler, registerAllHandlers } = require('./infra/queueDriver')
 const config = require('./shared/config')
 const { evaluationWorker } = require('./modules/results/evaluationWorker')
 const { evidenceWorker } = require('./modules/media/evidenceWorker')
@@ -475,13 +500,8 @@ if ((isDirectRun || process.env.NODE_ENV !== 'test') && !process.env.JEST_WORKER
       console.log(`🔒 Internal listener: http://${INTERNAL_HOST}:${INTERNAL_PORT} (/metrics, /readyz)`)
     })
 
-    // Register in-process handlers when using postgres queue driver
-    if (config.queueDriver === 'postgres') {
-      registerQueueHandler('attempt.submitted', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.submitted', payload: p, ...m }))
-      registerQueueHandler('attempt.expired', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.expired', payload: p, ...m }))
-      registerQueueHandler('attempt.terminated', (p, m) => evaluationWorker.handleEvent({ type: 'attempt.terminated', payload: p, ...m }))
-      registerQueueHandler('evidence.uploaded', (p, m) => evidenceWorker.handleEvent({ type: 'evidence.uploaded', payload: p, ...m }))
-    }
+    // Single registration point called at boot for all outbox event types (§P9 F1)
+    registerAllHandlers()
 
     // Start background workers: default false for API processes (C-10)
     if (process.env.START_WORKERS === 'true') {

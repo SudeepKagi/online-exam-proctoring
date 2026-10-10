@@ -202,9 +202,8 @@ test.describe('Prompt 2 Golden-Path E2E Verification Suite (§3 Q0.3)', () => {
 
     // 9. Simulate network drop / reconnection
     await page.context().setOffline(true)
-    await page.waitForTimeout(1000)
     await page.context().setOffline(false)
-    await page.waitForTimeout(1000)
+    await expect(questionHeading).toBeVisible()
 
     // 10. Submit Exam
     const finishBtn = page.locator('button:has-text("Finish Exam"), button:has-text("Submit Exam")')

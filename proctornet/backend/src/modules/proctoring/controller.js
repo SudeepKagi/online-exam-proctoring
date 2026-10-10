@@ -61,7 +61,8 @@ router.post(
         studentId,
         eventType,
         metadata,
-        clientTimestamp
+        clientTimestamp,
+        req.app?.get('io')
       )
 
       return res.status(200).json(result)

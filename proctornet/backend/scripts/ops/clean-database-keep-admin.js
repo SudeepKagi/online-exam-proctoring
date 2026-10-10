@@ -24,7 +24,9 @@ async function cleanDatabase() {
   // 1. Ensure or update primary admin
   console.log('\n[1/5] Ensuring primary administrator account...')
   const crypto = require('crypto')
-  const hashedPassword = await bcrypt.hash('Admin@123', 12)
+  const adminPassword = process.env.ADMIN_PASSWORD || (crypto.randomBytes(8).toString('hex') + '@A1')
+  const mustChange = !process.env.ADMIN_PASSWORD
+  const hashedPassword = await bcrypt.hash(adminPassword, 12)
   const existingAdmin = await prisma.admin.findUnique({
     where: { email: 'admin@proctornet.com' }
   })
@@ -34,7 +36,8 @@ async function cleanDatabase() {
       where: { email: 'admin@proctornet.com' },
       data: {
         name: 'System Administrator',
-        password: hashedPassword
+        password: hashedPassword,
+        mustChangePassword: mustChange
       }
     })
   } else {
@@ -43,7 +46,8 @@ async function cleanDatabase() {
         id: crypto.randomUUID(),
         name: 'System Administrator',
         email: 'admin@proctornet.com',
-        password: hashedPassword
+        password: hashedPassword,
+        mustChangePassword: mustChange
       }
     })
   }
@@ -153,10 +157,9 @@ async function cleanDatabase() {
   }
 
   console.log('\n🎉 SUCCESS: Database completely cleaned!')
-  console.log('\n🔑 Your Single Admin Account:')
-  console.log('   URL     : http://43.204.45.86/admin/login')
+  console.log('\n🔑 Primary Administrator Account:')
   console.log('   Email   : admin@proctornet.com')
-  console.log('   Password: Admin@123')
+  console.log('   Password: [CONFIGURED_VIA_ENV_OR_ROTATED]')
   console.log('=============================================================\n')
 }
 

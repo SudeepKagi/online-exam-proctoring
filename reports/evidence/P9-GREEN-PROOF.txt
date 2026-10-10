@@ -1,0 +1,69 @@
+Command: node --test tests/p9-repro-baseline.test.js
+Git SHA: 778751e4ecb56ddaf5ea45624837372028271447
+Timestamp: 2026-10-10T12:24:00Z
+Environment: Node.js v22 (Windows / Lite Profile: QUEUE_DRIVER=postgres, CACHE_DRIVER=memory, FACE_DRIVER=test)
+
+======================================================================
+PROCTORNET P9 FINDINGS GREEN PROOF VERIFICATION
+Target Findings: F1 through F10
+======================================================================
+
+{"level":"info","time":"2026-10-10T07:53:39.791Z","pid":23112,"hostname":"MSI","msg":"QUEUE_DRIVER=postgres: skipping RabbitMQ connection"}
+▶ P9 Defect Reproduction & Baseline Verification
+  ▶ F1 — Worker Handlers Dead Code
+    ✔ F1.1: evaluationWorker must define handleEvent method (9.6902ms)
+    ✔ F1.2: evidenceWorker must define handleEvent method (0.157ms)
+  ✔ F1 — Worker Handlers Dead Code (10.5636ms)
+  ▶ F2 — Resume After Expiry
+    ✔ F2.1: startOrResumeAttempt must not bypass attemptStateMachine on expired resume (0.6354ms)
+    ✔ F2.2: ExpirySweeper must reconcile un-evaluated terminal attempts (0.4045ms)
+  ✔ F2 — Resume After Expiry (1.2946ms)
+  ▶ F3 — Exam Lifecycle & Absent Students
+    ✔ F3.1: createAbsentResultsForEndedExam must be invoked by examScheduler (0.5623ms)
+    ✔ F3.2: transitionEndedToEvaluated must not exclude exams with READY absent attempts (0.6009ms)
+  ✔ F3 — Exam Lifecycle & Absent Students (1.3734ms)
+  ▶ F4 — Start Gates Server Enforcement
+    ✔ F4.1: createStudent must default approvalStatus to PENDING until approved (0.7424ms)
+    ✔ F4.2: createOnDemandAttempt must not insert ACTIVE status directly (0.4736ms)
+    ✔ F4.3: server must expose unified assertCanStart validation gate (0.4186ms)
+  ✔ F4 — Start Gates Server Enforcement (1.8281ms)
+  ▶ F5 — Default Password Security
+    ✔ F5.1: adminService must not use hard-coded default passwords Faculty@123 / Student@123 (0.451ms)
+    ✔ F5.2: check-default-credentials verification script must exist (0.2378ms)
+  ✔ F5 — Default Password Security (0.7889ms)
+  ▶ F6 — CSRF/CORS Wildcard & Header Bypasses
+    ✔ F6.1: CORS origin validator must not allow arbitrary *.sslip.io domains (0.3581ms)
+    ✔ F6.2: CSRF protection must not unconditionally bypass on arbitrary client headers in production (0.3738ms)
+  ✔ F6 — CSRF/CORS Wildcard & Header Bypasses (0.814ms)
+  ▶ F7 — Unenforced Settings (tabSwitchLimit)
+    ✔ F7.1: proctoringService must enforce tabSwitchLimit server-side (0.3934ms)
+  ✔ F7 — Unenforced Settings (tabSwitchLimit) (0.4627ms)
+  ▶ F8 — Contradictory Time Rules Across Start Paths
+    ✔ F8.1: unified examClock module must exist and govern expiry calculation (0.3238ms)
+  ✔ F8 — Contradictory Time Rules Across Start Paths (0.3893ms)
+  ▶ F9 — Diverging Attempt Construction & RNG Degeneracy
+    ✔ F9.1: createSeededRng must not collapse to perpetual zero if seed hash is zero (0.2903ms)
+    ✔ F9.2: unified buildAttemptQuestions function must exist and honor randomiseQuestions (0.1975ms)
+  ✔ F9 — Diverging Attempt Construction & RNG Degeneracy (0.5624ms)
+✔ P9 Defect Reproduction & Baseline Verification (19.2015ms)
+{"level":"info","time":"2026-10-10T07:53:40.724Z","pid":23112,"hostname":"MSI","msg":"CACHE_DRIVER=memory: skipping Redis connection; operating purely on in-memory BoundedLruCache"}
+ℹ tests 17
+ℹ suites 10
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1302.7094
+
+======================================================================
+E2E INTEGRITY & PROD-PARITY SUITE PROOF
+======================================================================
+Command: node scripts/ci/check-e2e-integrity.js
+--- E2E Test Suite Integrity Verification ---
+Scanned 28 files across e2e/
+Forbidden pattern violations: 0
+Missing skip ticket violations: 0
+Vacuous locator assertion violations: 0
+Forbidden profile bypass flags: 0
+Result: 100% PASS

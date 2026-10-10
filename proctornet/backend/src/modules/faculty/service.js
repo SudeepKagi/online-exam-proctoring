@@ -199,8 +199,8 @@ class FacultyService {
     }
   }
 
-  async releaseResults(examId, facultyId) {
-    return resultService.releaseResults(examId, facultyId, ROLES.FACULTY)
+  async releaseResults(examId, facultyId, options = {}) {
+    return resultService.releaseResults(examId, facultyId, ROLES.FACULTY, options)
   }
 
   async getStudentResult(id, facultyId) {

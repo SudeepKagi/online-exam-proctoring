@@ -1,6 +1,6 @@
 # Face Verification Benchmark & Evaluation Report (R1)
 
-**Generated:** 2026-10-07T03:17:34.774Z  
+**Generated:** 2026-10-10T07:30:23.934Z  
 **Harness:** `scripts/eval/face-eval.js`  
 **Target Provider Model:** AWS Rekognition (`CompareFaces` QualityFilter: `AUTO`)  
 **Data Privacy Declaration:** Zero raw face images or embedding vectors are committed. Only aggregate statistical benchmarks and pair metadata are tracked.

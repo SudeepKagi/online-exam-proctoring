@@ -138,7 +138,7 @@ class ExamRepository {
         AND NOT EXISTS (
           SELECT 1 FROM exam_attempts ea
           WHERE ea.exam_id = e.id
-            AND ea.status IN ('READY', 'ACTIVE', 'SUSPENDED')
+            AND ea.status IN ('ACTIVE', 'SUSPENDED')
         )
         AND NOT EXISTS (
           SELECT 1 FROM exam_attempts ea

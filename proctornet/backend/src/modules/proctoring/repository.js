@@ -11,11 +11,25 @@ class ProctoringRepository {
    */
   async findAttemptForViolationGuard(attemptId, studentId) {
     const rows = await prisma.$queryRawUnsafe(`
-      SELECT id, exam_id, status, expires_at
-      FROM exam_attempts
-      WHERE id = $1::uuid AND student_id = $2::uuid;
+      SELECT ea.id, ea.exam_id, ea.exam_id AS "examId", ea.status, ea.expires_at,
+             e.tab_switch_limit AS "tabSwitchLimit", e.tab_switch_limit
+      FROM exam_attempts ea
+      JOIN exams e ON e.id = ea.exam_id
+      WHERE ea.id = $1::uuid AND ea.student_id = $2::uuid;
     `, attemptId, studentId)
     return rows?.[0] ?? null
+  }
+
+  /**
+   * Count violations by type for a specific attempt (F7).
+   */
+  async countViolationsByType(attemptId, eventType) {
+    const rows = await prisma.$queryRawUnsafe(`
+      SELECT COUNT(*)::int AS count
+      FROM violation_events
+      WHERE attempt_id = $1::uuid AND event_type = $2::"ViolationType";
+    `, attemptId, eventType)
+    return rows?.[0]?.count ?? 0
   }
 
   /**

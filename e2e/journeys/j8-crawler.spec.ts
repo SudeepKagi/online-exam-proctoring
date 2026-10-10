@@ -49,7 +49,7 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
 
       for (const route of studentRoutes) {
         await student.page.goto(route)
-        await student.page.waitForLoadState('networkidle')
+        await student.page.waitForLoadState('domcontentloaded')
 
         const bodyText = await student.page.locator('body').innerText()
         expect(bodyText).not.toContain('[object Object]')
@@ -90,7 +90,7 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
 
       for (const route of facultyRoutes) {
         await faculty.page.goto(route)
-        await faculty.page.waitForLoadState('networkidle')
+        await faculty.page.waitForLoadState('domcontentloaded')
 
         const bodyText = await faculty.page.locator('body').innerText()
         expect(bodyText).not.toContain('[object Object]')
@@ -139,7 +139,7 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
 
       for (const route of adminRoutes) {
         await admin.page.goto(route)
-        await admin.page.waitForLoadState('networkidle')
+        await admin.page.waitForLoadState('domcontentloaded')
 
         const bodyText = await admin.page.locator('body').innerText()
         expect(bodyText).not.toContain('[object Object]')

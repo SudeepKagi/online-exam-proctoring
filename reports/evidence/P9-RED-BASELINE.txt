@@ -1,0 +1,513 @@
+﻿Γû╢ P9 Defect Reproduction & Baseline Verification
+  Γû╢ F1 ΓÇö Worker Handlers Dead Code
+    Γ£û F1.1: evaluationWorker must define handleEvent method (9.8195ms)
+    Γ£û F1.2: evidenceWorker must define handleEvent method (0.4166ms)
+  Γ£û F1 ΓÇö Worker Handlers Dead Code (10.9911ms)
+  Γû╢ F2 ΓÇö Resume After Expiry
+    Γ£û F2.1: startOrResumeAttempt must not bypass attemptStateMachine on expired resume (0.7238ms)
+    Γ£û F2.2: ExpirySweeper must reconcile un-evaluated terminal attempts (0.4491ms)
+  Γ£û F2 ΓÇö Resume After Expiry (1.4031ms)
+  Γû╢ F3 ΓÇö Exam Lifecycle & Absent Students
+    Γ£û F3.1: createAbsentResultsForEndedExam must be invoked by examScheduler (0.4347ms)
+    Γ£û F3.2: transitionEndedToEvaluated must not exclude exams with READY absent attempts (0.7437ms)
+  Γ£û F3 ΓÇö Exam Lifecycle & Absent Students (1.3796ms)
+  Γû╢ F4 ΓÇö Start Gates Server Enforcement
+    Γ£û F4.1: createStudent must default approvalStatus to PENDING until approved (1.232ms)
+    Γ£û F4.2: createOnDemandAttempt must not insert ACTIVE status directly (0.8946ms)
+    Γ£û F4.3: server must expose unified assertCanStart validation gate (0.5529ms)
+  Γ£û F4 ΓÇö Start Gates Server Enforcement (2.9279ms)
+  Γû╢ F5 ΓÇö Default Password Security
+    Γ£û F5.1: adminService must not use hard-coded default passwords Faculty@123 / Student@123 (0.5512ms)
+    Γ£û F5.2: check-default-credentials verification script must exist (0.2892ms)
+  Γ£û F5 ΓÇö Default Password Security (0.9459ms)
+  Γû╢ F6 ΓÇö CSRF/CORS Wildcard & Header Bypasses
+    Γ£û F6.1: CORS origin validator must not allow arbitrary *.sslip.io domains (0.4806ms)
+    Γ£û F6.2: CSRF protection must not bypass on arbitrary client headers like x-client-type: test (0.3582ms)
+  Γ£û F6 ΓÇö CSRF/CORS Wildcard & Header Bypasses (0.9366ms)
+  Γû╢ F7 ΓÇö Unenforced Settings (tabSwitchLimit)
+    Γ£û F7.1: proctoringService must enforce tabSwitchLimit server-side (0.4492ms)
+  Γ£û F7 ΓÇö Unenforced Settings (tabSwitchLimit) (0.5451ms)
+  Γû╢ F8 ΓÇö Contradictory Time Rules Across Start Paths
+    Γ£û F8.1: unified examClock module must exist and govern expiry calculation (0.4779ms)
+  Γ£û F8 ΓÇö Contradictory Time Rules Across Start Paths (0.536ms)
+  Γû╢ F9 ΓÇö Diverging Attempt Construction & RNG Degeneracy
+    Γ£û F9.1: createSeededRng must not collapse to perpetual zero if seed hash is zero (0.262ms)
+    Γ£û F9.2: unified buildAttemptQuestions function must exist and honor randomiseQuestions (0.1495ms)
+  Γ£û F9 ΓÇö Diverging Attempt Construction & RNG Degeneracy (0.4869ms)
+Γ£û P9 Defect Reproduction & Baseline Verification (21.5336ms)
+Γä╣ tests 17
+Γä╣ suites 10
+Γä╣ pass 0
+Γä╣ fail 17
+Γä╣ cancelled 0
+Γä╣ skipped 0
+Γä╣ todo 0
+Γä╣ duration_ms 4165.7262
+
+Γ£û failing tests:
+
+test at tests\p9-repro-baseline.test.js:22:5
+Γ£û F1.1: evaluationWorker must define handleEvent method (9.8195ms)
+  AssertionError [ERR_ASSERTION]: F1 Defect Confirmed: evaluationWorker.handleEvent is undefined; outbox events will throw TypeError and end FAILED
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:23:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:30:5
+Γ£û F1.2: evidenceWorker must define handleEvent method (0.4166ms)
+  AssertionError [ERR_ASSERTION]: F1 Defect Confirmed: evidenceWorker.handleEvent is undefined; evidence.uploaded outbox events will throw TypeError
+  + actual - expected
+  
+  + 'undefined'
+  - 'function'
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:31:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'function',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:41:5
+Γ£û F2.1: startOrResumeAttempt must not bypass attemptStateMachine on expired resume (0.7238ms)
+  AssertionError [ERR_ASSERTION]: F2 Defect Confirmed: startOrResumeAttempt performs direct prisma.examAttempt.update to EXPIRED, bypassing attemptStateMachine and outbox emission
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:44:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:51:5
+Γ£û F2.2: ExpirySweeper must reconcile un-evaluated terminal attempts (0.4491ms)
+  AssertionError [ERR_ASSERTION]: F2 Defect Confirmed: ExpirySweeper only checks ACTIVE attempts and has no reconciler for un-evaluated terminal attempts
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:54:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:64:5
+Γ£û F3.1: createAbsentResultsForEndedExam must be invoked by examScheduler (0.4347ms)
+  AssertionError [ERR_ASSERTION]: F3 Defect Confirmed: createAbsentResultsForEndedExam is never called by examScheduler; absent students get no result
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:66:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:73:5
+Γ£û F3.2: transitionEndedToEvaluated must not exclude exams with READY absent attempts (0.7437ms)
+  AssertionError [ERR_ASSERTION]: F3 Defect Confirmed: transitionEndedToEvaluated blocks transition when READY attempts exist, permanently stranding exams in ENDED
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:77:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:87:5
+Γ£û F4.1: createStudent must default approvalStatus to PENDING until approved (1.232ms)
+  AssertionError [ERR_ASSERTION]: F4 Defect Confirmed: createStudent sets approvalStatus to APPROVED immediately at creation
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:90:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:97:5
+Γ£û F4.2: createOnDemandAttempt must not insert ACTIVE status directly (0.8946ms)
+  AssertionError [ERR_ASSERTION]: F4 Defect Confirmed: createOnDemandAttempt directly inserts status ACTIVE, bypassing start gates
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:100:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:107:5
+Γ£û F4.3: server must expose unified assertCanStart validation gate (0.5529ms)
+  AssertionError [ERR_ASSERTION]: F4 Defect Confirmed: assertCanStart unified server-side start gate is not implemented
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:113:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:123:5
+Γ£û F5.1: adminService must not use hard-coded default passwords Faculty@123 / Student@123 (0.5512ms)
+  AssertionError [ERR_ASSERTION]: F5 Defect Confirmed: adminService uses hard-coded Faculty@123 and Student@123 fallback passwords
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:127:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:134:5
+Γ£û F5.2: check-default-credentials verification script must exist (0.2892ms)
+  AssertionError [ERR_ASSERTION]: F5 Defect Confirmed: scripts/ops/check-default-credentials.js does not exist
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:136:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:146:5
+Γ£û F6.1: CORS origin validator must not allow arbitrary *.sslip.io domains (0.4806ms)
+  AssertionError [ERR_ASSERTION]: F6 Defect Confirmed: app.js contains wildcard regex allowing any *.sslip.io domain (e.g. evil.sslip.io)
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:149:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:156:5
+Γ£û F6.2: CSRF protection must not bypass on arbitrary client headers like x-client-type: test (0.3582ms)
+  AssertionError [ERR_ASSERTION]: F6 Defect Confirmed: app.js bypasses CSRF when x-client-type: test is sent
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:159:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:169:5
+Γ£û F7.1: proctoringService must enforce tabSwitchLimit server-side (0.4492ms)
+  AssertionError [ERR_ASSERTION]: F7 Defect Confirmed: proctoringService does not check tabSwitchLimit or auto-suspend attempts
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:172:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:182:5
+Γ£û F8.1: unified examClock module must exist and govern expiry calculation (0.4779ms)
+  AssertionError [ERR_ASSERTION]: F8 Defect Confirmed: examClock module does not exist; activateReadyAttempt and createOnDemandAttempt diverge on grace
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:188:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:198:5
+Γ£û F9.1: createSeededRng must not collapse to perpetual zero if seed hash is zero (0.262ms)
+  AssertionError [ERR_ASSERTION]: F9 Defect Confirmed: createSeededRng with empty/zero hash collapses permanently to 0
+  
+  true !== false
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:206:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at node:internal/test_runner/test:1522:71
+      at node:internal/per_context/primordials:466:82
+      at new Promise (<anonymous>)
+      at new SafePromise (node:internal/per_context/primordials:435:3)
+      at node:internal/per_context/primordials:466:9
+      at Array.map (<anonymous>)
+      at arrayToSafePromiseIterable (node:internal/per_context/primordials:463:5)
+      at node:internal/per_context/primordials:480:21
+      at new Promise (<anonymous>)
+      at node:internal/per_context/primordials:479:3
+      at Suite.run (node:internal/test_runner/test:1522:23)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at tests\p9-repro-baseline.test.js:213:5
+Γ£û F9.2: unified buildAttemptQuestions function must exist and honor randomiseQuestions (0.1495ms)
+  AssertionError [ERR_ASSERTION]: F9 Defect Confirmed: buildAttemptQuestions is not defined; 3 separate conflicting implementations exist
+  
+  false !== true
+  
+      at TestContext.<anonymous> (C:\Final year project\online-exam-proctoring\tests\p9-repro-baseline.test.js:219:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:786:18)
+      at Test.postRun (node:internal/test_runner/test:1238:19)
+      at Test.run (node:internal/test_runner/test:1166:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Promise.all (index 0)
+      at async Suite.run (node:internal/test_runner/test:1524:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:786:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

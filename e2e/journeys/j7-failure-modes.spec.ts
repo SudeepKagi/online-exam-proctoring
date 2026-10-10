@@ -90,11 +90,11 @@ test.describe('J7: Failure Modes Journey (Prompt 8 §2 U4)', () => {
       await student.page.getByText('Question Palette').first().waitFor({ timeout: 15000 })
       const optA = student.page.locator('main').getByRole('button', { name: /Option A|Strictly less than one third/i }).first()
       await optA.click()
-      await student.page.waitForTimeout(500)
+      await student.humanize.think(300, 500)
 
       // 2. Simulate Connection Severance (Offline Mode for 10 seconds)
       await student.context.setOffline(true)
-      await student.page.waitForTimeout(1000)
+      await student.humanize.think(500, 1000)
 
       // While offline, candidate toggles flag or navigates
       const flagBtn = student.page.getByRole('button', { name: /Flag question/i })
@@ -104,7 +104,7 @@ test.describe('J7: Failure Modes Journey (Prompt 8 §2 U4)', () => {
 
       // 3. Restore Network
       await student.context.setOffline(false)
-      await student.page.waitForTimeout(2000)
+      await student.humanize.think(1000, 2000)
 
       // 4. Assert Exam Session Continuity: No hard redirect to login or dashboard
       expect(student.page.url()).toContain('/exam')

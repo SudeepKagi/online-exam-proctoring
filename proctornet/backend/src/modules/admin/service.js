@@ -29,6 +29,10 @@ function normalizeDepartmentCode(dept) {
   return d
 }
 
+function generateTempPassword() {
+  return crypto.randomBytes(6).toString('base64url') + '@A1'
+}
+
 class AdminService {
   async getDashboard() {
     return adminRepository.getDashboardStats()
@@ -60,7 +64,9 @@ class AdminService {
       throw new ConflictError('A faculty member with this email already exists.')
     }
 
-    const hashedPassword = await bcrypt.hash(data.password || 'Faculty@123', 10)
+    const isGenerated = !data.password
+    const tempPassword = isGenerated ? generateTempPassword() : String(data.password)
+    const hashedPassword = await bcrypt.hash(tempPassword, 10)
     const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const faculty = await adminRepository.createFaculty({
       id: data.id || crypto.randomUUID(),
@@ -70,9 +76,14 @@ class AdminService {
       departmentCode: deptCode,
       employeeId,
       phone: data.phone || null,
+      mustChangePassword: isGenerated || Boolean(data.mustChangePassword),
       isApproved: true
     })
-    return toFacultyAdminDTO(faculty)
+    const dto = toFacultyAdminDTO(faculty)
+    if (isGenerated) {
+      dto.tempPassword = tempPassword
+    }
+    return dto
   }
 
   async approveFaculty(id, approverId) {
@@ -128,7 +139,9 @@ class AdminService {
       throw new ConflictError('A candidate with this email address already exists.')
     }
 
-    const hashedPassword = await bcrypt.hash(data.password || 'Student@123', 10)
+    const isGenerated = !data.password
+    const tempPassword = isGenerated ? generateTempPassword() : String(data.password)
+    const hashedPassword = await bcrypt.hash(tempPassword, 10)
     const deptCode = normalizeDepartmentCode(data.departmentCode || data.department)
     const student = await adminRepository.createStudent({
       id: data.id || crypto.randomUUID(),
@@ -139,18 +152,22 @@ class AdminService {
       departmentCode: deptCode,
       semester: parseInt(data.semester || 1, 10),
       phone: data.phone || null,
-      approvalStatus: 'APPROVED',
-      profileStatus: 'PENDING'
+      mustChangePassword: isGenerated || Boolean(data.mustChangePassword),
+      approvalStatus: data.approvalStatus || 'APPROVED',
+      profileStatus: data.profileStatus || 'PENDING'
     })
+    student.tempPassword = isGenerated ? tempPassword : undefined
     return toStudentAdminDTO(student)
   }
 
   async approveStudent(id, approverId) {
     const s = await adminRepository.findStudentById(id)
     if (!s) throw new NotFoundError('Student not found')
+    const facePhotoKey = s.facePhotoKey || `identity/${id}/enrolled-face.webp`
     const updated = await adminRepository.updateStudent(id, {
       approvalStatus: 'APPROVED',
       profileStatus: 'VERIFIED',
+      facePhotoKey,
       approvedBy: approverId,
       approvedAt: new Date()
     })
@@ -341,15 +358,23 @@ class AdminService {
 
   // ── Bulk Upload ──
   async parseBulkBuffer(buffer, _fileType = 'excel') {
-    const MAX_EXCEL_BYTES = 5 * 1024 * 1024
-    if (!buffer || buffer.length > MAX_EXCEL_BYTES) {
-      throw new ValidationError('Excel file exceeds maximum allowed size of 5 MB')
+    const MAX_FILE_BYTES = 5 * 1024 * 1024
+    if (!buffer || buffer.length > MAX_FILE_BYTES) {
+      throw new ValidationError('Upload exceeds maximum allowed size of 5 MB')
     }
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer)
+    const isZip = buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4B // PK..
+    if (isZip) {
+      await workbook.xlsx.load(buffer)
+    } else {
+      const { Readable } = require('stream')
+      const stream = Readable.from(buffer.toString('utf-8'))
+      await workbook.csv.read(stream)
+    }
+
     const worksheet = workbook.worksheets[0]
     if (!worksheet) {
-      throw new ValidationError('Excel file contains no worksheets')
+      throw new ValidationError('File contains no worksheets or data')
     }
     const rows = []
     const headers = []
@@ -363,7 +388,14 @@ class AdminService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber]
           if (header) {
-            rowData[header] = cell.text ?? cell.value
+            let val = cell.text ?? cell.value
+            if (cell.value && typeof cell.value === 'object' && cell.value.result !== undefined) {
+              val = cell.value.result
+            }
+            if (typeof val === 'string') {
+              val = val.trim()
+            }
+            rowData[header] = val
           }
         })
         if (Object.keys(rowData).length > 0) {
@@ -391,13 +423,13 @@ class AdminService {
             departmentCode: raw.departmentCode || raw.department || raw.Department,
             semester: raw.semester || raw.Semester || 1,
             phone: raw.phone || raw.Phone || null,
-            password: raw.password || raw.Password || 'Student@123'
+            password: raw.password || raw.Password || undefined
           }
           if (!acc.usn || !acc.email) {
             throw new Error('Missing required USN or Email in record')
           }
           const res = await this.createStudent(acc)
-          created.push({ ...res, tempPassword: acc.password })
+          created.push(res)
         } catch (err) {
           failed.push({ usn: raw.usn || raw.USN || raw.email || 'unknown', error: err.message })
         }
@@ -411,13 +443,13 @@ class AdminService {
             employeeId: raw.employeeId || raw.EmployeeId || raw['Employee ID'] || raw.identifier,
             departmentCode: raw.departmentCode || raw.department || raw.Department,
             phone: raw.phone || raw.Phone || null,
-            password: raw.password || raw.Password || 'Faculty@123'
+            password: raw.password || raw.Password || undefined
           }
           if (!acc.employeeId || !acc.email) {
             throw new Error('Missing required Employee ID or Email in record')
           }
           const res = await this.createFaculty(acc)
-          created.push({ ...res, tempPassword: acc.password })
+          created.push(res)
         } catch (err) {
           failed.push({ email: raw.email || raw.Email || 'unknown', error: err.message })
         }
@@ -450,9 +482,11 @@ class AdminService {
     if (!student) throw new NotFoundError('Student not found')
 
     const prevStatus = student.profileStatus
+    const facePhotoKey = student.facePhotoKey || (status === 'VERIFIED' ? `identity/${studentId}/enrolled-face.webp` : null)
     const updated = await adminRepository.updateStudent(studentId, {
       profileStatus: status,
       approvalStatus: status === 'VERIFIED' ? 'APPROVED' : (status === 'REJECTED' ? 'REJECTED' : student.approvalStatus),
+      ...(facePhotoKey ? { facePhotoKey } : {}),
       rejectionReason: status === 'REJECTED' ? reason : null
     })
 

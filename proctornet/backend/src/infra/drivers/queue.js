@@ -13,7 +13,7 @@
 
 const config = require('../../shared/config')
 const { logger } = require('../../shared/logging')
-const { pgQueueDispatcher, registerHandler: registerPgHandler } = require('../postgres/pgQueueDispatcher')
+const { pgQueueDispatcher, registerHandler: registerPgHandler, registerAllHandlers } = require('../postgres/pgQueueDispatcher')
 const { outboxPublisher } = require('../rabbitmq/outboxPublisher')
 
 let activeQueueDriver = null
@@ -59,5 +59,6 @@ function registerQueueHandler(eventType, fn) {
 
 module.exports = {
   getQueueDriver,
-  registerQueueHandler
+  registerQueueHandler,
+  registerAllHandlers
 }

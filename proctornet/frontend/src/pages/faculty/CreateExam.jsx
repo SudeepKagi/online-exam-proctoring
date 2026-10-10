@@ -256,6 +256,7 @@ export default function CreateExam() {
     watermarkRequired: true,
     randomiseQuestions: true,
     randomiseOptions: true,
+    tabSwitchLimit: 3,
     allowedDepartments: ['CSE'],
     allowedSemesters: [5]
   })
@@ -457,7 +458,7 @@ export default function CreateExam() {
     payload.totalMarks = parseFloat(payload.totalMarks) || 100
     payload.questionsPerStudent = parseInt(payload.questionsPerStudent, 10) || 0
     payload.negativeValue = parseFloat(payload.negativeValue) || 0
-    payload.tabSwitchLimit = parseInt(payload.tabSwitchLimit, 10) || 3
+    payload.tabSwitchLimit = parseInt(formData.tabSwitchLimit, 10) || 3
 
     setIsSubmitting(true)
     try {
@@ -991,6 +992,21 @@ export default function CreateExam() {
                     </div>
                   </label>
                 ))}
+
+                <div className="p-3 rounded-xl border border-slate-200 bg-[#f8fafc] flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-900">Tab Switch Limit</div>
+                    <div className="text-[11px] text-slate-500 font-semibold">Auto-suspends candidate after N tab switches</div>
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={formData.tabSwitchLimit}
+                    onChange={(e) => handleChange('tabSwitchLimit', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-16 px-2.5 py-1.5 text-xs text-center font-bold border border-slate-300 rounded-lg bg-white"
+                  />
+                </div>
               </div>
 
               <button

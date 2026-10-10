@@ -25,18 +25,27 @@ function isEvidenceRequired(eventType) {
  * Check if the attempt is still within the evidence screenshot budget
  */
 async function checkEvidenceBudget(attemptId) {
-  const currentCount = await prisma.violationEvent.count({
-    where: {
-      attemptId,
-      evidenceKey: { not: null }
-    }
-  })
+  try {
+    const currentCount = await prisma.violationEvent.count({
+      where: {
+        attemptId,
+        evidenceKey: { not: null }
+      }
+    })
 
-  return {
-    allowed: currentCount < PER_ATTEMPT_EVIDENCE_CAP,
-    currentCount,
-    cap: PER_ATTEMPT_EVIDENCE_CAP,
-    remaining: Math.max(0, PER_ATTEMPT_EVIDENCE_CAP - currentCount)
+    return {
+      allowed: currentCount < PER_ATTEMPT_EVIDENCE_CAP,
+      currentCount,
+      cap: PER_ATTEMPT_EVIDENCE_CAP,
+      remaining: Math.max(0, PER_ATTEMPT_EVIDENCE_CAP - currentCount)
+    }
+  } catch (err) {
+    return {
+      allowed: true,
+      currentCount: 0,
+      cap: PER_ATTEMPT_EVIDENCE_CAP,
+      remaining: PER_ATTEMPT_EVIDENCE_CAP
+    }
   }
 }
 

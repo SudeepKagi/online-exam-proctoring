@@ -1,0 +1,41 @@
+{
+    admin off
+}
+
+http://localhost, https://localhost, localhost, http://127.0.0.1, https://127.0.0.1 {
+    tls internal
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(self), microphone=(self), display-capture=(self)"
+    }
+
+    handle /api/* {
+        reverse_proxy backend:5000
+    }
+
+    handle /rt/* {
+        reverse_proxy backend:5000 {
+            transport http {
+                keepalive 60s
+            }
+        }
+    }
+
+    handle /socket.io/* {
+        reverse_proxy backend:5000
+    }
+
+    handle /healthz {
+        reverse_proxy backend:5000
+    }
+
+    handle {
+        root * /srv/frontend
+        try_files {path} /index.html
+        file_server
+    }
+}

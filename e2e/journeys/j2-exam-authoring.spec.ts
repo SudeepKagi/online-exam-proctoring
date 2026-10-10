@@ -62,7 +62,7 @@ test.describe('J2: Exam Authoring Journey (Prompt 8 §2 U4)', () => {
         }
 
         await faculty.humanize.clickHuman(faculty.page, addQPoolBtn)
-        await faculty.page.waitForTimeout(100)
+        await faculty.humanize.think(50, 100)
       }
 
       // Verify 10 questions in pool

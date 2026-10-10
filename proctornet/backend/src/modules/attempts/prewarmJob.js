@@ -1,5 +1,5 @@
 const { prisma } = require('../../infra/postgres/client')
-const { createSeededRng, shuffleArray } = require('./repository')
+const { createSeededRng, shuffleArray, buildAttemptQuestions } = require('./repository')
 const { SQL_ELIGIBILITY_WHERE } = require('../exams/eligibility')
 const { attemptService } = require('./service')
 const { logger } = require('../../shared/logging')
@@ -95,31 +95,18 @@ class AttemptPrewarmJob {
             const attemptId = inserted[0].id
             totalPrewarmed++
 
-            // Shuffle questions and options with deterministic RNG seeded per attempt
-            const rng = createSeededRng(shuffleSeed)
-            const questions = [...exam.questions]
-            if (exam.randomiseQuestions) {
-              shuffleArray(questions, rng)
-            }
+            // Build attempt questions with single unified buildAttemptQuestions (§P9 F9)
+            const attemptQuestions = buildAttemptQuestions(exam, exam.questions, shuffleSeed)
 
-            const selected = (exam.questionsPerStudent > 0 && exam.questionsPerStudent < questions.length)
-              ? questions.slice(0, exam.questionsPerStudent)
-              : questions
-
-            if (selected.length > 0) {
+            if (attemptQuestions.length > 0) {
               const valuePlaceholders = []
               const params = [attemptId]
               let paramIdx = 2
 
-              for (let qIdx = 0; qIdx < selected.length; qIdx++) {
-                const q = selected[qIdx]
-                const optionOrder = q.options.map((_, idx) => idx)
-                if (exam.randomiseOptions) {
-                  shuffleArray(optionOrder, rng)
-                }
-
+              for (let qIdx = 0; qIdx < attemptQuestions.length; qIdx++) {
+                const aq = attemptQuestions[qIdx]
                 valuePlaceholders.push(`(gen_random_uuid(), $1::uuid, $${paramIdx}::uuid, $${paramIdx + 1}, $${paramIdx + 2}::smallint[])`)
-                params.push(q.id, qIdx + 1, optionOrder)
+                params.push(aq.questionId, aq.displayOrder, aq.optionOrder)
                 paramIdx += 3
               }
 

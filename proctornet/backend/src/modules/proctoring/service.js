@@ -20,10 +20,18 @@ const { ROLES, normalizeRole } = require('../../shared/roles')
 const inMemoryCooldowns = new Map()
 
 class ProctoringService {
+  constructor() {
+    this.io = null
+  }
+
+  setIO(io) {
+    this.io = io
+  }
+
   /**
    * Record a violation event with Redis cooldown, server-side severity, and micro-batching
    */
-  async recordViolation(attemptId, studentId, eventType, metadata = {}, clientTimestamp = null) {
+  async recordViolation(attemptId, studentId, eventType, metadata = {}, clientTimestamp = null, io = null) {
     // 0. Validate and normalize against single shared catalogue
     const canonicalType = normalizeViolationType(eventType)
     if (!canonicalType || !isValidViolationType(canonicalType)) {
@@ -73,8 +81,28 @@ class ProctoringService {
       }
     }
 
-    // 3. Server severity assignment (Never trust client severity)
-    const severity = CANONICAL_SEVERITY[canonicalType] || 'MEDIUM'
+    // 3. Server severity assignment & tabSwitchLimit enforcement (F7)
+    let severity = CANONICAL_SEVERITY[canonicalType] || 'MEDIUM'
+    let autoSuspended = false
+    let tabSwitchCount = 0
+    const tabSwitchLimit = attempt.tabSwitchLimit ?? attempt.tab_switch_limit ?? 3
+
+    if (canonicalType === 'TAB_SWITCH') {
+      const existingTabSwitches = await proctoringRepository.countViolationsByType(attemptId, 'TAB_SWITCH')
+      tabSwitchCount = existingTabSwitches + 1
+      metadata = {
+        ...(metadata || {}),
+        tabSwitchCount,
+        tabSwitchLimit
+      }
+
+      if (tabSwitchCount >= tabSwitchLimit) {
+        severity = 'HIGH'
+        autoSuspended = true
+        metadata.autoSuspended = true
+        metadata.suspensionReason = `Exceeded maximum tab switch limit (${tabSwitchCount}/${tabSwitchLimit})`
+      }
+    }
 
     // 4. Push to micro-batcher first to ensure row exists in database (C-08/C-09)
     const batchRes = await violationMicroBatcher.queue({
@@ -85,6 +113,50 @@ class ProctoringService {
       clientTimestamp
     })
     const violationId = batchRes?.violationId != null ? batchRes.violationId.toString() : null
+
+    // F7: Auto-suspend attempt if tabSwitchLimit was reached/exceeded
+    if (autoSuspended) {
+      try {
+        const { attemptService } = require('../attempts/service')
+        const suspensionReason = `Exceeded maximum tab switch limit (${tabSwitchCount}/${tabSwitchLimit})`
+        await attemptService.transitionState(attemptId, 'SUSPENDED', {
+          actorRole: 'system',
+          reason: suspensionReason,
+          metadata: {
+            tabSwitchCount,
+            tabSwitchLimit,
+            violationId
+          }
+        })
+
+        const activeIo = io || this.io
+        const examId = attempt.examId || attempt.exam_id
+        if (activeIo) {
+          activeIo.to(`attempt:${attemptId}`).emit('attempt:state', {
+            status: 'SUSPENDED',
+            isPaused: true,
+            reason: suspensionReason
+          })
+          if (examId) {
+            activeIo.to(`inv:${examId}`).emit('attempt:suspended', {
+              attemptId,
+              examId,
+              reason: suspensionReason
+            })
+          }
+        }
+        if (examId) {
+          rosterCoalescer.queueDelta(examId, {
+            attemptId,
+            status: 'SUSPENDED',
+            suspensionReason: 'TAB_SWITCH_LIMIT_EXCEEDED'
+          })
+        }
+        logger.warn({ attemptId, tabSwitchCount, tabSwitchLimit }, 'Attempt auto-suspended due to tab switch limit')
+      } catch (suspendErr) {
+        logger.error({ attemptId, err: suspendErr.message }, 'Failed to auto-suspend attempt upon tab switch limit')
+      }
+    }
 
     // 5. Issue the evidence tickets AFTER the row exists and bind key to violationId (C-08/C-09 / R2)
     let evidenceTickets = null
@@ -97,7 +169,7 @@ class ProctoringService {
         try {
           evidenceTickets = await presignService.generateEvidenceTickets(
             { id: studentId, role: 'student' },
-            { attemptId, violationId, examId: attempt.examId, contentType: 'image/webp' }
+            { attemptId, violationId, examId: attempt.examId || attempt.exam_id, contentType: 'image/webp' }
           )
         } catch (err) {
           logger.warn({ attemptId, violationId, error: err.message }, 'Could not generate evidence tickets')
@@ -110,6 +182,9 @@ class ProctoringService {
       violationId,
       eventType: canonicalType,
       severity,
+      autoSuspended,
+      tabSwitchCount: canonicalType === 'TAB_SWITCH' ? tabSwitchCount : undefined,
+      tabSwitchLimit: canonicalType === 'TAB_SWITCH' ? tabSwitchLimit : undefined,
       evidenceTickets,
       evidenceUpload: evidenceTickets?.camera || null
     }

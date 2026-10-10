@@ -62,6 +62,7 @@ class AuthService {
     const session = await tokenService.createSession({
       userId: user.id,
       role,
+      mustChangePassword: Boolean(user.mustChangePassword),
       ip,
       userAgent
     })
@@ -91,6 +92,7 @@ class AuthService {
     const session = await tokenService.createSession({
       userId: admin.id,
       role: ROLES.ADMIN,
+      mustChangePassword: Boolean(admin.mustChangePassword),
       ip,
       userAgent
     })
@@ -128,6 +130,7 @@ class AuthService {
     const session = await tokenService.createSession({
       userId: faculty.id,
       role: ROLES.FACULTY,
+      mustChangePassword: Boolean(faculty.mustChangePassword),
       ip,
       userAgent
     })
@@ -216,6 +219,7 @@ class AuthService {
       userId: student.id,
       role: ROLES.STUDENT,
       examId: activeAttempt?.id || null,
+      mustChangePassword: Boolean(student.mustChangePassword),
       ip,
       userAgent
     })

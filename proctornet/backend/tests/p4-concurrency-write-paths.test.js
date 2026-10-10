@@ -64,7 +64,9 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         password: pwdHash,
         departmentCode: dept.code,
         semester: 6,
-        approvalStatus: 'APPROVED'
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-student-a.jpg'
       }
     })
 
@@ -77,7 +79,9 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         password: pwdHash,
         departmentCode: dept.code,
         semester: 6,
-        approvalStatus: 'APPROVED'
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-student-b.jpg'
       }
     })
 
@@ -102,6 +106,7 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         invId: `INV-${Date.now()}`,
         invPasswordHash: pwdHash,
         status: 'PUBLISHED',
+        cameraRequired: false,
         deviceAgentPolicy: 'OFF'
       }
     })
@@ -395,7 +400,9 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         password: pwdHash,
         departmentCode: dept.code,
         semester: 6,
-        approvalStatus: 'APPROVED'
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-student-exp.jpg'
       }
     })
 
@@ -451,7 +458,9 @@ describe('P4 Concurrency & Correctness-Critical Write Paths', () => {
         password: pwdHash,
         departmentCode: dept.code,
         semester: 6,
-        approvalStatus: 'APPROVED'
+        approvalStatus: 'APPROVED',
+        profileStatus: 'VERIFIED',
+        facePhotoKey: 'photos/test-student-swept.jpg'
       }
     })
 

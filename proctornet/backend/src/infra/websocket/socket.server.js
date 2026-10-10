@@ -38,9 +38,6 @@ function createWebSocketServer(httpServer, options = {}) {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true)
         if (allowedOrigins.includes(origin)) return callback(null, true)
-        if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io)(:\d+)?$/)) {
-          return callback(null, true)
-        }
         if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
           return callback(null, true)
         }
@@ -221,6 +218,28 @@ function createWebSocketServer(httpServer, options = {}) {
       socket.on('disconnect', () => clearInterval(checkInterval))
     }
 
+    // Dynamic token refresh handler to keep socket authenticated after HTTP token rotation
+    socket.on('auth:refresh', async (data, ack) => {
+      try {
+        const token = data?.token || extractTokenFromSocket(socket)
+        if (!token) {
+          if (typeof ack === 'function') ack({ success: false, error: 'Token required' })
+          return
+        }
+        const decoded = tokenService.verifyAccessToken(token)
+        if (!decoded || decoded.id !== socket.user?.id) {
+          if (typeof ack === 'function') ack({ success: false, error: 'User mismatch' })
+          return
+        }
+        socket.user.exp = decoded.exp
+        if (decoded.sid) socket.user.sid = decoded.sid
+        if (decoded.epoch !== undefined) socket.user.epoch = decoded.epoch
+        if (typeof ack === 'function') ack({ success: true, exp: decoded.exp })
+      } catch (err) {
+        if (typeof ack === 'function') ack({ success: false, error: err.message })
+      }
+    })
+
     // ── 1. STUDENT: Join Private Attempt Room (Task 2) ──
     socket.on('attempt:join', async (data, ack) => {
       try {
@@ -400,7 +419,8 @@ function createWebSocketServer(httpServer, options = {}) {
           socket.user.id,
           eventType,
           metadata,
-          clientTimestamp
+          clientTimestamp,
+          io
         )
 
         if (res?.recorded && verifiedExamId) {

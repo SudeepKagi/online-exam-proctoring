@@ -131,6 +131,7 @@ class TokenService {
     userId,
     role,
     examId = null,
+    mustChangePassword = false,
     ip = null,
     userAgent = null,
     refreshTtlSec = DEFAULT_REFRESH_TTL_SEC,
@@ -171,7 +172,8 @@ class TokenService {
       sid,
       familyId,
       epoch,
-      examId: examId || null
+      examId: examId || null,
+      mustChangePassword: Boolean(mustChangePassword)
     }
 
     const accessToken = this.signAccessToken(accessTokenPayload, accessTtlSec)
@@ -184,6 +186,7 @@ class TokenService {
       epoch,
       familyId,
       examId,
+      mustChangePassword: Boolean(mustChangePassword),
       expiresAt: now.getTime() + SESSION_CACHE_TTL_MS
     })
 
@@ -340,13 +343,17 @@ class TokenService {
       }
     })
 
+    const cachedOld = sessionCache.get(session.id)
+    const mustChangePassword = Boolean(cachedOld?.mustChangePassword)
+
     const accessTokenPayload = {
       id: session.userId,
       role: session.role.toLowerCase(),
       sid: newSid,
       familyId: session.familyId,
       epoch,
-      examId: session.examId || null
+      examId: session.examId || null,
+      mustChangePassword
     }
 
     const newAccessToken = this.signAccessToken(accessTokenPayload, ACCESS_TOKEN_TTL_SEC)
@@ -358,6 +365,7 @@ class TokenService {
       epoch,
       familyId: session.familyId,
       examId: session.examId,
+      mustChangePassword,
       expiresAt: Date.now() + SESSION_CACHE_TTL_MS
     })
 
@@ -417,7 +425,7 @@ class TokenService {
     if (!res || typeof res.cookie !== 'function') return
 
     const isProd = process.env.NODE_ENV === 'production'
-    const isSecure = process.env.COOKIE_SECURE === 'true' || Boolean(isProd && res.req?.secure)
+    const isSecure = isProd || process.env.COOKIE_SECURE === 'true' || Boolean(res.req?.secure)
 
     // Access token cookie
     res.cookie('pn_at', accessToken, {
@@ -463,7 +471,7 @@ class TokenService {
     if (!res || typeof res.clearCookie !== 'function') return
 
     const isProd = process.env.NODE_ENV === 'production'
-    const isSecure = process.env.COOKIE_SECURE === 'true' || Boolean(isProd && res.req?.secure)
+    const isSecure = isProd || process.env.COOKIE_SECURE === 'true' || Boolean(res.req?.secure)
 
     res.clearCookie('pn_at', {
       httpOnly: true,

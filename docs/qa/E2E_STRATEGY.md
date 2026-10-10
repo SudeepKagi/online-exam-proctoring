@@ -50,6 +50,11 @@ ProctorNet implements a **two-layer end-to-end testing architecture**:
 | **J7** | Infrastructure Blip & Recovery | Student, Backend | Docker backend restart during active attempt: WebSocket reconnection, answer preservation, timer continuity, graceful DB retry. |
 | **J8** | Exploratory Router Crawler (Monkey) | All Roles | Seeded crawl of all frontend routes per role, fuzzing inputs with edge-case unicode/long strings/script tags, asserting zero 5xx, zero console errors, zero blank screens, zero `[object Object]` leaks. |
 | **J9** | Accessibility & Visual Baselines | Public, Student | `@axe-core/playwright` WCAG 2.1 AA audit on all primary views, zero critical/serious violations, full keyboard-only navigation of student authentication and exam flows. |
+| **J10** | Exam Lifecycle & Results | All Roles, 6 Students | Automated state transitions (`PUBLISHED → LIVE → ENDED → EVALUATED`), evaluation of absent students (score 0, `NOT_STARTED`), suspended student end-of-exam evaluation, oracle rank computation, and results release gating. |
+| **J11** | Real-Time Timeout & Expiry Sweeper (`@slow`) | Student, ExpirySweeper | Real-time countdown expiry, grace period answer submission, late answer rejection, reload post-expiry result recovery (F2), client clock skew independence. |
+| **J12** | Concurrency Burst & 450MB Memory Budget | 10 Human + 150 Virtual | 160 concurrent student assessment burst, 100% answer persistence, 100% evaluation completion, autosave p95 latency, zero 5xx, backend RSS verified below 450MB systemd ceiling. |
+| **J13** | Production Read-Only Smoke & Canary Gate | Ops, Canary Bot | Read-only production smoke verification, automated canary assessment gate with isolated `canary-*` accounts and clean teardown. |
+
 
 ---
 

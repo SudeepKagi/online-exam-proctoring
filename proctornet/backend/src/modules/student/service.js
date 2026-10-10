@@ -153,7 +153,9 @@ class StudentService {
         studentId,
         liveFrameKey,
         challengeId: data.challengeId || null,
-        burstKeys: data.burstKeys || null
+        burstKeys: data.burstKeys || null,
+        testFixture: data.testFixture || null,
+        simulateProviderOutage: Boolean(data.simulateProviderOutage)
       })
 
       return {
@@ -180,7 +182,7 @@ class StudentService {
 
     // FLW-02: ID-card photo is uploaded at enrollment and verified by admin.
     // At exam time only the live face check runs.
-    const isEnrolledAndVerified = student.profileStatus === 'VERIFIED' || student.approvalStatus === 'APPROVED'
+    const isEnrolledAndVerified = student.profileStatus === 'VERIFIED' && student.approvalStatus === 'APPROVED'
 
     await studentRepository.recordVerificationAuditLog({
       studentId,
