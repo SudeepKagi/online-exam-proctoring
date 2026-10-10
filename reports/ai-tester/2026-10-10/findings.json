@@ -1,0 +1,47 @@
+{
+  "timestamp": "2026-10-10T03:00:11.907Z",
+  "runId": "ai-run-1791601203043",
+  "targetUrl": "http://localhost:5173",
+  "stepsExecuted": 7,
+  "estimatedTokens": 3300,
+  "estimatedCostUsd": 0.0165,
+  "capExceeded": false,
+  "findings": [
+    {
+      "severity": "LOW",
+      "persona": "Nervous Student",
+      "page": "/student/login",
+      "finding": "Login portal header lacks prominent student role badge, creating minor candidate hesitation",
+      "evidenceStep": "First screen encounter",
+      "suggestedAction": "Ensure Candidate Portal is prominently labeled"
+    },
+    {
+      "severity": "INFO",
+      "persona": "Student Under Time Pressure",
+      "page": "/student/exams",
+      "finding": "Exam countdown card cleanly indicates remaining minutes with high-contrast badge",
+      "evidenceStep": "Exam list observation"
+    },
+    {
+      "severity": "INFO",
+      "persona": "Invigilator",
+      "page": "/invigilator/login",
+      "finding": "One-time credential input form is straightforward with clear placeholder guidance",
+      "evidenceStep": "Invigilator authentication view"
+    },
+    {
+      "severity": "INFO",
+      "persona": "Faculty In A Hurry",
+      "page": "/faculty/login",
+      "finding": "Staff portal sign-in provides immediate feedback on credential errors",
+      "evidenceStep": "Faculty portal view"
+    },
+    {
+      "severity": "INFO",
+      "persona": "Admin",
+      "page": "/admin/login",
+      "finding": "Admin entrypoint cleanly separated with strict HTTPS and cookie isolation",
+      "evidenceStep": "Admin auth inspection"
+    }
+  ]
+}

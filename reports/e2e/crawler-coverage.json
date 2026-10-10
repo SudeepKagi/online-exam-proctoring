@@ -1,0 +1,247 @@
+{
+  "timestamp": "2026-10-10T02:57:51.326Z",
+  "totalRoutes": 25,
+  "visitedRoutes": [
+    {
+      "role": "student",
+      "path": "/student/dashboard",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Good morning, Ada",
+        "Personal & Academic Profile"
+      ]
+    },
+    {
+      "role": "student",
+      "path": "/student/profile",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Candidate Profile & Biometrics",
+        "Academic & Personal Information"
+      ]
+    },
+    {
+      "role": "student",
+      "path": "/student/exams",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Examination Portal",
+        "High Availability & Resilience Exam"
+      ]
+    },
+    {
+      "role": "student",
+      "path": "/student/results",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Exam Results & Integrity Docket",
+        "Evaluated Candidate Dossier"
+      ]
+    },
+    {
+      "role": "student",
+      "path": "/student/support",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Security Policies & Student Support Center",
+        "1. Room & Workstation Environment"
+      ]
+    },
+    {
+      "role": "student",
+      "path": "/student/rules",
+      "status": "CLEAN",
+      "headings": [
+        "student Workspace",
+        "Security Policies & Student Support Center",
+        "1. Room & Workstation Environment"
+      ]
+    },
+    {
+      "role": "faculty",
+      "path": "/faculty/dashboard",
+      "status": "CLEAN",
+      "headings": [
+        "faculty Workspace",
+        "Faculty Workspace Overview",
+        "Personal & Professional Profile"
+      ]
+    },
+    {
+      "role": "faculty",
+      "path": "/faculty/students",
+      "status": "CLEAN",
+      "headings": [
+        "faculty Workspace",
+        "Student Registry",
+        "Enrolled Student Roster"
+      ]
+    },
+    {
+      "role": "faculty",
+      "path": "/faculty/exams",
+      "status": "CLEAN",
+      "headings": [
+        "faculty Workspace",
+        "My Exams",
+        "High Availability & Resilience Exam"
+      ]
+    },
+    {
+      "role": "faculty",
+      "path": "/faculty/exams/create",
+      "status": "CLEAN",
+      "headings": [
+        "faculty Workspace",
+        "Create New Examination Wizard",
+        " Question Editor"
+      ]
+    },
+    {
+      "role": "faculty",
+      "path": "/faculty/results",
+      "status": "CLEAN",
+      "headings": [
+        "faculty Workspace",
+        "Exam Evaluation & Results",
+        "Evaluated Results Dossier"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/dashboard",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "System Overview",
+        "Institutional Metrics"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/create-student",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Student Account Creation",
+        "Candidate Details"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/create-faculty",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Faculty Account Creation",
+        "Faculty Profile Details"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/bulk-create",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Bulk Create Accounts"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/enrollment-review",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Identity Verification Review",
+        "No Submissions Found"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/faculty",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Faculty Management"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/students",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Student Management"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/exams",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "All Platform Exams"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/invigilators",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Invigilator Sessions"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/violations",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Violations & Security Flags"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/announcements",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Announcements"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/settings",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Settings",
+        "Face & Identity Verification"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/audit-logs",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "System Audit Trail"
+      ]
+    },
+    {
+      "role": "admin",
+      "path": "/admin/reports",
+      "status": "CLEAN",
+      "headings": [
+        "admin Workspace",
+        "Reports & Analytics"
+      ]
+    }
+  ]
+}

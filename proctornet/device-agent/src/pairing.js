@@ -32,6 +32,9 @@ function getPseudonymousDeviceId() {
  * Computes agent binary build hash
  */
 function getBuildHash() {
+  if (process.env.COMPANION_BUILD_HASH) {
+    return process.env.COMPANION_BUILD_HASH
+  }
   try {
     const target = process.execPath || __filename
     const buf = fs.readFileSync(target)

@@ -524,17 +524,18 @@ class FaceVerificationService {
       }
     })
 
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        userId: operatorId,
-        role: operatorRole.toUpperCase(),
-        action: 'IDENTITY_OVERRIDE',
+    // Audit log via canonical auditService
+    try {
+      const { auditService } = require('../audit/service')
+      await auditService.logAction(operatorId, operatorRole.toUpperCase(), 'IDENTITY_OVERRIDE', {
         resourceType: 'EXAM_ATTEMPT',
         resourceId: attemptId,
-        details: { decision, reason }
-      }
-    })
+        attemptId,
+        metadata: { decision, reason }
+      })
+    } catch (auditErr) {
+      logger.warn({ error: auditErr.message, attemptId }, 'Failed to record identity override audit log')
+    }
 
     // Emit identity:decision to attempt room
     try {

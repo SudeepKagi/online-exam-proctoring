@@ -32,6 +32,10 @@ export class ApiReadHelper {
     return { status: res.status(), body }
   }
 
+  async getRaw(path: string) {
+    return this.request('GET', path)
+  }
+
   async getAdminDepartments() {
     return this.request('GET', '/api/v1/admin/departments')
   }
@@ -76,12 +80,48 @@ export class ApiReadHelper {
     return this.request('GET', `/api/v1/faculty/exams/${examId}/results`)
   }
 
-  async postRaw(path: string, payload: any) {
+  async postRaw(path: string, payload: any = {}) {
     const cookies = await this.actor.context.cookies()
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
 
     const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
+      headers: {
+        'Cookie': cookieHeader,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      data: JSON.stringify(payload)
+    })
+
+    const body = await res.json().catch(() => null)
+    return { status: res.status(), body }
+  }
+
+  async patchRaw(path: string, payload: any = {}) {
+    const cookies = await this.actor.context.cookies()
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
+
+    const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
+      method: 'PATCH',
+      headers: {
+        'Cookie': cookieHeader,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      data: JSON.stringify(payload)
+    })
+
+    const body = await res.json().catch(() => null)
+    return { status: res.status(), body }
+  }
+
+  async putRaw(path: string, payload: any = {}) {
+    const cookies = await this.actor.context.cookies()
+    const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
+
+    const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
+      method: 'PUT',
       headers: {
         'Cookie': cookieHeader,
         'Content-Type': 'application/json',

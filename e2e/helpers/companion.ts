@@ -17,7 +17,7 @@ export function startCompanionAgent(pairingCode: string, serverUrl = 'http://loc
 
   const proc = spawn('node', ['src/main.js', '--server', serverUrl, '--code', pairingCode], {
     cwd: AGENT_DIR,
-    env: { ...process.env, NODE_ENV: 'test' },
+    env: { ...process.env, NODE_ENV: 'test', COMPANION_BUILD_HASH: 'official-adv-release-hash' },
     stdio: ['ignore', 'pipe', 'pipe']
   })
 

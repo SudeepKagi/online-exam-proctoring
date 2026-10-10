@@ -119,6 +119,12 @@
 | **C7-01**   | Phase C7 Security Fixes & Test Safety | Session guard enforcing `sid` check on user tokens returning 401 `SESSION_REQUIRED` in non-test profiles (`SEC-1`); pipeline gate `CI-08` guaranteeing zero test evasion (`SEC-2`). | `node --test tests/ci_workflow_integrity.test.js` | 2026-10-08T13:50:00Z | PASSED | `proctornet/backend/src/middleware/authentication.js` |
 | **C8-01-DOC** | §3 C8 Roadmap | Scale & Resilience Architectural Roadmap (Design & Capacity Specifications) | `node scripts/ci/check-doc-links.js` | 2026-10-09T01:20:00Z | PASSED (0 broken links) | `docs/architecture/scale-resilience-roadmap.md` |
 | **C8-01-IMP** | §3 C8 Roadmap | Live Capacity Controls & Route Inventory (Single-process Lite limits, connection pool sizing, route matrix) | `node scripts/ci/generate-route-inventory.js --check` | 2026-10-09T01:20:00Z | PASSED | `docs/api/ROUTE_INVENTORY.md` |
+| **P8-U1**   | Prompt 8 U1 | Hotfix S1 Profile & Identity Regression (Department, Semester, Email, Keys locked; Re-enrollment staff approval) | `node --test proctornet/backend/tests/u1-profile-identity-security.test.js` | 2026-10-10T02:00:00Z | PASSED | `proctornet/backend/tests/u1-profile-identity-security.test.js` |
+| **P8-U2**   | Prompt 8 U2 | Systemic Robustness: BigInt serialization DTOs + safety net, React Error 31 AST linter, Boot Smoke gate | `node proctornet/frontend/scripts/lint-react-error31.cjs && node scripts/ci/boot-smoke.js` | 2026-10-10T02:10:00Z | PASSED | `scripts/ci/boot-smoke.js` |
+| **P8-U4**   | Prompt 8 U4 | Layer 1 Deterministic Human Journeys J1–J9 (Zero flakiness masking, authenticated actors, Companion process) | `npx playwright test e2e/journeys/ --project=chromium` | 2026-10-10T02:30:00Z | PASSED | `e2e/journeys/` |
+| **P8-U5**   | Prompt 8 U5 | Layer 2 AI Exploratory Tester & Midscene ADR (Advisory UX personas, cost/step guards, findings reports) | `npx playwright test e2e/ai/ --project=chromium` | 2026-10-10T02:35:00Z | PASSED | `docs/adr/E2E-AI-001.md` |
+| **P8-U6**   | Prompt 8 U6 | CI/CD Pipeline Overhaul: boot-smoke, e2e-journeys, e2e-crossos-agent, ai-explorer feeding required ci-gate | `node scripts/ci/check-ledger.js` | 2026-10-10T02:40:00Z | PASSED | `.github/workflows/ci.yml` |
+| **P8-U7**   | Prompt 8 U7 | Production Safeguards: Read-only production smoke script (zero synthetic DB mutations, SSM credentials) | `node scripts/ops/production-smoke.js` | 2026-10-10T02:45:00Z | PASSED | `scripts/ops/production-smoke.js` |
 
 
 

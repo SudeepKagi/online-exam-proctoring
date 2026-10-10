@@ -103,8 +103,8 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // Execute silent refresh against /api/v1/auth/refresh
-        await api.post('/auth/refresh', {})
+        // Execute silent refresh against /api/v1/auth/refresh (matching pn_rt Path=/api/v1/auth cookie)
+        await axios.post('/api/v1/auth/refresh', {}, { withCredentials: true })
         isRefreshing = false
         processQueue(null)
         // Broadcast token refreshed to other tabs

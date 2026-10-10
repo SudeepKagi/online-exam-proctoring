@@ -352,3 +352,226 @@ jobs:
             release-${{ github.sha }}.tar.gz
             release-${{ github.sha }}.tar.gz.sha256
           retention-days: 14
+
+  # ----------------------------------------------------------------------------
+  # Stage 7: CI Boot Smoke Gate (Prompt 8 / U2.3)
+  # ----------------------------------------------------------------------------
+  boot-smoke:
+    name: Backend Boot Smoke Gate (boot-smoke.js)
+    needs: [migrations, test]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          cd proctornet && npm ci
+
+      - name: Run Prisma Migrations
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma migrate deploy
+
+      - name: Execute Boot Smoke Suite
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: super_secure_ci_test_jwt_secret_key_32_chars_minimum
+          S3_BUCKET: proctornet-ci-bucket
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+          BOOT_SMOKE_PORT: 5099
+        run: node scripts/ci/boot-smoke.js
+
+  # ----------------------------------------------------------------------------
+  # Stage 8: Layer 1 Deterministic E2E Journeys (Prompt 8 / U4)
+  # ----------------------------------------------------------------------------
+  e2e-journeys:
+    name: Layer 1 Deterministic Human Journeys (Playwright J1–J9)
+    needs: [test, build-frontend, boot-smoke]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: proctornet_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        command: server /data
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          cd proctornet && npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Prisma Migrations
+        working-directory: proctornet/backend
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+        run: npx prisma migrate deploy
+
+      - name: Run Deterministic Journeys Suite (xvfb-run)
+        env:
+          DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: super_secure_ci_test_jwt_secret_key_32_chars_minimum
+          S3_BUCKET: proctornet-ci-bucket
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
+          S3_ENDPOINT: http://localhost:9000
+          NODE_ENV: test
+          HEADED: 'false'
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npm run test:e2e -- e2e/journeys/ --project=chromium
+
+      - name: Upload E2E HTML Report & Traces on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: |
+            reports/e2e/
+            test-results/
+          retention-days: 14
+
+  # ----------------------------------------------------------------------------
+  # Stage 9: Layer 2 AI Exploratory Tester (Prompt 8 / U5)
+  # ----------------------------------------------------------------------------
+  ai-explorer:
+    name: Layer 2 AI Exploratory Tester (Advisory UX)
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    needs: [boot-smoke]
+    runs-on: ubuntu-latest
+    continue-on-error: true # Strictly advisory: Never blocks merge gate
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Dependencies
+        run: |
+          npm ci
+          cd proctornet && npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run AI Persona Explorer
+        env:
+          BASE_URL: http://localhost:5173
+          AI_E2E_PER_RUN_CAP_USD: '1.50'
+          AI_E2E_MONTHLY_CAP_USD: '50.00'
+        run: |
+          npx playwright test e2e/ai/ --project=chromium || true
+
+      - name: Upload AI Explorer Findings Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-explorer-findings-${{ github.sha }}
+          path: reports/ai-tester/
+          retention-days: 14
+
+  # ----------------------------------------------------------------------------
+  # Stage 10: Master CI Merge Gate (Branch Protection Required Status Check)
+  # ----------------------------------------------------------------------------
+  ci-gate:
+    name: CI Merge Gate (ci-gate)
+    needs:
+      - quality
+      - migrations
+      - test
+      - build-frontend
+      - boot-smoke
+      - e2e-journeys
+      - security-scan
+      - package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify All Mandatory Gates
+        run: |
+          echo "======================================================================"
+          echo "✓ CI Gate PASSED for commit: ${{ github.sha }}"
+          echo "✓ All mandatory quality, boot, and deterministic journey gates green."
+          echo "======================================================================"
+

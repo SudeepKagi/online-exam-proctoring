@@ -437,6 +437,13 @@ class TokenService {
         path: '/api/v1/auth',
         maxAge: refreshMaxAgeSec * 1000
       })
+      res.cookie('pn_rt_compat', refreshToken, {
+        httpOnly: true,
+        secure: isSecure,
+        sameSite: 'lax',
+        path: '/api/auth',
+        maxAge: refreshMaxAgeSec * 1000
+      })
     }
 
     // Set legacy cookie name for backwards compatibility during migration
@@ -470,6 +477,13 @@ class TokenService {
       secure: isSecure,
       sameSite: 'lax',
       path: '/api/v1/auth'
+    })
+
+    res.clearCookie('pn_rt_compat', {
+      httpOnly: true,
+      secure: isSecure,
+      sameSite: 'lax',
+      path: '/api/auth'
     })
 
     res.clearCookie('proctornet_auth', {
@@ -510,9 +524,10 @@ class TokenService {
   extractRefreshToken(req) {
     if (!req) return null
     if (req.cookies?.pn_rt) return req.cookies.pn_rt
+    if (req.cookies?.pn_rt_compat) return req.cookies.pn_rt_compat
 
     if (req.headers?.cookie) {
-      const match = req.headers.cookie.match(/(?:^|;\s*)pn_rt=([^;]+)/)
+      const match = req.headers.cookie.match(/(?:^|;\s*)(?:pn_rt|pn_rt_compat)=([^;]+)/)
       if (match) return match[1]
     }
 

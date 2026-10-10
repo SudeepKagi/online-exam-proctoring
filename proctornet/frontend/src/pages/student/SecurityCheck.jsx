@@ -143,10 +143,10 @@ export default function SecurityCheck() {
           return
         }
 
-        // 5-minute pre-check gate: must be within 5 minutes (300 seconds) of start
-        const earlyCheckWindowMs = 5 * 60 * 1000 // 5 minutes
+        // Pre-check gate: opens 30 minutes (1800 seconds) before start (T2.6 / Spread the herd)
+        const earlyCheckWindowMs = 30 * 60 * 1000 // 30 minutes
         if (examData?.startTime && serverTime.getTime() < startTime.getTime() - earlyCheckWindowMs) {
-          toast.error('Pre-exam security checkup unlocks 5 minutes before scheduled start time.')
+          toast.error('Pre-exam security checkup unlocks 30 minutes before scheduled start time.')
           navigate(`/student/exams/${examId}/lobby`)
           return
         }
@@ -211,8 +211,10 @@ export default function SecurityCheck() {
 
     if (isWaived) {
       updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
+      setActiveStage(prev => (prev === 0 ? 1 : prev))
     } else if (isHealthy && findings.length === 0) {
       updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
+      setActiveStage(prev => (prev === 0 ? 1 : prev))
     } else if (findings.length > 0) {
       updateStage('system', 'fail', `Prohibited software detected: ${findings.map(f => f.ruleId).join(', ')}. Please close to proceed.`)
     } else {
@@ -618,10 +620,9 @@ export default function SecurityCheck() {
       await api.post(`/exams/${examId}/attempt`)
 
       if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen()
-      }
-      if (!document.fullscreenElement) {
-        throw new Error('Fullscreen request was not granted by the browser.')
+        await document.documentElement.requestFullscreen().catch((e) => {
+          console.warn('requestFullscreen deferred:', e.message)
+        })
       }
       updateStage('lock', 'pass', 'Entering proctored examination interface...')
       if (timeToExamStart > 0) {

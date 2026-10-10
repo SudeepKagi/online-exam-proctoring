@@ -1,14 +1,36 @@
-<testsuites id="" name="" tests="1" failures="0" skipped="0" errors="0" time="49.588898">
-<testsuite name="journeys\j2-exam-authoring.spec.ts" timestamp="2026-10-10T01:12:24.226Z" hostname="chromium" tests="1" failures="0" skipped="0" time="42.22" errors="0">
-<testcase name="J2: Exam Authoring Journey (Prompt 8 §2 U4) › J2: Faculty creates exam wizard (validation errors) -&gt; 10 MCQs + bulk import -&gt; publish -&gt; invigilator creds one-time -&gt; edit refused" classname="journeys\j2-exam-authoring.spec.ts" time="42.22">
-<properties>
-<property name="serial" value="">
-</property>
-</properties>
+<testsuites id="" name="" tests="6" failures="0" skipped="0" errors="0" time="15.625297000000002">
+<testsuite name="ai\personas.spec.ts" timestamp="2026-10-10T03:00:02.585Z" hostname="chromium" tests="6" failures="0" skipped="0" time="8.547" errors="0">
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 1: Nervous first-time student on a slow laptop (Enrollment &amp; Pre-checks)" classname="ai\personas.spec.ts" time="1.287">
 <system-out>
-<![CDATA[[HUMANIZER] Initialized with seed="pn-1791594745188", enabled=true
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791601203379", enabled=true
 ]]>
 </system-out>
+</testcase>
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 2: Student under time pressure taking exam and recovering" classname="ai\personas.spec.ts" time="1.091">
+<system-out>
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791601204603", enabled=true
+]]>
+</system-out>
+</testcase>
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 3: Invigilator watching candidates and interpreting tiles" classname="ai\personas.spec.ts" time="1.486">
+<system-out>
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791601205735", enabled=true
+]]>
+</system-out>
+</testcase>
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 4: Faculty building an exam in a hurry" classname="ai\personas.spec.ts" time="1.181">
+<system-out>
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791601207220", enabled=true
+]]>
+</system-out>
+</testcase>
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 5: Admin onboarding and audit trail review" classname="ai\personas.spec.ts" time="1.138">
+<system-out>
+<![CDATA[[HUMANIZER] Initialized with seed="pn-1791601208469", enabled=true
+]]>
+</system-out>
+</testcase>
+<testcase name="U5: Layer 2 AI Exploratory Tester &amp; UX Personas › Persona 6: Cross-Page UX &amp; Banned Wording Audit" classname="ai\personas.spec.ts" time="2.364">
 </testcase>
 </testsuite>
 </testsuites>

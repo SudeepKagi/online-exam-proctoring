@@ -253,6 +253,23 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
+  const candidates = rosterSnapshot.items || []
+
+  const filteredCandidates = candidates.filter((c) => {
+    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
+    if (!showExited && isExited) return false
+
+    if (filterAlertsOnly) {
+      return (c.flagCount || 0) > 0 || c.status === 'SUSPENDED' || (c.alerts && c.alerts.length > 0)
+    }
+    return true
+  })
+
+  // ── Pagination Calculation ──
+  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const currentCandidates = filteredCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
   // ── R3: IntersectionObserver — only visible tiles emit tile_visibility ────────
   // Runs after candidates are rendered; re-runs on page/filter changes.
   useEffect(() => {
@@ -432,23 +449,6 @@ export default function InvigilatorLiveGrid() {
     }, 60000)
     return () => clearInterval(interval)
   }, [effectiveExamId])
-
-  const candidates = rosterSnapshot.items || []
-
-  const filteredCandidates = candidates.filter((c) => {
-    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
-    if (!showExited && isExited) return false
-
-    if (filterAlertsOnly) {
-      return (c.flagCount || 0) > 0 || c.status === 'SUSPENDED' || (c.alerts && c.alerts.length > 0)
-    }
-    return true
-  })
-
-  // ── Pagination Calculation ──
-  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / PAGE_SIZE))
-  const currentPage = Math.min(page, totalPages)
-  const currentCandidates = filteredCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   // ── Sync SFU Subscriptions: LOW quality for visible tiles, HIGH quality for focus view ──
   useEffect(() => {

@@ -202,31 +202,9 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
           BASE_URL: https://proctornet.duckdns.org
+          EXPECTED_GIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          SMOKE_ADMIN_EMAIL: ${{ secrets.SMOKE_ADMIN_EMAIL }}
+          SMOKE_ADMIN_PASSWORD: ${{ secrets.SMOKE_ADMIN_PASSWORD }}
         run: |
-          echo "Executing post-deploy live smoke tests against ${BASE_URL}..."
-
-          # 1. Healthz probe
-          echo "1. Checking /healthz..."
-          curl -fsS "${BASE_URL}/healthz" || { echo "[x] /healthz probe failed"; exit 1; }
-
-          # 2. Version probe matching exact deployed SHA
-          echo "2. Checking /api/v1/version..."
-          VERSION_PAYLOAD=$(curl -fsS "${BASE_URL}/api/v1/version")
-          DEPLOYED_SHA=$(echo "${VERSION_PAYLOAD}" | jq -r '.gitSha // empty')
-          if [ "${DEPLOYED_SHA}" != "${HEAD_SHA}" ]; then
-            echo "[x] Version mismatch: expected ${HEAD_SHA}, got ${DEPLOYED_SHA}"
-            exit 1
-          fi
-          echo "[✓] Version endpoint matches HEAD SHA: ${DEPLOYED_SHA}"
-
-          # 3. SPA Root & index.html check
-          echo "3. Checking SPA root..."
-          curl -fsS "${BASE_URL}/" | grep -q "<div id=\"root\">" || { echo "[x] SPA index.html verification failed"; exit 1; }
-
-          # 4. Public config endpoint
-          echo "4. Checking /api/v1/config..."
-          curl -fsS "${BASE_URL}/api/v1/config" | jq -e '.vpnEnforcement != null' || { echo "[x] /api/v1/config check failed"; exit 1; }
-
-          echo "=========================================================="
-          echo "✓ All post-deploy smoke checks passed cleanly!"
-          echo "=========================================================="
+          echo "Executing post-deploy read-only production smoke verification..."
+          node scripts/ops/production-smoke.js

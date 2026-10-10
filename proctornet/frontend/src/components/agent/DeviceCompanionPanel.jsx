@@ -69,32 +69,27 @@ export default function DeviceCompanionPanel({
 
     const checkStatus = async () => {
       try {
+        let data = null
         if (attemptId) {
-          const res = await api.get(`/attempts/${attemptId}/agent/status`)
-          const data = res.data
-          if (data) {
-            setSessionDetails(data)
-            const nextState = data.state || 'NOT_PAIRED'
-            setStatus(nextState)
-            onStatusChange(data)
-
-            // Stop polling once connected and healthy
-            if (nextState === 'HEALTHY' || nextState === 'CONNECTED') {
-              setStatus('CONNECTED')
-            }
+          const res = await api.get(`/attempts/${attemptId}/agent/status`).catch(() => null)
+          if (res?.data && res.data.state !== 'NOT_PAIRED') {
+            data = res.data
           }
-        } else if (isPrecheck) {
-          const res = await api.get('/student/agent/status')
-          const data = res.data
-          if (data) {
-            setSessionDetails(data)
-            const nextState = data.state || 'NOT_PAIRED'
-            setStatus(nextState)
-            onStatusChange(data)
+        }
+        if (!data) {
+          const res = await api.get('/student/agent/status').catch(() => null)
+          if (res?.data) {
+            data = res.data
+          }
+        }
+        if (data) {
+          setSessionDetails(data)
+          const nextState = data.state || 'NOT_PAIRED'
+          setStatus(nextState)
+          onStatusChange(data)
 
-            if (nextState === 'HEALTHY' || nextState === 'CONNECTED') {
-              setStatus('CONNECTED')
-            }
+          if (nextState === 'HEALTHY' || nextState === 'CONNECTED') {
+            setStatus('CONNECTED')
           }
         }
       } catch (err) {
@@ -324,7 +319,7 @@ export default function DeviceCompanionPanel({
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-md bg-background border border-border">
                   <div className="space-y-0.5 text-center sm:text-left">
                     <p className="text-xs text-muted-foreground">Your 8-Character Pairing Code:</p>
-                    <p className="text-2xl font-mono font-bold tracking-wider text-primary">{pairingCode}</p>
+                    <p data-testid="pairing-code" className="text-2xl font-mono font-bold tracking-wider text-primary">{pairingCode}</p>
                     <p className="text-[10px] text-muted-foreground">Expires in {Math.floor(timeLeftSec / 60)}:{(timeLeftSec % 60).toString().padStart(2, '0')}</p>
                   </div>
                   <div className="flex items-center gap-2">

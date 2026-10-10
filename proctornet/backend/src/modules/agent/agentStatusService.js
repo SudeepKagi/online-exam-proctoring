@@ -39,8 +39,11 @@ class AgentStatusService {
       where: { attemptId }
     })
 
-    // Fetch active session
-    const session = await agentSessionService.getSessionByAttemptId(attemptId)
+    // Fetch active session: check attemptId first, fall back to student precheck session per T2.1
+    let session = await agentSessionService.getSessionByAttemptId(attemptId)
+    if (!session && attempt.studentId) {
+      session = await agentSessionService.getSessionByStudentId(attempt.studentId)
+    }
 
     if (!session) {
       return {
