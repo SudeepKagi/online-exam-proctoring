@@ -121,6 +121,26 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/admin/departments",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/departments",
+    "auth": "Required",
+    "role": "admin",
+    "ownerCheck": "No (Admin Scope)",
+    "module": "admin",
+    "effect": "DB row mutated (POST /api/v1/admin/departments)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/admin/enrollments",
     "auth": "Required",
     "role": "admin",
@@ -571,6 +591,16 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/identity-status",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/attempts/:attemptId/liveness-challenge",
     "auth": "Required",
     "role": "student",
@@ -738,6 +768,16 @@
     "module": "attempts",
     "effect": "DB row mutated (vpn_peers / vpn_ip_pool leased or released)",
     "negativeEffect": "0 VPN leases modified"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/attempts/:attemptId/vpn-status",
+    "auth": "Required",
+    "role": "Any Authenticated",
+    "ownerCheck": "No",
+    "module": "attempts",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
     "method": "GET",
@@ -978,6 +1018,16 @@
     "module": "exams",
     "effect": "DB row created/updated (questions)",
     "negativeEffect": "0 questions mutated"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/exams/:examId/readiness",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes (Candidate Identity)",
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",
@@ -1847,6 +1897,16 @@
     "ownerCheck": "Yes (Candidate Identity)",
     "module": "student",
     "effect": "DB row mutated (PUT /api/v1/student/profile)",
+    "negativeEffect": "Rejected requests mutate zero rows"
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/student/re-enrollment-request",
+    "auth": "Required",
+    "role": "student",
+    "ownerCheck": "Yes",
+    "module": "student",
+    "effect": "DB row mutated (POST /api/v1/student/re-enrollment-request)",
     "negativeEffect": "Rejected requests mutate zero rows"
   },
   {

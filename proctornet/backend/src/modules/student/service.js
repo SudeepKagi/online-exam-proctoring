@@ -29,7 +29,7 @@ class StudentService {
     // Not email, usn, departmentCode, semester, approvalStatus, profileStatus, isSuspended, or photos.
     const forbiddenFields = [
       'departmentCode', 'department', 'semester', 'email',
-      'facePhotoKey', 'idCardPhotoKey', 'facePhotoUrl', 'idCardPhotoUrl',
+      'facePhotoKey', 'idCardPhotoKey',
       'usn', 'approvalStatus', 'profileStatus', 'isSuspended',
       'faceMatchScore', 'approvedBy', 'approvedAt'
     ]

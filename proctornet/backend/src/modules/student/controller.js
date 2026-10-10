@@ -110,8 +110,6 @@ const FORBIDDEN_STUDENT_PROFILE_FIELDS = [
   'email',
   'facePhotoKey',
   'idCardPhotoKey',
-  'facePhotoUrl',
-  'idCardPhotoUrl',
   'usn',
   'approvalStatus',
   'profileStatus',

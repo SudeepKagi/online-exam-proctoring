@@ -1,25 +1,25 @@
 # ProctorNet API Route Inventory (Canonical v1 Monolith)
 
 > **Auto-generated from code:** Generated via `scripts/ci/generate-route-inventory.js` from mounted Express routers.
-> **Generation Timestamp:** `2026-10-08T02:00:12.462Z`
-> **Total Endpoints:** `194` across `13` domain modules.
+> **Generation Timestamp:** `2026-10-10T03:13:18.562Z`
+> **Total Endpoints:** `200` across `13` domain modules.
 
 ## Modules Summary
 
 | Module | Route Count |
 | :--- | :--- |
-| `admin` | 47 |
-| `attempts` | 23 |
+| `admin` | 49 |
+| `attempts` | 25 |
 | `audit` | 1 |
 | `auth` | 12 |
-| `exams` | 12 |
+| `exams` | 13 |
 | `faculty` | 35 |
 | `invigilator` | 12 |
 | `media` | 3 |
 | `notifications` | 1 |
 | `proctoring` | 11 |
 | `questions` | 1 |
-| `student` | 24 |
+| `student` | 25 |
 | `system` | 12 |
 
 ## Master Route Matrix
@@ -38,6 +38,8 @@
 | `POST` | `/api/v1/admin/bulk-upload/confirm` | Required | `admin` | No (Admin Scope) | `admin` | DB row mutated (POST /api/v1/admin/bulk-upload/confirm) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/admin/bulk-upload/parse` | Required | `admin` | No (Admin Scope) | `admin` | DB row mutated (POST /api/v1/admin/bulk-upload/parse) | Rejected requests mutate zero rows |
 | `GET` | `/api/v1/admin/dashboard` | Required | `admin` | No (Admin Scope) | `admin` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `GET` | `/api/v1/admin/departments` | Required | `admin` | No (Admin Scope) | `admin` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `POST` | `/api/v1/admin/departments` | Required | `admin` | No (Admin Scope) | `admin` | DB row mutated (POST /api/v1/admin/departments) | Rejected requests mutate zero rows |
 | `GET` | `/api/v1/admin/enrollments` | Required | `admin` | No (Admin Scope) | `admin` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/admin/enrollments/:id/approve` | Required | `admin` | No (Admin Scope) | `admin` | DB row updated (students/enrollments approval_status mutated) | 0 student records mutated |
 | `POST` | `/api/v1/admin/enrollments/:id/reject` | Required | `admin` | No (Admin Scope) | `admin` | DB row updated (students/enrollments approval_status mutated) | 0 student records mutated |
@@ -83,6 +85,7 @@
 | `PUT` | `/api/v1/attempts/:attemptId/answers` | Required | `student` | Yes (Candidate Identity) | `attempts` | DB row upserted (answers) with CAS revision increment | 0 answer rows mutated; revision unchanged |
 | `PUT` | `/api/v1/attempts/:attemptId/answers/:attemptQuestionId` | Required | `student` | Yes (Candidate Identity) | `attempts` | DB row upserted (answers) with CAS revision increment | 0 answer rows mutated; revision unchanged |
 | `POST` | `/api/v1/attempts/:attemptId/identity-override` | Required | `admin, invigilator` | Yes | `attempts` | DB row mutated (POST /api/v1/attempts/:attemptId/identity-override) | Rejected requests mutate zero rows |
+| `GET` | `/api/v1/attempts/:attemptId/identity-status` | Required | `Any Authenticated` | No | `attempts` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/attempts/:attemptId/liveness-challenge` | Required | `student` | Yes (Candidate Identity) | `attempts` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/attempts/:attemptId/pause` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `attempts` | DB row updated (exam_attempts SUSPENDED) + audit log | Attempt status untouched; 0 audit logs |
 | `GET` | `/api/v1/attempts/:attemptId/result` | Required | `Any Authenticated` | No | `attempts` | None (Read-only query) | None (Zero DB/storage mutation) |
@@ -100,6 +103,7 @@
 | `DELETE` | `/api/v1/attempts/:attemptId/vpn` | Required | `Any Authenticated` | No | `attempts` | DB row mutated (vpn_peers / vpn_ip_pool leased or released) | 0 VPN leases modified |
 | `GET` | `/api/v1/attempts/:attemptId/vpn` | Required | `Any Authenticated` | No | `attempts` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/attempts/:attemptId/vpn` | Required | `Any Authenticated` | No | `attempts` | DB row mutated (vpn_peers / vpn_ip_pool leased or released) | 0 VPN leases modified |
+| `GET` | `/api/v1/attempts/:attemptId/vpn-status` | Required | `Any Authenticated` | No | `attempts` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/audit/logs` | Required | `admin` | No (Admin Scope) | `audit` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/auth/admin/login` | Public | `Public` | No | `auth` | DB row mutated (POST /api/v1/auth/admin/login) | Rejected requests mutate zero rows |
 | `POST` | `/api/v1/auth/change-password` | Required | `Any Authenticated` | No | `auth` | DB row mutated (POST /api/v1/auth/change-password) | Rejected requests mutate zero rows |
@@ -124,6 +128,7 @@
 | `POST` | `/api/v1/exams/:examId/prewarm` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | DB row created/updated (exams) | 0 exams mutated |
 | `POST` | `/api/v1/exams/:examId/publish` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | DB row created/updated (exams) | 0 exams mutated |
 | `POST` | `/api/v1/exams/:examId/questions` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | DB row created/updated (questions) | 0 questions mutated |
+| `POST` | `/api/v1/exams/:examId/readiness` | Required | `student` | Yes (Candidate Identity) | `exams` | DB row created/updated (exams) | 0 exams mutated |
 | `GET` | `/api/v1/exams/:examId/results` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/exams/:examId/results/release` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | DB row updated (exam_results is_released=true) + Redis emit | 0 results modified; 0 emits dispatched |
 | `GET` | `/api/v1/faculty/dashboard` | Required | `faculty` | Yes | `faculty` | None (Read-only query) | None (Zero DB/storage mutation) |
@@ -211,6 +216,7 @@
 | `GET` | `/api/v1/student/profile` | Required | `student` | Yes (Candidate Identity) | `student` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `PATCH` | `/api/v1/student/profile` | Required | `student` | Yes (Candidate Identity) | `student` | DB row mutated (PATCH /api/v1/student/profile) | Rejected requests mutate zero rows |
 | `PUT` | `/api/v1/student/profile` | Required | `student` | Yes (Candidate Identity) | `student` | DB row mutated (PUT /api/v1/student/profile) | Rejected requests mutate zero rows |
+| `POST` | `/api/v1/student/re-enrollment-request` | Required | `student` | Yes | `student` | DB row mutated (POST /api/v1/student/re-enrollment-request) | Rejected requests mutate zero rows |
 | `GET` | `/api/v1/student/results` | Required | `student` | Yes | `student` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/student/support/ticket` | Required | `student` | Yes | `student` | DB row mutated (POST /api/v1/student/support/ticket) | Rejected requests mutate zero rows |
 | `GET` | `/api/v1/student/support/tickets` | Required | `student` | Yes (Candidate Identity) | `student` | None (Read-only query) | None (Zero DB/storage mutation) |
