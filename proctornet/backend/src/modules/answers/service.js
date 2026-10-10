@@ -54,6 +54,7 @@ class AnswerService {
         throw new NotFoundError(diag.message)
       case 'FORBIDDEN':
         throw new ForbiddenError(diag.message)
+      case 'NOT_ACTIVE':
       case 'INVALID_STATE':
         throw new ConflictError(diag.message, 'INVALID_STATE', { currentStatus: diag.currentStatus })
       case 'EXPIRED':

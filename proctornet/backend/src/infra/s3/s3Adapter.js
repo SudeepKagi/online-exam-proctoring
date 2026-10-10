@@ -22,17 +22,17 @@ const { logger } = require('../../shared/logging')
  * Base Abstract S3 Storage Adapter (§Prompt 7 T3 / T4)
  */
 class S3Adapter {
-  async headObject(key) { throw new Error('Not implemented') }
-  async getObjectBuffer(key) { throw new Error('Not implemented') }
-  async putObject(key, buffer, contentType = 'image/webp') { throw new Error('Not implemented') }
-  async deleteObject(key) { throw new Error('Not implemented') }
-  async deleteObjects(keys = []) { throw new Error('Not implemented') }
-  async listObjects(prefix = '', continuationToken = null, maxKeys = 1000) { throw new Error('Not implemented') }
-  async listObjectVersions(prefix = '', keyMarker = null, versionIdMarker = null, maxKeys = 1000) { throw new Error('Not implemented') }
-  async deleteObjectVersions(objects = []) { throw new Error('Not implemented') }
-  async getPresignedReadUrl(key, expiresIn = 600, signingDate = null) { throw new Error('Not implemented') }
-  async getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 120) { throw new Error('Not implemented') }
-  async createDirectUploadPolicy({ key, contentType, maxSizeBytes, expiresIn = 120 }) { throw new Error('Not implemented') }
+  async headObject(_key) { throw new Error('Not implemented') }
+  async getObjectBuffer(_key) { throw new Error('Not implemented') }
+  async putObject(_key, _buffer, _contentType = 'image/webp') { throw new Error('Not implemented') }
+  async deleteObject(_key) { throw new Error('Not implemented') }
+  async deleteObjects(_keys = []) { throw new Error('Not implemented') }
+  async listObjects(_prefix = '', _continuationToken = null, _maxKeys = 1000) { throw new Error('Not implemented') }
+  async listObjectVersions(_prefix = '', _keyMarker = null, _versionIdMarker = null, _maxKeys = 1000) { throw new Error('Not implemented') }
+  async deleteObjectVersions(_objects = []) { throw new Error('Not implemented') }
+  async getPresignedReadUrl(_key, _expiresIn = 600, _signingDate = null) { throw new Error('Not implemented') }
+  async getPresignedPutUrl(_key, _contentType = 'image/webp', _expiresIn = 120) { throw new Error('Not implemented') }
+  async createDirectUploadPolicy({ _key, _contentType, _maxSizeBytes, _expiresIn = 120 } = {}) { throw new Error('Not implemented') }
   destroy() {}
 }
 
@@ -44,7 +44,7 @@ class AwsS3Adapter extends S3Adapter {
     super()
     this.bucket = options.bucket || process.env.S3_BUCKET || 'proctornet-storage'
     this.region = options.region || process.env.AWS_REGION || 'ap-south-1'
-    const isProd = process.env.NODE_ENV === 'production'
+    const IS_PROD = process.env.NODE_ENV === 'production'
 
     this.httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 100 })
     this.httpAgent = new http.Agent({ keepAlive: true, maxSockets: 100 })
@@ -63,7 +63,7 @@ class AwsS3Adapter extends S3Adapter {
     }
 
     // In non-production, allow explicit static credentials if provided; otherwise AWS default chain handles it
-    if (!isProd && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    if (!IS_PROD && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
       clientConfig.credentials = {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
@@ -242,6 +242,10 @@ class MemoryS3Adapter extends S3Adapter {
     this.bucket = options.bucket || 'test-bucket'
     this.store = new Map() // key -> { buffer, contentType, lastModified, versionId }
     this.versions = new Map() // key -> array of versions
+    this.client = {
+      send: async () => ({}),
+      destroy: () => {}
+    }
   }
 
   async headObject(key) {
@@ -361,19 +365,27 @@ class MemoryS3Adapter extends S3Adapter {
   }
 
   async getPresignedReadUrl(key, expiresIn = 600, signingDate = null) {
-    return `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}?presigned=read`
+    const dateStr = signingDate ? signingDate.toISOString() : new Date().toISOString()
+    return `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=${dateStr}&X-Amz-Expires=${expiresIn}&X-Amz-Signature=mock-sig`
   }
 
-  async getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 120) {
-    return `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}?presigned=put`
+  async getPresignedPutUrl(key, _contentType = 'image/webp', expiresIn = 120) {
+    return `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=${expiresIn}&X-Amz-Signature=mock-sig`
   }
 
   async createDirectUploadPolicy({ key, contentType, maxSizeBytes, expiresIn = 120 }) {
+    const putUrl = await this.getPresignedPutUrl(key, contentType, expiresIn)
     return {
       key,
-      postUrl: `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}`,
-      fields: { key, 'Content-Type': contentType },
-      putUrl: `https://${this.bucket}.s3.amazonaws.com/${encodeURIComponent(key)}?presigned=put`,
+      postUrl: `https://${this.bucket}.s3.amazonaws.com/`,
+      fields: {
+        key,
+        'Content-Type': contentType,
+        'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+        'X-Amz-Date': new Date().toISOString(),
+        'X-Amz-Expires': String(expiresIn)
+      },
+      putUrl,
       contentType,
       maxSizeBytes,
       expiresIn

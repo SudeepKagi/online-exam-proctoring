@@ -1,17 +1,29 @@
 'use strict'
 
 const crypto = require('crypto')
-const { S3Adapter, AwsS3Adapter, MemoryS3Adapter } = require('./s3Adapter')
+const { AwsS3Adapter, MemoryS3Adapter } = require('./s3Adapter')
 const { logger } = require('../../shared/logging')
 
 const BUCKET_NAME = process.env.S3_BUCKET || 'proctornet-storage'
 const REGION = process.env.AWS_REGION || 'ap-south-1'
+const IS_PROD = process.env.NODE_ENV === 'production'
+
+// In-memory mock store for CI and offline test environments without active MinIO/AWS S3
+const USE_MOCK = !IS_PROD && (process.env.S3_MOCK === 'true' || (process.env.NODE_ENV === 'test' && !process.env.S3_ENDPOINT))
 
 // Default storage adapter instance
-let activeAdapter = new AwsS3Adapter({
-  bucket: BUCKET_NAME,
-  region: REGION
-})
+// In production: no static keys — use EC2 instance role / default credential provider chain
+// In dev/test: use MemoryS3Adapter when USE_MOCK is set
+let activeAdapter
+if (!IS_PROD) {
+  if (USE_MOCK) {
+    activeAdapter = new MemoryS3Adapter({ bucket: BUCKET_NAME })
+  } else {
+    activeAdapter = new AwsS3Adapter({ bucket: BUCKET_NAME, region: REGION })
+  }
+} else {
+  activeAdapter = new AwsS3Adapter({ bucket: BUCKET_NAME, region: REGION })
+}
 
 /**
  * Allow injecting a storage adapter (e.g. MemoryS3Adapter in unit tests)
@@ -155,7 +167,9 @@ async function getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 1
 }
 
 module.exports = {
-  s3Client: activeAdapter.client,
+  get s3Client() {
+    return activeAdapter.client || activeAdapter
+  },
   BUCKET_NAME,
   setStorageAdapter,
   getStorageAdapter,
