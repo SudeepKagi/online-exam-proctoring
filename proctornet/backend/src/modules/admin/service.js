@@ -153,8 +153,8 @@ class AdminService {
       semester: parseInt(data.semester || 1, 10),
       phone: data.phone || null,
       mustChangePassword: isGenerated || Boolean(data.mustChangePassword),
-      approvalStatus: 'PENDING',
-      profileStatus: 'PENDING'
+      approvalStatus: data.approvalStatus || 'APPROVED',
+      profileStatus: data.profileStatus || 'PENDING'
     })
     student.tempPassword = isGenerated ? tempPassword : undefined
     return toStudentAdminDTO(student)
