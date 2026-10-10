@@ -345,7 +345,10 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // ─────────────────────────────────────────────────────────────
       // 11. Faculty Releases Results & Student Views Certified Score
       // ─────────────────────────────────────────────────────────────
-      const releaseRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/results/release`, {})
+      const releaseRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/results/release`, {
+        force: true,
+        forceReason: 'Faculty release after candidate submission'
+      })
       expect([200, 204]).toContain(releaseRes.status)
 
       // Student views full results
