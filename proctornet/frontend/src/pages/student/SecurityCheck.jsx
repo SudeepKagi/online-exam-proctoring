@@ -481,7 +481,7 @@ export default function SecurityCheck() {
           let verified = false
           let pendingReview = false
           let decision = 'FAIL'
-          let serviceMessage = ''
+          let serviceMessage
 
           try {
             // FLW-03: Server-issued presigned upload ticket
