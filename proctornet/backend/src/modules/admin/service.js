@@ -163,9 +163,11 @@ class AdminService {
   async approveStudent(id, approverId) {
     const s = await adminRepository.findStudentById(id)
     if (!s) throw new NotFoundError('Student not found')
+    const facePhotoKey = s.facePhotoKey || `identity/${id}/enrolled-face.webp`
     const updated = await adminRepository.updateStudent(id, {
       approvalStatus: 'APPROVED',
       profileStatus: 'VERIFIED',
+      facePhotoKey,
       approvedBy: approverId,
       approvedAt: new Date()
     })
@@ -480,9 +482,11 @@ class AdminService {
     if (!student) throw new NotFoundError('Student not found')
 
     const prevStatus = student.profileStatus
+    const facePhotoKey = student.facePhotoKey || (status === 'VERIFIED' ? `identity/${studentId}/enrolled-face.webp` : null)
     const updated = await adminRepository.updateStudent(studentId, {
       profileStatus: status,
       approvalStatus: status === 'VERIFIED' ? 'APPROVED' : (status === 'REJECTED' ? 'REJECTED' : student.approvalStatus),
+      ...(facePhotoKey ? { facePhotoKey } : {}),
       rejectionReason: status === 'REJECTED' ? reason : null
     })
 

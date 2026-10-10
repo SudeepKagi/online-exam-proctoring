@@ -5,7 +5,7 @@ import { api } from '../helpers/api'
 test.describe('J11: Real-Time Timeout, Expiry, Clock Skew, and Expiry Grace (@slow) (§P9 §4.6)', () => {
   test.describe.configure({ mode: 'serial' })
 
-  const adminCreds = { email: 'admin@proctornet.test', password: 'Admin#Password#2026' }
+  const adminCreds = { email: 'admin@proctornet.com', password: 'Admin@123' }
   const facultyCreds = { email: 'faculty.j11@proctornet.test', employeeId: 'FAC-J11', password: 'Faculty#1234' }
 
   test('J11 @slow: Exam timeout with real server time offset, submit grace, and post-expiry reload resilience', async ({ browser }) => {

@@ -6,7 +6,7 @@ import { computeExpectedResult, computeExpectedRanks } from '../helpers/oracle'
 test.describe('J10: Exam Lifecycle, Scheduler, and Results Certification (§P9 §4.6)', () => {
   test.describe.configure({ mode: 'serial' })
 
-  const adminCreds = { email: 'admin@proctornet.test', password: 'Admin#Password#2026' }
+  const adminCreds = { email: 'admin@proctornet.com', password: 'Admin@123' }
   const facultyCreds = { email: 'faculty.j10@proctornet.test', employeeId: 'FAC-J10', password: 'Faculty#1234' }
 
   test('J10: Transitions PUBLISHED -> LIVE -> ENDED -> EVALUATED with absent/suspended handling and oracle rank verification', async ({ browser }) => {
