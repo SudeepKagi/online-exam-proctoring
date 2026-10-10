@@ -67,6 +67,8 @@ export default defineConfig({
         NODE_ENV: 'production',
         COOKIE_SECURE: 'false',
         E2E_PROFILE: 'prod-parity',
+        FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173',
         AGENT_PAIRING_PEPPER: process.env.AGENT_PAIRING_PEPPER || 'dummy_e2e_pairing_pepper_secret_32_characters_min',
         AGENT_POLICY_SIGNING_KEY: process.env.AGENT_POLICY_SIGNING_KEY || 'dummy_e2e_policy_signing_key_32_characters_min',
         ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),

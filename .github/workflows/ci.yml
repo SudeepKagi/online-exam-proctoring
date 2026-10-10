@@ -494,6 +494,8 @@ jobs:
       - name: Run Deterministic Journeys Suite (Prod-Parity xvfb-run)
         env:
           E2E_PROFILE: prod-parity
+          FRONTEND_URL: http://localhost:5173
+          ALLOWED_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
