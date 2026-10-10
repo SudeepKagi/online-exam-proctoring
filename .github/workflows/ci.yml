@@ -70,6 +70,9 @@ jobs:
       - name: Check Claims Ledger Integrity (check-ledger.js)
         run: node scripts/ci/check-ledger.js
 
+      - name: Check E2E Test Suite Integrity (check-e2e-integrity.js)
+        run: node scripts/ci/check-e2e-integrity.js
+
   # ----------------------------------------------------------------------------
   # Stage 2: Database Migration Integrity & Clean Replay
   # ----------------------------------------------------------------------------
@@ -291,7 +294,7 @@ jobs:
   # ----------------------------------------------------------------------------
   package:
     name: Package Release Bundle (Build Once)
-    needs: [test, build-frontend, security-scan]
+    needs: [test, build-frontend, security-scan, e2e-journeys]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -340,6 +343,7 @@ jobs:
             proctornet/frontend/dist \
             shared \
             ops/caddy/Caddyfile \
+            scripts \
             VERSION
 
           sha256sum "${TAR_FILE}" > "${TAR_FILE}.sha256"
@@ -487,8 +491,9 @@ jobs:
           npx prisma migrate deploy
           node prisma/seed/admin.js
 
-      - name: Run Deterministic Journeys Suite (xvfb-run)
+      - name: Run Deterministic Journeys Suite (Prod-Parity xvfb-run)
         env:
+          E2E_PROFILE: prod-parity
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
@@ -496,23 +501,39 @@ jobs:
           ADMIN_EMAIL: admin@proctornet.com
           ADMIN_PASSWORD: Admin@123
           S3_BUCKET: proctornet-ci-bucket
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: dummy_key
-          AWS_SECRET_ACCESS_KEY: dummy_secret
-          S3_MOCK: "true"
-          NODE_ENV: test
+          AWS_REGION: ap-south-1
+          AWS_ACCESS_KEY_ID: dummy_ci_key
+          AWS_SECRET_ACCESS_KEY: dummy_ci_secret
+          START_WORKERS: "true"
+          QUEUE_DRIVER: postgres
+          CACHE_DRIVER: memory
+          FACE_DRIVER: test
+          NODE_ENV: production
           HEADED: 'false'
         run: |
-          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npm run test:e2e -- e2e/journeys/ --project=chromium
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "[CI] Running full deterministic journey suite (J1–J13)..."
+            xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test e2e/journeys/ --project=chromium
+          else
+            echo "[CI] Running PR gate journeys (J1, J3, J4, J6, J10)..."
+            xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test \
+              e2e/journeys/j1-onboarding-approval.spec.ts \
+              e2e/journeys/j3-student-happy-path.spec.ts \
+              e2e/journeys/j4-identity-paths.spec.ts \
+              e2e/journeys/j6-security-negative.spec.ts \
+              e2e/journeys/j10-lifecycle-results.spec.ts \
+              --project=chromium
+          fi
 
-      - name: Upload E2E HTML Report & Traces on Failure
-        if: failure()
+      - name: Upload E2E HTML Report, Traces & Evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.sha }}
           path: |
             reports/e2e/
             test-results/
+            reports/evidence/
           retention-days: 14
 
   # ----------------------------------------------------------------------------

@@ -62,13 +62,12 @@ export default defineConfig({
         INTERNAL_PORT: '9100',
         CACHE_DRIVER: 'memory',
         QUEUE_DRIVER: 'postgres',
-        START_WORKERS: 'false',
-        LOADTEST_ALLOW: '1',
-        DISABLE_RATE_LIMIT: '1',
-        S3_MOCK: 'true'
+        START_WORKERS: 'true',
+        FACE_DRIVER: 'test',
+        NODE_ENV: 'production'
       },
       timeout: 30000,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       stdout: 'pipe',
       stderr: 'pipe'
     },
@@ -77,7 +76,7 @@ export default defineConfig({
       cwd: 'proctornet/frontend',
       url: 'http://localhost:5173',
       timeout: 30000,
-      reuseExistingServer: true,
+      reuseExistingServer: !process.env.CI,
       stdout: 'pipe',
       stderr: 'pipe'
     }

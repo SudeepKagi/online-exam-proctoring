@@ -78,7 +78,9 @@ async function metricsHandler(req, res) {
       if (failedRows && failedRows[0]) {
         outboxFailedGauge.set(failedRows[0].count)
       }
-    } catch {}
+    } catch (err) {
+      logger.debug({ error: err.message }, 'Failed to query outbox_events count for metrics')
+    }
 
     // Append Prisma native metrics if enabled
     if (prisma?.$metrics) {

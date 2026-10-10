@@ -112,7 +112,7 @@ test.describe('J6: Security & Negative Journey (Prompt 8 §2 U4)', () => {
       // Student navigates to admin portal -> UI or guard prevents session mixing
       await studentA.page.goto('/admin/dashboard')
       // ProtectedRoute or AuthContext redirects unauthorized role to /admin/login or /student/dashboard
-      await studentA.page.waitForTimeout(1000)
+      await studentA.humanize.think(500, 1000)
       const currentUrl = studentA.page.url()
       expect(currentUrl).not.toContain('/admin/dashboard')
 

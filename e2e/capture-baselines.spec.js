@@ -51,7 +51,7 @@ async function captureDOMStructure(page) {
 async function captureRoute(page, routeSlug, urlPath, viewport) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height })
   await page.goto(urlPath, { waitUntil: 'domcontentloaded', timeout: 20000 })
-  await page.waitForTimeout(600) // allow hydration / UI stabilization
+  await page.locator('#root, main, body').first().waitFor({ state: 'visible' })
 
   const filenamePrefix = `${routeSlug}-${viewport.width}x${viewport.height}`
   const screenshotPath = path.join(BASELINE_DIR, `${filenamePrefix}.png`)

@@ -12,13 +12,13 @@ test.describe('J9: Accessibility & Visual Baseline Audit (Prompt 8 §2 U4)', () 
 
     // 1. Accessibility on Landing & Public Login Pages
     await page.goto('/')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     const landingAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     const criticalLanding = landingAxe.violations.filter(v => v.impact === 'critical')
     expect(criticalLanding).toHaveLength(0)
 
     await page.goto('/student/login')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     const loginAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     const criticalLogin = loginAxe.violations.filter(v => v.impact === 'critical')
     expect(criticalLogin).toHaveLength(0)
@@ -53,7 +53,7 @@ test.describe('J9: Accessibility & Visual Baseline Audit (Prompt 8 §2 U4)', () 
 
     // 4. Accessibility on Rules & Support Page
     await page.goto('/student/rules')
-    await page.waitForLoadState('networkidle')
+    await page.waitForLoadState('domcontentloaded')
     const rulesAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
     const criticalRules = rulesAxe.violations.filter(v => v.impact === 'critical')
     expect(criticalRules).toHaveLength(0)

@@ -162,7 +162,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
       // Accept companion consent checkbox if present
       const consentCheckbox = student.page.locator('input#companion-consent, [id="companion-consent"]')
       if (await consentCheckbox.isVisible()) {
-        await consentCheckbox.check({ force: true })
+        await consentCheckbox.check()
       }
 
       // Check if Companion is already healthy from previous session
@@ -190,7 +190,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
       expect(overrideRes.status).toBe(200)
 
       // Student UI receives socket decision or poll update -> enters exam without page reload
-      await student.page.waitForTimeout(1000)
+      await student.humanize.think(500, 1000)
       await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
       await student.page.goto(`/student/exams/${examId}/exam`)
       await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
