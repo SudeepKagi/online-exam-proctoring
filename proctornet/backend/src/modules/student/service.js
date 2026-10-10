@@ -289,7 +289,7 @@ class StudentService {
     await studentRepository.recordVerificationAuditLog({
       studentId,
       checkType: 'RE_ENROLLMENT_REQUEST',
-      score: 1.0,
+      score: null,
       status: 'RE_ENROLL_PENDING',
       details: reason ? JSON.stringify({ reason }) : 'Candidate requested biometric re-enrollment'
     })

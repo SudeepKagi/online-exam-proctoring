@@ -18,7 +18,9 @@ if (!BigInt.prototype.toJSON) {
   BigInt.prototype.toJSON = function () {
     try {
       bigintSerializedTotal.inc()
-    } catch (_) {}
+    } catch (metricErr) {
+      void metricErr
+    }
     return this.toString()
   }
 }
