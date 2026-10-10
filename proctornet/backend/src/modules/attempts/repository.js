@@ -137,30 +137,19 @@ class AttemptRepository {
         })
       }
 
-      // Generate shuffled attempt questions
+      // Generate attempt questions via unified builder (§P9 F9)
       if (questions && questions.length > 0) {
-        const rng = createSeededRng(shuffleSeed)
-        const shuffledQuestions = [...questions]
-        shuffleArray(shuffledQuestions, rng)
+        const attemptQuestions = buildAttemptQuestions(exam, questions, shuffleSeed)
 
-        const selectedQuestions = (exam.questionsPerStudent > 0 && exam.questionsPerStudent < shuffledQuestions.length)
-          ? shuffledQuestions.slice(0, exam.questionsPerStudent)
-          : shuffledQuestions
-
-        if (selectedQuestions.length > 0) {
+        if (attemptQuestions.length > 0) {
           const valuePlaceholders = []
           const params = [attempt.id]
           let paramIdx = 2
 
-          for (let i = 0; i < selectedQuestions.length; i++) {
-            const q = selectedQuestions[i]
-            const optionOrder = (q.options || []).map((_, idx) => idx)
-            if (exam.randomiseOptions) {
-              shuffleArray(optionOrder, rng)
-            }
-
+          for (let i = 0; i < attemptQuestions.length; i++) {
+            const aq = attemptQuestions[i]
             valuePlaceholders.push(`(gen_random_uuid(), $1::uuid, $${paramIdx}::uuid, $${paramIdx + 1}, $${paramIdx + 2}::smallint[])`)
-            params.push(q.id, i + 1, optionOrder)
+            params.push(aq.questionId, aq.displayOrder, aq.optionOrder)
             paramIdx += 3
           }
 
@@ -243,16 +232,19 @@ class AttemptRepository {
 }
 
 /**
- * Deterministic pseudo-random generator seeded from string for Fisher-Yates
+ * Deterministic Mulberry32 32-bit PRNG seeded from SHA-256 of seed string (§P9 F9)
+ * Never collapses to zero even on empty string or null input.
  */
 function createSeededRng(seedStr) {
-  let hash = 0
-  for (let i = 0; i < seedStr.length; i++) {
-    hash = Math.imul(31, hash) + seedStr.charCodeAt(i) | 0
-  }
+  const str = String(seedStr ?? '')
+  const hash = crypto.createHash('sha256').update(str).digest()
+  let a = hash.readUInt32LE(0)
+  if (a === 0) a = 1
   return function () {
-    hash = Math.imul(48271, hash) % 2147483647
-    return (hash & 2147483647) / 2147483647
+    let t = (a += 0x6D2B79F5) | 0
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 
@@ -264,9 +256,62 @@ function shuffleArray(array, rng) {
   return array
 }
 
+/**
+ * Single authoritative attempt question & option builder (§P9 F9)
+ * Used consistently across PrewarmJob and createReadyAttempt.
+ */
+function buildAttemptQuestions(exam, questions, seed) {
+  if (!questions || questions.length === 0) return []
+
+  const rng = createSeededRng(seed)
+
+  // 1. Stable initial sort to guarantee identical input order regardless of DB retrieval
+  const sortedQuestions = [...questions].sort((a, b) => {
+    if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+      return a.order - b.order
+    }
+    return String(a.id).localeCompare(String(b.id))
+  })
+
+  // 2. Question permutation (honors randomiseQuestions)
+  if (exam?.randomiseQuestions) {
+    shuffleArray(sortedQuestions, rng)
+  }
+
+  // 3. Subsetting per student
+  const count = (exam?.questionsPerStudent > 0 && exam.questionsPerStudent < sortedQuestions.length)
+    ? exam.questionsPerStudent
+    : sortedQuestions.length
+  const selectedQuestions = sortedQuestions.slice(0, count)
+
+  // 4. Option ordering per question (honors randomiseOptions)
+  return selectedQuestions.map((q, qIdx) => {
+    const rawOptions = q.options ? [...q.options] : []
+    rawOptions.sort((a, b) => {
+      if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+        return a.order - b.order
+      }
+      return String(a.id || '').localeCompare(String(b.id || ''))
+    })
+
+    const optionOrder = rawOptions.map((_, idx) => idx)
+    if (exam?.randomiseOptions) {
+      shuffleArray(optionOrder, rng)
+    }
+
+    return {
+      questionId: q.id,
+      displayOrder: qIdx + 1,
+      optionOrder,
+      question: q
+    }
+  })
+}
+
 module.exports = {
   AttemptRepository,
   attemptRepository: new AttemptRepository(),
   createSeededRng,
-  shuffleArray
+  shuffleArray,
+  buildAttemptQuestions
 }
