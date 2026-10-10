@@ -42,6 +42,7 @@ function toStudentAdminDTO(s) {
     approvedBy: s.approvedBy,
     approvedAt: s.approvedAt,
     rejectionReason: s.rejectionReason,
+    tempPassword: s.tempPassword || undefined,
     createdAt: s.createdAt
   }
 }

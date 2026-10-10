@@ -156,11 +156,8 @@ class AdminService {
       approvalStatus: 'PENDING',
       profileStatus: 'PENDING'
     })
-    const dto = toStudentAdminDTO(student)
-    if (isGenerated) {
-      dto.tempPassword = tempPassword
-    }
-    return dto
+    student.tempPassword = isGenerated ? tempPassword : undefined
+    return toStudentAdminDTO(student)
   }
 
   async approveStudent(id, approverId) {
