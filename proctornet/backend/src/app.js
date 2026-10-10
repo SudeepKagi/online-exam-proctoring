@@ -79,6 +79,8 @@ const io = createWebSocketServer(server)
 
 // Make io available to routes via app locals
 app.set('io', io)
+const { proctoringService } = require('./modules/proctoring/service')
+proctoringService.setIO(io)
 
 // ── Reverse Proxy & Trust Headers ──
 app.disable('x-powered-by')

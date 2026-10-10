@@ -284,6 +284,9 @@ export default function ExamInterface() {
     examId,
     emitViolation,
     isExamActive: !isWaiting && !loading && !terminalState && !suspendedState?.active,
+    allowTabSwitch: exam?.browserLock === false,
+    requireFullscreen: exam?.fullScreenMode !== false,
+    aiReverifyInterval: exam?.aiReverifyInterval || 10,
     externalStreamRef: streamRef
   })
 

@@ -229,7 +229,7 @@ export default function SecurityCheck() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { width: 1280, height: 720 }, 
-        audio: false 
+        audio: Boolean(exam?.micRequired) 
       })
       streamRef.current = stream
       if (videoRef.current) {

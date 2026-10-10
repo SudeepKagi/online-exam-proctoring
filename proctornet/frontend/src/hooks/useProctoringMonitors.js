@@ -7,7 +7,15 @@ import api from '@/utils/api'
  * Orchestrates webcam stream, face presence detection,
  * and fullscreen / tab-switch compliance.
  */
-export function useProctoringMonitors({ examId, emitViolation, isExamActive, allowTabSwitch = false, externalStreamRef }) {
+export function useProctoringMonitors({
+  examId,
+  emitViolation,
+  isExamActive,
+  allowTabSwitch = false,
+  requireFullscreen = true,
+  aiReverifyInterval = 10,
+  externalStreamRef
+}) {
   const videoRef = useRef(null)
   const captureVideoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -53,7 +61,7 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
     const handleFullscreenChange = () => {
       const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
       setIsFullscreenLocked(isFull)
-      if (!isFull && isExamActive) {
+      if (!isFull && isExamActive && requireFullscreen) {
         notifyViolation('FULLSCREEN_EXIT', 'HIGH')
       }
     }
@@ -139,7 +147,7 @@ export function useProctoringMonitors({ examId, emitViolation, isExamActive, all
       } catch (err) {
         console.warn('Face detection loop error:', err)
       }
-    }, 4000)
+    }, Math.max(2, aiReverifyInterval) * 1000)
 
     return () => {
       if (faceIntervalRef.current) clearInterval(faceIntervalRef.current)

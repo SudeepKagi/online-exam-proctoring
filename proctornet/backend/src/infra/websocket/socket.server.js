@@ -38,9 +38,6 @@ function createWebSocketServer(httpServer, options = {}) {
       origin: (origin, callback) => {
         if (!origin) return callback(null, true)
         if (allowedOrigins.includes(origin)) return callback(null, true)
-        if (origin.match(/^https?:\/\/(43\.204\.45\.86|.*\.sslip\.io|.*\.nip\.io)(:\d+)?$/)) {
-          return callback(null, true)
-        }
         if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
           return callback(null, true)
         }
@@ -400,7 +397,8 @@ function createWebSocketServer(httpServer, options = {}) {
           socket.user.id,
           eventType,
           metadata,
-          clientTimestamp
+          clientTimestamp,
+          io
         )
 
         if (res?.recorded && verifiedExamId) {
