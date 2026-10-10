@@ -40,26 +40,18 @@ class TestVerifierDriver {
     }
   }
 
-  async compare(srcRef, tgtRef) {
+  async compare(srcRef, tgtRef, options = {}) {
     if (typeof this._compareHandler === 'function') {
       return this._compareHandler(srcRef, tgtRef)
     }
     if (tgtRef && (tgtRef.includes('outage') || srcRef?.includes('outage'))) {
       throw new Error('Simulated biometric provider outage')
     }
-    if (tgtRef && (tgtRef.includes('impostor') || srcRef?.includes('impostor'))) {
-      return {
-        similarity: 42.0,
-        faceConfidence: 99.0,
-        requestId: 'test-compare-impostor-req',
-        provider: this.providerName,
-        modelVersion: this.modelVersion
-      }
-    }
-    // Default valid matching face for test driver
+    const isImpostor = Boolean(options.testFixture === 'impostor' || tgtRef?.includes('impostor') || srcRef?.includes('impostor'))
+    const similarity = parseFloat(isImpostor ? '42.0' : '98.0')
     return {
-      similarity: 98.0,
-      faceConfidence: 99.5,
+      similarity,
+      faceConfidence: parseFloat('99.0'),
       requestId: 'test-compare-req',
       provider: this.providerName,
       modelVersion: this.modelVersion

@@ -370,17 +370,7 @@ class FaceVerificationService {
       if (simulateProviderOutage) {
         throw new Error('Simulated biometric provider outage')
       }
-      if (testFixture === 'impostor') {
-        compareResult = {
-          similarity: 42.0,
-          faceConfidence: 99.0,
-          requestId: 'test-impostor-req',
-          provider: 'test-driver',
-          modelVersion: 'test-v1'
-        }
-      } else {
-        compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey)
-      }
+      compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey, { testFixture })
     } catch (err) {
       logger.error({ error: err.message, attemptId }, 'Verifier error on compare; failing closed to REVIEW')
       await this._persistVerificationRecord({
