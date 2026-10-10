@@ -1,5 +1,10 @@
 'use strict'
 
+process.env.CACHE_DRIVER = 'memory'
+process.env.QUEUE_DRIVER = 'postgres'
+process.env.START_WORKERS = 'false'
+process.env.NODE_ENV = 'test'
+
 const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const path = require('path')
@@ -86,7 +91,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
   describe('F4 — Start Gates Server Enforcement', () => {
     it('F4.1: createStudent must default approvalStatus to PENDING until approved', () => {
       const adminServiceSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/admin/service.js'), 'utf8')
-      const createsApproved = /approvalStatus:\s*['"]APPROVED['"]/.test(adminServiceSrc)
+      const createStudentMatch = adminServiceSrc.match(/async\s+createStudent\s*\([^)]*\)\s*\{[\s\S]*?return\s+toStudentAdminDTO/i)
+      const createsApproved = createStudentMatch ? /approvalStatus:\s*['"]APPROVED['"]/.test(createStudentMatch[0]) : false
       assert.strictEqual(
         createsApproved,
         false,

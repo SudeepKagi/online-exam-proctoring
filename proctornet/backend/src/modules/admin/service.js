@@ -139,7 +139,7 @@ class AdminService {
       departmentCode: deptCode,
       semester: parseInt(data.semester || 1, 10),
       phone: data.phone || null,
-      approvalStatus: 'APPROVED',
+      approvalStatus: 'PENDING',
       profileStatus: 'PENDING'
     })
     return toStudentAdminDTO(student)

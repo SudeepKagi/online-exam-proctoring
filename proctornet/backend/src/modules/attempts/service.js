@@ -9,6 +9,7 @@ const {
 } = require('../../shared/errors')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const { logger } = require('../../shared/logging')
+const { assertCanStart, isStudentEligible } = require('../exams/eligibility')
 
 class AttemptService {
   async attachPresignedImageUrls(questions) {
@@ -27,74 +28,80 @@ class AttemptService {
    * 1 round-trip fast path for pre-warmed READY attempts.
    */
   async startOrResumeAttempt(examId, studentId) {
-    // 0. Promote any unattached healthy PRECHECK session to student's attempt before activation
-    const existingAttempt = await attemptRepository.findByExamAndStudent(examId, studentId)
-    if (existingAttempt) {
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      throw new NotFoundError('Student not found')
+    }
+
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId },
+      include: {
+        questions: {
+          include: { options: true }
+        }
+      }
+    })
+    if (!exam) {
+      throw new NotFoundError(`Exam '${examId}' not found`)
+    }
+
+    let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+
+    if (!attempt) {
+      // Late joiner fallback: check eligibility, timing, and create READY attempt
+      const now = new Date()
+      if (now < exam.startTime) {
+        throw new ForbiddenError(`Exam has not started yet. Starts at ${exam.startTime.toISOString()}`)
+      }
+      if (now > exam.endTime) {
+        throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
+      }
+      if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
+        throw new ForbiddenError(`Exam is not open for attempts (status: ${exam.status})`)
+      }
+
+      const eligible = isStudentEligible(exam, student)
+      if (!eligible) {
+        throw new ForbiddenError('You are not eligible to take this exam or the exam is not currently active')
+      }
+
+      attempt = await attemptRepository.createReadyAttempt(
+        examId,
+        studentId,
+        exam,
+        exam.questions
+      )
+    }
+
+    // If attempt is in READY status, enforce authoritative server-side start gate (F4)
+    if (attempt.status === 'READY') {
+      // Promote any unattached healthy PRECHECK session with fresh heartbeat to this attempt
+      const freshCutoff = new Date(Date.now() - 60000)
       await prisma.agentSession.updateMany({
         where: {
           studentId,
           scope: 'PRECHECK',
           state: 'HEALTHY',
-          attemptId: null
+          attemptId: null,
+          lastSeenAt: { gte: freshCutoff }
         },
         data: {
-          attemptId: existingAttempt.id,
+          attemptId: attempt.id,
           scope: 'ATTEMPT'
         }
       }).catch(() => {})
-    }
 
-    // 1. Fast-path: Update READY -> ACTIVE in single SQL statement
-    let attempt = await attemptRepository.activateReadyAttempt(examId, studentId)
+      // Enforce unified server-side start gate (eligibility, agent, identity, VPN)
+      await assertCanStart({ exam, student, attempt })
 
-    if (!attempt) {
-      // 2. Read existing attempt if already created
-      attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
-
-      if (!attempt) {
-        // 3. Late joiner fallback: check eligibility and create on-demand
-        const eligible = await attemptRepository.checkStudentEligibility(examId, studentId)
-        if (!eligible) {
-          throw new ForbiddenError('You are not eligible to take this exam or the exam is not currently active')
-        }
-
-        const exam = await prisma.exam.findUnique({
-          where: { id: examId },
-          include: {
-            questions: {
-              include: { options: true }
-            }
-          }
-        })
-
-        if (!exam) {
-          throw new NotFoundError(`Exam '${examId}' not found`)
-        }
-
-        const now = new Date()
-        if (now < exam.startTime) {
-          throw new ForbiddenError(`Exam has not started yet. Starts at ${exam.startTime.toISOString()}`)
-        }
-        if (now > exam.endTime) {
-          throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
-        }
-        if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
-          throw new ForbiddenError(`Exam is not open for attempts (status: ${exam.status})`)
-        }
-
-        attempt = await attemptRepository.createOnDemandAttempt(
-          examId,
-          studentId,
-          exam,
-          exam.questions
-        )
+      // Gate passed: activate attempt atomically
+      const activated = await attemptRepository.activateReadyAttempt(examId, studentId)
+      if (activated) {
+        attempt = activated
       }
     }
 
-    // 4. Handle terminal / non-active attempt statuses (E-03: Suspended/READY/expired resume must not receive question content)
-    if (attempt.status === 'READY' && attempt.exam.deviceAgentPolicy === 'REQUIRED') {
-      throw new ForbiddenError('Device companion check required: An active healthy agent session with no blocking findings (or a staff waiver) is required to start this exam.')
-    }
+    attempt.exam = exam
 
     // Submit grace window (defaults to 10s or SUBMIT_GRACE_SECONDS)
     const submitGraceSeconds = parseInt(process.env.SUBMIT_GRACE_SECONDS || '10', 10)
@@ -284,34 +291,51 @@ class AttemptService {
    * Idempotent pre-check readiness (creates READY attempt, never starts the clock)
    */
   async getOrCreateReadinessAttempt(examId, studentId) {
+    const student = await prisma.student.findUnique({ where: { id: studentId } })
+    if (!student) {
+      throw new NotFoundError('Student not found')
+    }
+
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId },
+      include: {
+        questions: {
+          include: { options: true }
+        }
+      }
+    })
+
+    if (!exam) {
+      throw new NotFoundError(`Exam '${examId}' not found`)
+    }
+
+    if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
+      throw new ForbiddenError(`Exam is not open for pre-check (status: ${exam.status})`)
+    }
+
+    if (new Date() > exam.endTime) {
+      throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
+    }
+
+    if (student.isSuspended) {
+      throw new ForbiddenError('Account suspended: You are not permitted to start this exam')
+    }
+    if (student.approvalStatus !== 'APPROVED') {
+      throw new ForbiddenError('Enrollment approval required: Your student account is pending administrator approval')
+    }
+    if (student.profileStatus !== 'VERIFIED') {
+      throw new ForbiddenError('Profile verification required: Your identity profile has not been verified by an administrator')
+    }
+    const facePhoto = student.facePhotoKey || student.face_photo_key
+    if (!facePhoto) {
+      throw new ForbiddenError('Face enrollment required: You must have an enrolled reference face photo to take this exam')
+    }
+    if (!isStudentEligible(exam, student)) {
+      throw new ForbiddenError('Department or semester mismatch: You are not eligible for this exam')
+    }
+
     let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
     if (!attempt) {
-      const eligible = await attemptRepository.checkStudentEligibility(examId, studentId)
-      if (!eligible) {
-        throw new ForbiddenError('You are not eligible to take this exam or the exam is not currently active')
-      }
-
-      const exam = await prisma.exam.findUnique({
-        where: { id: examId },
-        include: {
-          questions: {
-            include: { options: true }
-          }
-        }
-      })
-
-      if (!exam) {
-        throw new NotFoundError(`Exam '${examId}' not found`)
-      }
-
-      if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
-        throw new ForbiddenError(`Exam is not open for pre-check (status: ${exam.status})`)
-      }
-
-      if (new Date() > exam.endTime) {
-        throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
-      }
-
       const precheckMinutes = parseInt(process.env.PRECHECK_OPEN_MINUTES || '30', 10)
       const precheckOpenTime = new Date(exam.startTime.getTime() - precheckMinutes * 60 * 1000)
       if (new Date() < precheckOpenTime) {
@@ -328,12 +352,14 @@ class AttemptService {
 
     // Promote any unattached healthy PRECHECK session to this attempt
     try {
+      const freshCutoff = new Date(Date.now() - 60000)
       await prisma.agentSession.updateMany({
         where: {
           studentId,
           scope: 'PRECHECK',
           state: 'HEALTHY',
-          attemptId: null
+          attemptId: null,
+          lastSeenAt: { gte: freshCutoff }
         },
         data: {
           attemptId: attempt.id,
