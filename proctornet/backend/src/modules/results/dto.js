@@ -18,6 +18,8 @@ function toStudentResultDTO(result, exam) {
     }
   }
 
+  const isAbsent = result.attempt?.statusReason === 'NOT_STARTED' || result.statusReason === 'NOT_STARTED'
+
   return {
     attemptId: result.attemptId,
     examId: result.examId,
@@ -29,7 +31,9 @@ function toStudentResultDTO(result, exam) {
     unansweredCount: result.unansweredCount,
     rank: result.rank,
     timeTaken: result.timeTaken,
-    status: result.status,
+    status: isAbsent ? 'ABSENT' : result.status,
+    statusReason: result.attempt?.statusReason || result.statusReason || null,
+    isAbsent,
     isReleased: true,
     releasedAt: result.releasedAt || result.createdAt
   }
@@ -37,6 +41,8 @@ function toStudentResultDTO(result, exam) {
 
 function toFacultyResultDTO(result) {
   if (!result) return null
+
+  const isAbsent = result.attempt?.statusReason === 'NOT_STARTED' || result.statusReason === 'NOT_STARTED'
 
   return {
     id: result.id,
@@ -51,7 +57,9 @@ function toFacultyResultDTO(result) {
     rank: result.rank,
     timeTaken: result.timeTaken,
     flagCount: result.flagCount,
-    status: result.status,
+    status: isAbsent ? 'ABSENT' : result.status,
+    statusReason: result.attempt?.statusReason || result.statusReason || null,
+    isAbsent,
     isReleased: result.isReleased,
     student: result.attempt?.student ? {
       id: result.attempt.student.id,

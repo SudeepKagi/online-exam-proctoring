@@ -158,7 +158,10 @@ router.get('/exams/:id/export-csv', async (req, res, next) => {
 
 router.patch('/exams/:id/results/release', async (req, res, next) => {
   try {
-    const outcome = await facultyService.releaseResults(req.params.id, req.user.id)
+    const outcome = await facultyService.releaseResults(req.params.id, req.user.id, {
+      force: req.body?.force === true,
+      forceReason: req.body?.forceReason
+    })
     res.status(200).json(outcome)
   } catch (err) {
     next(err)

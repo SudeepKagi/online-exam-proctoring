@@ -71,7 +71,10 @@ router.post(
   async (req, res, next) => {
     try {
       const { examId } = req.params
-      const outcome = await resultService.releaseResults(examId, req.user.id, req.user.role)
+      const outcome = await resultService.releaseResults(examId, req.user.id, req.user.role, {
+        force: req.body?.force === true,
+        forceReason: req.body?.forceReason
+      })
       return res.status(200).json(outcome)
     } catch (err) {
       next(err)

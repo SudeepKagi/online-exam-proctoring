@@ -78,11 +78,72 @@ class ExamScheduler {
         logger.info({ count: endedCount }, 'Guarded transition: exams moved to ENDED')
       }
 
-      // Step 4: Guarded transition ENDED -> EVALUATED when all submitted/expired attempts have results
+      // Step 3.1 (§P9 F3): Process absent students and suspended attempts for all ENDED exams
+      try {
+        const { resultRepository } = require('../results/repository')
+        const { prisma } = require('../../infra/postgres/client')
+
+        // Process absent students for all exams in ENDED that still have READY attempts
+        const endedExamsWithReady = await prisma.$queryRawUnsafe(`
+          SELECT DISTINCT e.id
+          FROM exams e
+          JOIN exam_attempts ea ON ea.exam_id = e.id
+          WHERE e.status = 'ENDED' AND ea.status = 'READY';
+        `)
+        if (endedExamsWithReady && endedExamsWithReady.length > 0) {
+          for (const e of endedExamsWithReady) {
+            await resultRepository.createAbsentResultsForEndedExam(e.id)
+            logger.info({ examId: e.id }, 'Generated absent results for unstarted READY attempts')
+          }
+        }
+
+        // Expire SUSPENDED attempts at end_time + grace and enqueue evaluation
+        const graceSeconds = parseInt(process.env.EXAM_GRACE_SECONDS || '300', 10)
+        const expiredSuspendedAttempts = await prisma.$queryRawUnsafe(`
+          UPDATE exam_attempts ea
+          SET status = 'EXPIRED',
+              status_reason = 'Suspended attempt expired at exam end'
+          FROM exams e
+          WHERE ea.exam_id = e.id
+            AND ea.status = 'SUSPENDED'
+            AND e.status IN ('ENDED', 'LIVE')
+            AND now() >= (e.end_time + ($1 || ' seconds')::interval)
+          RETURNING ea.id, ea.exam_id, ea.student_id;
+        `, graceSeconds.toString())
+
+        if (expiredSuspendedAttempts && expiredSuspendedAttempts.length > 0) {
+          logger.info({ count: expiredSuspendedAttempts.length }, 'Expired SUSPENDED attempts past end_time + grace')
+          for (const att of expiredSuspendedAttempts) {
+            await prisma.$executeRawUnsafe(`
+              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              VALUES ('attempt.expired', $1::jsonb, 'PENDING', now());
+            `, JSON.stringify({
+              attemptId: att.id,
+              examId: att.exam_id,
+              studentId: att.student_id,
+              status: 'EXPIRED',
+              reason: 'Suspended attempt expired at exam end'
+            })).catch(() => {})
+          }
+        }
+      } catch (lifecycleErr) {
+        logger.error({ error: lifecycleErr.message }, 'Error in examScheduler absent/suspended resolution')
+      }
+
+      // Step 4: Guarded transition ENDED -> EVALUATED when all terminal attempts have results
       const evaluatedExams = await examRepository.transitionEndedToEvaluated()
       const evaluatedCount = evaluatedExams ? evaluatedExams.length : 0
       if (evaluatedCount > 0) {
         logger.info({ count: evaluatedCount }, 'Guarded transition: exams moved to EVALUATED')
+        const { resultRepository } = require('../results/repository')
+        for (const evalExam of evaluatedExams) {
+          try {
+            await resultRepository.updateRanksForExam(evalExam.id)
+            logger.info({ examId: evalExam.id }, 'Computed ranks for evaluated exam')
+          } catch (rankErr) {
+            logger.warn({ examId: evalExam.id, error: rankErr.message }, 'Failed rank computation for evaluated exam')
+          }
+        }
       }
 
       return {
