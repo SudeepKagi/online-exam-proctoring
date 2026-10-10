@@ -4,7 +4,8 @@ const { logger } = require('../../shared/logging')
 const { toStudentResultDTO, toFacultyResultDTO } = require('./dto')
 const {
   NotFoundError,
-  ForbiddenError
+  ForbiddenError,
+  ConflictError
 } = require('../../shared/errors')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
