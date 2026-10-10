@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ProfileStatus" ADD VALUE IF NOT EXISTS 'RE_ENROLL_PENDING';
