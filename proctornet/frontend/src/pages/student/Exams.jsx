@@ -141,7 +141,7 @@ export default function StudentExams() {
   const navigate = useNavigate()
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [fetchErrorMsg, setFetchErrorMsg] = useState(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [now, setNow] = useState(new Date())
@@ -155,7 +155,7 @@ export default function StudentExams() {
 
   const fetchExams = useCallback(() => {
     setLoading(true)
-    setError(null)
+    setFetchErrorMsg(null)
     api.get('/student/exams')
       .then(r => {
         const examsList = r.data.exams || []
@@ -163,7 +163,7 @@ export default function StudentExams() {
       })
       .catch(err => {
         console.error(err)
-        setError(extractErrorMessage(err, 'Unable to connect to exam server. Please verify backend connectivity.'))
+        setFetchErrorMsg(extractErrorMessage(err, 'Unable to connect to exam server. Please verify backend connectivity.'))
       })
       .finally(() => setLoading(false))
   }, [])
@@ -403,14 +403,14 @@ export default function StudentExams() {
               <div key={i} className="h-44 rounded-2xl bg-card border border-border animate-pulse shadow-xs" />
             ))}
           </div>
-        ) : error ? (
+        ) : fetchErrorMsg ? (
           <Card className="p-8 text-center bg-card border border-destructive/30 rounded-2xl max-w-md mx-auto space-y-3">
             <div className="w-12 h-12 rounded-2xl bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive mx-auto">
               <AlertTriangle size={24} />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-foreground">Failed to Load Examinations</h3>
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{error}</p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{fetchErrorMsg}</p>
             </div>
             <Button
               onClick={fetchExams}

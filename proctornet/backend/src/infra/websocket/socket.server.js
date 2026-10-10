@@ -72,7 +72,7 @@ function createWebSocketServer(httpServer, options = {}) {
       : new Redis(config.redisUrl, {
         keyPrefix: config.redisPrefix,
         lazyConnect: true,
-        maxRetriesPerRequest: 1,
+        maxRetriesPerRequest: null,
         retryStrategy: (n) => Math.min(n * 200, 5000)
       })
       const subClient = pubClient.duplicate()

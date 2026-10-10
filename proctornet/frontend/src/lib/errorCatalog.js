@@ -34,6 +34,11 @@ export const ERROR_CATALOG = {
 
   // Submission & Validation
   VALIDATION_ERROR: 'Please check your inputs and ensure all required fields are complete.',
+  FIELD_NOT_ALLOWED: 'This field cannot be modified directly. Please contact administration for changes.',
+  STALE_REVISION: 'Your changes could not be saved because the data was updated elsewhere.',
+  FORBIDDEN: 'Access denied. You do not have permission to access this resource.',
+  UNAUTHORIZED: 'Your session has expired. Please sign in again to continue.',
+  CONFLICT: 'This operation conflicts with an existing record or active session.',
   RATE_LIMITED: 'Request limit reached. Please wait a moment before trying again.',
   CONCURRENT_SUBMISSION: 'Another submission is currently in progress.',
 
@@ -41,6 +46,8 @@ export const ERROR_CATALOG = {
   SERVICE_UNAVAILABLE: 'The exam service is temporarily undergoing maintenance. Please retry shortly.',
   INTERNAL_ERROR: 'Something went wrong. Please try again.'
 }
+
+export const errorMessage = formatErrorMessage
 
 /**
  * Format any frontend or backend error into a friendly, abstracted service-level message.

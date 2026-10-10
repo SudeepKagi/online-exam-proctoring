@@ -11,10 +11,14 @@ const compression = require('compression')
 const rateLimit   = require('express-rate-limit')
 const { prisma }  = require('./infra/postgres/client')
 
-// ── Global BigInt Serialization Handler (Phase S2 / Edge-09) ──
-// Prevents TypeError: Do not know how to serialize a BigInt on models with BigInt IDs (e.g. AuditLog, ChatMessage)
+// ── Global BigInt Serialization Safety Net (Prompt 8 / U2) ──
+// DTO mappers must convert BigInt to string; prototype handler is a monitored last-resort fallback.
+const { bigintSerializedTotal } = require('./observability/metrics')
 if (!BigInt.prototype.toJSON) {
   BigInt.prototype.toJSON = function () {
+    try {
+      bigintSerializedTotal.inc()
+    } catch (_) {}
     return this.toString()
   }
 }

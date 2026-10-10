@@ -9,6 +9,7 @@
     "start:standard": "node src/app.js",
     "dev": "UV_THREADPOOL_SIZE=4 nodemon --max-old-space-size=384 src/app.js",
     "test": "node --test tests/**/*.js",
+    "test:boot-smoke": "node ../../scripts/ci/boot-smoke.js",
     "lint": "eslint src/",
     "seed": "node prisma/seed/admin.js",
     "migrate": "npx prisma migrate dev",

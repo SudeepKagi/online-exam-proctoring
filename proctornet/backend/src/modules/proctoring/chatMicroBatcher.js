@@ -85,7 +85,16 @@ class ChatMicroBatcher {
       }
 
       for (let i = 0; i < currentBatch.length; i++) {
-        currentBatch[i].resolve(rows[i] || { success: true })
+        const row = rows[i]
+        const formatted = row ? {
+          id: row.id != null ? row.id.toString() : null,
+          examId: row.exam_id,
+          studentId: row.student_id,
+          senderRole: row.sender_role,
+          message: row.message,
+          timestamp: row.timestamp
+        } : { success: true }
+        currentBatch[i].resolve(formatted)
       }
     } catch (err) {
       logger.error({ error: err.message }, 'Chat micro-batcher failed')

@@ -154,6 +154,13 @@ const autosaveConflictsTotal = new client.Counter({
   registers: [register],
 })
 
+// ── BigInt Serialization Safety Net Metric (Prompt 8 / U2) ──
+const bigintSerializedTotal = new client.Counter({
+  name: 'bigint_serialized_total',
+  help: 'Total number of BigInt values serialized via global prototype fallback',
+  registers: [register],
+})
+
 module.exports = {
   register,
   metricsMiddleware,
@@ -169,5 +176,6 @@ module.exports = {
   agentFindingsOpenGauge,
   autosaveItemsTotal,
   autosaveConflictsTotal,
+  bigintSerializedTotal,
 }
 

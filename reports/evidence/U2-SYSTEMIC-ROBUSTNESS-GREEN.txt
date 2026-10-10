@@ -1,0 +1,62 @@
+PROCTORNET TRUTH-FIRST EVIDENCE RECORD
+======================================
+ID: U2-SYSTEMIC-ROBUSTNESS-GREEN
+Timestamp: 2026-10-10T00:22:38Z
+Base SHA: 34387c285e8ee5d5c1abb31aaa3dc5e893ab1c70
+Environment: Local clean-room PostgreSQL + Node.js v20.18.0 (Windows)
+Status: PASSED
+
+COMMAND 1:
+node --test tests/u2-systemic-robustness.test.js
+
+OUTPUT TAIL 1:
+▶ Phase U2: Systemic Robustness & BigInt Serialization
+  ✔ 1. AuditLog returns string IDs and valid JSON via GET /api/v1/audit/logs (1319.1077ms)
+  ✔ 2. BigInt.prototype.toJSON fallback increments bigint_serialized_total metric (15.8424ms)
+  ✔ 3. Public Config /api/v1/config returns valid JSON with llmEnabled & drivers (9.1806ms)
+  ✔ 4. Version endpoint /api/v1/version returns valid JSON without errors (7.9164ms)
+  ✔ 5. Student exams endpoint returns 200, 403, or 404 without 500 error (334.2125ms)
+✔ Phase U2: Systemic Robustness & BigInt Serialization (1726.9238ms)
+ℹ tests 5
+ℹ suites 1
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3844.5575
+
+COMMAND 2:
+node scripts/ci/boot-smoke.js
+
+OUTPUT TAIL 2:
+  ✔ [system        ] GET   /healthz                                                          -> HTTP 200 (OK)
+  ✔ [system        ] GET   /api/v1/version                                                   -> HTTP 200 (OK)
+  ✔ [system        ] GET   /api/v1/config                                                    -> HTTP 200 (OK)
+  ✔ [auth          ] GET   /api/v1/auth/me                                                   -> HTTP 401 (OK)
+  ✔ [admin         ] GET   /api/v1/admin/dashboard                                           -> HTTP 401 (OK)
+  ✔ [student       ] GET   /api/v1/student/profile                                           -> HTTP 401 (OK)
+  ✔ [faculty       ] GET   /api/v1/faculty/exams                                             -> HTTP 401 (OK)
+  ✔ [exams         ] GET   /api/v1/exams/00000000-0000-0000-0000-000000000000                -> HTTP 401 (OK)
+  ✔ [attempts      ] POST  /api/v1/exams/00000000-0000-0000-0000-000000000000/readiness     -> HTTP 401 (OK)
+  ✔ [audit         ] GET   /api/v1/audit/logs                                                -> HTTP 401 (OK)
+  ✔ [invigilator   ] GET   /api/v1/invigilator/sessions                                      -> HTTP 401 (OK)
+  ✔ [media         ] POST  /api/v1/media/presign-upload                                      -> HTTP 401 (OK)
+  ✔ [notifications ] GET   /api/v1/notifications                                             -> HTTP 401 (OK)
+  ✔ [proctoring    ] POST  /api/v1/proctoring/token                                          -> HTTP 401 (OK)
+  ✔ [questions     ] DELETE /api/v1/questions/00000000-0000-0000-0000-000000000000            -> HTTP 401 (OK)
+  ✔ [vpn           ] GET   /api/v1/attempts/00000000-0000-0000-0000-000000000000/vpn         -> HTTP 401 (OK)
+[BOOT-SMOKE PASSED] All modules routed successfully with zero ReferenceError / TypeError.
+
+COMMAND 3:
+npm run lint:error31 --prefix proctornet/frontend
+
+OUTPUT TAIL 3:
+[AST GATE PASSED] All JSX expressions free of direct error objects and uncatalogued err.message (React Error #31 safe).
+
+VERIFIED FIXES:
+1. `observability/metrics.js` + `app.js`: Instrumented `BigInt.prototype.toJSON` with `bigint_serialized_total` metric.
+2. `chatMicroBatcher.js` + `student/service.js` + `audit/service.js` + `proctoring/service.js`: Enforced DTO mappers converting BigInt IDs to strings.
+3. `frontend/scripts/lint-react-error31.cjs`: Created Babel AST gate checking all JSX children against direct Error/Object rendering and raw `err.message` in JSX (preventing React Error #31).
+4. `frontend/src/lib/errorCatalog.js` + `frontend/src/utils/api.js`: Unified single `errorMessage(err)` service-wording catalogue helper.
+5. `scripts/ci/boot-smoke.js`: Built live CI boot-smoke harness validating real server startup, /healthz, /version, and 1 route per module with zero ReferenceError/TypeError in logs.

@@ -88,7 +88,7 @@ class RedisManager {
     try {
       // Primary Redis connection with non-null retry strategy (C-05)
       this.client = new Redis(config.redisUrl, {
-        maxRetriesPerRequest: 1,
+        maxRetriesPerRequest: null,
         enableReadyCheck: true,
         connectTimeout: 2000,
         lazyConnect: true,
@@ -128,7 +128,7 @@ class RedisManager {
     if (this.subClient) return
     try {
       this.subClient = new Redis(config.redisUrl, {
-        maxRetriesPerRequest: 1,
+        maxRetriesPerRequest: null,
         enableReadyCheck: true,
         connectTimeout: 2000,
         lazyConnect: true,

@@ -26,7 +26,7 @@ class SocketEmitterManager {
       this.redisClient = new Redis(config.redisUrl, {
         keyPrefix: config.redisPrefix,
         lazyConnect: true,
-        maxRetriesPerRequest: 1,
+        maxRetriesPerRequest: null,
         retryStrategy: (times) => Math.min(times * 200, 5000)
       })
 

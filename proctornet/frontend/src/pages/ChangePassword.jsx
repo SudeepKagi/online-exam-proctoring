@@ -13,20 +13,20 @@ export default function ChangePassword() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
   const { user, changePassword, role } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setErrorMsg('')
 
     if (newPassword !== confirmPassword) {
-      return setError('New password and confirm password do not match.')
+      return setErrorMsg('New password and confirm password do not match.')
     }
 
     if (newPassword.length < 6) {
-      return setError('New password must be at least 6 characters long.')
+      return setErrorMsg('New password must be at least 6 characters long.')
     }
 
     setLoading(true)
@@ -36,7 +36,7 @@ export default function ChangePassword() {
       const targetRole = user?.role || role || 'student'
       navigate(`/${targetRole}/dashboard`)
     } catch (err) {
-      setError(extractErrorMessage(err, 'Failed to change password.'))
+      setErrorMsg(extractErrorMessage(err, 'Failed to change password.'))
     } finally {
       setLoading(false)
     }
@@ -61,10 +61,10 @@ export default function ChangePassword() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {error && (
+              {errorMsg && (
                 <div className="p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] text-xs font-semibold text-[#b91c1c] flex items-center gap-2">
                   <AlertTriangle size={15} className="shrink-0" />
-                  <span>{error}</span>
+                  <span>{errorMsg}</span>
                 </div>
               )}
 

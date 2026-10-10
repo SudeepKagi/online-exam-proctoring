@@ -35,49 +35,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Helper to safely extract user-facing error strings (avoids React Error #31)
-export function extractErrorMessage(err, fallback = 'An unexpected error occurred') {
-  if (!err) return fallback
-  
-  const parseJsonError = (str) => {
-    if (typeof str !== 'string' || !str.trim().startsWith('[')) return null
-    try {
-      const parsed = JSON.parse(str)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(p => `${Array.isArray(p.path) ? p.path.join('.') : (p.path || '')}: ${p.message || 'Invalid'}`).join(', ')
-      }
-    } catch {}
-    return null
-  }
+import { errorMessage as catalogErrorMessage } from '../lib/errorCatalog'
 
-  if (typeof err === 'string') {
-    return parseJsonError(err) || err
-  }
+// Canonical helper to safely extract user-facing error strings (avoids React Error #31 and technical jargon)
+export function errorMessage(err, fallback = 'Something went wrong. Please try again.') {
+  return catalogErrorMessage(err, fallback)
+}
 
-  const respErr = err.response?.data?.error
-  if (typeof respErr === 'string') {
-    return parseJsonError(respErr) || respErr
-  }
-
-  if (respErr && typeof respErr === 'object' && respErr !== null) {
-    if (Array.isArray(respErr.details) && respErr.details.length > 0) {
-      return respErr.details.map(d => `${d.path ? d.path + ': ' : ''}${d.message}`).join(', ')
-    }
-    if (respErr.message && typeof respErr.message === 'string') {
-      return parseJsonError(respErr.message) || respErr.message
-    }
-    return respErr.code || fallback
-  }
-
-  if (err.response?.data?.message && typeof err.response.data.message === 'string') {
-    return parseJsonError(err.response.data.message) || err.response.data.message
-  }
-
-  if (err.message && typeof err.message === 'string') {
-    return parseJsonError(err.message) || err.message
-  }
-
-  return fallback
+export function extractErrorMessage(err, fallback = 'Something went wrong. Please try again.') {
+  return catalogErrorMessage(err, fallback)
 }
 
 // Silent Refresh Queue Management

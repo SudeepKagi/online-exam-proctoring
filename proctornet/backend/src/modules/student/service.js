@@ -369,7 +369,15 @@ class StudentService {
   }
 
   async getChatHistory(examId, studentId, limit = 50) {
-    return studentRepository.listChatMessages(examId, studentId, limit)
+    const messages = await studentRepository.listChatMessages(examId, studentId, limit)
+    return messages.map(m => ({
+      id: m.id != null ? m.id.toString() : null,
+      examId: m.examId,
+      studentId: m.studentId,
+      senderRole: m.senderRole,
+      message: m.message,
+      timestamp: m.timestamp
+    }))
   }
 }
 
