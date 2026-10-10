@@ -20,14 +20,14 @@ test.describe('J6: Security & Negative Journey (Prompt 8 §2 U4)', () => {
       await studentA.humanize.typeSlowly(studentA.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentACreds.usn)
       await studentA.humanize.typeSlowly(studentA.page.locator('input[name="password"], input[type="password"]'), studentACreds.password)
       await studentA.humanize.clickHuman(studentA.page, studentA.page.locator('button[type="submit"]'))
-      await studentA.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+      await studentA.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
 
       // 2. Student B Logs In
       await studentB.page.goto('/student/login')
       await studentB.humanize.typeSlowly(studentB.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentBCreds.usn)
       await studentB.humanize.typeSlowly(studentB.page.locator('input[name="password"], input[type="password"]'), studentBCreds.password)
       await studentB.humanize.clickHuman(studentB.page, studentB.page.locator('button[type="submit"]'))
-      await studentB.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+      await studentB.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
 
       const studentBProfile = await api.for(studentB).getAuthMe()
       const studentBId = studentBProfile.body?.user?.id

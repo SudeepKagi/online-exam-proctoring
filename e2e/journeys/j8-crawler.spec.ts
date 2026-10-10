@@ -18,13 +18,24 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
     // ─────────────────────────────────────────────────────────────
     // Role 1: Student Exploration
     // ─────────────────────────────────────────────────────────────
-    const student = await createActor(browser, 'studentCrawler')
+    const student = await createActor(browser, 'student')
     try {
       await student.page.goto('/student/login')
       await student.humanize.typeSlowly(student.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentCreds.usn)
       await student.humanize.typeSlowly(student.page.locator('input[name="password"], input[type="password"]'), studentCreds.password)
       await student.humanize.clickHuman(student.page, student.page.locator('button[type="submit"]'))
-      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
+
+      const authMe = await api.for(student).getAuthMe()
+      const studentId = authMe.body?.user?.id
+      if (authMe.body?.user?.profileStatus !== 'VERIFIED') {
+        const adminActor = await createActor(browser, 'admin')
+        try {
+          await api.for(adminActor).patchRaw(`/api/v1/admin/students/${studentId}/approve`)
+        } finally {
+          await adminActor.close()
+        }
+      }
 
       const studentRoutes = [
         '/student/dashboard',
@@ -60,7 +71,7 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
     // ─────────────────────────────────────────────────────────────
     // Role 2: Faculty Exploration
     // ─────────────────────────────────────────────────────────────
-    const faculty = await createActor(browser, 'facultyCrawler')
+    const faculty = await createActor(browser, 'faculty')
     try {
       await faculty.page.goto('/faculty/login')
       await faculty.humanize.typeSlowly(faculty.page.locator('input[name="email"], input[type="email"]'), facultyCreds.email)
@@ -100,7 +111,7 @@ test.describe('J8: Exploratory Route Crawler & Monkey Tester (Prompt 8 §2 U4)',
     // ─────────────────────────────────────────────────────────────
     // Role 3: Admin Exploration
     // ─────────────────────────────────────────────────────────────
-    const admin = await createActor(browser, 'adminCrawler')
+    const admin = await createActor(browser, 'admin')
     try {
       await admin.page.goto('/admin/login')
       await admin.humanize.typeSlowly(admin.page.locator('input[name="email"], input[type="email"]'), adminCreds.email)

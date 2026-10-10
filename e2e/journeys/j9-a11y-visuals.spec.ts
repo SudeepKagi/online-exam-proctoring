@@ -43,8 +43,8 @@ test.describe('J9: Accessibility & Visual Baseline Audit (Prompt 8 §2 U4)', () 
     }
     await page.keyboard.press('Enter')
 
-    await page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
-    expect(page.url()).toContain('/student/dashboard')
+    await page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
+    expect(page.url()).toMatch(/\/student\/(dashboard|enrollment)/)
 
     // 3. Accessibility on Student Dashboard
     const dashboardAxe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()

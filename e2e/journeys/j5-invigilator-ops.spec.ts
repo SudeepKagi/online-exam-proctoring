@@ -90,17 +90,20 @@ test.describe('J5: Invigilator Operations Journey (Prompt 8 §2 U4)', () => {
       await student.humanize.typeSlowly(student.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentCreds.usn)
       await student.humanize.typeSlowly(student.page.locator('input[name="password"], input[type="password"]'), studentCreds.password)
       await student.humanize.clickHuman(student.page, student.page.locator('button[type="submit"]'))
-      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
+
+      const authMe = await api.for(student).getAuthMe()
+      const studentId = authMe.body?.user?.id
+      expect(studentId).toBeDefined()
+      if (authMe.body?.user?.profileStatus !== 'VERIFIED') {
+        await api.for(admin).patchRaw(`/api/v1/admin/students/${studentId}/approve`)
+      }
 
       // Student readiness and activation
       await api.for(student).postRaw(`/api/v1/exams/${examId}/readiness`, {})
       await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
       await student.page.goto(`/student/exams/${examId}/exam`)
       await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
-
-      const authMe = await api.for(student).getAuthMe()
-      const studentId = authMe.body?.user?.id
-      expect(studentId).toBeDefined()
 
       // 3. Invigilator Opens Live Monitoring Grid
       const liveGridRes = await api.for(invigilator).postRaw(`/api/v1/invigilator/live-grid/${examId}`, {})

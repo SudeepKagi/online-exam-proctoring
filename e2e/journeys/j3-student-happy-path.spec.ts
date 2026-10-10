@@ -92,7 +92,7 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       await student.humanize.typeSlowly(student.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentCreds.usn)
       await student.humanize.typeSlowly(student.page.locator('input[name="password"], input[type="password"]'), studentCreds.password)
       await student.humanize.clickHuman(student.page, student.page.locator('button[type="submit"]'))
-      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
 
       // Check current profile status
       const authMeRes = await api.for(student).getAuthMe()

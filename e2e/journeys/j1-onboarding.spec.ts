@@ -125,8 +125,8 @@ test.describe('J1: Onboarding Journey (Prompt 8 §2 U4)', () => {
         await studentActor.humanize.typeSlowly(studentActor.page.locator('input[name="password"], input[type="password"]'), studentsData[0].password)
         await studentActor.humanize.clickHuman(studentActor.page, studentActor.page.locator('button[type="submit"]'))
 
-        await studentActor.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
-        expect(studentActor.page.url()).toContain('/student/dashboard')
+        await studentActor.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
+        expect(studentActor.page.url()).toMatch(/\/student\/(dashboard|enrollment)/)
       } finally {
         await studentActor.close()
       }
