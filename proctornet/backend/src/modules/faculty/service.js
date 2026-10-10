@@ -98,7 +98,13 @@ class FacultyService {
     return {
       examId: exam.id,
       title: exam.title,
-      invId: exam.invId
+      subject: exam.subject,
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      duration: exam.duration,
+      status: exam.status,
+      invId: exam.invId,
+      passwordMasked: true
     }
   }
 

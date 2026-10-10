@@ -266,3 +266,23 @@
   - SSM command dispatched and completed with status `Success`.
   - Service restarted cleanly via systemd; automated health checks `/healthz` returned HTTP 200 `{"status":"ok"}`.
   - Live version endpoint `https://proctornet.duckdns.org/api/v1/version` confirmed running commit `bc62478515e86e6f0cd1b8c931fc4494a6bfd2ba`.
+
+---
+
+### Entry 016: Prompt 11 Containment, Live Bug Remediation & CI Simplification
+* **Date/Time:** 2026-10-10 16:00:00 UTC
+* **Context:** Incident containment (V0), live bug remediation (V1), contract safety net (V2), and pipeline consolidation (V3).
+* **Remediated Defects:**
+  1. **V0 Containment:** Decoupled developer `.env` pointing to production database (`DATABASE_URL=localhost:5432/proctornet_dev`); added `assertNonProduction()` guard to all mutating ops and seed scripts; created `docs/security/INCIDENT-prod-writes.md` and `docs/adr/SAFETY-001.md`; established `.github/CODEOWNERS`; restored branch protection requirement and removed default deploy override.
+  2. **V1.1 Enrollment & Photo Upload (403):** Replaced direct base64 submission in `StudentEnrollment.jsx` with presigned S3/MinIO ticket upload (`POST /media/presign-upload` -> direct storage PUT -> `POST /student/enrollment/face`); added client frame luminance quality checks; migrated `baseURL` to `/api/v1`; deleted Express URL rewrite shim; purged session and redirected to login on refresh 401.
+  3. **V1.2 User Abstraction & Tech Naming:** Removed "FaceVerifier Engine Active" badge; replaced "anti-spoofing" copy with "live camera check".
+  4. **V1.4 LLM Secret Management:** Documented AWS SSM Parameter Store management in `docs/runbooks/secrets.md` and IAM policy; handled disabled state gracefully in `CreateExam.jsx` and `QuestionPool.jsx` ("Question assistant isn't enabled — ask the administrator").
+  5. **V1.5 Faculty Exam Detail Crash (`TypeError` on `.length`):** Updated `toFacultyExamDTO` to always return an array for `questions` (`[]` default); defensively guarded list renders with `(exam?.questions ?? []).length` in `ExamDetail.jsx`.
+  6. **V1.6 Invigilator Credentials Modal:** Returned full scheduling metadata in `admin/controller.js`; masked passwords for existing exams ("Password hidden for security") and revealed passwords once only upon administrator reset; disabled full credentials copying when password not freshly generated.
+  7. **V2 & V3 Pipeline Consolidation:**
+     - Created consolidated runner `scripts/ci/quality.js` running 6 static/architectural gates in parallel in < 3s (`no-stubs`, `no-legacy`, `banned-terms`, `no-source-grep`, `route-inventory`, `e2e-integrity`).
+     - Demoted non-blocking checks (`check-ledger`, `check-doc-links`, standard profile tests) to `.github/workflows/nightly.yml`.
+     - Standardized pipeline on 4 core jobs (`verify`, `integration`, `e2e`, `ci-gate`) with single setup composite action `.github/actions/setup`.
+     - Created `ci/ci.env` and debuggability tools `npm run ci:local` and `npm run ci:doctor`.
+     - Documented gate budget policy in `docs/runbooks/ci.md`.
+* **Outcome:** Clean separation of concerns, zero unversioned routes, robust contract defense, and deterministic CI runs under 8 minutes.

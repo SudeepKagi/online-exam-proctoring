@@ -124,7 +124,7 @@ jobs:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
           INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
           BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
-          OVERRIDE_REASON: ${{ github.event.inputs.override_reason || 'Automated release deployment' }}
+          OVERRIDE_REASON: ${{ github.event.inputs.override_reason || '' }}
         run: |
           RELEASE_TAG="release-${HEAD_SHA}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"

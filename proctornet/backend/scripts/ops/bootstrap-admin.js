@@ -17,6 +17,8 @@
 require('dotenv').config()
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
+const { assertNonProduction } = require('../../src/infra/postgres/assertNonProduction')
+assertNonProduction('bootstrap-admin.js')
 const { PrismaClient } = require('@prisma/client')
 const config = require('../../src/shared/config')
 

@@ -82,6 +82,15 @@ if [ "$AVAILABLE_MB" -lt 2048 ]; then
 fi
 echo "[✓] Disk space verified: ${AVAILABLE_MB} MB available."
 
+# Check Node.js runtime parity (require Node 22 LTS to match CI)
+NODE_MAJOR=$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || echo "0")
+if [ "$NODE_MAJOR" != "22" ]; then
+    echo "[x] Preflight failed: Node.js runtime mismatch (found Node v$NODE_MAJOR, required Node 22 LTS)."
+    echo "    Upgrade Node.js to v22 LTS before proceeding with release deployment."
+    exit 1
+fi
+echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (LTS parity with CI)."
+
 # Exam-Aware Gate: Refuse deploy if any attempts are ACTIVE unless explicit override is given
 ACTIVE_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/active-attempts.js"
 if [ -L "$CURRENT_LINK" ] && [ -f "$ACTIVE_SCRIPT" ]; then

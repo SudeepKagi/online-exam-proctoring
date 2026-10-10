@@ -11,6 +11,8 @@ try {
     bcrypt = require('bcrypt')
   }
 }
+const { assertNonProduction } = require('../../proctornet/backend/src/infra/postgres/assertNonProduction')
+assertNonProduction('tests/helpers/seed.js')
 const { prisma } = require('../../proctornet/backend/src/infra/postgres/client')
 const { policyService } = require('../../proctornet/backend/src/modules/agent/policyService')
 

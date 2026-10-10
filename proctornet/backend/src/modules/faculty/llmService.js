@@ -227,15 +227,8 @@ class LLMService {
    */
   async generateQuestionsPreview({ topic, count = 5, difficulty = 'MEDIUM', facultyId, providerOverride }) {
     const provider = providerOverride || config.llmProvider || 'none'
-    if (!provider || provider === 'none') {
-      throw new ValidationError(
-        "AI question generation is disabled because LLM_PROVIDER is set to 'none'. " +
-        "Set LLM_PROVIDER and LLM_API_KEY to enable this feature."
-      )
-    }
-
-    if (!config.llmApiKey) {
-      throw new ValidationError('LLM_API_KEY is not set. Cannot generate AI questions.')
+    if (!provider || provider === 'none' || !config.llmApiKey) {
+      throw new ValidationError("Question assistant isn't enabled — ask the administrator.")
     }
 
     const model = config.llmModel || ''

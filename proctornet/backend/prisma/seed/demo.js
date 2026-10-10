@@ -1,4 +1,6 @@
 require('dotenv').config()
+const { assertNonProduction } = require('../../src/infra/postgres/assertNonProduction')
+assertNonProduction('prisma/seed/demo.js')
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
 

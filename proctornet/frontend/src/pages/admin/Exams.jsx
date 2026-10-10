@@ -134,7 +134,14 @@ export default function AdminExams() {
     setCredResetting(true)
     try {
       const res = await api.post(`/admin/exams/${selectedCredentials.examId}/invigilator-credentials/reset`)
-      setSelectedCredentials(res.data)
+      const updatedCreds = res.data?.credentials || res.data
+      setSelectedCredentials({
+        ...selectedCredentials,
+        ...updatedCreds,
+        password: updatedCreds.password || updatedCreds.oneTimePassword,
+        justGenerated: true
+      })
+      setShowPassword(true)
       toast.success('Invigilator access password regenerated successfully!')
     } catch (err) {
       toast.error(extractErrorMessage(err, 'Failed to regenerate credentials.'))
@@ -506,26 +513,42 @@ export default function AdminExams() {
                         <span className="text-[10px] uppercase font-bold text-[#64748b] block">
                           3. Access Password
                         </span>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <p className="text-sm font-mono font-bold text-[#0f172a] tracking-wider">
-                            {showPassword ? selectedCredentials.password : '••••••••'}
-                          </p>
-                          <button
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
-                            title={showPassword ? 'Hide Password' : 'Show Password'}
-                          >
-                            {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                        </div>
+                        {selectedCredentials.justGenerated && selectedCredentials.password ? (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-sm font-mono font-bold text-[#0f172a] tracking-wider">
+                              {showPassword ? selectedCredentials.password : '••••••••'}
+                            </p>
+                            <button
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="text-[#94a3b8] hover:text-[#0f172a] cursor-pointer"
+                              title={showPassword ? 'Hide Password' : 'Show Password'}
+                            >
+                              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                            </button>
+                            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              One-Time Revealed
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-1">
+                            <p className="text-xs font-semibold text-slate-500 italic">
+                              Password hidden for security
+                            </p>
+                            <p className="text-[10px] text-slate-400">
+                              Hashed upon creation. Click 'Reset Password' below to generate a new password and reveal it once.
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      <button
-                        onClick={() => copyToClipboard(selectedCredentials.password, 'Password')}
-                        className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#f8fafc] hover:bg-[#eff6ff] border border-[#e2e8f0] text-[#2563eb] flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
-                      >
-                        {copiedField === 'Password' ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
-                        <span>{copiedField === 'Password' ? 'Copied' : 'Copy'}</span>
-                      </button>
+                      {selectedCredentials.justGenerated && selectedCredentials.password ? (
+                        <button
+                          onClick={() => copyToClipboard(selectedCredentials.password, 'Password')}
+                          className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#f8fafc] hover:bg-[#eff6ff] border border-[#e2e8f0] text-[#2563eb] flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                        >
+                          {copiedField === 'Password' ? <Check size={12} className="text-[#10b981]" /> : <Copy size={12} />}
+                          <span>{copiedField === 'Password' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -533,7 +556,9 @@ export default function AdminExams() {
                   <div className="flex flex-col sm:flex-row items-center gap-2 pt-2">
                     <button
                       onClick={copyAllCredentials}
-                      className="w-full sm:flex-1 py-2 px-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                      disabled={!selectedCredentials.justGenerated || !selectedCredentials.password}
+                      className="w-full sm:flex-1 py-2 px-3.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      title={!selectedCredentials.justGenerated ? 'Reset password first to generate a full credentials package' : ''}
                     >
                       {copiedField === 'all' ? <Check size={14} /> : <Copy size={14} />}
                       <span>{copiedField === 'all' ? 'All Credentials Copied!' : 'Copy Full Credentials Package'}</span>

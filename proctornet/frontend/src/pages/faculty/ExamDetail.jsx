@@ -124,7 +124,11 @@ export default function ExamDetail() {
         api.get(`/faculty/exams/${id}`),
         api.get('/config').catch(() => ({ data: {} }))
       ])
-      setExam(res.data.exam)
+      const examData = res.data?.exam || res.data || {}
+      setExam({
+        ...examData,
+        questions: examData.questions ?? []
+      })
       setLlmEnabled(Boolean(cfgRes.data?.llmEnabled))
       setLoading(false)
     } catch (err) {
@@ -199,7 +203,7 @@ export default function ExamDetail() {
   }
 
   const handlePublish = () => {
-    if (exam.questions.length === 0) {
+    if ((exam?.questions ?? []).length === 0) {
       toast.error('Cannot publish exam with zero questions. Please add questions first.')
       return
     }
@@ -574,10 +578,10 @@ export default function ExamDetail() {
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Icon name="quiz" size={20} style={{ color: 'var(--primary)' }} />
-                    Exam Questions ({exam.questions.length})
+                    Exam Questions ({(exam?.questions ?? []).length})
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {exam.questions.map((q, i) => {
+                    {(exam?.questions ?? []).map((q, i) => {
                       const mcqOptions = getMCQOptions(q);
                       
                       return (
@@ -727,7 +731,7 @@ export default function ExamDetail() {
                         </div>
                       )
                     })}
-                    {exam.questions.length === 0 && (
+                    {(!exam?.questions || exam.questions.length === 0) && (
                       <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--on-surface-variant)', border: '2px dashed var(--outline-variant)', borderRadius: '12px' }}>
                         <Icon name="quiz" size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
                         <p>No questions added yet.</p>

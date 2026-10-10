@@ -93,6 +93,31 @@ resource "aws_iam_policy" "app_scoped_policy" {
           "rekognition:CompareFaces"
         ]
         Resource = "*"
+      },
+      # SSM Parameter Store: Secure production configuration fetch
+      {
+        Sid    = "AllowSSMParameterStoreAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "arn:aws:ssm:*:*:parameter/proctornet/*"
+      },
+      # KMS Decrypt for SSM SecureString parameters
+      {
+        Sid    = "AllowKMSDecryptForSSMParameters"
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:CallerAccount" = "${data.aws_caller_identity.current.account_id}"
+          }
+        }
       }
     ]
   })

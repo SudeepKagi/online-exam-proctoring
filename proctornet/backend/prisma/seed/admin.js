@@ -2,6 +2,8 @@ require('dotenv').config()
 const fs = require('fs')
 const path = require('path')
 const bcrypt = require('bcryptjs')
+const { assertNonProduction } = require('../../src/infra/postgres/assertNonProduction')
+assertNonProduction('prisma/seed/admin.js')
 const { prisma } = require('../../src/infra/postgres/client')
 
 function findLatestAdminBackup() {

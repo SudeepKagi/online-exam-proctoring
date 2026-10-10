@@ -1,5 +1,7 @@
 const path = require('path')
 require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/dotenv')).config({ path: path.resolve(__dirname, '../../../proctornet/backend/.env') })
+const { assertNonProduction } = require('../../../proctornet/backend/src/infra/postgres/assertNonProduction')
+assertNonProduction('tests/e2e/helpers/db.js')
 const { PrismaClient } = require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/@prisma/client'))
 const bcrypt = require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/bcryptjs'))
 

@@ -6,7 +6,7 @@ export const authChannel = typeof window !== 'undefined' && 'BroadcastChannel' i
   : null
 
 const api = axios.create({
-  baseURL: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api',
+  baseURL: (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api/v1',
   timeout: 30000,
   withCredentials: true, // Automatically sends HttpOnly cookies: pn_at, pn_rt
   headers: {
@@ -141,7 +141,9 @@ api.interceptors.response.use(
         if (typeof window !== 'undefined') {
           localStorage.removeItem('proctornet_logged_in')
           localStorage.removeItem('proctornet_role')
+          try { sessionStorage.clear() } catch (_) {}
           authChannel?.postMessage({ type: 'LOGOUT' })
+          window.dispatchEvent(new CustomEvent('pn:session-expired'))
 
           if (!pathname.includes('/login') && !pathname.includes('login')) {
             if (pathname.startsWith('/invigilator')) {

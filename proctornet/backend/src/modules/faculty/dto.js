@@ -34,8 +34,9 @@ function toFacultyExamDTO(e) {
     isPaused: e.isPaused,
     resultsReleased: e.resultsReleased,
     createdAt: e.createdAt,
-    questionCount: e._count?.questions ?? (Array.isArray(e.questions) ? e.questions.length : undefined),
-    attemptCount: e._count?.attempts ?? (Array.isArray(e.attempts) ? e.attempts.length : undefined)
+    questions: Array.isArray(e.questions) ? e.questions.map(toFacultyQuestionDTO) : [],
+    questionCount: e._count?.questions ?? (Array.isArray(e.questions) ? e.questions.length : 0),
+    attemptCount: e._count?.attempts ?? (Array.isArray(e.attempts) ? e.attempts.length : 0)
   }
 }
 

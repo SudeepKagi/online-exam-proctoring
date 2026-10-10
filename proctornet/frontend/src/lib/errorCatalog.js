@@ -14,6 +14,12 @@ export const ERROR_CATALOG = {
   INVALID_CREDENTIALS: 'The username or password entered is incorrect.',
   ACCOUNT_LOCKED: 'Account temporarily locked. Please contact your examination administrator.',
   ACCOUNT_PENDING_APPROVAL: 'Your candidate profile is currently awaiting administrator review.',
+  PROFILE_LOCKED: 'Your candidate profile is locked. Please contact administration for assistance.',
+  RE_ENROLLMENT_REQUIRED: 'Candidate biometric profile is already verified. Changes require staff authorization.',
+  CONSENT_REQUIRED: 'You must provide consent for identity verification before proceeding.',
+  UPLOAD_REJECTED: 'Photo upload could not be verified. Please ensure proper lighting, face angle, and retry.',
+  INVALID_UPLOAD_KEY: 'Upload authorization expired. Please capture a new photo and retry.',
+  CSRF_ERROR: 'Security validation check failed. Please refresh your browser and sign in again.',
 
   // Exam Access & Session Lifecycle
   EXAM_NOT_FOUND: 'The requested examination could not be found.',

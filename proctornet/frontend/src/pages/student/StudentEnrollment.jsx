@@ -79,6 +79,43 @@ export default function StudentEnrollment() {
     }
   }
 
+  // Helper to convert data URL to Blob
+  const dataURLtoBlob = (dataurl) => {
+    const arr = dataurl.split(',')
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg'
+    const bstr = atob(arr[1])
+    let n = bstr.length
+    const u8arr = new Uint8Array(n)
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n)
+    }
+    return new Blob([u8arr], { type: mime })
+  }
+
+  // Real S3 / MinIO upload helper using presigned ticket
+  const uploadToStorage = async (presignRes, blob, contentType) => {
+    const { putUrl, postUrl, fields, key } = presignRes.data
+    if (putUrl) {
+      const upRes = await fetch(putUrl, {
+        method: 'PUT',
+        body: blob,
+        headers: { 'Content-Type': contentType }
+      })
+      if (!upRes.ok) throw new Error(`Storage upload failed (${upRes.status})`)
+    } else if (postUrl) {
+      const fd = new FormData()
+      if (fields) {
+        Object.entries(fields).forEach(([k, v]) => fd.append(k, v))
+      }
+      fd.append('file', blob)
+      const upRes = await fetch(postUrl, { method: 'POST', body: fd })
+      if (!upRes.ok) throw new Error(`Storage upload failed (${upRes.status})`)
+    } else {
+      throw new Error('No upload URL returned by storage service')
+    }
+    return key
+  }
+
   const handleCaptureSelfie = () => {
     if (!videoRef.current) return
     const canvas = document.createElement('canvas')
@@ -86,9 +123,38 @@ export default function StudentEnrollment() {
     canvas.height = videoRef.current.videoHeight || 480
     const ctx = canvas.getContext('2d')
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height)
+
+    // Quality check: analyze frame luminance
+    try {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      const data = imgData.data
+      let totalLuminance = 0
+      const step = 4 * 10
+      let samples = 0
+      for (let i = 0; i < data.length; i += step) {
+        const r = data[i]
+        const g = data[i + 1]
+        const b = data[i + 2]
+        totalLuminance += (0.299 * r + 0.587 * g + 0.114 * b)
+        samples++
+      }
+      const avgLuminance = totalLuminance / (samples || 1)
+
+      if (avgLuminance < 35) {
+        toast.error('Lighting is too dark. Please ensure face is well-lit before capturing.')
+        return
+      }
+      if (avgLuminance > 240) {
+        toast.error('Lighting is too bright or washed out. Please adjust lighting and retry.')
+        return
+      }
+    } catch (_) {
+      // In case canvas reading is restricted
+    }
+
     const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
     setCapturedSelfie(dataUrl)
-    setLivenessStatus('Anti-spoofing liveness check passed.')
+    setLivenessStatus('Live camera check passed.')
   }
 
   const handleRetakeSelfie = () => {
@@ -123,11 +189,29 @@ export default function StudentEnrollment() {
 
     setIsSubmitting(true)
     try {
-      await api.post('/student/enrollment/face', { facePhotoKey: capturedSelfie, image: capturedSelfie })
+      const blob = dataURLtoBlob(capturedSelfie)
+
+      // Step 1: Request presigned upload ticket
+      const presignRes = await api.post('/media/presign-upload', {
+        purpose: 'FACE_ENROLLMENT',
+        contentType: 'image/jpeg',
+        bytes: blob.size
+      })
+
+      // Step 2: Direct browser upload to S3 / MinIO storage
+      const storageKey = await uploadToStorage(presignRes, blob, 'image/jpeg')
+
+      // Step 3: Complete biometric enrollment with validated key
+      await api.post('/student/enrollment/face', { facePhotoKey: storageKey })
       toast.success('Live face enrolled successfully.')
       stopCamera()
       setStep(3)
     } catch (err) {
+      if (err.response?.status === 401) {
+        toast.error('Your session has expired. Redirecting to login...')
+        navigate('/student/login')
+        return
+      }
       toast.error(extractErrorMessage(err, 'Face enrollment failed. Please retry.'))
     } finally {
       setIsSubmitting(false)
@@ -154,12 +238,30 @@ export default function StudentEnrollment() {
 
     setIsSubmitting(true)
     try {
-      const res = await api.post('/student/enrollment/id', { idCardPhotoKey: idImage, idCardImage: idImage })
+      const blob = dataURLtoBlob(idImage)
+
+      // Step 1: Request presigned upload ticket
+      const presignRes = await api.post('/media/presign-upload', {
+        purpose: 'ID_ENROLLMENT',
+        contentType: 'image/jpeg',
+        bytes: blob.size
+      })
+
+      // Step 2: Direct browser upload to S3 / MinIO storage
+      const storageKey = await uploadToStorage(presignRes, blob, 'image/jpeg')
+
+      // Step 3: Complete ID enrollment with validated key
+      const res = await api.post('/student/enrollment/id', { idCardPhotoKey: storageKey })
       setOcrResult(res.data?.ocrData)
       toast.success('ID document parsed and profile submitted!')
       await refreshUser()
       setStep(4)
     } catch (err) {
+      if (err.response?.status === 401) {
+        toast.error('Your session has expired. Redirecting to login...')
+        navigate('/student/login')
+        return
+      }
       toast.error(extractErrorMessage(err, 'ID document submission failed.'))
     } finally {
       setIsSubmitting(false)
@@ -181,7 +283,7 @@ export default function StudentEnrollment() {
             </p>
           </div>
           <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
-            FaceVerifier Engine Active
+            Candidate Verification Active
           </Badge>
         </div>
 

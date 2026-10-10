@@ -20,9 +20,12 @@ venv/
 
 # Environment variables
 .env
+.env*
 *.env
 !.env.example
 !**/.env.example
+!ci/ci.env
+reports/secrets*
 
 # Antigravity / Agents
 .agents/

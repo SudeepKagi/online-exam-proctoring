@@ -204,7 +204,15 @@ router.get('/exams/:id/invigilator-credentials', async (req, res, next) => {
     res.status(200).json({
       success: true,
       examId: exam.id,
-      invId: exam.invId
+      invId: exam.invId,
+      title: exam.title,
+      subject: exam.subject,
+      facultyName: exam.faculty?.name || 'Assigned Faculty',
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      duration: exam.duration,
+      status: exam.status,
+      passwordMasked: true
     })
   } catch (err) {
     next(err)
@@ -213,8 +221,36 @@ router.get('/exams/:id/invigilator-credentials', async (req, res, next) => {
 
 router.post(['/exams/:id/invigilator-credentials/regenerate', '/exams/:id/invigilator-credentials/reset'], async (req, res, next) => {
   try {
+    const exam = await adminService.getExam(req.params.id)
     const credentials = await adminService.resetExamInvigilatorCredentials(req.params.id, req.user)
-    res.status(200).json({ success: true, credentials })
+    const plainPw = credentials.oneTimePassword || credentials.invPassword || credentials.password
+    res.status(200).json({
+      success: true,
+      credentials: {
+        ...credentials,
+        title: exam.title,
+        subject: exam.subject,
+        facultyName: exam.faculty?.name || 'Assigned Faculty',
+        startTime: exam.startTime,
+        endTime: exam.endTime,
+        duration: exam.duration,
+        status: exam.status,
+        password: plainPw,
+        justGenerated: true
+      },
+      examId: exam.id,
+      invId: credentials.invId,
+      title: exam.title,
+      subject: exam.subject,
+      facultyName: exam.faculty?.name || 'Assigned Faculty',
+      startTime: exam.startTime,
+      endTime: exam.endTime,
+      duration: exam.duration,
+      status: exam.status,
+      password: plainPw,
+      oneTimePassword: plainPw,
+      justGenerated: true
+    })
   } catch (err) {
     next(err)
   }

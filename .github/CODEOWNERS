@@ -1,0 +1,7 @@
+# CODEOWNERS for ProctorNet Repository
+# Human review is required on all infrastructure, CI/CD, operational scripts, and security governance paths.
+
+.github/**          @SudeepKagi
+ops/**              @SudeepKagi
+scripts/ops/**      @SudeepKagi
+docs/security/**    @SudeepKagi

@@ -220,7 +220,7 @@ export default function QuestionPool() {
           <Card className="bg-primary/5 border-primary/20 p-5 rounded-2xl">
             {!llmEnabled && (
               <div className="mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700 dark:text-amber-400 space-y-0.5">
-                <span className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Automated Generation Configuration Required</span>
+                <span className="font-bold flex items-center gap-1.5"><Sparkles size={13} /> Question assistant isn't enabled — ask the administrator</span>
                 <p className="text-[11px] opacity-90">To activate automated question generation, configure server generation credentials.</p>
               </div>
             )}
@@ -278,9 +278,10 @@ export default function QuestionPool() {
                   onClick={handleGenerateAI}
                   disabled={!llmEnabled || aiGenerating}
                   className="w-full text-xs font-bold"
+                  title={!llmEnabled ? "Question assistant isn't enabled — ask the administrator" : ''}
                 >
                   {aiGenerating ? <Loader2 size={14} className="animate-spin mr-1.5" /> : <Sparkles size={14} className="mr-1.5" />}
-                  {!llmEnabled ? 'Configure LLM Key' : aiGenerating ? 'Generating Questions…' : `Generate ${aiCount} Questions`}
+                  {!llmEnabled ? "Question assistant isn't enabled — ask the administrator" : aiGenerating ? 'Generating Questions…' : `Generate ${aiCount} Questions`}
                 </Button>
               </div>
             </div>

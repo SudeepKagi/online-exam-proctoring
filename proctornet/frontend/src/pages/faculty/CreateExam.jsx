@@ -114,7 +114,7 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Sparkles size={16} className="text-amber-600 mt-0.5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-bold text-amber-900">Automated Generation Configuration Required</p>
+            <p className="font-bold text-amber-900">Question assistant isn't enabled — ask the administrator</p>
             <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
               Automated question generation requires an active provider key configured on the server.
             </p>
@@ -184,11 +184,11 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         <button
           onClick={handleGenerate}
           disabled={!llmEnabled || generating || extractedText.trim().length < 50}
-          title={!llmEnabled ? 'Configure LLM_PROVIDER in server environment to enable generation' : ''}
+          title={!llmEnabled ? "Question assistant isn't enabled — ask the administrator" : ''}
           className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {!llmEnabled ? 'Configure LLM API Key to Enable Generation' : generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
+          {!llmEnabled ? "Question assistant isn't enabled — ask the administrator" : generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
         </button>
       )}
     </div>

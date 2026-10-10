@@ -1,0 +1,21 @@
+name: 'Setup ProctorNet Workspace'
+description: 'Standardized composite setup: Node 22 from .nvmrc, npm ci caching, and Prisma generation'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        npm ci --prefer-offline --no-audit
+
+    - name: Generate Prisma Client
+      shell: bash
+      run: |
+        npx prisma generate --schema=proctornet/backend/prisma/schema.prisma

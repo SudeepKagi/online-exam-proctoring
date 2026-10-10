@@ -46,7 +46,8 @@ apt-get install -y --no-install-recommends \
 dpkg-reconfigure -plow unattended-upgrades
 
 echo "=== [4/8] Installing Node.js LTS (v22.x) ==="
-if ! command -v node &> /dev/null; then
+NODE_MAJOR=$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || echo "0")
+if [ "$NODE_MAJOR" != "22" ]; then
     curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y nodejs
 fi

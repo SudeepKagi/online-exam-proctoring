@@ -48,6 +48,14 @@ if (process.env.ALLOWED_ORIGINS) {
     }
   })
 }
+if (process.env.PUBLIC_ORIGIN) {
+  process.env.PUBLIC_ORIGIN.split(',').forEach((u) => {
+    const trimmed = u.trim()
+    if (trimmed && !allowedOrigins.includes(trimmed)) {
+      allowedOrigins.push(trimmed)
+    }
+  })
+}
 if (process.env.FRONTEND_URL) {
   process.env.FRONTEND_URL.split(',').forEach((u) => {
     const trimmed = u.trim()
@@ -86,6 +94,37 @@ proctoringService.setIO(io)
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
 
+// Dynamic CSP origins derived strictly from configuration
+const derivedWsOrigins = allowedOrigins
+  .map((orig) => {
+    try {
+      const u = new URL(orig)
+      return (u.protocol === 'https:' ? 'wss://' : 'ws://') + u.host
+    } catch {
+      return null
+    }
+  })
+  .filter(Boolean)
+
+const dynamicImgSrc = [
+  "'self'",
+  'data:',
+  'blob:',
+  ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000'])
+]
+if (process.env.S3_ENDPOINT) {
+  dynamicImgSrc.push(process.env.S3_ENDPOINT)
+}
+
+const dynamicConnectSrc = [
+  "'self'",
+  ...derivedWsOrigins,
+  ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000', 'ws://localhost:5000', 'ws://127.0.0.1:5000'])
+]
+if (process.env.S3_ENDPOINT) {
+  dynamicConnectSrc.push(process.env.S3_ENDPOINT)
+}
+
 // ── Middleware ──
 app.use(helmet({
   crossOriginEmbedderPolicy: false,
@@ -94,14 +133,9 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'blob:', 'https://*.amazonaws.com', ...(isProd ? [] : ['http://localhost:9000', 'http://127.0.0.1:9000'])],
+      imgSrc: dynamicImgSrc,
       mediaSrc: ["'self'", 'blob:'],
-      connectSrc: [
-        "'self'",
-        'wss://proctornet.duckdns.org',
-        'wss://43.204.45.86.sslip.io',
-        ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000', 'ws://localhost:5000', 'ws://127.0.0.1:5000'])
-      ],
+      connectSrc: dynamicConnectSrc,
       fontSrc: ["'self'", 'data:'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
@@ -354,14 +388,6 @@ const { redisClient } = require('./infra/redis/client')
 const { rabbitmq } = require('./infra/rabbitmq/client')
 
 app.use(loadShed)
-
-// Canonical URL rewrite: seamless /api/* -> /api/v1/* compatibility (EDGE-03)
-app.use((req, res, next) => {
-  if (req.url.startsWith('/api/') && !req.url.startsWith('/api/v1/')) {
-    req.url = req.url.replace('/api/', '/api/v1/')
-  }
-  next()
-})
 
 app.use('/api/v1', v1Router)
 
