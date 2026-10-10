@@ -64,6 +64,7 @@ export default defineConfig({
         QUEUE_DRIVER: 'postgres',
         START_WORKERS: 'true',
         FACE_DRIVER: 'test',
+        FACE_VERIFIER_DRIVER: 'test',
         NODE_ENV: 'production',
         COOKIE_SECURE: 'false',
         E2E_PROFILE: 'prod-parity',

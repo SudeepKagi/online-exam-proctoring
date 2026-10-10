@@ -27,7 +27,7 @@ test.describe('J10: Exam Lifecycle, Scheduler, and Results Certification (ยงP9 ย
       await admin.page.waitForURL(url => url.pathname.includes('/admin/dashboard'), { timeout: 15000 })
 
       // Create Faculty
-      const facRes = await api.for(admin).postRaw('/api/v1/admin/faculties', {
+      const facRes = await api.for(admin).postRaw('/api/v1/admin/faculty', {
         name: 'Dr. Lifecycle Faculty',
         email: facultyCreds.email,
         employeeId: facultyCreds.employeeId,

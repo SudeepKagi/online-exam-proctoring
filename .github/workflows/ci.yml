@@ -510,6 +510,7 @@ jobs:
           QUEUE_DRIVER: postgres
           CACHE_DRIVER: memory
           FACE_DRIVER: test
+          FACE_VERIFIER_DRIVER: test
           NODE_ENV: production
           COOKIE_SECURE: "false"
           AGENT_PAIRING_PEPPER: dummy_ci_pepper_test_secret_at_least_32_chars_123

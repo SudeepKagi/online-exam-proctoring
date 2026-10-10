@@ -26,7 +26,7 @@ test.describe('J11: Real-Time Timeout, Expiry, Clock Skew, and Expiry Grace (@sl
       await admin.humanize.clickHuman(admin.page, admin.page.locator('button[type="submit"]'))
       await admin.page.waitForURL(url => url.pathname.includes('/admin/dashboard'), { timeout: 15000 })
 
-      await api.for(admin).postRaw('/api/v1/admin/faculties', {
+      await api.for(admin).postRaw('/api/v1/admin/faculty', {
         name: 'Dr. Clock Faculty',
         email: facultyCreds.email,
         employeeId: facultyCreds.employeeId,
