@@ -400,15 +400,22 @@ jobs:
           npm ci
           cd proctornet && npm ci
 
-      - name: Run Prisma Migrations
+      - name: Run Prisma Migrations & Seed Baseline
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-        run: npx prisma migrate deploy
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          ADMIN_EMAIL: admin@proctornet.com
+          ADMIN_PASSWORD: Admin@12345
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          node prisma/seed/admin.js
 
       - name: Execute Boot Smoke Suite
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: super_secure_ci_test_jwt_secret_key_32_chars_minimum
           S3_BUCKET: proctornet-ci-bucket
@@ -482,15 +489,22 @@ jobs:
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
-      - name: Run Prisma Migrations
+      - name: Run Prisma Migrations & Seed Baseline
         working-directory: proctornet/backend
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
-        run: npx prisma migrate deploy
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          ADMIN_EMAIL: admin@proctornet.com
+          ADMIN_PASSWORD: Admin@12345
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+          node prisma/seed/admin.js
 
       - name: Run Deterministic Journeys Suite (xvfb-run)
         env:
           DATABASE_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:password@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: super_secure_ci_test_jwt_secret_key_32_chars_minimum
           S3_BUCKET: proctornet-ci-bucket
