@@ -98,6 +98,12 @@ class AttemptService {
       const activated = await attemptRepository.activateReadyAttempt(examId, studentId)
       if (activated) {
         attempt = activated
+      } else {
+        // Concurrently activated by another caller: reload current active attempt
+        const currentAttempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+        if (currentAttempt) {
+          attempt = currentAttempt
+        }
       }
     }
 
