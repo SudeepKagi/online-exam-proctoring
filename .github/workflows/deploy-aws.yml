@@ -92,13 +92,8 @@ jobs:
             cd backend && npx prisma generate
             cd ../..
 
-            cat <<EOF > VERSION
-            {
-              "version": "${RELEASE_TAG}",
-              "gitSha": "${HEAD_SHA}",
-              "builtAt": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            }
-            EOF
+            printf '{\n  "version": "%s",\n  "gitSha": "%s",\n  "builtAt": "%s"\n}\n' \
+              "${RELEASE_TAG}" "${HEAD_SHA}" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > VERSION
 
             tar -czf "${TAR_FILE}" \
               proctornet/backend \
