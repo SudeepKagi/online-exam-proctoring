@@ -96,16 +96,25 @@ class AttemptService {
       throw new ForbiddenError('Device companion check required: An active healthy agent session with no blocking findings (or a staff waiver) is required to start this exam.')
     }
 
-    const isExpired = Boolean(attempt.expiresAt && new Date() > new Date(attempt.expiresAt))
+    // Submit grace window (defaults to 10s or SUBMIT_GRACE_SECONDS)
+    const submitGraceSeconds = parseInt(process.env.SUBMIT_GRACE_SECONDS || '10', 10)
+    const expiresAtWithGrace = attempt.expiresAt ? new Date(new Date(attempt.expiresAt).getTime() + submitGraceSeconds * 1000) : null
+    const isExpired = Boolean(expiresAtWithGrace && new Date() > expiresAtWithGrace)
+
     if (attemptStateMachine.isTerminal(attempt.status) || attempt.status === 'SUSPENDED' || attempt.status === 'READY' || isExpired) {
       if (isExpired && attempt.status === 'ACTIVE') {
-        attempt.status = 'EXPIRED'
-        await prisma.examAttempt.update({
-          where: { id: attempt.id },
-          data: { status: 'EXPIRED' }
-        }).catch((err) => {
-          logger.warn({ error: err.message, attemptId: attempt.id }, 'Failed to mark expired status')
-        })
+        try {
+          const transitioned = await attemptStateMachine.transition(attempt.id, 'EXPIRED', {
+            actorRole: 'system',
+            reason: 'Time expired on resume past grace period'
+          })
+          if (transitioned) {
+            attempt.status = 'EXPIRED'
+          }
+        } catch (err) {
+          logger.warn({ error: err.message, attemptId: attempt.id }, 'Failed to transition expired attempt via state machine')
+          attempt.status = 'EXPIRED'
+        }
       }
       return {
         isTerminal: attemptStateMachine.isTerminal(attempt.status) || isExpired,

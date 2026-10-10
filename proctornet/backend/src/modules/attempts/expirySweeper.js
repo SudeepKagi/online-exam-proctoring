@@ -86,8 +86,45 @@ class ExpirySweeper {
         }, { maxWait: 2000, timeout: 5000 })
       }
 
+      // 4. Reconciler (§P9 F2): any attempt in SUBMITTED|EXPIRED|TERMINATED with no result older than 60s -> enqueue evaluation
+      const unevaluatedAttempts = await prisma.$queryRawUnsafe(`
+        SELECT ea.id, ea.exam_id, ea.student_id, ea.status
+        FROM exam_attempts ea
+        WHERE ea.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
+          AND ea.updated_at < (now() - interval '60 seconds')
+          AND NOT EXISTS (
+            SELECT 1 FROM exam_results er WHERE er.attempt_id = ea.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM outbox_events oe 
+            WHERE oe.status = 'PENDING' 
+              AND (oe.payload->>'attemptId') = ea.id::text
+          )
+        LIMIT 50;
+      `)
+
+      if (unevaluatedAttempts && unevaluatedAttempts.length > 0) {
+        logger.warn({ count: unevaluatedAttempts.length }, 'ExpirySweeper reconciler identified unevaluated terminal attempts')
+        await prisma.$transaction(async (tx) => {
+          for (const att of unevaluatedAttempts) {
+            const eventType = `attempt.${att.status.toLowerCase()}`
+            await tx.$executeRawUnsafe(`
+              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              VALUES ($1, $2::jsonb, 'PENDING', now());
+            `, eventType, JSON.stringify({
+              attemptId: att.id,
+              examId: att.exam_id,
+              studentId: att.student_id,
+              status: att.status,
+              reason: 'Reconciler auto-enqueued evaluation'
+            }))
+          }
+        }, { maxWait: 2000, timeout: 5000 })
+      }
+
       return {
         expiredCount: expiredAttempts ? expiredAttempts.length : 0,
+        reconciledCount: unevaluatedAttempts ? unevaluatedAttempts.length : 0,
         isLeader: true
       }
     } finally {
