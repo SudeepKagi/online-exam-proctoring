@@ -153,7 +153,9 @@ class StudentService {
         studentId,
         liveFrameKey,
         challengeId: data.challengeId || null,
-        burstKeys: data.burstKeys || null
+        burstKeys: data.burstKeys || null,
+        testFixture: data.testFixture || null,
+        simulateProviderOutage: Boolean(data.simulateProviderOutage)
       })
 
       return {

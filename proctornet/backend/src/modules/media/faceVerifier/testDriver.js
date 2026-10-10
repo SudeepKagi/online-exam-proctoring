@@ -44,10 +44,22 @@ class TestVerifierDriver {
     if (typeof this._compareHandler === 'function') {
       return this._compareHandler(srcRef, tgtRef)
     }
-    // Default safe zero similarity
+    if (tgtRef && (tgtRef.includes('outage') || srcRef?.includes('outage'))) {
+      throw new Error('Simulated biometric provider outage')
+    }
+    if (tgtRef && (tgtRef.includes('impostor') || srcRef?.includes('impostor'))) {
+      return {
+        similarity: 42.0,
+        faceConfidence: 99.0,
+        requestId: 'test-compare-impostor-req',
+        provider: this.providerName,
+        modelVersion: this.modelVersion
+      }
+    }
+    // Default valid matching face for test driver
     return {
-      similarity: 0.0,
-      faceConfidence: 99.0,
+      similarity: 98.0,
+      faceConfidence: 99.5,
       requestId: 'test-compare-req',
       provider: this.providerName,
       modelVersion: this.modelVersion

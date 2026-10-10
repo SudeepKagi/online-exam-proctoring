@@ -54,7 +54,6 @@ test.describe('J10: Exam Lifecycle, Scheduler, and Results Certification (ยงP9 ย
         startTime,
         endTime,
         totalMarks: 40,
-        passingMarks: 16,
         allowedDepartments: ['CSE'],
         allowedSemesters: [6]
       })

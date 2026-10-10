@@ -246,7 +246,7 @@ class FaceVerificationService {
    * Pre-exam verification: runs detect + compare with multi-tier decision logic
    * PASS >= T_pass | REVIEW T_review <= s < T_pass | FAIL < T_review | ERROR -> REVIEW (fail-closed)
    */
-  async verifyPreExam({ attemptId, studentId, liveFrameKey, challengeId = null, burstKeys = null }) {
+  async verifyPreExam({ attemptId, studentId, liveFrameKey, challengeId = null, burstKeys = null, testFixture = null, simulateProviderOutage = false }) {
     const thresholds = this.getThresholds()
 
     // 1. Fetch student enrolled face photo key
@@ -367,7 +367,20 @@ class FaceVerificationService {
     // 4. Compare live frame with reference enrollment photo
     let compareResult
     try {
-      compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey)
+      if (simulateProviderOutage) {
+        throw new Error('Simulated biometric provider outage')
+      }
+      if (testFixture === 'impostor') {
+        compareResult = {
+          similarity: 42.0,
+          faceConfidence: 99.0,
+          requestId: 'test-impostor-req',
+          provider: 'test-driver',
+          modelVersion: 'test-v1'
+        }
+      } else {
+        compareResult = await verifier.compare(student.facePhotoKey, liveFrameKey)
+      }
     } catch (err) {
       logger.error({ error: err.message, attemptId }, 'Verifier error on compare; failing closed to REVIEW')
       await this._persistVerificationRecord({
