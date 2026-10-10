@@ -264,6 +264,36 @@ class FaceVerificationService {
       }
     }
 
+    // Check retry cap: if candidate has reached maximum retries, fail-closed to REVIEW (J4)
+    const MAX_VERIFY_RETRIES = parseInt(process.env.MAX_IDENTITY_RETRIES || '3', 10)
+    if (attemptId) {
+      const priorAttempts = await prisma.identityVerification.count({
+        where: { attemptId, kind: 'PRE_EXAM' }
+      })
+      if (priorAttempts >= MAX_VERIFY_RETRIES) {
+        await this._persistVerificationRecord({
+          attemptId,
+          kind: 'PRE_EXAM',
+          provider: 'policy',
+          requestId: null,
+          similarity: 0.0,
+          decision: DECISIONS.REVIEW,
+          thresholdsUsed: thresholds,
+          modelVersion: 'none',
+          evidenceKeys: [liveFrameKey].filter(Boolean),
+          errorCode: 'RETRY_CAP_EXCEEDED'
+        })
+
+        return {
+          decision: DECISIONS.REVIEW,
+          verified: false,
+          pendingReview: true,
+          message: 'Maximum identity verification attempts exceeded. Waiting for invigilator verification.',
+          errorCode: 'RETRY_CAP_EXCEEDED'
+        }
+      }
+    }
+
     // 2. Optional liveness check verification
     if (challengeId && burstKeys) {
       const livenessResult = await this.verifyLiveness(challengeId, burstKeys)

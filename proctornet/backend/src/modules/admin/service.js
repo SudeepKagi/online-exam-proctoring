@@ -356,15 +356,23 @@ class AdminService {
 
   // ── Bulk Upload ──
   async parseBulkBuffer(buffer, _fileType = 'excel') {
-    const MAX_EXCEL_BYTES = 5 * 1024 * 1024
-    if (!buffer || buffer.length > MAX_EXCEL_BYTES) {
-      throw new ValidationError('Excel file exceeds maximum allowed size of 5 MB')
+    const MAX_FILE_BYTES = 5 * 1024 * 1024
+    if (!buffer || buffer.length > MAX_FILE_BYTES) {
+      throw new ValidationError('Upload exceeds maximum allowed size of 5 MB')
     }
     const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer)
+    const isZip = buffer.length > 4 && buffer[0] === 0x50 && buffer[1] === 0x4B // PK..
+    if (isZip) {
+      await workbook.xlsx.load(buffer)
+    } else {
+      const { Readable } = require('stream')
+      const stream = Readable.from(buffer.toString('utf-8'))
+      await workbook.csv.read(stream)
+    }
+
     const worksheet = workbook.worksheets[0]
     if (!worksheet) {
-      throw new ValidationError('Excel file contains no worksheets')
+      throw new ValidationError('File contains no worksheets or data')
     }
     const rows = []
     const headers = []
@@ -378,7 +386,14 @@ class AdminService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber]
           if (header) {
-            rowData[header] = cell.text ?? cell.value
+            let val = cell.text ?? cell.value
+            if (cell.value && typeof cell.value === 'object' && cell.value.result !== undefined) {
+              val = cell.value.result
+            }
+            if (typeof val === 'string') {
+              val = val.trim()
+            }
+            rowData[header] = val
           }
         })
         if (Object.keys(rowData).length > 0) {

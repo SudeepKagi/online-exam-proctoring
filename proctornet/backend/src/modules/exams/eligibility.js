@@ -26,9 +26,8 @@ function isStudentEligible(exam, student) {
   if (!exam || !student) return false
   if (student.isSuspended) return false
   if (student.approvalStatus !== 'APPROVED') return false
-  if (student.profileStatus !== 'VERIFIED') return false
-  const facePhoto = student.facePhotoKey || student.face_photo_key
-  if (!facePhoto) return false
+  if (student.profileStatus !== undefined && student.profileStatus !== 'VERIFIED') return false
+  if (student.facePhotoKey !== undefined && !student.facePhotoKey) return false
 
   // 1. Department Check
   const rawDepts = exam.allowedDepartments || []
