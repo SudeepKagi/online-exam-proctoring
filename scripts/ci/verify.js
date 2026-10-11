@@ -39,6 +39,10 @@ function runStep(name, command, args, cwd = REPO_ROOT) {
 async function main() {
   console.log('🔍 Starting ProctorNet Verification Pipeline...')
 
+  // Ensure default offline/dummy database URLs exist for Prisma schema validation
+  process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public'
+  process.env.DIRECT_URL = process.env.DIRECT_URL || process.env.DATABASE_URL
+
   // 1. Prisma Validate
   runStep(
     'Prisma Validate',
@@ -46,8 +50,8 @@ async function main() {
     ['prisma', 'validate', '--schema=proctornet/backend/prisma/schema.prisma']
   )
 
-  // 2. Prisma Migration Drift Diff (when DB container / shadow URL is available)
-  const shadowUrl = process.env.SHADOW_DATABASE_URL || process.env.DATABASE_URL
+  // 2. Prisma Migration Drift Diff (when shadow DB URL is explicitly provided)
+  const shadowUrl = process.env.SHADOW_DATABASE_URL
   if (shadowUrl && !shadowUrl.includes('dummy')) {
     try {
       runStep(

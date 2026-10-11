@@ -34,10 +34,13 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Run Hermetic Verification Suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
         run: npm run verify
 
   # ----------------------------------------------------------------------------
-  # 2. Integration: PostgreSQL + MinIO (Lite Profile Parity) & Boot Smoke
+  # 2. Integration: PostgreSQL + Redis & Boot Smoke
   # ----------------------------------------------------------------------------
   integration:
     name: Integration & Boot Smoke
@@ -57,16 +60,12 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
+      redis:
+        image: redis:7-alpine
         ports:
-          - 9000:9000
+          - 6379:6379
         options: >-
-          server /data --console-address ":9001"
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -78,14 +77,10 @@ jobs:
       - name: Setup Workspace
         uses: ./.github/actions/setup
 
-      - name: Provision MinIO Bucket
-        run: |
-          docker run --network host --rm minio/mc:latest \
-            /bin/sh -c "/usr/bin/mc alias set local http://localhost:9000 minioadmin minioadmin && /usr/bin/mc mb --ignore-existing local/proctornet-storage-test"
-
       - name: Apply Migrations & Seed Baseline Admin
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate deploy --schema=proctornet/backend/prisma/schema.prisma
           node proctornet/backend/prisma/seed/admin.js
@@ -100,13 +95,12 @@ jobs:
           FACE_DRIVER: mock
           START_WORKERS: false
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_ENDPOINT: http://localhost:9000
-          S3_BUCKET_NAME: proctornet-storage-test
-          S3_FORCE_PATH_STYLE: "true"
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
+          REFRESH_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
+          S3_MOCK: "true"
+          S3_BUCKET: proctornet-ci-test-bucket
         run: |
           node scripts/ci/run-tests.js --profile lite
 
@@ -116,9 +110,11 @@ jobs:
           APP_PROFILE: lite
           PORT: 5000
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_ENDPOINT: http://localhost:9000
-          S3_BUCKET_NAME: proctornet-storage-test
+          S3_MOCK: "true"
+          S3_BUCKET: proctornet-ci-test-bucket
         run: |
           node scripts/ci/boot-smoke.js
 
@@ -144,16 +140,12 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
+      redis:
+        image: redis:7-alpine
         ports:
-          - 9000:9000
+          - 6379:6379
         options: >-
-          server /data --console-address ":9001"
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-cmd "redis-cli ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -165,16 +157,13 @@ jobs:
       - name: Setup Workspace
         uses: ./.github/actions/setup
 
-      - name: Provision MinIO Bucket
-        run: |
-          docker run --network host --rm minio/mc:latest \
-            /bin/sh -c "/usr/bin/mc alias set local http://localhost:9000 minioadmin minioadmin && /usr/bin/mc mb --ignore-existing local/proctornet-storage-test"
-
-      - name: Apply Migrations
+      - name: Apply Migrations & Seed Baseline Admin
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
         run: |
           npx prisma migrate deploy --schema=proctornet/backend/prisma/schema.prisma
+          node proctornet/backend/prisma/seed/admin.js
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
@@ -183,14 +172,30 @@ jobs:
         env:
           CI: "true"
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_ENDPOINT: http://localhost:9000
-          S3_BUCKET_NAME: proctornet-storage-test
-          S3_FORCE_PATH_STYLE: "true"
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
-        run: npx playwright test
+          S3_MOCK: "true"
+          S3_BUCKET: proctornet-ci-test-bucket
+          FACE_DRIVER: test
+          FACE_VERIFIER_DRIVER: test
+          COOKIE_SECURE: "false"
+        run: |
+          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test \
+            e2e/journeys/j1-onboarding.spec.ts \
+            e2e/journeys/j3-student-happy-path.spec.ts \
+            e2e/journeys/j4-identity-paths.spec.ts \
+            e2e/journeys/j6-security-negative.spec.ts \
+            e2e/journeys/j10-lifecycle-results.spec.ts \
+            --project=chromium
+
+      - name: Upload E2E HTML Report & Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: reports/e2e/
+          retention-days: 7
 
   # ----------------------------------------------------------------------------
   # 4. CI Gate: Blocking gate for PR merges
