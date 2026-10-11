@@ -23,8 +23,8 @@ const PAGE_SIZE = 12
 export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
-  const effectiveExamId = examId || user?.examId || 'active'
+  const isUuid = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  const effectiveExamId = (isUuid(examId) && examId) || (isUuid(user?.examId) && user.examId) || null
 
   const handleLogout = () => {
     logout?.()
@@ -167,6 +167,10 @@ export default function InvigilatorLiveGrid() {
 
   // ── Fetch Roster, Summary, and Violations from V1 API (R2) ──
   const fetchGridData = async (isInitial = false) => {
+    if (!effectiveExamId) {
+      if (isInitial) setLoading(false)
+      return
+    }
     if (isInitial) {
       setLoading(true)
       setErrorState(null)
@@ -363,6 +367,7 @@ export default function InvigilatorLiveGrid() {
     let isMounted = true
 
     async function initLiveKitViewer() {
+      if (mediaDriver !== 'livekit' || !effectiveExamId) return
       try {
         const tokenRes = await api.post('/proctoring/token', {
           examId: effectiveExamId

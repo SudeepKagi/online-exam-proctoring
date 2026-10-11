@@ -21,49 +21,63 @@ class RekognitionDriver {
     }
 
     this.client = new RekognitionClient(clientConfig)
+    const { S3Client } = require('@aws-sdk/client-s3')
+    this.s3Client = options.s3Client || new S3Client(clientConfig)
     this.providerName = 'rekognition'
     this.modelVersion = 'aws-rekognition-v1'
   }
 
   /**
    * Resolve imageRef into AWS Rekognition Image parameter
-   * Prioritizes S3Object references directly to avoid transiting bytes through the EC2 app tier
+   * Automatically converts WebP to JPEG via sharp because AWS Rekognition only accepts JPEG/PNG
    */
-  _resolveImageParam(imageRef) {
+  async _resolveImageParam(imageRef) {
     if (!imageRef) {
       throw new Error('Missing imageRef for Rekognition analysis')
     }
 
-    if (typeof imageRef === 'string') {
-      return {
-        S3Object: {
-          Bucket: this.defaultBucket,
-          Name: imageRef
-        }
-      }
+    let buffer = null
+    let key = null
+    let bucket = this.defaultBucket
+
+    if (Buffer.isBuffer(imageRef)) {
+      buffer = imageRef
+    } else if (imageRef.buffer) {
+      buffer = imageRef.buffer
+    } else if (imageRef.Bytes) {
+      buffer = imageRef.Bytes
+    } else if (typeof imageRef === 'string') {
+      key = imageRef
+    } else if (imageRef.key || imageRef.s3Object) {
+      key = imageRef.key || imageRef.s3Object?.key || imageRef.s3Object?.name
+      bucket = imageRef.bucket || imageRef.s3Object?.bucket || this.defaultBucket
     }
 
-    if (imageRef.s3Object) {
-      return {
-        S3Object: {
-          Bucket: imageRef.s3Object.bucket || this.defaultBucket,
-          Name: imageRef.s3Object.key || imageRef.s3Object.name
+    if (key) {
+      const isWebp = key.toLowerCase().endsWith('.webp')
+      // If native JPEG/PNG, Rekognition can read S3Object directly
+      if (!isWebp && (key.toLowerCase().endsWith('.jpg') || key.toLowerCase().endsWith('.jpeg') || key.toLowerCase().endsWith('.png'))) {
+        return {
+          S3Object: {
+            Bucket: bucket,
+            Name: key
+          }
         }
       }
+
+      // Fetch from S3 and convert to JPEG for Rekognition compatibility
+      const { GetObjectCommand } = require('@aws-sdk/client-s3')
+      const s3Res = await this.s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+      const chunks = []
+      for await (const chunk of s3Res.Body) chunks.push(chunk)
+      buffer = Buffer.concat(chunks)
     }
 
-    if (imageRef.buffer || Buffer.isBuffer(imageRef)) {
+    if (buffer) {
+      const sharp = require('sharp')
+      const jpegBuffer = await sharp(buffer).jpeg({ quality: 90 }).toBuffer()
       return {
-        Bytes: imageRef.buffer || imageRef
-      }
-    }
-
-    if (imageRef.key) {
-      return {
-        S3Object: {
-          Bucket: imageRef.bucket || this.defaultBucket,
-          Name: imageRef.key
-        }
+        Bytes: jpegBuffer
       }
     }
 
@@ -76,7 +90,7 @@ class RekognitionDriver {
    * @returns {Promise<{ faceCount: number, boundingBox: object|null, quality: object, pose: object, eyesOpen: boolean, occluded: boolean }>}
    */
   async detect(imageRef) {
-    const Image = this._resolveImageParam(imageRef)
+    const Image = await this._resolveImageParam(imageRef)
 
     const command = new DetectFacesCommand({
       Image,
@@ -162,8 +176,10 @@ class RekognitionDriver {
    * @returns {Promise<{ similarity: number, faceConfidence: number, requestId: string, provider: string, modelVersion: string }>}
    */
   async compare(srcRef, tgtRef) {
-    const SourceImage = this._resolveImageParam(srcRef)
-    const TargetImage = this._resolveImageParam(tgtRef)
+    const [SourceImage, TargetImage] = await Promise.all([
+      this._resolveImageParam(srcRef),
+      this._resolveImageParam(tgtRef)
+    ])
 
     const command = new CompareFacesCommand({
       SourceImage,

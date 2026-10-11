@@ -268,7 +268,12 @@ class FaceVerificationService {
     const MAX_VERIFY_RETRIES = parseInt(process.env.MAX_IDENTITY_RETRIES || '3', 10)
     if (attemptId) {
       const priorAttempts = await prisma.identityVerification.count({
-        where: { attemptId, kind: 'PRE_EXAM' }
+        where: {
+          attemptId,
+          kind: 'PRE_EXAM',
+          provider: { not: 'error' },
+          errorCode: null
+        }
       })
       if (priorAttempts >= MAX_VERIFY_RETRIES) {
         await this._persistVerificationRecord({

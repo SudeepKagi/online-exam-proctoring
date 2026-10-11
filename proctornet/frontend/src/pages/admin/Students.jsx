@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 
-function StatusBadge({ status, isSuspended }) {
+function StatusBadge({ status, profileStatus, isSuspended }) {
   if (isSuspended) return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">Suspended</Badge>
+  if (profileStatus === 'SUBMITTED' || status === 'PENDING') return <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10 font-mono text-[10px]">Pending Approval</Badge>
   if (status === 'APPROVED') return <Badge variant="outline" className="text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-mono text-[10px]">Active</Badge>
   if (status === 'REJECTED') return <Badge variant="outline" className="text-rose-400 border-rose-500/30 bg-rose-500/10 font-mono text-[10px]">Rejected</Badge>
   return <Badge variant="outline" className="text-amber-400 border-amber-500/30 bg-amber-500/10 font-mono text-[10px]">Pending</Badge>
@@ -20,7 +21,7 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
 
-  const isPending = student.approvalStatus === 'PENDING'
+  const isPending = student.approvalStatus === 'PENDING' || student.profileStatus === 'SUBMITTED'
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -46,9 +47,9 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
               <span className="flex items-center gap-1.5 font-semibold text-foreground/90">
                 <Camera size={13} className="text-primary" /> Live Face Capture
               </span>
-              {student.faceMatchScore != null && (
+              {student.faceMatchScore != null && student.faceMatchScore > 0 && student.faceMatchScore < 1.0 && (
                 <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
-                  {student.faceMatchScore}% Match
+                  {Math.round(student.faceMatchScore * 100)}% Match
                 </span>
               )}
             </div>
@@ -191,7 +192,7 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
           <div className="flex items-center justify-between pt-2 border-t border-border">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground font-mono">Status:</span>
-              <StatusBadge status={student.approvalStatus} isSuspended={student.isSuspended} />
+              <StatusBadge status={student.approvalStatus} profileStatus={student.profileStatus} isSuspended={student.isSuspended} />
             </div>
             <Button
               variant="outline"
@@ -495,7 +496,7 @@ export default function AdminStudents() {
                       <TableCell className="font-mono text-xs text-foreground/90">{s.usn}</TableCell>
                       <TableCell><Badge variant="outline" className="text-xs text-foreground/90 border-border bg-background">{s.department}</Badge></TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">Semester {s.semester}</TableCell>
-                      <TableCell><StatusBadge status={s.approvalStatus} isSuspended={s.isSuspended} /></TableCell>
+                      <TableCell><StatusBadge status={s.approvalStatus} profileStatus={s.profileStatus} isSuspended={s.isSuspended} /></TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button size="sm" variant="ghost" onClick={() => setSelected(s)} className="h-7 text-xs text-foreground/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">

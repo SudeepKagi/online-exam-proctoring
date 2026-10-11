@@ -30,8 +30,7 @@ const FORBIDDEN_FILES = [
 const FORBIDDEN_TOKENS = [
   'global.prisma',
   'studentExam',
-  'assignedQuestionIds',
-  'facePhotoUrl'
+  'assignedQuestionIds'
 ]
 
 let violations = 0

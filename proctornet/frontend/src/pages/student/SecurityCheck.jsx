@@ -211,10 +211,8 @@ export default function SecurityCheck() {
 
     if (isWaived) {
       updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
-      setActiveStage(prev => (prev === 0 ? 1 : prev))
     } else if (isHealthy && findings.length === 0) {
       updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
-      setActiveStage(prev => (prev === 0 ? 1 : prev))
     } else if (findings.length > 0) {
       updateStage('system', 'fail', `Prohibited software detected: ${findings.map(f => f.ruleId).join(', ')}. Please close to proceed.`)
     } else {
@@ -307,8 +305,8 @@ export default function SecurityCheck() {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       canvas.toBlob(
         (blob) => resolve(blob),
-        'image/webp',
-        0.85
+        'image/jpeg',
+        0.90
       )
     })
   }
@@ -488,7 +486,7 @@ export default function SecurityCheck() {
             const presignRes = await api.post('/media/presign-upload', {
               purpose: 'LIVE_FRAME',
               attemptId,
-              contentType: 'image/webp',
+              contentType: blob.type || 'image/jpeg',
               bytes: blob.size
             })
 
@@ -499,7 +497,7 @@ export default function SecurityCheck() {
               const uploadRes = await fetch(putUrl, {
                 method: 'PUT',
                 body: blob,
-                headers: { 'Content-Type': 'image/webp' }
+                headers: { 'Content-Type': blob.type || 'image/jpeg' }
               })
               if (!uploadRes.ok) throw new Error(`Presigned PUT failed: ${uploadRes.status}`)
             } else if (postUrl) {
@@ -674,12 +672,14 @@ export default function SecurityCheck() {
                 const isActive = activeStage === idx
 
                 return (
-                  <div 
+                  <button 
                     key={stage.id} 
-                    className={`flex items-start gap-3 p-3 rounded-2xl border transition-all duration-300 ${
+                    type="button"
+                    onClick={() => setActiveStage(idx)}
+                    className={`w-full text-left flex items-start gap-3 p-3 rounded-2xl border transition-all duration-300 cursor-pointer ${
                       isActive 
                         ? 'bg-primary/10 border-primary/40 text-foreground shadow-lg shadow-indigo-500/5 font-semibold' 
-                        : 'bg-card border-border/70 text-muted-foreground'
+                        : 'bg-card border-border/70 text-muted-foreground hover:bg-muted/40 hover:text-foreground'
                     }`}
                   >
                     <div className="shrink-0 mt-0.5">
@@ -699,7 +699,7 @@ export default function SecurityCheck() {
                       </p>
                       <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 font-mono">{stage.desc}</p>
                     </div>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -788,7 +788,7 @@ export default function SecurityCheck() {
               </div>
 
               {/* STAGE 0: Exam Device Companion Audit */}
-              {activeStage === 0 && !stage0Passed ? (
+              {activeStage === 0 ? (
                 <div className="space-y-4 mb-6">
                   <DeviceCompanionPanel
                     attemptId={attemptId}
@@ -917,7 +917,26 @@ export default function SecurityCheck() {
               <span>Device Readiness & Secure Exam Mode Enforced</span>
             </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {activeStage > 0 && !allPassed && (
+                <Button 
+                  variant="outline"
+                  onClick={() => setActiveStage(prev => Math.max(0, prev - 1))}
+                  className="w-full sm:w-auto text-xs font-mono font-medium px-4 h-10 rounded-xl cursor-pointer border-border hover:bg-muted/50"
+                >
+                  ← Back
+                </Button>
+              )}
+
+              {activeStage === 0 && stage0Passed && (
+                <Button 
+                  onClick={() => setActiveStage(1)}
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md"
+                >
+                  Continue to Media Feeds →
+                </Button>
+              )}
+
               {!streamRef.current && activeStage === 1 && (
                 <Button 
                   onClick={startCamera}
@@ -936,12 +955,33 @@ export default function SecurityCheck() {
                 </Button>
               )}
 
-              {stageStatus.face === 'fail' && (
+              {activeStage === 1 && stageStatus.media === 'pass' && (
+                <Button 
+                  onClick={() => {
+                    setActiveStage(2)
+                    runBiometricVerification()
+                  }}
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md"
+                >
+                  Continue to Biometrics →
+                </Button>
+              )}
+
+              {stageStatus.face === 'fail' && activeStage === 2 && (
                 <Button
                   onClick={runBiometricVerification}
                   className="w-full sm:w-auto text-xs font-mono font-bold bg-rose-600 hover:bg-rose-500 text-white px-6 h-10 rounded-xl shadow-lg shadow-rose-600/20 cursor-pointer"
                 >
                   <RefreshCw size={14} className="mr-2" /> Retry Biometric Verification
+                </Button>
+              )}
+
+              {activeStage === 2 && stageStatus.face === 'pass' && (
+                <Button 
+                  onClick={() => setActiveStage(3)}
+                  className="w-full sm:w-auto text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md"
+                >
+                  Continue to Terms & Lock →
                 </Button>
               )}
 

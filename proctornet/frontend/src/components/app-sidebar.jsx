@@ -97,7 +97,19 @@ export function AppSidebar() {
   const { user, role, logout } = useAuth()
   const navigate = useNavigate()
   const currentRole = role || 'student'
-  const navGroups = ROLE_NAV_GROUPS[currentRole] || ROLE_NAV_GROUPS.student
+  const baseGroups = ROLE_NAV_GROUPS[currentRole] || ROLE_NAV_GROUPS.student
+  const navGroups = baseGroups.map(group => ({
+    ...group,
+    items: group.items.map(item => {
+      if (item.to === '/invigilator/live-grid/active') {
+        return {
+          ...item,
+          to: user?.examId ? `/invigilator/live-grid/${user.examId}` : '/invigilator/dashboard'
+        }
+      }
+      return item
+    })
+  }))
   
   let initials = 'AD'
   if (user?.name) {
