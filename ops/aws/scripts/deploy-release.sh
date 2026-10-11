@@ -48,6 +48,14 @@ while [[ $# -gt 0 ]]; do
                 shift 1
             fi
             ;;
+        --direct-url-b64)
+            if [ $# -ge 2 ] && [ -n "$2" ]; then
+                NEW_DIRECT_URL=$(echo "$2" | base64 -d 2>/dev/null || echo "$2")
+                shift 2
+            else
+                shift 1
+            fi
+            ;;
         *)
             # Ignore unexpected args
             shift 1
@@ -106,29 +114,32 @@ if [ "$NODE_MAJOR" -lt 20 ]; then
 fi
 echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (compatible LTS release)."
 
-# Sync updated DATABASE_URL to persistent configuration if supplied
-if [ -n "$NEW_DB_URL" ]; then
+# Sync updated DATABASE_URL and DIRECT_URL to persistent configuration if supplied
+if [ -n "$NEW_DB_URL" ] || [ -n "$NEW_DIRECT_URL" ]; then
     mkdir -p "$(dirname "$SHARED_ENV")"
     touch "$SHARED_ENV"
     echo "[-] Updating persistent database credentials in $SHARED_ENV..."
-    TARGET_DB_URL="$NEW_DB_URL" node -e "
+    TARGET_DB_URL="$NEW_DB_URL" TARGET_DIRECT_URL="${NEW_DIRECT_URL:-$NEW_DB_URL}" node -e "
       const fs = require('fs');
       const p = '$SHARED_ENV';
       let c = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
       const db = process.env.TARGET_DB_URL;
+      const direct = process.env.TARGET_DIRECT_URL;
       if (db) {
         if (c.includes('DATABASE_URL=')) {
           c = c.replace(/^DATABASE_URL=.*/m, 'DATABASE_URL=\"' + db + '\"');
         } else {
           c += (c.length && !c.endsWith('\n') ? '\n' : '') + 'DATABASE_URL=\"' + db + '\"\n';
         }
-        if (c.includes('DIRECT_URL=')) {
-          c = c.replace(/^DIRECT_URL=.*/m, 'DIRECT_URL=\"' + db + '\"');
-        } else {
-          c += 'DIRECT_URL=\"' + db + '\"\n';
-        }
-        fs.writeFileSync(p, c);
       }
+      if (direct) {
+        if (c.includes('DIRECT_URL=')) {
+          c = c.replace(/^DIRECT_URL=.*/m, 'DIRECT_URL=\"' + direct + '\"');
+        } else {
+          c += (c.length && !c.endsWith('\n') ? '\n' : '') + 'DIRECT_URL=\"' + direct + '\"\n';
+        }
+      }
+      fs.writeFileSync(p, c);
     "
     echo "[✓] Persistent database credentials updated."
 fi
