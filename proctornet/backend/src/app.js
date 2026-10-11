@@ -390,6 +390,10 @@ const { rabbitmq } = require('./infra/rabbitmq/client')
 app.use(loadShed)
 
 app.use('/api/v1', v1Router)
+app.use('/api', (req, res, next) => {
+  if (req.url.startsWith('/v1')) return next()
+  return v1Router(req, res, next)
+})
 
 // ── 404 handler (Unified Error Envelope) ──
 app.use((req, res) => {
