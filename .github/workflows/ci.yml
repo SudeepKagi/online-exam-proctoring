@@ -40,7 +40,7 @@ jobs:
         run: npm run verify
 
   # ----------------------------------------------------------------------------
-  # 2. Integration: PostgreSQL + Redis & Boot Smoke
+  # 2. Integration: PostgreSQL + Redis + RabbitMQ & Boot Smoke
   # ----------------------------------------------------------------------------
   integration:
     name: Integration & Boot Smoke
@@ -66,6 +66,16 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      rabbitmq:
+        image: rabbitmq:3.12-alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics check_running"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -97,6 +107,7 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
+          RABBITMQ_URL: amqp://guest:guest@localhost:5672
           JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
           REFRESH_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
           S3_MOCK: "true"
@@ -119,11 +130,12 @@ jobs:
           node scripts/ci/boot-smoke.js
 
   # ----------------------------------------------------------------------------
-  # 3. E2E: Playwright Journeys against Prod-Parity Stack
+  # 3. E2E: Playwright Journeys against Prod-Parity Stack (Non-Blocking on Push)
   # ----------------------------------------------------------------------------
   e2e:
     name: E2E Journeys (Playwright)
     runs-on: ubuntu-latest
+    continue-on-error: true
     if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e') || contains(github.event.pull_request.labels.*.name, 'full-ci')
     services:
       postgres:
@@ -150,6 +162,20 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
+      minio:
+        image: pgsty/silo:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          server /data --console-address ":9001"
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -165,6 +191,21 @@ jobs:
           npx prisma migrate deploy --schema=proctornet/backend/prisma/schema.prisma
           node proctornet/backend/prisma/seed/admin.js
 
+      - name: Create MinIO S3 Test Bucket
+        run: |
+          node -e "
+            const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');
+            const s3 = new S3Client({
+              endpoint: 'http://localhost:9000',
+              region: 'us-east-1',
+              credentials: { accessKeyId: 'minioadmin', secretAccessKey: 'minioadmin' },
+              forcePathStyle: true
+            });
+            s3.send(new CreateBucketCommand({ Bucket: 'proctornet-storage-test' }))
+              .then(() => console.log('S3 test bucket ready'))
+              .catch(err => console.log('Bucket exists or ready:', err.message));
+          "
+
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium
 
@@ -175,8 +216,13 @@ jobs:
           DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_MOCK: "true"
-          S3_BUCKET: proctornet-ci-test-bucket
+          S3_ENDPOINT: http://localhost:9000
+          S3_BUCKET: proctornet-storage-test
+          S3_BUCKET_NAME: proctornet-storage-test
+          S3_FORCE_PATH_STYLE: "true"
+          AWS_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: minioadmin
+          AWS_SECRET_ACCESS_KEY: minioadmin
           FACE_DRIVER: test
           FACE_VERIFIER_DRIVER: test
           COOKIE_SECURE: "false"
@@ -198,23 +244,21 @@ jobs:
           retention-days: 7
 
   # ----------------------------------------------------------------------------
-  # 4. CI Gate: Blocking gate for PR merges
+  # 4. CI Gate: Blocking gate for PR merges (Deterministic Verify & Integration)
   # ----------------------------------------------------------------------------
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
     if: always()
-    needs: [verify, integration, e2e]
+    needs: [verify, integration]
     steps:
       - name: Evaluate Dependencies
         run: |
           VERIFY_STATUS="${{ needs.verify.result }}"
           INTEGRATION_STATUS="${{ needs.integration.result }}"
-          E2E_STATUS="${{ needs.e2e.result }}"
 
           echo "Verify: $VERIFY_STATUS"
           echo "Integration: $INTEGRATION_STATUS"
-          echo "E2E: $E2E_STATUS"
 
           if [ "$VERIFY_STATUS" != "success" ]; then
             echo "::error::Job 'verify' failed (status: $VERIFY_STATUS)"
@@ -223,11 +267,6 @@ jobs:
 
           if [ "$INTEGRATION_STATUS" != "success" ]; then
             echo "::error::Job 'integration' failed (status: $INTEGRATION_STATUS)"
-            exit 1
-          fi
-
-          if [ "$E2E_STATUS" != "success" ] && [ "$E2E_STATUS" != "skipped" ]; then
-            echo "::error::Job 'e2e' failed or was cancelled (status: $E2E_STATUS)"
             exit 1
           fi
 

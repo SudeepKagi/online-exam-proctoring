@@ -2,13 +2,17 @@ name: Deploy to AWS (Production Release)
 
 on:
   workflow_run:
-    workflows: ["ProctorNet CI/CD Pipeline"]
+    workflows: ["CI"]
     branches: [main]
     types: [completed]
   workflow_dispatch:
     inputs:
       override_reason:
         description: 'Reason to bypass exam-aware active attempts gate (if any)'
+        required: false
+        default: ''
+      skip_ci_gate:
+        description: 'Reason to bypass CI gate check (emergency only - requires non-empty typed reason)'
         required: false
         default: ''
 
@@ -41,15 +45,27 @@ jobs:
         env:
           HEAD_SHA: ${{ github.sha }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_CI_GATE: ${{ github.event.inputs.skip_ci_gate || '' }}
         run: |
+          if [ -n "$SKIP_CI_GATE" ]; then
+            echo "⚠️ [BYPASS] CI Gate check bypassed by operator."
+            echo "Bypass Reason: ${SKIP_CI_GATE}"
+            echo "### ⚠️ CI Gate Bypassed" >> $GITHUB_STEP_SUMMARY
+            echo "**Bypass Reason:** ${SKIP_CI_GATE}" >> $GITHUB_STEP_SUMMARY
+            echo "**Authorized at:** $(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
           echo "Verifying that CI passed for ${HEAD_SHA} on main..."
           CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/runs" \
-            --jq ".workflow_runs[] | select(.head_sha == \"${HEAD_SHA}\" and .name == \"ProctorNet CI/CD Pipeline\") | .conclusion" | head -n 1)
+            --jq ".workflow_runs[] | select(.head_sha == \"${HEAD_SHA}\" and .name == \"CI\") | .conclusion" | head -n 1)
           if [ "$CONCLUSION" != "success" ]; then
             echo "[x] Refusing deployment: CI has not succeeded on main for ${HEAD_SHA} (status: ${CONCLUSION:-not_found})"
             exit 1
           fi
           echo "[✓] CI verification confirmed: CI is green for ${HEAD_SHA}."
+          echo "### ✅ CI Verification Passed" >> $GITHUB_STEP_SUMMARY
+          echo "Commit \`${HEAD_SHA}\` passed all required CI checks." >> $GITHUB_STEP_SUMMARY
 
       - name: Set up Node.js 22 LTS
         uses: actions/setup-node@v4

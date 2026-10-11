@@ -62,8 +62,8 @@ class AwsS3Adapter extends S3Adapter {
       requestHandler: this.requestHandler
     }
 
-    // In non-production, allow explicit static credentials if provided; otherwise AWS default chain handles it
-    if (!IS_PROD && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    // In non-production or when custom S3_ENDPOINT (e.g. MinIO) is provided, allow explicit static credentials
+    if ((!IS_PROD || process.env.S3_ENDPOINT) && process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
       clientConfig.credentials = {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY

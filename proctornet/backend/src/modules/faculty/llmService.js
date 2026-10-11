@@ -228,7 +228,7 @@ class LLMService {
   async generateQuestionsPreview({ topic, count = 5, difficulty = 'MEDIUM', facultyId, providerOverride }) {
     const provider = providerOverride || config.llmProvider || 'none'
     if (!provider || provider === 'none' || !config.llmApiKey) {
-      throw new ValidationError("Question assistant isn't enabled — ask the administrator.")
+      throw new ValidationError("Question assistant isn't enabled — ask the administrator (LLM_PROVIDER is set to 'none' or unconfigured).")
     }
 
     const model = config.llmModel || ''

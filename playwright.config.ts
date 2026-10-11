@@ -76,6 +76,11 @@ export default defineConfig({
         ...(process.env.DIRECT_URL ? { DIRECT_URL: process.env.DIRECT_URL } : {}),
         ...(process.env.JWT_SECRET ? { JWT_SECRET: process.env.JWT_SECRET } : {}),
         ...(process.env.S3_BUCKET ? { S3_BUCKET: process.env.S3_BUCKET } : {}),
+        ...(process.env.S3_ENDPOINT ? { S3_ENDPOINT: process.env.S3_ENDPOINT } : {}),
+        ...(process.env.S3_FORCE_PATH_STYLE ? { S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE } : {}),
+        ...(process.env.AWS_ACCESS_KEY_ID ? { AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID } : {}),
+        ...(process.env.AWS_SECRET_ACCESS_KEY ? { AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY } : {}),
+        ...(process.env.AWS_REGION ? { AWS_REGION: process.env.AWS_REGION } : {}),
         ...(process.env.REDIS_URL ? { REDIS_URL: process.env.REDIS_URL } : {})
       },
       timeout: 30000,

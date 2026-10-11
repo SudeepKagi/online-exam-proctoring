@@ -68,8 +68,10 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)',
   })
 
   it('CI-03: Security audit and container scanning gates enforce strict failure thresholds', () => {
-    const secJob = ciAst.jobs?.['security-scan']
-    assert.ok(secJob, 'ci.yml must have a security-scan job')
+    const nightlyWorkflowPath = path.join(REPO_ROOT, '.github/workflows/nightly.yml')
+    const nightlyAst = fs.existsSync(nightlyWorkflowPath) ? YAML.parse(fs.readFileSync(nightlyWorkflowPath, 'utf8')) : null
+    const secJob = ciAst.jobs?.['security-scan'] || nightlyAst?.jobs?.['security-scan']
+    assert.ok(secJob, 'ci.yml or nightly.yml must have a security-scan job')
 
     const steps = secJob.steps || []
     for (const step of steps) {

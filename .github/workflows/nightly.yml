@@ -10,8 +10,8 @@ permissions:
   issues: write
 
 jobs:
-  hygiene:
-    name: Doc Links, Ledger & Security Audit
+  security-scan:
+    name: Security Audits & Vulnerability Gates
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,8 +24,12 @@ jobs:
       - name: Check Claims Ledger Integrity
         run: node scripts/ci/check-ledger.js
 
-      - name: Dependency Audit
-        run: npm audit --audit-level=high || true
+      - name: Audit Backend Production Dependencies
+        working-directory: proctornet/backend
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Trivy Container Vulnerability Scan
+        run: trivy image --exit-code 1 --severity CRITICAL proctornet-backend-scan:${{ github.sha }}
 
   standard-profile:
     name: Standard Profile Tests (Redis/RabbitMQ)
