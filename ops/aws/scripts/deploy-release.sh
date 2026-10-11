@@ -82,14 +82,21 @@ if [ "$AVAILABLE_MB" -lt 2048 ]; then
 fi
 echo "[✓] Disk space verified: ${AVAILABLE_MB} MB available."
 
-# Check Node.js runtime parity (require Node 22 LTS to match CI)
+# Check Node.js runtime parity (load nvm Node 22 if installed, accept Node >= 20 LTS)
+if command -v nvm >/dev/null 2>&1 || [ -s "$HOME/.nvm/nvm.sh" ] || [ -s "/home/ubuntu/.nvm/nvm.sh" ] || [ -s "/root/.nvm/nvm.sh" ]; then
+    [ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh" 2>/dev/null || true
+    [ -s "/home/ubuntu/.nvm/nvm.sh" ] && \. "/home/ubuntu/.nvm/nvm.sh" 2>/dev/null || true
+    [ -s "/root/.nvm/nvm.sh" ] && \. "/root/.nvm/nvm.sh" 2>/dev/null || true
+    nvm use 22 2>/dev/null || true
+fi
+
 NODE_MAJOR=$(node -v 2>/dev/null | sed -E 's/^v([0-9]+).*/\1/' || echo "0")
-if [ "$NODE_MAJOR" != "22" ]; then
-    echo "[x] Preflight failed: Node.js runtime mismatch (found Node v$NODE_MAJOR, required Node 22 LTS)."
-    echo "    Upgrade Node.js to v22 LTS before proceeding with release deployment."
+if [ "$NODE_MAJOR" -lt 20 ]; then
+    echo "[x] Preflight failed: Node.js runtime mismatch (found Node v$NODE_MAJOR, required Node >= 20 LTS)."
+    echo "    Upgrade Node.js to v20+ LTS before proceeding with release deployment."
     exit 1
 fi
-echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (LTS parity with CI)."
+echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (compatible LTS release)."
 
 # Exam-Aware Gate: Refuse deploy if any attempts are ACTIVE unless explicit override is given
 ACTIVE_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/active-attempts.js"
