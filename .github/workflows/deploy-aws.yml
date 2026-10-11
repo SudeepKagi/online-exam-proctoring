@@ -141,6 +141,7 @@ jobs:
           INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
           BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
           OVERRIDE_REASON: ${{ github.event.inputs.override_reason || '' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
         run: |
           RELEASE_TAG="release-${HEAD_SHA}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
@@ -154,11 +155,15 @@ jobs:
           fi
 
           echo "Encoding SSM payload safely via jq without string interpolation (Appendix C)..."
-          payload=$(jq -n --arg tar "$TAR_FILE" --arg bucket "$BUCKET" --arg sha "$HEAD_SHA" --arg ovr "$OVERRIDE_REASON" \
+          payload=$(jq -n --arg tar "$TAR_FILE" --arg bucket "$BUCKET" --arg sha "$HEAD_SHA" --arg ovr "$OVERRIDE_REASON" --arg db "${DATABASE_URL:-}" \
             '{commands: ["aws s3 cp s3://\($bucket)/releases/deploy-release.sh /tmp/deploy-release.sh",
                          "chmod 0700 /tmp/deploy-release.sh",
-                         (if ($ovr | length > 0) then
+                         (if ($ovr | length > 0 and ($db | length > 0)) then
+                            "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --override-b64 \($ovr|@base64) --database-url-b64 \($db|@base64)"
+                          elif ($ovr | length > 0) then
                             "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --override-b64 \($ovr|@base64)"
+                          elif ($db | length > 0) then
+                            "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha) --database-url-b64 \($db|@base64)"
                           else
                             "/tmp/deploy-release.sh \($tar) \($bucket) --expected-sha \($sha)"
                           end)]}')

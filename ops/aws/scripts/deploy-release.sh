@@ -40,6 +40,14 @@ while [[ $# -gt 0 ]]; do
                 shift 1
             fi
             ;;
+        --database-url-b64)
+            if [ $# -ge 2 ] && [ -n "$2" ]; then
+                NEW_DB_URL=$(echo "$2" | base64 -d 2>/dev/null || echo "$2")
+                shift 2
+            else
+                shift 1
+            fi
+            ;;
         *)
             # Ignore unexpected args
             shift 1
@@ -98,11 +106,39 @@ if [ "$NODE_MAJOR" -lt 20 ]; then
 fi
 echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (compatible LTS release)."
 
+# Sync updated DATABASE_URL to persistent configuration if supplied
+if [ -n "$NEW_DB_URL" ]; then
+    mkdir -p "$(dirname "$SHARED_ENV")"
+    touch "$SHARED_ENV"
+    echo "[-] Updating persistent database credentials in $SHARED_ENV..."
+    TARGET_DB_URL="$NEW_DB_URL" node -e "
+      const fs = require('fs');
+      const p = '$SHARED_ENV';
+      let c = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
+      const db = process.env.TARGET_DB_URL;
+      if (db) {
+        if (c.includes('DATABASE_URL=')) {
+          c = c.replace(/^DATABASE_URL=.*/m, 'DATABASE_URL=\"' + db + '\"');
+        } else {
+          c += (c.length && !c.endsWith('\n') ? '\n' : '') + 'DATABASE_URL=\"' + db + '\"\n';
+        }
+        if (c.includes('DIRECT_URL=')) {
+          c = c.replace(/^DIRECT_URL=.*/m, 'DIRECT_URL=\"' + db + '\"');
+        } else {
+          c += 'DIRECT_URL=\"' + db + '\"\n';
+        }
+        fs.writeFileSync(p, c);
+      }
+    "
+    echo "[✓] Persistent database credentials updated."
+fi
+
 # Exam-Aware Gate: Refuse deploy if any attempts are ACTIVE unless explicit override is given
 ACTIVE_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/active-attempts.js"
 if [ -L "$CURRENT_LINK" ] && [ -f "$ACTIVE_SCRIPT" ]; then
     echo "[-] Checking for active exam attempts..."
-    ACTIVE=$(node "$ACTIVE_SCRIPT" 2>/dev/null || echo "0")
+    ACTIVE=$(node "$ACTIVE_SCRIPT" 2>/dev/null | grep -E '^[0-9]+$' | tail -n 1 || true)
+    ACTIVE=${ACTIVE:-0}
     if [ "$ACTIVE" -gt 0 ] && [ -z "$OVERRIDE_REASON" ]; then
         echo "=========================================================="
         echo "[x] Refusing to deploy: $ACTIVE attempts ACTIVE."
