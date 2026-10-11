@@ -99,8 +99,8 @@ jobs:
         env:
           NODE_ENV: test
           APP_PROFILE: lite
-          QUEUE_DRIVER: postgres
-          CACHE_DRIVER: memory
+          QUEUE_DRIVER: rabbitmq
+          CACHE_DRIVER: redis
           MEDIA_DRIVER: snapshot
           FACE_DRIVER: mock
           START_WORKERS: false
@@ -164,13 +164,13 @@ jobs:
 
       minio:
         image: pgsty/silo:latest
+        command: server /data --console-address ":9001"
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
         ports:
           - 9000:9000
         options: >-
-          server /data --console-address ":9001"
           --health-cmd "curl -f http://localhost:9000/minio/health/live"
           --health-interval 5s
           --health-timeout 3s
