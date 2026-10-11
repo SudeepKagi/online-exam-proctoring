@@ -182,8 +182,7 @@ class AwsS3Adapter extends S3Adapter {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
-      ContentType: contentType,
-      ServerSideEncryption: 'AES256'
+      ContentType: contentType
     })
     return getSignedUrl(this.client, command, { expiresIn })
   }
