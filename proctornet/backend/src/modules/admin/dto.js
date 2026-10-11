@@ -17,7 +17,9 @@ function toFacultyAdminDTO(f) {
     approvedBy: f.approvedBy,
     approvedAt: f.approvedAt,
     idCardPhotoKey: f.idCardPhotoKey,
+    idCardPhotoUrl: f.idCardPhotoUrl || null,
     profilePhotoKey: f.profilePhotoKey,
+    profilePhotoUrl: f.profilePhotoUrl || null,
     createdAt: f.createdAt
   }
 }
@@ -34,7 +36,9 @@ function toStudentAdminDTO(s) {
     semester: s.semester,
     phone: s.phone || null,
     facePhotoKey: s.facePhotoKey,
+    facePhotoUrl: s.facePhotoUrl || null,
     idCardPhotoKey: s.idCardPhotoKey,
+    idCardPhotoUrl: s.idCardPhotoUrl || null,
     faceMatchScore: s.faceMatchScore,
     approvalStatus: s.approvalStatus,
     profileStatus: s.profileStatus,

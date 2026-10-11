@@ -4,6 +4,7 @@ const { attemptService } = require('../attempts/service')
 const { faceVerificationService } = require('../media/faceVerificationService')
 const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
 const { isStudentEligible } = require('../exams/eligibility')
+const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const {
   NotFoundError,
   ForbiddenError,
@@ -14,7 +15,15 @@ class StudentService {
   async getProfile(studentId) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student profile not found')
-    return toStudentProfileDTO(student)
+    let facePhotoUrl = null
+    let idCardPhotoUrl = null
+    if (student.facePhotoKey) {
+      facePhotoUrl = await getPresignedReadUrl(student.facePhotoKey, 3600)
+    }
+    if (student.idCardPhotoKey) {
+      idCardPhotoUrl = await getPresignedReadUrl(student.idCardPhotoKey, 3600)
+    }
+    return toStudentProfileDTO({ ...student, facePhotoUrl, idCardPhotoUrl })
   }
 
   async updateProfile(studentId, data) {

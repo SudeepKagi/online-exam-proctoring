@@ -16,6 +16,69 @@ const {
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
+const { getPresignedReadUrl, batchPresignReadUrls } = require('../../infra/s3/s3.client')
+
+async function attachStudentUrls(students) {
+  if (!Array.isArray(students) || students.length === 0) return []
+  const keys = []
+  for (const s of students) {
+    if (s.facePhotoKey) keys.push(s.facePhotoKey)
+    if (s.idCardPhotoKey) keys.push(s.idCardPhotoKey)
+  }
+
+  const presignedList = await batchPresignReadUrls(keys, 3600)
+  const urlMap = new Map()
+  for (const item of presignedList) {
+    if (item && item.key && item.url) {
+      urlMap.set(item.key, item.url)
+    }
+  }
+
+  return students.map((s) => {
+    const rawFaceKey = s.facePhotoKey ? s.facePhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
+    const rawIdKey = s.idCardPhotoKey ? s.idCardPhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
+
+    const facePhotoUrl = (rawFaceKey && urlMap.get(rawFaceKey)) || (s.facePhotoKey && urlMap.get(s.facePhotoKey)) || s.facePhotoUrl || null
+    const idCardPhotoUrl = (rawIdKey && urlMap.get(rawIdKey)) || (s.idCardPhotoKey && urlMap.get(s.idCardPhotoKey)) || s.idCardPhotoUrl || null
+
+    return toStudentAdminDTO({
+      ...s,
+      facePhotoUrl,
+      idCardPhotoUrl
+    })
+  })
+}
+
+async function attachFacultyUrls(facultyList) {
+  if (!Array.isArray(facultyList) || facultyList.length === 0) return []
+  const keys = []
+  for (const f of facultyList) {
+    if (f.profilePhotoKey) keys.push(f.profilePhotoKey)
+    if (f.idCardPhotoKey) keys.push(f.idCardPhotoKey)
+  }
+
+  const presignedList = await batchPresignReadUrls(keys, 3600)
+  const urlMap = new Map()
+  for (const item of presignedList) {
+    if (item && item.key && item.url) {
+      urlMap.set(item.key, item.url)
+    }
+  }
+
+  return facultyList.map((f) => {
+    const rawProfileKey = f.profilePhotoKey ? f.profilePhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
+    const rawIdKey = f.idCardPhotoKey ? f.idCardPhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
+
+    const profilePhotoUrl = (rawProfileKey && urlMap.get(rawProfileKey)) || (f.profilePhotoKey && urlMap.get(f.profilePhotoKey)) || f.profilePhotoUrl || null
+    const idCardPhotoUrl = (rawIdKey && urlMap.get(rawIdKey)) || (f.idCardPhotoKey && urlMap.get(f.idCardPhotoKey)) || f.idCardPhotoUrl || null
+
+    return toFacultyAdminDTO({
+      ...f,
+      profilePhotoUrl,
+      idCardPhotoUrl
+    })
+  })
+}
 
 function normalizeDepartmentCode(dept) {
   if (!dept) return 'CSE'
@@ -41,15 +104,16 @@ class AdminService {
   // ── Faculty ──
   async listFaculty(query) {
     const res = await adminRepository.listFaculty(query)
+    const faculty = await attachFacultyUrls(res.faculty)
     return {
       ...res,
-      faculty: res.faculty.map(toFacultyAdminDTO)
+      faculty
     }
   }
 
   async listPendingFaculty() {
     const list = await adminRepository.listPendingFaculty()
-    return list.map(toFacultyAdminDTO)
+    return attachFacultyUrls(list)
   }
 
   async createFaculty(data) {
@@ -116,15 +180,16 @@ class AdminService {
   // ── Students ──
   async listStudents(query) {
     const res = await adminRepository.listStudents(query)
+    const students = await attachStudentUrls(res.students)
     return {
       ...res,
-      students: res.students.map(toStudentAdminDTO)
+      students
     }
   }
 
   async listPendingStudents() {
     const list = await adminRepository.listPendingStudents()
-    return list.map(toStudentAdminDTO)
+    return attachStudentUrls(list)
   }
 
   async createStudent(data) {
@@ -171,7 +236,11 @@ class AdminService {
       approvedBy: approverId,
       approvedAt: new Date()
     })
-    return toStudentAdminDTO(updated)
+    const [facePhotoUrl, idCardPhotoUrl] = await Promise.all([
+      getPresignedReadUrl(updated.facePhotoKey, 3600),
+      getPresignedReadUrl(updated.idCardPhotoKey, 3600)
+    ])
+    return toStudentAdminDTO({ ...updated, facePhotoUrl, idCardPhotoUrl })
   }
 
   async rejectStudent(id, reason) {
@@ -182,7 +251,11 @@ class AdminService {
       profileStatus: 'REJECTED',
       rejectionReason: reason || 'Rejected by administration'
     })
-    return toStudentAdminDTO(updated)
+    const [facePhotoUrl, idCardPhotoUrl] = await Promise.all([
+      getPresignedReadUrl(updated.facePhotoKey, 3600),
+      getPresignedReadUrl(updated.idCardPhotoKey, 3600)
+    ])
+    return toStudentAdminDTO({ ...updated, facePhotoUrl, idCardPhotoUrl })
   }
 
   async setStudentSuspension(id, isSuspended) {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
-import { Search, RefreshCw, CheckCircle, XCircle, UserMinus, UserCheck, Eye, X, Users, Clock, GraduationCap } from 'lucide-react'
+import { Search, RefreshCw, CheckCircle, XCircle, UserMinus, UserCheck, Eye, X, Users, Clock, GraduationCap, Camera, User, ExternalLink } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -20,38 +20,116 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
   const [rejectReason, setRejectReason] = useState('')
   const [showReject, setShowReject] = useState(false)
 
+  const isPending = student.approvalStatus === 'PENDING'
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-lg w-full p-6 text-foreground font-sans" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
-          <h3 className="text-base font-bold text-foreground">Student ID Card — {student.name}</h3>
+      <div className="bg-card border border-border rounded-2xl shadow-2xl max-w-2xl w-full p-6 text-foreground font-sans max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+          <div>
+            <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+              Student Identity Verification — {student.name}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Compare live facial enrollment with institutional ID document</p>
+          </div>
           <button onClick={onClose} className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-colors cursor-pointer">
             <X size={18} className="text-muted-foreground" />
           </button>
         </div>
 
-        <div className="bg-background border border-border rounded-xl overflow-hidden mb-4 flex items-center justify-center min-h-[160px]">
-          {student.idCardPhotoUrl && student.idCardPhotoUrl !== 'placeholder_id' ? (
-            <img src={student.idCardPhotoUrl} alt="ID Card" className="w-full object-contain max-h-60" />
-          ) : (
-            <div className="h-40 flex items-center justify-center text-slate-500 text-xs font-mono">No ID card photo uploaded</div>
-          )}
+        {/* Biometric Comparison Side-by-Side */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          {/* Live Enrolled Face Reference */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground px-1">
+              <span className="flex items-center gap-1.5 font-semibold text-foreground/90">
+                <Camera size={13} className="text-primary" /> Live Face Capture
+              </span>
+              {student.faceMatchScore != null && (
+                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
+                  {student.faceMatchScore}% Match
+                </span>
+              )}
+            </div>
+            <div className="bg-background border border-border rounded-xl overflow-hidden flex items-center justify-center min-h-[190px] h-56 p-2 relative group">
+              {student.facePhotoUrl && student.facePhotoUrl !== 'placeholder_face' ? (
+                <>
+                  <img
+                    src={student.facePhotoUrl}
+                    alt="Live Enrolled Face"
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                  <a
+                    href={student.facePhotoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-md text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Open full resolution"
+                  >
+                    <ExternalLink size={13} />
+                  </a>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-500 text-xs font-mono gap-1 text-center p-4">
+                  <User size={28} className="opacity-40 mb-1" />
+                  <span>No live face photo captured</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Institutional ID Document */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground px-1">
+              <span className="flex items-center gap-1.5 font-semibold text-foreground/90">
+                <GraduationCap size={13} className="text-primary" /> Institutional ID Card
+              </span>
+              <span className="text-[10px] text-slate-500 font-mono">Official Doc</span>
+            </div>
+            <div className="bg-background border border-border rounded-xl overflow-hidden flex items-center justify-center min-h-[190px] h-56 p-2 relative group">
+              {student.idCardPhotoUrl && student.idCardPhotoUrl !== 'placeholder_id' ? (
+                <>
+                  <img
+                    src={student.idCardPhotoUrl}
+                    alt="Institutional ID Card"
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                  <a
+                    href={student.idCardPhotoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="absolute top-2 right-2 p-1.5 bg-black/60 hover:bg-black/80 rounded-md text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Open full resolution"
+                  >
+                    <ExternalLink size={13} />
+                  </a>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-500 text-xs font-mono gap-1 text-center p-4">
+                  <GraduationCap size={28} className="opacity-40 mb-1" />
+                  <span>No ID card photo uploaded</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-5 text-xs">
-          <div className="bg-background border border-border rounded-xl p-3">
+        {/* Student Details Metadata */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5 text-xs">
+          <div className="bg-background border border-border rounded-xl p-2.5">
             <p className="text-[10px] font-mono text-slate-500 uppercase">USN</p>
-            <p className="font-semibold text-foreground mt-0.5 font-mono">{student.usn}</p>
+            <p className="font-semibold text-foreground mt-0.5 font-mono truncate">{student.usn}</p>
           </div>
-          <div className="bg-background border border-border rounded-xl p-3">
+          <div className="bg-background border border-border rounded-xl p-2.5">
             <p className="text-[10px] font-mono text-slate-500 uppercase">Department</p>
-            <p className="font-semibold text-foreground mt-0.5">{student.department}</p>
+            <p className="font-semibold text-foreground mt-0.5 truncate">{student.department}</p>
           </div>
-          <div className="bg-background border border-border rounded-xl p-3">
+          <div className="bg-background border border-border rounded-xl p-2.5">
             <p className="text-[10px] font-mono text-slate-500 uppercase">Semester</p>
-            <p className="font-semibold text-foreground/90 mt-0.5">Semester {student.semester}</p>
+            <p className="font-semibold text-foreground/90 mt-0.5">Sem {student.semester}</p>
           </div>
-          <div className="bg-background border border-border rounded-xl p-3">
+          <div className="bg-background border border-border rounded-xl p-2.5">
             <p className="text-[10px] font-mono text-slate-500 uppercase">Submitted</p>
             <p className="font-semibold text-foreground/90 mt-0.5">{new Date(student.createdAt).toLocaleDateString()}</p>
           </div>
@@ -63,50 +141,68 @@ function IDCardModal({ student, onClose, onApprove, onReject }) {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Provide a reason for rejection..."
+              placeholder="Provide a reason for rejection (e.g. ID card blur, photo mismatch)..."
               className="w-full px-3.5 py-2.5 border border-border rounded-xl text-xs bg-background text-foreground focus:outline-none focus:border-rose-500 resize-none"
               rows={3}
             />
           </div>
         )}
 
-        <div className="flex gap-3">
-          {!showReject ? (
-            <>
-              <button
-                onClick={() => onApprove(student.id)}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <CheckCircle size={15} /> Approve Account
-              </button>
-              <button
-                onClick={() => setShowReject(true)}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <XCircle size={15} /> Reject
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={() => {
-                  setShowReject(false)
-                  setRejectReason('')
-                }}
-                className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-[#f8fafc] dark:bg-neutral-900 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => onReject(student.id, rejectReason)}
-                disabled={!rejectReason.trim()}
-                className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                Confirm Rejection
-              </button>
-            </>
-          )}
-        </div>
+        {/* Action Controls */}
+        {isPending ? (
+          <div className="flex gap-3">
+            {!showReject ? (
+              <>
+                <button
+                  onClick={() => onApprove(student.id)}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <CheckCircle size={15} /> Approve Account
+                </button>
+                <button
+                  onClick={() => setShowReject(true)}
+                  className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <XCircle size={15} /> Reject
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    setShowReject(false)
+                    setRejectReason('')
+                  }}
+                  className="flex-1 border border-border bg-background py-2.5 rounded-xl text-xs text-foreground/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => onReject(student.id, rejectReason)}
+                  disabled={!rejectReason.trim()}
+                  className="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-2.5 rounded-xl text-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  Confirm Rejection
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-mono">Status:</span>
+              <StatusBadge status={student.approvalStatus} isSuspended={student.isSuspended} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="text-xs font-mono cursor-pointer"
+            >
+              Close
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -401,15 +497,20 @@ export default function AdminStudents() {
                       <TableCell className="font-mono text-xs text-muted-foreground">Semester {s.semester}</TableCell>
                       <TableCell><StatusBadge status={s.approvalStatus} isSuspended={s.isSuspended} /></TableCell>
                       <TableCell className="text-right">
-                        {s.isSuspended ? (
-                          <Button size="sm" variant="ghost" onClick={() => handleRequestUnsuspend(s)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
-                            <UserCheck size={13} className="mr-1" /> Reactivate
+                        <div className="flex items-center justify-end gap-1.5">
+                          <Button size="sm" variant="ghost" onClick={() => setSelected(s)} className="h-7 text-xs text-foreground/90 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer">
+                            <Eye size={13} className="mr-1" /> View ID
                           </Button>
-                        ) : (
-                          <Button size="sm" variant="ghost" onClick={() => handleRequestSuspend(s)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10 cursor-pointer">
-                            <UserMinus size={13} className="mr-1" /> Suspend
-                          </Button>
-                        )}
+                          {s.isSuspended ? (
+                            <Button size="sm" variant="ghost" onClick={() => handleRequestUnsuspend(s)} className="h-7 text-xs text-emerald-400 hover:bg-emerald-500/10 cursor-pointer">
+                              <UserCheck size={13} className="mr-1" /> Reactivate
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={() => handleRequestSuspend(s)} className="h-7 text-xs text-rose-400 hover:bg-rose-500/10 cursor-pointer">
+                              <UserMinus size={13} className="mr-1" /> Suspend
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
