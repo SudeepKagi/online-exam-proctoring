@@ -8,7 +8,7 @@ const { logger } = require('../../../shared/logging')
 class RekognitionDriver {
   constructor(options = {}) {
     this.region = options.region || process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'ap-south-1'
-    this.defaultBucket = options.bucket || process.env.S3_BUCKET_NAME || 'proctornet-evidence'
+    this.defaultBucket = options.bucket || process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || process.env.S3_BUCKET_NAME || 'proctornet-storage'
     this.timeoutMs = options.timeoutMs || 4000
 
     const clientConfig = {
