@@ -14,7 +14,8 @@ const {
   printHeader,
   printPrivacyNotice,
   promptPairingCode,
-  printLiveStatus
+  printLiveStatus,
+  waitForExit
 } = require('./ui/console')
 
 function parseArgs(args) {
@@ -111,7 +112,11 @@ async function main() {
     session = await pair(transport, pairingCode)
   } catch (err) {
     console.error(`\n  ❌ Pairing failed: ${err.message}`)
-    process.exit(1)
+    if (err.message.includes('ECONNREFUSED') || err.message.includes('fetch failed')) {
+      console.error(`  Please verify your internet connection or that ${options.server} is reachable.`)
+    }
+    await waitForExit(1)
+    return
   }
 
   console.log('  ✓ Pairing successful! Synchronizing security policy...')
@@ -180,9 +185,9 @@ async function main() {
 }
 
 if (require.main === module) {
-  main().catch((err) => {
+  main().catch(async (err) => {
     console.error(`\n  Fatal error: ${err.message}`)
-    process.exit(1)
+    await waitForExit(1)
   })
 }
 

@@ -80,10 +80,28 @@ function printLiveStatus(sessionToken, lastReportTime, findings = []) {
   console.log('--------------------------------------------------------------------\n')
 }
 
+/**
+ * Pauses terminal execution on exit so users can read errors
+ */
+function waitForExit(code = 0) {
+  return new Promise((resolve) => {
+    console.log('\n  Press Enter to exit...')
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    })
+    rl.question('', () => {
+      rl.close()
+      process.exit(code)
+    })
+  })
+}
+
 module.exports = {
   clearScreen,
   printHeader,
   printPrivacyNotice,
   promptPairingCode,
-  printLiveStatus
+  printLiveStatus,
+  waitForExit
 }

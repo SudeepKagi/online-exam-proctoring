@@ -66,7 +66,7 @@ async function pair(transport, code) {
     deviceId: getPseudonymousDeviceId()
   }
 
-  const res = await transport.request('POST', '/api/v1/agent/pair', payload)
+  const res = await transport.request('POST', '/api/v1/agent/pair', payload, {}, 25000)
 
   if (res.status !== 200) {
     const errorMsg = res.body?.error?.message || res.body?.message || `Pairing failed with HTTP ${res.status}`

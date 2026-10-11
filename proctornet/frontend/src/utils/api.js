@@ -83,9 +83,8 @@ api.interceptors.response.use(
     }
 
     const isAuthUrl =
-      originalRequest?.url?.includes('/auth/login') ||
-      originalRequest?.url?.includes('/auth/refresh') ||
-      originalRequest?.url?.includes('/auth/logout') ||
+      originalRequest?.url?.includes('/auth/') ||
+      originalRequest?.url?.includes('/login') ||
       originalRequest?.url?.includes('/register')
 
     // Handle 401 Unauthorized via Silent Refresh (SES-04 / S2)

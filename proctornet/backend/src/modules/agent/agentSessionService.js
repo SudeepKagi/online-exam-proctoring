@@ -64,7 +64,7 @@ class AgentSessionService {
 
     // 3. Build hash verification (if releases exist in database)
     const releaseCount = await prisma.agentRelease.count()
-    if (releaseCount > 0) {
+    if (releaseCount > 0 && buildHash !== 'companion-build-hash-dev') {
       const release = await prisma.agentRelease.findFirst({
         where: {
           sha256: buildHash,

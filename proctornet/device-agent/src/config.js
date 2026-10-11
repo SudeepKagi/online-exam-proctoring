@@ -3,7 +3,7 @@
  * Configuration & Cryptographic Root of Trust
  */
 
-const DEFAULT_SERVER_URL = process.env.PROCTORNET_SERVER_URL || 'http://127.0.0.1:5000'
+const DEFAULT_SERVER_URL = process.env.PROCTORNET_SERVER_URL || 'https://proctornet.duckdns.org'
 
 // Embedded Ed25519 Public Keys for policy signature verification (Current + Next for rotation)
 const POLICY_PUBLIC_KEYS = [
@@ -15,7 +15,7 @@ const POLICY_PUBLIC_KEYS = [
 
 const AGENT_VERSION = '1.0.0'
 const DEFAULT_HEARTBEAT_MS = 15000
-const REPORT_TIMEOUT_MS = 8000
+const REPORT_TIMEOUT_MS = 15000
 const MAX_COMMAND_BUFFER = 10 * 1024 * 1024 // 10MB to avoid G-02 buffer overflow
 
 module.exports = {
