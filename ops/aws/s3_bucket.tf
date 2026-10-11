@@ -66,19 +66,20 @@ resource "aws_s3_bucket_cors_configuration" "cors" {
 
   cors_rule {
     id              = "DirectClientUploads"
-    allowed_methods = ["GET", "PUT", "POST", "HEAD"]
+    allowed_methods = ["GET", "PUT", "POST", "HEAD", "DELETE"]
     allowed_origins = [
       "https://${var.domain_name}",
       "http://${var.domain_name}",
-      "http://localhost:5173"
+      "https://43.204.45.86.sslip.io",
+      "http://43.204.45.86.sslip.io",
+      "http://localhost:5173",
+      "http://localhost",
+      "https://localhost"
     ]
     allowed_headers = [
-      "Content-Type",
-      "Content-Length",
-      "x-amz-*",
-      "ETag"
+      "*"
     ]
-    expose_headers  = ["ETag", "x-amz-server-side-encryption"]
+    expose_headers  = ["ETag", "x-amz-server-side-encryption", "x-amz-request-id", "x-amz-id-2", "x-amz-checksum-crc32"]
     max_age_seconds = 3600
   }
 }
