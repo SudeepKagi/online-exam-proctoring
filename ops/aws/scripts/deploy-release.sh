@@ -123,8 +123,10 @@ if [ -n "$NEW_DB_URL" ] || [ -n "$NEW_DIRECT_URL" ]; then
       const fs = require('fs');
       const p = '$SHARED_ENV';
       let c = fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
-      const db = process.env.TARGET_DB_URL;
-      const direct = process.env.TARGET_DIRECT_URL;
+      let direct = process.env.TARGET_DIRECT_URL;
+      if (db && (!direct || direct === db) && db.includes(':6543')) {
+        direct = db.replace(':6543', ':5432').replace('?pgbouncer=true', '').replace('&pgbouncer=true', '');
+      }
       if (db) {
         if (c.includes('DATABASE_URL=')) {
           c = c.replace(/^DATABASE_URL=.*/m, 'DATABASE_URL=\"' + db + '\"');
