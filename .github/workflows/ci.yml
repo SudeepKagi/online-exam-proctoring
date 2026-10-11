@@ -192,6 +192,7 @@ jobs:
           node proctornet/backend/prisma/seed/admin.js
 
       - name: Create MinIO S3 Test Bucket
+        working-directory: proctornet/backend
         run: |
           node -e "
             const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');
