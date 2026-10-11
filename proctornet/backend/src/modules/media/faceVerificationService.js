@@ -271,8 +271,7 @@ class FaceVerificationService {
         where: {
           attemptId,
           kind: 'PRE_EXAM',
-          provider: { not: 'error' },
-          errorCode: null
+          provider: { not: 'error' }
         }
       })
       if (priorAttempts >= MAX_VERIFY_RETRIES) {

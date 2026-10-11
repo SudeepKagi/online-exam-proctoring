@@ -8,7 +8,7 @@ const SEED_RULES = [
     version: 1,
     category: 'REMOTE_ACCESS',
     name: 'AnyDesk Remote Desktop',
-    matchers: { type: 'exeName', value: 'anydesk' },
+    matchers: { type: 'exeNameContains', value: 'anydesk' },
     severity: 'CRITICAL',
     action: 'SUSPEND',
     enabled: true
@@ -18,7 +18,7 @@ const SEED_RULES = [
     version: 1,
     category: 'REMOTE_ACCESS',
     name: 'TeamViewer Remote Control',
-    matchers: { type: 'exeName', value: 'teamviewer' },
+    matchers: { type: 'exeNameContains', value: 'teamviewer' },
     severity: 'CRITICAL',
     action: 'SUSPEND',
     enabled: true
@@ -28,7 +28,7 @@ const SEED_RULES = [
     version: 1,
     category: 'REMOTE_ACCESS',
     name: 'UltraViewer Remote Desktop',
-    matchers: { type: 'exeName', value: 'ultraviewer' },
+    matchers: { type: 'exeNameContains', value: 'ultraviewer' },
     severity: 'CRITICAL',
     action: 'SUSPEND',
     enabled: true
@@ -216,7 +216,57 @@ const SEED_RULES = [
     version: 1,
     category: 'AI_ASSISTANT',
     name: 'ChatGPT Desktop Client',
-    matchers: { type: 'exeName', value: 'chatgpt' },
+    matchers: { type: 'exeNameContains', value: 'chatgpt' },
+    severity: 'HIGH',
+    action: 'FLAG',
+    enabled: true
+  },
+  {
+    id: 'r-ai-copilot',
+    version: 1,
+    category: 'AI_ASSISTANT',
+    name: 'Microsoft Copilot Client',
+    matchers: { type: 'exeNameContains', value: 'copilot' },
+    severity: 'HIGH',
+    action: 'FLAG',
+    enabled: true
+  },
+  {
+    id: 'r-ai-mscopilot',
+    version: 1,
+    category: 'AI_ASSISTANT',
+    name: 'Microsoft Copilot System Process',
+    matchers: { type: 'exeNameContains', value: 'mscopilot' },
+    severity: 'HIGH',
+    action: 'FLAG',
+    enabled: true
+  },
+  {
+    id: 'r-comm-telegram',
+    version: 1,
+    category: 'OTHER',
+    name: 'Telegram Messenger',
+    matchers: { type: 'exeNameContains', value: 'telegram' },
+    severity: 'HIGH',
+    action: 'FLAG',
+    enabled: true
+  },
+  {
+    id: 'r-comm-discord',
+    version: 1,
+    category: 'OTHER',
+    name: 'Discord Application',
+    matchers: { type: 'exeNameContains', value: 'discord' },
+    severity: 'HIGH',
+    action: 'FLAG',
+    enabled: true
+  },
+  {
+    id: 'r-comm-whatsapp',
+    version: 1,
+    category: 'OTHER',
+    name: 'WhatsApp Desktop',
+    matchers: { type: 'exeNameContains', value: 'whatsapp' },
     severity: 'HIGH',
     action: 'FLAG',
     enabled: true
@@ -226,7 +276,7 @@ const SEED_RULES = [
     version: 1,
     category: 'AI_ASSISTANT',
     name: 'Claude Desktop Application',
-    matchers: { type: 'exeName', value: 'claude' },
+    matchers: { type: 'exeNameContains', value: 'claude' },
     severity: 'HIGH',
     action: 'FLAG',
     enabled: true
@@ -236,7 +286,7 @@ const SEED_RULES = [
     version: 1,
     category: 'AI_ASSISTANT',
     name: 'Cursor AI Editor Binary',
-    matchers: { type: 'exeName', value: 'cursor' },
+    matchers: { type: 'exeNameContains', value: 'cursor' },
     severity: 'HIGH',
     action: 'FLAG',
     enabled: true
@@ -294,11 +344,19 @@ class PolicyService {
    * Seed rules in database if empty
    */
   async seedRulesIfEmpty() {
-    const count = await prisma.agentRule.count()
-    if (count === 0) {
-      for (const rule of SEED_RULES) {
-        await prisma.agentRule.create({ data: rule })
-      }
+    for (const rule of SEED_RULES) {
+      await prisma.agentRule.upsert({
+        where: { id: rule.id },
+        update: {
+          category: rule.category,
+          name: rule.name,
+          matchers: rule.matchers,
+          severity: rule.severity,
+          action: rule.action,
+          enabled: rule.enabled
+        },
+        create: rule
+      })
     }
   }
 

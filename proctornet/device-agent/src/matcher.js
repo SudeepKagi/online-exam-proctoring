@@ -50,11 +50,18 @@ function matchTelemetry(collectorOutput, rules = []) {
     const matchers = rule.matchers || {}
     let matched = false
 
-    // 1. Process base name exact equality
+    // 1. Process base name exact equality or substring match
     if (matchers.type === 'exeName') {
       const target = normalizeExeName(matchers.value)
       if (processes.has(target)) {
         matched = true
+      } else {
+        for (const proc of processes) {
+          if (proc.includes(target)) {
+            matched = true
+            break
+          }
+        }
       }
     }
 
