@@ -58,7 +58,7 @@ class ExpirySweeper {
       // 2. Set-based update: find ACTIVE attempts past expires_at + sweepGrace (§P9 F8)
       const sweepGraceSeconds = EXAM_CLOCK_CONFIG.sweepGrace
       const updateSql = `
-        UPDATE exam_attempts
+        UPDATE public.exam_attempts
         SET status = 'EXPIRED'
         WHERE status = 'ACTIVE'
           AND expires_at IS NOT NULL
@@ -75,7 +75,7 @@ class ExpirySweeper {
         await prisma.$transaction(async (tx) => {
           for (const att of expiredAttempts) {
             await tx.$executeRawUnsafe(`
-              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              INSERT INTO public.outbox_events (event_type, payload, status, next_attempt_at)
               VALUES ('attempt.expired', $1::jsonb, 'PENDING', now());
             `, JSON.stringify({
               attemptId: att.id,
@@ -91,14 +91,14 @@ class ExpirySweeper {
       // 4. Reconciler (§P9 F2): any attempt in SUBMITTED|EXPIRED|TERMINATED with no result older than 60s -> enqueue evaluation
       const unevaluatedAttempts = await prisma.$queryRawUnsafe(`
         SELECT ea.id, ea.exam_id, ea.student_id, ea.status
-        FROM exam_attempts ea
+        FROM public.exam_attempts ea
         WHERE ea.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
           AND COALESCE(ea.submitted_at, ea.expires_at, ea.suspended_at, ea.started_at, ea.created_at) < (now() - interval '60 seconds')
           AND NOT EXISTS (
-            SELECT 1 FROM exam_results er WHERE er.attempt_id = ea.id
+            SELECT 1 FROM public.exam_results er WHERE er.attempt_id = ea.id
           )
           AND NOT EXISTS (
-            SELECT 1 FROM outbox_events oe 
+            SELECT 1 FROM public.outbox_events oe 
             WHERE oe.status = 'PENDING' 
               AND (oe.payload->>'attemptId') = ea.id::text
           )
@@ -111,7 +111,7 @@ class ExpirySweeper {
           for (const att of unevaluatedAttempts) {
             const eventType = `attempt.${att.status.toLowerCase()}`
             await tx.$executeRawUnsafe(`
-              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              INSERT INTO public.outbox_events (event_type, payload, status, next_attempt_at)
               VALUES ($1, $2::jsonb, 'PENDING', now());
             `, eventType, JSON.stringify({
               attemptId: att.id,

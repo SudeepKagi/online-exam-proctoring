@@ -8,7 +8,7 @@ class ResultRepository {
    */
   async evaluateAttemptSetBased(attemptId) {
     const sql = `
-      INSERT INTO exam_results (
+      INSERT INTO public.exam_results (
         id, attempt_id, exam_id, score, total_marks, correct_count, wrong_count,
         unanswered_count, percentage, time_taken, flag_count, status, is_released, created_at
       )
@@ -58,12 +58,12 @@ class ResultRepository {
             ELSE 0
           END) AS calculated_score,
           GREATEST(0, EXTRACT(EPOCH FROM (COALESCE(at.submitted_at, now()) - COALESCE(at.started_at, now())))::int) AS time_taken
-        FROM exam_attempts at
-        JOIN exams e ON e.id = at.exam_id
-        JOIN attempt_questions aq ON aq.attempt_id = at.id
-        JOIN questions q ON q.id = aq.question_id
-        LEFT JOIN answers a ON a.attempt_question_id = aq.id
-        LEFT JOIN question_options o ON o.id = a.selected_option_id
+        FROM public.exam_attempts at
+        JOIN public.exams e ON e.id = at.exam_id
+        JOIN public.attempt_questions aq ON aq.attempt_id = at.id
+        JOIN public.questions q ON q.id = aq.question_id
+        LEFT JOIN public.answers a ON a.attempt_question_id = aq.id
+        LEFT JOIN public.question_options o ON o.id = a.selected_option_id
         WHERE at.id = $1::uuid
           AND at.status IN ('SUBMITTED', 'EXPIRED', 'TERMINATED')
         GROUP BY at.id, at.exam_id, at.flag_count, e.negative_marking, e.results_released, e.negative_value, at.submitted_at, at.started_at
@@ -88,7 +88,7 @@ class ResultRepository {
    */
   async createAbsentResultsForEndedExam(examId) {
     const insertSql = `
-      INSERT INTO exam_results (
+      INSERT INTO public.exam_results (
         id, attempt_id, exam_id, score, total_marks, correct_count, wrong_count,
         unanswered_count, percentage, time_taken, flag_count, status, is_released, created_at
       )
@@ -100,15 +100,15 @@ class ResultRepository {
         COALESCE(e.total_marks, 0),
         0,
         0,
-        (SELECT COUNT(*)::int FROM attempt_questions WHERE attempt_id = ea.id),
+        (SELECT COUNT(*)::int FROM public.attempt_questions WHERE attempt_id = ea.id),
         0,
         0,
         ea.flag_count,
         'CLEAN'::"ResultStatus",
         e.results_released,
         now()
-      FROM exam_attempts ea
-      JOIN exams e ON e.id = ea.exam_id
+      FROM public.exam_attempts ea
+      JOIN public.exams e ON e.id = ea.exam_id
       WHERE ea.exam_id = $1::uuid
         AND ea.status = 'READY'
       ON CONFLICT (attempt_id) DO NOTHING
@@ -119,7 +119,7 @@ class ResultRepository {
 
     // Mark those attempts as EXPIRED with status_reason = 'NOT_STARTED'
     await prisma.$executeRawUnsafe(`
-      UPDATE exam_attempts
+      UPDATE public.exam_attempts
       SET status = 'EXPIRED',
           status_reason = 'NOT_STARTED'
       WHERE exam_id = $1::uuid
@@ -136,10 +136,10 @@ class ResultRepository {
     const sql = `
       WITH ranked AS (
         SELECT id, RANK() OVER (ORDER BY score DESC, time_taken ASC) as computed_rank
-        FROM exam_results
+        FROM public.exam_results
         WHERE exam_id = $1::uuid
       )
-      UPDATE exam_results er
+      UPDATE public.exam_results er
       SET rank = ranked.computed_rank
       FROM ranked
       WHERE er.id = ranked.id;

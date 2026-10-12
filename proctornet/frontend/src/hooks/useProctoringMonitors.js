@@ -1,168 +1,107 @@
-import { useState, useEffect, useRef } from 'react'
-import * as faceapi from 'face-api.js'
-import api from '@/utils/api'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 /**
  * useProctoringMonitors Hook
- * Orchestrates webcam stream, face presence detection,
- * and fullscreen / tab-switch compliance.
+ * Orchestrates browser security compliance:
+ * - Fullscreen lockdown enforcement across all standard and vendor-prefixed browser APIs
+ * - Tab-switch and window-blur violation detection
+ * - Screen sharing monitoring
+ * 
+ * Note: Continuous face cam polling is disabled in-exam per policy (face cam is strictly
+ * entry/pre-check only; only screen share is fed during the exam).
  */
 export function useProctoringMonitors({
   examId,
   emitViolation,
   isExamActive,
   allowTabSwitch = false,
-  requireFullscreen = true,
-  aiReverifyInterval = 10,
-  externalStreamRef
+  requireFullscreen = true
 }) {
-  const videoRef = useRef(null)
-  const captureVideoRef = useRef(null)
-  const canvasRef = useRef(null)
-  const streamRef = useRef(null)
-  const screenVideoRef = useRef(null)
-  const screenCanvasRef = useRef(null)
-
-  const faceIntervalRef = useRef(null)
-
-  const [cameraOk, setCameraOk] = useState(false)
-  const [faceOk, setFaceOk] = useState(false)
-  const [modelsLoaded, setModelsLoaded] = useState(false)
-  const [isFullscreenLocked, setIsFullscreenLocked] = useState(true)
-
-  const notifyViolation = (type, severity, metadata) => {
-    emitViolation?.(type, severity, metadata)
+  const isDocumentFullscreen = () => {
+    if (typeof document === 'undefined') return true
+    return Boolean(
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.msFullscreenElement
+    )
   }
 
-  // ── 1. Tab switch / Window blur ──
+  const [isFullscreenLocked, setIsFullscreenLocked] = useState(() => isDocumentFullscreen())
+
+  const notifyViolation = useCallback((type, severity, metadata) => {
+    emitViolation?.(type, severity, metadata)
+  }, [emitViolation])
+
+  // ── 1. Tab switch / Window blur / Pagehide ──
   useEffect(() => {
     if (!isExamActive || allowTabSwitch) return
 
     const handleVisibility = () => {
       if (document.hidden) {
-        notifyViolation('TAB_SWITCH', 'MEDIUM')
+        notifyViolation('TAB_SWITCH', 'MEDIUM', {
+          reason: 'Exam tab switched or minimized'
+        })
       }
     }
 
     const handleBlur = () => {
-      notifyViolation('WINDOW_BLUR', 'LOW')
+      notifyViolation('WINDOW_BLUR', 'LOW', {
+        reason: 'Exam window lost focus'
+      })
+    }
+
+    const handlePageHide = () => {
+      notifyViolation('TAB_SWITCH', 'HIGH', {
+        reason: 'Browser page hidden or navigated away'
+      })
     }
 
     document.addEventListener('visibilitychange', handleVisibility)
     window.addEventListener('blur', handleBlur)
+    window.addEventListener('pagehide', handlePageHide)
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('blur', handleBlur)
+      window.removeEventListener('pagehide', handlePageHide)
     }
-  }, [isExamActive, allowTabSwitch, emitViolation])
+  }, [isExamActive, allowTabSwitch, notifyViolation])
 
-  // ── 2. Fullscreen change listener ──
+  // ── 2. Fullscreen change listener (standard + all vendor prefixes) ──
   useEffect(() => {
+    if (!isExamActive || !requireFullscreen) return
+
     const handleFullscreenChange = () => {
-      const isFull = Boolean(document.fullscreenElement || document.webkitFullscreenElement)
+      const isFull = isDocumentFullscreen()
       setIsFullscreenLocked(isFull)
-      if (!isFull && isExamActive && requireFullscreen) {
-        notifyViolation('FULLSCREEN_EXIT', 'HIGH')
+      if (!isFull) {
+        notifyViolation('FULLSCREEN_EXIT', 'HIGH', {
+          reason: 'Fullscreen lockdown exited by candidate'
+        })
       }
     }
 
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-    }
-  }, [isExamActive, emitViolation])
+    // Verify initial fullscreen state when becoming active
+    setIsFullscreenLocked(isDocumentFullscreen())
 
-  // ── 3. Load face-api models and initialize Camera ──
-  useEffect(() => {
-    const MODEL_URL = '/models'
-    Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-    ]).then(() => setModelsLoaded(true)).catch(() => console.warn('Face models unavailable'))
+    const events = [
+      'fullscreenchange',
+      'webkitfullscreenchange',
+      'mozfullscreenchange',
+      'MSFullscreenChange'
+    ]
 
-    const activeStream = externalStreamRef?.current || streamRef.current
-    if (activeStream && activeStream.active && activeStream.getVideoTracks().some(t => t.readyState === 'live')) {
-      streamRef.current = activeStream
-      if (externalStreamRef) externalStreamRef.current = activeStream
-      setCameraOk(true)
-      return
-    }
-
-    navigator.mediaDevices?.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } }, audio: false })
-      .then(stream => {
-        streamRef.current = stream
-        if (externalStreamRef) externalStreamRef.current = stream
-        setCameraOk(true)
-      })
-      .catch(err => {
-        console.warn('Camera permission error:', err)
-        setCameraOk(false)
-      })
+    events.forEach(evt => document.addEventListener(evt, handleFullscreenChange))
 
     return () => {
-      // Stream teardown is managed by ExamInterface on terminal state
+      events.forEach(evt => document.removeEventListener(evt, handleFullscreenChange))
     }
-  }, [externalStreamRef])
-
-  // ── 3b. Bind Active Stream to PIP Video Elements ──
-  useEffect(() => {
-    const activeStream = externalStreamRef?.current || streamRef.current
-    if (!activeStream || !activeStream.active) return
-
-    const attachStream = (videoEl) => {
-      if (!videoEl) return
-      if (videoEl.srcObject !== activeStream) {
-        videoEl.srcObject = activeStream
-      }
-      videoEl.play().catch(e => console.warn('Video play notice:', e))
-    }
-
-    attachStream(videoRef.current)
-    attachStream(captureVideoRef.current)
-  }, [cameraOk, externalStreamRef?.current, videoRef.current])
-
-  // ── 4. Face-API Presence Polling Loop ──
-  useEffect(() => {
-    if (!modelsLoaded || !cameraOk || !isExamActive) return
-
-    faceIntervalRef.current = setInterval(async () => {
-      const videoEl = captureVideoRef.current || videoRef.current
-      if (!videoEl || videoEl.readyState < 2) return
-
-      try {
-        const detections = await faceapi.detectAllFaces(
-          videoEl,
-          new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 })
-        )
-
-        if (detections.length === 1) {
-          setFaceOk(true)
-        } else if (detections.length === 0) {
-          setFaceOk(false)
-          notifyViolation('NO_FACE', 'HIGH')
-        } else {
-          setFaceOk(false)
-          notifyViolation('MULTIPLE_FACES', 'HIGH', { count: detections.length })
-        }
-      } catch (err) {
-        console.warn('Face detection loop error:', err)
-      }
-    }, Math.max(2, aiReverifyInterval) * 1000)
-
-    return () => {
-      if (faceIntervalRef.current) clearInterval(faceIntervalRef.current)
-    }
-  }, [modelsLoaded, cameraOk, isExamActive, emitViolation])
+  }, [isExamActive, requireFullscreen, notifyViolation])
 
   return {
-    videoRef,
-    captureVideoRef,
-    canvasRef,
-    streamRef,
-    screenVideoRef,
-    screenCanvasRef,
-    cameraOk,
-    faceOk,
-    isFullscreenLocked
+    isFullscreenLocked,
+    setIsFullscreenLocked,
+    notifyViolation
   }
 }

@@ -20,6 +20,12 @@ function buildDatasourceUrl(role = 'api') {
     throw new Error('DATABASE_URL environment variable is required');
   }
 
+  // If DATABASE_URL is pointing to PgBouncer pooler (6543) and DIRECT_URL (5432) is configured,
+  // prefer DIRECT_URL to avoid connection drops and PgBouncer transaction-mode search_path bugs
+  if (process.env.DIRECT_URL && url.includes(':6543')) {
+    url = process.env.DIRECT_URL;
+  }
+
   // Calculate pool limit based on single-node resource budget (Appendix C):
   // Rule: total pool sizes <= 60% of Postgres max_connections (100).
   // Lite profile enforces connection_limit=5 for memory discipline (R4 item 5).
@@ -37,6 +43,9 @@ function buildDatasourceUrl(role = 'api') {
   }
   if (!urlObj.searchParams.has('pool_timeout')) {
     urlObj.searchParams.set('pool_timeout', poolTimeout.toString());
+  }
+  if (!urlObj.searchParams.has('schema')) {
+    urlObj.searchParams.set('schema', 'public');
   }
 
   return urlObj.toString();

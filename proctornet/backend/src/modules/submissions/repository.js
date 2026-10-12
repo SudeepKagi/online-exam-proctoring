@@ -14,7 +14,7 @@ class SubmissionRepository {
   async findIdempotentResponse(key) {
     const rows = await prisma.$queryRawUnsafe(`
       SELECT response_status, response_body, request_hash
-      FROM idempotency_keys
+      FROM public.idempotency_keys
       WHERE key = $1 AND expires_at > now();
     `, key)
 
@@ -36,7 +36,7 @@ class SubmissionRepository {
       // 1. Acquire exclusive row lock on exam attempt
       const rows = await tx.$queryRawUnsafe(`
         SELECT id, exam_id, student_id, status, expires_at, submitted_at
-        FROM exam_attempts
+        FROM public.exam_attempts
         WHERE id = $1::uuid
         FOR UPDATE;
       `, attemptId)
@@ -85,7 +85,7 @@ class SubmissionRepository {
 
       // 4. Update status to SUBMITTED
       const updatedRows = await tx.$queryRawUnsafe(`
-        UPDATE exam_attempts
+        UPDATE public.exam_attempts
         SET status = 'SUBMITTED',
             submitted_at = now()
         WHERE id = $1::uuid
@@ -103,7 +103,7 @@ class SubmissionRepository {
 
       // 5. Insert outbox event for async evaluation worker
       await tx.$executeRawUnsafe(`
-        INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+        INSERT INTO public.outbox_events (event_type, payload, status, next_attempt_at)
         VALUES ('attempt.submitted', $1::jsonb, 'PENDING', now());
       `, JSON.stringify({
         attemptId: updated.id,
@@ -114,7 +114,7 @@ class SubmissionRepository {
 
       // 6. Record idempotency key in the SAME transaction
       await tx.$executeRawUnsafe(`
-        INSERT INTO idempotency_keys (scope, key, request_hash, response_status, response_body, expires_at, created_at)
+        INSERT INTO public.idempotency_keys (scope, key, request_hash, response_status, response_body, expires_at, created_at)
         VALUES ('global', $1, $2, 200, $3::jsonb, now() + interval '24 hours', now())
         ON CONFLICT (scope, key) DO NOTHING;
       `, idempotencyKey, requestHash, JSON.stringify(responsePayload))

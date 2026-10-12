@@ -61,7 +61,7 @@ class OutboxPublisher {
 
     try {
       await prisma.$executeRawUnsafe(`
-        UPDATE outbox_events
+        UPDATE public.outbox_events
         SET next_attempt_at = now()
         WHERE status = 'PENDING'
           AND next_attempt_at > now() + interval '60 seconds';
@@ -86,7 +86,7 @@ class OutboxPublisher {
     const events = await prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRawUnsafe(`
         SELECT id, event_type, payload, attempts, created_at
-        FROM outbox_events
+        FROM public.outbox_events
         WHERE status = 'PENDING'
           AND next_attempt_at <= now()
         ORDER BY id ASC
@@ -99,7 +99,7 @@ class OutboxPublisher {
       const ids = rows.map(r => r.id)
       // Lease events for 60 seconds
       await tx.$executeRawUnsafe(`
-        UPDATE outbox_events
+        UPDATE public.outbox_events
         SET next_attempt_at = now() + interval '60 seconds'
         WHERE id = ANY($1::bigint[]);
       `, ids)
@@ -138,7 +138,7 @@ class OutboxPublisher {
 
         // Success: mark PUBLISHED
         await prisma.$executeRawUnsafe(`
-          UPDATE outbox_events
+          UPDATE public.outbox_events
           SET status = 'PUBLISHED', processed_at = now()
           WHERE id = $1;
         `, evt.id)
@@ -161,7 +161,7 @@ class OutboxPublisher {
         if (nextAttempts >= 10) {
           // Exceeded max retries -> FAILED
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'FAILED', attempts = $1, processed_at = now()
             WHERE id = $2;
           `, nextAttempts, evt.id).catch((dbErr) => {
@@ -184,7 +184,7 @@ class OutboxPublisher {
           const backoffSeconds = Math.min(300, Math.pow(2, nextAttempts)) + Math.floor(Math.random() * 3)
 
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'PENDING',
                 attempts = attempts + 1,
                 next_attempt_at = now() + ($1 || ' seconds')::interval
@@ -213,7 +213,7 @@ class OutboxPublisher {
   async _releaseRowNoIncrement(id) {
     try {
       await prisma.$executeRawUnsafe(`
-        UPDATE outbox_events
+        UPDATE public.outbox_events
         SET next_attempt_at = now() + interval '2 seconds'
         WHERE id = $1;
       `, id)
@@ -227,12 +227,12 @@ class OutboxPublisher {
    */
   async replayFailed(limit = 100) {
     return prisma.$executeRawUnsafe(`
-      UPDATE outbox_events
+      UPDATE public.outbox_events
       SET status = 'PENDING',
           attempts = 0,
           next_attempt_at = now()
       WHERE id IN (
-        SELECT id FROM outbox_events
+        SELECT id FROM public.outbox_events
         WHERE status = 'FAILED'
         ORDER BY id ASC
         LIMIT $1

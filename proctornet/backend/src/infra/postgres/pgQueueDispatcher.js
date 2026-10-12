@@ -160,7 +160,7 @@ class PgQueueDispatcher {
     this.lastReaperRun = now
     try {
       await prisma.$executeRawUnsafe(`
-        UPDATE outbox_events
+        UPDATE public.outbox_events
         SET next_attempt_at = now()
         WHERE status = 'PENDING'
           AND next_attempt_at > now() + interval '120 seconds';
@@ -201,7 +201,7 @@ class PgQueueDispatcher {
     const events = await prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRawUnsafe(`
         SELECT id, event_type, payload, attempts, created_at
-        FROM outbox_events
+        FROM public.outbox_events
         WHERE status = 'PENDING'
           AND next_attempt_at <= now()
         ORDER BY id ASC
@@ -214,7 +214,7 @@ class PgQueueDispatcher {
       const ids = rows.map(r => r.id)
       // Lease: mark next_attempt_at far ahead to prevent double-dispatch
       await tx.$executeRawUnsafe(`
-        UPDATE outbox_events
+        UPDATE public.outbox_events
         SET next_attempt_at = now() + interval '120 seconds'
         WHERE id = ANY($1::bigint[]);
       `, ids)
@@ -237,7 +237,7 @@ class PgQueueDispatcher {
         if (IGNORED_EVENT_TYPES.has(eventType)) {
           logger.info({ eventId, eventType }, 'PgQueueDispatcher: explicitly ignored event type, marking PUBLISHED')
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'PUBLISHED', processed_at = now()
             WHERE id = $1;
           `, evt.id).catch((err) => {
@@ -257,7 +257,7 @@ class PgQueueDispatcher {
         }
 
         await prisma.$executeRawUnsafe(`
-          UPDATE outbox_events
+          UPDATE public.outbox_events
           SET status = 'FAILED', processed_at = now()
           WHERE id = $1;
         `, evt.id).catch((err) => {
@@ -271,7 +271,7 @@ class PgQueueDispatcher {
 
         // Success → mark PUBLISHED
         await prisma.$executeRawUnsafe(`
-          UPDATE outbox_events
+          UPDATE public.outbox_events
           SET status = 'PUBLISHED', attempts = $1, processed_at = now()
           WHERE id = $2;
         `, currentAttempts, evt.id)
@@ -289,7 +289,7 @@ class PgQueueDispatcher {
         if (currentAttempts >= MAX_ATTEMPTS) {
           // Exceeded max retries → DEAD
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'FAILED', attempts = $1, processed_at = now()
             WHERE id = $2;
           `, currentAttempts, evt.id).catch((deadErr) => {
@@ -316,7 +316,7 @@ class PgQueueDispatcher {
           const backoffSeconds = Math.max(2, baseSeconds + jitterSeconds)
 
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'PENDING',
                 attempts = $1,
                 next_attempt_at = now() + ($2 || ' seconds')::interval
@@ -336,12 +336,12 @@ class PgQueueDispatcher {
    */
   async replayFailed(limit = 100) {
     return prisma.$executeRawUnsafe(`
-      UPDATE outbox_events
+      UPDATE public.outbox_events
       SET status = 'PENDING',
           attempts = 0,
           next_attempt_at = now()
       WHERE id IN (
-        SELECT id FROM outbox_events
+        SELECT id FROM public.outbox_events
         WHERE status = 'FAILED'
         ORDER BY id ASC
         LIMIT $1

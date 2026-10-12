@@ -13,8 +13,8 @@ class ProctoringRepository {
     const rows = await prisma.$queryRawUnsafe(`
       SELECT ea.id, ea.exam_id, ea.exam_id AS "examId", ea.status, ea.expires_at,
              e.tab_switch_limit AS "tabSwitchLimit", e.tab_switch_limit
-      FROM exam_attempts ea
-      JOIN exams e ON e.id = ea.exam_id
+      FROM public.exam_attempts ea
+      JOIN public.exams e ON e.id = ea.exam_id
       WHERE ea.id = $1::uuid AND ea.student_id = $2::uuid;
     `, attemptId, studentId)
     return rows?.[0] ?? null
@@ -26,7 +26,7 @@ class ProctoringRepository {
   async countViolationsByType(attemptId, eventType) {
     const rows = await prisma.$queryRawUnsafe(`
       SELECT COUNT(*)::int AS count
-      FROM violation_events
+      FROM public.violation_events
       WHERE attempt_id = $1::uuid AND event_type = $2::"ViolationType";
     `, attemptId, eventType)
     return rows?.[0]?.count ?? 0
@@ -133,7 +133,7 @@ class ProctoringRepository {
       SELECT id, attempt_id AS "attemptId", event_type AS "eventType", severity,
              evidence_key AS "evidenceKey", thumb_key AS "thumbKey", evidence_status AS "evidenceStatus",
              client_timestamp AS "clientTimestamp", server_timestamp AS "serverTimestamp", metadata
-      FROM violation_events
+      FROM public.violation_events
       WHERE attempt_id = $1::uuid
       ${cursorClause}
       ORDER BY server_timestamp DESC, id DESC
@@ -175,9 +175,9 @@ class ProctoringRepository {
              ve.evidence_key AS "evidenceKey", ve.thumb_key AS "thumbKey", ve.evidence_status AS "evidenceStatus",
              ve.client_timestamp AS "clientTimestamp", ve.server_timestamp AS "serverTimestamp", ve.metadata,
              s.name AS "studentName", s.usn AS "studentUsn"
-      FROM violation_events ve
-      JOIN exam_attempts ea ON ea.id = ve.attempt_id
-      JOIN students s ON s.id = ea.student_id
+      FROM public.violation_events ve
+      JOIN public.exam_attempts ea ON ea.id = ve.attempt_id
+      JOIN public.students s ON s.id = ea.student_id
       WHERE ea.exam_id = $1::uuid
       ${filterClause}
       ORDER BY ve.server_timestamp DESC, ve.id DESC
@@ -201,7 +201,7 @@ class ProctoringRepository {
         count(*) FILTER (WHERE status = 'TERMINATED')::int AS terminated,
         count(*) FILTER (WHERE status = 'READY')::int AS ready,
         count(*) FILTER (WHERE flag_count > 0)::int AS flagged
-      FROM exam_attempts
+      FROM public.exam_attempts
       WHERE exam_id = $1::uuid;
     `, examId)
     return rows[0] ?? { total: 0, active: 0, submitted: 0, terminated: 0, ready: 0, flagged: 0 }
@@ -238,20 +238,24 @@ class ProctoringRepository {
     params.push(limit)
     return prisma.$queryRawUnsafe(`
       SELECT
-        ea.id AS "attemptId",
-        ea.student_id AS "studentId",
+        latest_ea.id AS "attemptId",
+        latest_ea.student_id AS "studentId",
         s.name,
         s.usn,
-        ea.status,
-        ea.flag_count AS "flagCount",
+        latest_ea.status,
+        latest_ea.flag_count AS "flagCount",
         s.face_photo_key AS "facePhotoKey",
-        (SELECT count(*)::int FROM questions q WHERE q.exam_id = ea.exam_id) AS "totalQuestions",
-        (SELECT count(*)::int FROM answers a WHERE a.attempt_id = ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
-      FROM exam_attempts ea
-      JOIN students s ON s.id = ea.student_id
-      WHERE ea.exam_id = $1::uuid
-      ${filterClause}
-      ORDER BY s.name ASC, ea.id ASC
+        (SELECT count(*)::int FROM public.questions q WHERE q.exam_id = latest_ea.exam_id) AS "totalQuestions",
+        (SELECT count(*)::int FROM public.answers a WHERE a.attempt_id = latest_ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
+      FROM (
+        SELECT DISTINCT ON (ea.student_id) ea.*
+        FROM public.exam_attempts ea
+        WHERE ea.exam_id = $1::uuid
+        ${filterClause}
+        ORDER BY ea.student_id, ea.created_at DESC
+      ) latest_ea
+      JOIN public.students s ON s.id = latest_ea.student_id
+      ORDER BY s.name ASC, latest_ea.id ASC
       LIMIT $${paramIdx};
     `, ...params)
   }

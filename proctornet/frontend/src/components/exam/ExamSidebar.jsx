@@ -1,12 +1,12 @@
-import { Camera, CameraOff, List, Send } from 'lucide-react'
+import { Monitor, MonitorOff, List, Send, ShieldCheck } from 'lucide-react'
 
 /**
  * ExamSidebar Component
- * Right sidebar with live camera feed, question jump palette, and status legend.
+ * Right sidebar with live screen share monitor, question jump palette, and status legend.
  */
 export default function ExamSidebar({
   videoRef,
-  cameraOk,
+  cameraOk, // used as screenOk flag
   questions,
   currentIdx,
   setCurrentIdx,
@@ -17,10 +17,15 @@ export default function ExamSidebar({
 }) {
   return (
     <aside className="w-64 bg-card border-l border-border flex flex-col shrink-0 hidden lg:flex font-sans select-none">
-      {/* Live Camera PIP Box */}
+      {/* Live Screen Share Monitor Box */}
       <div className="p-3.5 border-b border-border">
-        <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wider flex items-center gap-1.5">
-          <Camera size={13} className="text-primary" /> Active Video Stream
+        <p className="text-xs text-muted-foreground font-semibold mb-2 uppercase tracking-wider flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Monitor size={13} className="text-primary" /> Screen Stream
+          </span>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Monitored
+          </span>
         </p>
         <div className="relative bg-neutral-900 rounded-xl overflow-hidden aspect-video border border-border shadow-inner">
           <video
@@ -33,8 +38,8 @@ export default function ExamSidebar({
           {!cameraOk && (
             <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/90">
               <div className="text-center">
-                <CameraOff size={20} className="text-destructive mx-auto mb-1 animate-pulse" />
-                <p className="text-xs text-destructive font-semibold">Stream Paused</p>
+                <MonitorOff size={20} className="text-destructive mx-auto mb-1 animate-pulse" />
+                <p className="text-xs text-destructive font-semibold">Screen Offline</p>
               </div>
             </div>
           )}

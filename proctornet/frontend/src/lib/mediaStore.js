@@ -14,6 +14,7 @@ import { useSyncExternalStore } from 'react'
 import { ConnectionState } from 'livekit-client'
 import { ProctorPublisher } from './proctorMedia'
 import { ProctorSnapshotter } from './proctorSnapshotter'
+import { getSharedScreenStream } from './mediaState'
 import api from '@/utils/api'
 
 export const MEDIA_STATUS = Object.freeze({
@@ -92,11 +93,13 @@ class MediaStoreManager {
       lastEvent: 'SNAPSHOT_INIT'
     })
 
+    const resolvedScreenTrack = screenTrack || getSharedScreenStream()?.getVideoTracks()?.[0] || null
+
     const snapshotter = new ProctorSnapshotter({
       examId,
       attemptId,
       cameraTrack,
-      screenTrack,
+      screenTrack: resolvedScreenTrack,
       socket,
       onError: (err) => {
         // Non-fatal: log but never crash the exam
@@ -110,7 +113,7 @@ class MediaStoreManager {
     this.setState({
       snapshotter,
       status: MEDIA_STATUS.ACTIVE,
-      screenPublished: !!screenTrack,
+      screenPublished: !!resolvedScreenTrack,
       cameraPublished: !!cameraTrack,
       lastEvent: 'SNAPSHOT_ACTIVE'
     })

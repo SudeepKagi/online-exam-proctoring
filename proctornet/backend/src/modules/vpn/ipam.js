@@ -77,12 +77,12 @@ class VpnIpam {
     // Atomic allocation with FOR UPDATE SKIP LOCKED
     // Re-uses existing lease if attempt already holds one; otherwise claims next available free IP
     const rawResult = await prisma.$queryRaw`
-      UPDATE vpn_ip_pool
+      UPDATE public.vpn_ip_pool
       SET attempt_id = ${attemptId}::uuid, leased_at = now(), released_at = null
       WHERE ip = (
-        SELECT ip FROM vpn_ip_pool
+        SELECT ip FROM public.vpn_ip_pool
         WHERE attempt_id = ${attemptId}::uuid
-           OR (attempt_id IS NULL AND NOT EXISTS (SELECT 1 FROM vpn_ip_pool WHERE attempt_id = ${attemptId}::uuid))
+           OR (attempt_id IS NULL AND NOT EXISTS (SELECT 1 FROM public.vpn_ip_pool WHERE attempt_id = ${attemptId}::uuid))
         ORDER BY (attempt_id = ${attemptId}::uuid) DESC, ip ASC
         LIMIT 1
         FOR UPDATE SKIP LOCKED
@@ -118,7 +118,7 @@ class VpnIpam {
     if (!attemptId) return null
 
     const rawResult = await prisma.$queryRaw`
-      UPDATE vpn_ip_pool
+      UPDATE public.vpn_ip_pool
       SET attempt_id = null, released_at = now()
       WHERE attempt_id = ${attemptId}::uuid
       RETURNING ip;

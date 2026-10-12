@@ -86,8 +86,8 @@ class ExamScheduler {
         // Process absent students for all exams in ENDED that still have READY attempts
         const endedExamsWithReady = await prisma.$queryRawUnsafe(`
           SELECT DISTINCT e.id
-          FROM exams e
-          JOIN exam_attempts ea ON ea.exam_id = e.id
+          FROM public.exams e
+          JOIN public.exam_attempts ea ON ea.exam_id = e.id
           WHERE e.status = 'ENDED' AND ea.status = 'READY';
         `)
         if (endedExamsWithReady && endedExamsWithReady.length > 0) {
@@ -101,10 +101,10 @@ class ExamScheduler {
         const { EXAM_CLOCK_CONFIG } = require('./examClock')
         const graceSeconds = EXAM_CLOCK_CONFIG.endGrace
         const expiredSuspendedAttempts = await prisma.$queryRawUnsafe(`
-          UPDATE exam_attempts ea
+          UPDATE public.exam_attempts ea
           SET status = 'EXPIRED',
               status_reason = 'Suspended attempt expired at exam end'
-          FROM exams e
+          FROM public.exams e
           WHERE ea.exam_id = e.id
             AND ea.status = 'SUSPENDED'
             AND e.status IN ('ENDED', 'LIVE')
@@ -116,7 +116,7 @@ class ExamScheduler {
           logger.info({ count: expiredSuspendedAttempts.length }, 'Expired SUSPENDED attempts past end_time + grace')
           for (const att of expiredSuspendedAttempts) {
             await prisma.$executeRawUnsafe(`
-              INSERT INTO outbox_events (event_type, payload, status, next_attempt_at)
+              INSERT INTO public.outbox_events (event_type, payload, status, next_attempt_at)
               VALUES ('attempt.expired', $1::jsonb, 'PENDING', now());
             `, JSON.stringify({
               attemptId: att.id,

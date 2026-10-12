@@ -657,6 +657,13 @@ export default function SecurityCheck() {
       } else {
         toast.success('Security check complete! Entering exam...')
       }
+
+      // Stop webcam tracks — camera is strictly for entry verification; exam uses screen share only
+      if (streamRef.current) {
+        try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_) {}
+        streamRef.current = null
+      }
+
       setTimeout(() => {
         navigate(`/student/exams/${examId}/exam`)
       }, 400)

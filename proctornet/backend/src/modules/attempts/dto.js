@@ -50,7 +50,8 @@ function toStudentAttemptDTO(attempt, questionsWithAnswers = []) {
       totalMarks: attempt.exam.totalMarks || attempt.exam.total_marks,
       cameraRequired: attempt.exam.cameraRequired ?? attempt.exam.camera_required,
       micRequired: attempt.exam.micRequired ?? attempt.exam.mic_required,
-      fullScreenMode: attempt.exam.fullScreenMode ?? attempt.exam.full_screen_mode,
+      browserLock: attempt.exam.browserLock ?? attempt.exam.browser_lock ?? true,
+      fullScreenMode: attempt.exam.fullScreenMode ?? attempt.exam.full_screen_mode ?? true,
       watermarkRequired: attempt.exam.watermarkRequired ?? attempt.exam.watermark_required,
       tabSwitchLimit: attempt.exam.tabSwitchLimit ?? attempt.exam.tab_switch_limit
     } : undefined,

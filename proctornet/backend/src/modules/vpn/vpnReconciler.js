@@ -74,8 +74,8 @@ class VpnReconciler {
       SELECT vp.id, vp.attempt_id AS "attemptId", vp.student_id AS "studentId",
              vp.ip_address AS "ipAddress", vp.public_key AS "publicKey",
              ea.status AS "attemptStatus", ea.exam_id AS "examId"
-      FROM vpn_peers vp
-      JOIN exam_attempts ea ON ea.id = vp.attempt_id
+      FROM public.vpn_peers vp
+      JOIN public.exam_attempts ea ON ea.id = vp.attempt_id
       WHERE vp.is_active = true AND ea.status IN ('READY', 'ACTIVE', 'SUSPENDED');
     `).catch(() => [])
 

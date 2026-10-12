@@ -92,7 +92,7 @@ class ViolationMicroBatcher {
 
       // 1. Single set-based INSERT using unnest with index preservation
       const insertSql = `
-        INSERT INTO violation_events (
+        INSERT INTO public.violation_events (
           attempt_id, event_type, severity, metadata, client_timestamp, server_timestamp
         )
         SELECT
@@ -131,7 +131,7 @@ class ViolationMicroBatcher {
           FROM unnest($1::uuid[]) AS t(attempt_id)
           GROUP BY attempt_id
         )
-        UPDATE exam_attempts ea
+        UPDATE public.exam_attempts ea
         SET flag_count = ea.flag_count + deltas.delta
         FROM deltas
         WHERE ea.id = deltas.attempt_id
@@ -190,7 +190,7 @@ class ViolationMicroBatcher {
           }
 
           const singleSql = `
-            INSERT INTO violation_events (
+            INSERT INTO public.violation_events (
               attempt_id, event_type, severity, metadata, client_timestamp, server_timestamp
             )
             VALUES ($1::uuid, $2::"ViolationType", $3::"Severity", $4::jsonb, $5::timestamptz, now())
@@ -206,7 +206,7 @@ class ViolationMicroBatcher {
           )
 
           await prisma.$executeRawUnsafe(`
-            UPDATE exam_attempts SET flag_count = flag_count + 1 WHERE id = $1::uuid;
+            UPDATE public.exam_attempts SET flag_count = flag_count + 1 WHERE id = $1::uuid;
           `, item.attemptId).catch((err) => {
             logger.warn({ error: err.message, attemptId: item.attemptId }, 'Failed to increment flag_count on fallback')
           })

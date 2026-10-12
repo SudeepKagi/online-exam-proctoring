@@ -62,7 +62,19 @@ export function useExamSocket({
     lastViolationTimeRef.current[canonicalType] = now
     setViolations(v => v + 1)
 
-    // 1. Send control event over socket without image bytes
+    // 1. Alert candidate immediately via prominent toast
+    const warningMessages = {
+      FULLSCREEN_EXIT: 'Warning: Fullscreen exited! Security policy requires fullscreen mode.',
+      TAB_SWITCH: 'Warning: Tab switch or minimization detected! Do not leave the exam tab.',
+      WINDOW_BLUR: 'Warning: Exam window lost focus! Please stay focused on the exam.',
+      SCREEN_SHARE_STOPPED: 'Warning: Screen sharing was stopped! You must share your entire screen.',
+      DEVTOOLS_OPENED: 'Warning: Developer tools opened! This action is strictly prohibited.',
+      KEYBOARD_SHORTCUT: 'Warning: Prohibited keyboard shortcut detected.'
+    }
+    const warnMsg = warningMessages[canonicalType] || `Warning: ${canonicalType.replace(/_/g, ' ')} detected! A security flag has been recorded.`
+    toast.error(warnMsg, { id: `warn-${canonicalType}`, duration: 5000 })
+
+    // 2. Send control event over socket without image bytes
     socketRef.current?.emit('violation', {
       examId,
       attemptId,
@@ -71,7 +83,7 @@ export function useExamSocket({
       metadata
     })
 
-    // 2. Trigger HTTP violation recording, direct S3 upload, and completion (R2)
+    // 3. Trigger HTTP violation recording, direct S3 upload, and completion (R2)
     if (attemptId) {
       const videoEl = document.querySelector('video')
       reportViolationWithEvidence({

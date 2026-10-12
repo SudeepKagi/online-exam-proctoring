@@ -25,10 +25,15 @@ class RosterStoreManager {
     this.examId = examId
     this.rosterMap.clear()
 
+    // Deduplicate by student identity (studentId or usn or attemptId)
     for (const item of initialRoster) {
-      const key = item.attemptId || item.id
-      if (key) {
-        this.rosterMap.set(key, { ...item, attemptId: key })
+      const studentKey = item.studentId || item.usn || item.attemptId || item.id
+      const attemptKey = item.attemptId || item.id || studentKey
+      if (studentKey) {
+        const existing = this.rosterMap.get(studentKey)
+        if (!existing || (existing.status !== 'ACTIVE' && item.status === 'ACTIVE')) {
+          this.rosterMap.set(studentKey, { ...item, attemptId: attemptKey, studentKey })
+        }
       }
     }
 
@@ -40,11 +45,21 @@ class RosterStoreManager {
     this._recomputeSnapshot()
   }
 
-  updateCandidate(attemptId, updates = {}) {
+  updateCandidate(candId, updates = {}) {
     startTransition(() => {
-      const existing = this.rosterMap.get(attemptId)
+      let keyToUpdate = candId
+      if (!this.rosterMap.has(candId)) {
+        for (const [k, v] of this.rosterMap.entries()) {
+          if (v.attemptId === candId || v.studentId === candId || v.id === candId) {
+            keyToUpdate = k
+            break
+          }
+        }
+      }
+
+      const existing = this.rosterMap.get(keyToUpdate)
       if (existing) {
-        this.rosterMap.set(attemptId, {
+        this.rosterMap.set(keyToUpdate, {
           ...existing,
           ...updates
         })
@@ -67,11 +82,21 @@ class RosterStoreManager {
       startTransition(() => {
         let changed = false
         for (const delta of payload.deltas) {
-          if (!delta.attemptId) continue
+          if (!delta.attemptId && !delta.studentId) continue
 
-          const existing = this.rosterMap.get(delta.attemptId)
+          let keyToUpdate = delta.studentId || delta.attemptId
+          if (!this.rosterMap.has(keyToUpdate)) {
+            for (const [k, v] of this.rosterMap.entries()) {
+              if (v.attemptId === delta.attemptId || v.studentId === delta.studentId) {
+                keyToUpdate = k
+                break
+              }
+            }
+          }
+
+          const existing = this.rosterMap.get(keyToUpdate)
           if (existing) {
-            this.rosterMap.set(delta.attemptId, {
+            this.rosterMap.set(keyToUpdate, {
               ...existing,
               ...delta,
               flagCount: delta.flagCount !== undefined ? delta.flagCount : existing.flagCount,
@@ -92,11 +117,21 @@ class RosterStoreManager {
     // Listen to real-time violation events (R2)
     socket.on('violation:new', (payload) => {
       if (!payload) return
-      const attemptId = payload.attemptId || payload.studentId
-      if (!attemptId) return
+      const candId = payload.studentId || payload.attemptId
+      if (!candId) return
 
       startTransition(() => {
-        const existing = this.rosterMap.get(attemptId)
+        let keyToUpdate = candId
+        if (!this.rosterMap.has(candId)) {
+          for (const [k, v] of this.rosterMap.entries()) {
+            if (v.attemptId === candId || v.studentId === candId || v.id === candId) {
+              keyToUpdate = k
+              break
+            }
+          }
+        }
+
+        const existing = this.rosterMap.get(keyToUpdate)
         if (existing) {
           const existingEvents = Array.isArray(existing.events) ? existing.events : []
           const newEvent = {
@@ -111,7 +146,7 @@ class RosterStoreManager {
             evidenceStatus: payload.evidenceStatus,
             metadata: payload.metadata
           }
-          this.rosterMap.set(attemptId, {
+          this.rosterMap.set(keyToUpdate, {
             ...existing,
             flagCount: (existing.flagCount || 0) + 1,
             isHotspot: true,

@@ -39,6 +39,7 @@ export default function InvigilatorLiveGrid() {
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [warningMsg, setWarningMsg] = useState('')
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)
+  const [filterActiveOnly, setFilterActiveOnly] = useState(false)
   const [showExited, setShowExited] = useState(false)
   const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
   const [activeLightboxImage, setActiveLightboxImage] = useState(null)
@@ -260,9 +261,27 @@ export default function InvigilatorLiveGrid() {
 
   const candidates = rosterSnapshot.items || []
 
-  const filteredCandidates = candidates.filter((c) => {
+  // Deduplicate candidates by student identity (usn/studentId/id)
+  const uniqueCandidateMap = new Map()
+  for (const c of candidates) {
+    const key = c.studentId || c.usn || c.id || c.attemptId
+    if (!uniqueCandidateMap.has(key)) {
+      uniqueCandidateMap.set(key, c)
+    } else {
+      const existing = uniqueCandidateMap.get(key)
+      // Keep ACTIVE attempt over READY or TERMINATED
+      if (existing.status !== 'ACTIVE' && c.status === 'ACTIVE') {
+        uniqueCandidateMap.set(key, c)
+      }
+    }
+  }
+  const uniqueCandidates = Array.from(uniqueCandidateMap.values())
+
+  const filteredCandidates = uniqueCandidates.filter((c) => {
     const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
     if (!showExited && isExited) return false
+
+    if (filterActiveOnly && c.status !== 'ACTIVE') return false
 
     if (filterAlertsOnly) {
       return (c.flagCount || 0) > 0 || c.status === 'SUSPENDED' || (c.alerts && c.alerts.length > 0)
@@ -617,6 +636,15 @@ export default function InvigilatorLiveGrid() {
 
           <div className="flex items-center gap-2.5">
             <Button
+              variant={filterActiveOnly ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterActiveOnly(!filterActiveOnly)}
+              className="text-xs font-bold"
+            >
+              <UserCheck size={13} className="mr-1.5" />
+              {filterActiveOnly ? 'Showing Attending Only' : 'Show Attending Only'}
+            </Button>
+            <Button
               variant={filterAlertsOnly ? 'destructive' : 'outline'}
               size="sm"
               onClick={() => setFilterAlertsOnly(!filterAlertsOnly)}
@@ -780,18 +808,30 @@ export default function InvigilatorLiveGrid() {
                           <Badge className="text-[9px] bg-amber-500 hover:bg-amber-600 text-white font-bold uppercase tracking-wider">
                             SUSPENDED
                           </Badge>
+                        ) : cand.status === 'READY' ? (
+                          <Badge variant="outline" className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                            NOT JOINED
+                          </Badge>
+                        ) : cand.status === 'SUBMITTED' ? (
+                          <Badge variant="outline" className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+                            SUBMITTED
+                          </Badge>
                         ) : isFlagged ? (
                           <Badge variant="destructive" className="text-[9px] font-bold uppercase tracking-wider">
                             FLAGGED
                           </Badge>
-                        ) : (
+                        ) : cand.status === 'ACTIVE' ? (
                           <Badge variant="green" className="text-[9px] font-bold uppercase tracking-wider">
                             LIVE
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider">
+                            {cand.status || 'OFFLINE'}
                           </Badge>
                         )}
                       </div>
 
-                      {/* Camera Feed Thumbnail — snapshot or LiveKit */}
+                      {/* Screen Share Feed Thumbnail — snapshot or LiveKit */}
                       <div
                         ref={el => { tileRefs.current[cand.attemptId || cand.id] = el }}
                         className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2"
@@ -799,25 +839,28 @@ export default function InvigilatorLiveGrid() {
                         {mediaDriver === 'snapshot' ? (
                           (() => {
                             const sf = snapshotFrames[cand.attemptId || cand.id]
-                            const fallback = cand.latestFrame || cand.lastSnapshot || cand.thumbUrl
-                            const src = sf?.cameraUrl
-                              ? `${sf.cameraUrl.split('?')[0]}?frameAt=${sf.frameAt}`
-                              : fallback
-                            return src ? (
+                            const scrSrc = (sf?.screenUrl ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}` : null) ||
+                              cand.latestScreen ||
+                              cand.screenUrl ||
+                              cand.thumbUrl ||
+                              cand.latestFrame
+                            return scrSrc ? (
                               <img
-                                src={src}
-                                alt={`Live camera — ${cand.usn}`}
+                                src={scrSrc}
+                                alt={`Live screen — ${cand.usn}`}
                                 className="w-full h-full object-cover"
                                 onError={e => { e.currentTarget.style.display = 'none' }}
                               />
                             ) : (
-                              <span className="text-[10px] text-neutral-500 font-mono">No frame yet</span>
+                              <span className="text-[10px] text-neutral-500 font-mono">
+                                {cand.status === 'READY' ? 'Not joined' : 'No screen yet'}
+                              </span>
                             )
                           })()
                         ) : (
-                          <WebcamFeed
-                            track={tracks.camera}
-                            initialFrame={cand.latestFrame || cand.lastSnapshot || cand.thumbUrl}
+                          <ScreenFeed
+                            track={tracks.screen}
+                            initialFrame={cand.latestScreen || cand.thumbUrl}
                             className="w-full h-full object-cover"
                           />
                         )}
@@ -897,51 +940,31 @@ export default function InvigilatorLiveGrid() {
 
               <div className="flex-1 overflow-y-auto space-y-4 pr-1">
                 {/* Dual Stream Feeds */}
-                <div className="grid grid-cols-2 gap-3.5">
-                  <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
-                    {mediaDriver === 'snapshot' ? (() => {
-                      const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
-                      const camSrc = sf?.cameraUrl
-                        ? `${sf.cameraUrl.split('?')[0]}?frameAt=${sf.frameAt}`
-                        : (selectedCandidate.latestFrame || selectedCandidate.lastSnapshot)
-                      return camSrc ? (
-                        <img src={camSrc} alt="Live camera feed" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xs text-neutral-500 font-mono">Awaiting snapshot...</span>
-                      )
-                    })() : (
-                      <WebcamFeed
-                        track={getCandidateTracks(selectedCandidate).camera}
-                        initialFrame={selectedCandidate.latestFrame || selectedCandidate.lastSnapshot || selectedCandidate.thumbUrl}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
-                      <Video size={11} className="text-primary" /> Camera Stream
-                    </span>
-                  </div>
-                  <div className="bg-neutral-950 border border-border rounded-2xl h-48 overflow-hidden relative flex items-center justify-center">
-                    {mediaDriver === 'snapshot' ? (() => {
-                      const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
-                      const scrSrc = sf?.screenUrl
-                        ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}`
-                        : selectedCandidate.latestScreen
-                      return scrSrc ? (
-                        <img src={scrSrc} alt="Live screen feed" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-xs text-neutral-500 font-mono">Awaiting snapshot...</span>
-                      )
-                    })() : (
-                      <ScreenFeed
-                        track={getCandidateTracks(selectedCandidate).screen}
-                        initialFrame={selectedCandidate.latestScreen}
-                        className="w-full h-full object-cover"
-                      />
-                    )}
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs text-[10px] font-bold text-white flex items-center gap-1.5">
-                      <Monitor size={11} className="text-primary" /> Screen Stream
-                    </span>
-                  </div>
+                {/* Candidate Screen Stream Modal View */}
+                <div className="bg-neutral-950 border border-border rounded-2xl h-64 overflow-hidden relative flex items-center justify-center">
+                  {mediaDriver === 'snapshot' ? (() => {
+                    const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
+                    const scrSrc = (sf?.screenUrl ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}` : null) ||
+                      selectedCandidate.latestScreen ||
+                      selectedCandidate.screenUrl ||
+                      selectedCandidate.thumbUrl
+                    return scrSrc ? (
+                      <img src={scrSrc} alt="Live screen feed" className="w-full h-full object-contain bg-black" />
+                    ) : (
+                      <span className="text-xs text-neutral-500 font-mono">
+                        {selectedCandidate.status === 'READY' ? 'Candidate not yet in active session' : 'Awaiting screen frame...'}
+                      </span>
+                    )
+                  })() : (
+                    <ScreenFeed
+                      track={getCandidateTracks(selectedCandidate).screen}
+                      initialFrame={selectedCandidate.latestScreen}
+                      className="w-full h-full object-contain bg-black"
+                    />
+                  )}
+                  <span className="absolute top-2 left-2 px-2.5 py-1 rounded bg-black/80 backdrop-blur-xs text-[11px] font-bold text-white flex items-center gap-1.5 shadow-sm">
+                    <Monitor size={13} className="text-primary" /> Live Candidate Screen Stream
+                  </span>
                 </div>
 
                 {/* Exam Device Companion Status Card */}

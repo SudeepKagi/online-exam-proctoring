@@ -18,10 +18,10 @@ class SupportService {
     if (this._tableInitialized) return
     try {
       await prisma.$executeRawUnsafe(`
-        CREATE TABLE IF NOT EXISTS support_tickets (
+        CREATE TABLE IF NOT EXISTS public.support_tickets (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          student_id UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-          exam_id UUID REFERENCES exams(id) ON DELETE SET NULL,
+          student_id UUID NOT NULL REFERENCES public.students(id) ON DELETE CASCADE,
+          exam_id UUID REFERENCES public.exams(id) ON DELETE SET NULL,
           subject TEXT NOT NULL,
           message TEXT NOT NULL,
           priority VARCHAR(32) NOT NULL DEFAULT 'MEDIUM',
@@ -33,12 +33,12 @@ class SupportService {
         )
       `)
       try {
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_support_tickets_student ON support_tickets(student_id)`)
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_support_tickets_student ON public.support_tickets(student_id)`)
       } catch (idxErr) {
         logger.debug({ error: idxErr.message }, 'idx_support_tickets_student index notice')
       }
       try {
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status)`)
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON public.support_tickets(status)`)
       } catch (idxErr) {
         logger.debug({ error: idxErr.message }, 'idx_support_tickets_status index notice')
       }
@@ -59,7 +59,7 @@ class SupportService {
     }
 
     const rows = await prisma.$queryRawUnsafe(`
-      INSERT INTO support_tickets (student_id, exam_id, subject, message, priority, status, created_at, updated_at)
+      INSERT INTO public.support_tickets (student_id, exam_id, subject, message, priority, status, created_at, updated_at)
       VALUES ($1::uuid, $2::uuid, $3, $4, $5, 'OPEN', now(), now())
       RETURNING id, student_id AS "studentId", exam_id AS "examId", subject, message, priority, status, created_at AS "createdAt";
     `, studentId, examId || null, subject.trim(), message.trim(), priority)
@@ -86,7 +86,7 @@ class SupportService {
         resolved_at AS "resolvedAt", 
         created_at AS "createdAt", 
         updated_at AS "updatedAt"
-      FROM support_tickets
+      FROM public.support_tickets
       WHERE student_id = $1::uuid
       ORDER BY created_at DESC;
     `, studentId)
@@ -113,9 +113,9 @@ class SupportService {
         t.resolved_at AS "resolvedAt", 
         t.created_at AS "createdAt", 
         t.updated_at AS "updatedAt"
-      FROM support_tickets t
-      JOIN students s ON t.student_id = s.id
-      LEFT JOIN exams e ON t.exam_id = e.id
+      FROM public.support_tickets t
+      JOIN public.students s ON t.student_id = s.id
+      LEFT JOIN public.exams e ON t.exam_id = e.id
     `
 
     const params = []
@@ -134,7 +134,7 @@ class SupportService {
     await this._ensureTable()
 
     const rows = await prisma.$queryRawUnsafe(`
-      UPDATE support_tickets
+      UPDATE public.support_tickets
       SET status = $1,
           admin_response = $2,
           resolved_at = now(),

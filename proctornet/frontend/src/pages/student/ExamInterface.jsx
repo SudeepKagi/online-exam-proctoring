@@ -68,6 +68,7 @@ export default function ExamInterface() {
 
   const streamRef = useRef(null)
   const screenStreamRef = useRef(null)
+  const screenVideoRef = useRef(null)
   const tabInstanceId = useRef(null)
   if (!tabInstanceId.current) {
     tabInstanceId.current = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'tab-' + Date.now()
@@ -294,23 +295,17 @@ export default function ExamInterface() {
 
   // ── Hook 3: Proctoring Monitors ──
   const {
-    videoRef,
-    captureVideoRef,
-    canvasRef,
-    cameraOk,
-    faceOk,
-    isFullscreenLocked
+    isFullscreenLocked,
+    setIsFullscreenLocked
   } = useProctoringMonitors({
     examId,
     emitViolation,
     isExamActive: !isWaiting && !loading && !terminalState && !suspendedState?.active,
     allowTabSwitch: exam?.browserLock === false,
-    requireFullscreen: exam?.fullScreenMode !== false,
-    aiReverifyInterval: exam?.aiReverifyInterval || 10,
-    externalStreamRef: streamRef
+    requireFullscreen: exam?.fullScreenMode !== false
   })
 
-  // ── LiveKit SFU WebRTC ProctorPublisher (Q6) ──
+  // ── Screen Share Streaming & Snapshotter (R3) ──
   useEffect(() => {
     if (!attemptId || loading || isWaiting || terminalState) return
 
@@ -318,9 +313,29 @@ export default function ExamInterface() {
 
     const initMediaPublisher = async () => {
       try {
-        await mediaStore.startPublisher({
+        const sharedScreenStream = getSharedScreenStream()
+        const screenTrack = sharedScreenStream?.getVideoTracks()?.[0] || null
+
+        // Stop continuous face webcam - face cam is strictly entry/pre-check only
+        if (streamRef.current) {
+          try { streamRef.current.getTracks().forEach(t => t.stop()) } catch (_) {}
+          streamRef.current = null
+        }
+
+        // Attach screen stream to sidebar preview
+        if (screenVideoRef.current && sharedScreenStream && sharedScreenStream.active) {
+          if (screenVideoRef.current.srcObject !== sharedScreenStream) {
+            screenVideoRef.current.srcObject = sharedScreenStream
+          }
+          screenVideoRef.current.play().catch(() => {})
+        }
+
+        await mediaStore.start({
           examId,
           attemptId,
+          cameraTrack: null, // Feed only screen share to invigilator per policy
+          screenTrack,
+          socket: socketRef.current,
           onViolation: ({ eventType, metadata }) => {
             emitViolation?.(eventType, 'MEDIUM', metadata)
           },
@@ -334,7 +349,7 @@ export default function ExamInterface() {
         })
       } catch (err) {
         if (!isCleanedUp) {
-          console.warn('[ExamInterface] LiveKit publisher startup note:', err.message)
+          console.warn('[ExamInterface] Media startup note:', err.message)
         }
       }
     }
@@ -569,10 +584,18 @@ export default function ExamInterface() {
     })
   }
 
-  const handleReenterFullscreen = () => {
-    const el = document.documentElement
-    if (el.requestFullscreen) el.requestFullscreen().catch(() => {})
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen().catch(() => {})
+  const handleReenterFullscreen = async () => {
+    try {
+      const el = document.documentElement
+      if (el.requestFullscreen) await el.requestFullscreen()
+      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
+      else if (el.mozRequestFullScreen) await el.mozRequestFullScreen()
+      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+      setIsFullscreenLocked(true)
+    } catch (err) {
+      console.warn('Re-enter fullscreen failed:', err)
+      toast.error('Fullscreen mode required. Please allow fullscreen to continue.', { id: 'fs-err' })
+    }
   }
 
   // ── 3. Continuous In-Exam Companion Monitor ──
@@ -918,8 +941,8 @@ export default function ExamInterface() {
         />
 
         <ExamSidebar
-          videoRef={videoRef}
-          cameraOk={cameraOk}
+          videoRef={screenVideoRef}
+          cameraOk={Boolean(mediaState.screenPublished || getSharedScreenStream()?.active)}
           questions={questions}
           currentIdx={currentIdx}
           setCurrentIdx={setCurrentIdx}
@@ -993,6 +1016,10 @@ export default function ExamInterface() {
             </form>
           </div>
         </div>
+      )}
+      {/* Fullscreen Lockdown Enforcement Overlay */}
+      {!isFullscreenLocked && exam?.fullScreenMode !== false && !isWaiting && !loading && !terminalState && (
+        <FullscreenComplianceOverlay onReenterFullscreen={handleReenterFullscreen} />
       )}
     </div>
   )

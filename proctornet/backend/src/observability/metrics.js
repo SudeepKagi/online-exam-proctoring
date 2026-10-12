@@ -74,7 +74,7 @@ async function metricsHandler(req, res) {
 
     // Update outbox failed count gauge (§P9 F1)
     try {
-      const failedRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM outbox_events WHERE status = 'FAILED';`)
+      const failedRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM public.outbox_events WHERE status = 'FAILED';`)
       if (failedRows && failedRows[0]) {
         outboxFailedGauge.set(failedRows[0].count)
       }
