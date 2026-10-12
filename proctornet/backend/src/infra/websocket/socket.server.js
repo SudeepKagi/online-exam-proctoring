@@ -597,7 +597,7 @@ function createWebSocketServer(httpServer, options = {}) {
      * proctor:tile_visibility (invigilator → server)
      * Payload: { examId, visibleAttemptIds: string[], focusedAttemptId: string|null }
      * Server computes target cadence per attempt and pushes proctor:cadence to each
-     * student's attempt room.  Focused attempt decays back to 5 s after 60 s.
+     * student's attempt room. Focused attempt decays back to 5 s after 60 s.
      */
     socket.on('proctor:tile_visibility', async (data) => {
       try {
@@ -605,7 +605,61 @@ function createWebSocketServer(httpServer, options = {}) {
         if (![ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR].includes(role)) return
 
         const { examId, visibleAttemptIds = [], focusedAttemptId = null } = data || {}
-        if (!examId) return
+        if (!examId || typeof examId !== 'string') return
+
+        // 1. Verify staff authorization for target exam
+        if (!socket.authorizedExams.has(examId)) {
+          try {
+            await proctoringService.assertStaffExamAccess(socket.user, examId)
+            socket.authorizedExams.add(examId)
+          } catch (authErr) {
+            logger.warn({ userId: socket.user?.id, role, examId, error: authErr.message }, 'proctor:tile_visibility rejected: unauthorized exam scope')
+            return
+          }
+        }
+
+        // 2. Verify room membership (socket must have joined inv:${examId})
+        if (!socket.rooms.has(`inv:${examId}`)) {
+          logger.warn({ userId: socket.user?.id, examId }, 'proctor:tile_visibility rejected: socket not joined to invigilator room')
+          return
+        }
+
+        // 3. Throttle rapid cadence changes (min 300ms between calls per socket)
+        const now = Date.now()
+        if (socket._lastTileVisibilityAt && (now - socket._lastTileVisibilityAt) < 300) {
+          return
+        }
+        socket._lastTileVisibilityAt = now
+
+        // 4. Sanitize and validate attempt IDs
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+        const sanitizedVisibleIds = (Array.isArray(visibleAttemptIds) ? visibleAttemptIds : [])
+          .filter(id => typeof id === 'string' && uuidRegex.test(id))
+          .slice(0, 100) // cap to 100 tiles
+
+        const sanitizedFocusedId = (typeof focusedAttemptId === 'string' && uuidRegex.test(focusedAttemptId))
+          ? focusedAttemptId
+          : null
+
+        const candidateIds = Array.from(new Set([
+          ...sanitizedVisibleIds,
+          ...(sanitizedFocusedId ? [sanitizedFocusedId] : [])
+        ]))
+
+        if (candidateIds.length === 0) return
+
+        // 5. Verify that attempt IDs strictly belong to this exam (prevent cross-exam cadence flooding)
+        const verifiedAttempts = await prisma.examAttempt.findMany({
+          where: {
+            id: { in: candidateIds },
+            examId
+          },
+          select: { id: true }
+        })
+        const verifiedSet = new Set(verifiedAttempts.map(a => a.id))
+
+        const verifiedVisible = sanitizedVisibleIds.filter(id => verifiedSet.has(id))
+        const verifiedFocused = (sanitizedFocusedId && verifiedSet.has(sanitizedFocusedId)) ? sanitizedFocusedId : null
 
         // Clear previous focused-decay timer on this socket (invigilators only)
         if (socket._focusDecayTimer) {
@@ -613,11 +667,11 @@ function createWebSocketServer(httpServer, options = {}) {
           socket._focusDecayTimer = null
         }
 
-        const visibleSet = new Set(visibleAttemptIds)
+        const visibleSet = new Set(verifiedVisible)
 
         // Push cadences: focused > visible > default
         for (const attemptId of visibleSet) {
-          if (attemptId === focusedAttemptId) continue // handled separately below
+          if (attemptId === verifiedFocused) continue // handled separately below
           io.to(`attempt:${attemptId}`).emit('proctor:cadence', {
             attemptId,
             cadenceMs: 5_000,
@@ -627,9 +681,9 @@ function createWebSocketServer(httpServer, options = {}) {
           })
         }
 
-        if (focusedAttemptId) {
-          io.to(`attempt:${focusedAttemptId}`).emit('proctor:cadence', {
-            attemptId: focusedAttemptId,
+        if (verifiedFocused) {
+          io.to(`attempt:${verifiedFocused}`).emit('proctor:cadence', {
+            attemptId: verifiedFocused,
             cadenceMs: 1_500,
             jitterMs: 200,
             reason: 'focused',
@@ -638,9 +692,9 @@ function createWebSocketServer(httpServer, options = {}) {
 
           // After 60 s, decay back to 5 s if still visible, else 30 s
           socket._focusDecayTimer = setTimeout(() => {
-            const decayTarget = visibleSet.has(focusedAttemptId) ? 5_000 : 30_000
-            io.to(`attempt:${focusedAttemptId}`).emit('proctor:cadence', {
-              attemptId: focusedAttemptId,
+            const decayTarget = visibleSet.has(verifiedFocused) ? 5_000 : 30_000
+            io.to(`attempt:${verifiedFocused}`).emit('proctor:cadence', {
+              attemptId: verifiedFocused,
               cadenceMs: decayTarget,
               jitterMs: decayTarget === 30_000 ? 3_000 : 500,
               reason: 'focus_decay',
@@ -650,7 +704,7 @@ function createWebSocketServer(httpServer, options = {}) {
           }, 60_000)
         }
 
-        logger.debug({ examId, visibleCount: visibleSet.size, focusedAttemptId }, 'Cadence pushed for tile visibility')
+        logger.debug({ examId, visibleCount: visibleSet.size, focusedAttemptId: verifiedFocused }, 'Cadence pushed for tile visibility')
       } catch (err) {
         logger.warn({ error: err.message }, 'proctor:tile_visibility handling error')
       }

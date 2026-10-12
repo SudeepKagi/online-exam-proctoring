@@ -168,7 +168,7 @@ async function evaluateDeviceGate({ attemptId, exam, studentId: _studentId }) {
           code: 'AGENT_REQUIRED',
           state: 'DEGRADED',
           reason: rule.action === 'SUSPEND' ? 'PROHIBITED_SOFTWARE_SUSPEND' : 'BLOCKING_FINDING',
-          message: `Prohibited software detected: ${rule.name}. Close prohibited applications immediately.`,
+          message: `Background application detected: ${rule.name}. Please close conflicting software to proceed or contact your proctor for a waiver.`,
           blockingRule: rule.name,
           policy: exam.deviceAgentPolicy,
           session

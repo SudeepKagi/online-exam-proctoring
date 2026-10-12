@@ -21,6 +21,20 @@ const SESSION_CACHE_TTL_MS = 30 * 1000 // 30 seconds bounded cache
 
 // Bounded in-memory session cache to avoid DB lookups on every request (t3.micro friendly)
 const sessionCache = new Map()
+
+function setSessionCache(sid, data) {
+  if (sessionCache.size > 2000) {
+    const now = Date.now()
+    for (const [k, v] of sessionCache.entries()) {
+      if (now > v.expiresAt) sessionCache.delete(k)
+    }
+    if (sessionCache.size > 2000) {
+      const keys = Array.from(sessionCache.keys()).slice(0, 500)
+      for (const k of keys) sessionCache.delete(k)
+    }
+  }
+  sessionCache.set(sid, data)
+}
 let cachedEpoch = null
 let cachedEpochExpiresAt = 0
 
@@ -223,24 +237,24 @@ class TokenService {
     })
 
     if (!dbSession) {
-      sessionCache.set(sid, { valid: false, reason: 'SESSION_NOT_FOUND', expiresAt: now + 5000 })
+      setSessionCache(sid, { valid: false, reason: 'SESSION_NOT_FOUND', expiresAt: now + 5000 })
       return { valid: false, reason: 'SESSION_NOT_FOUND' }
     }
 
     if (dbSession.revokedAt) {
-      sessionCache.set(sid, { valid: false, reason: 'SESSION_REVOKED', expiresAt: now + 5000 })
+      setSessionCache(sid, { valid: false, reason: 'SESSION_REVOKED', expiresAt: now + 5000 })
       return { valid: false, reason: 'SESSION_REVOKED', revokeReason: dbSession.revokeReason }
     }
 
     if (dbSession.expiresAt < new Date()) {
-      sessionCache.set(sid, { valid: false, reason: 'SESSION_EXPIRED', expiresAt: now + 5000 })
+      setSessionCache(sid, { valid: false, reason: 'SESSION_EXPIRED', expiresAt: now + 5000 })
       return { valid: false, reason: 'SESSION_EXPIRED' }
     }
 
     // Check epoch
     const currentEpoch = await this.getAuthEpoch()
     if (tokenEpoch !== null && currentEpoch > tokenEpoch) {
-      sessionCache.set(sid, { valid: false, reason: 'EPOCH_EXPIRED', expiresAt: now + 5000 })
+      setSessionCache(sid, { valid: false, reason: 'EPOCH_EXPIRED', expiresAt: now + 5000 })
       return { valid: false, reason: 'EPOCH_EXPIRED' }
     }
 
@@ -254,7 +268,7 @@ class TokenService {
       examId: dbSession.examId,
       expiresAt: now + SESSION_CACHE_TTL_MS
     }
-    sessionCache.set(sid, sessionData)
+    setSessionCache(sid, sessionData)
 
     return { valid: true, session: sessionData }
   }

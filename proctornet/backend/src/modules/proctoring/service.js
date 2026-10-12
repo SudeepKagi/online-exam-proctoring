@@ -16,8 +16,40 @@ const {
 const { logger } = require('../../shared/logging')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
-// In-memory fallback cooldown tracker if Redis is down
-const inMemoryCooldowns = new Map()
+// Bounded in-memory fallback cooldown tracker with self-pruning (max 5,000 entries)
+class ExpiringMap {
+  constructor(maxSize = 5000) {
+    this._map = new Map()
+    this._maxSize = maxSize
+  }
+  get(key) {
+    const entry = this._map.get(key)
+    if (!entry) return undefined
+    if (Date.now() > entry.expiresAt) {
+      this._map.delete(key)
+      return undefined
+    }
+    return entry.val
+  }
+  set(key, val, ttlMs) {
+    if (this._map.size >= this._maxSize) {
+      this.prune()
+    }
+    this._map.set(key, { val, expiresAt: Date.now() + (ttlMs || 60000) })
+  }
+  prune() {
+    const now = Date.now()
+    for (const [k, v] of this._map.entries()) {
+      if (now > v.expiresAt) this._map.delete(k)
+    }
+    if (this._map.size >= this._maxSize) {
+      const keys = Array.from(this._map.keys()).slice(0, Math.floor(this._maxSize * 0.2))
+      for (const k of keys) this._map.delete(k)
+    }
+  }
+}
+
+const inMemoryCooldowns = new ExpiringMap(5000)
 
 class ProctoringService {
   constructor() {
@@ -64,11 +96,11 @@ class ProctoringService {
     }
 
     if (!isCooledDown && (!redisClient.client || !redisClient.isReady)) {
-      // Memory fallback
+      // Memory fallback with TTL-aware ExpiringMap
       const now = Date.now()
       const lastTime = inMemoryCooldowns.get(cooldownKey) || 0
       if (now - lastTime >= cooldownMs) {
-        inMemoryCooldowns.set(cooldownKey, now)
+        inMemoryCooldowns.set(cooldownKey, now, cooldownMs)
         isCooledDown = true
       }
     }

@@ -25,7 +25,16 @@ const recordViolationSchema = z.object({
     'VM_DETECTED',
     'SCREEN_SHARE_STOPPED'
   ]),
-  metadata: z.record(z.any()).optional().default({}).refine(
+  metadata: z.record(
+    z.string().max(64),
+    z.union([
+      z.string().max(512),
+      z.number(),
+      z.boolean(),
+      z.null(),
+      z.array(z.union([z.string().max(256), z.number()]))
+    ])
+  ).optional().default({}).refine(
     (val) => !val || JSON.stringify(val).length <= 2048,
     'Metadata payload exceeds 2KB size cap'
   ),
@@ -35,7 +44,7 @@ const recordViolationSchema = z.object({
 const liveKitTokenSchema = z.object({
   examId: z.string().uuid('Invalid exam ID format'),
   attemptId: z.string().uuid('Invalid attempt ID format').optional()
-}).passthrough()
+}).strict()
 
 const postChatMessageSchema = z.object({
   message: z.string().min(1).max(500, 'Message cannot exceed 500 characters'),
@@ -47,7 +56,7 @@ const rosterQuerySchema = z.object({
   cursor: z.string().optional(),
   status: z.enum(['READY', 'ACTIVE', 'PAUSED', 'SUSPENDED', 'SUBMITTED', 'TERMINATED', 'EXPIRED']).optional(),
   q: z.string().max(100).optional()
-}).passthrough()
+}).strict()
 
 const violationsQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).optional().default(50),
@@ -69,7 +78,7 @@ const violationsQuerySchema = z.object({
     'VM_DETECTED',
     'SCREEN_SHARE_STOPPED'
   ]).optional()
-}).passthrough()
+}).strict()
 
 const warnCandidateSchema = z.object({
   message: z.string().min(1).max(500)
@@ -77,7 +86,7 @@ const warnCandidateSchema = z.object({
 
 const actionReasonSchema = z.object({
   reason: z.string().max(500).optional()
-}).passthrough()
+}).strict()
 
 module.exports = {
   attemptIdParamSchema,

@@ -25,7 +25,7 @@ const invigilatorLoginSchema = z.object({
   invPassword: z.string().min(1),
   examId: z.string().uuid(),
   idCardPhoto: z.string().optional().nullable()
-}).passthrough()
+}).strict()
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -34,7 +34,7 @@ const changePasswordSchema = z.object({
 
 const refreshSchema = z.object({
   refreshToken: z.string().optional()
-}).passthrough()
+}).strict()
 
 function shouldExposeToken(req) {
   // In production, no token in JSON bodies (Appendix C / SES-03)

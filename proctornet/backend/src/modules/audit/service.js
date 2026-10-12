@@ -27,19 +27,23 @@ class AuditService {
   async getLogs(limit = 100, beforeId = null) {
     const logs = await auditRepository.findMany(limit, beforeId)
 
-    return logs.map(l => ({
-      id: l.id.toString(),
-      actorId: l.actorId,
-      actorRole: l.actorRole,
-      action: l.action,
-      resourceType: l.resourceType,
-      resourceId: l.resourceId,
-      attemptId: l.attemptId,
-      requestId: l.requestId,
-      metadata: l.metadata,
-      ipAddress: l.ipAddress,
-      timestamp: l.timestamp
-    }))
+    return logs.map(l => {
+      const integrity = auditRepository.verifyRowIntegrity(l)
+      return {
+        id: l.id.toString(),
+        actorId: l.actorId,
+        actorRole: l.actorRole,
+        action: l.action,
+        resourceType: l.resourceType,
+        resourceId: l.resourceId,
+        attemptId: l.attemptId,
+        requestId: l.requestId,
+        metadata: l.metadata,
+        ipAddress: l.ipAddress,
+        timestamp: l.timestamp,
+        integrityVerified: integrity.verified
+      }
+    })
   }
 }
 

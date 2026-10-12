@@ -14,6 +14,8 @@ const { ForbiddenError, NotFoundError } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { proctoringService } = require('../proctoring/service')
 
+const { redisClient } = require('../../infra/redis/client')
+
 let _livekit = null
 function getLiveKit() {
   if (!_livekit) {
@@ -222,13 +224,37 @@ class MediaService {
   }
 
   async _handleScreenShareStopped(attemptId, roomName) {
-    const cooldownKey = `screen_stopped:${attemptId}`
-    const now = Date.now()
-    const lastTime = this.screenShareCooldowns.get(cooldownKey) || 0
-    if (now - lastTime < 5000) {
-      return // 5s debounce window
+    const cooldownKey = `pn:v1:cooldown:screenshare:${attemptId}`
+    let isCooledDown = false
+
+    // 1. Check distributed Redis cooldown (5s TTL)
+    if (redisClient.client && redisClient.isReady) {
+      try {
+        const res = await redisClient.client.set(cooldownKey, '1', 'PX', 5000, 'NX')
+        isCooledDown = (res === 'OK')
+      } catch (err) {
+        logger.warn({ error: err.message }, 'Redis screen share cooldown failed, falling back to memory')
+      }
     }
-    this.screenShareCooldowns.set(cooldownKey, now)
+
+    // 2. Fall back to in-memory debounce if Redis not connected
+    if (!isCooledDown && (!redisClient.client || !redisClient.isReady)) {
+      const now = Date.now()
+      const lastTime = this.screenShareCooldowns.get(cooldownKey) || 0
+      if (now - lastTime >= 5000) {
+        // Prune if map exceeds 1000 items
+        if (this.screenShareCooldowns.size > 1000) {
+          const oldestKeys = Array.from(this.screenShareCooldowns.keys()).slice(0, 200)
+          for (const k of oldestKeys) this.screenShareCooldowns.delete(k)
+        }
+        this.screenShareCooldowns.set(cooldownKey, now)
+        isCooledDown = true
+      }
+    }
+
+    if (!isCooledDown) {
+      return // 5s debounce active
+    }
 
     try {
       const attempt = await prisma.examAttempt.findUnique({

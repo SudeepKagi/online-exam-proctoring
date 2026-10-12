@@ -8,21 +8,21 @@ const updateProfileSchema = z.object({
 
 const consentSchema = z.object({
   consentGiven: z.boolean().refine(val => val === true, 'Consent must be explicitly accepted')
-}).passthrough()
+}).strict()
 
 const createTicketSchema = z.object({
-  subject: z.string().min(1),
-  message: z.string().min(1),
+  subject: z.string().min(1).max(255),
+  message: z.string().min(1).max(2000),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
   examId: z.string().uuid().optional().nullable()
-}).passthrough()
+}).strict()
 
 const identityVerifySchema = z.object({
   faceWithIdPhoto: z.string().min(1),
   liveFaceMatchScore: z.number().min(0).max(1).optional(),
   idCardOcrUsn: z.string().optional().nullable(),
   idCardMatchResult: z.boolean().optional()
-}).passthrough()
+}).strict()
 
 module.exports = {
   updateProfileSchema,

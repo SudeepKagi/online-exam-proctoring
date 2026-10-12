@@ -38,7 +38,7 @@ const verifyIdentitySchema = z.object({
   liveFrameKey: z.string().min(1, 'liveFrameKey is required'),
   challengeId: z.string().uuid().optional().nullable(),
   burstKeys: z.array(z.string().min(1)).min(2).max(5).optional().nullable()
-}).passthrough()
+}).strict()
 
 const identityOverrideSchema = z.object({
   decision: z.enum(['PASS', 'FAIL']),

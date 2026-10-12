@@ -26,8 +26,14 @@ const baseExamSchema = z.object({
   fullScreenMode: z.boolean().default(true),
   watermarkRequired: z.boolean().default(true),
   tabSwitchLimit: z.number().int().min(1).default(3),
-  vpnRequired: z.boolean().default(false)
-}).passthrough()
+  vpnRequired: z.boolean().default(false),
+  deviceAgentPolicy: z.enum(['REQUIRED', 'OPTIONAL', 'DISABLED']).default('REQUIRED').optional(),
+  aiReverifyInterval: z.number().int().min(1).default(10).optional(),
+  invPassword: z.string().min(4).optional(),
+  invId: z.string().optional(),
+  status: z.enum(['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'CANCELLED']).optional(),
+  resultsReleased: z.boolean().optional()
+}).strict()
 
 const updateExamSchema = baseExamSchema.partial()
 
@@ -47,9 +53,10 @@ const createExamSchema = baseExamSchema
 const aiGenerateSchema = z.object({
   prompt: z.string().min(1).optional(),
   topic: z.string().optional(),
+  subject: z.string().optional(),
   count: z.number().int().min(1).max(50).default(5),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM')
-}).passthrough()
+}).strict()
 
 module.exports = {
   createExamSchema,
