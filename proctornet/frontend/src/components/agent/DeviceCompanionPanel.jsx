@@ -286,11 +286,12 @@ export default function DeviceCompanionPanel({
 
             {/* Privacy Consent Checkbox */}
             <div className="flex items-start gap-2.5 px-1">
-              <Checkbox
+              <input
+                type="checkbox"
                 id="companion-consent"
                 checked={consentGiven}
-                onCheckedChange={setConsentGiven}
-                className="mt-0.5"
+                onChange={(e) => setConsentGiven(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-blue-600 shrink-0"
               />
               <label htmlFor="companion-consent" className="text-xs text-muted-foreground leading-relaxed cursor-pointer select-none">
                 I understand the Companion checks hardware for remote tools and virtual cameras in memory, and <span className="font-medium text-foreground">never collects process lists, browser history, keystrokes, or screen contents</span>.

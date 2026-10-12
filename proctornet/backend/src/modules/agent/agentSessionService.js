@@ -329,7 +329,7 @@ class AgentSessionService {
 
     // 1. Update in-memory hotSessions
     for (const [tokenHash, session] of hotSessions.entries()) {
-      if (session.studentId === studentId && (session.scope === 'PRECHECK' || !session.attemptId)) {
+      if (session.studentId === studentId && session.state !== 'TERMINATED') {
         session.attemptId = attemptId
         session.scope = 'ATTEMPT'
         attemptToToken.set(attemptId, tokenHash)
@@ -341,11 +341,7 @@ class AgentSessionService {
       await prisma.agentSession.updateMany({
         where: {
           studentId,
-          endedAt: null,
-          OR: [
-            { scope: 'PRECHECK' },
-            { attemptId: null }
-          ]
+          endedAt: null
         },
         data: {
           attemptId,

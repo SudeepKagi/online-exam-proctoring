@@ -12,7 +12,7 @@ class AttemptRepository {
     const graceSeconds = EXAM_CLOCK_CONFIG.endGrace
     const sql = `
       WITH updated_attempt AS (
-        UPDATE exam_attempts ea
+        UPDATE public.exam_attempts ea
         SET status = 'ACTIVE',
             status_reason = 'Guarded start',
             started_at = now(),
@@ -20,7 +20,7 @@ class AttemptRepository {
               now() + (e.duration || ' minutes')::interval,
               e.end_time + ($3 || ' seconds')::interval
             )
-        FROM exams e
+        FROM public.exams e
         WHERE ea.exam_id = e.id
           AND ea.exam_id = $1::uuid
           AND ea.student_id = $2::uuid
@@ -30,15 +30,15 @@ class AttemptRepository {
           AND (
             e.device_agent_policy != 'REQUIRED'
             OR EXISTS (
-              SELECT 1 FROM device_agent_waivers daw WHERE daw.attempt_id = ea.id
+              SELECT 1 FROM public.device_agent_waivers daw WHERE daw.attempt_id = ea.id
             )
             OR EXISTS (
-              SELECT 1 FROM agent_sessions ags
-              WHERE ags.attempt_id = ea.id
+              SELECT 1 FROM public.agent_sessions ags
+              WHERE (ags.attempt_id = ea.id OR (ags.student_id = ea.student_id AND ags.ended_at IS NULL))
                 AND ags.state = 'HEALTHY'
                 AND NOT EXISTS (
-                  SELECT 1 FROM agent_findings agf
-                  JOIN agent_rules agr ON agr.id = agf.rule_id
+                  SELECT 1 FROM public.agent_findings agf
+                  JOIN public.agent_rules agr ON agr.id = agf.rule_id
                   WHERE agf.session_id = ags.id
                     AND agf.cleared_at IS NULL
                     AND (agr.action = 'BLOCK_START' OR agr.action = 'SUSPEND')
@@ -48,7 +48,7 @@ class AttemptRepository {
         RETURNING ea.*
       ),
       inserted_audit AS (
-        INSERT INTO audit_logs (attempt_id, actor_role, action, metadata, timestamp)
+        INSERT INTO public.audit_logs (attempt_id, actor_role, action, metadata, timestamp)
         SELECT 
           ua.id, 
           'student', 
