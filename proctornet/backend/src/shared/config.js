@@ -85,19 +85,32 @@ const config = {
   // When 'none': AI question generation button is hidden in UI, never mocked.
   get llmProvider() {
     if (process.env.LLM_PROVIDER) {
-      return process.env.LLM_PROVIDER.toLowerCase().trim()
+      const p = process.env.LLM_PROVIDER.toLowerCase().trim()
+      if (p === 'gemini') return 'google'
+      return p
     }
     if (process.env.GROQ_API_KEY) return 'groq'
+    if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'google'
+    if (process.env.OPENAI_API_KEY) return 'openai'
+    if (process.env.ANTHROPIC_API_KEY) return 'anthropic'
     return 'none'
   },
   get llmApiKey() {
-    return process.env.LLM_API_KEY || (this.llmProvider === 'groq' || !process.env.LLM_PROVIDER ? process.env.GROQ_API_KEY : '') || ''
+    if (process.env.LLM_API_KEY) return process.env.LLM_API_KEY
+    const prov = this.llmProvider
+    if (prov === 'google' || prov === 'gemini') {
+      return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ''
+    }
+    if (prov === 'groq') return process.env.GROQ_API_KEY || ''
+    if (prov === 'openai') return process.env.OPENAI_API_KEY || ''
+    if (prov === 'anthropic') return process.env.ANTHROPIC_API_KEY || ''
+    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || ''
   },
   get llmModel() {
     if (process.env.LLM_MODEL) return process.env.LLM_MODEL
     const prov = this.llmProvider
     if (prov === 'groq') return 'llama-3.3-70b-versatile'
-    if (prov === 'google') return 'gemini-1.5-flash'
+    if (prov === 'google' || prov === 'gemini') return 'gemini-3.8-flash'
     if (prov === 'openai') return 'gpt-4o-mini'
     if (prov === 'anthropic') return 'claude-3-haiku-20240307'
     return ''

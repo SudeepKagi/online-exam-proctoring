@@ -189,24 +189,45 @@ async function callOpenAI(prompt, model) {
 // ── Google Gemini driver ──────────────────────────────────────────────────────
 async function callGoogle(prompt, model) {
   const { default: axios } = require('axios')
-  const m = model || 'gemini-1.5-flash'
-  const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
-    {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
-    },
-    {
-      headers: {
-        'x-goog-api-key': config.llmApiKey,
-        'Content-Type': 'application/json'
-      },
-      timeout: 30_000
+  const candidateModels = [
+    model,
+    'gemini-3.8-flash',
+    'gemini-flash-latest'
+  ].filter(Boolean)
+
+  let lastErr
+  for (const m of Array.from(new Set(candidateModels))) {
+    try {
+      const res = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
+        {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2500,
+            responseMimeType: 'application/json'
+          }
+        },
+        {
+          headers: {
+            'x-goog-api-key': config.llmApiKey,
+            'Content-Type': 'application/json'
+          },
+          timeout: 30_000
+        }
+      )
+      const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
+      const tokens = res.data?.usageMetadata?.totalTokenCount || 500
+      return { text, estimatedTokens: tokens }
+    } catch (err) {
+      lastErr = err
+      if (err.response && (err.response.status === 404 || err.response.status === 503)) {
+        continue
+      }
+      throw err
     }
-  )
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
-  const tokens = res.data?.usageMetadata?.totalTokenCount || 500
-  return { text, estimatedTokens: tokens }
+  }
+  throw lastErr
 }
 
 // ── Anthropic driver ─────────────────────────────────────────────────────────
@@ -287,7 +308,8 @@ class LLMService {
    * Throws if LLM_PROVIDER=none — UI must hide the button.
    */
   async generateQuestionsPreview({ topic, count = 5, difficulty = 'MEDIUM', facultyId, providerOverride }) {
-    const provider = providerOverride || config.llmProvider || 'none'
+    let provider = (providerOverride || config.llmProvider || 'none').toLowerCase().trim()
+    if (provider === 'gemini') provider = 'google'
     if (!provider || provider === 'none' || !config.llmApiKey) {
       throw new ValidationError("Question assistant isn't enabled — ask the administrator (LLM_PROVIDER is set to 'none' or unconfigured).")
     }

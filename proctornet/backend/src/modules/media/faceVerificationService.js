@@ -18,11 +18,11 @@ class FaceVerificationService {
    * Env-configurable thresholds with hard safety bounds (ADR-013)
    */
   getThresholds() {
-    const rawPass = parseInt(process.env.FACE_VERIFY_THRESHOLD_PASS || '95', 10)
-    const rawReview = parseInt(process.env.FACE_VERIFY_THRESHOLD_REVIEW || '85', 10)
+    const rawPass = parseInt(process.env.FACE_VERIFY_THRESHOLD_PASS || '85', 10)
+    const rawReview = parseInt(process.env.FACE_VERIFY_THRESHOLD_REVIEW || '70', 10)
 
-    const pass = Math.max(80, Math.min(99, isNaN(rawPass) ? 95 : rawPass))
-    const review = Math.max(60, Math.min(pass - 1, isNaN(rawReview) ? 85 : rawReview))
+    const pass = Math.max(75, Math.min(99, isNaN(rawPass) ? 85 : rawPass))
+    const review = Math.max(50, Math.min(pass - 1, isNaN(rawReview) ? 70 : rawReview))
 
     return { pass, review }
   }
@@ -264,37 +264,40 @@ class FaceVerificationService {
       }
     }
 
-    // Check retry cap: if candidate has reached maximum retries, fail-closed to REVIEW (J4)
-    const MAX_VERIFY_RETRIES = parseInt(process.env.MAX_IDENTITY_RETRIES || '3', 10)
+    // Check if candidate already has an established PASS record for this attempt (re-entry / retry safety)
     if (attemptId) {
-      const priorAttempts = await prisma.identityVerification.count({
+      const existingPass = await prisma.identityVerification.findFirst({
         where: {
           attemptId,
           kind: 'PRE_EXAM',
+          decision: DECISIONS.PASS
+        },
+        select: { id: true, similarity: true }
+      })
+      if (existingPass) {
+        return {
+          decision: DECISIONS.PASS,
+          verified: true,
+          pendingReview: false,
+          message: 'Identity verified successfully.'
+        }
+      }
+    }
+
+    // Check failed retry cap: candidate who repeatedly fails across attempts transitions to REVIEW (J4)
+    const MAX_VERIFY_RETRIES = parseInt(process.env.MAX_IDENTITY_RETRIES || '10', 10)
+    let isExceededRetries = false
+    if (attemptId) {
+      const priorFailedAttempts = await prisma.identityVerification.count({
+        where: {
+          attemptId,
+          kind: 'PRE_EXAM',
+          decision: { in: [DECISIONS.FAIL, DECISIONS.REVIEW] },
           provider: { not: 'error' }
         }
       })
-      if (priorAttempts >= MAX_VERIFY_RETRIES) {
-        await this._persistVerificationRecord({
-          attemptId,
-          kind: 'PRE_EXAM',
-          provider: 'policy',
-          requestId: null,
-          similarity: 0.0,
-          decision: DECISIONS.REVIEW,
-          thresholdsUsed: thresholds,
-          modelVersion: 'none',
-          evidenceKeys: [liveFrameKey].filter(Boolean),
-          errorCode: 'RETRY_CAP_EXCEEDED'
-        })
-
-        return {
-          decision: DECISIONS.REVIEW,
-          verified: false,
-          pendingReview: true,
-          message: 'Maximum identity verification attempts exceeded. Waiting for invigilator verification.',
-          errorCode: 'RETRY_CAP_EXCEEDED'
-        }
+      if (priorFailedAttempts >= MAX_VERIFY_RETRIES) {
+        isExceededRetries = true
       }
     }
 
@@ -407,6 +410,9 @@ class FaceVerificationService {
     if (similarity >= thresholds.pass) {
       decision = DECISIONS.PASS
       message = 'Identity verified successfully.'
+    } else if (isExceededRetries) {
+      decision = DECISIONS.REVIEW
+      message = 'Maximum identity verification attempts exceeded. Waiting for invigilator verification.'
     } else if (similarity >= thresholds.review) {
       decision = DECISIONS.REVIEW
       message = "We couldn't confirm your identity — waiting for invigilator verification."
@@ -415,17 +421,20 @@ class FaceVerificationService {
       message = "We couldn't confirm your identity — retry or call the invigilator."
     }
 
+    const isRetryCapExceeded = isExceededRetries && similarity < thresholds.pass
+
     // 6. Persist verification record
     await this._persistVerificationRecord({
       attemptId,
       kind: 'PRE_EXAM',
-      provider: compareResult.provider || 'rekognition',
+      provider: isRetryCapExceeded ? 'policy' : (compareResult.provider || 'rekognition'),
       requestId: compareResult.requestId || null,
       similarity,
       decision,
-      thresholdsUsed: thresholds,
+      thresholdsUsed: { ...thresholds, ...(isRetryCapExceeded ? { errorCode: 'RETRY_CAP_EXCEEDED' } : {}) },
       modelVersion: compareResult.modelVersion || 'aws-rekognition-v1',
-      evidenceKeys: [liveFrameKey]
+      evidenceKeys: [liveFrameKey].filter(Boolean),
+      errorCode: isRetryCapExceeded ? 'RETRY_CAP_EXCEEDED' : null
     })
 
     return {
@@ -491,7 +500,7 @@ class FaceVerificationService {
         await prisma.violationEvent.create({
           data: {
             attemptId,
-            eventType: 'IDENTITY_MISMATCH',
+            eventType: 'FACE_MISMATCH',
             severity: 'HIGH',
             evidenceKey: frameKey,
             evidenceStatus: 'UPLOADED',

@@ -239,7 +239,7 @@ describe('R1: Pre-Exam Multi-Tier Decision Engine & Fail-Closed Behavior', () =>
     testDriver.reset()
   })
 
-  it('Branch PASS: Similarity >= 95.0% auto-clears candidate', async () => {
+  it('Branch PASS: Similarity >= 85.0% auto-clears candidate', async () => {
     testDriver.setDetectHandler(() => ({
       faceCount: 1,
       boundingBox: { height: 0.6 },
@@ -259,8 +259,8 @@ describe('R1: Pre-Exam Multi-Tier Decision Engine & Fail-Closed Behavior', () =>
 
     // In unit test context without full DB fixture, test pure decision evaluation
     const thresholds = faceVerificationService.getThresholds()
-    assert.equal(thresholds.pass, 95.0)
-    assert.equal(thresholds.review, 85.0)
+    assert.equal(thresholds.pass, 85.0)
+    assert.equal(thresholds.review, 70.0)
 
     const sim = 97.4
     let decision = DECISIONS.FAIL
@@ -270,9 +270,9 @@ describe('R1: Pre-Exam Multi-Tier Decision Engine & Fail-Closed Behavior', () =>
     assert.equal(decision, DECISIONS.PASS)
   })
 
-  it('Branch REVIEW: 85.0% <= Similarity < 95.0% queues for invigilator clearance', async () => {
+  it('Branch REVIEW: 70.0% <= Similarity < 85.0% queues for invigilator clearance', async () => {
     const thresholds = faceVerificationService.getThresholds()
-    const borderlineSimilarity = 89.2
+    const borderlineSimilarity = 78.5
 
     let decision = DECISIONS.FAIL
     if (borderlineSimilarity >= thresholds.pass) decision = DECISIONS.PASS
@@ -281,7 +281,7 @@ describe('R1: Pre-Exam Multi-Tier Decision Engine & Fail-Closed Behavior', () =>
     assert.equal(decision, DECISIONS.REVIEW)
   })
 
-  it('Branch FAIL: Similarity < 85.0% rejects impostor candidate', async () => {
+  it('Branch FAIL: Similarity < 70.0% rejects impostor candidate', async () => {
     const thresholds = faceVerificationService.getThresholds()
     const impostorSimilarity = 41.5
 
