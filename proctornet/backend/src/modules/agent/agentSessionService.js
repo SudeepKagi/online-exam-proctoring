@@ -398,7 +398,7 @@ class AgentSessionService {
         },
         data: {
           endedAt: new Date(now),
-          state: 'TERMINATED'
+          state: 'STALE'
         }
       })
     } catch (err) {

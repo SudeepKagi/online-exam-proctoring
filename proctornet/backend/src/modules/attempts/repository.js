@@ -25,7 +25,7 @@ class AttemptRepository {
           AND ea.exam_id = $1::uuid
           AND ea.student_id = $2::uuid
           AND ea.status = 'READY'
-          AND e.status = 'PUBLISHED'
+          AND e.status IN ('PUBLISHED', 'LIVE', 'SCHEDULED')
           AND e.end_time > now()
           AND (
             e.device_agent_policy != 'REQUIRED'
