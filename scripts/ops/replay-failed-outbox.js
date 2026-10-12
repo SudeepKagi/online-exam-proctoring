@@ -12,7 +12,20 @@
  */
 
 const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../../proctornet/backend/.env') })
+
+const backendDir = path.resolve(__dirname, '../../proctornet/backend')
+const proctornetDir = path.resolve(__dirname, '../../proctornet')
+if (!process.env.NODE_PATH) {
+  process.env.NODE_PATH = `${path.join(backendDir, 'node_modules')}${path.delimiter}${path.join(proctornetDir, 'node_modules')}`
+  require('module').Module._initPaths()
+}
+
+try {
+  require('dotenv').config({ path: path.resolve(backendDir, '.env') })
+} catch {
+  // Ignore if dotenv is not required
+}
+
 const { prisma } = require('../../proctornet/backend/src/infra/postgres/client')
 
 async function main() {

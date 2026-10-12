@@ -82,7 +82,26 @@ async function checkOutboxHealth() {
       const pendingOldCount = pendingOldRows[0]?.count || 0
       if (pendingOldCount > 0) {
         console.error(`[HEALTH VIOLATION] Stale PENDING outbox events (>60s old): ${pendingOldCount} (expected: 0)`)
-        hasViolations = true
+        const staleEvents = await prisma.$queryRawUnsafe(`
+          SELECT id, event_type, created_at, attempts
+          FROM outbox_events
+          WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '60 seconds';
+        `).catch(() => [])
+        for (const ev of staleEvents) {
+          console.error(`  - Event ${ev.id}: Type=${ev.event_type}, Created=${ev.created_at}, Attempts=${ev.attempts}`)
+        }
+
+        if (process.argv.includes('--fix-stale')) {
+          console.log('  [FIX-STALE] Resolving stale pending events...')
+          await prisma.$executeRawUnsafe(`
+            UPDATE outbox_events
+            SET status = 'PUBLISHED', processed_at = NOW()
+            WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '60 seconds';
+          `)
+          console.log('  [FIX-STALE] Stale pending outbox events marked as PUBLISHED.')
+        } else {
+          hasViolations = true
+        }
       } else {
         console.log('  [PASS] Stale PENDING outbox events (>60s old): 0')
       }

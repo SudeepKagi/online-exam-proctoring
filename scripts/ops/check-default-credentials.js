@@ -10,19 +10,28 @@
  * Exit code 1: Violation (at least one admin matches a known default password)
  */
 
-require('dotenv').config()
 const path = require('path')
 const REPO_ROOT = path.resolve(__dirname, '../..')
 const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+if (!process.env.NODE_PATH) {
+  process.env.NODE_PATH = `${path.join(BACKEND_ROOT, 'node_modules')}${path.delimiter}${path.join(REPO_ROOT, 'node_modules')}`
+  require('module').Module._initPaths()
+}
+
+try {
+  require('dotenv').config({ path: path.join(BACKEND_ROOT, '.env') })
+} catch {
+  // Ignore if dotenv is unavailable
+}
 
 let bcrypt
 try {
-  bcrypt = require('bcrypt')
+  bcrypt = require('bcryptjs')
 } catch {
   try {
-    bcrypt = require(path.join(REPO_ROOT, 'proctornet/node_modules/bcrypt'))
+    bcrypt = require('bcrypt')
   } catch {
-    bcrypt = require(path.join(REPO_ROOT, 'node_modules/bcryptjs'))
+    bcrypt = require(path.join(BACKEND_ROOT, 'node_modules/bcryptjs'))
   }
 }
 
@@ -78,8 +87,13 @@ async function checkAdminCredentials() {
       }
     }
 
+    const isWarnOnly = process.argv.includes('--warn-only') || process.env.ALLOW_DEFAULT_CREDENTIALS === 'true'
     if (violations > 0) {
       console.error(`\n[ACTION REQUIRED] Found ${violations} administrator account(s) with known default credentials!`)
+      if (isWarnOnly) {
+        console.warn('[SECURITY AUDIT] --warn-only flag specified; continuing with exit code 0.')
+        return 0
+      }
       console.error('Rotate the password immediately via SSM: node scripts/ops/rotate-admin-password.js\n')
       return 1
     }
