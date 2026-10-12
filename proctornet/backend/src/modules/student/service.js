@@ -5,7 +5,6 @@ const { faceVerificationService } = require('../media/faceVerificationService')
 const { toStudentExamDTO, toStudentResultDTO } = require('./dto')
 const { presentStudent, invalidatePhotoCache } = require('./presenter')
 const { isStudentEligible } = require('../exams/eligibility')
-const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const {
   NotFoundError,
   ForbiddenError,

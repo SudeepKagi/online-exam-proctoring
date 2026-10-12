@@ -1,7 +1,6 @@
 'use strict'
 
 const { getPresignedReadUrl, headObject } = require('../../infra/s3/s3.client')
-const { logger } = require('../../shared/logging')
 
 // In-memory cache for HeadObject existence checks: key -> { available: boolean, expiresAt: number }
 const photoAvailabilityCache = new Map()
@@ -22,8 +21,8 @@ async function checkObjectExists(key) {
   try {
     await headObject(rawKey)
     available = true
-  } catch (err) {
-    available = false
+  } catch {
+    // Missing or inaccessible object
   }
 
   photoAvailabilityCache.set(rawKey, { available, expiresAt: now + CACHE_TTL_MS })

@@ -5,7 +5,6 @@ const adminRepository = require('./repository')
 const { logAudit } = require('../../utils/auditLogger')
 const {
   toFacultyAdminDTO,
-  toStudentAdminDTO,
   toPlatformSettingDTO,
   toAnnouncementDTO
 } = require('./dto')
@@ -16,7 +15,7 @@ const {
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
-const { getPresignedReadUrl, batchPresignReadUrls } = require('../../infra/s3/s3.client')
+const { batchPresignReadUrls } = require('../../infra/s3/s3.client')
 const { presentStudent, presentStudents } = require('../student/presenter')
 
 async function attachStudentUrls(students) {

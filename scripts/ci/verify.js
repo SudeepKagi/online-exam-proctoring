@@ -97,7 +97,10 @@ async function main() {
       'proctornet/backend/tests/assertNonProduction.test.js',
       'proctornet/backend/tests/p4-state-machine.test.js',
       'proctornet/backend/tests/p5-client-compression.test.js',
-      'proctornet/backend/tests/gate-sanity-banned-terms.test.js'
+      'proctornet/backend/tests/gate-sanity-banned-terms.test.js',
+      'proctornet/backend/tests/w1-student-presenter.test.js',
+      'proctornet/backend/tests/w2-agent-gate.test.js',
+      'proctornet/backend/tests/w3-groq-llm.test.js'
     ]
   )
 

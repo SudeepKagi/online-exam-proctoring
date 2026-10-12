@@ -172,6 +172,8 @@ class AttemptStateMachine {
       )
     }
 
+    const updated = updatedRows[0]
+
     // Agent companion cleanup on terminal states (§W2.3)
     if (TERMINAL_STATES.includes(target)) {
       try {

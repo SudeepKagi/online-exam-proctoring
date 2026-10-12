@@ -23,7 +23,7 @@ const DEFAULT_AGENT_STALE_MS = 45 * 1000 // 45 seconds
  * - No active findings with action BLOCK_START.
  * - Staff waiver bypasses gate and is recorded.
  */
-async function evaluateDeviceGate({ attemptId, exam, studentId }) {
+async function evaluateDeviceGate({ attemptId, exam, studentId: _studentId }) {
   if (!exam) return { passed: true, reason: 'NO_EXAM', state: 'NOT_PAIRED' }
 
   // 1. Policy check
