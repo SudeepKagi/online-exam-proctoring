@@ -238,24 +238,20 @@ class ProctoringRepository {
     params.push(limit)
     return prisma.$queryRawUnsafe(`
       SELECT
-        latest_ea.id AS "attemptId",
-        latest_ea.student_id AS "studentId",
+        ea.id AS "attemptId",
+        ea.student_id AS "studentId",
         s.name,
         s.usn,
-        latest_ea.status,
-        latest_ea.flag_count AS "flagCount",
+        ea.status,
+        ea.flag_count AS "flagCount",
         s.face_photo_key AS "facePhotoKey",
-        (SELECT count(*)::int FROM public.questions q WHERE q.exam_id = latest_ea.exam_id) AS "totalQuestions",
-        (SELECT count(*)::int FROM public.answers a WHERE a.attempt_id = latest_ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
-      FROM (
-        SELECT DISTINCT ON (ea.student_id) ea.*
-        FROM public.exam_attempts ea
-        WHERE ea.exam_id = $1::uuid
-        ${filterClause}
-        ORDER BY ea.student_id, ea.created_at DESC
-      ) latest_ea
-      JOIN public.students s ON s.id = latest_ea.student_id
-      ORDER BY s.name ASC, latest_ea.id ASC
+        (SELECT count(*)::int FROM public.questions q WHERE q.exam_id = ea.exam_id) AS "totalQuestions",
+        (SELECT count(*)::int FROM public.answers a WHERE a.attempt_id = ea.id AND a.selected_option_id IS NOT NULL) AS "answeredCount"
+      FROM public.exam_attempts ea
+      JOIN public.students s ON s.id = ea.student_id
+      WHERE ea.exam_id = $1::uuid
+      ${filterClause}
+      ORDER BY s.name ASC, ea.id ASC
       LIMIT $${paramIdx};
     `, ...params)
   }
