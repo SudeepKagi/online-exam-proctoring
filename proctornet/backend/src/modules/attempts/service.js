@@ -45,19 +45,20 @@ class AttemptService {
       throw new NotFoundError(`Exam '${examId}' not found`)
     }
 
+    const now = new Date()
+    if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
+      throw new ForbiddenError(`Exam is not open for attempts (status: ${exam.status})`)
+    }
+
     let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
 
     if (!attempt) {
       // Late joiner fallback: check eligibility, timing, and create READY attempt
-      const now = new Date()
       if (now < exam.startTime) {
         throw new ForbiddenError(`Exam has not started yet. Starts at ${exam.startTime.toISOString()}`)
       }
       if (now > exam.endTime) {
-        throw new ForbiddenError(`Exam has already ended at ${exam.endTime.toISOString()}`)
-      }
-      if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
-        throw new ForbiddenError(`Exam is not open for attempts (status: ${exam.status})`)
+        throw new ForbiddenError(`Exam window has closed. Ended at ${exam.endTime.toISOString()}`)
       }
 
       const eligible = isStudentEligible(exam, student)
@@ -75,21 +76,17 @@ class AttemptService {
 
     // If attempt is in READY status, enforce authoritative server-side start gate (F4)
     if (attempt.status === 'READY') {
+      // Start window check: cannot start before startTime or after endTime
+      if (now < exam.startTime) {
+        throw new ForbiddenError(`Exam has not started yet. Starts at ${exam.startTime.toISOString()}`)
+      }
+      if (now > exam.endTime) {
+        throw new ForbiddenError(`Exam window has closed. Ended at ${exam.endTime.toISOString()}`)
+      }
+
       // Promote any unattached healthy PRECHECK session with fresh heartbeat to this attempt
-      const freshCutoff = new Date(Date.now() - 60000)
-      await prisma.agentSession.updateMany({
-        where: {
-          studentId,
-          scope: 'PRECHECK',
-          state: 'HEALTHY',
-          attemptId: null,
-          lastSeenAt: { gte: freshCutoff }
-        },
-        data: {
-          attemptId: attempt.id,
-          scope: 'ATTEMPT'
-        }
-      }).catch(() => {})
+      const { agentSessionService } = require('../agent/agentSessionService')
+      await agentSessionService.promotePrecheckSession(studentId, attempt.id).catch(() => {})
 
       // Enforce unified server-side start gate (eligibility, agent, identity, VPN)
       await assertCanStart({ exam, student, attempt })
@@ -357,20 +354,8 @@ class AttemptService {
 
     // Promote any unattached healthy PRECHECK session to this attempt
     try {
-      const freshCutoff = new Date(Date.now() - 60000)
-      await prisma.agentSession.updateMany({
-        where: {
-          studentId,
-          scope: 'PRECHECK',
-          state: 'HEALTHY',
-          attemptId: null,
-          lastSeenAt: { gte: freshCutoff }
-        },
-        data: {
-          attemptId: attempt.id,
-          scope: 'ATTEMPT'
-        }
-      })
+      const { agentSessionService } = require('../agent/agentSessionService')
+      await agentSessionService.promotePrecheckSession(studentId, attempt.id)
     } catch (err) {
       logger.warn({ studentId, error: err.message }, 'Failed to promote PRECHECK companion session')
     }

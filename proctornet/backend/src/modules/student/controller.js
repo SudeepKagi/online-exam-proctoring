@@ -30,7 +30,7 @@ router.get('/exams', async (req, res, next) => {
 router.get('/exams/:id', async (req, res, next) => {
   try {
     const exam = await studentService.getExamDetails(req.params.id, req.user.id)
-    res.status(200).json({ success: true, exam })
+    res.status(200).json({ success: true, exam, serverTime: new Date().toISOString() })
   } catch (err) {
     next(err)
   }

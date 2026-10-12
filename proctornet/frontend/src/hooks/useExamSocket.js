@@ -17,7 +17,9 @@ export function useExamSocket({
   onTerminated,
   onSuspended,
   onResumed,
-  onStateChange
+  onStateChange,
+  onAgentWarning,
+  onAgentCleared
 }) {
   const socketRef = useRef(null)
   const lastViolationTimeRef = useRef({})
@@ -35,6 +37,12 @@ export function useExamSocket({
 
   const onStateChangeRef = useRef(onStateChange)
   onStateChangeRef.current = onStateChange
+
+  const onAgentWarningRef = useRef(onAgentWarning)
+  onAgentWarningRef.current = onAgentWarning
+
+  const onAgentClearedRef = useRef(onAgentCleared)
+  onAgentClearedRef.current = onAgentCleared
 
   const userRef = useRef(user)
   userRef.current = user
@@ -113,13 +121,31 @@ export function useExamSocket({
       toast.error(`⚠️ Notice from Invigilator: ${message}`, { duration: 8000 })
     })
 
+    // Companion prohibited application warnings
+    socket.on('agent:warning', (payload) => {
+      toast.error(`⚠️ ${payload?.message || 'Prohibited software detected on your computer!'}`, {
+        duration: 9000,
+        id: `agent-warn-${payload?.ruleId || 'general'}`
+      })
+      onAgentWarningRef.current?.(payload)
+    })
+
+    // Companion clear notifications
+    socket.on('agent:cleared', (payload) => {
+      toast.success(`✓ ${payload?.message || 'Prohibited applications cleared. Exam clean.'}`, {
+        duration: 5000,
+        id: 'agent-cleared'
+      })
+      onAgentClearedRef.current?.(payload)
+    })
+
     // Authoritative attempt state change
     socket.on('attempt:state', (payload) => {
       if (payload?.status === 'ACTIVE') {
-        toast.success('▶️ Exam Session Resumed by proctor.')
+        toast.success('▶️ Exam Session Resumed.')
         onResumedRef.current?.(payload)
       } else if (payload?.status === 'SUSPENDED') {
-        toast.error(`⏸️ Exam Suspended: ${payload?.reason || 'Session temporarily paused by proctor'}`, { duration: 8000 })
+        toast.error(`⏸️ Exam Suspended: ${payload?.reason || 'Session temporarily paused'}`, { duration: 8000 })
         onSuspendedRef.current?.(payload)
       } else if (payload?.status === 'TERMINATED') {
         toast.error(`🚨 Exam Terminated: ${payload?.reason || 'Academic integrity violation'}`, { duration: 10000 })

@@ -157,8 +157,8 @@ export default function SecurityCheck() {
         const endTime = new Date(examData?.endTime || (Date.now() + 3600000))
 
         // Block if exam has already ended
-        if (examData?.endTime && serverTime > endTime) {
-          toast.error('This examination session has already ended.')
+        if ((examData?.endTime && serverTime > endTime) || ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(examData?.status)) {
+          toast.error('This examination session has ended and is closed for entry.')
           navigate('/student/exams')
           return
         }
@@ -640,6 +640,12 @@ export default function SecurityCheck() {
       } catch (fsErr) {
         console.warn('requestFullscreen before attempt call:', fsErr.message)
       }
+    }
+
+    if (exam?.endTime && new Date() > new Date(exam.endTime)) {
+      toast.error('This examination has ended and is closed for entry.')
+      navigate('/student/exams')
+      return
     }
 
     try {

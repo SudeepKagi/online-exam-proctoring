@@ -193,7 +193,24 @@ class AgentSessionService {
     if (!tokenHash) return null
 
     if (hotSessions.has(tokenHash)) {
-      return hotSessions.get(tokenHash)
+      const session = hotSessions.get(tokenHash)
+      if (session && !session.attemptId && session.studentId) {
+        try {
+          const activeAttempt = await prisma.examAttempt.findFirst({
+            where: {
+              studentId: session.studentId,
+              status: { in: ['READY', 'ACTIVE', 'SUSPENDED'] }
+            },
+            orderBy: { createdAt: 'desc' }
+          })
+          if (activeAttempt) {
+            session.attemptId = activeAttempt.id
+            session.scope = 'ATTEMPT'
+            attemptToToken.set(activeAttempt.id, tokenHash)
+          }
+        } catch (_) {}
+      }
+      return session
     }
 
     // DB fallback (e.g. after process restart or cross-process lookup)
@@ -300,6 +317,42 @@ class AgentSessionService {
     })
     if (!dbSession) return null
     return this.getSessionByTokenHash(dbSession.tokenHash)
+  }
+
+  /**
+   * Authoritatively promote any active precheck session for a student to an exam attempt
+   */
+  async promotePrecheckSession(studentId, attemptId) {
+    if (!studentId || !attemptId) return
+
+    // 1. Update in-memory hotSessions
+    for (const [tokenHash, session] of hotSessions.entries()) {
+      if (session.studentId === studentId && (session.scope === 'PRECHECK' || !session.attemptId)) {
+        session.attemptId = attemptId
+        session.scope = 'ATTEMPT'
+        attemptToToken.set(attemptId, tokenHash)
+      }
+    }
+
+    // 2. Update PostgreSQL
+    try {
+      await prisma.agentSession.updateMany({
+        where: {
+          studentId,
+          endedAt: null,
+          OR: [
+            { scope: 'PRECHECK' },
+            { attemptId: null }
+          ]
+        },
+        data: {
+          attemptId,
+          scope: 'ATTEMPT'
+        }
+      })
+    } catch (err) {
+      logger.warn({ err: err.message, studentId, attemptId }, 'Failed to promote agentSession in database')
+    }
   }
 
   /**

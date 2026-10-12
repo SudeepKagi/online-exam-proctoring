@@ -91,10 +91,17 @@ class StudentService {
     const attempt = await studentRepository.getAttemptByStudentAndExam(studentId, examId)
 
     const isEligible = isStudentEligible(exam, student)
+    const now = new Date()
+    const isEnded = Boolean(now > new Date(exam.endTime) || ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status))
+    const isStarted = Boolean(now >= new Date(exam.startTime))
+
     return {
       exam: toStudentExamDTO(exam, attempt),
       student: await presentStudent(student),
       isEligible,
+      isEnded,
+      isStarted,
+      serverTime: now.toISOString(),
       attempt: attempt ? {
         id: attempt.id,
         status: attempt.status,

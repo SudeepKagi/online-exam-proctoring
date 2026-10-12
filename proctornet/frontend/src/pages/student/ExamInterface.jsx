@@ -48,7 +48,8 @@ export default function ExamInterface() {
 
   // ── Authoritative Terminal & Suspended States ──
   const [terminalState, setTerminalState] = useState(null) // { type: 'SUBMITTED' | 'TERMINATED', ... }
-  const [suspendedState, setSuspendedState] = useState(null) // { active: bool, reason: str, isVpn: bool }
+  const [suspendedState, setSuspendedState] = useState(null) // { active: bool, reason: str, isVpn: bool, isCompanionViolation: bool }
+  const [companionFindings, setCompanionFindings] = useState([])
   const [isMultiTabBlocked, setIsMultiTabBlocked] = useState(false)
 
   // ── Question & Answer Navigation ──
@@ -269,6 +270,25 @@ export default function ExamInterface() {
           reason: payload?.reason || 'Terminated by invigilator for academic integrity violation.'
         })
       }
+    },
+    onAgentWarning: (payload) => {
+      setCompanionFindings(prev => {
+        const exists = prev.some(f => f.ruleId === payload?.ruleId)
+        if (exists) return prev
+        return [...prev, payload]
+      })
+      if (payload?.action === 'SUSPEND' || payload?.severity === 'CRITICAL') {
+        setSuspendedState({
+          active: true,
+          reason: `Prohibited software detected: ${payload?.ruleName || payload?.ruleId}. Please close this application immediately to resume.`,
+          isCompanionViolation: true,
+          prohibitedApps: [payload]
+        })
+      }
+    },
+    onAgentCleared: () => {
+      setCompanionFindings([])
+      setSuspendedState(prev => (prev?.isCompanionViolation ? null : prev))
     }
   })
 
@@ -563,7 +583,13 @@ export default function ExamInterface() {
     const checkCompanion = async () => {
       try {
         const res = await api.get(`/attempts/${attemptId}/agent/status`)
-        if (res.data?.state === 'STALE' || res.data?.state === 'DISCONNECTED') {
+        const findings = res.data?.findings || []
+        setCompanionFindings(findings)
+
+        const isDisconnected = res.data?.state === 'STALE' || res.data?.state === 'LOST_CONNECTION' || res.data?.state === 'DISCONNECTED'
+        const hasSuspensionRule = findings.some(f => f.action === 'SUSPEND' || f.severity === 'CRITICAL') || (res.data?.state === 'DEGRADED' && findings.length > 0 && res.data?.reason === 'PROHIBITED_SOFTWARE_SUSPEND')
+
+        if (isDisconnected) {
           setSuspendedState(prev => {
             if (!prev?.active) {
               emitViolation?.('AGENT_DISCONNECTED', 'HIGH', {
@@ -576,15 +602,23 @@ export default function ExamInterface() {
               isCompanion: true
             }
           })
-        } else if (res.data?.state === 'HEALTHY' || res.data?.state === 'CONNECTED') {
-          setSuspendedState(prev => (prev?.isCompanion ? null : prev))
+        } else if (hasSuspensionRule) {
+          const appNames = findings.map(f => f.ruleName || f.ruleId).join(', ')
+          setSuspendedState({
+            active: true,
+            reason: `Prohibited software detected: ${appNames}. Close this application immediately to resume.`,
+            isCompanionViolation: true,
+            prohibitedApps: findings
+          })
+        } else if (findings.length === 0 && (res.data?.state === 'HEALTHY' || res.data?.state === 'CONNECTED')) {
+          setSuspendedState(prev => (prev?.isCompanion || prev?.isCompanionViolation ? null : prev))
         }
       } catch {
         // Tolerant on intermittent network hiccups
       }
     }
 
-    companionTimer = setInterval(checkCompanion, 10000)
+    companionTimer = setInterval(checkCompanion, 6000)
     return () => {
       if (companionTimer) clearInterval(companionTimer)
     }
@@ -781,14 +815,45 @@ export default function ExamInterface() {
       {isSuspended && (
         <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
           <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500 mb-4 animate-pulse">
-            {suspendedState?.isVpn ? <WifiOff size={32} /> : <Clock size={32} />}
+            {suspendedState?.isCompanionViolation ? (
+              <AlertTriangle size={32} className="text-rose-500" />
+            ) : suspendedState?.isVpn ? (
+              <WifiOff size={32} />
+            ) : (
+              <Clock size={32} />
+            )}
           </div>
           <h3 className="text-xl font-bold text-white mb-2">
-            {suspendedState?.isVpn ? 'Secure Network Disconnected' : 'Examination Session Suspended'}
+            {suspendedState?.isCompanionViolation
+              ? 'Prohibited Application Detected'
+              : suspendedState?.isVpn
+              ? 'Secure Network Disconnected'
+              : 'Examination Session Suspended'}
           </h3>
           <p className="text-sm text-slate-300 max-w-md mb-4 leading-relaxed font-medium">
             {suspendedState?.reason}
           </p>
+
+          {suspendedState?.isCompanionViolation && (
+            <div className="p-4 rounded-xl bg-slate-900 border border-rose-500/40 max-w-md text-xs text-slate-300 mb-6 text-left space-y-2">
+              <p className="font-bold text-rose-400 flex items-center gap-1.5">
+                <AlertTriangle size={14} /> Action Required to Resume Exam:
+              </p>
+              <p className="text-slate-300">
+                1. Immediately close the prohibited application(s) running on your computer:{' '}
+                <strong className="text-rose-300">
+                  {suspendedState.prohibitedApps?.map(f => f.ruleName || f.ruleId).join(', ') || 'Remote desktop / AI / Messaging tools'}
+                </strong>.
+              </p>
+              <p className="text-slate-400">
+                2. The Exam Device Companion will auto-verify your system in seconds and resume this exam.
+              </p>
+              <p className="text-slate-400">
+                3. Keep your browser and companion window open.
+              </p>
+            </div>
+          )}
+
           {suspendedState?.isVpn && (
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 max-w-md text-xs text-slate-400 mb-6 text-left">
               <p className="font-bold text-white mb-1">How to resume:</p>
@@ -818,6 +883,24 @@ export default function ExamInterface() {
         violations={violations}
         saveStatus={saveStatus}
       />
+
+      {/* Real-time Prohibited Software Onscreen Warning Banner */}
+      {companionFindings.length > 0 && !isSuspended && (
+        <div className="bg-rose-600 text-white px-4 py-2.5 text-xs font-semibold flex items-center justify-between border-b border-rose-700 animate-pulse z-30 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle size={18} className="shrink-0 text-white" />
+            <span>
+              <strong>ATTENTION REQUIRED:</strong> Prohibited application(s) detected running on your computer:{' '}
+              <strong className="underline underline-offset-2">
+                {companionFindings.map(f => f.ruleName || f.name || f.ruleId).join(', ')}
+              </strong>. Please close these applications immediately to avoid exam suspension and cancellation.
+            </span>
+          </div>
+          <span className="text-[10px] uppercase font-mono tracking-wider bg-rose-900/80 px-2 py-0.5 rounded border border-rose-400/50">
+            Companion Alert
+          </span>
+        </div>
+      )}
 
       {/* Main Container */}
       <div className="flex flex-1 overflow-hidden">

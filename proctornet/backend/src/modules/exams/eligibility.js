@@ -84,6 +84,18 @@ async function assertCanStart({ exam, student, attempt }) {
     throw new ForbiddenError('Eligibility check failed: Missing exam or student context')
   }
 
+  // 0. Time Window & Exam Status Check
+  const now = new Date()
+  if (['DRAFT', 'ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(exam.status)) {
+    throw new ForbiddenError(`Exam is not open for attempts (status: ${exam.status})`)
+  }
+  if (exam.startTime && now < new Date(exam.startTime)) {
+    throw new ForbiddenError(`Exam has not started yet. Starts at ${new Date(exam.startTime).toISOString()}`)
+  }
+  if (exam.endTime && now > new Date(exam.endTime)) {
+    throw new ForbiddenError(`Exam window has closed. Ended at ${new Date(exam.endTime).toISOString()}`)
+  }
+
   // 1. Eligibility: approved, not suspended, profile verified, face photo present, branch/semester match
   if (student.isSuspended) {
     throw new ForbiddenError('Account suspended: You are not permitted to start this exam')

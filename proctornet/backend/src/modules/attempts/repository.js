@@ -25,6 +25,8 @@ class AttemptRepository {
           AND ea.exam_id = $1::uuid
           AND ea.student_id = $2::uuid
           AND ea.status = 'READY'
+          AND e.status = 'PUBLISHED'
+          AND e.end_time > now()
           AND (
             e.device_agent_policy != 'REQUIRED'
             OR EXISTS (
@@ -39,7 +41,7 @@ class AttemptRepository {
                   JOIN agent_rules agr ON agr.id = agf.rule_id
                   WHERE agf.session_id = ags.id
                     AND agf.cleared_at IS NULL
-                    AND agr.action = 'BLOCK_START'
+                    AND (agr.action = 'BLOCK_START' OR agr.action = 'SUSPEND')
                 )
             )
           )

@@ -1,5 +1,6 @@
 const { prisma } = require('../../infra/postgres/client')
 const { agentSessionService } = require('./agentSessionService')
+const { policyService } = require('./policyService')
 const { NotFoundError, ForbiddenError } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 
@@ -62,15 +63,25 @@ class AgentStatusService {
       }
     }
 
-    // Format findings from attempt session
-    const findingsList = session.openFindings
-      ? Array.from(session.openFindings.values()).map(f => ({
+    // Format findings from attempt session enriched with latest policy rules
+    let findingsList = []
+    if (session.openFindings && session.openFindings.size > 0) {
+      const policy = await policyService.getLatestSignedPolicy().catch(() => ({ rules: [] }))
+      const rulesMap = new Map((policy.rules || []).map(r => [r.id, r]))
+      findingsList = Array.from(session.openFindings.values()).map(f => {
+        const rule = rulesMap.get(f.ruleId)
+        return {
           ruleId: f.ruleId,
+          ruleName: rule?.name || f.ruleId,
+          category: rule?.category || 'OTHER',
+          action: rule?.action || 'FLAG',
+          severity: rule?.severity || 'HIGH',
           firstSeenAt: f.firstSeenAt,
           lastSeenAt: f.lastSeenAt,
           hitCount: f.hitCount
-        }))
-      : []
+        }
+      })
+    }
 
     return {
       state: gateResult.state,

@@ -34,6 +34,14 @@ const CATEGORY_TO_VIOLATION = {
 }
 
 class ReportService {
+  constructor() {
+    this.io = null
+  }
+
+  setIO(io) {
+    this.io = io
+  }
+
   /**
    * Process incoming signed agent telemetry report
    */
@@ -128,6 +136,24 @@ class ReportService {
     const policy = await policyService.getLatestSignedPolicy()
     const rulesMap = new Map((policy.rules || []).map(r => [r.id, r]))
 
+    // Ensure session is bound to student's active exam attempt if available
+    if (!session.attemptId && session.studentId) {
+      try {
+        const activeAttempt = await prisma.examAttempt.findFirst({
+          where: {
+            studentId: session.studentId,
+            status: { in: ['READY', 'ACTIVE', 'SUSPENDED'] }
+          },
+          orderBy: { createdAt: 'desc' }
+        })
+        if (activeAttempt) {
+          session.attemptId = activeAttempt.id
+          session.scope = 'ATTEMPT'
+          await agentSessionService.promotePrecheckSession(session.studentId, activeAttempt.id)
+        }
+      } catch (_) {}
+    }
+
     const incomingFindingRuleIds = new Set()
 
     // Explicit findings
@@ -170,6 +196,18 @@ class ReportService {
         finding.hitCount += 1
         finding.lastSeenAt = new Date()
         finding.cleanCount = 0
+
+        // Periodic reminder warning (every 2 reports / ~10 seconds)
+        if (session.attemptId && this.io && finding.hitCount % 2 === 0) {
+          this.io.to(`attempt:${session.attemptId}`).emit('agent:warning', {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            category: rule.category,
+            action: rule.action,
+            severity: rule.severity,
+            message: `PROHIBITED SOFTWARE ACTIVE: ${rule.name}. Close this application immediately.`
+          })
+        }
       } else {
         // New finding -> Record in DB & emit violation
         const findingRecord = await prisma.agentFinding.create({
@@ -210,6 +248,44 @@ class ReportService {
             }
           })
 
+          // Increment attempt flag count
+          await prisma.examAttempt.update({
+            where: { id: session.attemptId },
+            data: { flagCount: { increment: 1 } }
+          }).catch(() => {})
+
+          // Real-time socket notification to student attempt room
+          if (this.io) {
+            this.io.to(`attempt:${session.attemptId}`).emit('agent:warning', {
+              ruleId: rule.id,
+              ruleName: rule.name,
+              category: rule.category,
+              action: rule.action,
+              severity: rule.severity,
+              message: `PROHIBITED SOFTWARE DETECTED: ${rule.name}. Close this application immediately to avoid exam suspension and cancellation.`
+            })
+
+            this.io.to(`attempt:${session.attemptId}`).emit('proctor:warning', {
+              message: `SECURITY ALERT: Prohibited software (${rule.name}) detected on your computer. Close it immediately!`,
+              timestamp: new Date().toISOString()
+            })
+
+            // Fan-out to invigilator room
+            const attempt = await prisma.examAttempt.findUnique({
+              where: { id: session.attemptId },
+              select: { examId: true }
+            })
+            if (attempt?.examId) {
+              this.io.to(`inv:${attempt.examId}`).emit('violation:new', {
+                attemptId: session.attemptId,
+                eventType,
+                severity: rule.severity,
+                timestamp: new Date().toISOString(),
+                metadata: { ruleId: rule.id, ruleName: rule.name, action: rule.action }
+              })
+            }
+          }
+
           // If action is SUSPEND, transition attempt atomically via CTE state machine
           if (rule.action === 'SUSPEND') {
             try {
@@ -218,6 +294,14 @@ class ReportService {
                 metadata: { ruleId: rule.id, ruleName: rule.name }
               })
               logger.warn({ attemptId: session.attemptId, ruleId }, 'Attempt transitioned to SUSPENDED due to agent rule')
+              if (this.io) {
+                this.io.to(`attempt:${session.attemptId}`).emit('attempt:state', {
+                  status: 'SUSPENDED',
+                  reason: `Prohibited software detected: ${rule.name}. Close this application immediately to resume.`,
+                  ruleId: rule.id,
+                  ruleName: rule.name
+                })
+              }
             } catch (transitionErr) {
               // If already SUSPENDED or in terminal state, ignore transition conflict
               logger.debug({ err: transitionErr.message }, 'Attempt transition ignored')
@@ -252,6 +336,17 @@ class ReportService {
                   reason: 'AGENT_FINDING_CLEARED'
                 })
                 logger.info({ attemptId: session.attemptId }, 'Attempt auto-resumed after agent findings cleared')
+                if (this.io) {
+                  this.io.to(`attempt:${session.attemptId}`).emit('attempt:state', {
+                    status: 'ACTIVE',
+                    reason: 'All prohibited applications closed. Exam session resumed.'
+                  })
+                }
+              }
+              if (this.io) {
+                this.io.to(`attempt:${session.attemptId}`).emit('agent:cleared', {
+                  message: 'All prohibited applications have been verified closed. Resuming examination.'
+                })
               }
             } catch (resumeErr) {
               logger.debug({ err: resumeErr.message }, 'Auto-resume skipped')

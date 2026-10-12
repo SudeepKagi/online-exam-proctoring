@@ -31,14 +31,15 @@ export default function ExamLobby() {
       const e = res.data.exam || res.data
       setExam(e)
 
-      const now = new Date().getTime()
+      const serverNow = res.data.serverTime ? new Date(res.data.serverTime).getTime() : new Date().getTime()
       const start = new Date(e.startTime).getTime()
       const end = new Date(e.endTime).getTime()
 
-      if (now > end) {
+      if (serverNow > end || ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED'].includes(e.status)) {
         setIsOver(true)
       } else {
-        setTimeToStart(Math.max(0, Math.floor((start - now) / 1000)))
+        setIsOver(false)
+        setTimeToStart(Math.max(0, Math.floor((start - serverNow) / 1000)))
       }
     } catch {
       toast.error('Failed to load exam details')

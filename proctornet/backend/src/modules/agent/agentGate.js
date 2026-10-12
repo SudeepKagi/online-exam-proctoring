@@ -155,20 +155,20 @@ async function evaluateDeviceGate({ attemptId, exam, studentId: _studentId }) {
     }
   }
 
-  // 6. Check open findings for BLOCK_START actions
+  // 6. Check open findings for BLOCK_START and SUSPEND actions
   if (session.openFindings && session.openFindings.size > 0) {
     const policy = await policyService.getLatestSignedPolicy()
     const rulesMap = new Map((policy.rules || []).map(r => [r.id, r]))
 
     for (const finding of session.openFindings.values()) {
       const rule = rulesMap.get(finding.ruleId)
-      if (rule && rule.action === 'BLOCK_START') {
+      if (rule && (rule.action === 'BLOCK_START' || rule.action === 'SUSPEND')) {
         return {
           passed: false,
           code: 'AGENT_REQUIRED',
           state: 'DEGRADED',
-          reason: 'BLOCKING_FINDING',
-          message: `Prohibited software detected: ${rule.name}. Close prohibited applications before entering.`,
+          reason: rule.action === 'SUSPEND' ? 'PROHIBITED_SOFTWARE_SUSPEND' : 'BLOCKING_FINDING',
+          message: `Prohibited software detected: ${rule.name}. Close prohibited applications immediately.`,
           blockingRule: rule.name,
           policy: exam.deviceAgentPolicy,
           session
@@ -183,7 +183,7 @@ async function evaluateDeviceGate({ attemptId, exam, studentId: _studentId }) {
     passed: true,
     code: null,
     state: hasNonBlockingFindings ? 'DEGRADED' : 'HEALTHY',
-    reason: 'HEALTHY',
+    reason: hasNonBlockingFindings ? 'DEGRADED_FINDINGS' : 'HEALTHY',
     lastSeenAt: session.lastSeenAt ? new Date(session.lastSeenAt).toISOString() : null,
     policy: exam.deviceAgentPolicy,
     session

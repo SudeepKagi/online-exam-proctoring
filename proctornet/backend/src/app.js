@@ -89,6 +89,8 @@ const io = createWebSocketServer(server)
 app.set('io', io)
 const { proctoringService } = require('./modules/proctoring/service')
 proctoringService.setIO(io)
+const { reportService } = require('./modules/agent/reportService')
+reportService.setIO(io)
 
 // ── Reverse Proxy & Trust Headers ──
 app.disable('x-powered-by')
