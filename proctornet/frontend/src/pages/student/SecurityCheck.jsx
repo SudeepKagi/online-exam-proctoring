@@ -227,14 +227,20 @@ export default function SecurityCheck() {
     setCompanionDetails(statusData)
     const isHealthy = statusData?.state === 'HEALTHY' || statusData?.state === 'CONNECTED'
     const isWaived = Boolean(statusData?.waiver)
+    const isOptional = Boolean(statusData?.gatePassed || statusData?.state === 'OPTIONAL' || statusData?.reason === 'POLICY_NOT_REQUIRED' || exam?.deviceAgentPolicy === 'OPTIONAL' || exam?.deviceAgentPolicy === 'OFF')
+    const isDisconnected = statusData?.state === 'LOST_CONNECTION' || statusData?.state === 'DISCONNECTED' || statusData?.state === 'STALE'
     const findings = statusData?.findings || []
 
     if (isWaived) {
       updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
+    } else if (isOptional) {
+      updateStage('system', 'pass', 'Exam Device Companion • Not required for this exam')
     } else if (isHealthy && findings.length === 0) {
       updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
     } else if (findings.length > 0) {
       updateStage('system', 'fail', `Prohibited software detected: ${findings.map(f => f.ruleId).join(', ')}. Please close to proceed.`)
+    } else if (isDisconnected) {
+      updateStage('system', 'fail', 'Device Companion connection lost. Please run the companion and enter code.')
     } else {
       updateStage('system', 'loading', 'Waiting for Exam Device Companion to connect...')
     }
@@ -694,7 +700,17 @@ export default function SecurityCheck() {
 
   const stage0Passed = Boolean(
     companionDetails &&
-    (companionDetails.state === 'HEALTHY' || companionDetails.state === 'CONNECTED' || companionDetails.waiver) &&
+    (
+      companionDetails.state === 'HEALTHY' ||
+      companionDetails.state === 'CONNECTED' ||
+      companionDetails.waiver ||
+      companionDetails.gatePassed ||
+      companionDetails.state === 'OPTIONAL' ||
+      companionDetails.policy === 'OFF' ||
+      companionDetails.policy === 'OPTIONAL' ||
+      exam?.deviceAgentPolicy === 'OFF' ||
+      exam?.deviceAgentPolicy === 'OPTIONAL'
+    ) &&
     (!companionDetails.findings || companionDetails.findings.length === 0)
   )
   const allPassed = stage0Passed && stageStatus.media === 'pass' && stageStatus.face === 'pass'

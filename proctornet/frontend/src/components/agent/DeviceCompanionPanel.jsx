@@ -193,6 +193,16 @@ export default function DeviceCompanionPanel({
                 <Shield className="w-3.5 h-3.5 mr-1" /> Staff Waiver Granted
               </Badge>
             )}
+            {status === 'OPTIONAL' && (
+              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Not Required
+              </Badge>
+            )}
+            {(status === 'LOST_CONNECTION' || status === 'DISCONNECTED' || status === 'STALE') && (
+              <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20 font-medium">
+                <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Connection Lost
+              </Badge>
+            )}
             {status === 'NOT_PAIRED' && (
               <Badge variant="outline" className="bg-muted text-muted-foreground font-medium">
                 Not Paired
@@ -203,6 +213,19 @@ export default function DeviceCompanionPanel({
       </CardHeader>
 
       <CardContent className="pt-4 space-y-4">
+        {/* Status: OPTIONAL */}
+        {status === 'OPTIONAL' && (
+          <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm space-y-1.5">
+            <div className="flex items-center gap-2 text-emerald-500 font-medium">
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>Exam Device Companion Not Required</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The instructor has not enforced the Exam Device Companion for this examination. You do not need to download or run any companion software. You may proceed directly to the next stage.
+            </p>
+          </div>
+        )}
+
         {/* Status: WAIVED */}
         {status === 'WAIVED' && (
           <div className="p-3.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm">
@@ -247,8 +270,21 @@ export default function DeviceCompanionPanel({
           </div>
         )}
 
-        {/* Steps for NOT_PAIRED or PAIRING */}
-        {(status === 'NOT_PAIRED' || status === 'PAIRING') && (
+        {/* Status: LOST_CONNECTION / STALE */}
+        {(status === 'LOST_CONNECTION' || status === 'DISCONNECTED' || status === 'STALE') && (
+          <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm space-y-1.5">
+            <div className="flex items-center gap-2 text-amber-500 font-medium">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              <span>Companion Disconnected / Connection Lost</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The companion application stopped reporting or lost connection. If you have already launched the companion, click "Generate Code" below and enter the new code to pair again.
+            </p>
+          </div>
+        )}
+
+        {/* Steps for NOT_PAIRED, PAIRING, or LOST_CONNECTION (when companion is needed) */}
+        {(status === 'NOT_PAIRED' || status === 'PAIRING' || status === 'LOST_CONNECTION' || status === 'DISCONNECTED' || status === 'STALE') && (
           <div className="space-y-4">
             {/* Step 1: Download */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-lg bg-muted/40 border border-border/40">

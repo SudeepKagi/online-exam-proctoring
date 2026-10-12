@@ -327,25 +327,78 @@ class AgentSessionService {
   async promotePrecheckSession(studentId, attemptId) {
     if (!studentId || !attemptId) return
 
-    // 1. Update in-memory hotSessions
+    const now = Date.now()
+    const staleThresholdMs = 45 * 1000
+
+    // 1. In-memory check: only promote fresh sessions (< 45s)
+    let promotedToken = null
     for (const [tokenHash, session] of hotSessions.entries()) {
+      const elapsed = now - (session.lastSeenAt || 0)
       if (session.studentId === studentId && session.state !== 'TERMINATED') {
-        session.attemptId = attemptId
-        session.scope = 'ATTEMPT'
-        attemptToToken.set(attemptId, tokenHash)
+        if (elapsed <= staleThresholdMs) {
+          session.attemptId = attemptId
+          session.scope = 'ATTEMPT'
+          attemptToToken.set(attemptId, tokenHash)
+          promotedToken = tokenHash
+          break
+        } else {
+          session.state = 'TERMINATED'
+        }
       }
     }
 
-    // 2. Update PostgreSQL
+    // 2. PostgreSQL: Only promote sessions with recent heartbeat (< 45s)
     try {
+      const cutoff = new Date(now - staleThresholdMs)
+      if (promotedToken) {
+        await prisma.agentSession.updateMany({
+          where: {
+            tokenHash: promotedToken,
+            endedAt: null
+          },
+          data: {
+            attemptId,
+            scope: 'ATTEMPT'
+          }
+        })
+      } else {
+        // Find most recent fresh session if exists
+        const freshDbSession = await prisma.agentSession.findFirst({
+          where: {
+            studentId,
+            endedAt: null,
+            lastSeenAt: { gte: cutoff }
+          },
+          orderBy: { lastSeenAt: 'desc' }
+        })
+
+        if (freshDbSession) {
+          await prisma.agentSession.update({
+            where: { id: freshDbSession.id },
+            data: {
+              attemptId,
+              scope: 'ATTEMPT'
+            }
+          })
+          const rehydrated = this.getSessionByTokenHash(freshDbSession.tokenHash)
+          if (rehydrated) {
+            rehydrated.attemptId = attemptId
+            rehydrated.scope = 'ATTEMPT'
+            attemptToToken.set(attemptId, freshDbSession.tokenHash)
+          }
+        }
+      }
+
+      // Mark any stale or abandoned sessions terminated so they don't linger
       await prisma.agentSession.updateMany({
         where: {
           studentId,
-          endedAt: null
+          endedAt: null,
+          lastSeenAt: { lt: cutoff }
         },
         data: {
-          attemptId,
-          scope: 'ATTEMPT'
+          endedAt: new Date(now),
+          state: 'TERMINATED'
         }
       })
     } catch (err) {
