@@ -15,8 +15,13 @@ export function useProctoringMonitors({
   emitViolation,
   isExamActive,
   allowTabSwitch = false,
-  requireFullscreen = true
+  requireFullscreen = true,
+  aiReverifyInterval = 10
 }) {
+  const videoRef = useRef(null)
+  const captureVideoRef = useRef(null)
+  const canvasRef = useRef(null)
+
   const isDocumentFullscreen = () => {
     if (typeof document === 'undefined') return true
     return Boolean(
@@ -100,6 +105,11 @@ export function useProctoringMonitors({
   }, [isExamActive, requireFullscreen, notifyViolation])
 
   return {
+    videoRef,
+    captureVideoRef,
+    canvasRef,
+    cameraOk: true,
+    faceOk: true,
     isFullscreenLocked,
     setIsFullscreenLocked,
     notifyViolation

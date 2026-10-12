@@ -295,6 +295,8 @@ export default function ExamInterface() {
 
   // ── Hook 3: Proctoring Monitors ──
   const {
+    cameraOk,
+    faceOk,
     isFullscreenLocked,
     setIsFullscreenLocked
   } = useProctoringMonitors({
@@ -302,7 +304,8 @@ export default function ExamInterface() {
     emitViolation,
     isExamActive: !isWaiting && !loading && !terminalState && !suspendedState?.active,
     allowTabSwitch: exam?.browserLock === false,
-    requireFullscreen: exam?.fullScreenMode !== false
+    requireFullscreen: exam?.fullScreenMode !== false,
+    aiReverifyInterval: exam?.aiReverifyInterval || 10
   })
 
   // ── Screen Share Streaming & Snapshotter (R3) ──
@@ -889,7 +892,7 @@ export default function ExamInterface() {
       )}
 
       {/* Fullscreen compliance prompt if student leaves fullscreen */}
-      {!isFullscreenLocked && !isSuspended && (
+      {!isFullscreenLocked && !isSuspended && !isWaiting && !loading && !terminalState && exam?.fullScreenMode !== false && (
         <FullscreenComplianceOverlay onReenterFullscreen={handleReenterFullscreen} />
       )}
 
@@ -1016,10 +1019,6 @@ export default function ExamInterface() {
             </form>
           </div>
         </div>
-      )}
-      {/* Fullscreen Lockdown Enforcement Overlay */}
-      {!isFullscreenLocked && exam?.fullScreenMode !== false && !isWaiting && !loading && !terminalState && (
-        <FullscreenComplianceOverlay onReenterFullscreen={handleReenterFullscreen} />
       )}
     </div>
   )
