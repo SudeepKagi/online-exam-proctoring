@@ -295,6 +295,7 @@ export default function ExamInterface() {
 
   // ── Hook 3: Proctoring Monitors ──
   const {
+    videoRef,
     cameraOk,
     faceOk,
     isFullscreenLocked,
