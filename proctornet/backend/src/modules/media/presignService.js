@@ -313,6 +313,26 @@ class PresignService {
           throw new NotFoundError('Exam attempt not found')
         }
 
+        // Validate evidence storage key scope and verify physical existence
+        if (!data.key || typeof data.key !== 'string') {
+          throw new ValidationError('A valid storage key is required for evidence upload completion')
+        }
+        const expectedPrefix = `evidence/${attempt.examId}/${data.attemptId}/`
+        const expectedThumbPrefix = `thumbs/${attempt.examId}/${data.attemptId}/`
+        if (!data.key.startsWith(expectedPrefix) && !data.key.startsWith(expectedThumbPrefix)) {
+          throw new ForbiddenError('Evidence storage key does not match exam and attempt scope')
+        }
+
+        let head
+        try {
+          head = await s3Client.headObject(data.key)
+        } catch (err) {
+          throw new ValidationError(`Evidence object not found in storage: ${err.message}`)
+        }
+        if (head.ContentLength > MAX_EVIDENCE_SIZE_BYTES) {
+          throw new ValidationError(`Evidence size (${head.ContentLength} bytes) exceeds maximum limit of 300 KB`)
+        }
+
         // Create or update violation record with evidenceKey
         const violation = await tx.violationEvent.create({
           data: {
@@ -356,6 +376,13 @@ class PresignService {
     }
 
     if (normalizedPurpose === 'IDENTITY_PHOTO' || normalizedPurpose === 'PROFILE' || normalizedPurpose === 'IDENTITY') {
+      const { pendingUploadRegistry } = require('./pendingUploads')
+      await pendingUploadRegistry.verifyAndConsumeUpload({
+        key: data.key,
+        studentId: user.id,
+        purpose: normalizedPurpose
+      })
+
       await prisma.student.update({
         where: { id: user.id },
         data: { facePhotoKey: data.key }
@@ -364,6 +391,13 @@ class PresignService {
     }
 
     if (normalizedPurpose === 'ID_CARD') {
+      const { pendingUploadRegistry } = require('./pendingUploads')
+      await pendingUploadRegistry.verifyAndConsumeUpload({
+        key: data.key,
+        studentId: user.id,
+        purpose: normalizedPurpose
+      })
+
       await prisma.student.update({
         where: { id: user.id },
         data: { idCardPhotoKey: data.key }
@@ -401,6 +435,19 @@ class PresignService {
     // BOLA check: student must own attempt
     if (user.role === ROLES.STUDENT && violation.attempt.studentId !== user.id) {
       throw new ForbiddenError('Access denied: You do not own this violation event')
+    }
+
+    // Verify all candidate keys belong to this attempt and exam
+    const allowedPrefixes = [
+      `evidence/${violation.attempt.examId}/${violation.attempt.id}/`,
+      `thumbs/${violation.attempt.examId}/${violation.attempt.id}/`
+    ]
+    const candidateKeys = [cameraKey, screenKey, thumbKey, screenThumbKey, key].filter(Boolean)
+    for (const k of candidateKeys) {
+      const isKeyValid = allowedPrefixes.some(prefix => k.startsWith(prefix))
+      if (!isKeyValid) {
+        throw new ForbiddenError(`Evidence key '${k}' does not match examination/attempt scope`)
+      }
     }
 
     const primaryKey = cameraKey || key || violation.evidenceKey
@@ -606,16 +653,70 @@ class PresignService {
 
     const attempt = await prisma.examAttempt.findUnique({
       where: { id: attemptId },
-      select: { id: true, examId: true, studentId: true }
+      select: {
+        id: true,
+        examId: true,
+        studentId: true,
+        exam: {
+          select: {
+            id: true,
+            facultyId: true
+          }
+        }
+      }
     })
 
     if (!attempt) {
       throw new NotFoundError(`Exam attempt '${attemptId}' not found`)
     }
 
-    const resolvedExamId = examId || attempt.examId
-    const cameraKey = s3Client.buildLiveSnapshotKey(resolvedExamId, attemptId, 'camera')
-    const screenKey = s3Client.buildLiveSnapshotKey(resolvedExamId, attemptId, 'screen')
+    // Reject mismatched client-provided examId (FLW BOLA guard)
+    if (examId && examId !== attempt.examId) {
+      throw new ForbiddenError('Exam scope mismatch: Specified examId does not match attempt exam')
+    }
+
+    const role = user?.role?.toUpperCase()
+
+    // BOLA Authorization Check:
+    if (role === ROLES.ADMIN) {
+      // Admin has universal read access
+    } else if (role === ROLES.FACULTY) {
+      if (attempt.exam?.facultyId !== user.id) {
+        throw new ForbiddenError('Access denied: You do not own the exam for this candidate attempt')
+      }
+    } else if (role === ROLES.INVIGILATOR) {
+      const isAssigned = (user.examId && user.examId === attempt.examId)
+      if (!isAssigned) {
+        const activeSession = await prisma.invigilatorSession.findFirst({
+          where: {
+            examId: attempt.examId,
+            invId: user.id,
+            isActive: true
+          }
+        })
+        if (!activeSession) {
+          throw new ForbiddenError('Access denied: You are not assigned to monitor this examination')
+        }
+      }
+    } else {
+      throw new ForbiddenError('Access denied: Unauthorized role for live snapshots')
+    }
+
+    // Record audit trail for staff snapshot inspection
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        role: role || 'STAFF',
+        action: 'MEDIA_SNAPSHOT_VIEW',
+        targetId: attemptId,
+        details: { examId: attempt.examId, attemptId }
+      }
+    }).catch(err => logger.warn({ error: err.message }, 'Failed to record snapshot view audit log'))
+
+    // Always use authoritative attempt.examId
+    const authoritativeExamId = attempt.examId
+    const cameraKey = s3Client.buildLiveSnapshotKey(authoritativeExamId, attemptId, 'camera')
+    const screenKey = s3Client.buildLiveSnapshotKey(authoritativeExamId, attemptId, 'screen')
 
     const cameraUrl = await s3Client.getPresignedReadUrl(cameraKey, 120)
     const screenUrl = await s3Client.getPresignedReadUrl(screenKey, 120)
