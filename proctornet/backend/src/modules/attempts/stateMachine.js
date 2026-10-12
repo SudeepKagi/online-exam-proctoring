@@ -174,6 +174,16 @@ class AttemptStateMachine {
 
     const updated = updatedRows[0]
 
+    // Agent companion cleanup on terminal states (§W2.3)
+    if (TERMINAL_STATES.includes(target)) {
+      try {
+        const { agentSessionService } = require('../agent/agentSessionService')
+        await agentSessionService.endSessionsByAttemptId(attemptId)
+      } catch (agentErr) {
+        logger.debug({ err: agentErr.message, attemptId }, 'Agent session termination skipped')
+      }
+    }
+
     // VPN cleanup on terminal states when VPN is enabled (P8 Task 6)
     if (TERMINAL_STATES.includes(target) && process.env.VPN_ENABLED === 'true') {
       try {

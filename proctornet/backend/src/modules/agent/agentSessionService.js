@@ -62,9 +62,17 @@ class AgentSessionService {
       throw new BadRequestError(`Agent version '${agentVersion}' is outdated. Minimum required version is '${minVersion}'`)
     }
 
-    // 3. Build hash verification (if releases exist in database)
+    // 3. Build hash verification (Prompt 12 / S-3 hardening)
+    const isProd = process.env.NODE_ENV === 'production'
     const releaseCount = await prisma.agentRelease.count()
-    if (releaseCount > 0 && buildHash !== 'companion-build-hash-dev') {
+    const e2eHash = process.env.E2E_AGENT_BUILD_HASH
+
+    if (isProd) {
+      if (releaseCount === 0) {
+        logger.error({ buildHash, os, arch }, 'Production pairing rejected: agent_releases is empty')
+        agentPairingsTotal.inc({ scope: pairing.scope, result: 'releases_empty' })
+        throw new BadRequestError('Companion pairing is unavailable: No authorized agent releases configured.')
+      }
       const release = await prisma.agentRelease.findFirst({
         where: {
           sha256: buildHash,
@@ -75,6 +83,21 @@ class AgentSessionService {
         logger.warn({ buildHash, os, arch }, 'Untrusted or revoked agent build hash presented at pairing')
         agentPairingsTotal.inc({ scope: pairing.scope, result: 'untrusted_build' })
         throw new BadRequestError('Untrusted or revoked agent binary. Please download an official release.')
+      }
+    } else {
+      const isAllowedE2E = e2eHash && buildHash === e2eHash
+      if (!isAllowedE2E && releaseCount > 0) {
+        const release = await prisma.agentRelease.findFirst({
+          where: {
+            sha256: buildHash,
+            revokedAt: null
+          }
+        })
+        if (!release) {
+          logger.warn({ buildHash, os, arch }, 'Untrusted or revoked agent build hash presented at pairing')
+          agentPairingsTotal.inc({ scope: pairing.scope, result: 'untrusted_build' })
+          throw new BadRequestError('Untrusted or revoked agent binary. Please download an official release.')
+        }
       }
     }
 
@@ -212,7 +235,7 @@ class AgentSessionService {
       sessionKey: decryptedKey,
       state: dbSession.state,
       lastSeq: dbSession.lastSeq,
-      lastSeenAt: Date.now(),
+      lastSeenAt: dbSession.lastSeenAt ? new Date(dbSession.lastSeenAt).getTime() : new Date(dbSession.startedAt).getTime(),
       reportNow: false,
       openFindings: findingsMap,
       dirty: false,
@@ -296,7 +319,52 @@ class AgentSessionService {
         endedAt: new Date(),
         state: 'TERMINATED'
       }
-    })
+    }).catch(err => logger.error({ err, sessionId }, 'Failed to terminate agent session'))
+  }
+
+  /**
+   * End all active sessions for an attempt
+   */
+  async endSessionsByAttemptId(attemptId) {
+    if (!attemptId) return
+    const tokenHash = attemptToToken.get(attemptId)
+    if (tokenHash) {
+      hotSessions.delete(tokenHash)
+      attemptToToken.delete(attemptId)
+    }
+    await prisma.agentSession.updateMany({
+      where: {
+        attemptId,
+        endedAt: null
+      },
+      data: {
+        endedAt: new Date(),
+        state: 'TERMINATED'
+      }
+    }).catch(err => logger.error({ err, attemptId }, 'Failed to terminate attempt agent sessions'))
+  }
+
+  /**
+   * End precheck practice sessions for a student on logout
+   */
+  async endPrecheckSessionsForStudent(studentId) {
+    if (!studentId) return
+    for (const [tokenHash, session] of hotSessions.entries()) {
+      if (session.studentId === studentId && session.scope === 'PRECHECK') {
+        hotSessions.delete(tokenHash)
+      }
+    }
+    await prisma.agentSession.updateMany({
+      where: {
+        studentId,
+        scope: 'PRECHECK',
+        endedAt: null
+      },
+      data: {
+        endedAt: new Date(),
+        state: 'TERMINATED'
+      }
+    }).catch(err => logger.error({ err, studentId }, 'Failed to terminate student precheck sessions'))
   }
 
   /**
@@ -305,6 +373,18 @@ class AgentSessionService {
   clearHotSessions() {
     hotSessions.clear()
     attemptToToken.clear()
+  }
+
+  /**
+   * Test helper to register a hot session directly in memory
+   */
+  _setHotSessionForTest(attemptId, session) {
+    if (session.tokenHash) {
+      hotSessions.set(session.tokenHash, session)
+      if (attemptId) {
+        attemptToToken.set(attemptId, session.tokenHash)
+      }
+    }
   }
 }
 

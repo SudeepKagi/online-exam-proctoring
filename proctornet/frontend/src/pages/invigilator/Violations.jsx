@@ -456,7 +456,7 @@ export default function InvigilatorViolations() {
               onClick={() => navigate(`/invigilator/live-grid/${effectiveExamId}`)}
               className="text-xs font-bold gap-1.5 h-9 rounded-xl bg-primary hover:bg-primary/90 text-white shadow-sm"
             >
-              <ExternalLink size={14} /> Switch to Live Grid
+              <ExternalLink size={14} /> Switch to Live Monitoring
             </Button>
           </div>
         </div>
@@ -869,7 +869,7 @@ export default function InvigilatorViolations() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-foreground">Incident Investigation Console</h3>
+                      <h3 className="text-base font-bold text-foreground">Incident Investigation Workspace</h3>
                       <SeverityPill severity={selectedIncident.severity} />
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -886,7 +886,7 @@ export default function InvigilatorViolations() {
                 </button>
               </div>
 
-              {/* Candidate Dossier Overview */}
+              {/* Student Profile Overview */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-5 bg-background p-4 rounded-2xl border border-border">
                 <div className="flex items-center gap-3">
                   {selectedIncident.studentPhoto ? (
@@ -1114,7 +1114,7 @@ export default function InvigilatorViolations() {
                     onClick={() => navigate(`/invigilator/live-grid/${selectedIncident.examId || effectiveExamId}`)}
                     className="ml-auto text-xs font-bold text-primary border-primary/30 hover:bg-primary/10 rounded-xl"
                   >
-                    <ExternalLink size={14} className="mr-1.5" /> Open in Live Grid
+                    <ExternalLink size={14} className="mr-1.5" /> Open in Live Monitoring
                   </Button>
                 </div>
               </div>

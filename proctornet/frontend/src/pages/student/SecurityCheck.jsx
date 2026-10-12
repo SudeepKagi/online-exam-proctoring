@@ -53,6 +53,39 @@ export default function SecurityCheck() {
   const [screenShared, setScreenShared] = useState(false)
   const [timeToExamStart, setTimeToExamStart] = useState(0)
 
+  // Listen to live fullscreen changes (§W2.5)
+  useEffect(() => {
+    const handleFsChange = () => {
+      const active = Boolean(document.fullscreenElement)
+      setIsFullscreen(active)
+      if (active) {
+        updateStage('lock', 'pass', 'Full-screen assessment lock active')
+      }
+    }
+    handleFsChange()
+    document.addEventListener('fullscreenchange', handleFsChange)
+    return () => document.removeEventListener('fullscreenchange', handleFsChange)
+  }, [])
+
+  const isF11Mode = !isFullscreen && typeof window !== 'undefined' && typeof screen !== 'undefined' && (window.innerHeight >= screen.height - 10)
+
+  // Track socket connection
+  const [isSocketConnected, setIsSocketConnected] = useState(false)
+  useEffect(() => {
+    const sock = connectSocket()
+    if (sock) {
+      setIsSocketConnected(Boolean(sock.connected))
+      const onConnect = () => setIsSocketConnected(true)
+      const onDisconnect = () => setIsSocketConnected(false)
+      sock.on('connect', onConnect)
+      sock.on('disconnect', onDisconnect)
+      return () => {
+        sock.off('connect', onConnect)
+        sock.off('disconnect', onDisconnect)
+      }
+    }
+  }, [])
+
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
   const [isFaceProcessing, setIsFaceProcessing] = useState(false)
@@ -103,19 +136,6 @@ export default function SecurityCheck() {
         clearTimeout(reviewPollTimeoutRef.current)
       }
     }
-  }, [])
-
-  // Fullscreen change listener
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      const active = !!document.fullscreenElement
-      setIsFullscreen(active)
-      if (active) {
-        updateStage('lock', 'pass', 'Full-screen assessment lock active')
-      }
-    }
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
   // Initial load: uses readiness check (never starts the exam clock!)
@@ -613,15 +633,18 @@ export default function SecurityCheck() {
       return
     }
 
+    // Attempt fullscreen immediately to preserve user activation gesture
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen()
+      } catch (fsErr) {
+        console.warn('requestFullscreen before attempt call:', fsErr.message)
+      }
+    }
+
     try {
       // Real attempt activation starts the exam clock
       await api.post(`/exams/${examId}/attempt`)
-
-      if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen().catch((e) => {
-          console.warn('requestFullscreen deferred:', e.message)
-        })
-      }
       updateStage('lock', 'pass', 'Entering proctored examination interface...')
       if (timeToExamStart > 0) {
         toast.success(`Security check passed! Holding in secure exam mode until exam starts (${formatCountdown(timeToExamStart)}).`)
@@ -632,8 +655,27 @@ export default function SecurityCheck() {
         navigate(`/student/exams/${examId}/exam`)
       }, 400)
     } catch (err) {
-      updateStage('lock', 'fail', 'Full-screen mode is mandatory. Please grant full-screen permissions.')
-      toast.error('Full-screen mode required to enter exam.')
+      const errCode = err.response?.data?.code || err.response?.data?.error
+      const errMsg = err.response?.data?.message || err.message
+      if (errCode === 'AGENT_REQUIRED') {
+        updateStage('system', 'fail', 'Device Companion required to start exam.')
+        toast.error('Start the Device Companion and enter the code shown on Step 1.')
+        setActiveStage(0)
+      } else if (errCode === 'EXAM_NOT_OPEN') {
+        toast.error("This exam hasn't opened yet.")
+      } else if (errCode === 'IDENTITY_REQUIRED' || errCode === 'IDENTITY_REVIEW') {
+        updateStage('face', 'fail', 'Identity verification required before entering.')
+        toast.error('Identity verification required before entering exam.')
+        setActiveStage(2)
+      } else if (errCode === 'ROOM_FULL') {
+        toast.error('Exam room is currently full. Please try again shortly or contact your invigilator.')
+      } else if (errCode === 'SESSION_EXPIRED') {
+        toast.error('Your session has expired. Please log in again.')
+        navigate('/login')
+      } else {
+        updateStage('lock', 'fail', errMsg || 'Failed to start exam session.')
+        toast.error(errMsg || 'Failed to start exam.')
+      }
     }
   }
 
@@ -751,8 +793,8 @@ export default function SecurityCheck() {
                   <span className="truncate text-foreground/90 font-medium">Device Companion: Active</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${isHttpsSecure ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                  <span className="truncate text-foreground/90 font-medium">Network: {isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}</span>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${isHttpsSecure && isSocketConnected ? 'bg-emerald-500' : isHttpsSecure ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  <span className="truncate text-foreground/90 font-medium">Network: {isHttpsSecure && isSocketConnected ? 'Connected (Secure)' : isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-background border border-border flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -782,7 +824,7 @@ export default function SecurityCheck() {
                     </Badge>
                   )}
                   <Badge variant="outline" className="font-mono text-xs text-primary border-primary/30 bg-primary/10 w-fit">
-                    {exam?.title || 'Examination Verification'}
+                    Exam: {exam?.title || 'Verification'}
                   </Badge>
                 </div>
               </div>
@@ -824,8 +866,8 @@ export default function SecurityCheck() {
                   <div className="space-y-4">
                     <Card className="bg-background border-border p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Diagnostic Log</span>
-                        <Badge variant="secondary" className="text-[10px] font-mono">LIVE PROBE</Badge>
+                        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">Readiness Check</span>
+                        <Badge variant="secondary" className="text-[10px] font-mono">LIVE STATUS</Badge>
                       </div>
 
                       <div className="p-3 bg-card border border-border rounded-xl text-xs font-mono text-foreground/90">
@@ -843,7 +885,7 @@ export default function SecurityCheck() {
                         <div className="p-2 rounded-lg bg-card border border-border">
                           <span className="text-muted-foreground">Network:</span>
                           <p className={`font-semibold mt-0.5 ${isHttpsSecure ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}
+                            {isHttpsSecure && isSocketConnected ? 'Connected (Secure)' : isHttpsSecure ? 'HTTPS Secure' : 'HTTP Local'}
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
@@ -855,7 +897,7 @@ export default function SecurityCheck() {
                         <div className="p-2 rounded-lg bg-card border border-border">
                           <span className="text-muted-foreground">Full-Screen Mode:</span>
                           <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {isFullscreen ? 'Locked' : 'Standard'}
+                            {isFullscreen ? 'Locked' : isF11Mode ? 'Click button below to enter full screen' : 'Standard'}
                           </p>
                         </div>
                       </div>

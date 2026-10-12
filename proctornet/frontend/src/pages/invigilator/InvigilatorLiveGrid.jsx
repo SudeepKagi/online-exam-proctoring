@@ -246,7 +246,7 @@ export default function InvigilatorLiveGrid() {
             ? 'Invigilator Access Restricted'
             : status === 404
             ? 'No Active Examination Assigned'
-            : 'Failed to Synchronize Live Grid',
+            : 'Failed to Synchronize Live Monitoring',
           message: msg
         })
       }
@@ -607,7 +607,7 @@ export default function InvigilatorLiveGrid() {
           <div>
             <h1 className="text-xl font-bold text-foreground flex items-center gap-2.5">
               <Grid className="w-5 h-5 text-primary" />
-              {examTitle ? `Live Grid: ${examTitle}` : 'Live Invigilator Exam Grid'}
+              {examTitle ? `Live Monitoring: ${examTitle}` : 'Live Invigilator Monitoring'}
             </h1>
             <p className="text-xs text-muted-foreground mt-1 font-normal">
               Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream inspection
@@ -1254,7 +1254,7 @@ export default function InvigilatorLiveGrid() {
         >
           <div className="space-y-1.5 mt-2">
             <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              Termination Reason (Recorded in audit dossier)
+              Termination Reason (Recorded in session audit log)
             </label>
             <input
               value={terminateDialog.reason}

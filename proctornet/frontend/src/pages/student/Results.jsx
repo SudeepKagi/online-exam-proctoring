@@ -155,7 +155,7 @@ function ResultDetailModal({ result, onClose }) {
             onClick={onClose}
             className="w-full py-2 bg-[#0f172a] hover:bg-[#1e293b] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
           >
-            Close Dossier
+            Close Report
           </button>
         </div>
       </div>
@@ -335,7 +335,7 @@ export default function StudentResults() {
           <div className="p-5 pb-4 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-slate-900">Evaluated Candidate Dossier</h3>
+                <h3 className="text-base font-semibold text-slate-900">Evaluated Student Report</h3>
                 <p className="text-xs text-slate-500 font-normal mt-0.5">Filtering and proctoring audit log.</p>
               </div>
 

@@ -148,7 +148,7 @@ export default function FacultyResults() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
           <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="font-semibold text-slate-900 text-base">Evaluated Results Dossier</h3>
+              <h3 className="font-semibold text-slate-900 text-base">Evaluated Results Summary</h3>
               <p className="text-xs text-slate-500 font-normal mt-0.5">Showing {filtered.length} of {totalEvaluated} evaluated student entries</p>
             </div>
 
@@ -342,7 +342,7 @@ export default function FacultyResults() {
                 </div>
 
                 <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                  <span className="text-slate-500 font-normal">Security Violations:</span>
+                  <span className="text-slate-500 font-normal">Security Incidents:</span>
                   <span className={`font-semibold ${selectedResult.flags > 0 ? 'text-rose-600' : 'text-slate-700'}`}>
                     {selectedResult.flags === 0 ? '0 Security Alerts' : `${selectedResult.flags} Alert Events`}
                   </span>

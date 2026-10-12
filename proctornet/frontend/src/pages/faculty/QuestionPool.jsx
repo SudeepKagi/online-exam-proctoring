@@ -184,7 +184,7 @@ export default function QuestionPool() {
   }
 
   return (
-    <DashboardLayout title="Faculty Console">
+    <DashboardLayout title="Faculty Workspace">
       <div className="flex flex-col gap-5 py-2 font-sans max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <div>
@@ -199,7 +199,7 @@ export default function QuestionPool() {
           </div>
           <div className="flex items-center gap-2 font-mono">
             <Button size="sm" variant={showAI ? "default" : "outline"} onClick={() => setShowAI(s => !s)} className="text-xs">
-              <Sparkles size={14} className="mr-1.5" /> AI Generator
+              <Sparkles size={14} className="mr-1.5" /> Question Assistant
               {!llmEnabled && <span className="ml-1 text-[10px] opacity-75">(Setup)</span>}
             </Button>
             <Button size="sm" onClick={() => {
@@ -230,7 +230,7 @@ export default function QuestionPool() {
                   <Sparkles size={16} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-foreground">AI Question Generator</h3>
+                  <h3 className="text-sm font-bold text-foreground">Question Assistant</h3>
                   <p className="text-xs text-muted-foreground">Generate comprehensive exam questions instantly based on syllabus topics</p>
                 </div>
               </div>

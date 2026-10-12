@@ -222,7 +222,7 @@ export default function StudentGrid({
                   onSelectStudent?.(student)
                 }}
                 className="p-1.5 rounded-xl bg-[#eff6ff] border border-[#d5e6fb] text-primary hover:bg-primary hover:text-white transition-colors shrink-0 cursor-pointer dark:bg-neutral-800 dark:border-neutral-700"
-                aria-label={`View dossier for ${student.name}`}
+                aria-label={`View profile for ${student.name}`}
               >
                 <Eye size={15} />
               </button>

@@ -106,11 +106,21 @@ const derivedWsOrigins = allowedOrigins
   })
   .filter(Boolean)
 
+const s3Bucket = process.env.S3_BUCKET || 'proctornet-storage'
+const awsRegion = process.env.AWS_REGION || 'ap-south-1'
+const s3Hosts = isProd
+  ? [
+      `https://${s3Bucket}.s3.${awsRegion}.amazonaws.com`,
+      `https://${s3Bucket}.s3.amazonaws.com`,
+      'https://*.amazonaws.com'
+    ]
+  : ['http://localhost:9000', 'http://127.0.0.1:9000']
+
 const dynamicImgSrc = [
   "'self'",
   'data:',
   'blob:',
-  ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000'])
+  ...s3Hosts
 ]
 if (process.env.S3_ENDPOINT) {
   dynamicImgSrc.push(process.env.S3_ENDPOINT)
@@ -119,7 +129,8 @@ if (process.env.S3_ENDPOINT) {
 const dynamicConnectSrc = [
   "'self'",
   ...derivedWsOrigins,
-  ...(isProd ? ['https://*.amazonaws.com'] : ['http://localhost:9000', 'http://127.0.0.1:9000', 'ws://localhost:5000', 'ws://127.0.0.1:5000'])
+  ...s3Hosts,
+  ...(isProd ? [] : ['ws://localhost:5000', 'ws://127.0.0.1:5000'])
 ]
 if (process.env.S3_ENDPOINT) {
   dynamicConnectSrc.push(process.env.S3_ENDPOINT)

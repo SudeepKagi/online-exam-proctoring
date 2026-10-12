@@ -416,7 +416,7 @@ export default function CreateFacultyAccount() {
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-[#10b981] font-bold">✓</span>
-                      <span>Instructors can author exams, configure question pools, and inspect candidate dossiers immediately.</span>
+                      <span>Instructors can author exams, configure question pools, and inspect student profiles immediately.</span>
                     </li>
                     <li className="flex items-start gap-1.5">
                       <span className="text-[#10b981] font-bold">✓</span>

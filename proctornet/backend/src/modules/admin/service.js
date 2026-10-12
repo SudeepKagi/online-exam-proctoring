@@ -5,7 +5,6 @@ const adminRepository = require('./repository')
 const { logAudit } = require('../../utils/auditLogger')
 const {
   toFacultyAdminDTO,
-  toStudentAdminDTO,
   toPlatformSettingDTO,
   toAnnouncementDTO
 } = require('./dto')
@@ -16,37 +15,12 @@ const {
 } = require('../../shared/errors')
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
-const { getPresignedReadUrl, batchPresignReadUrls } = require('../../infra/s3/s3.client')
+const { batchPresignReadUrls } = require('../../infra/s3/s3.client')
+const { presentStudent, presentStudents } = require('../student/presenter')
 
 async function attachStudentUrls(students) {
   if (!Array.isArray(students) || students.length === 0) return []
-  const keys = []
-  for (const s of students) {
-    if (s.facePhotoKey) keys.push(s.facePhotoKey)
-    if (s.idCardPhotoKey) keys.push(s.idCardPhotoKey)
-  }
-
-  const presignedList = await batchPresignReadUrls(keys, 3600)
-  const urlMap = new Map()
-  for (const item of presignedList) {
-    if (item && item.key && item.url) {
-      urlMap.set(item.key, item.url)
-    }
-  }
-
-  return students.map((s) => {
-    const rawFaceKey = s.facePhotoKey ? s.facePhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
-    const rawIdKey = s.idCardPhotoKey ? s.idCardPhotoKey.replace(/^s3:\/\/[^/]+\//, '') : null
-
-    const facePhotoUrl = (rawFaceKey && urlMap.get(rawFaceKey)) || (s.facePhotoKey && urlMap.get(s.facePhotoKey)) || s.facePhotoUrl || null
-    const idCardPhotoUrl = (rawIdKey && urlMap.get(rawIdKey)) || (s.idCardPhotoKey && urlMap.get(s.idCardPhotoKey)) || s.idCardPhotoUrl || null
-
-    return toStudentAdminDTO({
-      ...s,
-      facePhotoUrl,
-      idCardPhotoUrl
-    })
-  })
+  return presentStudents(students)
 }
 
 async function attachFacultyUrls(facultyList) {
@@ -222,7 +196,7 @@ class AdminService {
       profileStatus: data.profileStatus || 'PENDING'
     })
     student.tempPassword = isGenerated ? tempPassword : undefined
-    return toStudentAdminDTO(student)
+    return presentStudent(student)
   }
 
   async approveStudent(id, approverId) {
@@ -236,11 +210,7 @@ class AdminService {
       approvedBy: approverId,
       approvedAt: new Date()
     })
-    const [facePhotoUrl, idCardPhotoUrl] = await Promise.all([
-      getPresignedReadUrl(updated.facePhotoKey, 3600),
-      getPresignedReadUrl(updated.idCardPhotoKey, 3600)
-    ])
-    return toStudentAdminDTO({ ...updated, facePhotoUrl, idCardPhotoUrl })
+    return presentStudent(updated)
   }
 
   async rejectStudent(id, reason) {
@@ -251,18 +221,14 @@ class AdminService {
       profileStatus: 'REJECTED',
       rejectionReason: reason || 'Rejected by administration'
     })
-    const [facePhotoUrl, idCardPhotoUrl] = await Promise.all([
-      getPresignedReadUrl(updated.facePhotoKey, 3600),
-      getPresignedReadUrl(updated.idCardPhotoKey, 3600)
-    ])
-    return toStudentAdminDTO({ ...updated, facePhotoUrl, idCardPhotoUrl })
+    return presentStudent(updated)
   }
 
   async setStudentSuspension(id, isSuspended) {
     const s = await adminRepository.findStudentById(id)
     if (!s) throw new NotFoundError('Student not found')
     const updated = await adminRepository.updateStudent(id, { isSuspended: Boolean(isSuspended) })
-    return toStudentAdminDTO(updated)
+    return presentStudent(updated)
   }
 
   // ── Exam Oversight ──
@@ -571,7 +537,7 @@ class AdminService {
       newStatus: status
     })
 
-    return toStudentAdminDTO(updated)
+    return presentStudent(updated)
   }
 
   // ── Departments ──

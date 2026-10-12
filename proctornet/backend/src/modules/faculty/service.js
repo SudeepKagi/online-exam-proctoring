@@ -14,6 +14,7 @@ const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const { llmService } = require('./llmService')
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
+const { presentStudent, presentStudents } = require('../student/presenter')
 
 class FacultyService {
   async formatQuestionWithPresignedUrl(q) {
@@ -465,7 +466,8 @@ class FacultyService {
 
   // ── Students ──
   async listStudents(departmentCode) {
-    return facultyRepository.listEligibleStudents(departmentCode)
+    const list = await facultyRepository.listEligibleStudents(departmentCode)
+    return presentStudents(list)
   }
 
   async approveStudent(studentId, facultyId) {
@@ -480,7 +482,8 @@ class FacultyService {
       throw new ForbiddenError('Faculty can only approve students from their own department')
     }
 
-    return facultyRepository.approveStudent(studentId, facultyId)
+    const updated = await facultyRepository.approveStudent(studentId, facultyId)
+    return presentStudent(updated)
   }
 
   /**

@@ -29,7 +29,7 @@ export default function StudentDossier() {
       setResult(res.data.result || res.data)
     } catch (err) {
       console.error('[StudentDossier] Fetch error:', err)
-      setError(extractErrorMessage(err, 'Failed to load candidate dossier.'))
+      setError(extractErrorMessage(err, 'Failed to load student profile.'))
     } finally {
       setLoading(false)
     }
@@ -60,10 +60,10 @@ export default function StudentDossier() {
 
   if (loading) {
     return (
-      <DashboardLayout title="Candidate Dossier">
+      <DashboardLayout title="Student Profile">
         <div className="flex flex-col items-center justify-center py-20 font-sans">
           <div className="w-10 h-10 border-3 border-[#2f80ed] border-t-transparent rounded-full animate-spin mb-3"></div>
-          <p className="text-xs text-slate-500 font-semibold">Loading certified evidence dossier...</p>
+          <p className="text-xs text-slate-500 font-semibold">Loading student profile...</p>
         </div>
       </DashboardLayout>
     )
@@ -71,10 +71,10 @@ export default function StudentDossier() {
 
   if (error || !result) {
     return (
-      <DashboardLayout title="Candidate Dossier">
+      <DashboardLayout title="Student Profile">
         <div className="max-w-2xl mx-auto py-12">
           <ErrorState
-            title="Candidate Dossier Not Found"
+            title="Student Profile Not Found"
             message={error || 'The requested candidate exam record could not be retrieved from the database.'}
             onRetry={fetchDossier}
           />
@@ -103,7 +103,7 @@ export default function StudentDossier() {
   const isPassed = percentage >= 40
 
   return (
-    <DashboardLayout title="Faculty Console">
+    <DashboardLayout title="Faculty Workspace">
       <div className="flex flex-col gap-6 font-sans">
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
@@ -115,7 +115,7 @@ export default function StudentDossier() {
               <ArrowLeft size={14} /> Back to Results
             </button>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Evidence Dossier: {student.name || 'Candidate'}
+              Student Profile: {student.name || 'Candidate'}
             </h1>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
               USN: <span className="font-mono text-slate-800">{student.usn || 'N/A'}</span> • Exam: {exam.title || 'Assessment'}

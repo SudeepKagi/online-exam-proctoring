@@ -17,6 +17,8 @@ function toStudentProfileDTO(s) {
     facePhotoUrl: s.facePhotoUrl || null,
     idCardPhotoKey: s.idCardPhotoKey,
     idCardPhotoUrl: s.idCardPhotoUrl || null,
+    photoAvailable: Boolean(s.photoAvailable !== undefined ? s.photoAvailable : s.facePhotoUrl),
+    idPhotoAvailable: Boolean(s.idPhotoAvailable !== undefined ? s.idPhotoAvailable : s.idCardPhotoUrl),
     idDocumentKey: s.idDocumentKey,
     idCroppedFaceKey: s.idCroppedFaceKey,
     faceMatchScore: s.faceMatchScore,

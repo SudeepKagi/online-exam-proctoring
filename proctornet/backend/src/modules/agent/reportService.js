@@ -282,13 +282,20 @@ class ReportService {
       }
     }
 
-    // Write to DB on state change
-    if (session.state !== previousState) {
+    // Write to DB on state change or periodically every 30s (§W2.2)
+    const timeSinceLastDbPersist = now - (session.lastDbPersistAt || 0)
+    const stateChanged = session.state !== previousState
+
+    if (stateChanged || timeSinceLastDbPersist >= 30000) {
+      session.lastDbPersistAt = now
       await prisma.agentSession.update({
         where: { id: session.id },
-        data: { state: session.state, lastSeq: seq }
-      })
-
+        data: {
+          state: session.state,
+          lastSeq: seq,
+          lastSeenAt: new Date(now)
+        }
+      }).catch(err => logger.error({ err, sessionId: session.id }, 'Failed to persist agent session heartbeat'))
     }
 
     agentReportsTotal.inc({ result: 'success' })

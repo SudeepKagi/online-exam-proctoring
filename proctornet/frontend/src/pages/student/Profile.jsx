@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/common/DashboardLayout'
 import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/context/AuthContext'
+import SignedImage from '@/components/common/SignedImage'
 import {
   User, Key, Camera, Upload, Save, CheckCircle2,
   AlertCircle, GraduationCap, Phone, Mail, RefreshCw,
@@ -32,12 +33,30 @@ export default function StudentProfile() {
   const [showCurrentPass, setShowCurrentPass] = useState(false)
   const [showNewPass, setShowNewPass] = useState(false)
 
-  // Photos
+  // Photos & availability
   const [facePhotoUrl, setFacePhotoUrl] = useState('')
   const [idCardPhotoUrl, setIdCardPhotoUrl] = useState('')
+  const [photoAvailable, setPhotoAvailable] = useState(false)
+  const [idPhotoAvailable, setIdPhotoAvailable] = useState(false)
+  const [facePhotoKey, setFacePhotoKey] = useState('')
+  const [idCardPhotoKey, setIdCardPhotoKey] = useState('')
 
   useEffect(() => {
+    let lastFetch = Date.now()
     fetchProfile()
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const elapsed = Date.now() - lastFetch
+        if (elapsed > 50 * 60 * 1000) {
+          lastFetch = Date.now()
+          fetchProfile()
+        }
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [])
 
   const fetchProfile = async () => {
@@ -52,8 +71,12 @@ export default function StudentProfile() {
         setPhone(s.phone || '')
         setDepartment(s.departmentCode || s.department || 'ECE')
         setSemester(s.semester || 1)
-        setFacePhotoUrl(s.facePhotoKey || s.facePhotoUrl || user?.facePhotoUrl || '')
-        setIdCardPhotoUrl(s.idCardPhotoKey || s.idCardPhotoUrl || user?.idCardPhotoUrl || '')
+        setFacePhotoUrl(s.facePhotoUrl || user?.facePhotoUrl || '')
+        setIdCardPhotoUrl(s.idCardPhotoUrl || user?.idCardPhotoUrl || '')
+        setPhotoAvailable(Boolean(s.photoAvailable))
+        setIdPhotoAvailable(Boolean(s.idPhotoAvailable))
+        setFacePhotoKey(s.facePhotoKey || '')
+        setIdCardPhotoKey(s.idCardPhotoKey || '')
       }
     } catch (err) {
       console.warn('Failed to load profile details:', err)
@@ -309,9 +332,19 @@ export default function StudentProfile() {
                     <Camera className="w-5 h-5 text-[#2f80ed]" />
                     Reference Facial Photo
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
-                    Registered
-                  </span>
+                  {photoAvailable ? (
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
+                      Registered
+                    </span>
+                  ) : facePhotoKey ? (
+                    <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-semibold border border-amber-200">
+                      Re-upload Required
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                      Not Registered
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 font-normal">
                   Matched against your live camera stream during pre-exam identity verification.
@@ -319,18 +352,16 @@ export default function StudentProfile() {
               </div>
 
               <div className="flex flex-col items-center justify-center p-4 bg-slate-50/75 rounded-xl border border-slate-200">
-                {facePhotoUrl ? (
-                  <img
-                    src={facePhotoUrl}
-                    alt="Enrolled Face"
-                    className="w-40 h-40 object-cover rounded-xl border border-slate-200 shadow-xs"
-                  />
-                ) : (
-                  <div className="w-40 h-40 rounded-xl bg-white border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
-                    <User size={36} />
-                    <span className="text-xs font-medium mt-2">No photo captured</span>
-                  </div>
-                )}
+                <SignedImage
+                  src={photoAvailable ? facePhotoUrl : ''}
+                  alt="Enrolled Face"
+                  className="w-40 h-40 object-cover rounded-xl border border-slate-200 shadow-xs"
+                  onRefresh={fetchProfile}
+                  onReupload={() => navigate('/student/enrollment')}
+                  fallbackIcon={User}
+                  fallbackText={facePhotoKey ? "Photo not available — upload it again" : "No photo captured"}
+                  reuploadText="Re-upload photo"
+                />
               </div>
 
               <button
@@ -351,9 +382,19 @@ export default function StudentProfile() {
                     <ShieldCheck className="w-5 h-5 text-purple-600" />
                     Official ID Document
                   </h4>
-                  <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
-                    ID Uploaded
-                  </span>
+                  {idPhotoAvailable ? (
+                    <span className="px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[11px] font-semibold border border-emerald-200">
+                      ID Uploaded
+                    </span>
+                  ) : idCardPhotoKey ? (
+                    <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[11px] font-semibold border border-amber-200">
+                      Re-upload Required
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[11px] font-semibold border border-slate-200">
+                      Not Uploaded
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-500 font-normal">
                   Used for automated document extraction and candidate identity verification.
@@ -361,18 +402,16 @@ export default function StudentProfile() {
               </div>
 
               <div className="flex flex-col items-center justify-center p-4 bg-slate-50/75 rounded-xl border border-slate-200">
-                {idCardPhotoUrl ? (
-                  <img
-                    src={idCardPhotoUrl}
-                    alt="Institutional ID"
-                    className="w-48 h-32 object-cover rounded-xl border border-slate-200 shadow-xs"
-                  />
-                ) : (
-                  <div className="w-48 h-32 rounded-xl bg-white border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
-                    <Upload size={28} />
-                    <span className="text-xs font-medium mt-2">No ID card uploaded</span>
-                  </div>
-                )}
+                <SignedImage
+                  src={idPhotoAvailable ? idCardPhotoUrl : ''}
+                  alt="Institutional ID"
+                  className="w-48 h-32 object-cover rounded-xl border border-slate-200 shadow-xs"
+                  onRefresh={fetchProfile}
+                  onReupload={() => navigate('/student/enrollment')}
+                  fallbackIcon={Upload}
+                  fallbackText={idCardPhotoKey ? "ID card not available — upload it again" : "No ID card uploaded"}
+                  reuploadText="Re-upload ID card"
+                />
               </div>
 
               <button

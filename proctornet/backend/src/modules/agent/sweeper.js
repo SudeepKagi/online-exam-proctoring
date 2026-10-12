@@ -43,6 +43,35 @@ class AgentSweeper {
     for (const session of sessions) {
       if (session.state === 'TERMINATED') continue
 
+      // Enforce PRECHECK session lifecycle (§W2.3: 30 min idle / 4 h absolute)
+      if (session.scope === 'PRECHECK') {
+        const idleMs = now - (session.lastSeenAt || 0)
+        const startedAtMs = session.startedAt ? new Date(session.startedAt).getTime() : (session.lastSeenAt || 0)
+        const absoluteAgeMs = now - startedAtMs
+        const PRECHECK_IDLE_MAX_MS = 30 * 60 * 1000
+        const PRECHECK_ABSOLUTE_MAX_MS = 4 * 60 * 60 * 1000
+
+        if (idleMs > PRECHECK_IDLE_MAX_MS || absoluteAgeMs > PRECHECK_ABSOLUTE_MAX_MS) {
+          logger.info({ sessionId: session.id, idleMs, absoluteAgeMs }, 'Ending expired PRECHECK agent session')
+          await agentSessionService.endSession(session.id)
+          continue
+        }
+      }
+
+      // Enforce attempt-scoped session lifecycle when attempt is terminal or exam ended
+      if (session.attemptId) {
+        const attempt = await prisma.examAttempt.findUnique({
+          where: { id: session.attemptId },
+          include: { exam: true }
+        })
+
+        if (!attempt || ['SUBMITTED', 'TERMINATED', 'EXPIRED'].includes(attempt.status) || (attempt.exam?.endTime && new Date(attempt.exam.endTime).getTime() < now)) {
+          logger.info({ sessionId: session.id, attemptId: session.attemptId }, 'Ending agent session for terminated attempt or ended exam')
+          await agentSessionService.endSession(session.id)
+          continue
+        }
+      }
+
       const elapsed = now - (session.lastSeenAt || 0)
       if (elapsed > staleThresholdMs && session.state !== 'STALE') {
         // Transition session to STALE

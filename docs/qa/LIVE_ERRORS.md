@@ -80,3 +80,74 @@
 * **Resolution:**
   - When `!llmEnabled`, UI displays clear, friendly notice: "Question assistant isn't enabled — ask the administrator", cleanly disabling the action without throwing runtime errors.
   - Documented secure AWS SSM Parameter Store storage (`/proctornet/prod/LLM_PROVIDER`, `/LLM_API_KEY`) and IAM permissions in `docs/runbooks/secrets.md` and Terraform `iam.tf`.
+
+---
+
+### 6. Profile Photo Truth & Dynamic Status Badges (S-1)
+* **Observed Symptoms:**
+  - Student profile, sidebar, and admin/faculty student lists showed broken image icons (404) or failed to load photos.
+  - Badges showed "Registered" even when biometric photos had not been uploaded or presigned URLs were invalid.
+* **Root Causes:**
+  - `Profile.jsx` had a bug (`s.facePhotoKey || s.facePhotoUrl`) that passed the raw storage key (e.g. `identity/...webp`) as the image src, prompting the browser to query the frontend URL and failing with 404.
+  - DTOs and API endpoints did not verify actual existence of S3 objects before declaring them available.
+* **Resolution:**
+  - Created centralized presenter (`proctornet/backend/src/modules/student/presenter.js`) with cached `HeadObject` validation (10 min TTL) and 1-hour presigned URLs. Returns `photoAvailable: false` and `facePhotoUrl: null` when storage objects are missing.
+  - Implemented `<SignedImage>` component with automatic refresh on expiration and neutral initials avatar placeholder.
+  - Profile status badge dynamically computes "Registered", "ID Uploaded", "Re-upload Required", or "Not Registered" strictly based on verifiable storage truth.
+  - Verified with unit tests (`tests/w1-student-presenter.test.js`).
+
+---
+
+### 7. Exam Device Companion Gating & Rehydration Isolation (S-2 & S-3)
+* **Observed Symptoms:**
+  - New exam attempt showed "Companion: HEALTHY" even though the device companion was closed, because an earlier practice `PRECHECK` session from hours earlier was still open.
+  - Terminated sessions rehydrated with fresh `Date.now()` on reconnect.
+  - Dev bypass allowed arbitrary scripts to simulate companion passes.
+* **Root Causes:**
+  - `agentStatusService.js` fell back to `getSessionByStudentId(attempt.studentId)` which matched stale `PRECHECK` sessions.
+  - Session rehydration used `lastSeenAt: Date.now()` instead of database `lastSeenAt`.
+  - Production code retained hardcoded dev hash bypass.
+* **Resolution:**
+  - Created centralized `agentGate.js` (`evaluateDeviceGate` & `assertDeviceGate`): strictly requires attempt-scoped session, fresh heartbeat (`< 45s`), and active release build hash. `PRECHECK` practice sessions are isolated and never satisfy attempt gates.
+  - Rehydration restored from database timestamp.
+  - Removed dev build hash bypass in production; requires verified `agent_releases` row.
+  - Sessions automatically terminated on exam submission or expiry.
+  - Verified with consecutive exams test suite (`tests/w2-agent-gate.test.js`).
+
+---
+
+### 8. Fullscreen Gesture Expiration & Misleading Start Error (S-4)
+* **Observed Symptoms:**
+  - If entering an exam failed due to server reasons (e.g. companion not started), UI displayed: "Full-screen mode required to enter exam."
+  - Fullscreen API call failed because it was called after an asynchronous network await, losing browser user gesture activation.
+* **Root Causes:**
+  - Catch-all block in `handleLockAndStartExam` assumed every failure was a fullscreen error.
+  - Fullscreen requested after `await api.post(...)`.
+* **Resolution:**
+  - Synchronously request fullscreen immediately on the click event before any network `await`.
+  - Unpacked distinct error codes in catch block: maps `AGENT_REQUIRED` to companion instructions (redirecting to Step 1), `IDENTITY_REQUIRED` to biometric check, `EXAM_NOT_OPEN`, `ROOM_FULL`, and `SESSION_EXPIRED`.
+  - Added live `fullscreenchange` listener with dynamic "Locked" status and F11 hint.
+
+---
+
+### 9. Groq LLM Question Generation Integration (S-5)
+* **Observed Symptoms:**
+  - AI question generation required real LLM integration with fast inference and cost discipline.
+* **Resolution:**
+  - Added `groq` provider driver (`llama-3.3-70b-versatile`) via Groq Chat Completions API with strict `json_object` format and schema validation.
+  - Supported `GROQ_API_KEY` alias for `LLM_API_KEY`.
+  - Configured secure header `x-goog-api-key` for Google provider.
+  - Implemented in-memory rate limiting & cost capping fallback when Redis is offline.
+  - Sanitized provider errors to return clean user-facing notices with reference IDs.
+  - Verified with unit tests (`tests/w3-groq-llm.test.js`).
+
+---
+
+### 10. Plain, Professional Educational Terminology Standardization (S-6 & S-7)
+* **Observed Symptoms:**
+  - UI displayed confusing engineering jargon: "Dossier", "Live Grid", "Violations", "Console", "Diagnostic Log", "Live Probe".
+* **Resolution:**
+  - Created `proctornet/frontend/src/lib/labels.js` and canonical reference `docs/ux/TERMINOLOGY.md`.
+  - Replaced terms across student, faculty, invigilator, and administrator pages ("Dossier" -> "Student Profile", "Live Grid" -> "Live Monitoring", "Violations" -> "Incidents", "Console" -> "Workspace", "Diagnostic Log" -> "Readiness Check").
+  - Added static analysis ratchet check to `scripts/ci/scan-banned-terms.js` and `scripts/ci/quality.js` to ensure zero deprecated jargon regressions in CI.
+

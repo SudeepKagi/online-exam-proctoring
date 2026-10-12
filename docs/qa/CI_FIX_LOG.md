@@ -286,3 +286,43 @@
      - Created `ci/ci.env` and debuggability tools `npm run ci:local` and `npm run ci:doctor`.
      - Documented gate budget policy in `docs/runbooks/ci.md`.
 * **Outcome:** Clean separation of concerns, zero unversioned routes, robust contract defense, and deterministic CI runs under 8 minutes.
+
+---
+
+### Entry 017: Prompt 12 Student-Flow Truth, Device Gate Isolation, Groq AI & Plain UI (W0–W6)
+* **Date/Time:** 2026-10-12 02:20:00 UTC
+* **Workflow / Test Run:** Prompt 12 Suite (`node --test proctornet/backend/tests/w1-student-presenter.test.js proctornet/backend/tests/w2-agent-gate.test.js proctornet/backend/tests/w3-groq-llm.test.js`) & Consolidated Quality Gates (`node scripts/ci/quality.js`)
+* **Branch:** `fix/w-student-flow`
+* **Defect Classes & Resolutions:**
+  1. **Profile Photo Truth & Dynamic Status Badges (W1 / S-1):**
+     - S3 HeadObject caching (10-minute TTL) with 1-hour presigned URLs in `modules/student/presenter.js`.
+     - Returns `photoAvailable: false` and null URL for missing/unverified objects, eliminating 404s and false "Registered" badges across Student Profile, Header/Sidebar, and Admin/Faculty rosters.
+     - Implemented `<SignedImage>` with fallback initials avatar.
+     - Added 5 unit tests in `tests/w1-student-presenter.test.js` (5/5 PASS).
+  2. **Device Gate, Rehydration & Fullscreen Truth (W2 / S-2, S-3, S-4):**
+     - Created attempt-scoped device gate in `modules/agent/agentGate.js` (`assertDeviceGate`). Practice `PRECHECK` sessions are strictly isolated and never satisfy exam gates.
+     - Enforced `< 45s` heartbeat validity and verified `agent_releases` build hash; removed dev build bypass in production.
+     - Fixed session rehydration in `agentSessionService.js` to preserve database `lastSeenAt` instead of overwriting with `Date.now()`.
+     - Synchronously requested fullscreen in `SecurityCheck.jsx` prior to network await to preserve browser user gesture token; unpacked detailed server errors (`AGENT_REQUIRED`, `IDENTITY_REQUIRED`, `EXAM_NOT_OPEN`, `ROOM_FULL`, `SESSION_EXPIRED`).
+     - Added 7 unit tests covering single and consecutive exam lifecycles in `tests/w2-agent-gate.test.js` (7/7 PASS).
+  3. **Groq LLM Question Generation Integration (W3 / S-5):**
+     - Added `groq` provider driver with `llama-3.3-70b-versatile`, `response_format: { type: 'json_object' }`, and strict JSON schema normalization in `modules/faculty/llmService.js`.
+     - Supported `GROQ_API_KEY` alias for `LLM_API_KEY` and header auth `x-goog-api-key`.
+     - Added in-memory rate limiting and cost capping fallback (`memRateLimit`) when Redis is absent.
+     - Adhered strictly to `docs/adr/SAFETY-001.md` (zero secret echoing or logging).
+     - Added 6 unit tests in `tests/w3-groq-llm.test.js` (6/6 PASS).
+  4. **Plain Educational Terminology Standardization (W4 / S-6, S-7):**
+     - Standardized user-facing terms in `proctornet/frontend/src/lib/labels.js` and canonical reference `docs/ux/TERMINOLOGY.md`.
+     - Replaced engineering jargon across frontend: "Dossier" -> "Student Profile", "Live Grid" -> "Live Monitoring", "Violations" -> "Incidents", "Console" -> "Workspace", "Diagnostic Log" -> "Readiness Check".
+     - Added `ux/deprecated-jargon` ratchet scanner check in `scripts/ci/scan-banned-terms.js`.
+  5. **Verification & Audit Artifacts (W5 & W6):**
+     - Documented defects 6–10 in `docs/qa/LIVE_ERRORS.md`.
+     - Produced comprehensive truth mapping in `docs/qa/UI_CLAIMS.md`.
+* **Execution Results:**
+  - `w1-student-presenter.test.js`: 5 passed, 0 failed.
+  - `w2-agent-gate.test.js`: 7 passed, 0 failed.
+  - `w3-groq-llm.test.js`: 6 passed, 0 failed.
+  - `scripts/ci/quality.js`: 6/6 gates passed (`no-stubs`, `no-legacy`, `banned-terms`, `no-source-grep`, `route-inventory`, `e2e-integrity`).
+  - Frontend production build (`vite build`): compiled cleanly with code 0.
+* **Outcome:** Clean, end-to-end truth in student flow, device gate verification, Groq AI capability, and plain educational UI.
+

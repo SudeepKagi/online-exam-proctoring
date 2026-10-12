@@ -103,9 +103,9 @@ export default function AdminReports() {
             ? [...Array(4)].map((_, i) => <div key={i} className="h-20 bg-white border border-slate-200 rounded-2xl animate-pulse" />)
             : [
                 { label: 'Total Exams', value: summary.totalExams ?? '—', icon: BookOpen, color: 'text-primary' },
-                { label: 'Total Candidates', value: summary.totalStudents ?? '—', icon: Users, color: 'text-emerald-500' },
+                { label: 'Total Students', value: summary.totalStudents ?? '—', icon: Users, color: 'text-emerald-500' },
                 { label: 'Avg Pass Score', value: summary.avgScore ? `${summary.avgScore}%` : '—', icon: TrendingUp, color: 'text-blue-500' },
-                { label: 'Violations Flagged', value: summary.violationsThisWeek ?? '—', icon: BarChart2, color: 'text-rose-500' },
+                { label: 'Incidents Flagged', value: summary.violationsThisWeek ?? '—', icon: BarChart2, color: 'text-rose-500' },
               ].map(({ label, value, icon: Icon, color }) => (
                 <Card key={label} className="bg-white border-slate-200 p-4 flex items-center gap-3.5 shadow-xs rounded-2xl">
                   <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
