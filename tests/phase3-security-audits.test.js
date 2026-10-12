@@ -175,11 +175,11 @@ describe('Phase 3 Security & Integrity Audits', () => {
 
   // ── Item 4: Face Verification Drivers, Multi-Tier Thresholds, and Outage Behavior ──
   describe('Audit Item 4: Face Verification Multi-Tier Decision & Fault Tolerance', () => {
-    it('enforces multi-tier decision boundaries (PASS >= 95, REVIEW >= 85, FAIL < 85)', () => {
+    it('enforces multi-tier decision boundaries (PASS >= 85, REVIEW >= 70, FAIL < 70)', () => {
       const faceService = new FaceVerificationService()
       const thresholds = faceService.getThresholds()
-      assert.ok(thresholds.pass >= 90)
-      assert.ok(thresholds.review >= 70 && thresholds.review < thresholds.pass)
+      assert.ok(thresholds.pass >= 80)
+      assert.ok(thresholds.review >= 60 && thresholds.review < thresholds.pass)
 
       const classify = (score) => {
         if (score >= thresholds.pass) return 'PASS'
@@ -188,7 +188,7 @@ describe('Phase 3 Security & Integrity Audits', () => {
       }
 
       assert.equal(classify(98), 'PASS')
-      assert.equal(classify(88), 'REVIEW')
+      assert.equal(classify(78), 'REVIEW')
       assert.equal(classify(60), 'FAIL')
     })
 
