@@ -23,6 +23,7 @@ const PAGE_SIZE = 12
 export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
   const navigate = useNavigate()
+  const { user, logout } = useAuth() || {}
   const isUuid = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
   const effectiveExamId = (isUuid(examId) && examId) || (isUuid(user?.examId) && user.examId) || null
 
