@@ -29,6 +29,7 @@ import ExamHeader from '@/components/exam/ExamHeader'
 import QuestionPanel from '@/components/exam/QuestionPanel'
 import ExamSidebar from '@/components/exam/ExamSidebar'
 import { FullscreenComplianceOverlay, ExamWaitingLobby } from '@/components/exam/ComplianceOverlay'
+import DisruptionPolicyOverlay from '@/components/exam/DisruptionPolicyOverlay'
 import WatermarkCanvas from '@/components/student/WatermarkCanvas'
 
 export default function ExamInterface() {
@@ -63,7 +64,8 @@ export default function ExamInterface() {
   const [flagged, setFlagged] = useState(new Set())
   const [submitting, setSubmitting] = useState(false)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
-  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error'
+  const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error' | 'offline' | 'submitted'
+  const [pendingCount, setPendingCount] = useState(0)
 
   // ── Non-Destructive Re-Authentication Modal State (Phase S2 / SES-04) ──
   const [showReauthModal, setShowReauthModal] = useState(false)
@@ -80,18 +82,42 @@ export default function ExamInterface() {
   }
   const autosaveRef = useRef(new AutosaveManager())
 
-  // ── 0. Subscribe to Autosave Manager Status ──
+  // ── 0. Subscribe to Autosave Manager Status & Connectivity ──
   useEffect(() => {
     const manager = autosaveRef.current
     const unsubscribe = manager.subscribe((state) => {
-      if (state.isSubmitting || state.isFlushing) {
+      setPendingCount(state.dirtyCount)
+      if (!navigator.onLine) {
+        setSaveStatus('offline')
+      } else if (state.isSubmitting || state.isFlushing) {
         setSaveStatus('saving')
       } else if (state.dirtyCount === 0) {
         setSaveStatus('saved')
+      } else {
+        setSaveStatus('saving')
       }
     })
 
+    const handleOffline = () => {
+      setSaveStatus('offline')
+      toast.error('Network disconnected. Answers are safely preserved in encrypted offline storage.', { id: 'offline-alert' })
+    }
+
+    const handleOnline = () => {
+      toast.success('Network reconnected! Synchronizing offline answers...', { id: 'offline-alert' })
+      manager.flush().then(() => {
+        setSaveStatus('saved')
+      }).catch(() => {
+        setSaveStatus('error')
+      })
+    }
+
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+
     return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
       unsubscribe()
       manager.destroy()
     }
@@ -232,7 +258,7 @@ export default function ExamInterface() {
   })
 
   // ── Hook 2: Socket.io & Real-Time Control Plane (Q3.1 / A-02) ──
-  const { socketConnected, violations, emitViolation } = useExamSocket({
+  const { socket, socketConnected, violations, emitViolation, sendProctorMessage } = useExamSocket({
     examId,
     attemptId, // Plumbed attemptId! (A-02)
     user,
@@ -383,7 +409,7 @@ export default function ExamInterface() {
           attemptId,
           cameraTrack: null, // Feed only screen share to invigilator per policy
           screenTrack,
-          socket: socketRef.current,
+          socket,
           onViolation: ({ eventType, metadata }) => {
             emitViolation?.(eventType, 'MEDIUM', metadata)
           },
@@ -884,58 +910,25 @@ export default function ExamInterface() {
       <video ref={captureVideoRef} autoPlay muted playsInline className="hidden" />
       <canvas ref={canvasRef} className="hidden" />
 
-      {/* Suspended State Modal Overlay */}
+      {/* Suspended State Modal Overlay with Formal Disruption Policy (Item 18) */}
       {isSuspended && (
-        <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-500 mb-4 animate-pulse">
-            {suspendedState?.isCompanionViolation ? (
-              <AlertTriangle size={32} className="text-rose-500" />
-            ) : suspendedState?.isVpn ? (
-              <WifiOff size={32} />
-            ) : (
-              <Clock size={32} />
-            )}
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {suspendedState?.isCompanionViolation
-              ? 'Prohibited Application Detected'
-              : suspendedState?.isVpn
-              ? 'Secure Network Disconnected'
-              : 'Examination Session Suspended'}
-          </h3>
-          <p className="text-sm text-slate-300 max-w-md mb-4 leading-relaxed font-medium">
-            {suspendedState?.reason}
-          </p>
-
-          {suspendedState?.isCompanionViolation && (
-            <div className="p-4 rounded-xl bg-slate-900 border border-rose-500/40 max-w-md text-xs text-slate-300 mb-6 text-left space-y-2">
-              <p className="font-bold text-rose-400 flex items-center gap-1.5">
-                <AlertTriangle size={14} /> Action Required to Resume Exam:
-              </p>
-              <p className="text-slate-300">
-                1. Immediately close the prohibited application(s) running on your computer:{' '}
-                <strong className="text-rose-300">
-                  {suspendedState.prohibitedApps?.map(f => f.ruleName || f.ruleId).join(', ') || 'Remote desktop / AI / Messaging tools'}
-                </strong>.
-              </p>
-              <p className="text-slate-400">
-                2. The Exam Device Companion will auto-verify your system in seconds and resume this exam.
-              </p>
-              <p className="text-slate-400">
-                3. Keep your browser and companion window open.
-              </p>
-            </div>
-          )}
-
-          {suspendedState?.isVpn && (
-            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 max-w-md text-xs text-slate-400 mb-6 text-left">
-              <p className="font-bold text-white mb-1">How to resume:</p>
-              <p>1. Open your secure connection client or local companion.</p>
-              <p>2. Select the assigned exam profile and click <strong className="text-amber-400">Connect</strong>.</p>
-              <p>3. This window will automatically resume as soon as the secure connection reconnects.</p>
-            </div>
-          )}
-        </div>
+        <DisruptionPolicyOverlay
+          suspendedState={suspendedState}
+          user={user}
+          exam={exam}
+          onSendHelpMessage={sendProctorMessage}
+          onRefreshState={() => {
+            if (attemptId) {
+              api.get(`/attempts/${attemptId}/agent/status`).then(res => {
+                const findings = res.data?.findings || []
+                setCompanionFindings(findings)
+                if (findings.length === 0 && (res.data?.state === 'HEALTHY' || res.data?.state === 'CONNECTED')) {
+                  setSuspendedState(prev => (prev?.isCompanion || prev?.isCompanionViolation ? null : prev))
+                }
+              }).catch(() => {})
+            }
+          }}
+        />
       )}
 
       {/* Fullscreen compliance prompt if student leaves fullscreen */}
@@ -978,6 +971,7 @@ export default function ExamInterface() {
         socketConnected={socketConnected}
         violations={violations}
         saveStatus={saveStatus}
+        pendingCount={pendingCount}
       />
 
       {/* Real-time Prohibited Software Onscreen Warning Banner */}

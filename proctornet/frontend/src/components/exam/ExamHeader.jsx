@@ -23,8 +23,47 @@ export default function ExamHeader({
   faceOk,
   socketConnected,
   violations,
-  saveStatus = 'saved'
+  saveStatus = 'saved',
+  pendingCount = 0
 }) {
+  const getSaveBadgeConfig = () => {
+    switch (saveStatus) {
+      case 'saving':
+        return {
+          bg: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400',
+          dot: 'bg-amber-500 animate-pulse',
+          text: 'Saving…'
+        }
+      case 'offline':
+        return {
+          bg: 'bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400',
+          dot: 'bg-orange-500',
+          text: `Offline — ${pendingCount > 0 ? `${pendingCount} pending` : 'buffered'}`
+        }
+      case 'error':
+        return {
+          bg: 'bg-destructive/10 border-destructive/20 text-destructive',
+          dot: 'bg-destructive animate-ping',
+          text: 'Save Failed — Retrying'
+        }
+      case 'submitted':
+        return {
+          bg: 'bg-sky-500/10 border-sky-500/30 text-sky-600 dark:text-sky-400',
+          dot: 'bg-sky-500',
+          text: 'Submission Confirmed'
+        }
+      case 'saved':
+      default:
+        return {
+          bg: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+          dot: 'bg-emerald-500',
+          text: 'Answers Saved'
+        }
+    }
+  }
+
+  const badge = getSaveBadgeConfig()
+
   return (
     <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between shrink-0 font-sans shadow-xs">
       {/* Left: Exam title & Student info */}
@@ -46,18 +85,9 @@ export default function ExamHeader({
       {/* Center: Proctoring Status Pills & Autosave Status */}
       <div className="hidden md:flex items-center gap-2.5">
         {/* Autosave Badge */}
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-colors ${
-          saveStatus === 'saving'
-            ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
-            : saveStatus === 'error'
-            ? 'bg-destructive/10 border-destructive/20 text-destructive'
-            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-        }`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${
-            saveStatus === 'saving' ? 'bg-amber-500 animate-pulse' :
-            saveStatus === 'error' ? 'bg-destructive' : 'bg-emerald-500'
-          }`} />
-          {saveStatus === 'saving' ? 'Autosaving…' : saveStatus === 'error' ? 'Retrying Save' : 'Answers Saved'}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-colors ${badge.bg}`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+          {badge.text}
         </span>
 
         <StatusPill ok={cameraOk && faceOk} label={cameraOk && faceOk ? 'Face Verified' : 'Face Alert'} />

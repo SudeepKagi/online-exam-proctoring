@@ -181,10 +181,21 @@ export function useExamSocket({
     }
   }, [examId, attemptId, user?.id])
 
+  const sendProctorMessage = useCallback((message) => {
+    if (!socketRef.current || !examId) return false
+    socketRef.current.emit('chat', {
+      examId,
+      attemptId,
+      message
+    })
+    return true
+  }, [examId, attemptId])
+
   return {
     socket: socketRef.current,
     socketConnected,
     violations,
-    emitViolation
+    emitViolation,
+    sendProctorMessage
   }
 }

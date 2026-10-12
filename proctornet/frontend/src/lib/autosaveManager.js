@@ -12,6 +12,7 @@
 
 import api from '@/utils/api'
 import { serverClock } from './serverClock'
+import { offlineAnswerStore } from './indexedDbStore'
 
 export class AutosaveManager {
   constructor(options = {}) {
@@ -79,29 +80,37 @@ export class AutosaveManager {
   }
 
   _persistToSessionStorage() {
-    if (typeof sessionStorage !== 'undefined' && this.attemptId) {
-      try {
-        const payload = {
-          version: 1,
-          attemptId: this.attemptId,
-          entries: Array.from(this.dirtyMap.entries())
-        }
-        sessionStorage.setItem(`pn_autosave_${this.attemptId}`, JSON.stringify(payload))
-      } catch (_e) {}
+    if (this.attemptId) {
+      if (typeof sessionStorage !== 'undefined') {
+        try {
+          const payload = {
+            version: 1,
+            attemptId: this.attemptId,
+            entries: Array.from(this.dirtyMap.entries())
+          }
+          sessionStorage.setItem(`pn_autosave_${this.attemptId}`, JSON.stringify(payload))
+        } catch (_e) {}
+      }
+
+      // High-durability persistence via encrypted IndexedDB (survives tab crash & restart)
+      for (const item of this.dirtyMap.values()) {
+        offlineAnswerStore.savePendingAnswer(this.attemptId, item).catch(() => {})
+      }
     }
   }
 
-  _restoreFromSessionStorage() {
-    if (typeof sessionStorage !== 'undefined' && this.attemptId) {
+  async _restoreFromSessionStorage() {
+    if (!this.attemptId) return
+
+    // 1. Try fast in-memory sessionStorage
+    if (typeof sessionStorage !== 'undefined') {
       try {
         const raw = sessionStorage.getItem(`pn_autosave_${this.attemptId}`)
         if (raw) {
           const parsed = JSON.parse(raw)
-          // Ensure schema version matches and attemptId is correct
           if (parsed && parsed.version === 1 && parsed.attemptId === this.attemptId && Array.isArray(parsed.entries)) {
             for (const [k, v] of parsed.entries) {
               const confirmedRev = this.revisionByAqId.get(k)
-              // If server has already confirmed a higher revision, drop stale client entry
               if (typeof confirmedRev === 'number' && typeof v.expectedRevision === 'number' && v.expectedRevision < confirmedRev) {
                 continue
               }
@@ -112,11 +121,32 @@ export class AutosaveManager {
                 })
               }
             }
-            this._notifyStateChange()
           }
         }
       } catch (_e) {}
     }
+
+    // 2. Fall back / hydrate from durable IndexedDB if sessionStorage was purged
+    try {
+      const idbEntries = await offlineAnswerStore.getPendingAnswers(this.attemptId)
+      if (Array.isArray(idbEntries) && idbEntries.length > 0) {
+        for (const item of idbEntries) {
+          const k = item.attemptQuestionId
+          const confirmedRev = this.revisionByAqId.get(k)
+          if (typeof confirmedRev === 'number' && typeof item.expectedRevision === 'number' && item.expectedRevision < confirmedRev) {
+            continue
+          }
+          if (!this.dirtyMap.has(k)) {
+            this.dirtyMap.set(k, {
+              ...item,
+              expectedRevision: confirmedRev ?? item.expectedRevision ?? 0
+            })
+          }
+        }
+      }
+    } catch (_e) {}
+
+    this._notifyStateChange()
   }
 
   _setupAutoFlush() {
@@ -280,6 +310,7 @@ export class AutosaveManager {
             const currentInMap = this.dirtyMap.get(aqId)
             if (currentInMap && snapshotItem && currentInMap.clientTimestamp === snapshotItem.clientTimestamp) {
               this.dirtyMap.delete(aqId)
+              offlineAnswerStore.removePendingAnswer(aqId).catch(() => {})
             } else if (currentInMap) {
               // User made a newer selection during save; update expectedRevision for next flush
               currentInMap.expectedRevision = confirmedRev
@@ -316,6 +347,7 @@ export class AutosaveManager {
             })
             // Remove from dirty map so we do not loop forever, but keep in terminalErrors for UI
             this.dirtyMap.delete(aqId)
+            offlineAnswerStore.removePendingAnswer(aqId).catch(() => {})
           }
         }
       } else {
@@ -324,6 +356,7 @@ export class AutosaveManager {
           const currentInMap = this.dirtyMap.get(item.attemptQuestionId)
           if (currentInMap && currentInMap.clientTimestamp === item.clientTimestamp) {
             this.dirtyMap.delete(item.attemptQuestionId)
+            offlineAnswerStore.removePendingAnswer(item.attemptQuestionId).catch(() => {})
           }
         }
         okCount = snapshot.length
@@ -443,6 +476,9 @@ export class AutosaveManager {
       this.stableIdempotencyKey = null // Clear on definitive success
       if (typeof sessionStorage !== 'undefined' && this.attemptId) {
         sessionStorage.removeItem(`pn_autosave_${this.attemptId}`)
+      }
+      if (this.attemptId) {
+        offlineAnswerStore.clearPendingAnswers(this.attemptId).catch(() => {})
       }
       this._notifyStateChange()
 
