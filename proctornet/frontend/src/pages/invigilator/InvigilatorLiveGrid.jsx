@@ -839,13 +839,14 @@ export default function InvigilatorLiveGrid() {
                         {mediaDriver === 'snapshot' ? (
                           (() => {
                             const sf = snapshotFrames[cand.attemptId || cand.id]
-                            const scrSrc = (sf?.screenUrl ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}` : null) ||
+                            const scrSrc = sf?.screenUrl ||
                               cand.latestScreen ||
                               cand.screenUrl ||
                               cand.thumbUrl ||
                               cand.latestFrame
                             return scrSrc ? (
                               <img
+                                key={sf?.frameAt || scrSrc}
                                 src={scrSrc}
                                 alt={`Live screen — ${cand.usn}`}
                                 className="w-full h-full object-cover"
@@ -944,12 +945,17 @@ export default function InvigilatorLiveGrid() {
                 <div className="bg-neutral-950 border border-border rounded-2xl h-64 overflow-hidden relative flex items-center justify-center">
                   {mediaDriver === 'snapshot' ? (() => {
                     const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
-                    const scrSrc = (sf?.screenUrl ? `${sf.screenUrl.split('?')[0]}?frameAt=${sf.frameAt}` : null) ||
+                    const scrSrc = sf?.screenUrl ||
                       selectedCandidate.latestScreen ||
                       selectedCandidate.screenUrl ||
                       selectedCandidate.thumbUrl
                     return scrSrc ? (
-                      <img src={scrSrc} alt="Live screen feed" className="w-full h-full object-contain bg-black" />
+                      <img
+                        key={sf?.frameAt || scrSrc}
+                        src={scrSrc}
+                        alt="Live screen feed"
+                        className="w-full h-full object-contain bg-black"
+                      />
                     ) : (
                       <span className="text-xs text-neutral-500 font-mono">
                         {selectedCandidate.status === 'READY' ? 'Candidate not yet in active session' : 'Awaiting screen frame...'}

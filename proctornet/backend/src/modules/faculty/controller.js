@@ -228,8 +228,16 @@ router.post('/exams/:examId/questions/import-excel', upload.single('file'), asyn
 
 router.post('/exams/:examId/ai-generate', validateBody(aiGenerateSchema), async (req, res, next) => {
   try {
-    const questions = await facultyService.generateQuestionsFromAI(req.params.examId, req.body, req.user.id)
-    res.status(201).json({ success: true, count: questions.length, questions })
+    const result = await facultyService.generateQuestionsFromAI(req.params.examId, req.body, req.user.id)
+    const questions = result?.questions || []
+    res.status(201).json({
+      success: true,
+      count: questions.length,
+      questions,
+      validationErrors: result?.validationErrors || [],
+      provider: result?.provider,
+      tokensUsed: result?.tokensUsed
+    })
   } catch (err) {
     next(err)
   }

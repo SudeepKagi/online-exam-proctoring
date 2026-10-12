@@ -29,6 +29,7 @@ class AnswerRepository {
             OR
             (ans.id IS NOT NULL AND ans.revision = $5::int)
           )
+        FOR SHARE OF a
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), attempt_id, attempt_question_id, $4::uuid, 1, now()
@@ -189,6 +190,7 @@ class AnswerRepository {
             OR
             (ans.id IS NOT NULL AND ans.revision = i.expected_revision)
           )
+        FOR SHARE OF a
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), g.attempt_id, g.attempt_question_id, g.selected_option_id, 1, now()

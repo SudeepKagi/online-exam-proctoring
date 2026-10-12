@@ -503,8 +503,8 @@ class FacultyService {
     const ids = studentIds.slice(0, 500)
 
     // Verify students exist
-    const students = await prisma.user.findMany({
-      where: { id: { in: ids }, role: 'STUDENT' },
+    const students = await prisma.student.findMany({
+      where: { id: { in: ids } },
       select: { id: true, departmentCode: true, name: true, usn: true }
     })
 

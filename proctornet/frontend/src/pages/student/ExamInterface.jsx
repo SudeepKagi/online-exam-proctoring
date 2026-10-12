@@ -12,7 +12,8 @@ import {
   RotateCcw,
   ArrowRight,
   LogOut,
-  Clock
+  Clock,
+  Monitor
 } from 'lucide-react'
 
 import ConfirmDialog from '@/components/ui/confirm-dialog'
@@ -42,6 +43,10 @@ export default function ExamInterface() {
   const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isScreenShareActive, setIsScreenShareActive] = useState(() => {
+    const s = getSharedScreenStream()
+    return Boolean(s && s.active && s.getVideoTracks()?.[0]?.readyState === 'live')
+  })
   const [isWaiting, setIsWaiting] = useState(false)
   const [secsToStart, setSecsToStart] = useState(null)
   const [vpnEnforcement, setVpnEnforcement] = useState(false)
@@ -311,6 +316,41 @@ export default function ExamInterface() {
     aiReverifyInterval: exam?.aiReverifyInterval || 10
   })
 
+  // ── Screen Share Handler & Recovery ──
+  const handleRequestScreenShare = useCallback(async () => {
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'monitor', cursor: 'always' },
+        audio: false
+      })
+      const track = screenStream.getVideoTracks()?.[0]
+      if (!track) throw new Error('No screen video track found')
+      setSharedScreenStream(screenStream)
+      setIsScreenShareActive(true)
+
+      track.addEventListener('ended', () => {
+        setIsScreenShareActive(false)
+        clearSharedScreenStream()
+        emitViolation?.('SCREEN_SHARE_STOPPED', 'MEDIUM', { details: 'Screen sharing was stopped by candidate.' })
+        toast.error('Screen sharing was disconnected. Please click Share Screen to continue.', {
+          id: 'screen-stopped-toast',
+          duration: 8000
+        })
+      })
+
+      if (screenVideoRef.current) {
+        screenVideoRef.current.srcObject = screenStream
+        screenVideoRef.current.play().catch(() => {})
+      }
+
+      mediaStore.updateTracks({ screenTrack: track })
+      toast.success('Live screen share active! Invigilator feed connected.')
+    } catch (err) {
+      console.warn('[ExamInterface] Screen share request declined or error:', err.message)
+      toast.error('Screen sharing is required to proctor this exam session.')
+    }
+  }, [emitViolation])
+
   // ── Screen Share Streaming & Snapshotter (R3) ──
   useEffect(() => {
     if (!attemptId || loading || isWaiting || terminalState) return
@@ -320,7 +360,9 @@ export default function ExamInterface() {
     const initMediaPublisher = async () => {
       try {
         const sharedScreenStream = getSharedScreenStream()
-        const screenTrack = sharedScreenStream?.getVideoTracks()?.[0] || null
+        const isLive = Boolean(sharedScreenStream && sharedScreenStream.active && sharedScreenStream.getVideoTracks()?.[0]?.readyState === 'live')
+        setIsScreenShareActive(isLive)
+        const screenTrack = isLive ? sharedScreenStream.getVideoTracks()[0] : null
 
         // Stop continuous face webcam - face cam is strictly entry/pre-check only
         if (streamRef.current) {
@@ -329,7 +371,7 @@ export default function ExamInterface() {
         }
 
         // Attach screen stream to sidebar preview
-        if (screenVideoRef.current && sharedScreenStream && sharedScreenStream.active) {
+        if (screenVideoRef.current && isLive) {
           if (screenVideoRef.current.srcObject !== sharedScreenStream) {
             screenVideoRef.current.srcObject = sharedScreenStream
           }
@@ -346,6 +388,8 @@ export default function ExamInterface() {
             emitViolation?.(eventType, 'MEDIUM', metadata)
           },
           onScreenShareStopped: () => {
+            setIsScreenShareActive(false)
+            clearSharedScreenStream()
             emitViolation?.('SCREEN_SHARE_STOPPED', 'MEDIUM', { details: 'Screen sharing was stopped by candidate.' })
             toast.error('Screen sharing was disconnected. Please click Re-Share Screen to continue.', {
               id: 'screen-stopped-toast',
@@ -897,6 +941,29 @@ export default function ExamInterface() {
       {/* Fullscreen compliance prompt if student leaves fullscreen */}
       {!isFullscreenLocked && !isSuspended && !isWaiting && !loading && !terminalState && exam?.fullScreenMode !== false && (
         <FullscreenComplianceOverlay onReenterFullscreen={handleReenterFullscreen} />
+      )}
+
+      {/* Screen share compliance prompt if screen share is disconnected */}
+      {!isScreenShareActive && !isSuspended && !isWaiting && !loading && !terminalState && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 font-sans select-none">
+          <div className="bg-card border border-primary/30 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl space-y-5 text-foreground">
+            <div className="w-14 h-14 bg-primary/10 border border-primary/20 rounded-2xl flex items-center justify-center mx-auto text-primary">
+              <Monitor size={28} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground mb-1">Live Screen Share Required</h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Security policy requires active screen sharing throughout the examination so the invigilator can monitor your workspace.
+              </p>
+            </div>
+            <button
+              onClick={handleRequestScreenShare}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl transition shadow-xs cursor-pointer"
+            >
+              <Monitor size={16} /> Share Entire Screen
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Top Header */}

@@ -154,6 +154,13 @@ export class ProctorSnapshotter {
   updateTracks({ cameraTrack, screenTrack } = {}) {
     if (cameraTrack !== undefined) this.cameraTrack = cameraTrack
     if (screenTrack !== undefined) this.screenTrack = screenTrack
+    if (this._running && (cameraTrack || screenTrack)) {
+      if (this._timer) {
+        clearTimeout(this._timer)
+        this._timer = null
+      }
+      this._scheduleNext(0)
+    }
   }
 
   // ── Cadence Handling ───────────────────────────────────────────────────────

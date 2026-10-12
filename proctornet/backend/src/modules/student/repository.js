@@ -100,24 +100,6 @@ class StudentRepository {
     })
   }
 
-  async upsertAnswer({ attemptId, questionId, selectedOption }) {
-    return prisma.answer.upsert({
-      where: {
-        attemptId_questionId: { attemptId, questionId }
-      },
-      update: {
-        selectedOption: selectedOption !== null && selectedOption !== undefined ? String(selectedOption) : null,
-        submittedAt: new Date()
-      },
-      create: {
-        attemptId,
-        questionId,
-        selectedOption: selectedOption !== null && selectedOption !== undefined ? String(selectedOption) : null,
-        submittedAt: new Date()
-      }
-    })
-  }
-
   async listResultsForStudent(studentId) {
     return prisma.examResult.findMany({
       where: {
