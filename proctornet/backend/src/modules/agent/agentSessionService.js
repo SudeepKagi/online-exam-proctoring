@@ -178,17 +178,25 @@ class AgentSessionService {
   }
 
   /**
-   * Fast in-memory token lookup with DB fallback
+   * Fast in-memory token lookup with DB fallback (by raw unhashed token)
    */
   async getSessionByToken(sessionToken) {
     if (!sessionToken) return null
     const tokenHash = crypto.createHash('sha256').update(sessionToken).digest('hex')
+    return this.getSessionByTokenHash(tokenHash)
+  }
+
+  /**
+   * Fast in-memory or DB token hash lookup
+   */
+  async getSessionByTokenHash(tokenHash) {
+    if (!tokenHash) return null
 
     if (hotSessions.has(tokenHash)) {
       return hotSessions.get(tokenHash)
     }
 
-    // DB fallback (e.g. after process restart)
+    // DB fallback (e.g. after process restart or cross-process lookup)
     const dbSession = await prisma.agentSession.findFirst({
       where: {
         tokenHash,
@@ -269,7 +277,7 @@ class AgentSessionService {
     })
 
     if (!dbSession) return null
-    return this.getSessionByToken(dbSession.tokenHash)
+    return this.getSessionByTokenHash(dbSession.tokenHash)
   }
 
   /**
@@ -291,7 +299,7 @@ class AgentSessionService {
       orderBy: { startedAt: 'desc' }
     })
     if (!dbSession) return null
-    return this.getSessionByToken(dbSession.tokenHash)
+    return this.getSessionByTokenHash(dbSession.tokenHash)
   }
 
   /**
