@@ -1,4 +1,3 @@
-const crypto = require('crypto')
 const { prisma } = require('../../infra/postgres/client')
 const { verifyReportSignature } = require('../../utils/encryption')
 const { agentSessionService } = require('./agentSessionService')
@@ -151,7 +150,9 @@ class ReportService {
           session.scope = 'ATTEMPT'
           await agentSessionService.promotePrecheckSession(session.studentId, activeAttempt.id)
         }
-      } catch (_) {}
+      } catch (err) {
+        logger.warn({ err, studentId: session.studentId }, 'Failed to promote session attempt during report processing')
+      }
     }
 
     const incomingFindingRuleIds = new Set()
@@ -249,10 +250,14 @@ class ReportService {
           })
 
           // Increment attempt flag count
-          await prisma.examAttempt.update({
-            where: { id: session.attemptId },
-            data: { flagCount: { increment: 1 } }
-          }).catch(() => {})
+          try {
+            await prisma.examAttempt.update({
+              where: { id: session.attemptId },
+              data: { flagCount: { increment: 1 } }
+            })
+          } catch (err) {
+            logger.warn({ err, attemptId: session.attemptId }, 'Failed to increment attempt flag count')
+          }
 
           // Real-time socket notification to student attempt room
           if (this.io) {

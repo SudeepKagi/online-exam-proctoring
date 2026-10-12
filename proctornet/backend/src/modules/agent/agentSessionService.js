@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const { prisma } = require('../../infra/postgres/client')
 const { hashPairingCode, encryptSessionKey, decryptSessionKey } = require('../../utils/encryption')
 const { policyService } = require('./policyService')
-const { NotFoundError, UnauthorizedError, ConflictError, BadRequestError } = require('../../shared/errors')
+const { UnauthorizedError, ConflictError, BadRequestError } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
 const { agentPairingsTotal, agentSessionsGauge } = require('../../observability/metrics')
 
@@ -208,7 +208,9 @@ class AgentSessionService {
             session.scope = 'ATTEMPT'
             attemptToToken.set(activeAttempt.id, tokenHash)
           }
-        } catch (_) {}
+        } catch (err) {
+          logger.warn({ err, studentId: session.studentId }, 'Failed to resolve active attempt for hot session')
+        }
       }
       return session
     }
