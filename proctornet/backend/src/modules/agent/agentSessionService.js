@@ -94,9 +94,9 @@ class AgentSessionService {
           }
         })
         if (!release) {
-          logger.warn({ buildHash, os, arch }, 'Untrusted agent build hash in dev/test')
+          logger.warn({ buildHash, os, arch }, 'Untrusted or revoked agent build hash presented at pairing')
           agentPairingsTotal.inc({ scope: pairing.scope, result: 'untrusted_build' })
-          throw new BadRequestError('Untrusted agent binary.')
+          throw new BadRequestError('Untrusted or revoked agent binary. Please download an official release.')
         }
       }
     }
