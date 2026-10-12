@@ -74,7 +74,7 @@ export default function StudentDashboard() {
   }).length
 
   return (
-    <DashboardLayout title="Student Console">
+    <DashboardLayout title="Student Workspace">
       <div className="space-y-6 font-sans text-[#0f172a]">
         
         {/* Welcome Header */}

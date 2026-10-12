@@ -25,7 +25,8 @@ const BANNED_PATTERNS = [
   { category: 'network/security (vpn)', pattern: /\bvpn(?!\s*required)\b/i },
   { category: 'device/agent', pattern: /\b(byod|kiosk|swiftshader|hypervisor|virtualbox|vmware|qemu|anydesk|teamviewer)\b/i },
   { category: 'ai/vision/nlp', pattern: /\b(deepface|compreface|exadel|face-?api|tensorflow|onnx|paddle(ocr)?|tesseract|ocr|llama|llm|groq|openai|gpt|gemini|claude|neural|model\s+match|embedding|cosine|similarity\s+(score|scan)|machine\s+learning|model\s+name)\b/i },
-  { category: 'formats/ops', pattern: /\b(csv|xlsx|json|rest(\s+api)?|api\s+key|set-?based|sql\s+grading)\b/i }
+  { category: 'formats/ops', pattern: /\b(csv|xlsx|json|rest(\s+api)?|api\s+key|set-?based|sql\s+grading)\b/i },
+  { category: 'ux/deprecated-jargon', pattern: /\b(dossier|live\s+grid|live\s+probe|diagnostic\s+log)\b/i }
 ];
 
 // Extract candidate user-visible text blocks from file content

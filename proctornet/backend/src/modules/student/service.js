@@ -2,7 +2,8 @@ const studentRepository = require('./repository')
 const { prisma } = require('../../infra/postgres/client')
 const { attemptService } = require('../attempts/service')
 const { faceVerificationService } = require('../media/faceVerificationService')
-const { toStudentProfileDTO, toStudentExamDTO, toStudentResultDTO } = require('./dto')
+const { toStudentExamDTO, toStudentResultDTO } = require('./dto')
+const { presentStudent, invalidatePhotoCache } = require('./presenter')
 const { isStudentEligible } = require('../exams/eligibility')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const {
@@ -15,15 +16,7 @@ class StudentService {
   async getProfile(studentId) {
     const student = await studentRepository.getStudentById(studentId)
     if (!student) throw new NotFoundError('Student profile not found')
-    let facePhotoUrl = null
-    let idCardPhotoUrl = null
-    if (student.facePhotoKey) {
-      facePhotoUrl = await getPresignedReadUrl(student.facePhotoKey, 3600)
-    }
-    if (student.idCardPhotoKey) {
-      idCardPhotoUrl = await getPresignedReadUrl(student.idCardPhotoKey, 3600)
-    }
-    return toStudentProfileDTO({ ...student, facePhotoUrl, idCardPhotoUrl })
+    return presentStudent(student)
   }
 
   async updateProfile(studentId, data) {
@@ -70,7 +63,7 @@ class StudentService {
     }
 
     const updated = await studentRepository.updateStudent(studentId, allowed)
-    return toStudentProfileDTO(updated)
+    return presentStudent(updated)
   }
 
   async listMyExams(studentId) {
@@ -101,7 +94,7 @@ class StudentService {
     const isEligible = isStudentEligible(exam, student)
     return {
       exam: toStudentExamDTO(exam, attempt),
-      student: toStudentProfileDTO(student),
+      student: await presentStudent(student),
       isEligible,
       attempt: attempt ? {
         id: attempt.id,
@@ -258,7 +251,7 @@ class StudentService {
     const updated = await studentRepository.updateStudent(studentId, {
       consentTimestamp: new Date()
     })
-    return toStudentProfileDTO(updated)
+    return presentStudent(updated)
   }
 
   async enrollFace(studentId, photoKey) {
@@ -290,7 +283,8 @@ class StudentService {
       facePhotoKey: photoKey,
       profileStatus: 'SUBMITTED'
     })
-    return toStudentProfileDTO(updated)
+    invalidatePhotoCache(photoKey)
+    return presentStudent(updated)
   }
 
   async requestReEnrollment(studentId, { reason } = {}) {
@@ -326,7 +320,7 @@ class StudentService {
       }
     })
 
-    return toStudentProfileDTO(updated)
+    return presentStudent(updated)
   }
 
   async enrollIdDocument(studentId, idKey) {
@@ -370,7 +364,8 @@ class StudentService {
       })
     }
 
-    return toStudentProfileDTO(updated)
+    invalidatePhotoCache(idKey)
+    return presentStudent(updated)
   }
 
   async getEnrollmentStatus(studentId) {

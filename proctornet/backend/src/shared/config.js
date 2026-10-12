@@ -81,11 +81,27 @@ const config = {
   // Face Driver: 'rekognition' | 'onnx' | 'off'
   faceDriver: (process.env.FACE_DRIVER || 'off').toLowerCase().trim(),
 
-  // LLM Provider: 'none' | 'openai' | 'google' | 'anthropic'
+  // LLM Provider: 'none' | 'openai' | 'google' | 'anthropic' | 'groq'
   // When 'none': AI question generation button is hidden in UI, never mocked.
-  llmProvider: (process.env.LLM_PROVIDER || 'none').toLowerCase().trim(),
-  llmApiKey: process.env.LLM_API_KEY || '',
-  llmModel: process.env.LLM_MODEL || '',
+  get llmProvider() {
+    if (process.env.LLM_PROVIDER) {
+      return process.env.LLM_PROVIDER.toLowerCase().trim()
+    }
+    if (process.env.GROQ_API_KEY) return 'groq'
+    return 'none'
+  },
+  get llmApiKey() {
+    return process.env.LLM_API_KEY || (this.llmProvider === 'groq' || !process.env.LLM_PROVIDER ? process.env.GROQ_API_KEY : '') || ''
+  },
+  get llmModel() {
+    if (process.env.LLM_MODEL) return process.env.LLM_MODEL
+    const prov = this.llmProvider
+    if (prov === 'groq') return 'llama-3.3-70b-versatile'
+    if (prov === 'google') return 'gemini-1.5-flash'
+    if (prov === 'openai') return 'gpt-4o-mini'
+    if (prov === 'anthropic') return 'claude-3-haiku-20240307'
+    return ''
+  },
 
   // Per-faculty AI rate limits
   llmDailyCostCapUsd: parseFloat(process.env.LLM_DAILY_COST_CAP_USD || '5.0'),

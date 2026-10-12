@@ -2,18 +2,20 @@
  * llmService.js
  * R4 — AI Question Generation via real LLM providers.
  *
- * Supported providers: 'openai' | 'google' | 'anthropic' | 'none'
+ * Supported providers: 'groq' | 'openai' | 'google' | 'anthropic' | 'none'
  * When LLM_PROVIDER=none: throws a visible error (UI should hide the button; this is a defensive guard)
  *
  * Features:
  * - Strict JSON schema output with exactly-one-correct-answer validation
  * - Per-faculty daily rate limit (LLM_RATE_LIMIT_PER_FACULTY_PER_DAY)
  * - Per-faculty daily cost cap (LLM_DAILY_COST_CAP_USD)
+ * - In-memory fallback for rate limiting & cost capping when Redis is absent
  * - No generateMockAiQuestions / fallback generation — off means off
  */
 
 'use strict'
 
+const crypto = require('crypto')
 const config = require('../../shared/config')
 const { redis } = require('../../infra/redis/client')
 const { logger } = require('../../shared/logging')
@@ -22,6 +24,9 @@ const { validateMcqQuestion } = require('../questions/validation')
 
 // ── Cost estimates (USD per 1k tokens, rough) ─────────────────────────────────
 const COST_PER_1K_TOKENS = {
+  'llama-3.3-70b-versatile': 0.00059,
+  'llama-3.1-70b-versatile': 0.00059,
+  'llama-3.1-8b-instant': 0.00005,
   'gpt-4o': 0.005,
   'gpt-4o-mini': 0.00015,
   'gpt-4-turbo': 0.01,
@@ -30,7 +35,7 @@ const COST_PER_1K_TOKENS = {
   'gemini-1.5-flash': 0.000075,
   'claude-3-5-sonnet-20241022': 0.003,
   'claude-3-haiku-20240307': 0.00025,
-  default: 0.002
+  default: 0.0005
 }
 
 function estimateCost(model, estimatedTokens) {
@@ -39,6 +44,8 @@ function estimateCost(model, estimatedTokens) {
 }
 
 // ── Rate-limit & cost-cap helpers (Redis-backed, fallback to in-memory) ───────
+const memRateLimit = new Map() // key: facultyId:day -> { callCount, totalCost, expiresAt }
+
 function _rateLimitKey(facultyId) {
   const day = new Date().toISOString().slice(0, 10)
   return `pn:v1:llm:rate:${facultyId}:${day}`
@@ -56,58 +63,105 @@ async function _incrementAndCheck(facultyId, estimatedCostUsd) {
   let callCount
   let totalCost
 
-  try {
-    // Atomic increment in Redis
-    callCount = await redis.client?.incr(rateKey).then(n => {
-      redis.client?.expire(rateKey, ttlSeconds)
-      return n
-    }) ?? 1
+  // Try Redis first if connected and ready
+  if (redis.client && redis.client.status === 'ready') {
+    try {
+      callCount = await redis.client.incr(rateKey)
+      await redis.client.expire(rateKey, ttlSeconds)
 
-    // Cost tracking (store as cents integer to avoid float precision issues)
-    const costCents = Math.round(estimatedCostUsd * 100_000) // μ-cents
-    const totalCostCents = await redis.client?.incrby(costKey, costCents).then(n => {
-      redis.client?.expire(costKey, ttlSeconds)
-      return n
-    }) ?? costCents
+      const costCents = Math.round(estimatedCostUsd * 100_000) // μ-cents
+      const totalCostCents = await redis.client.incrby(costKey, costCents)
+      await redis.client.expire(costKey, ttlSeconds)
 
-    totalCost = totalCostCents / 100_000
-  } catch {
-    // Redis unavailable — allow the call (degraded mode, no cost tracking)
-    logger.warn({ facultyId }, 'LLM cost tracking Redis unavailable; proceeding without cap enforcement')
-    return { callCount: 1, totalCost: estimatedCostUsd }
+      totalCost = totalCostCents / 100_000
+      return { callCount, totalCost }
+    } catch (rErr) {
+      logger.warn({ facultyId, err: rErr.message }, 'Redis LLM tracking error, falling back to in-memory')
+    }
   }
 
-  return { callCount, totalCost }
+  // In-memory fallback
+  const now = Date.now()
+  const memKey = `${facultyId}:${new Date().toISOString().slice(0, 10)}`
+  const existing = memRateLimit.get(memKey)
+
+  if (!existing || existing.expiresAt <= now) {
+    const entry = {
+      callCount: 1,
+      totalCost: estimatedCostUsd,
+      expiresAt: now + (ttlSeconds * 1000)
+    }
+    memRateLimit.set(memKey, entry)
+    return { callCount: entry.callCount, totalCost: entry.totalCost }
+  }
+
+  existing.callCount += 1
+  existing.totalCost += estimatedCostUsd
+  return { callCount: existing.callCount, totalCost: existing.totalCost }
 }
 
 // ── JSON schema prompt builder ────────────────────────────────────────────────
 function buildPrompt(topic, count, difficulty) {
-  return `You are an expert exam question writer for a university computer science course.
+  return `You are an expert exam question writer for a university course.
 Generate exactly ${count} multiple-choice questions about: "${topic}".
 Difficulty level: ${difficulty} (EASY | MEDIUM | HARD).
 
-STRICT OUTPUT FORMAT — return ONLY a valid JSON array, no markdown, no extra text:
-[
-  {
-    "questionText": "string (the question, ≥ 20 chars)",
-    "marks": 2,
-    "negativeMarks": 0.5,
-    "difficulty": "${difficulty}",
-    "options": [
-      { "text": "string (correct answer)", "isCorrect": true, "order": 0 },
-      { "text": "string (wrong answer)", "isCorrect": false, "order": 1 },
-      { "text": "string (wrong answer)", "isCorrect": false, "order": 2 },
-      { "text": "string (wrong answer)", "isCorrect": false, "order": 3 }
-    ]
-  }
-]
+STRICT OUTPUT FORMAT — return ONLY a valid JSON object with a "questions" key containing the array:
+{
+  "questions": [
+    {
+      "questionText": "string (the question, >= 20 chars)",
+      "marks": 2,
+      "negativeMarks": 0.5,
+      "difficulty": "${difficulty}",
+      "options": [
+        { "text": "string (correct answer)", "isCorrect": true, "order": 0 },
+        { "text": "string (wrong answer)", "isCorrect": false, "order": 1 },
+        { "text": "string (wrong answer)", "isCorrect": false, "order": 2 },
+        { "text": "string (wrong answer)", "isCorrect": false, "order": 3 }
+      ]
+    }
+  ]
+}
 
 Rules:
 1. Each question must have EXACTLY 4 options.
 2. EXACTLY 1 option must have isCorrect: true.
 3. All options must be plausible and non-trivial.
 4. No duplicate questions.
-5. Return ONLY the JSON array — no explanation, no markdown fences.`
+5. Return ONLY the JSON object — no explanation, no markdown fences.`
+}
+
+// ── Groq driver ───────────────────────────────────────────────────────────────
+async function callGroq(prompt, model) {
+  const { default: axios } = require('axios')
+  const m = model || 'llama-3.3-70b-versatile'
+  const res = await axios.post(
+    'https://api.groq.com/openai/v1/chat/completions',
+    {
+      model: m,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert exam question writer. You must return valid JSON only containing a "questions" array of multiple choice questions.'
+        },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.5,
+      max_tokens: 3000
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${config.llmApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30_000
+    }
+  )
+  const text = res.data?.choices?.[0]?.message?.content || '{}'
+  const usage = res.data?.usage?.total_tokens || 500
+  return { text, estimatedTokens: usage }
 }
 
 // ── OpenAI driver ─────────────────────────────────────────────────────────────
@@ -127,7 +181,7 @@ async function callOpenAI(prompt, model) {
       timeout: 30_000
     }
   )
-  const text = res.data?.choices?.[0]?.message?.content || '[]'
+  const text = res.data?.choices?.[0]?.message?.content || '{}'
   const usage = res.data?.usage?.total_tokens || 500
   return { text, estimatedTokens: usage }
 }
@@ -137,14 +191,20 @@ async function callGoogle(prompt, model) {
   const { default: axios } = require('axios')
   const m = model || 'gemini-1.5-flash'
   const res = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${config.llmApiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`,
     {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
     },
-    { timeout: 30_000 }
+    {
+      headers: {
+        'x-goog-api-key': config.llmApiKey,
+        'Content-Type': 'application/json'
+      },
+      timeout: 30_000
+    }
   )
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '[]'
+  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
   const tokens = res.data?.usageMetadata?.totalTokenCount || 500
   return { text, estimatedTokens: tokens }
 }
@@ -168,8 +228,8 @@ async function callAnthropic(prompt, model) {
       timeout: 30_000
     }
   )
-  const text = res.data?.content?.[0]?.text || '[]'
-  const tokens = res.data?.usage?.input_tokens + res.data?.usage?.output_tokens || 500
+  const text = res.data?.content?.[0]?.text || '{}'
+  const tokens = (res.data?.usage?.input_tokens || 250) + (res.data?.usage?.output_tokens || 250)
   return { text, estimatedTokens: tokens }
 }
 
@@ -179,15 +239,16 @@ function parseAndValidate(rawText, count) {
   try {
     // Strip markdown fences if provider returned them despite instructions
     const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
-    parsed = JSON.parse(cleaned)
-  } catch {
-    // If it's wrapped in an object with a key, try to extract the array
-    try {
-      const obj = JSON.parse(rawText)
-      parsed = Object.values(obj).find(v => Array.isArray(v))
-    } catch {
-      throw new ValidationError('LLM returned invalid JSON. Please try again.')
+    const json = JSON.parse(cleaned)
+    if (Array.isArray(json)) {
+      parsed = json
+    } else if (json && Array.isArray(json.questions)) {
+      parsed = json.questions
+    } else if (json && typeof json === 'object') {
+      parsed = Object.values(json).find(v => Array.isArray(v))
     }
+  } catch {
+    throw new ValidationError('LLM returned invalid JSON. Please try again.')
   }
 
   if (!Array.isArray(parsed)) throw new ValidationError('LLM response was not a JSON array')
@@ -262,38 +323,42 @@ class LLMService {
     let actualTokens
 
     try {
-      if (config.llmProvider === 'openai') {
+      if (provider === 'groq') {
+        const r = await callGroq(prompt, model)
+        rawText = r.text
+        actualTokens = r.estimatedTokens
+      } else if (provider === 'openai') {
         const r = await callOpenAI(prompt, model)
-        rawText = r.text; actualTokens = r.estimatedTokens
-      } else if (config.llmProvider === 'google') {
+        rawText = r.text
+        actualTokens = r.estimatedTokens
+      } else if (provider === 'google') {
         const r = await callGoogle(prompt, model)
-        rawText = r.text; actualTokens = r.estimatedTokens
-      } else if (config.llmProvider === 'anthropic') {
+        rawText = r.text
+        actualTokens = r.estimatedTokens
+      } else if (provider === 'anthropic') {
         const r = await callAnthropic(prompt, model)
-        rawText = r.text; actualTokens = r.estimatedTokens
+        rawText = r.text
+        actualTokens = r.estimatedTokens
       } else {
-        throw new ValidationError(`Unknown LLM_PROVIDER: "${config.llmProvider}". ` +
-          'Valid values: openai, google, anthropic, none.')
+        throw new ValidationError(`Unknown LLM_PROVIDER: "${provider}". Valid values: groq, openai, google, anthropic, none.`)
       }
     } catch (err) {
       if (err instanceof ValidationError) throw err
-      logger.error({ error: err.message, provider: config.llmProvider }, 'LLM API call failed')
-      throw new ValidationError(
-        `AI question generation failed: ${err.response?.data?.error?.message || err.message}. ` +
-        'Please try again.'
-      )
+      const reqId = crypto.randomUUID().slice(0, 8)
+      logger.error({ reqId, error: err.message, provider }, 'LLM API call failed')
+      throw new ValidationError(`Question generation failed — please try again (ref: ${reqId})`)
     }
 
     logger.info({
       facultyId,
-      provider: config.llmProvider,
+      provider,
       count: cappedCount,
       tokens: actualTokens,
       estimatedCost: estimateCost(model, actualTokens).toFixed(6)
     }, 'LLM question generation completed')
 
     const { questions, validationErrors } = parseAndValidate(rawText, cappedCount)
-    return { questions, validationErrors, provider: config.llmProvider, tokensUsed: actualTokens }
+    return { questions, validationErrors, provider, tokensUsed: actualTokens }
   }
 }
 
@@ -301,5 +366,8 @@ const llmService = new LLMService()
 
 module.exports = {
   llmService,
-  LLMService
+  LLMService,
+  parseAndValidate,
+  buildPrompt,
+  estimateCost
 }

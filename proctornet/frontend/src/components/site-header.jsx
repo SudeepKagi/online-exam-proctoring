@@ -300,11 +300,21 @@ export function SiteHeader({ title = 'Console' }) {
             aria-label="User menu"
           >
             {user?.facePhotoUrl ? (
-              <img
-                src={user.facePhotoUrl}
-                alt="Profile"
-                className="w-7 h-7 rounded-full object-cover border border-slate-200"
-              />
+              <>
+                <img
+                  src={user.facePhotoUrl}
+                  alt="Profile"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fb = e.currentTarget.parentElement?.querySelector('.avatar-header-fallback')
+                    if (fb) fb.style.display = 'flex'
+                  }}
+                  className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                />
+                <div style={{ display: 'none' }} className="avatar-header-fallback w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center border border-blue-200">
+                  {initials}
+                </div>
+              </>
             ) : (
               <div className="w-7 h-7 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center border border-blue-200">
                 {initials}
@@ -322,11 +332,21 @@ export function SiteHeader({ title = 'Console' }) {
               <div className="p-3 bg-gradient-to-br from-blue-50/80 to-slate-50 rounded-xl border border-blue-100 mb-2 space-y-2">
                 <div className="flex items-center gap-3">
                   {user?.facePhotoUrl ? (
-                    <img
-                      src={user.facePhotoUrl}
-                      alt="Profile"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs shrink-0"
-                    />
+                    <>
+                      <img
+                        src={user.facePhotoUrl}
+                        alt="Profile"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          const fb = e.currentTarget.parentElement?.querySelector('.avatar-menu-fallback')
+                          if (fb) fb.style.display = 'flex'
+                        }}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-xs shrink-0"
+                      />
+                      <div style={{ display: 'none' }} className="avatar-menu-fallback w-10 h-10 rounded-full bg-white text-[#2f80ed] font-bold text-sm flex items-center justify-center border border-blue-200 shadow-xs shrink-0">
+                        {initials}
+                      </div>
+                    </>
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-white text-[#2f80ed] font-bold text-sm flex items-center justify-center border border-blue-200 shadow-xs shrink-0">
                       {initials}

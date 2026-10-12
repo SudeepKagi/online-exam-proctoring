@@ -34,49 +34,57 @@ class AgentStatusService {
       }
     }
 
-    // Fetch waiver if granted
-    const waiver = await prisma.deviceAgentWaiver.findUnique({
-      where: { attemptId }
+    // Evaluate device companion gate according to single policy
+    const { evaluateDeviceGate } = require('./agentGate')
+    const gateResult = await evaluateDeviceGate({
+      attemptId,
+      exam: attempt.exam,
+      studentId: attempt.studentId
     })
 
-    // Fetch active session: check attemptId first, fall back to student precheck session per T2.1
-    let session = await agentSessionService.getSessionByAttemptId(attemptId)
-    if (!session && attempt.studentId) {
-      session = await agentSessionService.getSessionByStudentId(attempt.studentId)
-    }
+    const session = gateResult.session || null
+    const waiver = gateResult.waiver || (await prisma.deviceAgentWaiver.findUnique({ where: { attemptId } }))
 
     if (!session) {
       return {
-        state: 'NOT_PAIRED',
+        state: gateResult.state || 'NOT_PAIRED',
         paired: false,
+        gatePassed: gateResult.passed,
+        reason: gateResult.reason,
+        message: gateResult.message || null,
         lastSeenAt: null,
         agentVersion: null,
         os: null,
         arch: null,
         findings: [],
-        waiver: waiver ? { reason: waiver.reason, grantedAt: waiver.createdAt } : null,
+        waiver: waiver ? { reason: waiver.reason, grantedAt: waiver.createdAt || waiver.grantedAt } : null,
         policy: attempt.exam.deviceAgentPolicy
       }
     }
 
-    // Format findings
-    const findingsList = Array.from(session.openFindings.values()).map(f => ({
-      ruleId: f.ruleId,
-      firstSeenAt: f.firstSeenAt,
-      lastSeenAt: f.lastSeenAt,
-      hitCount: f.hitCount
-    }))
+    // Format findings from attempt session
+    const findingsList = session.openFindings
+      ? Array.from(session.openFindings.values()).map(f => ({
+          ruleId: f.ruleId,
+          firstSeenAt: f.firstSeenAt,
+          lastSeenAt: f.lastSeenAt,
+          hitCount: f.hitCount
+        }))
+      : []
 
     return {
-      state: session.state,
+      state: gateResult.state,
       paired: true,
+      gatePassed: gateResult.passed,
+      reason: gateResult.reason,
+      message: gateResult.message || null,
       sessionId: session.id,
       lastSeenAt: session.lastSeenAt ? new Date(session.lastSeenAt).toISOString() : null,
       agentVersion: session.agentVersion || null,
       os: session.os || null,
       arch: session.arch || null,
       findings: findingsList,
-      waiver: waiver ? { reason: waiver.reason, grantedAt: waiver.createdAt } : null,
+      waiver: waiver ? { reason: waiver.reason, grantedAt: waiver.createdAt || waiver.grantedAt } : null,
       policy: attempt.exam.deviceAgentPolicy
     }
   }

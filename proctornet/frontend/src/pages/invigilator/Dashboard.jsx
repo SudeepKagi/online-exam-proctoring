@@ -142,7 +142,7 @@ export default function InvDashboard() {
   })
 
   return (
-    <DashboardLayout title="Exam History & Violations">
+    <DashboardLayout title="Exam History & Incidents">
       <div className="flex flex-col gap-6 font-sans py-2">
         {/* Top Exam Header & Filter Control Card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -302,7 +302,7 @@ export default function InvDashboard() {
                 <div className="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between font-sans">
                   <div className="flex items-center gap-2 text-xs text-amber-800 font-bold">
                     <Archive size={16} />
-                    <span>Viewing Archived Session Feeds & Violations (Examination Concluded)</span>
+                    <span>Viewing Archived Session Feeds & Incidents (Examination Concluded)</span>
                   </div>
                   <button
                     onClick={() => setShowArchivedGrid(false)}
@@ -322,7 +322,7 @@ export default function InvDashboard() {
           )}
         </div>
 
-        {/* Modal 1: Student Dossier Deep Inspection */}
+        {/* Modal 1: Student Profile Deep Inspection */}
         {selectedStudent && (
           <StudentDossierModal
             student={selectedStudent}

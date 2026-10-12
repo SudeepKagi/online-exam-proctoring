@@ -82,7 +82,7 @@ const rolePortals = [
     bottomBadgeBg: 'bg-[#f8fafc] text-[#475569] border-t border-[#e2e8f0]',
     bottomText: 'INSTITUTIONAL ADMINISTRATION',
     icon: Shield,
-    title: 'Administrator Console',
+    title: 'Administrator Workspace',
     subtitle: 'User Approvals & System Parameters',
     description: 'Configure exam policies, approve accounts, onboard rosters in bulk, and review a complete audit trail.',
     highlights: [
@@ -544,7 +544,7 @@ export default function LandingPage() {
               <div className="h-0.5 w-12 mx-auto bg-[#2f80ed] mt-1" />
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#18181b] tracking-tight mt-3">
-              <span className="text-[#2f80ed]">Candidate</span>, Faculty, and Invigilator Consoles
+              <span className="text-[#2f80ed]">Student</span>, Faculty, and Invigilator Workspaces
             </h2>
             <p className="text-sm text-[#52525b] mt-2 font-medium max-w-2xl mx-auto">
               Dedicated role-based workspaces engineered for every participant in the examination lifecycle.
@@ -570,7 +570,7 @@ export default function LandingPage() {
                     : 'text-[#52525b] hover:text-[#18181b]'
                 }`}
               >
-                Candidate Console
+                Student Workspace
               </button>
               <button
                 onClick={() => setSelectedTab('faculty')}
@@ -808,10 +808,10 @@ export default function LandingPage() {
           <div>
             <h4 className="text-xs font-bold text-[#2f80ed] uppercase tracking-wider mb-4">Exam Portals</h4>
             <ul className="space-y-2.5 text-xs text-[#52525b]">
-              <li><Link to="/student/login" className="hover:text-[#2f80ed]">Student Candidate Login</Link></li>
+              <li><Link to="/student/login" className="hover:text-[#2f80ed]">Student Portal Login</Link></li>
               <li><Link to="/faculty/login" className="hover:text-[#2f80ed]">Faculty Paper Creator</Link></li>
-              <li><Link to="/invigilator-login" className="hover:text-[#2f80ed]">Invigilator Live Grid</Link></li>
-              <li><Link to="/admin/login" className="hover:text-[#2f80ed]">System Admin Console</Link></li>
+              <li><Link to="/invigilator-login" className="hover:text-[#2f80ed]">Live Monitoring</Link></li>
+              <li><Link to="/admin/login" className="hover:text-[#2f80ed]">Admin Workspace</Link></li>
             </ul>
           </div>
 

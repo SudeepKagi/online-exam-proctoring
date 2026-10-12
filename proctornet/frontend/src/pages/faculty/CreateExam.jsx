@@ -491,7 +491,7 @@ export default function CreateExam() {
 
   if (successData) {
     return (
-      <DashboardLayout title="Faculty Console">
+      <DashboardLayout title="Faculty Workspace">
         <div className="max-w-3xl mx-auto py-10 px-4 font-sans">
           {/* Header Hero Banner */}
           <div className="text-center mb-8">
@@ -622,7 +622,7 @@ export default function CreateExam() {
   }
 
   return (
-    <DashboardLayout title="Faculty Console">
+    <DashboardLayout title="Faculty Workspace">
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

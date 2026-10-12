@@ -25,10 +25,10 @@ export function CommandPalette({ open, onOpenChange }) {
   const items = [
     { title: 'Student Dashboard', path: '/student/dashboard', category: 'Navigation', icon: BookOpen },
     { title: 'My Examinations', path: '/student/exams', category: 'Navigation', icon: BookOpen },
-    { title: 'Performance Dossier', path: '/student/results', category: 'Navigation', icon: BarChart2 },
-    { title: 'Faculty Console', path: '/faculty/dashboard', category: 'Navigation', icon: GraduationCap },
+    { title: 'Exam Results & Analytics', path: '/student/results', category: 'Navigation', icon: BarChart2 },
+    { title: 'Faculty Workspace', path: '/faculty/dashboard', category: 'Navigation', icon: GraduationCap },
     { title: 'Admin Security Metrics', path: '/admin/dashboard', category: 'Navigation', icon: Shield },
-    { title: 'Live Invigilator Terminal', path: '/invigilator/dashboard', category: 'Console', icon: AlertTriangle },
+    { title: 'Live Monitoring', path: '/invigilator/dashboard', category: 'Workspace', icon: AlertTriangle },
   ]
 
   const filtered = items.filter(i => i.title.toLowerCase().includes(query.toLowerCase()))

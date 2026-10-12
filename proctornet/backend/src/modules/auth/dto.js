@@ -12,6 +12,9 @@ function toUserDto(user, role) {
     profileStatus: user.profileStatus || null,
     approvalStatus: user.approvalStatus || null,
     mustChangePassword: Boolean(user.mustChangePassword),
+    facePhotoUrl: user.facePhotoUrl || null,
+    facePhotoKey: user.facePhotoKey || null,
+    photoAvailable: Boolean(user.photoAvailable),
     createdAt: user.createdAt
   }
 }

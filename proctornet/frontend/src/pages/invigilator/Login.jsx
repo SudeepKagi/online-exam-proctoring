@@ -214,7 +214,7 @@ export default function InvigilatorLogin() {
           disabled={loading}
           className="w-full bg-[#2f80ed] hover:bg-[#2563eb] active:bg-[#1c4d8e] disabled:opacity-50 text-white font-medium py-3.5 px-6 rounded-xl shadow-[0_4px_12px_rgba(47,128,237,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer mt-2"
         >
-          <span>{loading ? 'Authenticating Session…' : 'Access Live Grid'}</span>
+          <span>{loading ? 'Authenticating Session…' : 'Access Live Monitoring'}</span>
           <ArrowRight size={16} />
         </button>
       </form>

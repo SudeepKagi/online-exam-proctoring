@@ -102,48 +102,23 @@ async function assertCanStart({ exam, student, attempt }) {
     throw new ForbiddenError('Department or semester mismatch: You are not eligible for this exam')
   }
 
-  // 2. Device Agent: policy enforcement
+  // 2. Device Agent: policy enforcement (One truth via agentGate)
   if (exam.deviceAgentPolicy === 'REQUIRED') {
     if (!attempt) {
-      throw new ForbiddenError('Device companion check required: Valid attempt is required')
+      throw new ForbiddenError('Device companion check required: Valid attempt is required', 'AGENT_REQUIRED')
     }
-    const waiver = await prisma.deviceAgentWaiver.findUnique({
-      where: { attemptId: attempt.id }
+    const { assertDeviceGate } = require('../agent/agentGate')
+    await assertDeviceGate({
+      attemptId: attempt.id,
+      exam,
+      studentId: student.id
     })
-    if (!waiver) {
-      const freshCutoff = new Date(Date.now() - 60000)
-      const healthySession = await prisma.agentSession.findFirst({
-        where: {
-          attemptId: attempt.id,
-          state: 'HEALTHY',
-          lastSeenAt: { gte: freshCutoff }
-        }
-      })
-      if (!healthySession) {
-        throw new ForbiddenError('Device companion check required: An active healthy agent session with fresh heartbeat (or a staff waiver) is required to start this exam')
-      }
-
-      const blockingFinding = await prisma.agentFinding.findFirst({
-        where: {
-          sessionId: healthySession.id,
-          clearedAt: null
-        }
-      })
-      if (blockingFinding) {
-        const rule = await prisma.agentRule.findUnique({
-          where: { id: blockingFinding.ruleId }
-        })
-        if (rule && rule.action === 'BLOCK_START') {
-          throw new ForbiddenError('Device companion check required: An active healthy agent session with fresh heartbeat (or a staff waiver) is required to start this exam')
-        }
-      }
-    }
   }
 
-  // 3. Identity Verification: latest PASS (or staff-approved REVIEW) when cameraRequired
+  // 3. Identity Verification: latest PASS when cameraRequired
   if (exam.cameraRequired) {
     if (!attempt) {
-      throw new ForbiddenError('Identity verification required: Valid attempt is required')
+      throw new ForbiddenError('Identity verification required: Valid attempt is required', 'IDENTITY_REQUIRED')
     }
     const latestVerification = await prisma.identityVerification.findFirst({
       where: { attemptId: attempt.id },
@@ -151,7 +126,7 @@ async function assertCanStart({ exam, student, attempt }) {
     })
 
     if (!latestVerification || latestVerification.decision !== 'PASS') {
-      throw new ForbiddenError('Identity verification required: Candidate identity must be verified (PASS) before starting the exam')
+      throw new ForbiddenError('Identity verification required: Candidate identity must be verified (PASS) before starting the exam', 'IDENTITY_REQUIRED')
     }
   }
 

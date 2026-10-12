@@ -15,6 +15,7 @@ const {
 } = require('../../shared/errors')
 const authRepository = require('./repository')
 const { toUserDto } = require('./dto')
+const { presentStudent } = require('../student/presenter')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { tokenService } = require('./tokenService')
 const { prisma } = require('../../infra/postgres/client')
@@ -367,7 +368,15 @@ class AuthService {
     if (role === ROLES.STUDENT) {
       const student = await authRepository.findStudentById(id)
       if (!student) throw new NotFoundError('Student not found')
-      return toUserDto(student, ROLES.STUDENT)
+      const presented = await presentStudent(student)
+      return {
+        ...toUserDto(student, ROLES.STUDENT),
+        facePhotoUrl: presented.facePhotoUrl,
+        facePhotoKey: presented.facePhotoKey,
+        idCardPhotoUrl: presented.idCardPhotoUrl,
+        photoAvailable: presented.photoAvailable,
+        idPhotoAvailable: presented.idPhotoAvailable
+      }
     }
 
     if (role === ROLES.FACULTY) {
@@ -410,6 +419,16 @@ class AuthService {
     } else if (userId) {
       await tokenService.revokeAllUserSessions(userId, 'LOGOUT')
     }
+
+    if (userId) {
+      try {
+        const { agentSessionService } = require('../agent/agentSessionService')
+        await agentSessionService.endPrecheckSessionsForStudent(userId)
+      } catch (err) {
+        logger.debug({ err: err.message, userId }, 'Precheck session termination on logout skipped')
+      }
+    }
+
     return { success: true }
   }
 

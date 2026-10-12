@@ -31,7 +31,7 @@ const ROLE_NAV_GROUPS = {
         { to: '/admin/faculty', icon: Users, label: 'Faculty Roster' },
         { to: '/admin/students', icon: GraduationCap, label: 'Student Directory' },
         { to: '/admin/exams', icon: BookOpen, label: 'Exams' },
-        { to: '/admin/violations', icon: AlertTriangle, label: 'Violations' },
+        { to: '/admin/violations', icon: AlertTriangle, label: 'Incidents' },
         { to: '/admin/invigilators', icon: Video, label: 'Invigilators' },
         { to: '/admin/announcements', icon: Megaphone, label: 'Announcements' },
       ]
@@ -179,11 +179,21 @@ export function AppSidebar() {
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
           <div className="flex items-center gap-2.5 min-w-0">
             {user?.facePhotoUrl ? (
-              <img
-                src={user.facePhotoUrl}
-                alt={user?.name || 'User'}
-                className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
-              />
+              <>
+                <img
+                  src={user.facePhotoUrl}
+                  alt={user?.name || 'User'}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                    const fb = e.currentTarget.parentElement?.querySelector('.avatar-fallback')
+                    if (fb) fb.style.display = 'flex'
+                  }}
+                  className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                />
+                <div style={{ display: 'none' }} className="avatar-fallback w-8 h-8 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center shrink-0 border border-blue-100">
+                  {initials}
+                </div>
+              </>
             ) : (
               <div className="w-8 h-8 rounded-full bg-blue-50 text-[#2f80ed] font-bold text-xs flex items-center justify-center shrink-0 border border-blue-100">
                 {initials}

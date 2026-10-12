@@ -71,12 +71,12 @@ export default function AdminViolations() {
   }
 
   return (
-    <DashboardLayout title="Violations">
+    <DashboardLayout title="Incidents">
       <div className="flex flex-col gap-5 py-2 font-sans">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-foreground">Violations & Security Flags</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Real-time proctoring security events and candidate violation audits</p>
+            <h1 className="text-xl font-bold text-foreground">Security Incidents</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Real-time proctoring security events and student incident audits</p>
           </div>
           <button
             onClick={fetchViolations}
