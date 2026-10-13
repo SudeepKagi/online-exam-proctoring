@@ -6,6 +6,10 @@ function errorHandler(err, req, res, next) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
   const requestId = req.requestId || req.headers?.['x-request-id'] || crypto.randomUUID()
 
+  if (err.retryAfter) {
+    res.set('Retry-After', String(err.retryAfter))
+  }
+
   if (statusCode >= 500) {
     logger.error({
       requestId,

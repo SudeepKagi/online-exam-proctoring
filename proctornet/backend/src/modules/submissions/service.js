@@ -2,7 +2,7 @@ const crypto = require('crypto')
 const { submissionRepository } = require('./repository')
 const { toSubmissionResponseDTO } = require('./dto')
 const { socketEmitter } = require('../../infra/websocket/emitter')
-const { UnprocessableEntityError } = require('../../shared/errors')
+const { UnprocessableEntityError, ServiceUnavailableError } = require('../../shared/errors')
 const { logger } = require('../../shared/logging')
 
 class SubmissionService {
@@ -41,14 +41,32 @@ class SubmissionService {
     const submitGraceSeconds = EXAM_CLOCK_CONFIG.submitGrace
 
     // 2. Execute transactional submit with row locking
-    const result = await submissionRepository.submitAttemptTransaction(
-      attemptId,
-      studentId,
-      compositeKey,
-      requestHash,
-      finalAnswers,
-      submitGraceSeconds
-    )
+    let result
+    try {
+      result = await submissionRepository.submitAttemptTransaction(
+        attemptId,
+        studentId,
+        compositeKey,
+        requestHash,
+        finalAnswers,
+        submitGraceSeconds
+      )
+    } catch (err) {
+      if (
+        err.code === 'P2028' ||
+        err.code === 'P2034' ||
+        err.message?.includes('Unable to start a transaction') ||
+        err.message?.includes('could not obtain lock') ||
+        err.message?.includes('deadlock detected') ||
+        err.message?.includes('Transaction timed out')
+      ) {
+        throw new ServiceUnavailableError(
+          'Database transaction busy under concurrent lock contention, please retry submission',
+          2
+        )
+      }
+      throw err
+    }
 
     const response = toSubmissionResponseDTO(result.attempt, result.alreadySubmitted)
 

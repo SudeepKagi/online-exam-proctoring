@@ -60,11 +60,19 @@ class SubmissionRepository {
         }
       }
 
-      // Check terminal states
+      // Check terminal and suspended states
       if (['TERMINATED', 'EXPIRED', 'TIMED_OUT'].includes(attempt.status)) {
         throw new ConflictError(
           `Cannot submit attempt: attempt is already in terminal state '${attempt.status}'`,
           'ATTEMPT_TERMINATED',
+          { status: attempt.status }
+        )
+      }
+
+      if (attempt.status === 'SUSPENDED') {
+        throw new ForbiddenError(
+          'Cannot submit attempt: attempt is currently suspended by proctor',
+          'ATTEMPT_SUSPENDED',
           { status: attempt.status }
         )
       }
@@ -80,7 +88,15 @@ class SubmissionRepository {
 
       // 3. Flush optional final dirty answers (answers hard-cut at expires_at)
       if (finalAnswers && finalAnswers.length > 0) {
-        await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers, tx)
+        const batchResults = await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers, tx)
+        const failedItems = (batchResults || []).filter(r => !r.success || r.status !== 'OK')
+        if (failedItems.length > 0) {
+          throw new ConflictError(
+            'Final answers could not be saved due to conflicts or validation errors',
+            'FINAL_ANSWERS_REJECTED',
+            { failedAnswers: failedItems }
+          )
+        }
       }
 
       // 4. Update status to SUBMITTED

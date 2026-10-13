@@ -66,6 +66,7 @@ export default function ExamInterface() {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [saveStatus, setSaveStatus] = useState('saved') // 'saved' | 'saving' | 'error' | 'offline' | 'submitted'
   const [pendingCount, setPendingCount] = useState(0)
+  const [submitError, setSubmitError] = useState(null)
 
   // ── Non-Destructive Re-Authentication Modal State (Phase S2 / SES-04) ──
   const [showReauthModal, setShowReauthModal] = useState(false)
@@ -187,25 +188,30 @@ export default function ExamInterface() {
     }
   }, [examId])
 
-  // ── Submit Exam Function (Q3.2 & H-01) ──
+  // ── Submit Exam Function (Q3.2 & H-01 & BUG C) ──
   const handleSubmit = useCallback(async (forced = false) => {
     if (submitting) return
     setSubmitting(true)
     setSaveStatus('saving')
+    setSubmitError(null)
 
-    // Show "Submitted" immediately (Q3.2)
-    setTerminalState({
-      type: 'SUBMITTED',
-      score: 0,
-      totalMarks: exam?.totalMarks || 100,
-      percentage: 0,
-      message: forced ? 'Exam auto-submitted upon deadline.' : 'Exam submitted successfully.'
-    })
+    // Note: Do NOT set terminalState optimistically here.
+    // If submit fails with 5xx or network error, exam must stay active,
+    // camera streams must remain intact, and timer must continue running.
 
     try {
       await autosaveRef.current.submitAttempt()
       setSaveStatus('saved')
       toast.success(forced ? 'Exam auto-submitted upon deadline' : 'Exam submitted successfully!')
+
+      // Transition to terminal state AFTER successful response
+      setTerminalState({
+        type: 'SUBMITTED',
+        score: 0,
+        totalMarks: exam?.totalMarks || 100,
+        percentage: 0,
+        message: forced ? 'Exam auto-submitted upon deadline.' : 'Exam submitted successfully.'
+      })
 
       // Poll GET /attempts/:id/result (respecting release policy per Q3.2)
       const result = await autosaveRef.current.pollResult(10, 2000)
@@ -227,7 +233,6 @@ export default function ExamInterface() {
       // Never treat 403 as success (H-01 / Q3.5)
       if (status === 403 || errorCode === 'ATTEMPT_SUSPENDED' || errorCode === 'FORBIDDEN') {
         toast.error(errorMsg || 'Action forbidden: Attempt is suspended or access denied.')
-        setTerminalState(null) // Revert premature submitted state
         if (errorCode === 'ATTEMPT_SUSPENDED') {
           setSuspendedState({
             active: true,
@@ -237,10 +242,28 @@ export default function ExamInterface() {
         }
       } else if (errorCode === 'EXAM_EXPIRED' || status === 410) {
         toast.error('Exam deadline has passed. Submission recorded.')
+        setTerminalState({
+          type: 'SUBMITTED',
+          score: 0,
+          totalMarks: exam?.totalMarks || 100,
+          percentage: 0,
+          message: 'Exam deadline has expired.'
+        })
       } else if (status === 409 && (errorCode === 'ALREADY_SUBMITTED' || errorMsg?.includes('already submitted'))) {
         toast.success('Exam was already submitted.')
+        setTerminalState({
+          type: 'SUBMITTED',
+          score: 0,
+          totalMarks: exam?.totalMarks || 100,
+          percentage: 0,
+          message: 'Exam was already submitted.'
+        })
       } else {
-        toast.error(errorMsg || 'Submission encountered an error. Please try again.')
+        // Network or 5xx error: Keep camera running, keep exam interactive, display retry banner
+        const failureMessage = errorMsg || (status === 503 ? 'Service temporarily busy. Please retry submission.' : 'Submission encountered an error. Please click Retry Submit.')
+        toast.error(failureMessage)
+        setSubmitError(failureMessage)
+        setSaveStatus('error')
       }
     } finally {
       setSubmitting(false)
@@ -961,6 +984,26 @@ export default function ExamInterface() {
         saveStatus={saveStatus}
         pendingCount={pendingCount}
       />
+
+      {/* Sticky Error Banner on Submission Failure (BUG C) */}
+      {submitError && !terminalState && (
+        <div data-testid="submit-error-banner" className="bg-destructive text-destructive-foreground px-4 py-3 text-xs font-semibold flex items-center justify-between border-b border-destructive/80 z-30 shadow-md">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle size={18} className="shrink-0 text-white" />
+            <span>
+              <strong>SUBMISSION FAILED:</strong> {submitError} Your answers and active monitoring remain intact.
+            </span>
+          </div>
+          <button
+            onClick={() => handleSubmit(false)}
+            disabled={submitting}
+            className="px-3 py-1 bg-white text-destructive font-bold rounded-lg text-xs hover:bg-slate-100 transition cursor-pointer flex items-center gap-1.5 shrink-0"
+          >
+            <RotateCcw size={14} className={submitting ? 'animate-spin' : ''} />
+            {submitting ? 'Submitting…' : 'Retry Submit'}
+          </button>
+        </div>
+      )}
 
       {/* Real-time Prohibited Software Onscreen Warning Banner */}
       {companionFindings.length > 0 && !isSuspended && (

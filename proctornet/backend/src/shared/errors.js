@@ -84,6 +84,20 @@ function toErrorEnvelope(err, requestId = null) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
   const reqId = requestId || err.requestId || crypto.randomUUID()
 
+  if (statusCode === 503 || err.code === 'SERVICE_UNAVAILABLE') {
+    const envelope = {
+      error: {
+        code: err.code || 'SERVICE_UNAVAILABLE',
+        message: err.message || 'Service temporarily unavailable, please retry'
+      },
+      requestId: reqId
+    }
+    if (err.retryAfter || err.details) {
+      envelope.error.details = err.details || { retryAfter: err.retryAfter }
+    }
+    return envelope
+  }
+
   if (statusCode >= 500) {
     return {
       error: {

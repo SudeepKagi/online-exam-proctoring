@@ -454,8 +454,19 @@ export class AutosaveManager {
         try {
           await this.flush()
         } catch (flushErr) {
-          console.warn('[Autosave] Non-fatal flush error prior to submission; proceeding with final submission:', flushErr.message)
+          console.warn('[Autosave] Non-fatal flush error prior to submission; packaging remaining dirty answers into submission payload:', flushErr.message)
         }
+      }
+
+      // Collect any remaining dirty answers to guarantee zero answer loss on submit (BUG C)
+      const payload = {}
+      if (this.dirtyMap.size > 0) {
+        payload.answers = Array.from(this.dirtyMap.values()).map(entry => ({
+          attemptQuestionId: entry.attemptQuestionId,
+          selectedOptionId: entry.selectedOptionId,
+          expectedRevision: entry.expectedRevision,
+          clientTimestamp: entry.clientTimestamp
+        }))
       }
 
       // 2. Stable Idempotency-Key reused across retries (Task 8 / Q3.2)
@@ -463,7 +474,7 @@ export class AutosaveManager {
 
       const response = await api.post(
         `/attempts/${this.attemptId}/submission`,
-        {},
+        payload,
         {
           headers: {
             'Idempotency-Key': idempotencyKey
@@ -474,6 +485,7 @@ export class AutosaveManager {
 
       this.isSubmitting = false
       this.stableIdempotencyKey = null // Clear on definitive success
+      this.dirtyMap.clear()
       if (typeof sessionStorage !== 'undefined' && this.attemptId) {
         sessionStorage.removeItem(`pn_autosave_${this.attemptId}`)
       }
