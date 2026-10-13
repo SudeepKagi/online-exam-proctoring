@@ -58,8 +58,10 @@ const aiGenerateSchema = z.object({
   topic: z.string().optional(),
   subject: z.string().optional(),
   count: z.number().int().min(1).max(50).default(5),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM')
-}).strict()
+  numMCQ: z.number().int().min(1).max(50).optional(), // alias from CreateExam AI panel
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  marksPerMCQ: z.number().positive().optional() // sent by frontend, ignored server-side
+})
 
 module.exports = {
   createExamSchema,

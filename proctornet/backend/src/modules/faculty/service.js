@@ -96,17 +96,9 @@ class FacultyService {
   async getExamCredentials(id, facultyId) {
     const exam = await facultyRepository.findExamById(id, facultyId)
     if (!exam) throw new NotFoundError('Exam not found or access denied')
-    return {
-      examId: exam.id,
-      title: exam.title,
-      subject: exam.subject,
-      startTime: exam.startTime,
-      endTime: exam.endTime,
-      duration: exam.duration,
-      status: exam.status,
-      invId: exam.invId,
-      passwordMasked: true
-    }
+    // Password is bcrypt-hashed and cannot be recovered — regenerate a fresh
+    // one-time password so the faculty always gets a visible credential set.
+    return await examService.regenerateInvigilatorCredentials(id, facultyId, ROLES.FACULTY)
   }
 
   async duplicateExam(id, facultyId) {

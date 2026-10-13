@@ -94,7 +94,16 @@ router.patch('/exams/:id/publish', async (req, res, next) => {
 router.get('/exams/:id/credentials', async (req, res, next) => {
   try {
     const credentials = await facultyService.getExamCredentials(req.params.id, req.user.id)
-    res.status(200).json({ success: true, credentials })
+    res.status(200).json({
+      success: true,
+      credentials,
+      // invCredentials shape expected by ExamDetail.jsx handleViewCredentials
+      invCredentials: {
+        invId: credentials.invId,
+        password: credentials.password,
+        validUntil: credentials.validUntil
+      }
+    })
   } catch (err) {
     next(err)
   }
