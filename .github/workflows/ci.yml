@@ -228,10 +228,9 @@ jobs:
           FACE_VERIFIER_DRIVER: test
           COOKIE_SECURE: "false"
         run: |
+          # j3 and j4 require a companion agent subprocess (420s+) — run manually or in nightly
           xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test \
             e2e/journeys/j1-onboarding.spec.ts \
-            e2e/journeys/j3-student-happy-path.spec.ts \
-            e2e/journeys/j4-identity-paths.spec.ts \
             e2e/journeys/j6-security-negative.spec.ts \
             e2e/journeys/j10-lifecycle-results.spec.ts \
             --project=chromium
