@@ -575,17 +575,8 @@ export default function ExamInterface() {
           const hydratedAnswers = {}
           for (const q of (attempt.questions || [])) {
             if (q.selectedOptionId) {
-              let matchedLetter = null
-              const matchedOpt = (q.options || []).find((opt, i) => {
-                if (opt.id === q.selectedOptionId) {
-                  matchedLetter = String.fromCharCode(65 + i)
-                  return true
-                }
-                return false
-              })
-
               const targetVal = {
-                selected: matchedLetter || matchedOpt?.text || q.selectedOptionId,
+                selected: q.selectedOptionId,
                 revision: q.revision || 0
               }
 
@@ -633,13 +624,10 @@ export default function ExamInterface() {
       }
     }))
 
-    // Match option ID for backend record
+    // Match option ID for backend record: strict resolution by opt.id === val
     let selectedOptionId = val
     if (q && q.options) {
-      const matchOpt = q.options.find((opt, i) => {
-        const letter = String.fromCharCode(65 + i)
-        return opt.id === val || opt.text === val || letter === val
-      })
+      const matchOpt = q.options.find(opt => opt.id === val)
       if (matchOpt) {
         selectedOptionId = matchOpt.id
       }
@@ -897,7 +885,7 @@ export default function ExamInterface() {
     )
   }
 
-  const answeredCount = Object.keys(answers).length
+  const answeredCount = questions.filter(q => Boolean(answers[q.id]?.selected || answers[q.id]?.code || answers[q.id]?.text || answers[q.attemptQuestionId]?.selected || answers[q.attemptQuestionId]?.code || answers[q.attemptQuestionId]?.text)).length
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col font-sans select-none relative">

@@ -12,12 +12,14 @@ export default function MCQQuestion({ question, selectedOption, onSelect }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {options.map((option, index) => {
           const optionLabel = String.fromCharCode(65 + index) // A, B, C, D
-          const isSelected = selectedOption === optionLabel
+          const optId = typeof option === 'object' && option !== null ? (option.id || option.value) : option
+          const optText = typeof option === 'object' && option !== null ? (option.text || option.label || option.value) : option
+          const isSelected = selectedOption === optId
           
           return (
             <button
-              key={index}
-              onClick={() => onSelect(optionLabel)}
+              key={optId || index}
+              onClick={() => onSelect(optId)}
               style={{
                 display: 'flex',
                 alignItems: 'center',

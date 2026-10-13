@@ -48,7 +48,7 @@ export default function QuestionPanel({
       const letter = k.length === 1 ? k.toUpperCase() : String.fromCharCode(65 + i)
       const val = rawOpts[k]
       const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
-      return { letter, text: String(text).trim() }
+      return { letter, text: String(text).trim(), id: (typeof val === 'object' && val?.id) || k }
     }).filter(o => o.text)
   }
 
@@ -58,7 +58,7 @@ export default function QuestionPanel({
       if (val !== undefined && val !== null) {
         const text = typeof val === 'object' ? (val.text || JSON.stringify(val)) : String(val)
         if (text && text.trim()) {
-          optionsList.push({ letter, text: String(text).trim() })
+          optionsList.push({ letter, text: String(text).trim(), id: (typeof val === 'object' && val?.id) || `opt-${letter}` })
         }
       }
     })
@@ -117,11 +117,11 @@ export default function QuestionPanel({
         {/* MCQ Options List */}
         <div className="space-y-3 max-w-3xl">
           {optionsList.map((opt) => {
-            const selected = currentAnswer === opt.letter || currentAnswer === opt.text || (opt.id && currentAnswer === opt.id)
+            const selected = Boolean(opt.id && currentAnswer === opt.id)
             return (
               <button
-                key={opt.letter}
-                onClick={() => setAnswer(currentQ.id, 'selected', opt.letter)}
+                key={opt.id || opt.letter}
+                onClick={() => setAnswer(currentQ.id, 'selected', opt.id)}
                 className={`w-full text-left flex items-center gap-3.5 px-4.5 py-3.5 rounded-2xl border transition-all cursor-pointer ${
                   selected
                     ? 'bg-[#eff6ff] border-[#2f80ed] text-slate-900 shadow-xs font-semibold'
