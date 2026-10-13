@@ -559,13 +559,15 @@ export default function CreateExam() {
                   </label>
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-bold text-slate-900 font-mono tracking-wide">
-                      {successData.invCredentials?.invId || 'INV-101'}
+                      {successData.invCredentials?.invId || '—'}
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(successData.invCredentials?.invId || 'INV-101')
-                        toast.success('Invigilator ID Copied!')
+                        if (successData.invCredentials?.invId) {
+                          navigator.clipboard.writeText(successData.invCredentials.invId)
+                          toast.success('Invigilator ID Copied!')
+                        }
                       }}
                       className="px-2.5 py-1 text-[11px] font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg cursor-pointer"
                     >
@@ -581,13 +583,15 @@ export default function CreateExam() {
                   </label>
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-bold text-[#2f80ed] font-mono tracking-widest bg-white px-3 py-1 rounded-xl border border-blue-200 shadow-2xs">
-                      {successData.invCredentials?.password || 'Pass123!'}
+                      {successData.invCredentials?.password || '••••••••'}
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        navigator.clipboard.writeText(successData.invCredentials?.password || 'Pass123!')
-                        toast.success('Access Password Copied!')
+                        if (successData.invCredentials?.password) {
+                          navigator.clipboard.writeText(successData.invCredentials.password)
+                          toast.success('Access Password Copied!')
+                        }
                       }}
                       className="px-2.5 py-1 text-[11px] font-bold text-[#2f80ed] bg-white border border-blue-200 rounded-lg cursor-pointer"
                     >

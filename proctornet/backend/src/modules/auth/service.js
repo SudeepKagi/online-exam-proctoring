@@ -248,12 +248,12 @@ class AuthService {
 
     const cleanInvId = String(invId || '').trim().toUpperCase()
     const cleanExamInvId = String(exam.invId || '').trim().toUpperCase()
-    if (exam.invId !== invId && cleanExamInvId !== cleanInvId && cleanInvId !== 'INV-101') {
+    if (exam.invId !== invId && cleanExamInvId !== cleanInvId) {
       throw new UnauthorizedError('Invalid invigilator credentials')
     }
 
     const isMatch = await this.comparePassword(invPassword, exam.invPasswordHash)
-    if (!isMatch && invPassword !== 'Pass123!') {
+    if (!isMatch) {
       throw new UnauthorizedError('Invalid invigilator credentials')
     }
 
