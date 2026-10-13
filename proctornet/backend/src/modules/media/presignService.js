@@ -672,7 +672,7 @@ class PresignService {
 
     // Reject mismatched client-provided examId (FLW BOLA guard)
     if (examId && examId !== attempt.examId) {
-      throw new ForbiddenError('Exam scope mismatch: Specified examId does not match attempt exam')
+      throw new ForbiddenError('Exam scope mismatch: Specified examId does not match attempt exam', 'INV_EXAM_MISMATCH')
     }
 
     const role = user?.role?.toUpperCase()
@@ -682,7 +682,7 @@ class PresignService {
       // Admin has universal read access
     } else if (role === ROLES.FACULTY) {
       if (attempt.exam?.facultyId !== user.id) {
-        throw new ForbiddenError('Access denied: You do not own the exam for this candidate attempt')
+        throw new ForbiddenError('Access denied: You do not own the exam for this candidate attempt', 'INV_NOT_AUTHORIZED')
       }
     } else if (role === ROLES.INVIGILATOR) {
       const isAssigned = (user.examId && user.examId === attempt.examId)
@@ -690,16 +690,19 @@ class PresignService {
         const activeSession = await prisma.invigilatorSession.findFirst({
           where: {
             examId: attempt.examId,
-            invId: user.id,
+            OR: [
+              { id: user.id },
+              { invId: user.id }
+            ],
             isActive: true
           }
         })
         if (!activeSession) {
-          throw new ForbiddenError('Access denied: You are not assigned to monitor this examination')
+          throw new ForbiddenError('Access denied: You are not assigned to monitor this examination', 'INV_EXAM_MISMATCH')
         }
       }
     } else {
-      throw new ForbiddenError('Access denied: Unauthorized role for live snapshots')
+      throw new ForbiddenError('Access denied: Unauthorized role for live snapshots', 'INV_NOT_AUTHORIZED')
     }
 
     // Record audit trail for staff snapshot inspection

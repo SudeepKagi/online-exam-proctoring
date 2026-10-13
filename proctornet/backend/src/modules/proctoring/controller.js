@@ -366,13 +366,13 @@ router.post(
  * Accepts up to 24 attempt IDs, returns URLs + frameAt
  */
 router.post(
-  '/proctoring/exams/:id/snapshots/read',
+  ['/proctoring/exams/:id/snapshots/read', '/proctoring/exams/:examId/snapshots/read'],
   requireAuth,
   requireRole([ROLES.ADMIN, ROLES.FACULTY, ROLES.INVIGILATOR]),
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {
-      const examId = req.params.id
+      const examId = req.params.examId || req.params.id
       await proctoringService.assertStaffExamAccess(req.user, examId)
 
       const attemptIds = Array.isArray(req.body.attemptIds) ? req.body.attemptIds.slice(0, 24) : []

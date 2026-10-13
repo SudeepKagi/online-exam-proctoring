@@ -5,8 +5,11 @@ const attemptIdParamSchema = z.object({
 }).strict()
 
 const examIdParamSchema = z.object({
-  examId: z.string().uuid('Invalid exam ID format')
-}).strict()
+  examId: z.string().uuid('Invalid exam ID format').optional(),
+  id: z.string().uuid('Invalid exam ID format').optional()
+}).refine(data => Boolean(data.examId || data.id), {
+  message: 'Invalid exam ID format'
+})
 
 const recordViolationSchema = z.object({
   eventType: z.enum([

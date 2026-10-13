@@ -1,3 +1,4 @@
+const { prisma } = require('../../infra/postgres/client')
 const { proctoringRepository } = require('./repository')
 const { redisClient } = require('../../infra/redis/client')
 const { CANONICAL_SEVERITY, FLAG_COOLDOWNS, normalizeViolationType, isValidViolationType } = require('./constants')
@@ -389,8 +390,25 @@ class ProctoringService {
     if (role === ROLES.ADMIN) return true
 
     if (role === ROLES.INVIGILATOR) {
-      if (!user.examId || user.examId !== examId) {
-        throw new ForbiddenError('Access denied: You are not assigned to this exam')
+      if (user.examId === examId) {
+        return true
+      }
+      const activeSession = await prisma.invigilatorSession.findFirst({
+        where: {
+          examId,
+          OR: [
+            { id: user.id },
+            { invId: user.id }
+          ],
+          isActive: true
+        }
+      })
+      if (!activeSession) {
+        throw new ForbiddenError(
+          'Access denied: You are not assigned to this exam',
+          'INV_EXAM_MISMATCH',
+          { userExamId: user.examId, requestedExamId: examId }
+        )
       }
       return true
     }
@@ -398,12 +416,12 @@ class ProctoringService {
     if (role === ROLES.FACULTY) {
       const exam = await proctoringRepository.findExamOwnedByFaculty(examId, user.id)
       if (!exam) {
-        throw new ForbiddenError('Access denied: You do not own this exam')
+        throw new ForbiddenError('Access denied: You do not own this exam', 'INV_NOT_AUTHORIZED')
       }
       return true
     }
 
-    throw new ForbiddenError('Access denied: Staff role required')
+    throw new ForbiddenError('Access denied: Staff role required', 'INV_NOT_AUTHORIZED')
   }
 
   /**
