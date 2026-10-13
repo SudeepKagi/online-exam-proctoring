@@ -39,20 +39,18 @@ async function checkOutboxHealth() {
   let hasViolations = false
 
   try {
-    // Check if outbox_events table exists
+    // Check if outbox_events table exists in current database schema
     const tableExists = await prisma.$queryRawUnsafe(`
-      SELECT 1 FROM information_schema.tables 
-      WHERE table_name = 'outbox_events'
-      LIMIT 1;
+      SELECT to_regclass('public.outbox_events')::text AS reg;
     `).catch(() => [])
 
-    if (tableExists.length === 0) {
+    if (!tableExists?.[0]?.reg) {
       console.log('  [PASS] outbox_events table not active (in-memory/RabbitMQ queue mode). Skipping outbox queue scan.')
     } else {
       // 1. FAILED outbox events
       const failedRows = await prisma.$queryRawUnsafe(`
         SELECT COUNT(*)::int as count
-        FROM outbox_events
+        FROM public.outbox_events
         WHERE status = 'FAILED';
       `).catch(() => [{ count: 0 }])
       const failedCount = failedRows[0]?.count || 0
@@ -60,7 +58,7 @@ async function checkOutboxHealth() {
         console.error(`[HEALTH VIOLATION] FAILED outbox events: ${failedCount} (expected: 0)`)
         const failedBreakdown = await prisma.$queryRawUnsafe(`
           SELECT event_type, COUNT(*)::int as count
-          FROM outbox_events
+          FROM public.outbox_events
           WHERE status = 'FAILED'
           GROUP BY event_type;
         `).catch(() => [])
@@ -75,7 +73,7 @@ async function checkOutboxHealth() {
       // 2. PENDING outbox events older than 60s
       const pendingOldRows = await prisma.$queryRawUnsafe(`
         SELECT COUNT(*)::int as count
-        FROM outbox_events
+        FROM public.outbox_events
         WHERE status = 'PENDING'
           AND created_at < NOW() - INTERVAL '60 seconds';
       `).catch(() => [{ count: 0 }])
@@ -84,7 +82,7 @@ async function checkOutboxHealth() {
         console.error(`[HEALTH VIOLATION] Stale PENDING outbox events (>60s old): ${pendingOldCount} (expected: 0)`)
         const staleEvents = await prisma.$queryRawUnsafe(`
           SELECT id, event_type, created_at, attempts
-          FROM outbox_events
+          FROM public.outbox_events
           WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '60 seconds';
         `).catch(() => [])
         for (const ev of staleEvents) {
@@ -94,7 +92,7 @@ async function checkOutboxHealth() {
         if (process.argv.includes('--fix-stale')) {
           console.log('  [FIX-STALE] Resolving stale pending events...')
           await prisma.$executeRawUnsafe(`
-            UPDATE outbox_events
+            UPDATE public.outbox_events
             SET status = 'PUBLISHED', processed_at = NOW()
             WHERE status = 'PENDING' AND created_at < NOW() - INTERVAL '60 seconds';
           `)
