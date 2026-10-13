@@ -4,8 +4,23 @@ import DashboardLayout from '@/components/common/DashboardLayout'
 import api, { extractErrorMessage } from '@/utils/api'
 import toast from 'react-hot-toast'
 import {
-  Grid, Video, AlertTriangle, MessageSquare, PauseCircle, PlayCircle,
-  Eye, RefreshCw, X, ShieldAlert, Wifi, UserCheck, Search, Filter, LogOut, Monitor, Cpu
+  Grid,
+  Video,
+  AlertTriangle,
+  MessageSquare,
+  PauseCircle,
+  PlayCircle,
+  Eye,
+  RefreshCw,
+  X,
+  ShieldAlert,
+  Wifi,
+  UserCheck,
+  Search,
+  Filter,
+  LogOut,
+  Monitor,
+  Cpu,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -24,8 +39,9 @@ export default function InvigilatorLiveGrid() {
   const { examId } = useParams()
   const navigate = useNavigate()
   const { user, logout } = useAuth() || {}
-  const isUuid = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
-  const effectiveExamId = (isUuid(examId) && examId) || (isUuid(user?.examId) && user.examId) || null
+  const isUuid = str => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  const effectiveExamId =
+    (isUuid(examId) && examId) || (isUuid(user?.examId) && user.examId) || null
 
   const handleLogout = () => {
     logout?.()
@@ -33,6 +49,7 @@ export default function InvigilatorLiveGrid() {
   }
 
   const rosterSnapshot = useRosterStore()
+  const candidates = rosterSnapshot.items || []
   const [loading, setLoading] = useState(true)
   const [errorState, setErrorState] = useState(null)
   const [examTitle, setExamTitle] = useState('')
@@ -41,7 +58,11 @@ export default function InvigilatorLiveGrid() {
   const [filterAlertsOnly, setFilterAlertsOnly] = useState(false)
   const [filterActiveOnly, setFilterActiveOnly] = useState(false)
   const [showExited, setShowExited] = useState(false)
-  const [terminateDialog, setTerminateDialog] = useState({ open: false, candidate: null, reason: '' })
+  const [terminateDialog, setTerminateDialog] = useState({
+    open: false,
+    candidate: null,
+    reason: '',
+  })
   const [activeLightboxImage, setActiveLightboxImage] = useState(null)
   const [page, setPage] = useState(1)
   const [violationSeverityFilter, setViolationSeverityFilter] = useState('ALL')
@@ -59,9 +80,12 @@ export default function InvigilatorLiveGrid() {
 
   // Fetch media driver from /config on mount
   useEffect(() => {
-    api.get('/config').then(res => {
-      setMediaDriver(res.data?.mediaDriver || 'snapshot')
-    }).catch(() => {})
+    api
+      .get('/config')
+      .then(res => {
+        setMediaDriver(res.data?.mediaDriver || 'snapshot')
+      })
+      .catch(() => {})
   }, [])
 
   // Auth guard: R-09 redirect to login if unauthenticated
@@ -72,38 +96,42 @@ export default function InvigilatorLiveGrid() {
   }, [user, navigate])
 
   // R3 helper: fetch fresh presigned read URLs for a focused candidate
-  const fetchSnapshotFrame = useCallback(async (attemptId) => {
+  const fetchSnapshotFrame = useCallback(async attemptId => {
     if (!attemptId) return
     try {
       const res = await api.get(`/attempts/${attemptId}/snapshots/read`)
       const { cameraUrl, screenUrl, frameAt } = res.data
       setSnapshotFrames(prev => ({
         ...prev,
-        [attemptId]: { cameraUrl, screenUrl, frameAt: frameAt || Date.now() }
+        [attemptId]: { cameraUrl, screenUrl, frameAt: frameAt || Date.now() },
       }))
     } catch (_) {}
   }, [])
 
   // FLW-05 helper: batch fetch fresh presigned read URLs for visible candidates (up to 24)
-  const fetchBatchSnapshots = useCallback(async (attemptIds) => {
-    if (!attemptIds || attemptIds.length === 0 || !effectiveExamId) return
-    const activeAttemptIds = attemptIds.filter(id => {
-      const cand = rosterSnapshot.rosterMap?.get?.(id) || candidates.find(c => (c.attemptId || c.id) === id)
-      return !cand || !['SUBMITTED', 'TERMINATED', 'EXPIRED', 'TIMED_OUT'].includes(cand.status)
-    })
-    if (activeAttemptIds.length === 0) return
-    try {
-      const res = await api.post(`/proctoring/exams/${effectiveExamId}/snapshots/read`, {
-        attemptIds: activeAttemptIds.slice(0, 24)
+  const fetchBatchSnapshots = useCallback(
+    async attemptIds => {
+      if (!attemptIds || attemptIds.length === 0 || !effectiveExamId) return
+      const activeAttemptIds = attemptIds.filter(id => {
+        const cand =
+          rosterSnapshot.rosterMap?.get?.(id) || candidates.find(c => (c.attemptId || c.id) === id)
+        return !cand || !['SUBMITTED', 'TERMINATED', 'EXPIRED', 'TIMED_OUT'].includes(cand.status)
       })
-      if (res.data?.snapshots) {
-        setSnapshotFrames(prev => ({
-          ...prev,
-          ...res.data.snapshots
-        }))
-      }
-    } catch (_) {}
-  }, [effectiveExamId, candidates, rosterSnapshot])
+      if (activeAttemptIds.length === 0) return
+      try {
+        const res = await api.post(`/proctoring/exams/${effectiveExamId}/snapshots/read`, {
+          attemptIds: activeAttemptIds.slice(0, 24),
+        })
+        if (res.data?.snapshots) {
+          setSnapshotFrames(prev => ({
+            ...prev,
+            ...res.data.snapshots,
+          }))
+        }
+      } catch (_) {}
+    },
+    [effectiveExamId, candidates, rosterSnapshot]
+  )
 
   // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
   const [subscribedTracks, setSubscribedTracks] = useState({})
@@ -117,11 +145,13 @@ export default function InvigilatorLiveGrid() {
     resumeStudentExam,
     terminateStudentExam,
     sendChat,
-    chats
+    chats,
   } = useInvigilatorSocket({
     examId: effectiveExamId,
-    onAlertReceived: (alert) => {
-      toast.error(`⚠️ Security Alert: Candidate ${alert.studentName || alert.studentUsn || ''} flagged (${alert.type || alert.details || 'Violation'})`)
+    onAlertReceived: alert => {
+      toast.error(
+        `⚠️ Security Alert: Candidate ${alert.studentName || alert.studentUsn || ''} flagged (${alert.type || alert.details || 'Violation'})`
+      )
       const formattedEv = {
         id: alert.id || `ev_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
         type: alert.type || alert.eventType || 'Security Violation',
@@ -132,7 +162,7 @@ export default function InvigilatorLiveGrid() {
         screenshotUrl: alert.screenshotUrl,
         cameraFrameUrl: alert.cameraFrameUrl,
         invAction: alert.invAction,
-        invActionNote: alert.invActionNote
+        invActionNote: alert.invActionNote,
       }
 
       const candId = alert.attemptId || alert.studentId
@@ -141,7 +171,7 @@ export default function InvigilatorLiveGrid() {
           flagCount: (rosterSnapshot.rosterMap?.get?.(candId)?.flagCount || 0) + 1,
           isHotspot: true,
           latestFrame: alert.cameraFrameUrl,
-          latestScreen: alert.screenshotUrl
+          latestScreen: alert.screenshotUrl,
         })
       }
 
@@ -151,7 +181,10 @@ export default function InvigilatorLiveGrid() {
       }
 
       setSelectedCandidate(prev => {
-        if (prev && (prev.id === candId || prev.studentId === candId || prev.attemptId === candId)) {
+        if (
+          prev &&
+          (prev.id === candId || prev.studentId === candId || prev.attemptId === candId)
+        ) {
           return {
             ...prev,
             flagCount: (prev.flagCount || 0) + 1,
@@ -159,14 +192,18 @@ export default function InvigilatorLiveGrid() {
             alerts: [formattedEv.type, ...(prev.alerts || [])],
             events: [formattedEv, ...(prev.events || [])],
             latestFrame: alert.cameraFrameUrl || prev.latestFrame,
-            latestScreen: alert.screenshotUrl || prev.latestScreen
+            latestScreen: alert.screenshotUrl || prev.latestScreen,
           }
         }
         return prev
       })
     },
-    onRosterDelta: (payload) => {
-      const deltas = Array.isArray(payload?.deltas) ? payload.deltas : (Array.isArray(payload) ? payload : [])
+    onRosterDelta: payload => {
+      const deltas = Array.isArray(payload?.deltas)
+        ? payload.deltas
+        : Array.isArray(payload)
+          ? payload
+          : []
       for (const d of deltas) {
         const id = d.attemptId || d.studentId
         if (id) {
@@ -187,7 +224,7 @@ export default function InvigilatorLiveGrid() {
           }
         }
       }
-    }
+    },
   })
 
   // ── Fetch Roster, Summary, and Violations from V1 API (R2) ──
@@ -209,7 +246,7 @@ export default function InvigilatorLiveGrid() {
       const [summaryRes, rosterRes, violationsRes] = await Promise.all([
         api.get(`/proctoring/exams/${effectiveExamId}/summary`).catch(() => null),
         api.get(`/proctoring/exams/${effectiveExamId}/roster?limit=100`).catch(() => null),
-        api.get(`/proctoring/exams/${effectiveExamId}/violations?limit=50`).catch(() => null)
+        api.get(`/proctoring/exams/${effectiveExamId}/violations?limit=50`).catch(() => null),
       ])
 
       const summary = summaryRes?.data || null
@@ -219,7 +256,9 @@ export default function InvigilatorLiveGrid() {
       // Fallback to legacy exam students if v1 roster returned empty in legacy test env
       if (rosterItems.length === 0 && examRes?.data?.students) {
         rosterItems = examRes.data.students.map((st, i) => {
-          const candV = examViolationsList.filter(v => v.attemptId === (st.attemptId || st.id || st.studentId))
+          const candV = examViolationsList.filter(
+            v => v.attemptId === (st.attemptId || st.id || st.studentId)
+          )
           const mergedEvents = (st.events || []).concat(candV)
           return {
             attemptId: st.attemptId || st.studentId || st.id,
@@ -234,14 +273,16 @@ export default function InvigilatorLiveGrid() {
             flagCount: Math.max(st.flagCount || 0, mergedEvents.length),
             lastSnapshot: candV[0]?.thumbUrl || st.latestFrame || null,
             latestFrame: candV[0]?.thumbUrl || st.latestFrame || null,
-            latestScreen: candV[0]?.metadata?.screenUrl || st.latestScreen || null
+            latestScreen: candV[0]?.metadata?.screenUrl || st.latestScreen || null,
           }
         })
       } else {
         rosterItems = rosterItems.map((item, i) => {
           const candV = examViolationsList.filter(v => v.attemptId === (item.attemptId || item.id))
           const existingEvents = item.events || []
-          const mergedEvents = existingEvents.concat(candV.filter(cv => !existingEvents.some(ie => ie.id === cv.id)))
+          const mergedEvents = existingEvents.concat(
+            candV.filter(cv => !existingEvents.some(ie => ie.id === cv.id))
+          )
           return {
             ...item,
             id: item.attemptId || item.studentId || item.id,
@@ -250,7 +291,7 @@ export default function InvigilatorLiveGrid() {
             events: mergedEvents,
             isHotspot: (item.flagCount || 0) > 0 || mergedEvents.length > 0,
             latestFrame: candV[0]?.thumbUrl || item.thumbUrl || item.latestFrame || null,
-            latestScreen: candV[0]?.metadata?.screenUrl || item.latestScreen || null
+            latestScreen: candV[0]?.metadata?.screenUrl || item.latestScreen || null,
           }
         })
       }
@@ -267,12 +308,13 @@ export default function InvigilatorLiveGrid() {
       if (isInitial) {
         setErrorState({
           status,
-          title: status === 403
-            ? 'Invigilator Access Restricted'
-            : status === 404
-            ? 'No Active Examination Assigned'
-            : 'Failed to Synchronize Live Monitoring',
-          message: msg
+          title:
+            status === 403
+              ? 'Invigilator Access Restricted'
+              : status === 404
+                ? 'No Active Examination Assigned'
+                : 'Failed to Synchronize Live Monitoring',
+          message: msg,
         })
       }
     } finally {
@@ -281,8 +323,6 @@ export default function InvigilatorLiveGrid() {
       }
     }
   }
-
-  const candidates = rosterSnapshot.items || []
 
   // Deduplicate candidates by student identity (usn/studentId/id)
   const uniqueCandidateMap = new Map()
@@ -300,8 +340,9 @@ export default function InvigilatorLiveGrid() {
   }
   const uniqueCandidates = Array.from(uniqueCandidateMap.values())
 
-  const filteredCandidates = uniqueCandidates.filter((c) => {
-    const isExited = c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
+  const filteredCandidates = uniqueCandidates.filter(c => {
+    const isExited =
+      c.status === 'TERMINATED' || c.status === 'SUBMITTED' || c.status === 'COMPLETED'
     if (!showExited && isExited) return false
 
     if (filterActiveOnly && c.status !== 'ACTIVE') return false
@@ -315,7 +356,10 @@ export default function InvigilatorLiveGrid() {
   // ── Pagination Calculation ──
   const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
-  const currentCandidates = filteredCandidates.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+  const currentCandidates = filteredCandidates.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
   // ── R3: IntersectionObserver — only visible tiles emit tile_visibility ────────
   // Runs after candidates are rendered; re-runs on page/filter changes.
@@ -323,44 +367,51 @@ export default function InvigilatorLiveGrid() {
     if (mediaDriver !== 'snapshot') return
     if (observerRef.current) observerRef.current.disconnect()
 
-    const observer = new IntersectionObserver((entries) => {
-      let changed = false
-      entries.forEach(entry => {
-        const attemptId = entry.target.dataset?.candidateId
-        if (!attemptId) return
-        if (entry.isIntersecting) {
-          if (!visibleTilesRef.current.has(attemptId)) {
-            visibleTilesRef.current.add(attemptId)
-            changed = true
+    const observer = new IntersectionObserver(
+      entries => {
+        let changed = false
+        entries.forEach(entry => {
+          const attemptId = entry.target.dataset?.candidateId
+          if (!attemptId) return
+          if (entry.isIntersecting) {
+            if (!visibleTilesRef.current.has(attemptId)) {
+              visibleTilesRef.current.add(attemptId)
+              changed = true
+            }
+          } else {
+            if (visibleTilesRef.current.has(attemptId)) {
+              visibleTilesRef.current.delete(attemptId)
+              changed = true
+            }
           }
-        } else {
-          if (visibleTilesRef.current.has(attemptId)) {
-            visibleTilesRef.current.delete(attemptId)
-            changed = true
+        })
+
+        if (changed) {
+          const visibleList = Array.from(visibleTilesRef.current)
+          // Fetch batch snapshots for visible tiles (FLW-05)
+          fetchBatchSnapshots(visibleList)
+
+          // Emit to server so it pushes cadence to each visible student
+          const payload = {
+            examId: effectiveExamId,
+            visibleAttemptIds: visibleList,
+            focusedAttemptId: selectedCandidate
+              ? selectedCandidate.attemptId || selectedCandidate.id
+              : null,
+          }
+          // Access socket from hook — emit if connected
+          if (window.__invSocket?.connected) {
+            window.__invSocket.emit('proctor:tile_visibility', payload)
           }
         }
-      })
-
-      if (changed) {
-        const visibleList = Array.from(visibleTilesRef.current)
-        // Fetch batch snapshots for visible tiles (FLW-05)
-        fetchBatchSnapshots(visibleList)
-
-        // Emit to server so it pushes cadence to each visible student
-        const payload = {
-          examId: effectiveExamId,
-          visibleAttemptIds: visibleList,
-          focusedAttemptId: selectedCandidate ? (selectedCandidate.attemptId || selectedCandidate.id) : null
-        }
-        // Access socket from hook — emit if connected
-        if (window.__invSocket?.connected) {
-          window.__invSocket.emit('proctor:tile_visibility', payload)
-        }
-      }
-    }, { threshold: 0.1 })
+      },
+      { threshold: 0.1 }
+    )
 
     observerRef.current = observer
-    Object.values(tileRefs.current).forEach(el => { if (el) observer.observe(el) })
+    Object.values(tileRefs.current).forEach(el => {
+      if (el) observer.observe(el)
+    })
 
     return () => observer.disconnect()
   }, [mediaDriver, currentCandidates, effectiveExamId, selectedCandidate, fetchBatchSnapshots])
@@ -375,7 +426,7 @@ export default function InvigilatorLiveGrid() {
     const handler = ({ attemptId, frameAt }) => {
       setSnapshotFrames(prev => ({
         ...prev,
-        [attemptId]: { ...(prev[attemptId] || {}), frameAt: frameAt || Date.now() }
+        [attemptId]: { ...(prev[attemptId] || {}), frameAt: frameAt || Date.now() },
       }))
     }
     sock.on('frame:update', handler)
@@ -411,7 +462,7 @@ export default function InvigilatorLiveGrid() {
       if (mediaDriver !== 'livekit' || !effectiveExamId) return
       try {
         const tokenRes = await api.post('/proctoring/token', {
-          examId: effectiveExamId
+          examId: effectiveExamId,
         })
 
         if (!isMounted) return
@@ -419,9 +470,10 @@ export default function InvigilatorLiveGrid() {
         const { token, wsUrl } = tokenRes.data
         if (!token) return
 
-        const resolvedWsUrl = wsUrl?.startsWith('http') || wsUrl?.startsWith('ws')
-          ? wsUrl
-          : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${wsUrl || '/media/'}`
+        const resolvedWsUrl =
+          wsUrl?.startsWith('http') || wsUrl?.startsWith('ws')
+            ? wsUrl
+            : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}${wsUrl || '/media/'}`
 
         const viewer = new ProctorViewer({
           wsUrl: resolvedWsUrl,
@@ -431,7 +483,7 @@ export default function InvigilatorLiveGrid() {
             setSubscribedTracks(prev => ({
               ...prev,
               [cleanId]: { ...(prev[cleanId] || {}), [source]: track },
-              [identity]: { ...(prev[identity] || {}), [source]: track }
+              [identity]: { ...(prev[identity] || {}), [source]: track },
             }))
           },
           onTrackUnsubscribed: ({ identity, source }) => {
@@ -443,11 +495,11 @@ export default function InvigilatorLiveGrid() {
               return {
                 ...prev,
                 [cleanId]: updated,
-                [identity]: updated
+                [identity]: updated,
               }
             })
           },
-          onParticipantDisconnected: (participant) => {
+          onParticipantDisconnected: participant => {
             const cleanId = participant.identity.replace(/^student:/, '')
             setSubscribedTracks(prev => {
               const updated = { ...prev }
@@ -455,7 +507,7 @@ export default function InvigilatorLiveGrid() {
               delete updated[participant.identity]
               return updated
             })
-          }
+          },
         })
 
         await viewer.connect()
@@ -500,7 +552,9 @@ export default function InvigilatorLiveGrid() {
   useEffect(() => {
     if (viewerRef.current) {
       const visibleIdentities = currentCandidates.map(c => c.attemptId || c.id)
-      const focusedIdentity = selectedCandidate ? (selectedCandidate.attemptId || selectedCandidate.id) : null
+      const focusedIdentity = selectedCandidate
+        ? selectedCandidate.attemptId || selectedCandidate.id
+        : null
       viewerRef.current.syncVisibleTiles(visibleIdentities, focusedIdentity)
     }
   }, [currentCandidates, selectedCandidate])
@@ -509,7 +563,7 @@ export default function InvigilatorLiveGrid() {
   const [loadingAgentStatus, setLoadingAgentStatus] = useState(false)
   const [waiverDialog, setWaiverDialog] = useState({ open: false, reason: '' })
 
-  const loadAgentStatus = async (cand) => {
+  const loadAgentStatus = async cand => {
     const candId = cand.attemptId || cand.id || cand.studentId
     if (!candId) return
     setLoadingAgentStatus(true)
@@ -525,7 +579,8 @@ export default function InvigilatorLiveGrid() {
 
   const handleRecheckCompanion = async () => {
     if (!selectedCandidate) return
-    const candId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
+    const candId =
+      selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
     try {
       await api.post(`/staff/attempts/${candId}/agent/recheck`)
       toast.success('Re-check requested for candidate Exam Device Companion')
@@ -537,9 +592,12 @@ export default function InvigilatorLiveGrid() {
 
   const handleGrantWaiver = async () => {
     if (!selectedCandidate || !waiverDialog.reason.trim()) return
-    const candId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
+    const candId =
+      selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
     try {
-      await api.post(`/staff/attempts/${candId}/agent/waiver`, { reason: waiverDialog.reason.trim() })
+      await api.post(`/staff/attempts/${candId}/agent/waiver`, {
+        reason: waiverDialog.reason.trim(),
+      })
       toast.success('Exam Device Companion waiver granted')
       setWaiverDialog({ open: false, reason: '' })
       loadAgentStatus(selectedCandidate)
@@ -548,7 +606,7 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
-  const handleSelectCandidate = (cand) => {
+  const handleSelectCandidate = cand => {
     setSelectedCandidate(cand)
     setCandidateAgentStatus(null)
     loadAgentStatus(cand)
@@ -566,25 +624,30 @@ export default function InvigilatorLiveGrid() {
 
   const handleSendWarning = async () => {
     if (!selectedCandidate || !warningMsg.trim()) return
-    const candidateId = selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
+    const candidateId =
+      selectedCandidate.attemptId || selectedCandidate.id || selectedCandidate.studentId
     try {
       await sendSocketWarning?.(candidateId, warningMsg.trim())
       await api.post(`/proctoring/attempts/${candidateId}/warn`, {
-        message: warningMsg.trim()
+        message: warningMsg.trim(),
       })
-      toast.success(`Warning dispatched to candidate ${selectedCandidate.name || selectedCandidate.usn}`)
+      toast.success(
+        `Warning dispatched to candidate ${selectedCandidate.name || selectedCandidate.usn}`
+      )
       setWarningMsg('')
     } catch (err) {
       toast.error(`Failed to send warning: ${err.response?.data?.message || err.message}`)
     }
   }
 
-  const handlePauseExam = async (cand) => {
+  const handlePauseExam = async cand => {
     if (!cand) return
     const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
       await pauseStudentExam?.(candidateId, 'Session paused by proctor.')
-      await api.post(`/proctoring/attempts/${candidateId}/pause`, { reason: 'Session paused by proctor.' })
+      await api.post(`/proctoring/attempts/${candidateId}/pause`, {
+        reason: 'Session paused by proctor.',
+      })
       toast.success(`Exam session paused for candidate ${cand.name || cand.usn}`)
       rosterStore.updateCandidate(candidateId, { status: 'SUSPENDED' })
       if (selectedCandidate?.id === candidateId || selectedCandidate?.attemptId === candidateId) {
@@ -595,7 +658,7 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
-  const handleResumeExam = async (cand) => {
+  const handleResumeExam = async cand => {
     if (!cand) return
     const candidateId = cand.attemptId || cand.id || cand.studentId
     try {
@@ -615,7 +678,8 @@ export default function InvigilatorLiveGrid() {
     const { candidate, reason } = terminateDialog
     if (!candidate) return
     const candidateId = candidate.attemptId || candidate.id || candidate.studentId
-    const termReason = reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
+    const termReason =
+      reason?.trim() || 'Exam session terminated by proctor for severe academic dishonesty.'
     try {
       await terminateStudentExam?.(candidateId, termReason)
       await api.post(`/proctoring/attempts/${candidateId}/terminate`, { reason: termReason })
@@ -629,7 +693,7 @@ export default function InvigilatorLiveGrid() {
     }
   }
 
-  const getCandidateTracks = (cand) => {
+  const getCandidateTracks = cand => {
     if (!cand) return {}
     return (
       subscribedTracks[cand.attemptId] ||
@@ -651,7 +715,8 @@ export default function InvigilatorLiveGrid() {
               {examTitle ? `Live Monitoring: ${examTitle}` : 'Live Invigilator Monitoring'}
             </h1>
             <p className="text-xs text-muted-foreground mt-1 font-normal">
-              Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream inspection
+              Real-time candidate monitoring, automated security flags, and LiveKit WebRTC stream
+              inspection
             </p>
           </div>
 
@@ -706,7 +771,10 @@ export default function InvigilatorLiveGrid() {
         {loading ? (
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
             {[...Array(12)].map((_, i) => (
-              <div key={i} className="h-40 bg-card border border-border rounded-2xl animate-pulse shadow-xs" />
+              <div
+                key={i}
+                className="h-40 bg-card border border-border rounded-2xl animate-pulse shadow-xs"
+              />
             ))}
           </div>
         ) : errorState ? (
@@ -726,10 +794,7 @@ export default function InvigilatorLiveGrid() {
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
-              <Button
-                onClick={fetchGridData}
-                className="text-xs font-bold font-mono"
-              >
+              <Button onClick={fetchGridData} className="text-xs font-bold font-mono">
                 <RefreshCw size={13} className="mr-1.5" /> Retry Sync
               </Button>
             </div>
@@ -740,9 +805,12 @@ export default function InvigilatorLiveGrid() {
               <UserCheck size={24} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-foreground">No Candidates Enrolled or Connected</h3>
+              <h3 className="text-sm font-bold text-foreground">
+                No Candidates Enrolled or Connected
+              </h3>
               <p className="text-xs text-muted-foreground max-w-md mt-1 font-medium leading-relaxed">
-                Candidate workstation feeds will stream here as students complete the pre-exam verification and join the session.
+                Candidate workstation feeds will stream here as students complete the pre-exam
+                verification and join the session.
               </p>
             </div>
             <Button
@@ -795,10 +863,14 @@ export default function InvigilatorLiveGrid() {
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3.5">
-              {currentCandidates.map((cand) => {
+              {currentCandidates.map(cand => {
                 const isTerminated = cand.status === 'TERMINATED'
                 const isSuspended = cand.status === 'SUSPENDED'
-                const isFlagged = (cand.alerts && cand.alerts.length > 0) || cand.flagCount > 0 || isTerminated || isSuspended
+                const isFlagged =
+                  (cand.alerts && cand.alerts.length > 0) ||
+                  cand.flagCount > 0 ||
+                  isTerminated ||
+                  isSuspended
                 const tracks = getCandidateTracks(cand)
 
                 return (
@@ -810,10 +882,10 @@ export default function InvigilatorLiveGrid() {
                       isTerminated
                         ? 'border-rose-300 bg-rose-50/20 dark:bg-rose-950/20 hover:border-rose-500'
                         : isSuspended
-                        ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20 hover:border-amber-500'
-                        : isFlagged
-                        ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
-                        : 'border-border bg-card hover:border-primary/50'
+                          ? 'border-amber-300 bg-amber-50/20 dark:bg-amber-950/20 hover:border-amber-500'
+                          : isFlagged
+                            ? 'border-destructive/60 bg-[#fef2f2]/40 dark:bg-rose-950/20 hover:border-destructive'
+                            : 'border-border bg-card hover:border-primary/50'
                     }`}
                   >
                     <div>
@@ -822,7 +894,10 @@ export default function InvigilatorLiveGrid() {
                           Seat {cand.seatNo}
                         </span>
                         {isTerminated ? (
-                          <Badge variant="destructive" className="text-[9px] uppercase tracking-wider font-bold">
+                          <Badge
+                            variant="destructive"
+                            className="text-[9px] uppercase tracking-wider font-bold"
+                          >
                             TERMINATED
                           </Badge>
                         ) : isSuspended ? (
@@ -830,23 +905,38 @@ export default function InvigilatorLiveGrid() {
                             SUSPENDED
                           </Badge>
                         ) : cand.status === 'READY' ? (
-                          <Badge variant="outline" className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider"
+                          >
                             NOT JOINED
                           </Badge>
                         ) : cand.status === 'SUBMITTED' ? (
-                          <Badge variant="outline" className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider"
+                          >
                             SUBMITTED
                           </Badge>
                         ) : isFlagged ? (
-                          <Badge variant="destructive" className="text-[9px] font-bold uppercase tracking-wider">
+                          <Badge
+                            variant="destructive"
+                            className="text-[9px] font-bold uppercase tracking-wider"
+                          >
                             FLAGGED
                           </Badge>
                         ) : cand.status === 'ACTIVE' ? (
-                          <Badge variant="green" className="text-[9px] font-bold uppercase tracking-wider">
+                          <Badge
+                            variant="green"
+                            className="text-[9px] font-bold uppercase tracking-wider"
+                          >
                             LIVE
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold uppercase tracking-wider"
+                          >
                             {cand.status || 'OFFLINE'}
                           </Badge>
                         )}
@@ -854,21 +944,30 @@ export default function InvigilatorLiveGrid() {
 
                       {/* Screen Share Feed Thumbnail — snapshot or LiveKit */}
                       <div
-                        ref={el => { tileRefs.current[cand.attemptId || cand.id] = el }}
+                        ref={el => {
+                          tileRefs.current[cand.attemptId || cand.id] = el
+                        }}
                         className="w-full h-24 bg-neutral-950 border border-border rounded-xl relative overflow-hidden flex items-center justify-center mb-2"
                       >
                         {mediaDriver === 'snapshot' ? (
                           (() => {
-                            if (cand.status === 'SUBMITTED' || cand.status === 'TERMINATED' || cand.status === 'EXPIRED') {
+                            if (
+                              cand.status === 'SUBMITTED' ||
+                              cand.status === 'TERMINATED' ||
+                              cand.status === 'EXPIRED'
+                            ) {
                               return (
                                 <div className="flex flex-col items-center justify-center text-muted-foreground gap-1.5 p-2 text-center select-none h-full">
                                   <CheckCircle2 size={20} className="text-muted-foreground/60" />
-                                  <span className="text-[10px] font-medium tracking-tight">Attempt Finalized</span>
+                                  <span className="text-[10px] font-medium tracking-tight">
+                                    Attempt Finalized
+                                  </span>
                                 </div>
                               )
                             }
                             const sf = snapshotFrames[cand.attemptId || cand.id]
-                            const scrSrc = sf?.screenUrl ||
+                            const scrSrc =
+                              sf?.screenUrl ||
                               cand.latestScreen ||
                               cand.screenUrl ||
                               cand.thumbUrl ||
@@ -879,7 +978,9 @@ export default function InvigilatorLiveGrid() {
                                 src={scrSrc}
                                 alt={`Live screen — ${cand.usn}`}
                                 className="w-full h-full object-cover"
-                                onError={e => { e.currentTarget.style.display = 'none' }}
+                                onError={e => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
                               />
                             ) : (
                               <span className="text-[10px] text-neutral-500 font-mono">
@@ -902,7 +1003,9 @@ export default function InvigilatorLiveGrid() {
                       </div>
 
                       <p className="text-xs font-bold text-foreground truncate">{cand.usn}</p>
-                      <p className="text-[11px] text-muted-foreground truncate font-medium">{cand.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate font-medium">
+                        {cand.name}
+                      </p>
                     </div>
 
                     {cand.alerts && cand.alerts.length > 0 && (
@@ -919,7 +1022,9 @@ export default function InvigilatorLiveGrid() {
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-border pt-3 px-1">
                 <span className="text-xs text-muted-foreground font-medium">
-                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredCandidates.length)} of {filteredCandidates.length} workstations
+                  Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+                  {Math.min(currentPage * PAGE_SIZE, filteredCandidates.length)} of{' '}
+                  {filteredCandidates.length} workstations
                 </span>
                 <div className="flex items-center gap-2">
                   <Button
@@ -951,8 +1056,14 @@ export default function InvigilatorLiveGrid() {
 
         {/* Selected Candidate Detailed Stream Modal */}
         {selectedCandidate && (
-          <div className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" onClick={handleCloseModal}>
-            <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-3xl w-full p-6 text-foreground font-sans max-h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4"
+            onClick={handleCloseModal}
+          >
+            <div
+              className="bg-card border border-border rounded-3xl shadow-2xl max-w-3xl w-full p-6 text-foreground font-sans max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between mb-4 border-b border-border pb-3.5">
                 <div>
                   <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -961,9 +1072,15 @@ export default function InvigilatorLiveGrid() {
                       {selectedCandidate.usn}
                     </span>
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5 font-normal">{selectedCandidate.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 font-normal">
+                    {selectedCandidate.name}
+                  </p>
                 </div>
-                <button onClick={handleCloseModal} className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer" aria-label="Close dialog">
+                <button
+                  onClick={handleCloseModal}
+                  className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="Close dialog"
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -972,25 +1089,30 @@ export default function InvigilatorLiveGrid() {
                 {/* Dual Stream Feeds */}
                 {/* Candidate Screen Stream Modal View */}
                 <div className="bg-neutral-950 border border-border rounded-2xl h-64 overflow-hidden relative flex items-center justify-center">
-                  {mediaDriver === 'snapshot' ? (() => {
-                    const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
-                    const scrSrc = sf?.screenUrl ||
-                      selectedCandidate.latestScreen ||
-                      selectedCandidate.screenUrl ||
-                      selectedCandidate.thumbUrl
-                    return scrSrc ? (
-                      <img
-                        key={sf?.frameAt || scrSrc}
-                        src={scrSrc}
-                        alt="Live screen feed"
-                        className="w-full h-full object-contain bg-black"
-                      />
-                    ) : (
-                      <span className="text-xs text-neutral-500 font-mono">
-                        {selectedCandidate.status === 'READY' ? 'Candidate not yet in active session' : 'Awaiting screen frame...'}
-                      </span>
-                    )
-                  })() : (
+                  {mediaDriver === 'snapshot' ? (
+                    (() => {
+                      const sf = snapshotFrames[selectedCandidate.attemptId || selectedCandidate.id]
+                      const scrSrc =
+                        sf?.screenUrl ||
+                        selectedCandidate.latestScreen ||
+                        selectedCandidate.screenUrl ||
+                        selectedCandidate.thumbUrl
+                      return scrSrc ? (
+                        <img
+                          key={sf?.frameAt || scrSrc}
+                          src={scrSrc}
+                          alt="Live screen feed"
+                          className="w-full h-full object-contain bg-black"
+                        />
+                      ) : (
+                        <span className="text-xs text-neutral-500 font-mono">
+                          {selectedCandidate.status === 'READY'
+                            ? 'Candidate not yet in active session'
+                            : 'Awaiting screen frame...'}
+                        </span>
+                      )
+                    })()
+                  ) : (
                     <ScreenFeed
                       track={getCandidateTracks(selectedCandidate).screen}
                       initialFrame={selectedCandidate.latestScreen}
@@ -1010,27 +1132,39 @@ export default function InvigilatorLiveGrid() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground">Exam Device Companion</span>
+                        <span className="text-xs font-bold text-foreground">
+                          Exam Device Companion
+                        </span>
                         {candidateAgentStatus?.waiver ? (
-                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-[10px]">WAIVED</Badge>
+                          <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20 text-[10px]">
+                            WAIVED
+                          </Badge>
                         ) : candidateAgentStatus?.state === 'HEALTHY' ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">HEALTHY</Badge>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]">
+                            HEALTHY
+                          </Badge>
                         ) : candidateAgentStatus?.state === 'STALE' ? (
-                          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">STALE</Badge>
+                          <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px]">
+                            STALE
+                          </Badge>
                         ) : candidateAgentStatus?.state === 'BLOCKED' ? (
-                          <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-[10px]">BLOCKED</Badge>
+                          <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/20 text-[10px]">
+                            BLOCKED
+                          </Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px]">NONE / NOT PAIRED</Badge>
+                          <Badge variant="outline" className="text-[10px]">
+                            NONE / NOT PAIRED
+                          </Badge>
                         )}
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {candidateAgentStatus?.findings?.length > 0
                           ? `${candidateAgentStatus.findings.length} findings: ${candidateAgentStatus.findings.map(f => f.ruleId).join(', ')}`
                           : candidateAgentStatus?.waiver
-                          ? `Waiver: ${candidateAgentStatus.waiver.reason}`
-                          : candidateAgentStatus?.lastSeenAt
-                          ? `Last seen: ${new Date(candidateAgentStatus.lastSeenAt).toLocaleTimeString()}`
-                          : 'No companion session active'}
+                            ? `Waiver: ${candidateAgentStatus.waiver.reason}`
+                            : candidateAgentStatus?.lastSeenAt
+                              ? `Last seen: ${new Date(candidateAgentStatus.lastSeenAt).toLocaleTimeString()}`
+                              : 'No companion session active'}
                       </p>
                     </div>
                   </div>
@@ -1043,7 +1177,10 @@ export default function InvigilatorLiveGrid() {
                       disabled={loadingAgentStatus}
                       className="text-xs font-semibold h-8"
                     >
-                      <RefreshCw size={12} className={`mr-1.5 ${loadingAgentStatus ? 'animate-spin' : ''}`} />
+                      <RefreshCw
+                        size={12}
+                        className={`mr-1.5 ${loadingAgentStatus ? 'animate-spin' : ''}`}
+                      />
                       Re-check Now
                     </Button>
                     {!candidateAgentStatus?.waiver && (
@@ -1069,7 +1206,10 @@ export default function InvigilatorLiveGrid() {
                     <div className="flex items-center gap-2">
                       <select
                         value={violationSeverityFilter}
-                        onChange={(e) => { setViolationSeverityFilter(e.target.value); setViolationPage(1) }}
+                        onChange={e => {
+                          setViolationSeverityFilter(e.target.value)
+                          setViolationPage(1)
+                        }}
                         className="text-[10px] bg-card border border-border rounded-lg px-2 py-1 text-foreground font-medium"
                       >
                         <option value="ALL">All Severities</option>
@@ -1080,7 +1220,10 @@ export default function InvigilatorLiveGrid() {
                       </select>
                       <select
                         value={violationTypeFilter}
-                        onChange={(e) => { setViolationTypeFilter(e.target.value); setViolationPage(1) }}
+                        onChange={e => {
+                          setViolationTypeFilter(e.target.value)
+                          setViolationPage(1)
+                        }}
                         className="text-[10px] bg-card border border-border rounded-lg px-2 py-1 text-foreground font-medium max-w-[120px] truncate"
                       >
                         <option value="ALL">All Types</option>
@@ -1097,14 +1240,25 @@ export default function InvigilatorLiveGrid() {
                   {(() => {
                     const rawEvents = selectedCandidate.events || []
                     const filtered = rawEvents.filter(ev => {
-                      if (violationSeverityFilter !== 'ALL' && (ev.severity || 'MEDIUM').toUpperCase() !== violationSeverityFilter) return false
-                      if (violationTypeFilter !== 'ALL' && (ev.type || ev.eventType) !== violationTypeFilter) return false
+                      if (
+                        violationSeverityFilter !== 'ALL' &&
+                        (ev.severity || 'MEDIUM').toUpperCase() !== violationSeverityFilter
+                      )
+                        return false
+                      if (
+                        violationTypeFilter !== 'ALL' &&
+                        (ev.type || ev.eventType) !== violationTypeFilter
+                      )
+                        return false
                       return true
                     })
                     const V_PAGE_SIZE = 4
                     const totalVPages = Math.max(1, Math.ceil(filtered.length / V_PAGE_SIZE))
                     const curVPage = Math.min(violationPage, totalVPages)
-                    const pageEvents = filtered.slice((curVPage - 1) * V_PAGE_SIZE, curVPage * V_PAGE_SIZE)
+                    const pageEvents = filtered.slice(
+                      (curVPage - 1) * V_PAGE_SIZE,
+                      curVPage * V_PAGE_SIZE
+                    )
 
                     if (filtered.length === 0) {
                       return (
@@ -1132,14 +1286,18 @@ export default function InvigilatorLiveGrid() {
                                 <div className="flex items-start justify-between">
                                   <div className="space-y-0.5">
                                     <div className="flex items-center gap-2">
-                                      <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                                        ev.severity === 'HIGH' || ev.severity === 'CRITICAL'
-                                          ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
-                                          : 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
-                                      }`}>
+                                      <span
+                                        className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                                          ev.severity === 'HIGH' || ev.severity === 'CRITICAL'
+                                            ? 'bg-rose-500/15 text-rose-600 border border-rose-500/20'
+                                            : 'bg-amber-500/15 text-amber-600 border border-amber-500/20'
+                                        }`}
+                                      >
                                         {ev.severity || 'ALERT'}
                                       </span>
-                                      <span className="font-bold text-foreground">{ev.type || ev.eventType || 'Security Violation'}</span>
+                                      <span className="font-bold text-foreground">
+                                        {ev.type || ev.eventType || 'Security Violation'}
+                                      </span>
                                       {ev.evidenceStatus && (
                                         <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground border border-border">
                                           {ev.evidenceStatus}
@@ -1147,11 +1305,19 @@ export default function InvigilatorLiveGrid() {
                                       )}
                                     </div>
                                     {ev.details && (
-                                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{ev.details}</p>
+                                      <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                                        {ev.details}
+                                      </p>
                                     )}
                                   </div>
                                   <span className="text-[10px] font-mono text-muted-foreground whitespace-nowrap ml-3">
-                                    {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
+                                    {ev.timestamp
+                                      ? new Date(ev.timestamp).toLocaleTimeString([], {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          second: '2-digit',
+                                        })
+                                      : '—'}
                                   </span>
                                 </div>
 
@@ -1160,7 +1326,12 @@ export default function InvigilatorLiveGrid() {
                                   <div className="flex items-center gap-3 pt-2 border-t border-border/60">
                                     {thumbSrc && (
                                       <div
-                                        onClick={() => setActiveLightboxImage({ src: fullSrc, title: `Evidence Snapshot — ${ev.type || ev.eventType}` })}
+                                        onClick={() =>
+                                          setActiveLightboxImage({
+                                            src: fullSrc,
+                                            title: `Evidence Snapshot — ${ev.type || ev.eventType}`,
+                                          })
+                                        }
                                         className="w-16 h-10 rounded-lg overflow-hidden border border-border cursor-pointer hover:opacity-80 transition bg-black flex items-center justify-center shrink-0"
                                         title="Click to view full image in lightbox"
                                       >
@@ -1175,7 +1346,12 @@ export default function InvigilatorLiveGrid() {
                                       {fullSrc && (
                                         <button
                                           type="button"
-                                          onClick={() => setActiveLightboxImage({ src: fullSrc, title: `Webcam Evidence — ${ev.type || ev.eventType}` })}
+                                          onClick={() =>
+                                            setActiveLightboxImage({
+                                              src: fullSrc,
+                                              title: `Webcam Evidence — ${ev.type || ev.eventType}`,
+                                            })
+                                          }
                                           className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 text-[10px] font-bold transition-colors cursor-pointer"
                                         >
                                           <Video size={11} /> Full Frame Lightbox
@@ -1184,7 +1360,12 @@ export default function InvigilatorLiveGrid() {
                                       {screenSrc && (
                                         <button
                                           type="button"
-                                          onClick={() => setActiveLightboxImage({ src: screenSrc, title: `Screen Capture — ${ev.type || ev.eventType}` })}
+                                          onClick={() =>
+                                            setActiveLightboxImage({
+                                              src: screenSrc,
+                                              title: `Screen Capture — ${ev.type || ev.eventType}`,
+                                            })
+                                          }
                                           className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-bold transition-colors cursor-pointer"
                                         >
                                           <Monitor size={11} /> Screen Lightbox
@@ -1201,7 +1382,9 @@ export default function InvigilatorLiveGrid() {
                         {/* Paginated Violation Navigation */}
                         {totalVPages > 1 && (
                           <div className="flex items-center justify-between pt-2 border-t border-border text-[11px] text-muted-foreground">
-                            <span>Page {curVPage} of {totalVPages}</span>
+                            <span>
+                              Page {curVPage} of {totalVPages}
+                            </span>
                             <div className="flex gap-1.5">
                               <Button
                                 size="sm"
@@ -1234,7 +1417,7 @@ export default function InvigilatorLiveGrid() {
                   <div className="flex gap-2">
                     <input
                       value={warningMsg}
-                      onChange={(e) => setWarningMsg(e.target.value)}
+                      onChange={e => setWarningMsg(e.target.value)}
                       placeholder="Send live warning notice to candidate screen..."
                       className="flex-1 px-3.5 py-2 border border-border bg-card text-xs text-foreground rounded-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10"
                       aria-label="Warning message"
@@ -1249,7 +1432,13 @@ export default function InvigilatorLiveGrid() {
                       <>
                         <Button
                           variant="destructive"
-                          onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
+                          onClick={() =>
+                            setTerminateDialog({
+                              open: true,
+                              candidate: selectedCandidate,
+                              reason: '',
+                            })
+                          }
                           className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
                         >
                           <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
@@ -1267,7 +1456,13 @@ export default function InvigilatorLiveGrid() {
                       <>
                         <Button
                           variant="destructive"
-                          onClick={() => setTerminateDialog({ open: true, candidate: selectedCandidate, reason: '' })}
+                          onClick={() =>
+                            setTerminateDialog({
+                              open: true,
+                              candidate: selectedCandidate,
+                              reason: '',
+                            })
+                          }
                           className="flex-1 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white cursor-pointer"
                         >
                           <ShieldAlert size={14} className="mr-1.5" /> Terminate Session
@@ -1317,7 +1512,7 @@ export default function InvigilatorLiveGrid() {
             </label>
             <input
               value={terminateDialog.reason}
-              onChange={(e) => setTerminateDialog(prev => ({ ...prev, reason: e.target.value }))}
+              onChange={e => setTerminateDialog(prev => ({ ...prev, reason: e.target.value }))}
               placeholder="e.g., Unauthorised secondary device detected, multiple face presence warnings..."
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-rose-500 transition"
             />
@@ -1341,7 +1536,7 @@ export default function InvigilatorLiveGrid() {
             </label>
             <input
               value={waiverDialog.reason}
-              onChange={(e) => setWaiverDialog(prev => ({ ...prev, reason: e.target.value }))}
+              onChange={e => setWaiverDialog(prev => ({ ...prev, reason: e.target.value }))}
               placeholder="e.g., Institution lab managed workstation, verified hardware exemption..."
               className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-900 bg-slate-50 focus:bg-white focus:outline-none focus:border-primary transition"
             />
@@ -1356,7 +1551,7 @@ export default function InvigilatorLiveGrid() {
           >
             <div
               className="bg-card border border-border rounded-3xl shadow-2xl max-w-4xl w-full p-5 overflow-hidden flex flex-col gap-4 text-foreground"
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h4 className="text-sm font-bold flex items-center gap-2">

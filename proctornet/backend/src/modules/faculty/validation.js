@@ -1,57 +1,70 @@
 const { z } = require('zod')
 
-const isoDatetime = z.string().refine((val) => {
-  const d = new Date(val)
-  return !isNaN(d.getTime())
-}, { message: 'Invalid ISO datetime' }).transform((val) => new Date(val).toISOString())
+const isoDatetime = z
+  .string()
+  .refine(
+    val => {
+      const d = new Date(val)
+      return !isNaN(d.getTime())
+    },
+    { message: 'Invalid ISO datetime' }
+  )
+  .transform(val => new Date(val).toISOString())
 
-const baseExamSchema = z.object({
-  title: z.string().min(1),
-  subject: z.string().min(1),
-  description: z.string().optional().nullable(),
-  startTime: isoDatetime,
-  endTime: isoDatetime,
-  duration: z.number().int().positive().default(60),
-  totalMarks: z.number().positive().default(100),
-  negativeMarking: z.boolean().default(false),
-  negativeValue: z.number().min(0).default(0),
-  questionsPerStudent: z.number().int().min(0).default(0),
-  randomiseQuestions: z.boolean().default(true),
-  randomiseOptions: z.boolean().default(true),
-  allowedDepartments: z.array(z.string()).default(['CSE']),
-  allowedSemesters: z.array(z.number().int()).default([1]),
-  cameraRequired: z.boolean().default(true),
-  micRequired: z.boolean().default(false),
-  browserLock: z.boolean().default(true),
-  fullScreenMode: z.boolean().default(true),
-  watermarkRequired: z.boolean().default(true),
-  tabSwitchLimit: z.number().int().min(1).default(3),
-  vpnRequired: z.boolean().default(false),
-  deviceAgentPolicy: z.enum(['REQUIRED', 'OPTIONAL', 'OFF', 'DISABLED'])
-    .transform(val => val === 'DISABLED' ? 'OFF' : val)
-    .default('REQUIRED')
-    .optional(),
-  aiReverifyInterval: z.number().int().min(1).default(10).optional(),
-  invPassword: z.string().min(4).optional(),
-  invId: z.string().optional(),
-  status: z.enum(['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'CANCELLED']).optional(),
-  resultsReleased: z.boolean().optional()
-}).strict()
+const baseExamSchema = z
+  .object({
+    title: z.string().min(1),
+    subject: z.string().min(1),
+    description: z.string().optional().nullable(),
+    startTime: isoDatetime,
+    endTime: isoDatetime,
+    duration: z.number().int().positive().default(60),
+    totalMarks: z.number().positive().default(100),
+    negativeMarking: z.boolean().default(false),
+    negativeValue: z.number().min(0).default(0),
+    questionsPerStudent: z.number().int().min(0).default(0),
+    randomiseQuestions: z.boolean().default(true),
+    randomiseOptions: z.boolean().default(true),
+    allowedDepartments: z.array(z.string()).default(['CSE']),
+    allowedSemesters: z.array(z.number().int()).default([1]),
+    cameraRequired: z.boolean().default(true),
+    micRequired: z.boolean().default(false),
+    browserLock: z.boolean().default(true),
+    fullScreenMode: z.boolean().default(true),
+    watermarkRequired: z.boolean().default(true),
+    tabSwitchLimit: z.number().int().min(1).default(3),
+    vpnRequired: z.boolean().default(false),
+    deviceAgentPolicy: z
+      .enum(['REQUIRED', 'OPTIONAL', 'OFF', 'DISABLED'])
+      .transform(val => (val === 'DISABLED' ? 'OFF' : val))
+      .default('REQUIRED')
+      .optional(),
+    aiReverifyInterval: z.number().int().min(1).default(10).optional(),
+    invPassword: z.string().min(4).optional(),
+    invId: z.string().optional(),
+    status: z.enum(['DRAFT', 'UPCOMING', 'LIVE', 'COMPLETED', 'CANCELLED']).optional(),
+    resultsReleased: z.boolean().optional(),
+  })
+  .strict()
 
 const updateExamSchema = baseExamSchema.partial()
 
 const createExamSchema = baseExamSchema
-  .refine((data) => new Date(data.endTime) > new Date(data.startTime), {
+  .refine(data => new Date(data.endTime) > new Date(data.startTime), {
     message: 'End time must be after start time',
-    path: ['endTime']
+    path: ['endTime'],
   })
-  .refine((data) => {
-    const windowMinutes = (new Date(data.endTime).getTime() - new Date(data.startTime).getTime()) / (60 * 1000)
-    return data.duration <= windowMinutes
-  }, {
-    message: 'Duration cannot exceed exam window',
-    path: ['duration']
-  })
+  .refine(
+    data => {
+      const windowMinutes =
+        (new Date(data.endTime).getTime() - new Date(data.startTime).getTime()) / (60 * 1000)
+      return data.duration <= windowMinutes
+    },
+    {
+      message: 'Duration cannot exceed exam window',
+      path: ['duration'],
+    }
+  )
 
 const aiGenerateSchema = z.object({
   prompt: z.string().min(1).optional(),
@@ -59,12 +72,17 @@ const aiGenerateSchema = z.object({
   subject: z.string().optional(),
   count: z.number().int().min(1).max(50).default(5),
   numMCQ: z.number().int().min(1).max(50).optional(), // alias from CreateExam AI panel
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
-  marksPerMCQ: z.number().positive().optional() // sent by frontend, ignored server-side
+  difficulty: z
+    .preprocess(
+      v => (typeof v === 'string' ? v.toUpperCase() : v),
+      z.enum(['EASY', 'MEDIUM', 'HARD'])
+    )
+    .default('MEDIUM'),
+  marksPerMCQ: z.number().positive().optional(), // sent by frontend, ignored server-side
 })
 
 module.exports = {
   createExamSchema,
   updateExamSchema,
-  aiGenerateSchema
+  aiGenerateSchema,
 }

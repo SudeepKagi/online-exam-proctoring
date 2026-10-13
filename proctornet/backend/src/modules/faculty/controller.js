@@ -306,7 +306,15 @@ router.post(
   validateBody(aiGenerateSchema),
   async (req, res, next) => {
     try {
-      const preview = await facultyService.generateQuestionsPreview(req.body)
+      const { topic, prompt, count, numMCQ, difficulty } = req.body
+      const effectiveCount = count || numMCQ || 5
+      const preview = await facultyService.generateQuestionsPreview({
+        topic,
+        prompt,
+        count: effectiveCount,
+        difficulty,
+        facultyId: req.user.id,
+      })
       const questions = preview?.questions || (Array.isArray(preview) ? preview : [])
       res.status(200).json({ success: true, count: questions.length, questions, preview })
     } catch (err) {

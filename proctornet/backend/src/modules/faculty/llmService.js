@@ -33,13 +33,13 @@ const COST_PER_1K_TOKENS = {
   'gpt-3.5-turbo': 0.0005,
   'gemini-1.5-pro': 0.00125,
   'gemini-1.5-flash': 0.000075,
-  'gemini-3.5-flash': 0.000075,
-  'gemini-3.5-flash-lite': 0.00005,
-  'gemini-flash-lite-latest': 0.00005,
-  'gemini-3.8-flash': 0.000075,
+  'gemini-1.5-flash-latest': 0.000075,
+  'gemini-2.0-flash': 0.000075,
+  'gemini-2.5-flash': 0.000075,
+  'gemini-2.0-flash-lite': 0.00005,
   'claude-3-5-sonnet-20241022': 0.003,
   'claude-3-haiku-20240307': 0.00025,
-  default: 0.0005
+  default: 0.0005,
 }
 
 function estimateCost(model, estimatedTokens) {
@@ -80,7 +80,10 @@ async function _incrementAndCheck(facultyId, estimatedCostUsd) {
       totalCost = totalCostCents / 100_000
       return { callCount, totalCost }
     } catch (rErr) {
-      logger.warn({ facultyId, err: rErr.message }, 'Redis LLM tracking error, falling back to in-memory')
+      logger.warn(
+        { facultyId, err: rErr.message },
+        'Redis LLM tracking error, falling back to in-memory'
+      )
     }
   }
 
@@ -93,7 +96,7 @@ async function _incrementAndCheck(facultyId, estimatedCostUsd) {
     const entry = {
       callCount: 1,
       totalCost: estimatedCostUsd,
-      expiresAt: now + (ttlSeconds * 1000)
+      expiresAt: now + ttlSeconds * 1000,
     }
     memRateLimit.set(memKey, entry)
     return { callCount: entry.callCount, totalCost: entry.totalCost }
@@ -147,20 +150,21 @@ async function callGroq(prompt, model) {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert exam question writer. You must return valid JSON only containing a "questions" array of multiple choice questions.'
+          content:
+            'You are an expert exam question writer. You must return valid JSON only containing a "questions" array of multiple choice questions.',
         },
-        { role: 'user', content: prompt }
+        { role: 'user', content: prompt },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.5,
-      max_tokens: 3000
+      max_tokens: 3000,
     },
     {
       headers: {
         Authorization: `Bearer ${config.llmApiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      timeout: 30_000
+      timeout: 30_000,
     }
   )
   const text = res.data?.choices?.[0]?.message?.content || '{}'
@@ -178,11 +182,11 @@ async function callOpenAI(prompt, model) {
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
       max_tokens: 2000,
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     },
     {
       headers: { Authorization: `Bearer ${config.llmApiKey}`, 'Content-Type': 'application/json' },
-      timeout: 30_000
+      timeout: 30_000,
     }
   )
   const text = res.data?.choices?.[0]?.message?.content || '{}'
@@ -195,9 +199,11 @@ async function callGoogle(prompt, model) {
   const { default: axios } = require('axios')
   const candidateModels = [
     model,
-    'gemini-3.5-flash',
-    'gemini-3.5-flash-lite',
-    'gemini-flash-lite-latest'
+    'gemini-1.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.5-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro',
   ].filter(Boolean)
 
   let lastErr
@@ -210,15 +216,15 @@ async function callGoogle(prompt, model) {
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 2500,
-            responseMimeType: 'application/json'
-          }
+            responseMimeType: 'application/json',
+          },
         },
         {
           headers: {
             'x-goog-api-key': config.llmApiKey,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          timeout: 25_000
+          timeout: 25_000,
         }
       )
       const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
@@ -226,14 +232,15 @@ async function callGoogle(prompt, model) {
       return { text, estimatedTokens: tokens }
     } catch (err) {
       lastErr = err
-      const isRecoverableStatus = err.response && (
-        err.response.status === 404 ||
-        err.response.status === 503 ||
-        err.response.status === 429
-      )
+      const isRecoverableStatus =
+        err.response &&
+        (err.response.status === 404 || err.response.status === 503 || err.response.status === 429)
       const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout')
       if (isRecoverableStatus || isTimeout) {
-        logger.warn({ model: m, error: err.message, status: err.response?.status }, 'Gemini model attempt failed, trying fallback model')
+        logger.warn(
+          { model: m, error: err.message, status: err.response?.status },
+          'Gemini model attempt failed, trying fallback model'
+        )
         continue
       }
       throw err
@@ -250,15 +257,15 @@ async function callAnthropic(prompt, model) {
     {
       model: model || 'claude-3-haiku-20240307',
       max_tokens: 2000,
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: prompt }],
     },
     {
       headers: {
         'x-api-key': config.llmApiKey,
         'anthropic-version': '2023-06-01',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      timeout: 30_000
+      timeout: 30_000,
     }
   )
   const text = res.data?.content?.[0]?.text || '{}'
@@ -270,8 +277,27 @@ async function callAnthropic(prompt, model) {
 function parseAndValidate(rawText, count) {
   let parsed
   try {
-    // Strip markdown fences if provider returned them despite instructions
-    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    let cleaned = rawText.trim()
+    const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)
+    if (fenceMatch) {
+      cleaned = fenceMatch[1].trim()
+    } else {
+      const firstBrace = cleaned.indexOf('{')
+      const lastBrace = cleaned.lastIndexOf('}')
+      const firstBracket = cleaned.indexOf('[')
+      const lastBracket = cleaned.lastIndexOf(']')
+
+      if (
+        firstBrace !== -1 &&
+        lastBrace !== -1 &&
+        (firstBracket === -1 || firstBrace < firstBracket)
+      ) {
+        cleaned = cleaned.slice(firstBrace, lastBrace + 1)
+      } else if (firstBracket !== -1 && lastBracket !== -1) {
+        cleaned = cleaned.slice(firstBracket, lastBracket + 1)
+      }
+    }
+
     const json = JSON.parse(cleaned)
     if (Array.isArray(json)) {
       parsed = json
@@ -296,7 +322,10 @@ function parseAndValidate(rawText, count) {
       // Validate exactly-one-correct
       const correctCount = (q.options || []).filter(o => o.isCorrect === true).length
       if (correctCount !== 1) {
-        errors.push({ index: i, error: `Question ${i + 1} has ${correctCount} correct answers (must be exactly 1)` })
+        errors.push({
+          index: i,
+          error: `Question ${i + 1} has ${correctCount} correct answers (must be exactly 1)`,
+        })
         continue
       }
       // Run through MCQ validator
@@ -307,7 +336,9 @@ function parseAndValidate(rawText, count) {
   }
 
   if (validated.length === 0) {
-    throw new ValidationError(`LLM returned ${parsed.length} questions but none passed validation: ${errors.map(e => e.error).join('; ')}`)
+    throw new ValidationError(
+      `LLM returned ${parsed.length} questions but none passed validation: ${errors.map(e => e.error).join('; ')}`
+    )
   }
 
   return { questions: validated, validationErrors: errors }
@@ -319,11 +350,19 @@ class LLMService {
    * Generate MCQ question preview via LLM.
    * Throws if LLM_PROVIDER=none — UI must hide the button.
    */
-  async generateQuestionsPreview({ topic, count = 5, difficulty = 'MEDIUM', facultyId, providerOverride }) {
+  async generateQuestionsPreview({
+    topic,
+    count = 5,
+    difficulty = 'MEDIUM',
+    facultyId,
+    providerOverride,
+  }) {
     let provider = (providerOverride || config.llmProvider || 'none').toLowerCase().trim()
     if (provider === 'gemini') provider = 'google'
     if (!provider || provider === 'none' || !config.llmApiKey) {
-      throw new ValidationError("Question assistant isn't enabled — ask the administrator (LLM_PROVIDER is set to 'none' or unconfigured).")
+      throw new ValidationError(
+        "Question assistant isn't enabled — ask the administrator (LLM_PROVIDER is set to 'none' or unconfigured)."
+      )
     }
 
     const model = config.llmModel || ''
@@ -341,14 +380,14 @@ class LLMService {
       if (callCount > config.llmRateLimitPerFacultyPerDay) {
         throw new ValidationError(
           `Daily AI generation limit reached (${config.llmRateLimitPerFacultyPerDay} calls/day). ` +
-          'Please try again tomorrow.'
+            'Please try again tomorrow.'
         )
       }
 
       if (totalCost > config.llmDailyCostCapUsd) {
         throw new ValidationError(
           `Daily AI cost cap of $${config.llmDailyCostCapUsd} reached. ` +
-          'Please try again tomorrow or contact your administrator.'
+            'Please try again tomorrow or contact your administrator.'
         )
       }
     }
@@ -374,22 +413,45 @@ class LLMService {
         rawText = r.text
         actualTokens = r.estimatedTokens
       } else {
-        throw new ValidationError(`Unknown LLM_PROVIDER: "${provider}". Valid values: groq, openai, google, anthropic, none.`)
+        throw new ValidationError(
+          `Unknown LLM_PROVIDER: "${provider}". Valid values: groq, openai, google, anthropic, none.`
+        )
       }
     } catch (err) {
       if (err instanceof ValidationError) throw err
       const reqId = crypto.randomUUID().slice(0, 8)
-      logger.error({ reqId, error: err.message, provider }, 'LLM API call failed')
-      throw new ValidationError(`Question generation failed — please try again (ref: ${reqId})`)
+      const providerErrMsg =
+        err.response?.data?.error?.message || err.response?.data?.message || err.message
+      logger.error(
+        { reqId, error: providerErrMsg, provider, status: err.response?.status },
+        'LLM API call failed'
+      )
+
+      let userFriendlyMsg = 'Question generation failed — please try again'
+      if (err.response?.status === 429) {
+        userFriendlyMsg =
+          'AI provider quota or rate limit exceeded. Please try again in a few moments.'
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        userFriendlyMsg = 'AI provider authentication failed — check your API key configuration.'
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        userFriendlyMsg =
+          'AI question generation timed out — please try with fewer questions or shorter content.'
+      } else if (providerErrMsg && !providerErrMsg.includes('Request failed with status code')) {
+        userFriendlyMsg = `AI generation failed: ${providerErrMsg}`
+      }
+      throw new ValidationError(`${userFriendlyMsg} (ref: ${reqId})`)
     }
 
-    logger.info({
-      facultyId,
-      provider,
-      count: cappedCount,
-      tokens: actualTokens,
-      estimatedCost: estimateCost(model, actualTokens).toFixed(6)
-    }, 'LLM question generation completed')
+    logger.info(
+      {
+        facultyId,
+        provider,
+        count: cappedCount,
+        tokens: actualTokens,
+        estimatedCost: estimateCost(model, actualTokens).toFixed(6),
+      },
+      'LLM question generation completed'
+    )
 
     const { questions, validationErrors } = parseAndValidate(rawText, cappedCount)
     return { questions, validationErrors, provider, tokensUsed: actualTokens }
@@ -403,5 +465,5 @@ module.exports = {
   LLMService,
   parseAndValidate,
   buildPrompt,
-  estimateCost
+  estimateCost,
 }

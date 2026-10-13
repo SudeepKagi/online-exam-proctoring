@@ -9,7 +9,7 @@ if (_cacheDriver === 'memory' && _appInstances > 1) {
   // Fatal boot-time guard: in-memory cache cannot be shared across processes
   console.error(
     `[FATAL] CACHE_DRIVER=memory is incompatible with APP_INSTANCES=${_appInstances}. ` +
-    'Use CACHE_DRIVER=redis for multi-instance deployments. Exiting.'
+      'Use CACHE_DRIVER=redis for multi-instance deployments. Exiting.'
   )
   process.exit(1)
 }
@@ -36,8 +36,15 @@ const config = {
   jwtExpiresIn: '15m',
   jwtRefreshExpiresIn: '12h',
   cookieName: 'pn_at',
-  bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || ((process.env.APP_PROFILE || 'lite') === 'lite' ? '10' : '12'), 10),
-  hashConcurrencyLimit: parseInt(process.env.HASH_CONCURRENCY_LIMIT || ((process.env.APP_PROFILE || 'lite') === 'lite' ? '2' : '10'), 10),
+  bcryptRounds: parseInt(
+    process.env.BCRYPT_ROUNDS || ((process.env.APP_PROFILE || 'lite') === 'lite' ? '10' : '12'),
+    10
+  ),
+  hashConcurrencyLimit: parseInt(
+    process.env.HASH_CONCURRENCY_LIMIT ||
+      ((process.env.APP_PROFILE || 'lite') === 'lite' ? '2' : '10'),
+    10
+  ),
 
   // Exam Lifecycle & Timing
   attemptPrewarmMinutes: parseInt(process.env.ATTEMPT_PREWARM_MINUTES || '30', 10),
@@ -56,7 +63,10 @@ const config = {
   maxEventLoopDelayMs: parseInt(process.env.MAX_EVENT_LOOP_DELAY_MS || '200', 10),
 
   // S3 / Object Storage (Unified S3_BUCKET env)
-  s3Bucket: process.env.S3_BUCKET || process.env.AWS_S3_BUCKET || (process.env.NODE_ENV === 'test' ? 'proctornet-test-bucket' : undefined),
+  s3Bucket:
+    process.env.S3_BUCKET ||
+    process.env.AWS_S3_BUCKET ||
+    (process.env.NODE_ENV === 'test' ? 'proctornet-test-bucket' : undefined),
   s3Region: process.env.AWS_REGION || 'ap-south-1',
 
   // ── R4: Driver Selection ──────────────────────────────────────────────────
@@ -104,13 +114,20 @@ const config = {
     if (prov === 'groq') return process.env.GROQ_API_KEY || ''
     if (prov === 'openai') return process.env.OPENAI_API_KEY || ''
     if (prov === 'anthropic') return process.env.ANTHROPIC_API_KEY || ''
-    return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || ''
+    return (
+      process.env.GEMINI_API_KEY ||
+      process.env.GOOGLE_API_KEY ||
+      process.env.GROQ_API_KEY ||
+      process.env.OPENAI_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      ''
+    )
   },
   get llmModel() {
     if (process.env.LLM_MODEL) return process.env.LLM_MODEL
     const prov = this.llmProvider
     if (prov === 'groq') return 'llama-3.3-70b-versatile'
-    if (prov === 'google' || prov === 'gemini') return 'gemini-3.5-flash'
+    if (prov === 'google' || prov === 'gemini') return 'gemini-1.5-flash'
     if (prov === 'openai') return 'gpt-4o-mini'
     if (prov === 'anthropic') return 'claude-3-haiku-20240307'
     return ''
@@ -118,7 +135,10 @@ const config = {
 
   // Per-faculty AI rate limits
   llmDailyCostCapUsd: parseFloat(process.env.LLM_DAILY_COST_CAP_USD || '5.0'),
-  llmRateLimitPerFacultyPerDay: parseInt(process.env.LLM_RATE_LIMIT_PER_FACULTY_PER_DAY || '20', 10),
+  llmRateLimitPerFacultyPerDay: parseInt(
+    process.env.LLM_RATE_LIMIT_PER_FACULTY_PER_DAY || '20',
+    10
+  ),
 
   // App scaling
   appInstances: _appInstances,
