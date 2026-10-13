@@ -5,7 +5,8 @@ const { prisma } = require('../../infra/postgres/client')
 const { toStudentAttemptDTO } = require('./dto')
 const {
   NotFoundError,
-  ForbiddenError
+  ForbiddenError,
+  ConflictError
 } = require('../../shared/errors')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 const { logger } = require('../../shared/logging')
@@ -51,6 +52,14 @@ class AttemptService {
     }
 
     let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+
+    if (attempt && ['SUBMITTED', 'EXPIRED', 'TERMINATED', 'TIMED_OUT'].includes(attempt.status)) {
+      throw new ConflictError(
+        'This attempt is already finalized and cannot be resumed.',
+        'ATTEMPT_ALREADY_FINISHED',
+        { status: attempt.status, attemptId: attempt.id }
+      )
+    }
 
     if (!attempt) {
       // Late joiner fallback: check eligibility, timing, and create READY attempt
@@ -337,6 +346,13 @@ class AttemptService {
     }
 
     let attempt = await attemptRepository.findByExamAndStudent(examId, studentId)
+    if (attempt && ['SUBMITTED', 'EXPIRED', 'TERMINATED', 'TIMED_OUT'].includes(attempt.status)) {
+      throw new ConflictError(
+        'This attempt is already finalized and cannot be resumed.',
+        'ATTEMPT_ALREADY_FINISHED',
+        { status: attempt.status, attemptId: attempt.id }
+      )
+    }
     if (!attempt) {
       const precheckMinutes = parseInt(process.env.PRECHECK_OPEN_MINUTES || '30', 10)
       const precheckOpenTime = new Date(exam.startTime.getTime() - precheckMinutes * 60 * 1000)

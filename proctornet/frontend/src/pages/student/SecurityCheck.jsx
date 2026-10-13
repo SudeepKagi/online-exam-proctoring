@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import * as faceapi from 'face-api.js'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import { isAttemptFinished } from '@/utils/examAttemptState'
 import { 
   Shield, Camera, Wifi, Monitor, CheckCircle2, XCircle, 
   Loader2, ArrowRight, Lock, Key, Cpu, RefreshCw, AlertTriangle, Play, Sparkles, Check, Download,
@@ -145,10 +146,10 @@ export default function SecurityCheck() {
         const examRes = await api.get(`/student/exams/${examId}`)
         const examData = examRes.data.exam || examRes.data
 
-        // Block re-entry if already submitted
-        if (examData.isSubmitted || examData.studentStatus === 'SUBMITTED') {
+        // Block re-entry if already submitted or finalized
+        if (isAttemptFinished(examData)) {
           toast.error('You have already attended and submitted this examination. Re-entry is strictly prohibited.')
-          navigate('/student/results')
+          navigate(`/student/results?examId=${examId}`)
           return
         }
 
@@ -180,7 +181,7 @@ export default function SecurityCheck() {
 
         // Initialize or retrieve readiness attempt (Separated from real attempt activation per T2)
         try {
-          const readinessRes = await api.post(`/exams/${examId}/readiness`).catch(() => null)
+          const readinessRes = await api.post(`/exams/${examId}/readiness`)
           const resolvedAttemptId = readinessRes?.data?.attemptId || readinessRes?.data?.id
           if (resolvedAttemptId) {
             setAttemptId(resolvedAttemptId)
@@ -190,7 +191,12 @@ export default function SecurityCheck() {
               setVpnStatus(vpnRes.data)
             } catch (_) {}
           }
-        } catch (_) {
+        } catch (readinessErr) {
+          if (readinessErr.response?.status === 409 || readinessErr.response?.data?.error?.code === 'ATTEMPT_ALREADY_FINISHED') {
+            toast.error('This attempt is already finalized and cannot be resumed.')
+            navigate(`/student/results?examId=${examId}`)
+            return
+          }
           // precheck mode fallback
         }
 
@@ -680,6 +686,10 @@ export default function SecurityCheck() {
         updateStage('system', 'fail', 'Device Companion required to start exam.')
         toast.error('Start the Device Companion and enter the code shown on Step 1.')
         setActiveStage(0)
+      } else if (err.response?.status === 409 || errCode === 'ATTEMPT_ALREADY_FINISHED' || errMsg?.includes('already finalized')) {
+        toast.error('This attempt is already finalized and cannot be resumed.')
+        navigate(`/student/results?examId=${examId}`)
+        return
       } else if (errCode === 'EXAM_NOT_OPEN') {
         toast.error("This exam hasn't opened yet.")
       } else if (errCode === 'IDENTITY_REQUIRED' || errCode === 'IDENTITY_REVIEW') {

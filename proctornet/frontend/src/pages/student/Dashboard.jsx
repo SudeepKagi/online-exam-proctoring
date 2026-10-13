@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/utils/api'
+import { isAttemptFinished } from '@/utils/examAttemptState'
 import {
   BookOpen, User, Mail, GraduationCap, Building, CheckCircle2,
   ShieldCheck, Clock
@@ -59,18 +60,18 @@ export default function StudentDashboard() {
   const activeCount = exams.filter(e => {
     const start = new Date(e.startTime)
     const end = new Date(e.endTime)
-    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    const isSubmitted = isAttemptFinished(e)
     return now >= start && now <= end && !isSubmitted && e.status !== 'ENDED'
   }).length
 
   const scheduledCount = exams.filter(e => {
     const start = new Date(e.startTime)
-    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    const isSubmitted = isAttemptFinished(e)
     return now < start && !isSubmitted && e.status !== 'ENDED'
   }).length
 
   const completedCount = exams.filter(e => {
-    return e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    return isAttemptFinished(e)
   }).length
 
   return (

@@ -51,6 +51,8 @@ function toStudentExamDTO(e, attempt = null) {
     tabSwitchLimit: e.tabSwitchLimit,
     vpnRequired: e.vpnRequired,
     status: e.status,
+    studentStatus: attempt?.status || null,
+    isSubmitted: Boolean(attempt && ['SUBMITTED', 'EXPIRED', 'TERMINATED', 'TIMED_OUT'].includes(attempt.status)),
     attempt: attempt ? {
       id: attempt.id,
       status: attempt.status,

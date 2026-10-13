@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api, { extractErrorMessage } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
+import { isAttemptFinished } from '@/utils/examAttemptState'
 import {
   BookOpen, Calendar, Search, Play, Camera, Lock, Building,
   GraduationCap, CheckCircle2, Radio, Clock, ArrowRight, ShieldCheck,
@@ -21,7 +22,7 @@ function ExamCard({ exam, now }) {
   const fifteenMinsBeforeStart = new Date(start.getTime() - 15 * 60 * 1000)
   const fiveMinsBeforeStart = new Date(start.getTime() - 5 * 60 * 1000)
   const isEnded = exam.status === 'ENDED' || now > end
-  const isSubmitted = exam.studentStatus === 'SUBMITTED' || exam.isSubmitted
+  const isSubmitted = isAttemptFinished(exam)
   const isActive = !isEnded && (exam.status === 'ACTIVE' || (now >= start && now <= end && (exam.status === 'PUBLISHED' || exam.status === 'SCHEDULED' || exam.status === 'ACTIVE')))
   const isPreCheckOpen = !isEnded && !isSubmitted && now >= fiveMinsBeforeStart && now < start
   const canJoin = !isEnded && !isSubmitted && now >= fifteenMinsBeforeStart && now <= end
@@ -177,7 +178,7 @@ export default function StudentExams() {
     if (!e || !e.startTime) return false
     const start = new Date(e.startTime)
     const end = e.endTime ? new Date(e.endTime) : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
-    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    const isSubmitted = isAttemptFinished(e)
     return now >= start && now <= end && !isSubmitted && e.status !== 'ENDED'
   })
 
@@ -195,7 +196,7 @@ export default function StudentExams() {
     const end = e.endTime ? new Date(e.endTime) : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
     
     const isEnded = e.status === 'ENDED' || now > end
-    const isSubmitted = e.studentStatus === 'SUBMITTED' || e.isSubmitted
+    const isSubmitted = isAttemptFinished(e)
     const isActive = !isEnded && !isSubmitted && (e.status === 'ACTIVE' || (now >= start && now <= end && ['PUBLISHED', 'SCHEDULED', 'ACTIVE'].includes(e.status)))
     const isUpcoming = !isEnded && !isSubmitted && now < start
 
@@ -217,8 +218,8 @@ export default function StudentExams() {
     const bStart = b.startTime ? new Date(b.startTime) : new Date()
     const bEnd = b.endTime ? new Date(b.endTime) : bStart
 
-    const aLive = now >= aStart && now <= aEnd && a.status !== 'ENDED' && a.studentStatus !== 'SUBMITTED'
-    const bLive = now >= bStart && now <= bEnd && b.status !== 'ENDED' && b.studentStatus !== 'SUBMITTED'
+    const aLive = now >= aStart && now <= aEnd && a.status !== 'ENDED' && !isAttemptFinished(a)
+    const bLive = now >= bStart && now <= bEnd && b.status !== 'ENDED' && !isAttemptFinished(b)
     if (aLive && !bLive) return -1
     if (!aLive && bLive) return 1
 

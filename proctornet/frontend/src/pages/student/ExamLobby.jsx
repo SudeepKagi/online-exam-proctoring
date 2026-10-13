@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api from '@/utils/api'
 import toast from 'react-hot-toast'
+import { isAttemptFinished } from '@/utils/examAttemptState'
 import {
   Clock, Shield, Camera, Wifi, CheckCircle2, AlertTriangle,
   ArrowRight, ArrowLeft, RefreshCw, UserCheck, BookOpen, Monitor, Cpu
@@ -246,7 +247,7 @@ export default function ExamLobby() {
 
             {/* Primary Guided Action Button */}
             <div className="flex flex-col items-center justify-center pt-2 gap-2.5">
-              {exam?.isSubmitted || exam?.studentStatus === 'SUBMITTED' ? (
+              {isAttemptFinished(exam) ? (
                 <div className="w-full p-6 rounded-2xl bg-[#ecfdf5] border-2 border-[#a7f3d0] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xs text-center sm:text-left">
                   <div className="flex items-center gap-3">
                     <div className="w-11 h-11 rounded-xl bg-[#10b981] text-white flex items-center justify-center shrink-0 shadow-xs">
