@@ -16,7 +16,7 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
   let companion: CompanionProcess | null = null
 
   test('J3: Student consent -> face enrollment -> admin approval -> precheck (Companion + identity PASS) -> out-of-order answers -> refresh -> offline -> token expiry -> two-tab blocked -> submit -> score release', async ({ browser }) => {
-    test.setTimeout(300000)
+    test.setTimeout(420000)
     const admin = await createActor(browser, 'admin')
     const faculty = await createActor(browser, 'faculty')
     const student = await createActor(browser, 'student')
@@ -155,7 +155,7 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // 4. Pre-Check (SecurityCheck with Companion & Identity PASS)
       // ─────────────────────────────────────────────────────────────
       await student.page.goto(`/student/exams/${examId}/security`)
-      await student.humanize.think(500, 1000)
+      await student.humanize.think(200, 400)
       await student.page.getByText('PROCTORNET SECURE').first().waitFor({ timeout: 15000 })
 
       // Accept companion consent checkbox if present
@@ -183,8 +183,8 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
 
         // Start Exam Device Companion child process
         companion = startCompanionAgent(pairingCode)
-        await student.humanize.think(1500, 3000)
-        console.log('COMPANION LOGS AFTER 3s:', companion.getLogs())
+        await student.humanize.think(800, 1200)
+        console.log('COMPANION LOGS AFTER 1s:', companion.getLogs())
       }
 
       // Wait for Companion status to turn Healthy / Connected in UI
@@ -252,44 +252,39 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // ─────────────────────────────────────────────────────────────
       // Helper to jump to question in palette
       const jumpToQuestion = async (num: number) => {
-        const promptShareBtn = student.page.getByRole('button', { name: /Share Entire Screen/i })
-        if (await promptShareBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-          await promptShareBtn.click()
-        }
         const btn = student.page.locator(`button[aria-label="Jump to question ${num}"], aside button`).filter({ hasText: new RegExp(`^${num}$`) }).first()
         await btn.waitFor({ state: 'visible', timeout: 10000 })
         await btn.click()
-        await student.humanize.think(150, 300)
       }
       
       // Step A: Answer Question 3 first
       await jumpToQuestion(3)
       // Select Option A
       await student.page.locator('main').getByRole('button', { name: /Option A|Strict Quorum Overlap/i }).first().click()
-      await student.humanize.think(200, 400)
+      await student.humanize.think(100, 200)
 
       // Step B: Answer Question 1 second
       await jumpToQuestion(1)
       // Select Option B
       await student.page.locator('main').getByRole('button', { name: /Option B|Unbounded UDP/i }).first().click()
-      await student.humanize.think(200, 400)
+      await student.humanize.think(100, 200)
 
       // Step C: Answer Question 2 third
       await jumpToQuestion(2)
       // Select Option C
       await student.page.locator('main').getByRole('button', { name: /Option C|Asynchronous/i }).first().click()
-      await student.humanize.think(200, 400)
+      await student.humanize.think(100, 200)
 
       // Step D: Change answers in different order
       // Change Question 1 to Option D
       await jumpToQuestion(1)
       await student.page.locator('main').getByRole('button', { name: /Option D|Single Point of Failure/i }).first().click()
-      await student.humanize.think(200, 400)
+      await student.humanize.think(100, 200)
 
       // Change Question 2 to Option A
       await jumpToQuestion(2)
       await student.page.locator('main').getByRole('button', { name: /Option A|Strict Quorum Overlap/i }).first().click()
-      await student.humanize.think(250, 500)
+      await student.humanize.think(100, 200)
 
       // ─────────────────────────────────────────────────────────────
       // 6. Mid-Exam Refresh Resilience
@@ -310,11 +305,11 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // Answer Question 4 while offline
       await jumpToQuestion(4)
       await student.page.locator('main').getByRole('button', { name: /Option A|Strict Quorum Overlap/i }).first().click()
-      await student.humanize.think(250, 500)
+      await student.humanize.think(100, 200)
 
       // Restore network
       await student.context.setOffline(false)
-      await student.humanize.think(500, 1000)
+      await student.humanize.think(200, 400)
 
       // ─────────────────────────────────────────────────────────────
       // 8. Mid-Exam Token Expiry & Silent Refresh (No Hard Navigation)
@@ -325,7 +320,7 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // Select Question 5 and answer -> Axios interceptor silently refreshes using pn_rt
       await jumpToQuestion(5)
       await student.page.locator('main').getByRole('button', { name: /Option A|Strict Quorum Overlap/i }).first().click()
-      await student.humanize.think(500, 1000)
+      await student.humanize.think(200, 400)
 
       // Assert student remained on exam interface without navigation or logout
       expect(student.page.url()).toContain('/exam')

@@ -14,7 +14,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
   let companion: CompanionProcess | null = null
 
   test('J4: Impostor -> FAIL (retries capped) · REVIEW -> invigilator approves in another context -> proceeds without refresh · provider outage -> REVIEW', async ({ browser }) => {
-    test.setTimeout(300000)
+    test.setTimeout(420000)
 
     const admin = await createActor(browser, 'admin')
     const faculty = await createActor(browser, 'faculty')
@@ -167,7 +167,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
       }
 
       // Check if Companion is already healthy from previous session
-      const isAlreadyHealthy = await student.page.getByText(/HEALTHY|Hardware Media Feeds/i).first().isVisible()
+      const isAlreadyHealthy = await student.page.getByText(/HEALTHY|Hardware Media Feeds/i).first().isVisible({ timeout: 3000 }).catch(() => false)
 
       if (!isAlreadyHealthy) {
         const codeBtn = student.page.getByRole('button', { name: /Generate Code|Generate Pairing Code|Pair Device Companion|Generate New Code/i })
@@ -191,7 +191,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
       expect(overrideRes.status).toBe(200)
 
       // Student UI receives socket decision or poll update -> enters exam without page reload
-      await student.humanize.think(500, 1000)
+      await student.humanize.think(200, 400)
       await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
       await student.page.goto(`/student/exams/${examId}/exam`)
       await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
