@@ -149,7 +149,13 @@ fi
 
 # Exam-Aware Gate: Refuse deploy if any attempts are ACTIVE unless explicit override is given
 ACTIVE_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/active-attempts.js"
+ABANDON_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/abandon-stale-attempts.js"
 if [ -L "$CURRENT_LINK" ] && [ -f "$ACTIVE_SCRIPT" ]; then
+    # Auto-abandon ACTIVE attempts whose exam endTime has already passed (stale/orphaned rows)
+    if [ -f "$ABANDON_SCRIPT" ]; then
+        echo "[-] Auto-abandoning stale expired attempts before gate check..."
+        node "$ABANDON_SCRIPT" 2>&1 || true
+    fi
     echo "[-] Checking for active exam attempts..."
     ACTIVE=$(node "$ACTIVE_SCRIPT" 2>/dev/null | grep -E '^[0-9]+$' | tail -n 1 || true)
     ACTIVE=${ACTIVE:-0}
