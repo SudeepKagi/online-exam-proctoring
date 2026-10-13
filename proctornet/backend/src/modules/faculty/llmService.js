@@ -33,6 +33,10 @@ const COST_PER_1K_TOKENS = {
   'gpt-3.5-turbo': 0.0005,
   'gemini-1.5-pro': 0.00125,
   'gemini-1.5-flash': 0.000075,
+  'gemini-3.5-flash': 0.000075,
+  'gemini-3.5-flash-lite': 0.00005,
+  'gemini-flash-lite-latest': 0.00005,
+  'gemini-3.8-flash': 0.000075,
   'claude-3-5-sonnet-20241022': 0.003,
   'claude-3-haiku-20240307': 0.00025,
   default: 0.0005
@@ -191,8 +195,9 @@ async function callGoogle(prompt, model) {
   const { default: axios } = require('axios')
   const candidateModels = [
     model,
-    'gemini-3.8-flash',
-    'gemini-flash-latest'
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-flash-lite-latest'
   ].filter(Boolean)
 
   let lastErr
@@ -213,7 +218,7 @@ async function callGoogle(prompt, model) {
             'x-goog-api-key': config.llmApiKey,
             'Content-Type': 'application/json'
           },
-          timeout: 30_000
+          timeout: 25_000
         }
       )
       const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
@@ -221,7 +226,14 @@ async function callGoogle(prompt, model) {
       return { text, estimatedTokens: tokens }
     } catch (err) {
       lastErr = err
-      if (err.response && (err.response.status === 404 || err.response.status === 503)) {
+      const isRecoverableStatus = err.response && (
+        err.response.status === 404 ||
+        err.response.status === 503 ||
+        err.response.status === 429
+      )
+      const isTimeout = err.code === 'ECONNABORTED' || err.message?.includes('timeout')
+      if (isRecoverableStatus || isTimeout) {
+        logger.warn({ model: m, error: err.message, status: err.response?.status }, 'Gemini model attempt failed, trying fallback model')
         continue
       }
       throw err

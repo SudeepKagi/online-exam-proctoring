@@ -122,6 +122,8 @@ export default function QuestionPool() {
         count: parseInt(aiCount) || 10,
         numMCQ: parseInt(aiCount) || 10,
         difficulty: aiDifficulty
+      }, {
+        timeout: 60000
       })
       toast.success(res.data.message || `Successfully generated ${aiCount} questions!`)
       setShowAI(false)

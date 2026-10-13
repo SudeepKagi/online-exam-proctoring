@@ -110,7 +110,7 @@ const config = {
     if (process.env.LLM_MODEL) return process.env.LLM_MODEL
     const prov = this.llmProvider
     if (prov === 'groq') return 'llama-3.3-70b-versatile'
-    if (prov === 'google' || prov === 'gemini') return 'gemini-3.8-flash'
+    if (prov === 'google' || prov === 'gemini') return 'gemini-3.5-flash'
     if (prov === 'openai') return 'gpt-4o-mini'
     if (prov === 'anthropic') return 'claude-3-haiku-20240307'
     return ''

@@ -82,6 +82,8 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         count: mcqCount,
         difficulty,
         marksPerMCQ: parseFloat(marksPerMCQ)
+      }, {
+        timeout: 60000
       })
       
       const newQuestions = res.data.questions || res.data.preview?.questions || (Array.isArray(res.data.preview) ? res.data.preview : [])
