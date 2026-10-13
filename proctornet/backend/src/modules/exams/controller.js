@@ -1,10 +1,6 @@
 const express = require('express')
 const { examService } = require('./service')
-const {
-  examIdParamSchema,
-  createExamSchema,
-  updateExamSchema
-} = require('./validation')
+const { examIdParamSchema, createExamSchema, updateExamSchema } = require('./validation')
 const { validateBody, validateParams } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
@@ -84,12 +80,15 @@ router.post(
   validateParams(examIdParamSchema),
   async (req, res, next) => {
     try {
-      const result = await examService.publishExam(
-        req.params.examId,
-        req.user.id,
-        req.user.role
-      )
-      return res.status(200).json(result)
+      const result = await examService.publishExam(req.params.examId, req.user.id, req.user.role)
+      return res.status(200).json({
+        ...result,
+        invCredentials: {
+          invId: result.invId,
+          password: result.oneTimePassword,
+          validUntil: result.validUntil,
+        },
+      })
     } catch (err) {
       next(err)
     }

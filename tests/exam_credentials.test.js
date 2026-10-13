@@ -3,10 +3,16 @@ const assert = require('node:assert/strict')
 const path = require('node:path')
 const bcrypt = require(path.join(__dirname, '../proctornet/node_modules/bcrypt'))
 
-const { examService } = require(path.join(__dirname, '../proctornet/backend/src/modules/exams/service'))
-const { examRepository } = require(path.join(__dirname, '../proctornet/backend/src/modules/exams/repository'))
+const { examService } = require(
+  path.join(__dirname, '../proctornet/backend/src/modules/exams/service')
+)
+const { examRepository } = require(
+  path.join(__dirname, '../proctornet/backend/src/modules/exams/repository')
+)
 const { prisma } = require(path.join(__dirname, '../proctornet/backend/src/infra/postgres/client'))
-const { ValidationError, ForbiddenError } = require(path.join(__dirname, '../proctornet/backend/src/shared/errors'))
+const { ValidationError, ForbiddenError } = require(
+  path.join(__dirname, '../proctornet/backend/src/shared/errors')
+)
 const { ROLES } = require(path.join(__dirname, '../proctornet/backend/src/shared/roles'))
 
 const TEST_EXAM_ID = '11111111-1111-1111-1111-111111111111'
@@ -31,17 +37,17 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
             negativeMarks: 0,
             options: [
               { id: 'o1', text: 'Opt 1', isCorrect: false },
-              { id: 'o2', text: 'Opt 2', isCorrect: false }
-            ]
-          }
-        ]
+              { id: 'o2', text: 'Opt 2', isCorrect: false },
+            ],
+          },
+        ],
       })
 
       await assert.rejects(
         async () => {
           await examService.publishExam(TEST_EXAM_ID, TEST_FACULTY_ID, ROLES.FACULTY)
         },
-        (err) => {
+        err => {
           assert.ok(err instanceof ValidationError)
           assert.match(err.message, /must have exactly 1 correct option/i)
           return true
@@ -75,10 +81,10 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
             negativeMarks: 0,
             options: [
               { id: 'o1', text: 'Opt 1', isCorrect: true },
-              { id: 'o2', text: 'Opt 2', isCorrect: false }
-            ]
-          }
-        ]
+              { id: 'o2', text: 'Opt 2', isCorrect: false },
+            ],
+          },
+        ],
       })
 
       examRepository.update = async (id, data) => {
@@ -90,7 +96,7 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
         id,
         status,
         invId: 'INV-ALGO-101',
-        title: 'Algorithms'
+        title: 'Algorithms',
       })
 
       const res = await examService.publishExam(TEST_EXAM_ID, TEST_FACULTY_ID, ROLES.FACULTY)
@@ -120,15 +126,19 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
         title: 'OS',
         invId: 'INV-OLD-1',
         facultyId: TEST_FACULTY_ID,
-        endTime: new Date(Date.now() + 3600000)
+        endTime: new Date(Date.now() + 3600000),
       })
 
       // Ownership mismatch throws ForbiddenError
       await assert.rejects(
         async () => {
-          await examService.regenerateInvigilatorCredentials(TEST_EXAM_ID, '99999999-9999-9999-9999-999999999999', ROLES.FACULTY)
+          await examService.regenerateInvigilatorCredentials(
+            TEST_EXAM_ID,
+            '99999999-9999-9999-9999-999999999999',
+            ROLES.FACULTY
+          )
         },
-        (err) => err instanceof ForbiddenError
+        err => err instanceof ForbiddenError
       )
 
       let sessionsInvalidated = false
@@ -144,7 +154,11 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
         return { id, ...data }
       }
 
-      const res = await examService.regenerateInvigilatorCredentials(TEST_EXAM_ID, TEST_FACULTY_ID, ROLES.FACULTY)
+      const res = await examService.regenerateInvigilatorCredentials(
+        TEST_EXAM_ID,
+        TEST_FACULTY_ID,
+        ROLES.FACULTY
+      )
       assert.ok(sessionsInvalidated, 'Active invigilator sessions must be invalidated')
       assert.ok(res.invId.startsWith('INV-'), 'New invId must start with INV-')
       assert.ok(res.oneTimePassword, 'Must return new oneTimePassword')
@@ -156,6 +170,58 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
       examRepository.update = origUpdate
       prisma.invigilatorSession.updateMany = origUpdateMany
       prisma.auditLog.create = origCreateAudit
+    }
+  })
+
+  it('facultyService.publishExam returns complete invCredentials with invId and password', async () => {
+    const facultyService = require(
+      path.join(__dirname, '../proctornet/backend/src/modules/faculty/service')
+    )
+    const origFind = examRepository.findById
+    const origUpdate = examRepository.update
+    const origUpdateStatus = examRepository.updateStatus
+
+    try {
+      examRepository.findById = async () => ({
+        id: TEST_EXAM_ID,
+        title: 'Distributed Systems',
+        invId: 'INV-DS-101',
+        facultyId: TEST_FACULTY_ID,
+        status: 'DRAFT',
+        duration: 60,
+        startTime: new Date(Date.now() + 3600000),
+        endTime: new Date(Date.now() + 7200000),
+        questions: [
+          {
+            id: '44444444-4444-4444-4444-444444444444',
+            marks: 2,
+            negativeMarks: 0,
+            options: [
+              { id: 'o1', text: 'Opt 1', isCorrect: true },
+              { id: 'o2', text: 'Opt 2', isCorrect: false },
+            ],
+          },
+        ],
+      })
+
+      examRepository.update = async (id, data) => ({ id, ...data })
+      examRepository.updateStatus = async (id, status) => ({
+        id,
+        status,
+        invId: 'INV-DS-101',
+        title: 'Distributed Systems',
+      })
+
+      const published = await facultyService.publishExam(TEST_EXAM_ID, TEST_FACULTY_ID)
+      assert.equal(published.status, 'PUBLISHED')
+      assert.ok(published.invCredentials, 'published exam must have invCredentials')
+      assert.equal(published.invCredentials.invId, 'INV-DS-101')
+      assert.ok(published.invCredentials.password, 'invCredentials.password must be populated')
+      assert.ok(published.invCredentials.validUntil, 'invCredentials.validUntil must be populated')
+    } finally {
+      examRepository.findById = origFind
+      examRepository.update = origUpdate
+      examRepository.updateStatus = origUpdateStatus
     }
   })
 

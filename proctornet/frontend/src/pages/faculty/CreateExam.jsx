@@ -3,7 +3,23 @@ import { useNavigate, Link } from 'react-router-dom'
 import DashboardLayout from '@/components/common/DashboardLayout'
 import api, { extractErrorMessage } from '@/utils/api'
 import { toast } from 'react-hot-toast'
-import { Save, ArrowLeft, Shield, Clock, Users, CheckCircle, Plus, Trash2, HelpCircle, Sparkles, Upload, Loader2, FileText, RefreshCw, CheckCircle2 } from 'lucide-react'
+import {
+  Save,
+  ArrowLeft,
+  Shield,
+  Clock,
+  Users,
+  CheckCircle,
+  Plus,
+  Trash2,
+  HelpCircle,
+  Sparkles,
+  Upload,
+  Loader2,
+  FileText,
+  RefreshCw,
+  CheckCircle2,
+} from 'lucide-react'
 
 const DEPARTMENTS = ['CSE', 'ECE', 'ME', 'CV', 'ISE', 'EEE']
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8]
@@ -19,7 +35,7 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
   const [generating, setGenerating] = useState(false)
   const fileRef = React.useRef()
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = async e => {
     const f = e.target.files[0]
     if (!f) return
     if (f.type !== 'application/pdf') return toast.error('Please upload a PDF file')
@@ -57,7 +73,10 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
       for (let pass = 0; pass < 5; pass++) {
         cleaned = cleaned.replace(/(?<=\b[a-zA-Z])\s+(?=[a-zA-Z]\b)/g, '')
       }
-      cleaned = cleaned.replace(/[ \t]+/g, ' ').replace(/\n\s*\n/g, '\n\n').trim()
+      cleaned = cleaned
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n\s*\n/g, '\n\n')
+        .trim()
 
       setExtractedText(cleaned)
       toast.success('Text extracted successfully!', { id: 'pdf' })
@@ -77,16 +96,23 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
     try {
       const mcqCount = parseInt(numMCQ) || 5
 
-      const res = await api.post(`/faculty/exams/ai-generate-preview`, {
-        topic: text,
-        count: mcqCount,
-        difficulty,
-        marksPerMCQ: parseFloat(marksPerMCQ)
-      }, {
-        timeout: 60000
-      })
-      
-      const newQuestions = res.data.questions || res.data.preview?.questions || (Array.isArray(res.data.preview) ? res.data.preview : [])
+      const res = await api.post(
+        `/faculty/exams/ai-generate-preview`,
+        {
+          topic: text,
+          count: mcqCount,
+          difficulty,
+          marksPerMCQ: parseFloat(marksPerMCQ),
+        },
+        {
+          timeout: 60000,
+        }
+      )
+
+      const newQuestions =
+        res.data.questions ||
+        res.data.preview?.questions ||
+        (Array.isArray(res.data.preview) ? res.data.preview : [])
       if (newQuestions.length === 0) {
         throw new Error('No questions returned')
       }
@@ -97,7 +123,9 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
     } catch (err) {
       toast.error(extractErrorMessage(err, 'AI generation failed'))
       setStep('preview')
-    } finally { setGenerating(false) }
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
@@ -108,7 +136,9 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         </div>
         <div>
           <h3 className="font-semibold text-slate-900 text-sm">Question Assistant</h3>
-          <p className="text-xs text-slate-500">Upload a PDF or paste notes — question assistant will generate your question pool</p>
+          <p className="text-xs text-slate-500">
+            Upload a PDF or paste notes — question assistant will generate your question pool
+          </p>
         </div>
       </div>
 
@@ -116,9 +146,12 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
         <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
           <Sparkles size={16} className="text-amber-600 mt-0.5 shrink-0" />
           <div className="space-y-0.5">
-            <p className="font-bold text-amber-900">Question assistant isn't enabled — ask the administrator</p>
+            <p className="font-bold text-amber-900">
+              Question assistant isn't enabled — ask the administrator
+            </p>
             <p className="text-[11px] text-amber-700 leading-relaxed font-medium">
-              Automated question generation requires an active provider key configured on the server.
+              Automated question generation requires an active provider key configured on the
+              server.
             </p>
           </div>
         </div>
@@ -127,8 +160,15 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
       {/* PDF Upload */}
       <div
         onClick={() => fileRef.current?.click()}
-        className="border-2 border-dashed border-slate-300 bg-white hover:border-[#2f80ed] rounded-2xl p-6 text-center cursor-pointer transition-all">
-        <input ref={fileRef} type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
+        className="border-2 border-dashed border-slate-300 bg-white hover:border-[#2f80ed] rounded-2xl p-6 text-center cursor-pointer transition-all"
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileChange}
+          className="hidden"
+        />
         {file ? (
           <div className="flex items-center justify-center gap-2">
             <FileText size={18} className="text-[#2f80ed]" />
@@ -138,7 +178,9 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
           <>
             <Upload size={24} className="text-[#2f80ed] mx-auto mb-2" />
             <p className="text-xs text-slate-800 font-semibold">Click to upload PDF</p>
-            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">or paste text content below</p>
+            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+              or paste text content below
+            </p>
           </>
         )}
       </div>
@@ -146,31 +188,56 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
       {/* Extracted / pasted text */}
       <div>
         <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">
-          Content Text <span className="text-slate-400 font-normal">(auto-filled from PDF, or paste manually)</span>
+          Content Text{' '}
+          <span className="text-slate-400 font-normal">
+            (auto-filled from PDF, or paste manually)
+          </span>
         </label>
-        <textarea value={extractedText} onChange={e => setExtractedText(e.target.value)} rows={4}
+        <textarea
+          value={extractedText}
+          onChange={e => setExtractedText(e.target.value)}
+          rows={4}
           placeholder="Paste your lecture notes, textbook content, or topic summary here…"
-          className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2.5 text-xs text-slate-900 font-bold resize-none focus:outline-none focus:border-[#2f80ed]" />
-        <p className="text-[11px] font-semibold text-slate-400 mt-1">{extractedText.length} characters</p>
+          className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2.5 text-xs text-slate-900 font-bold resize-none focus:outline-none focus:border-[#2f80ed]"
+        />
+        <p className="text-[11px] font-semibold text-slate-400 mt-1">
+          {extractedText.length} characters
+        </p>
       </div>
 
       {/* Config */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
         {[
           { label: 'MCQ Count', value: numMCQ, set: setNumMCQ, min: 1, max: 20 },
-          { label: 'Marks / MCQ', value: marksPerMCQ, set: setMarksPerMCQ, min: 0.5, step: 0.5 }
+          { label: 'Marks / MCQ', value: marksPerMCQ, set: setMarksPerMCQ, min: 0.5, step: 0.5 },
         ].map(({ label, value, set, min = 1, max, step = 1 }) => (
           <div key={label}>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">{label}</label>
-            <input type="number" min={min} max={max} step={step} value={value} onChange={e => set(e.target.value)}
-              className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]" />
+            <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">
+              {label}
+            </label>
+            <input
+              type="number"
+              min={min}
+              max={max}
+              step={step}
+              value={value}
+              onChange={e => set(e.target.value)}
+              className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]"
+            />
           </div>
         ))}
         <div>
-          <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">Difficulty</label>
-          <select value={difficulty} onChange={e => setDifficulty(e.target.value)}
-            className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]">
-            <option value="EASY">EASY</option><option value="MEDIUM">MEDIUM</option><option value="HARD">HARD</option>
+          <label className="text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1 block">
+            Difficulty
+          </label>
+          <select
+            value={difficulty}
+            onChange={e => setDifficulty(e.target.value)}
+            className="w-full border-1.5 border-slate-300 bg-white rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-[#2f80ed]"
+          >
+            <option value="EASY">EASY</option>
+            <option value="MEDIUM">MEDIUM</option>
+            <option value="HARD">HARD</option>
           </select>
         </div>
       </div>
@@ -178,9 +245,19 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
       {step === 'done' ? (
         <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl">
           <CheckCircle2 size={18} className="text-emerald-600" />
-          <p className="text-xs text-emerald-800 font-semibold flex-1">Questions added to your local pool!</p>
-          <button onClick={() => { setStep('upload'); setFile(null); setExtractedText('') }}
-            className="text-xs text-[#2f80ed] hover:underline flex items-center gap-1 font-bold"><RefreshCw size={12} /> Generate more</button>
+          <p className="text-xs text-emerald-800 font-semibold flex-1">
+            Questions added to your local pool!
+          </p>
+          <button
+            onClick={() => {
+              setStep('upload')
+              setFile(null)
+              setExtractedText('')
+            }}
+            className="text-xs text-[#2f80ed] hover:underline flex items-center gap-1 font-bold"
+          >
+            <RefreshCw size={12} /> Generate more
+          </button>
         </div>
       ) : (
         <button
@@ -190,7 +267,11 @@ function AIGeneratorPanel({ onGenerated, llmEnabled }) {
           className="w-full py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-md shadow-blue-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
           {generating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-          {!llmEnabled ? "Question assistant isn't enabled — ask the administrator" : generating ? 'Generating with AI…' : `Generate ${numMCQ} Single-Choice MCQs`}
+          {!llmEnabled
+            ? "Question assistant isn't enabled — ask the administrator"
+            : generating
+              ? 'Generating with AI…'
+              : `Generate ${numMCQ} Single-Choice MCQs`}
         </button>
       )}
     </div>
@@ -202,7 +283,7 @@ export default function CreateExam() {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [successData, setSuccessData] = useState(null)
-  
+
   const [questions, setQuestions] = useState([])
   const [activeTab, setActiveTab] = useState('manual')
 
@@ -213,19 +294,22 @@ export default function CreateExam() {
     difficulty: 'MEDIUM',
     negativeMarks: 0,
     options: ['', '', '', ''],
-    correctAnswer: 'A'
+    correctAnswer: 'A',
   })
 
   const [llmEnabled, setLlmEnabled] = useState(false)
 
   useEffect(() => {
-    api.get('/config').then(r => setLlmEnabled(Boolean(r.data?.llmEnabled))).catch(() => {})
+    api
+      .get('/config')
+      .then(r => setLlmEnabled(Boolean(r.data?.llmEnabled)))
+      .catch(() => {})
   }, [])
 
   const getDefaultDatetimes = () => {
     const now = new Date(Date.now() + 10 * 60000)
     const end = new Date(now.getTime() + 60 * 60000)
-    const toLocalISO = (d) => {
+    const toLocalISO = d => {
       const year = d.getFullYear()
       const month = String(d.getMonth() + 1).padStart(2, '0')
       const day = String(d.getDate()).padStart(2, '0')
@@ -235,7 +319,7 @@ export default function CreateExam() {
     }
     return {
       startTime: toLocalISO(now),
-      endTime: toLocalISO(end)
+      endTime: toLocalISO(end),
     }
   }
 
@@ -260,48 +344,58 @@ export default function CreateExam() {
     randomiseOptions: true,
     tabSwitchLimit: 3,
     allowedDepartments: ['CSE'],
-    allowedSemesters: [5]
+    allowedSemesters: [5],
   })
 
-    const handleChange = (field, val) => {
-      setFormData(prev => {
-        const next = { ...prev, [field]: val }
-        // Auto compute endTime if startTime or duration changed
-        if ((field === 'startTime' || field === 'duration') && next.startTime && next.duration) {
-          const start = new Date(next.startTime)
-          if (!isNaN(start.getTime())) {
-            const end = new Date(start.getTime() + Number(next.duration) * 60000)
-            const year = end.getFullYear()
-            const month = String(end.getMonth() + 1).padStart(2, '0')
-            const day = String(end.getDate()).padStart(2, '0')
-            const hours = String(end.getHours()).padStart(2, '0')
-            const mins = String(end.getMinutes()).padStart(2, '0')
-            next.endTime = `${year}-${month}-${day}T${hours}:${mins}`
-          }
+  const handleChange = (field, val) => {
+    setFormData(prev => {
+      const next = { ...prev, [field]: val }
+      // Auto compute endTime if startTime or duration changed
+      if ((field === 'startTime' || field === 'duration') && next.startTime && next.duration) {
+        const start = new Date(next.startTime)
+        if (!isNaN(start.getTime())) {
+          const end = new Date(start.getTime() + Number(next.duration) * 60000)
+          const year = end.getFullYear()
+          const month = String(end.getMonth() + 1).padStart(2, '0')
+          const day = String(end.getDate()).padStart(2, '0')
+          const hours = String(end.getHours()).padStart(2, '0')
+          const mins = String(end.getMinutes()).padStart(2, '0')
+          next.endTime = `${year}-${month}-${day}T${hours}:${mins}`
         }
-        return next
-      })
-    }
+      }
+      return next
+    })
+  }
 
-    const toggleSelection = (field, val) => {
-      setFormData(prev => {
-        const arr = prev[field] || []
-        const exists = arr.includes(val)
-        const updated = exists ? arr.filter(x => x !== val) : [...arr, val]
-        return { ...prev, [field]: updated }
-      })
-    }
+  const toggleSelection = (field, val) => {
+    setFormData(prev => {
+      const arr = prev[field] || []
+      const exists = arr.includes(val)
+      const updated = exists ? arr.filter(x => x !== val) : [...arr, val]
+      return { ...prev, [field]: updated }
+    })
+  }
 
-    const validateStep2 = () => {
-    if (!formData.title.trim()) { toast.error('Exam title is required'); return false }
-    if (!formData.subject.trim()) { toast.error('Subject code is required'); return false }
-    if (!formData.startTime) { toast.error('Start time is required'); return false }
+  const validateStep2 = () => {
+    if (!formData.title.trim()) {
+      toast.error('Exam title is required')
+      return false
+    }
+    if (!formData.subject.trim()) {
+      toast.error('Subject code is required')
+      return false
+    }
+    if (!formData.startTime) {
+      toast.error('Start time is required')
+      return false
+    }
     return true
   }
 
   const handleAddQuestionLocal = () => {
     if (!qForm.questionText.trim()) return toast.error('Question prompt cannot be empty')
-    if (qForm.options.some(opt => !opt.trim())) return toast.error('All 4 MCQ options must be filled')
+    if (qForm.options.some(opt => !opt.trim()))
+      return toast.error('All 4 MCQ options must be filled')
 
     const formattedOptions = qForm.options.map((opt, i) => {
       const letter = String.fromCharCode(65 + i)
@@ -316,12 +410,12 @@ export default function CreateExam() {
       difficulty: qForm.difficulty,
       negativeMarks: Number(qForm.negativeMarks || 0),
       options: formattedOptions,
-      correctAnswer: qForm.correctAnswer
+      correctAnswer: qForm.correctAnswer,
     }
 
     setQuestions(prev => [...prev, newQuestion])
     setFormData(prev => ({ ...prev, totalMarks: prev.totalMarks + newQuestion.marks }))
-    
+
     // Reset form
     setQForm({
       type: 'MCQ',
@@ -330,18 +424,18 @@ export default function CreateExam() {
       difficulty: 'MEDIUM',
       negativeMarks: 0,
       options: ['', '', '', ''],
-      correctAnswer: 'A'
+      correctAnswer: 'A',
     })
     toast.success('Question added to exam pool')
   }
 
-  const handleAIGenerated = (newQuestionsRaw) => {
+  const handleAIGenerated = newQuestionsRaw => {
     if (!Array.isArray(newQuestionsRaw) || newQuestionsRaw.length === 0) return
 
     const formattedQuestions = newQuestionsRaw.map(q => {
       const parsedMarks = parseFloat(q.marks || 2)
       const qType = (q.type || 'MCQ').toUpperCase()
-      
+
       let correctIdx = 0
       if (typeof q.correctOption === 'number') correctIdx = q.correctOption
       else if (typeof q.correctOption === 'string' && q.correctOption.length === 1) {
@@ -353,12 +447,10 @@ export default function CreateExam() {
 
       let formattedOptions = []
       if (qType === 'MCQ' || Array.isArray(q.options)) {
-        const rawOpts = (Array.isArray(q.options) && q.options.length > 0) ? q.options : [
-          'Option A',
-          'Option B',
-          'Option C',
-          'Option D'
-        ]
+        const rawOpts =
+          Array.isArray(q.options) && q.options.length > 0
+            ? q.options
+            : ['Option A', 'Option B', 'Option C', 'Option D']
         formattedOptions = rawOpts.map((opt, idx) => {
           const letter = String.fromCharCode(65 + idx)
           const isCurrCorrect = idx === correctIdx || letter === rawCorrectAnswer
@@ -367,7 +459,7 @@ export default function CreateExam() {
           }
           return {
             text: opt.text || opt.value || String(opt),
-            isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCurrCorrect
+            isCorrect: opt.isCorrect !== undefined ? Boolean(opt.isCorrect) : isCurrCorrect,
           }
         })
       }
@@ -380,7 +472,7 @@ export default function CreateExam() {
         difficulty: (q.difficulty || 'MEDIUM').toUpperCase(),
         negativeMarks: 0,
         options: formattedOptions,
-        correctAnswer: rawCorrectAnswer
+        correctAnswer: rawCorrectAnswer,
       }
     })
 
@@ -466,25 +558,52 @@ export default function CreateExam() {
     try {
       const res = await api.post('/faculty/exams', payload)
       const createdExam = res.data.exam
-      
-      const questionsToUpload = questions.map(({ questionText, options, correctAnswer, marks, negativeMarks, difficulty }) => ({
-        questionText,
-        options,
-        correctAnswer,
-        marks: parseFloat(marks) || 1,
-        negativeMarks: parseFloat(negativeMarks) || 0,
-        difficulty: difficulty || 'MEDIUM'
-      }))
+
+      const questionsToUpload = questions.map(
+        ({ questionText, options, correctAnswer, marks, negativeMarks, difficulty }) => ({
+          questionText,
+          options,
+          correctAnswer,
+          marks: parseFloat(marks) || 1,
+          negativeMarks: parseFloat(negativeMarks) || 0,
+          difficulty: difficulty || 'MEDIUM',
+        })
+      )
 
       await api.post('/faculty/questions/bulk', {
         examId: createdExam.id,
-        questions: questionsToUpload
+        questions: questionsToUpload,
       })
 
       const publishRes = await api.post(`/faculty/exams/${createdExam.id}/publish`)
+
+      let invCreds = publishRes.data?.invCredentials ||
+        publishRes.data?.exam?.invCredentials || {
+          invId: publishRes.data?.exam?.invId || createdExam?.invId,
+          password: publishRes.data?.exam?.oneTimePassword || createdExam?.oneTimePassword,
+        }
+
+      // If credentials still missing from publish response, fetch from credentials endpoint as resilient fallback
+      if (!invCreds?.invId || !invCreds?.password) {
+        try {
+          const credRes = await api.get(`/faculty/exams/${createdExam.id}/credentials`)
+          if (credRes.data?.invCredentials) {
+            invCreds = credRes.data.invCredentials
+          } else if (credRes.data?.credentials) {
+            invCreds = credRes.data.credentials
+          }
+        } catch (credErr) {
+          console.warn('Could not fetch fallback credentials:', credErr)
+        }
+      }
+
       toast.success('Exam deployed successfully!')
-      setSuccessData(publishRes.data)
-    } catch(err) {
+      setSuccessData({
+        ...publishRes.data,
+        exam: publishRes.data?.exam || createdExam,
+        invCredentials: invCreds,
+      })
+    } catch (err) {
       toast.error(extractErrorMessage(err, 'Failed to create exam'))
     } finally {
       setIsSubmitting(false)
@@ -492,6 +611,17 @@ export default function CreateExam() {
   }
 
   if (successData) {
+    const examData = successData.exam || successData
+    const examId = examData?.id || successData?.id || ''
+    const examTitle = examData?.title || 'Assessment'
+    const invCredentials = successData.invCredentials ||
+      examData?.invCredentials || {
+        invId: examData?.invId,
+        password: examData?.oneTimePassword || examData?.password,
+      }
+    const invId = invCredentials?.invId || examData?.invId || ''
+    const password = invCredentials?.password || examData?.oneTimePassword || ''
+
     return (
       <DashboardLayout title="Faculty Workspace">
         <div className="max-w-3xl mx-auto py-10 px-4 font-sans">
@@ -504,7 +634,8 @@ export default function CreateExam() {
               Exam Deployed Successfully!
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 font-medium max-w-md mx-auto">
-              Assessment <span className="font-semibold text-slate-800">"{successData.exam.title}"</span> is scheduled, published, and live in the system registry.
+              Assessment <span className="font-semibold text-slate-800">"{examTitle}"</span> is
+              scheduled, published, and live in the system registry.
             </p>
           </div>
 
@@ -537,13 +668,15 @@ export default function CreateExam() {
                 </label>
                 <div className="flex items-center gap-2.5 bg-[#f8fafc] border border-slate-200 p-2 rounded-2xl">
                   <div className="flex-1 font-mono text-xs font-bold text-slate-900 px-3 break-all select-all">
-                    {successData.exam.id}
+                    {examId}
                   </div>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(successData.exam.id)
-                      toast.success('Exam ID Copied to Clipboard!')
+                      if (examId) {
+                        navigator.clipboard.writeText(examId)
+                        toast.success('Exam ID Copied to Clipboard!')
+                      }
                     }}
                     className="px-4 py-2 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-xl shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
                   >
@@ -561,13 +694,13 @@ export default function CreateExam() {
                   </label>
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-bold text-slate-900 font-mono tracking-wide">
-                      {successData.invCredentials?.invId || '—'}
+                      {invId || '—'}
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        if (successData.invCredentials?.invId) {
-                          navigator.clipboard.writeText(successData.invCredentials.invId)
+                        if (invId) {
+                          navigator.clipboard.writeText(invId)
                           toast.success('Invigilator ID Copied!')
                         }
                       }}
@@ -585,13 +718,13 @@ export default function CreateExam() {
                   </label>
                   <div className="flex items-center justify-between">
                     <span className="text-xl font-bold text-[#2f80ed] font-mono tracking-widest bg-white px-3 py-1 rounded-xl border border-blue-200 shadow-2xs">
-                      {successData.invCredentials?.password || '••••••••'}
+                      {password || '••••••••'}
                     </span>
                     <button
                       type="button"
                       onClick={() => {
-                        if (successData.invCredentials?.password) {
-                          navigator.clipboard.writeText(successData.invCredentials.password)
+                        if (password) {
+                          navigator.clipboard.writeText(password)
                           toast.success('Access Password Copied!')
                         }
                       }}
@@ -616,7 +749,7 @@ export default function CreateExam() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/faculty/exams/${successData.exam.id}`)}
+              onClick={() => navigate(`/faculty/exams/${examId}`)}
               className="px-7 py-3 text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white rounded-2xl shadow-md hover:shadow-lg transition-all cursor-pointer"
             >
               View Exam Details →
@@ -632,11 +765,18 @@ export default function CreateExam() {
       <div className="flex flex-col gap-6 font-sans">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Link to="/faculty/exams" className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2f80ed] hover:underline mb-1">
+            <Link
+              to="/faculty/exams"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#2f80ed] hover:underline mb-1"
+            >
               <ArrowLeft size={15} /> Back to Exams
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Create New Examination Wizard</h1>
-            <p className="text-sm text-slate-500 font-medium mt-0.5">3-step builder to design questions, security rules, and publish your exam.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Create New Examination Wizard
+            </h1>
+            <p className="text-sm text-slate-500 font-medium mt-0.5">
+              3-step builder to design questions, security rules, and publish your exam.
+            </p>
           </div>
         </div>
 
@@ -646,9 +786,9 @@ export default function CreateExam() {
             {[
               { step: 1, label: 'Add Questions', desc: 'Build Single-Choice MCQ items' },
               { step: 2, label: 'Timing & Security', desc: 'Configure schedules & rules' },
-              { step: 3, label: 'Review & Publish', desc: 'Verify and deploy assessment' }
-            ].map((s) => (
-              <button 
+              { step: 3, label: 'Review & Publish', desc: 'Verify and deploy assessment' },
+            ].map(s => (
+              <button
                 key={s.step}
                 type="button"
                 onClick={() => setStep(s.step)}
@@ -658,13 +798,23 @@ export default function CreateExam() {
                     : 'bg-[#f8fafc] border-slate-200 text-slate-600 hover:border-slate-300'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-semibold text-xs shrink-0 ${
-                  step === s.step ? 'bg-[#2f80ed] text-white' : step > s.step ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-600'
-                }`}>
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center font-semibold text-xs shrink-0 ${
+                    step === s.step
+                      ? 'bg-[#2f80ed] text-white'
+                      : step > s.step
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-slate-200 text-slate-600'
+                  }`}
+                >
                   {step > s.step ? '✓' : s.step}
                 </div>
                 <div className="min-w-0 hidden sm:block">
-                  <div className={`text-xs font-semibold ${step === s.step ? 'text-[#2f80ed]' : 'text-slate-900'}`}>{s.label}</div>
+                  <div
+                    className={`text-xs font-semibold ${step === s.step ? 'text-[#2f80ed]' : 'text-slate-900'}`}
+                  >
+                    {s.label}
+                  </div>
                   <div className="text-[11px] text-slate-500 font-semibold truncate">{s.desc}</div>
                 </div>
               </button>
@@ -715,15 +865,23 @@ export default function CreateExam() {
                 {activeTab === 'manual' ? (
                   <div className="space-y-5 text-xs font-sans">
                     <div className="flex items-center justify-between p-3 bg-blue-50/50 border border-blue-100 rounded-xl">
-                      <div className="text-xs font-semibold text-[#2f80ed]">Question Type: Single-Choice Multiple Choice (MCQ)</div>
-                      <div className="text-[11px] text-slate-500 font-medium">Exactly one correct option</div>
+                      <div className="text-xs font-semibold text-[#2f80ed]">
+                        Question Type: Single-Choice Multiple Choice (MCQ)
+                      </div>
+                      <div className="text-[11px] text-slate-500 font-medium">
+                        Exactly one correct option
+                      </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Question Prompt</label>
+                      <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                        Question Prompt
+                      </label>
                       <textarea
                         value={qForm.questionText}
-                        onChange={(e) => setQForm(prev => ({ ...prev, questionText: e.target.value }))}
+                        onChange={e =>
+                          setQForm(prev => ({ ...prev, questionText: e.target.value }))
+                        }
                         placeholder="Enter the question detail or prompt here..."
                         rows={3}
                         className="w-full p-3.5 rounded-xl bg-[#f8fafc] border-1.5 border-slate-300 text-slate-900 text-xs font-bold focus:outline-none focus:border-[#2f80ed]"
@@ -731,15 +889,17 @@ export default function CreateExam() {
                     </div>
 
                     <div className="space-y-3 p-4 bg-[#f8fafc] rounded-xl border border-slate-200">
-                      <label className="block text-xs font-semibold text-slate-900">MCQ Options & Correct Choice</label>
+                      <label className="block text-xs font-semibold text-slate-900">
+                        MCQ Options & Correct Choice
+                      </label>
                       {['A', 'B', 'C', 'D'].map((opt, i) => (
                         <div key={opt} className="flex gap-2.5 items-center">
                           <button
                             type="button"
                             onClick={() => setQForm(prev => ({ ...prev, correctAnswer: opt }))}
                             className={`w-9 h-9 rounded-xl font-semibold text-xs flex items-center justify-center transition-all ${
-                              qForm.correctAnswer === opt 
-                                ? 'bg-[#10b981] text-white shadow-xs' 
+                              qForm.correctAnswer === opt
+                                ? 'bg-[#10b981] text-white shadow-xs'
                                 : 'bg-[#475569] text-white'
                             }`}
                           >
@@ -748,7 +908,7 @@ export default function CreateExam() {
                           <input
                             type="text"
                             value={qForm.options[i]}
-                            onChange={(e) => {
+                            onChange={e => {
                               const updatedOpts = [...qForm.options]
                               updatedOpts[i] = e.target.value
                               setQForm(prev => ({ ...prev, options: updatedOpts }))
@@ -762,19 +922,27 @@ export default function CreateExam() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Marks</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">
+                          Marks
+                        </label>
                         <input
                           type="number"
                           value={qForm.marks}
-                          onChange={(e) => setQForm(prev => ({ ...prev, marks: Number(e.target.value) }))}
+                          onChange={e =>
+                            setQForm(prev => ({ ...prev, marks: Number(e.target.value) }))
+                          }
                           className="w-full px-3.5 py-2 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-xs text-slate-900 font-bold"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">Difficulty</label>
+                        <label className="block text-[11px] font-medium uppercase tracking-wider text-slate-500 mb-1">
+                          Difficulty
+                        </label>
                         <select
                           value={qForm.difficulty}
-                          onChange={(e) => setQForm(prev => ({ ...prev, difficulty: e.target.value }))}
+                          onChange={e =>
+                            setQForm(prev => ({ ...prev, difficulty: e.target.value }))
+                          }
                           className="w-full px-3.5 py-2 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-xs text-slate-900 font-bold"
                         >
                           <option value="EASY">EASY</option>
@@ -802,15 +970,24 @@ export default function CreateExam() {
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-fit">
               <h3 className="text-base font-semibold text-slate-900 mb-4 flex items-center justify-between pb-3 border-b border-slate-100">
                 <span>Question Pool</span>
-                <span className="px-2.5 py-0.5 bg-blue-50 text-[#2f80ed] rounded-md text-xs font-semibold">{questions.length}</span>
+                <span className="px-2.5 py-0.5 bg-blue-50 text-[#2f80ed] rounded-md text-xs font-semibold">
+                  {questions.length}
+                </span>
               </h3>
-              
+
               <div className="max-h-[320px] overflow-y-auto space-y-2.5 mb-4 pr-1 text-xs">
                 {questions.map((q, idx) => (
-                  <div key={q.id} className="p-3.5 bg-[#f8fafc] border border-slate-200 rounded-xl flex items-start justify-between gap-2">
+                  <div
+                    key={q.id}
+                    className="p-3.5 bg-[#f8fafc] border border-slate-200 rounded-xl flex items-start justify-between gap-2"
+                  >
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-900 truncate">Q{idx + 1} • {q.type}</div>
-                      <p className="text-xs text-slate-600 truncate mt-0.5 font-semibold">{q.questionText}</p>
+                      <div className="font-semibold text-slate-900 truncate">
+                        Q{idx + 1} • {q.type}
+                      </div>
+                      <p className="text-xs text-slate-600 truncate mt-0.5 font-semibold">
+                        {q.questionText}
+                      </p>
                       <div className="flex gap-2 mt-1.5 text-[11px] text-[#2f80ed] font-semibold">
                         <span>{q.marks} Marks</span> • <span>{q.difficulty}</span>
                       </div>
@@ -835,7 +1012,9 @@ export default function CreateExam() {
               <div className="border-t border-slate-100 pt-4 space-y-4">
                 <div className="flex justify-between text-xs font-semibold text-slate-900">
                   <span>Total Marks:</span>
-                  <span className="text-[#2f80ed] font-semibold text-sm">{formData.totalMarks} Marks</span>
+                  <span className="text-[#2f80ed] font-semibold text-sm">
+                    {formData.totalMarks} Marks
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -855,71 +1034,87 @@ export default function CreateExam() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
             <div className="lg:col-span-2 space-y-4">
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Basic Information</h2>
-                
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">
+                  Basic Information
+                </h2>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Exam Title *</label>
-                    <input 
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                      Exam Title *
+                    </label>
+                    <input
                       type="text"
-                      value={formData.title} 
-                      onChange={(e) => handleChange('title', e.target.value)} 
-                      placeholder="Midterm - Operating Systems" 
+                      value={formData.title}
+                      onChange={e => handleChange('title', e.target.value)}
+                      placeholder="Midterm - Operating Systems"
                       className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-[#2f80ed]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Subject Code *</label>
-                    <input 
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                      Subject Code *
+                    </label>
+                    <input
                       type="text"
-                      value={formData.subject} 
-                      onChange={(e) => handleChange('subject', e.target.value)} 
-                      placeholder="CS402" 
+                      value={formData.subject}
+                      onChange={e => handleChange('subject', e.target.value)}
+                      placeholder="CS402"
                       className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-[#2f80ed]"
                     />
                   </div>
                 </div>
 
                 <div className="mt-3">
-                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Instructions for Students</label>
-                  <textarea 
-                    value={formData.description} 
-                    onChange={(e) => handleChange('description', e.target.value)} 
-                    placeholder="Instructions for candidates..." 
-                    rows={3} 
+                  <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                    Instructions for Students
+                  </label>
+                  <textarea
+                    value={formData.description}
+                    onChange={e => handleChange('description', e.target.value)}
+                    placeholder="Instructions for candidates..."
+                    rows={3}
                     className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold focus:outline-none focus:border-[#2f80ed]"
                   />
                 </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Timing & Duration</h2>
-                
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">
+                  Timing & Duration
+                </h2>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Start Time *</label>
-                    <input 
-                      type="datetime-local" 
-                      value={formData.startTime} 
-                      onChange={(e) => handleChange('startTime', e.target.value)} 
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                      Start Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.startTime}
+                      onChange={e => handleChange('startTime', e.target.value)}
                       className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Duration (Minutes) *</label>
-                    <input 
-                      type="number" 
-                      value={formData.duration} 
-                      onChange={(e) => handleChange('duration', Number(e.target.value))} 
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                      Duration (Minutes) *
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.duration}
+                      onChange={e => handleChange('duration', Number(e.target.value))}
                       className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">End Time *</label>
-                    <input 
-                      type="datetime-local" 
-                      value={formData.endTime} 
-                      onChange={(e) => handleChange('endTime', e.target.value)} 
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">
+                      End Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.endTime}
+                      onChange={e => handleChange('endTime', e.target.value)}
                       className="w-full px-3.5 py-2.5 border-1.5 border-slate-300 bg-[#f8fafc] rounded-xl text-slate-900 text-xs font-bold"
                     />
                   </div>
@@ -927,11 +1122,15 @@ export default function CreateExam() {
               </div>
 
               <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Candidate Eligibility</h2>
-                
+                <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">
+                  Candidate Eligibility
+                </h2>
+
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Allowed Departments</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">
+                      Allowed Departments
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       {DEPARTMENTS.map(dept => (
                         <button
@@ -951,7 +1150,9 @@ export default function CreateExam() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">Target Semesters</label>
+                    <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-2">
+                      Target Semesters
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       {SEMESTERS.map(sem => (
                         <button
@@ -974,23 +1175,52 @@ export default function CreateExam() {
             </div>
 
             <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-fit space-y-4">
-              <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">Security Profile</h2>
-              
+              <h2 className="text-base font-semibold text-slate-900 pb-3 border-b border-slate-100">
+                Security Profile
+              </h2>
+
               <div className="space-y-2.5">
                 {[
-                  { key: 'cameraRequired', label: 'Face AI Monitoring', desc: 'Continuous camera verification' },
-                  { key: 'browserLock', label: 'Browser Lockdown', desc: 'Block multi-tab navigation' },
-                  { key: 'fullScreenMode', label: 'Enforce Fullscreen', desc: 'Exit terminates session' },
-                  { key: 'watermarkRequired', label: 'Dynamic Watermark', desc: 'Overlay USN on screen' },
-                  { key: 'randomiseQuestions', label: 'Randomise Questions', desc: 'Shuffle question order per user' },
-                  { key: 'randomiseOptions', label: 'Randomise Options', desc: 'Shuffle MCQ options order' },
+                  {
+                    key: 'cameraRequired',
+                    label: 'Face AI Monitoring',
+                    desc: 'Continuous camera verification',
+                  },
+                  {
+                    key: 'browserLock',
+                    label: 'Browser Lockdown',
+                    desc: 'Block multi-tab navigation',
+                  },
+                  {
+                    key: 'fullScreenMode',
+                    label: 'Enforce Fullscreen',
+                    desc: 'Exit terminates session',
+                  },
+                  {
+                    key: 'watermarkRequired',
+                    label: 'Dynamic Watermark',
+                    desc: 'Overlay USN on screen',
+                  },
+                  {
+                    key: 'randomiseQuestions',
+                    label: 'Randomise Questions',
+                    desc: 'Shuffle question order per user',
+                  },
+                  {
+                    key: 'randomiseOptions',
+                    label: 'Randomise Options',
+                    desc: 'Shuffle MCQ options order',
+                  },
                 ].map(item => (
-                  <label key={item.key} className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-[#f8fafc] cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="mt-0.5 w-4.5 h-4.5 rounded accent-[#2f80ed]" 
-                      checked={formData[item.key]} 
-                      onChange={(e) => handleChange(item.key, e.target.checked)}
+                  <label
+                    key={item.key}
+                    className="flex items-start gap-3 p-3 rounded-xl border border-slate-200 bg-[#f8fafc] cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 w-4.5 h-4.5 rounded accent-[#2f80ed]"
+                      checked={formData[item.key]}
+                      onChange={e => handleChange(item.key, e.target.checked)}
                     />
                     <div>
                       <div className="text-xs font-semibold text-slate-900">{item.label}</div>
@@ -1002,14 +1232,18 @@ export default function CreateExam() {
                 <div className="p-3 rounded-xl border border-slate-200 bg-[#f8fafc] flex items-center justify-between">
                   <div>
                     <div className="text-xs font-semibold text-slate-900">Tab Switch Limit</div>
-                    <div className="text-[11px] text-slate-500 font-semibold">Auto-suspends candidate after N tab switches</div>
+                    <div className="text-[11px] text-slate-500 font-semibold">
+                      Auto-suspends candidate after N tab switches
+                    </div>
                   </div>
                   <input
                     type="number"
                     min="1"
                     max="20"
                     value={formData.tabSwitchLimit}
-                    onChange={(e) => handleChange('tabSwitchLimit', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={e =>
+                      handleChange('tabSwitchLimit', Math.max(1, parseInt(e.target.value, 10) || 1))
+                    }
                     className="w-16 px-2.5 py-1.5 text-xs text-center font-bold border border-slate-300 rounded-lg bg-white"
                   />
                 </div>
@@ -1045,7 +1279,10 @@ export default function CreateExam() {
                       {formData.title || 'Untitled Assessment'}
                     </h2>
                     <p className="text-xs text-slate-500 font-semibold mt-0.5">
-                      Subject Code: <span className="font-semibold text-slate-800">{formData.subject || 'N/A'}</span>
+                      Subject Code:{' '}
+                      <span className="font-semibold text-slate-800">
+                        {formData.subject || 'N/A'}
+                      </span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1069,24 +1306,38 @@ export default function CreateExam() {
                 {/* 4 Metric Summary Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Items</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Total Items
+                    </p>
                     <p className="text-2xl font-bold text-slate-900">{questions.length}</p>
                     <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Question Pool</p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Total Marks</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Total Marks
+                    </p>
                     <p className="text-2xl font-bold text-[#2f80ed]">{formData.totalMarks}</p>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Maximum Points</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                      Maximum Points
+                    </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Duration</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Duration
+                    </p>
                     <p className="text-2xl font-bold text-slate-900">{formData.duration}</p>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Minutes Allocated</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                      Minutes Allocated
+                    </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f8fafc] border border-slate-200 text-left">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Proctoring</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                      Proctoring
+                    </p>
                     <p className="text-2xl font-bold text-[#10b981]">STRICT</p>
-                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">Integrity Checks Active</p>
+                    <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
+                      Integrity Checks Active
+                    </p>
                   </div>
                 </div>
 
@@ -1097,9 +1348,20 @@ export default function CreateExam() {
                       Schedule & Time Windows
                     </h4>
                     <div className="space-y-1.5 text-xs text-slate-700 font-medium">
-                      <p><strong className="text-slate-900">Start Time:</strong> {formData.startTime ? new Date(formData.startTime).toLocaleString() : 'Not Set'}</p>
-                      <p><strong className="text-slate-900">End Time:</strong> {formData.endTime ? new Date(formData.endTime).toLocaleString() : 'Not Set'}</p>
-                      <p><strong className="text-slate-900">Time Window:</strong> {formData.duration} Minutes</p>
+                      <p>
+                        <strong className="text-slate-900">Start Time:</strong>{' '}
+                        {formData.startTime
+                          ? new Date(formData.startTime).toLocaleString()
+                          : 'Not Set'}
+                      </p>
+                      <p>
+                        <strong className="text-slate-900">End Time:</strong>{' '}
+                        {formData.endTime ? new Date(formData.endTime).toLocaleString() : 'Not Set'}
+                      </p>
+                      <p>
+                        <strong className="text-slate-900">Time Window:</strong> {formData.duration}{' '}
+                        Minutes
+                      </p>
                     </div>
                   </div>
 
@@ -1108,9 +1370,18 @@ export default function CreateExam() {
                       Target Student Eligibility
                     </h4>
                     <div className="space-y-1.5 text-xs text-slate-700 font-medium">
-                      <p><strong className="text-slate-900">Allowed Departments:</strong> {formData.allowedDepartments?.join(', ') || 'All'}</p>
-                      <p><strong className="text-slate-900">Target Semesters:</strong> {formData.allowedSemesters?.map(s => `Sem ${s}`).join(', ') || 'All'}</p>
-                      <p><strong className="text-slate-900">Student Access:</strong> Explicit Dept/Sem Enforcement</p>
+                      <p>
+                        <strong className="text-slate-900">Allowed Departments:</strong>{' '}
+                        {formData.allowedDepartments?.join(', ') || 'All'}
+                      </p>
+                      <p>
+                        <strong className="text-slate-900">Target Semesters:</strong>{' '}
+                        {formData.allowedSemesters?.map(s => `Sem ${s}`).join(', ') || 'All'}
+                      </p>
+                      <p>
+                        <strong className="text-slate-900">Student Access:</strong> Explicit
+                        Dept/Sem Enforcement
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1126,27 +1397,48 @@ export default function CreateExam() {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-slate-900">Security Audit Summary</h3>
-                    <p className="text-[11px] text-slate-500 font-semibold">Active Integrity Controls</p>
+                    <p className="text-[11px] text-slate-500 font-semibold">
+                      Active Integrity Controls
+                    </p>
                   </div>
                 </div>
 
                 <div className="space-y-2 text-xs font-bold text-slate-800">
                   {[
-                    { label: 'Continuous Camera & Face Verification', active: formData.cameraRequired },
+                    {
+                      label: 'Continuous Camera & Face Verification',
+                      active: formData.cameraRequired,
+                    },
                     { label: 'Browser Multi-Tab Lockdown', active: formData.browserLock },
                     { label: 'Secure Fullscreen Enforcement', active: formData.fullScreenMode },
-                    { label: 'Dynamic USN Anti-Leak Watermark', active: formData.watermarkRequired },
+                    {
+                      label: 'Dynamic USN Anti-Leak Watermark',
+                      active: formData.watermarkRequired,
+                    },
                     { label: 'Secure Network Isolation', active: true },
-                    { label: 'Shuffled Questions & Options', active: formData.randomiseQuestions || formData.randomiseOptions }
+                    {
+                      label: 'Shuffled Questions & Options',
+                      active: formData.randomiseQuestions || formData.randomiseOptions,
+                    },
                   ].map(sec => (
-                    <div key={sec.label} className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-slate-200">
+                    <div
+                      key={sec.label}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#f8fafc] border border-slate-200"
+                    >
                       <span className="text-slate-700 text-xs font-semibold flex items-center gap-2">
-                        <CheckCircle2 size={15} className={sec.active ? 'text-[#10b981]' : 'text-slate-300'} />
+                        <CheckCircle2
+                          size={15}
+                          className={sec.active ? 'text-[#10b981]' : 'text-slate-300'}
+                        />
                         {sec.label}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                        sec.active ? 'bg-emerald-50 text-[#10b981]' : 'bg-slate-100 text-slate-400'
-                      }`}>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
+                          sec.active
+                            ? 'bg-emerald-50 text-[#10b981]'
+                            : 'bg-slate-100 text-slate-400'
+                        }`}
+                      >
                         {sec.active ? 'ACTIVE' : 'OFF'}
                       </span>
                     </div>

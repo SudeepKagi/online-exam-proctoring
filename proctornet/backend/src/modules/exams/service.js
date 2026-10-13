@@ -8,7 +8,7 @@ const {
   NotFoundError,
   ForbiddenError,
   ConflictError,
-  ValidationError
+  ValidationError,
 } = require('../../shared/errors')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
@@ -38,17 +38,19 @@ class ExamService {
       invPasswordHash,
       status: 'DRAFT',
       startTime: new Date(data.startTime),
-      endTime: new Date(data.endTime)
+      endTime: new Date(data.endTime),
     })
 
-    const validUntil = new Date(new Date(data.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+    const validUntil = new Date(
+      new Date(data.endTime).getTime() + 24 * 60 * 60 * 1000
+    ).toISOString()
 
     return {
       ...exam,
       invId,
       rawInvPassword,
       oneTimePassword: rawInvPassword,
-      validUntil
+      validUntil,
     }
   }
 
@@ -85,26 +87,43 @@ class ExamService {
     // P2 Invariant Validation: MCQ-only rules check
     for (const q of exam.questions) {
       if (q.options.length < 2 || q.options.length > 6) {
-        throw new ValidationError(`Cannot publish exam: Question '${q.id}' violates MCQ rules: must have between 2 and 6 options (found ${q.options.length})`)
+        throw new ValidationError(
+          `Cannot publish exam: Question '${q.id}' violates MCQ rules: must have between 2 and 6 options (found ${q.options.length})`
+        )
       }
       const correctCount = q.options.filter(o => o.isCorrect).length
       if (correctCount !== 1) {
-        throw new ValidationError(`Cannot publish exam: Question '${q.id}' violates MCQ rules: must have exactly 1 correct option (found ${correctCount})`)
+        throw new ValidationError(
+          `Cannot publish exam: Question '${q.id}' violates MCQ rules: must have exactly 1 correct option (found ${correctCount})`
+        )
       }
       if (q.marks <= 0) {
-        throw new ValidationError(`Cannot publish exam: Question '${q.id}' violates MCQ rules: marks must be greater than 0`)
+        throw new ValidationError(
+          `Cannot publish exam: Question '${q.id}' violates MCQ rules: marks must be greater than 0`
+        )
       }
       if (q.negativeMarks < 0 || q.negativeMarks > q.marks) {
-        throw new ValidationError(`Cannot publish exam: Question '${q.id}' violates MCQ rules: negative marks must be between 0 and ${q.marks}`)
+        throw new ValidationError(
+          `Cannot publish exam: Question '${q.id}' violates MCQ rules: negative marks must be between 0 and ${q.marks}`
+        )
       }
     }
 
     // Generate fresh one-time invigilator password on publish (R-10)
     const rawInvPassword = generateUnambiguousPassword(12)
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
-    const validUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+    const validUntil = new Date(
+      new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000
+    ).toISOString()
 
-    await examRepository.update(examId, { invPasswordHash })
+    let invId = exam.invId
+    const updatePayload = { invPasswordHash }
+    if (!invId) {
+      invId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+      updatePayload.invId = invId
+    }
+
+    await examRepository.update(examId, updatePayload)
 
     const updated = await examRepository.updateStatus(examId, 'PUBLISHED')
 
@@ -122,7 +141,7 @@ class ExamService {
 
     return {
       ...updated,
-      invId: exam.invId,
+      invId: updated?.invId || invId,
       rawInvPassword,
       oneTimePassword: rawInvPassword,
       validUntil,
@@ -130,8 +149,8 @@ class ExamService {
         status: prewarmStatus,
         prewarmedCount: prewarmResult?.prewarmedCount || 0,
         error: prewarmError,
-        retryEndpoint: `/api/v1/exams/${examId}/prewarm`
-      }
+        retryEndpoint: `/api/v1/exams/${examId}/prewarm`,
+      },
     }
   }
 
@@ -154,32 +173,39 @@ class ExamService {
     // Invalidate old active sessions
     await prisma.invigilatorSession.updateMany({
       where: { examId, isActive: true },
-      data: { isActive: false }
+      data: { isActive: false },
     })
 
     const newInvId = `INV-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
     const rawInvPassword = generateUnambiguousPassword(12)
     const invPasswordHash = await bcrypt.hash(rawInvPassword, 10)
-    const validUntil = new Date(new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000).toISOString()
+    const validUntil = new Date(
+      new Date(exam.endTime).getTime() + 24 * 60 * 60 * 1000
+    ).toISOString()
 
     await examRepository.update(examId, {
       invId: newInvId,
-      invPasswordHash
+      invPasswordHash,
     })
 
     // Audit log
-    await prisma.auditLog.create({
-      data: {
-        actorId,
-        actorRole: normalizeRole(actorRole),
-        action: 'EXAM_INVIGILATOR_CREDENTIALS_REGENERATED',
-        resourceType: 'Exam',
-        resourceId: examId,
-        metadata: { examId, invId: newInvId, validUntil }
-      }
-    }).catch((err) => {
-      logger.warn({ error: err.message, examId }, 'Failed to record audit log for invigilator credentials regeneration')
-    })
+    await prisma.auditLog
+      .create({
+        data: {
+          actorId,
+          actorRole: normalizeRole(actorRole),
+          action: 'EXAM_INVIGILATOR_CREDENTIALS_REGENERATED',
+          resourceType: 'Exam',
+          resourceId: examId,
+          metadata: { examId, invId: newInvId, validUntil },
+        },
+      })
+      .catch(err => {
+        logger.warn(
+          { error: err.message, examId },
+          'Failed to record audit log for invigilator credentials regeneration'
+        )
+      })
 
     return {
       success: true,
@@ -187,7 +213,7 @@ class ExamService {
       invId: newInvId,
       rawInvPassword,
       oneTimePassword: rawInvPassword,
-      validUntil
+      validUntil,
     }
   }
 
@@ -202,7 +228,9 @@ class ExamService {
     }
 
     if (exam.status !== 'DRAFT') {
-      throw new ConflictError(`Exam is in '${exam.status}' status. Content is immutable once published.`)
+      throw new ConflictError(
+        `Exam is in '${exam.status}' status. Content is immutable once published.`
+      )
     }
 
     // Strip client-writable status and id (A-07)
@@ -211,11 +239,11 @@ class ExamService {
     const updated = await examRepository.update(examId, {
       ...allowedData,
       startTime: allowedData.startTime ? new Date(allowedData.startTime) : undefined,
-      endTime: allowedData.endTime ? new Date(allowedData.endTime) : undefined
+      endTime: allowedData.endTime ? new Date(allowedData.endTime) : undefined,
     })
 
     // Invalidate content cache
-    await attemptService.invalidateExamContentCache(examId).catch((err) => {
+    await attemptService.invalidateExamContentCache(examId).catch(err => {
       logger.warn({ error: err.message, examId }, 'Failed to invalidate exam content cache')
     })
 
@@ -238,5 +266,5 @@ class ExamService {
 module.exports = {
   ExamService,
   examService: new ExamService(),
-  generateUnambiguousPassword
+  generateUnambiguousPassword,
 }
