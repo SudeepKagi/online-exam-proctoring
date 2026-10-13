@@ -80,7 +80,9 @@ class ExpirySweeper {
               online: false
             })
           }
-        } catch (_) {}
+        } catch (err) {
+          logger.warn({ error: err.message }, 'Failed to queue roster delta for expired attempts')
+        }
 
         // 3. Insert outbox events for evaluation worker
         await prisma.$transaction(async (tx) => {

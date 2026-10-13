@@ -1630,6 +1630,16 @@
     "negativeEffect": "None (Zero DB/storage mutation)"
   },
   {
+    "method": "POST",
+    "path": "/api/v1/proctoring/exams/:examId/snapshots/read",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "proctoring",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
     "method": "GET",
     "path": "/api/v1/proctoring/exams/:examId/summary",
     "auth": "Required",

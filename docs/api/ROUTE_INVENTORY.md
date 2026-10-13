@@ -1,8 +1,8 @@
 # ProctorNet API Route Inventory (Canonical v1 Monolith)
 
 > **Auto-generated from code:** Generated via `scripts/ci/generate-route-inventory.js` from mounted Express routers.
-> **Generation Timestamp:** `2026-10-10T03:13:18.562Z`
-> **Total Endpoints:** `200` across `13` domain modules.
+> **Generation Timestamp:** `2026-10-13T03:20:36.487Z`
+> **Total Endpoints:** `201` across `13` domain modules.
 
 ## Modules Summary
 
@@ -17,7 +17,7 @@
 | `invigilator` | 12 |
 | `media` | 3 |
 | `notifications` | 1 |
-| `proctoring` | 11 |
+| `proctoring` | 12 |
 | `questions` | 1 |
 | `student` | 25 |
 | `system` | 12 |
@@ -189,6 +189,7 @@
 | `GET` | `/api/v1/proctoring/attempts/:attemptId/violations` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/proctoring/attempts/:attemptId/warn` | Required | `admin, faculty, invigilator` | Yes | `proctoring` | Audit log row created + Socket notification dispatched | 0 audit logs created; 0 notifications dispatched |
 | `GET` | `/api/v1/proctoring/exams/:examId/roster` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `POST` | `/api/v1/proctoring/exams/:examId/snapshots/read` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | DB row created/updated (exams) | 0 exams mutated |
 | `GET` | `/api/v1/proctoring/exams/:examId/summary` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/proctoring/exams/:examId/violations` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `proctoring` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/proctoring/exams/:id/snapshots/read` | Required | `admin, faculty, invigilator` | Yes (Faculty Exam Owner) | `proctoring` | DB row created/updated (exams) | 0 exams mutated |
