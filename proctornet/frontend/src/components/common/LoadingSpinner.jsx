@@ -10,11 +10,16 @@ export default function LoadingSpinner({ fullPage = true }) {
 
   if (fullPage) {
     return (
-      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
+      <div data-testid="app-loader" className="fixed inset-0 bg-white/80 backdrop-blur-sm z-[9999] flex items-center justify-center">
         {spinner}
       </div>
     )
   }
 
-  return spinner
+  return (
+    <div data-testid="app-loader">
+      {spinner}
+    </div>
+  )
 }
+

@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/context/AuthContext'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import LoadingSpinner from '@/components/common/LoadingSpinner'
 
 // Lazy-loaded Public & Auth Pages
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
@@ -56,18 +57,6 @@ const InvDashboard = lazy(() => import('@/pages/invigilator/Dashboard'))
 const InvigilatorLiveGrid = lazy(() => import('@/pages/invigilator/InvigilatorLiveGrid'))
 const InvigilatorViolations = lazy(() => import('@/pages/invigilator/Violations'))
 
-function RouteLoadingFallback() {
-  return (
-    <div className="min-h-screen bg-[#091a2f] flex flex-col items-center justify-center p-4 font-sans select-none">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center animate-spin">
-          <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-        </div>
-        <span className="text-sm font-semibold text-slate-300 tracking-wide">Loading workspace...</span>
-      </div>
-    </div>
-  )
-}
 
 export default function App() {
   return (
@@ -102,7 +91,7 @@ export default function App() {
           }}
         />
         <ErrorBoundary>
-          <Suspense fallback={<RouteLoadingFallback />}>
+          <Suspense fallback={<LoadingSpinner />}>
             <Routes>
               {/* Landing / Redirect based on role */}
               <Route path="/" element={<LandingPage />} />
