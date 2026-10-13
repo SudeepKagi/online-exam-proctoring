@@ -23,11 +23,14 @@ const TEST_RUN_ID = crypto.randomBytes(4).toString('hex')
  */
 const DETERMINISTIC_RELEASES = [
   { version: '1.0.0', os: 'win', arch: 'x64', sha256: 'test-build-hash-a1' },
+  { version: '1.0.0', os: 'win', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
   { version: '1.0.0', os: 'win', arch: 'x64-report', sha256: 'test-build-hash-report' },
   { version: '1.0.0', os: 'win', arch: 'x64-lifecycle', sha256: 'test-build-lifecycle' },
   { version: '1.0.0', os: 'win', arch: 'x64-sweeper', sha256: 'test-build-sweeper' },
   { version: '1.0.0', os: 'linux', arch: 'x64', sha256: 'test-build-hash-linux-v1' },
+  { version: '1.0.0', os: 'linux', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
   { version: '1.0.0', os: 'darwin', arch: 'arm64', sha256: 'test-build-hash-mac-v1' },
+  { version: '1.0.0', os: 'darwin', arch: 'arm64-adv', sha256: 'official-adv-release-hash' },
   { version: '1.0.0', os: 'all', arch: 'x64', sha256: 'official-agent-release-hash-v1.0.0' }
 ]
 

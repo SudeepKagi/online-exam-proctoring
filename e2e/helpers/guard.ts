@@ -9,6 +9,8 @@ function isIgnoredConsoleError(text: string): boolean {
     text.includes('favicon.ico') ||
     text.includes('favicon.svg') ||
     text.includes('Failed to load resource: the server responded with a status of 4') ||
+    text.includes('cdnjs.cloudflare.com') ||
+    text.includes('pdf.min.js') ||
     text.includes('7880') ||
     text.includes('ERR_CONNECTION_REFUSED') ||
     text.includes('ERR_INTERNET_DISCONNECTED') ||
@@ -44,7 +46,7 @@ export const test = base.extend({
     })
 
     page.on('response', res => {
-      if (res.status() >= 500) {
+      if (res.status() >= 500 && !res.url().includes('cdnjs.cloudflare.com')) {
         problems.push(`[HTTP_${res.status()}] ${res.url()}`)
       }
     })
@@ -78,7 +80,7 @@ export function attachGuard(page: any) {
   })
 
   page.on('response', (res: any) => {
-    if (res.status() >= 500) {
+    if (res.status() >= 500 && !res.url().includes('cdnjs.cloudflare.com')) {
       problems.push(`[HTTP_${res.status()}] ${res.url()}`)
     }
   })

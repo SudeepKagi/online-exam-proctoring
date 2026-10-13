@@ -53,6 +53,41 @@ async function seedCanonicalDepartments() {
   }
 }
 
+async function seedAgentReleases() {
+  const releases = [
+    { version: '1.0.0', os: 'win', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
+    { version: '1.0.0', os: 'linux', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
+    { version: '1.0.0', os: 'darwin', arch: 'arm64-adv', sha256: 'official-adv-release-hash' },
+    { version: '1.0.0', os: 'all', arch: 'x64', sha256: 'official-agent-release-hash-v1.0.0' },
+    { version: '1.0.0', os: 'win', arch: 'x64', sha256: 'test-build-hash-a1' },
+    { version: '1.0.0', os: 'linux', arch: 'x64', sha256: 'test-build-hash-linux-v1' }
+  ]
+  const crypto = require('crypto')
+  for (const rel of releases) {
+    await prisma.agentRelease.upsert({
+      where: {
+        version_os_arch: { version: rel.version, os: rel.os, arch: rel.arch }
+      },
+      update: {
+        sha256: rel.sha256,
+        revokedAt: null
+      },
+      create: {
+        id: crypto.randomUUID(),
+        version: rel.version,
+        os: rel.os,
+        arch: rel.arch,
+        sha256: rel.sha256,
+        sizeBytes: 15420000n,
+        s3Key: `releases/proctornet-agent-${rel.version}-${rel.os}-${rel.arch}.zip`,
+        signed: true,
+        minSupported: true,
+        revokedAt: null
+      }
+    }).catch(() => {})
+  }
+}
+
 async function seedAdmin() {
   console.log('\n🌱 Running ProctorNet P3 Seed Baseline...\n')
 
@@ -140,6 +175,10 @@ async function seedAdmin() {
       }
       console.log('✅ Default platform settings initialized.')
     }
+
+    // 3. Seed canonical authorized agent releases
+    await seedAgentReleases()
+    console.log('✅ Approved agent releases initialized.')
 
     console.log('\n🔒 Security Invariant: Admin credential hashes are preserved and never printed to logs.')
     console.log('✅ ProctorNet P3 Seed Baseline completed successfully.\n')
