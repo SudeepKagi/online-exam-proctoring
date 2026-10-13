@@ -229,7 +229,22 @@ before(async () => {
 
 after(async () => {
   try {
-    if (server) server.close()
+    if (io) {
+      try { io.close() } catch (_) {}
+    }
+    const { server: appServer } = require('../src/app')
+    if (appServer && typeof appServer.closeAllConnections === 'function') {
+      appServer.closeAllConnections()
+    }
+    if (appServer) {
+      await new Promise((resolve) => appServer.close(resolve)).catch(() => {})
+    }
+    if (server) {
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections()
+      }
+      await new Promise((resolve) => server.close(resolve)).catch(() => {})
+    }
 
     // Database teardown
     if (exams.length > 0) {

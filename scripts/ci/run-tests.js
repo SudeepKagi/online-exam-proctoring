@@ -174,7 +174,15 @@ function main() {
     for (const f of failedList) {
       console.error(`\n--- [FAILED] ${f.file} ---`)
       if (f.stderr) console.error(f.stderr.trim())
-      if (f.stdout) console.error(f.stdout.trim())
+      if (f.stdout) {
+        // Filter out noisy Pino request/response JSON lines to reveal the real test assertions
+        const cleanStdout = f.stdout
+          .split('\n')
+          .filter(line => !line.match(/^#\s*\{"level":/))
+          .join('\n')
+          .trim()
+        console.error(cleanStdout)
+      }
     }
     process.exit(1)
   }

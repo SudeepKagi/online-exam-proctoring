@@ -182,7 +182,7 @@ export default function SecurityCheck() {
         // Initialize or retrieve readiness attempt (Separated from real attempt activation per T2)
         try {
           const readinessRes = await api.post(`/exams/${examId}/readiness`)
-          const resolvedAttemptId = readinessRes?.data?.attemptId || readinessRes?.data?.id
+          const resolvedAttemptId = readinessRes?.data?.attempt?.id || readinessRes?.data?.attemptId || readinessRes?.data?.id
           if (resolvedAttemptId) {
             setAttemptId(resolvedAttemptId)
             // Query truthful VPN status

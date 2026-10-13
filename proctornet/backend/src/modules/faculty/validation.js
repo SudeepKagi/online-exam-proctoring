@@ -27,7 +27,10 @@ const baseExamSchema = z.object({
   watermarkRequired: z.boolean().default(true),
   tabSwitchLimit: z.number().int().min(1).default(3),
   vpnRequired: z.boolean().default(false),
-  deviceAgentPolicy: z.enum(['REQUIRED', 'OPTIONAL', 'DISABLED']).default('REQUIRED').optional(),
+  deviceAgentPolicy: z.enum(['REQUIRED', 'OPTIONAL', 'OFF', 'DISABLED'])
+    .transform(val => val === 'DISABLED' ? 'OFF' : val)
+    .default('REQUIRED')
+    .optional(),
   aiReverifyInterval: z.number().int().min(1).default(10).optional(),
   invPassword: z.string().min(4).optional(),
   invId: z.string().optional(),
