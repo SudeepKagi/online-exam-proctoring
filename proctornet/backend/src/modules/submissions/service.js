@@ -78,6 +78,13 @@ class SubmissionService {
           attemptId: result.attempt.id,
           studentId
         })
+        const { rosterCoalescer } = require('../../infra/websocket/rosterCoalescer')
+        rosterCoalescer.queueDelta(examId, {
+          attemptId: result.attempt.id,
+          studentId,
+          status: 'SUBMITTED',
+          online: false
+        })
       }
     } catch (wsErr) {
       logger.warn({ error: wsErr.message }, 'Failed to send post-submit WS notification')

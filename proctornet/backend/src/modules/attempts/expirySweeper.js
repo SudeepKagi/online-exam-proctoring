@@ -70,6 +70,17 @@ class ExpirySweeper {
 
       if (expiredAttempts && expiredAttempts.length > 0) {
         logger.info({ count: expiredAttempts.length }, 'Sweeper identified expired exam attempts')
+        try {
+          const { rosterCoalescer } = require('../../infra/websocket/rosterCoalescer')
+          for (const att of expiredAttempts) {
+            rosterCoalescer.queueDelta(att.exam_id, {
+              attemptId: att.id,
+              studentId: att.student_id,
+              status: 'EXPIRED',
+              online: false
+            })
+          }
+        } catch (_) {}
 
         // 3. Insert outbox events for evaluation worker
         await prisma.$transaction(async (tx) => {

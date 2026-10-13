@@ -71,11 +71,6 @@ export default function InvigilatorLiveGrid() {
     }
   }, [user, navigate])
 
-  // ── R3: Snapshot driver — IntersectionObserver + frame:update socket listener ─────
-  const { socket: invSocket } = useInvigilatorSocket
-    ? /* already available via hook below */ {}
-    : {}
-
   // R3 helper: fetch fresh presigned read URLs for a focused candidate
   const fetchSnapshotFrame = useCallback(async (attemptId) => {
     if (!attemptId) return
@@ -92,9 +87,14 @@ export default function InvigilatorLiveGrid() {
   // FLW-05 helper: batch fetch fresh presigned read URLs for visible candidates (up to 24)
   const fetchBatchSnapshots = useCallback(async (attemptIds) => {
     if (!attemptIds || attemptIds.length === 0 || !effectiveExamId) return
+    const activeAttemptIds = attemptIds.filter(id => {
+      const cand = rosterSnapshot.rosterMap?.get?.(id) || candidates.find(c => (c.attemptId || c.id) === id)
+      return !cand || !['SUBMITTED', 'TERMINATED', 'EXPIRED', 'TIMED_OUT'].includes(cand.status)
+    })
+    if (activeAttemptIds.length === 0) return
     try {
       const res = await api.post(`/proctoring/exams/${effectiveExamId}/snapshots/read`, {
-        attemptIds: attemptIds.slice(0, 24)
+        attemptIds: activeAttemptIds.slice(0, 24)
       })
       if (res.data?.snapshots) {
         setSnapshotFrames(prev => ({
@@ -103,7 +103,7 @@ export default function InvigilatorLiveGrid() {
         }))
       }
     } catch (_) {}
-  }, [effectiveExamId])
+  }, [effectiveExamId, candidates, rosterSnapshot])
 
   // LiveKit WebRTC SFU Subscribed Tracks state: attemptId -> { camera: Track, screen: Track }
   const [subscribedTracks, setSubscribedTracks] = useState({})
@@ -164,6 +164,29 @@ export default function InvigilatorLiveGrid() {
         }
         return prev
       })
+    },
+    onRosterDelta: (payload) => {
+      const deltas = Array.isArray(payload?.deltas) ? payload.deltas : (Array.isArray(payload) ? payload : [])
+      for (const d of deltas) {
+        const id = d.attemptId || d.studentId
+        if (id) {
+          rosterStore.updateCandidate(id, d)
+          setSelectedCandidate(prev => {
+            if (prev && (prev.id === id || prev.studentId === id || prev.attemptId === id)) {
+              return { ...prev, ...d }
+            }
+            return prev
+          })
+          if (['SUBMITTED', 'TERMINATED', 'EXPIRED', 'TIMED_OUT'].includes(d.status)) {
+            visibleTilesRef.current.delete(d.attemptId || id)
+            setSnapshotFrames(prev => {
+              const next = { ...prev }
+              delete next[d.attemptId || id]
+              return next
+            })
+          }
+        }
+      }
     }
   })
 
@@ -299,8 +322,6 @@ export default function InvigilatorLiveGrid() {
   useEffect(() => {
     if (mediaDriver !== 'snapshot') return
     if (observerRef.current) observerRef.current.disconnect()
-
-    const { socket: sock } = (typeof useInvigilatorSocket === 'function') ? {} : {}
 
     const observer = new IntersectionObserver((entries) => {
       let changed = false
@@ -838,6 +859,14 @@ export default function InvigilatorLiveGrid() {
                       >
                         {mediaDriver === 'snapshot' ? (
                           (() => {
+                            if (cand.status === 'SUBMITTED' || cand.status === 'TERMINATED' || cand.status === 'EXPIRED') {
+                              return (
+                                <div className="flex flex-col items-center justify-center text-muted-foreground gap-1.5 p-2 text-center select-none h-full">
+                                  <CheckCircle2 size={20} className="text-muted-foreground/60" />
+                                  <span className="text-[10px] font-medium tracking-tight">Attempt Finalized</span>
+                                </div>
+                              )
+                            }
                             const sf = snapshotFrames[cand.attemptId || cand.id]
                             const scrSrc = sf?.screenUrl ||
                               cand.latestScreen ||

@@ -57,6 +57,18 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
       onRosterDeltaRef.current?.(deltas)
     })
 
+    // ── Student Submitted Direct Event (BUG E) ──
+    socket.on('student:submitted', (data) => {
+      onRosterDeltaRef.current?.({
+        deltas: [{
+          attemptId: data.attemptId,
+          studentId: data.studentId,
+          status: 'SUBMITTED',
+          online: false
+        }]
+      })
+    })
+
     // ── Live Violation Event ──
     socket.on('violation:new', (alertData) => {
       const alert = {
