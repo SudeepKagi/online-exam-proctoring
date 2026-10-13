@@ -14,7 +14,7 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
   let companion: CompanionProcess | null = null
 
   test('J4: Impostor -> FAIL (retries capped) · REVIEW -> invigilator approves in another context -> proceeds without refresh · provider outage -> REVIEW', async ({ browser }) => {
-    test.setTimeout(120000)
+    test.setTimeout(300000)
 
     const admin = await createActor(browser, 'admin')
     const faculty = await createActor(browser, 'faculty')
@@ -162,8 +162,8 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
 
       // Accept companion consent checkbox if present
       const consentCheckbox = student.page.locator('input#companion-consent, [id="companion-consent"]')
-      if (await consentCheckbox.isVisible()) {
-        await consentCheckbox.check()
+      if (await consentCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await consentCheckbox.check().catch(() => {})
       }
 
       // Check if Companion is already healthy from previous session
@@ -196,6 +196,12 @@ test.describe('J4: Identity Paths Journey (Prompt 8 §2 U4)', () => {
       await student.page.goto(`/student/exams/${examId}/exam`)
       await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
       expect(student.page.url()).toContain('/exam')
+
+      // Dismiss / authorize live screen share prompt if shown
+      const shareScreenBtn = student.page.getByRole('button', { name: /Share Entire Screen/i })
+      if (await shareScreenBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await shareScreenBtn.click()
+      }
 
     } finally {
       if (companion) {

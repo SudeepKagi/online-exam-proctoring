@@ -238,6 +238,12 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
       expect(student.page.url()).toContain('/exam')
 
+      // Dismiss / authorize live screen share prompt if shown
+      const shareScreenBtn = student.page.getByRole('button', { name: /Share Entire Screen/i })
+      if (await shareScreenBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await shareScreenBtn.click()
+      }
+
       // Wait for Question Palette to render
       await student.page.getByText('Question Palette').first().waitFor({ timeout: 15000 })
 
@@ -246,6 +252,10 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // ─────────────────────────────────────────────────────────────
       // Helper to jump to question in palette
       const jumpToQuestion = async (num: number) => {
+        const promptShareBtn = student.page.getByRole('button', { name: /Share Entire Screen/i })
+        if (await promptShareBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+          await promptShareBtn.click()
+        }
         const btn = student.page.locator(`button[aria-label="Jump to question ${num}"], aside button`).filter({ hasText: new RegExp(`^${num}$`) }).first()
         await btn.waitFor({ state: 'visible', timeout: 10000 })
         await btn.click()
@@ -285,6 +295,10 @@ test.describe('J3: Student Happy Path Journey (Prompt 8 §2 U4)', () => {
       // 6. Mid-Exam Refresh Resilience
       // ─────────────────────────────────────────────────────────────
       await student.page.reload()
+      const postReloadShareBtn = student.page.getByRole('button', { name: /Share Entire Screen/i })
+      if (await postReloadShareBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await postReloadShareBtn.click()
+      }
       await student.page.waitForSelector('text=Question Palette', { timeout: 15000 })
       expect(student.page.url()).toContain('/exam')
 
