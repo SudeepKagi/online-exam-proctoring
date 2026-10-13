@@ -687,13 +687,18 @@ class PresignService {
     } else if (role === ROLES.INVIGILATOR) {
       const isAssigned = (user.examId && user.examId === attempt.examId)
       if (!isAssigned) {
+        const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+        if (!isUuid(attempt.examId)) {
+          throw new ForbiddenError('Access denied: You are not assigned to monitor this examination', 'INV_EXAM_MISMATCH')
+        }
+        const orConditions = [{ invId: String(user.id) }]
+        if (isUuid(user.id)) {
+          orConditions.push({ id: user.id })
+        }
         const activeSession = await prisma.invigilatorSession.findFirst({
           where: {
             examId: attempt.examId,
-            OR: [
-              { id: user.id },
-              { invId: user.id }
-            ],
+            OR: orConditions,
             isActive: true
           }
         })

@@ -389,17 +389,27 @@ class ProctoringService {
     const role = normalizeRole(user?.role)
     if (role === ROLES.ADMIN) return true
 
+    const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)
+
     if (role === ROLES.INVIGILATOR) {
       if (user.examId === examId) {
         return true
       }
+      if (!isUuid(examId)) {
+        throw new ForbiddenError(
+          'Access denied: You are not assigned to this exam',
+          'INV_EXAM_MISMATCH',
+          { userExamId: user?.examId, requestedExamId: examId }
+        )
+      }
+      const orConditions = [{ invId: String(user.id) }]
+      if (isUuid(user.id)) {
+        orConditions.push({ id: user.id })
+      }
       const activeSession = await prisma.invigilatorSession.findFirst({
         where: {
           examId,
-          OR: [
-            { id: user.id },
-            { invId: user.id }
-          ],
+          OR: orConditions,
           isActive: true
         }
       })
@@ -414,6 +424,9 @@ class ProctoringService {
     }
 
     if (role === ROLES.FACULTY) {
+      if (!isUuid(examId) || !isUuid(user.id)) {
+        throw new ForbiddenError('Access denied: You do not own this exam', 'INV_NOT_AUTHORIZED')
+      }
       const exam = await proctoringRepository.findExamOwnedByFaculty(examId, user.id)
       if (!exam) {
         throw new ForbiddenError('Access denied: You do not own this exam', 'INV_NOT_AUTHORIZED')
