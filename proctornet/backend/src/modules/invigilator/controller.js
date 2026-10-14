@@ -8,6 +8,8 @@ const { prisma } = require('../../infra/postgres/client')
 const { NotFoundError } = require('../../shared/errors')
 const { getClientIp } = require('../../utils/helpers')
 const { routeRateLimiters } = require('../../middleware/rateLimit')
+const { examService } = require('../exams/service')
+const { examIdParamSchema, invigilatorExamSettingsSchema } = require('../exams/validation')
 
 const router = express.Router()
 
@@ -45,6 +47,34 @@ router.get('/exams/:examId/students', async (req, res, next) => {
   }
 })
 
+// ── Invigilator Exam Settings & Rescheduling (R-10 / P3) ──
+router.get('/exams/:examId/settings', async (req, res, next) => {
+  try {
+    const parsedParams = examIdParamSchema.parse(req.params)
+    const result = await examService.getExamSettings(parsedParams.examId, req.user)
+    res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
+router.patch('/exams/:examId/settings', async (req, res, next) => {
+  try {
+    const parsedParams = examIdParamSchema.parse(req.params)
+    const parsedBody = invigilatorExamSettingsSchema.parse(req.body)
+    const io = req.app.get('io')
+    const result = await examService.updateExamSettings(
+      parsedParams.examId,
+      parsedBody,
+      req.user,
+      io
+    )
+    res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+})
+
 router.get('/violations', async (req, res, next) => {
   try {
     const examId = req.query.examId || req.user.examId
@@ -70,7 +100,7 @@ router.post('/send-warning', async (req, res, next) => {
     const { studentId, message, examId = req.user.examId } = req.body
     const attempt = await prisma.examAttempt.findFirst({
       where: { studentId, ...(examId ? { examId } : {}) },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
@@ -88,7 +118,7 @@ router.post('/exam/:examId/warn/:studentId', async (req, res, next) => {
     const { message } = req.body
     const attempt = await prisma.examAttempt.findFirst({
       where: { examId, studentId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
@@ -106,7 +136,7 @@ router.post('/pause-student/:studentId', async (req, res, next) => {
     const examId = req.body.examId || req.user.examId
     const attempt = await prisma.examAttempt.findFirst({
       where: { studentId, ...(examId ? { examId } : {}) },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
@@ -124,7 +154,7 @@ router.post('/resume-student/:studentId', async (req, res, next) => {
     const examId = req.body.examId || req.user.examId
     const attempt = await prisma.examAttempt.findFirst({
       where: { studentId, ...(examId ? { examId } : {}) },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
@@ -142,12 +172,17 @@ router.post('/terminate-student/:studentId', async (req, res, next) => {
     const examId = req.body.examId || req.user.examId
     const attempt = await prisma.examAttempt.findFirst({
       where: { studentId, ...(examId ? { examId } : {}) },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
     const io = req.app.get('io')
-    const result = await proctoringService.terminateAttempt(attempt.id, req.user, req.body.reason, io)
+    const result = await proctoringService.terminateAttempt(
+      attempt.id,
+      req.user,
+      req.body.reason,
+      io
+    )
     res.status(200).json(result)
   } catch (err) {
     next(err)
@@ -159,12 +194,17 @@ router.post('/exam/:examId/terminate/:studentId', async (req, res, next) => {
     const { examId, studentId } = req.params
     const attempt = await prisma.examAttempt.findFirst({
       where: { examId, studentId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     })
     if (!attempt) throw new NotFoundError('Candidate attempt not found')
 
     const io = req.app.get('io')
-    const result = await proctoringService.terminateAttempt(attempt.id, req.user, req.body.reason, io)
+    const result = await proctoringService.terminateAttempt(
+      attempt.id,
+      req.user,
+      req.body.reason,
+      io
+    )
     res.status(200).json(result)
   } catch (err) {
     next(err)

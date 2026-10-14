@@ -1051,6 +1051,26 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/exams/:examId/settings",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "exams",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/exams/:examId/settings",
+    "auth": "Required",
+    "role": "admin, faculty, invigilator",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "exams",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/faculty/dashboard",
     "auth": "Required",
     "role": "faculty",
@@ -1438,6 +1458,26 @@
     "module": "invigilator",
     "effect": "Audit log row created + Socket notification dispatched",
     "negativeEffect": "0 audit logs created; 0 notifications dispatched"
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/invigilator/exams/:examId/settings",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator",
+    "effect": "None (Read-only query)",
+    "negativeEffect": "None (Zero DB/storage mutation)"
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/invigilator/exams/:examId/settings",
+    "auth": "Required",
+    "role": "invigilator, faculty, admin",
+    "ownerCheck": "Yes (Exam Session Scoped)",
+    "module": "invigilator",
+    "effect": "DB row created/updated (exams)",
+    "negativeEffect": "0 exams mutated"
   },
   {
     "method": "GET",

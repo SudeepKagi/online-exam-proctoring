@@ -13,6 +13,7 @@ export function useInvigilatorSocket({
   onRosterDelta,
   onFrameUpdate,
   onInitialFrames,
+  onExamUpdated,
   enabled = true
 }) {
   const socketRef = useRef(null)
@@ -27,6 +28,9 @@ export function useInvigilatorSocket({
 
   const onInitialFramesRef = useRef(onInitialFrames)
   onInitialFramesRef.current = onInitialFrames
+
+  const onExamUpdatedRef = useRef(onExamUpdated)
+  onExamUpdatedRef.current = onExamUpdated
 
   const [connected, setConnected] = useState(false)
   const [socketInstance, setSocketInstance] = useState(null)
@@ -95,6 +99,11 @@ export function useInvigilatorSocket({
           online: false
         }]
       })
+    })
+
+    // ── Exam Settings / Reschedule Updated Event ──
+    socket.on('exam:updated', (data) => {
+      onExamUpdatedRef.current?.(data)
     })
 
     // ── Live Violation Event ──

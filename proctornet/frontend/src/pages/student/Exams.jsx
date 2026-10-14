@@ -5,9 +5,23 @@ import api, { extractErrorMessage } from '@/utils/api'
 import { useAuth } from '@/context/AuthContext'
 import { isAttemptFinished } from '@/utils/examAttemptState'
 import {
-  BookOpen, Calendar, Search, Play, Camera, Lock, Building,
-  GraduationCap, CheckCircle2, Radio, Clock, ArrowRight, ShieldCheck,
-  Wifi, ExternalLink, AlertTriangle, RefreshCw
+  BookOpen,
+  Calendar,
+  Search,
+  Play,
+  Camera,
+  Lock,
+  Building,
+  GraduationCap,
+  CheckCircle2,
+  Radio,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
+  Wifi,
+  ExternalLink,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -17,15 +31,22 @@ import { Input } from '@/components/ui/input'
 function ExamCard({ exam, now }) {
   if (!exam) return null
   const start = exam.startTime ? new Date(exam.startTime) : new Date()
-  const end = exam.endTime ? new Date(exam.endTime) : new Date(start.getTime() + (exam.duration || 60) * 60 * 1000)
+  const end = exam.endTime
+    ? new Date(exam.endTime)
+    : new Date(start.getTime() + (exam.duration || 60) * 60 * 1000)
 
   const fifteenMinsBeforeStart = new Date(start.getTime() - 15 * 60 * 1000)
   const fiveMinsBeforeStart = new Date(start.getTime() - 5 * 60 * 1000)
   const isEnded = exam.status === 'ENDED' || now > end
   const isSubmitted = isAttemptFinished(exam)
-  const isActive = !isEnded && (exam.status === 'ACTIVE' || (now >= start && now <= end && (exam.status === 'PUBLISHED' || exam.status === 'SCHEDULED' || exam.status === 'ACTIVE')))
+  const isActive =
+    !isEnded &&
+    (exam.status === 'ACTIVE' ||
+      (now >= start &&
+        now <= end &&
+        (exam.status === 'PUBLISHED' || exam.status === 'SCHEDULED' || exam.status === 'ACTIVE')))
   const isPreCheckOpen = !isEnded && !isSubmitted && now >= fiveMinsBeforeStart && now < start
-  const canJoin = !isEnded && !isSubmitted && now >= fifteenMinsBeforeStart && now <= end
+  const canJoin = !isEnded && !isSubmitted && now <= end
 
   const timeLabel = isActive
     ? `Ends ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -34,7 +55,9 @@ function ExamCard({ exam, now }) {
       : `${start.toLocaleDateString()} at ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
 
   return (
-    <Card className={`transition-all hover:border-[#2f80ed]/40 hover:shadow-md bg-white border border-slate-200 rounded-2xl overflow-hidden ${isEnded ? 'opacity-75' : ''}`}>
+    <Card
+      className={`transition-all hover:border-[#2f80ed]/40 hover:shadow-md bg-white border border-slate-200 rounded-2xl overflow-hidden ${isEnded ? 'opacity-75' : ''}`}
+    >
       <CardContent className="p-5 flex flex-col justify-between h-full space-y-3.5">
         <div>
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -44,7 +67,9 @@ function ExamCard({ exam, now }) {
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-sm text-slate-900 truncate">{exam.title}</h3>
-                <p className="text-xs text-slate-500 truncate font-normal">{exam.subject || exam.courseCode}</p>
+                <p className="text-xs text-slate-500 truncate font-normal">
+                  {exam.subject || exam.courseCode}
+                </p>
               </div>
             </div>
             {isSubmitted ? (
@@ -72,12 +97,18 @@ function ExamCard({ exam, now }) {
 
           <div className="grid grid-cols-3 gap-2.5 my-3.5">
             <div className="bg-slate-50/75 rounded-xl p-2.5 text-center border border-slate-200">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Duration</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                Duration
+              </p>
               <p className="text-xs font-semibold text-slate-900 mt-0.5">{exam.duration} min</p>
             </div>
             <div className="bg-slate-50/75 rounded-xl p-2.5 text-center border border-slate-200">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Questions</p>
-              <p className="text-xs font-semibold text-slate-900 mt-0.5">{exam._count?.questions ?? exam.questionCount ?? '—'}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                Questions
+              </p>
+              <p className="text-xs font-semibold text-slate-900 mt-0.5">
+                {exam._count?.questions ?? exam.questionCount ?? '—'}
+              </p>
             </div>
             <div className="bg-slate-50/75 rounded-xl p-2.5 text-center border border-slate-200">
               <p className="text-xs font-medium uppercase tracking-wider text-slate-400">Marks</p>
@@ -92,10 +123,16 @@ function ExamCard({ exam, now }) {
           {/* Allotted Eligibility Tags */}
           <div className="flex items-center gap-1.5 flex-wrap pt-1 text-[10px]">
             <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 font-medium text-slate-700">
-              Dept: {exam.allowedDepartments && exam.allowedDepartments.length > 0 ? exam.allowedDepartments.join(', ') : 'All'}
+              Dept:{' '}
+              {exam.allowedDepartments && exam.allowedDepartments.length > 0
+                ? exam.allowedDepartments.join(', ')
+                : 'All'}
             </span>
             <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 font-medium text-[#2f80ed]">
-              Sem: {exam.allowedSemesters && exam.allowedSemesters.length > 0 ? exam.allowedSemesters.map(s => `Sem ${s}`).join(', ') : 'All'}
+              Sem:{' '}
+              {exam.allowedSemesters && exam.allowedSemesters.length > 0
+                ? exam.allowedSemesters.map(s => `Sem ${s}`).join(', ')
+                : 'All'}
             </span>
           </div>
         </div>
@@ -123,13 +160,18 @@ function ExamCard({ exam, now }) {
           ) : canJoin ? (
             <Link to={`/student/exams/${exam.id}/lobby`}>
               <button className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-[#2f80ed] hover:bg-[#2563eb] text-white cursor-pointer shadow-xs flex items-center gap-1">
-                <Play size={12} /> {isActive ? 'Join Now' : isPreCheckOpen ? 'Start Pre-Check' : 'Enter Lobby'}
+                <Play size={12} />{' '}
+                {isActive ? 'Join Now' : isPreCheckOpen ? 'Start Pre-Check' : 'Enter Lobby'}
               </button>
             </Link>
           ) : isEnded ? (
-            <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-500">Exam Over</span>
+            <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-500">
+              Exam Over
+            </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-500">Not Open</span>
+            <span className="px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-500">
+              Not Open
+            </span>
           )}
         </div>
       </CardContent>
@@ -157,14 +199,20 @@ export default function StudentExams() {
   const fetchExams = useCallback(() => {
     setLoading(true)
     setFetchErrorMsg(null)
-    api.get('/student/exams')
+    api
+      .get('/student/exams')
       .then(r => {
         const examsList = r.data.exams || []
         setExams(examsList)
       })
       .catch(err => {
         console.error(err)
-        setFetchErrorMsg(extractErrorMessage(err, 'Unable to connect to exam server. Please verify backend connectivity.'))
+        setFetchErrorMsg(
+          extractErrorMessage(
+            err,
+            'Unable to connect to exam server. Please verify backend connectivity.'
+          )
+        )
       })
       .finally(() => setLoading(false))
   }, [])
@@ -177,12 +225,14 @@ export default function StudentExams() {
   const liveExams = exams.filter(e => {
     if (!e || !e.startTime) return false
     const start = new Date(e.startTime)
-    const end = e.endTime ? new Date(e.endTime) : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
+    const end = e.endTime
+      ? new Date(e.endTime)
+      : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
     const isSubmitted = isAttemptFinished(e)
     return now >= start && now <= end && !isSubmitted && e.status !== 'ENDED'
   })
 
-  const getRemainingTimeStr = (endTime) => {
+  const getRemainingTimeStr = endTime => {
     if (!endTime) return '—'
     const diff = Math.max(0, Math.floor((new Date(endTime) - now) / 1000))
     const m = Math.floor(diff / 60)
@@ -193,14 +243,21 @@ export default function StudentExams() {
   const filtered = exams.filter(e => {
     if (!e || !e.startTime) return false
     const start = new Date(e.startTime)
-    const end = e.endTime ? new Date(e.endTime) : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
-    
+    const end = e.endTime
+      ? new Date(e.endTime)
+      : new Date(start.getTime() + (e.duration || 60) * 60 * 1000)
+
     const isEnded = e.status === 'ENDED' || now > end
     const isSubmitted = isAttemptFinished(e)
-    const isActive = !isEnded && !isSubmitted && (e.status === 'ACTIVE' || (now >= start && now <= end && ['PUBLISHED', 'SCHEDULED', 'ACTIVE'].includes(e.status)))
+    const isActive =
+      !isEnded &&
+      !isSubmitted &&
+      (e.status === 'ACTIVE' ||
+        (now >= start && now <= end && ['PUBLISHED', 'SCHEDULED', 'ACTIVE'].includes(e.status)))
     const isUpcoming = !isEnded && !isSubmitted && now < start
 
-    const matchSearch = (e.title || '').toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      (e.title || '').toLowerCase().includes(search.toLowerCase()) ||
       (e.subject || '').toLowerCase().includes(search.toLowerCase())
 
     if (filterStatus === 'ACTIVE') return matchSearch && isActive
@@ -231,7 +288,6 @@ export default function StudentExams() {
   return (
     <DashboardLayout title="Student Workspace">
       <div className="space-y-6 font-sans text-slate-900">
-        
         {/* Top Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -243,7 +299,9 @@ export default function StudentExams() {
           {user && (
             <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-200 text-[#2f80ed] rounded-xl text-xs font-semibold w-fit">
               <Building size={14} className="shrink-0" />
-              <span>{user.department || 'Electronics & Communication'} • Semester {user.semester || 6}</span>
+              <span>
+                {user.department || 'Electronics & Communication'} • Semester {user.semester || 6}
+              </span>
             </div>
           )}
         </div>
@@ -267,7 +325,11 @@ export default function StudentExams() {
                   </div>
 
                   <span className="text-[11px] font-mono text-slate-400 font-normal">
-                    Closes at {new Date(liveExams[0].endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    Closes at{' '}
+                    {new Date(liveExams[0].endTime).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
 
@@ -276,7 +338,12 @@ export default function StudentExams() {
                     {liveExams[0].title}
                   </h2>
                   <p className="text-xs text-slate-300 mt-1 font-normal">
-                    Subject: <strong className="text-white font-medium">{liveExams[0].subject || 'Course Assessment'}</strong> • Duration: {liveExams[0].duration} mins • Total Marks: {liveExams[0].totalMarks}
+                    Subject:{' '}
+                    <strong className="text-white font-medium">
+                      {liveExams[0].subject || 'Course Assessment'}
+                    </strong>{' '}
+                    • Duration: {liveExams[0].duration} mins • Total Marks:{' '}
+                    {liveExams[0].totalMarks}
                   </p>
                 </div>
 
@@ -285,7 +352,8 @@ export default function StudentExams() {
                     Allotted: {liveExams[0].allowedDepartments?.join(', ') || 'All Depts'}
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-white/10 text-slate-200 backdrop-blur-xs border border-white/10 font-medium">
-                    Semesters: {liveExams[0].allowedSemesters?.map(s => `Sem ${s}`).join(', ') || 'All'}
+                    Semesters:{' '}
+                    {liveExams[0].allowedSemesters?.map(s => `Sem ${s}`).join(', ') || 'All'}
                   </span>
                 </div>
               </div>
@@ -316,7 +384,9 @@ export default function StudentExams() {
                     <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
                       Workstation Integrity
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">Pre-exam verification status</p>
+                    <p className="text-[11px] text-slate-500 font-normal mt-0.5">
+                      Pre-exam verification status
+                    </p>
                   </div>
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 </div>
@@ -326,7 +396,9 @@ export default function StudentExams() {
                     <span className="text-slate-600 font-normal flex items-center gap-1.5">
                       <Wifi size={13} className="text-[#2f80ed]" /> Telemetry Latency
                     </span>
-                    <strong className="font-mono text-emerald-600 font-semibold">18 ms (Low)</strong>
+                    <strong className="font-mono text-emerald-600 font-semibold">
+                      18 ms (Low)
+                    </strong>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/75 border border-slate-200">
@@ -364,7 +436,10 @@ export default function StudentExams() {
         {/* Filter & Search Bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search
+              size={16}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -379,7 +454,7 @@ export default function StudentExams() {
               { id: 'ACTIVE', label: 'LIVE NOW' },
               { id: 'SCHEDULED', label: 'SCHEDULED' },
               { id: 'SUBMITTED', label: 'SUBMITTED' },
-              { id: 'ENDED', label: 'ENDED' }
+              { id: 'ENDED', label: 'ENDED' },
             ].map(item => (
               <button
                 key={item.id}
@@ -401,7 +476,10 @@ export default function StudentExams() {
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[...Array(6)].map((_, i) => (
-              <div key={i} className="h-44 rounded-2xl bg-card border border-border animate-pulse shadow-xs" />
+              <div
+                key={i}
+                className="h-44 rounded-2xl bg-card border border-border animate-pulse shadow-xs"
+              />
             ))}
           </div>
         ) : fetchErrorMsg ? (
@@ -413,11 +491,7 @@ export default function StudentExams() {
               <h3 className="text-sm font-semibold text-foreground">Failed to Load Examinations</h3>
               <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{fetchErrorMsg}</p>
             </div>
-            <Button
-              onClick={fetchExams}
-              size="sm"
-              className="text-xs font-semibold font-mono mt-2"
-            >
+            <Button onClick={fetchExams} size="sm" className="text-xs font-semibold font-mono mt-2">
               <RefreshCw size={13} className="mr-1.5" /> Try Again
             </Button>
           </Card>
@@ -435,7 +509,10 @@ export default function StudentExams() {
             {(search || filterStatus) && (
               <div>
                 <button
-                  onClick={() => { setSearch(''); setFilterStatus('') }}
+                  onClick={() => {
+                    setSearch('')
+                    setFilterStatus('')
+                  }}
                   className="mt-4 px-4 py-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs rounded-xl transition-colors cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
                 >
                   Clear Search & Filters

@@ -1,6 +1,11 @@
 const express = require('express')
 const { examService } = require('./service')
-const { examIdParamSchema, createExamSchema, updateExamSchema } = require('./validation')
+const {
+  examIdParamSchema,
+  createExamSchema,
+  updateExamSchema,
+  invigilatorExamSettingsSchema,
+} = require('./validation')
 const { validateBody, validateParams } = require('../../middleware/validation')
 const { requireAuth } = require('../../middleware/authentication')
 const { requireRole } = require('../../middleware/authorization')
@@ -37,6 +42,46 @@ router.get(
   async (req, res, next) => {
     try {
       const result = await examService.getExam(req.params.examId, req.user)
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * GET /api/v1/exams/:examId/settings
+ * View operational & scheduling settings (Admin, Faculty, Invigilator)
+ */
+router.get(
+  '/exams/:examId/settings',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(examIdParamSchema),
+  async (req, res, next) => {
+    try {
+      const result = await examService.getExamSettings(req.params.examId, req.user)
+      return res.status(200).json(result)
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
+ * PATCH /api/v1/exams/:examId/settings
+ * Update operational & scheduling settings (Admin, Faculty, Invigilator)
+ */
+router.patch(
+  '/exams/:examId/settings',
+  requireAuth,
+  requireRole(['ADMIN', 'FACULTY', 'INVIGILATOR']),
+  validateParams(examIdParamSchema),
+  validateBody(invigilatorExamSettingsSchema),
+  async (req, res, next) => {
+    try {
+      const io = req.app.get('io')
+      const result = await examService.updateExamSettings(req.params.examId, req.body, req.user, io)
       return res.status(200).json(result)
     } catch (err) {
       next(err)

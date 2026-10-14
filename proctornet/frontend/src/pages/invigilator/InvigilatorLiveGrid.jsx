@@ -22,6 +22,13 @@ import {
   Monitor,
   Cpu,
   CheckCircle2,
+  Sliders,
+  Calendar,
+  Clock,
+  Shield,
+  Save,
+  Sparkles,
+  Info,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -69,6 +76,101 @@ export default function InvigilatorLiveGrid() {
   const [violationSeverityFilter, setViolationSeverityFilter] = useState('ALL')
   const [violationTypeFilter, setViolationTypeFilter] = useState('ALL')
   const [violationPage, setViolationPage] = useState(1)
+
+  // Exam Settings & Rescheduling State (R-10 / P3)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [examSettings, setExamSettings] = useState(null)
+  const [loadingSettings, setLoadingSettings] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  const toDatetimeLocal = isoString => {
+    if (!isoString) return ''
+    const d = new Date(isoString)
+    if (isNaN(d.getTime())) return ''
+    const pad = n => String(n).padStart(2, '0')
+    const year = d.getFullYear()
+    const month = pad(d.getMonth() + 1)
+    const day = pad(d.getDate())
+    const hours = pad(d.getHours())
+    const mins = pad(d.getMinutes())
+    return `${year}-${month}-${day}T${hours}:${mins}`
+  }
+
+  const fetchExamSettings = async () => {
+    if (!effectiveExamId) return
+    setLoadingSettings(true)
+    try {
+      const res = await api.get(`/exams/${effectiveExamId}/settings`)
+      setExamSettings(res.data)
+    } catch (err) {
+      toast.error('Failed to load exam settings: ' + extractErrorMessage(err))
+    } finally {
+      setLoadingSettings(false)
+    }
+  }
+
+  const handleMakeLiveNow = () => {
+    const now = new Date()
+    const start = new Date(now.getTime() - 60 * 1000)
+    const dur = parseInt(examSettings?.duration || 60, 10)
+    const end = new Date(now.getTime() + dur * 60 * 1000)
+    setExamSettings(prev => ({
+      ...prev,
+      startTime: start.toISOString(),
+      endTime: end.toISOString(),
+    }))
+    toast.success('Schedule set to start now. Click "Save Settings" to apply.', { icon: '⚡' })
+  }
+
+  const handleAddMinutes = extraMins => {
+    if (!examSettings?.endTime) return
+    const currentEnd = new Date(examSettings.endTime)
+    const newEnd = new Date(currentEnd.getTime() + extraMins * 60 * 1000)
+    const newDuration = parseInt(examSettings.duration || 60, 10) + extraMins
+    setExamSettings(prev => ({
+      ...prev,
+      endTime: newEnd.toISOString(),
+      duration: newDuration,
+    }))
+    toast.success(`Extended by ${extraMins} mins. Click "Save Settings" to apply.`, { icon: '⏱️' })
+  }
+
+  const handleSaveSettings = async () => {
+    if (!effectiveExamId || !examSettings) return
+    if (new Date(examSettings.endTime) <= new Date(examSettings.startTime)) {
+      toast.error('End time must be strictly after start time')
+      return
+    }
+    setSavingSettings(true)
+    try {
+      const payload = {
+        startTime: new Date(examSettings.startTime).toISOString(),
+        endTime: new Date(examSettings.endTime).toISOString(),
+        duration: parseInt(examSettings.duration, 10),
+        cameraRequired: Boolean(examSettings.cameraRequired),
+        micRequired: Boolean(examSettings.micRequired),
+        browserLock: Boolean(examSettings.browserLock),
+        fullScreenMode: Boolean(examSettings.fullScreenMode),
+        watermarkRequired: Boolean(examSettings.watermarkRequired),
+        tabSwitchLimit: parseInt(examSettings.tabSwitchLimit, 10),
+        aiReverifyInterval: parseInt(examSettings.aiReverifyInterval, 10),
+        deviceAgentPolicy: examSettings.deviceAgentPolicy || 'REQUIRED',
+        vpnRequired: Boolean(examSettings.vpnRequired),
+      }
+      const res = await api.patch(`/exams/${effectiveExamId}/settings`, payload)
+      toast.success('Exam settings & schedule successfully updated! Candidate timers synchronized.')
+      if (res.data?.settings) {
+        setExamSettings(res.data.settings)
+        if (res.data.settings.title) setExamTitle(res.data.settings.title)
+      }
+      setSettingsModalOpen(false)
+      fetchGridData(false)
+    } catch (err) {
+      toast.error('Failed to update settings: ' + extractErrorMessage(err))
+    } finally {
+      setSavingSettings(false)
+    }
+  }
 
   // R3: snapshot driver state
   const [mediaDriver, setMediaDriver] = useState('snapshot') // default, overwritten from /config
@@ -150,11 +252,21 @@ export default function InvigilatorLiveGrid() {
     chats,
   } = useInvigilatorSocket({
     examId: effectiveExamId,
+    onExamUpdated: data => {
+      toast.success(data?.message || 'Exam schedule / settings updated in real time', {
+        icon: '⚙️',
+      })
+      if (data?.settings) {
+        setExamSettings(prev => ({ ...(prev || {}), ...data.settings }))
+        if (data.settings.title) setExamTitle(data.settings.title)
+      }
+      fetchGridData(false)
+    },
     onInitialFrames: frames => {
       if (frames) {
         setSnapshotFrames(prev => ({
           ...prev,
-          ...frames
+          ...frames,
         }))
       }
     },
@@ -167,8 +279,8 @@ export default function InvigilatorLiveGrid() {
             ...(prev[attemptId] || {}),
             screenUrl: screenUrl || prev[attemptId]?.screenUrl,
             cameraUrl: cameraUrl || prev[attemptId]?.cameraUrl,
-            frameAt: frameAt || Date.now()
-          }
+            frameAt: frameAt || Date.now(),
+          },
         }))
       }
     },
@@ -453,7 +565,7 @@ export default function InvigilatorLiveGrid() {
           ...(prev[attemptId] || {}),
           screenUrl: screenUrl || prev[attemptId]?.screenUrl,
           cameraUrl: cameraUrl || prev[attemptId]?.cameraUrl,
-          frameAt: frameAt || Date.now()
+          frameAt: frameAt || Date.now(),
         },
       }))
     }
@@ -748,7 +860,18 @@ export default function InvigilatorLiveGrid() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                fetchExamSettings()
+                setSettingsModalOpen(true)
+              }}
+              className="text-xs font-bold text-primary border-primary/30 hover:bg-primary/5 shadow-xs"
+            >
+              <Sliders size={13} className="mr-1.5" /> Exam Settings
+            </Button>
             <Button
               variant={filterActiveOnly ? 'default' : 'outline'}
               size="sm"
@@ -1625,6 +1748,336 @@ export default function InvigilatorLiveGrid() {
                   Close Snapshot
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Exam Settings & Rescheduling Modal */}
+        {settingsModalOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
+            onClick={() => setSettingsModalOpen(false)}
+          >
+            <div
+              className="bg-card border border-border rounded-3xl shadow-2xl max-w-2xl w-full p-6 overflow-hidden flex flex-col gap-5 text-foreground max-h-[90vh] overflow-y-auto"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between border-b border-border pb-4">
+                <div>
+                  <h3 className="text-base font-bold flex items-center gap-2">
+                    <Sliders size={18} className="text-primary" />
+                    Exam Settings & Rescheduling
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 font-normal">
+                    Adjust operational schedule, duration, and proctoring controls for{' '}
+                    {examTitle || 'this examination'}.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSettingsModalOpen(false)}
+                  className="p-1.5 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground cursor-pointer transition"
+                  aria-label="Close modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {loadingSettings || !examSettings ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <RefreshCw className="w-6 h-6 animate-spin text-primary" />
+                  <p className="text-xs text-muted-foreground">Loading examination parameters...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-5">
+                  {/* Quick Reschedule Presets */}
+                  <div className="p-3.5 rounded-2xl bg-primary/5 border border-primary/15 flex flex-col gap-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-primary" /> Quick Schedule Actions
+                      </span>
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        Status:{' '}
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold py-0">
+                          {examSettings.status || 'SCHEDULED'}
+                        </Badge>
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleMakeLiveNow}
+                        className="text-xs font-semibold h-8"
+                      >
+                        ⚡ Make Live Now
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleAddMinutes(15)}
+                        className="text-xs font-semibold h-8"
+                      >
+                        +15 Mins
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleAddMinutes(30)}
+                        className="text-xs font-semibold h-8"
+                      >
+                        +30 Mins
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => handleAddMinutes(60)}
+                        className="text-xs font-semibold h-8"
+                      >
+                        +1 Hour
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Timing & Duration Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <Clock size={12} className="text-muted-foreground" /> Start Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={toDatetimeLocal(examSettings.startTime)}
+                        onChange={e =>
+                          setExamSettings(prev => ({
+                            ...prev,
+                            startTime: e.target.value
+                              ? new Date(e.target.value).toISOString()
+                              : prev.startTime,
+                          }))
+                        }
+                        className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <Clock size={12} className="text-muted-foreground" /> End Time
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={toDatetimeLocal(examSettings.endTime)}
+                        onChange={e =>
+                          setExamSettings(prev => ({
+                            ...prev,
+                            endTime: e.target.value
+                              ? new Date(e.target.value).toISOString()
+                              : prev.endTime,
+                          }))
+                        }
+                        className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <Calendar size={12} className="text-muted-foreground" /> Duration (mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="480"
+                        value={examSettings.duration || 60}
+                        onChange={e =>
+                          setExamSettings(prev => ({
+                            ...prev,
+                            duration: parseInt(e.target.value, 10) || 60,
+                          }))
+                        }
+                        className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Operational Proctoring Controls */}
+                  <div className="flex flex-col gap-2.5 pt-2 border-t border-border">
+                    <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Shield size={13} className="text-primary" /> Proctoring & Integrity Rules
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Camera Feed Required</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.cameraRequired)}
+                          onChange={e =>
+                            setExamSettings(prev => ({ ...prev, cameraRequired: e.target.checked }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Microphone Feed Required</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.micRequired)}
+                          onChange={e =>
+                            setExamSettings(prev => ({ ...prev, micRequired: e.target.checked }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Browser Lock Enforced</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.browserLock)}
+                          onChange={e =>
+                            setExamSettings(prev => ({ ...prev, browserLock: e.target.checked }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Full-Screen Mode Required</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.fullScreenMode)}
+                          onChange={e =>
+                            setExamSettings(prev => ({ ...prev, fullScreenMode: e.target.checked }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Candidate Dynamic Watermark</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.watermarkRequired)}
+                          onChange={e =>
+                            setExamSettings(prev => ({
+                              ...prev,
+                              watermarkRequired: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                      <label className="flex items-center justify-between p-3 rounded-2xl bg-muted/40 border border-border cursor-pointer hover:bg-muted/70 transition">
+                        <span className="text-xs font-medium">Secure Network Isolation</span>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(examSettings.vpnRequired)}
+                          onChange={e =>
+                            setExamSettings(prev => ({ ...prev, vpnRequired: e.target.checked }))
+                          }
+                          className="w-4 h-4 rounded text-primary focus:ring-primary"
+                        />
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-foreground">
+                          Tab Switch Limit
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          value={examSettings.tabSwitchLimit ?? 3}
+                          onChange={e =>
+                            setExamSettings(prev => ({
+                              ...prev,
+                              tabSwitchLimit: parseInt(e.target.value, 10) || 0,
+                            }))
+                          }
+                          className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-foreground">
+                          AI Re-verify Interval (min)
+                        </label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="120"
+                          value={examSettings.aiReverifyInterval ?? 10}
+                          onChange={e =>
+                            setExamSettings(prev => ({
+                              ...prev,
+                              aiReverifyInterval: parseInt(e.target.value, 10) || 10,
+                            }))
+                          }
+                          className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 font-mono text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-foreground">
+                          Exam Device Companion
+                        </label>
+                        <select
+                          value={examSettings.deviceAgentPolicy || 'REQUIRED'}
+                          onChange={e =>
+                            setExamSettings(prev => ({
+                              ...prev,
+                              deviceAgentPolicy: e.target.value,
+                            }))
+                          }
+                          className="w-full text-xs bg-background border border-input rounded-xl px-3 py-2 text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="REQUIRED">REQUIRED (Mandatory)</option>
+                          <option value="OPTIONAL">OPTIONAL</option>
+                          <option value="OFF">OFF (Disabled)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Informational Notice */}
+                  <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 text-[11px] text-blue-800 dark:text-blue-300 flex items-start gap-2">
+                    <Info size={14} className="mt-0.5 shrink-0" />
+                    <span>
+                      Modifications to schedule timing immediately propagate in real-time. Extending
+                      the end time will automatically extend deadlines for all attending students.
+                      Content (questions and marks) is immutable.
+                    </span>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-border">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSettingsModalOpen(false)}
+                      className="text-xs font-bold"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={savingSettings}
+                      onClick={handleSaveSettings}
+                      className="text-xs font-bold bg-primary text-primary-foreground shadow-xs"
+                    >
+                      {savingSettings ? (
+                        <>
+                          <RefreshCw size={13} className="mr-1.5 animate-spin" /> Saving...
+                        </>
+                      ) : (
+                        <>
+                          <Save size={13} className="mr-1.5" /> Save Settings
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

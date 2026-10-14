@@ -1,8 +1,8 @@
 # ProctorNet API Route Inventory (Canonical v1 Monolith)
 
 > **Auto-generated from code:** Generated via `scripts/ci/generate-route-inventory.js` from mounted Express routers.
-> **Generation Timestamp:** `2026-10-13T03:20:36.487Z`
-> **Total Endpoints:** `201` across `13` domain modules.
+> **Generation Timestamp:** `2026-10-14T13:45:27.586Z`
+> **Total Endpoints:** `205` across `13` domain modules.
 
 ## Modules Summary
 
@@ -12,9 +12,9 @@
 | `attempts` | 25 |
 | `audit` | 1 |
 | `auth` | 12 |
-| `exams` | 13 |
+| `exams` | 15 |
 | `faculty` | 35 |
-| `invigilator` | 12 |
+| `invigilator` | 14 |
 | `media` | 3 |
 | `notifications` | 1 |
 | `proctoring` | 12 |
@@ -131,6 +131,8 @@
 | `POST` | `/api/v1/exams/:examId/readiness` | Required | `student` | Yes (Candidate Identity) | `exams` | DB row created/updated (exams) | 0 exams mutated |
 | `GET` | `/api/v1/exams/:examId/results` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/exams/:examId/results/release` | Required | `admin, faculty` | Yes (Faculty Exam Owner) | `exams` | DB row updated (exam_results is_released=true) + Redis emit | 0 results modified; 0 emits dispatched |
+| `GET` | `/api/v1/exams/:examId/settings` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `exams` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `PATCH` | `/api/v1/exams/:examId/settings` | Required | `admin, faculty, invigilator` | Yes (Exam Session Scoped) | `exams` | DB row created/updated (exams) | 0 exams mutated |
 | `GET` | `/api/v1/faculty/dashboard` | Required | `faculty` | Yes | `faculty` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/faculty/exams` | Required | `faculty` | Yes (Faculty Exam Owner) | `faculty` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/faculty/exams` | Required | `faculty` | Yes (Faculty Exam Owner) | `faculty` | DB row created/updated (exams) | 0 exams mutated |
@@ -170,6 +172,8 @@
 | `GET` | `/api/v1/invigilator/exam/:examId` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/invigilator/exam/:examId/terminate/:studentId` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | DB row updated (exam_attempts TERMINATED) + Outbox row + audit log | Attempt status untouched; 0 audit logs |
 | `POST` | `/api/v1/invigilator/exam/:examId/warn/:studentId` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | Audit log row created + Socket notification dispatched | 0 audit logs created; 0 notifications dispatched |
+| `GET` | `/api/v1/invigilator/exams/:examId/settings` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | None (Read-only query) | None (Zero DB/storage mutation) |
+| `PATCH` | `/api/v1/invigilator/exams/:examId/settings` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | DB row created/updated (exams) | 0 exams mutated |
 | `GET` | `/api/v1/invigilator/exams/:examId/students` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `GET` | `/api/v1/invigilator/live-grid/:examId` | Required | `invigilator, faculty, admin` | Yes (Exam Session Scoped) | `invigilator` | None (Read-only query) | None (Zero DB/storage mutation) |
 | `POST` | `/api/v1/invigilator/login` | Required | `invigilator, faculty, admin` | Yes | `invigilator` | DB row mutated (POST /api/v1/invigilator/login) | Rejected requests mutate zero rows |
