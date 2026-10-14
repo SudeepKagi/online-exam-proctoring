@@ -112,15 +112,23 @@ export default function ExamDetail() {
     fetchDeptStudents()
   }, [id])
 
+  const toLocalDatetime = dateVal => {
+    if (!dateVal) return ''
+    const d = new Date(dateVal)
+    if (isNaN(d.getTime())) return ''
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   // Sync settingsForm from exam once loaded
   useEffect(() => {
-    if (exam && !settingsForm) {
+    if (exam) {
       setSettingsForm({
         title: exam.title || '',
         subject: exam.subject || '',
         description: exam.description || '',
-        startTime: exam.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
-        endTime: exam.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+        startTime: toLocalDatetime(exam.startTime),
+        endTime: toLocalDatetime(exam.endTime),
         duration: exam.duration || 60,
         tabSwitchLimit: exam.tabSwitchLimit ?? 3,
         cameraRequired: exam.cameraRequired ?? true,
@@ -204,22 +212,62 @@ export default function ExamDetail() {
     }
   }
 
+  const handleQuickMakeLive = () => {
+    const now = new Date()
+    const dur = parseInt(settingsForm.duration || 60, 10)
+    const end = new Date(now.getTime() + dur * 60 * 1000)
+    setSettingsForm(prev => ({
+      ...prev,
+      startTime: toLocalDatetime(now),
+      endTime: toLocalDatetime(end),
+    }))
+    toast.info('Timeframe set to Live Now. Click "Save Configuration" to apply.')
+  }
+
+  const handleQuickExtend = minutes => {
+    const currentEnd = settingsForm.endTime ? new Date(settingsForm.endTime) : new Date()
+    const base = isNaN(currentEnd.getTime()) ? new Date() : currentEnd
+    const newEnd = new Date(base.getTime() + minutes * 60 * 1000)
+    setSettingsForm(prev => ({
+      ...prev,
+      endTime: toLocalDatetime(newEnd),
+    }))
+    toast.info(`End time extended by +${minutes}m. Click "Save Configuration" to apply.`)
+  }
+
   const handleSaveSettings = async e => {
     e.preventDefault()
     setSettingsSaving(true)
     try {
-      await api.patch(`/faculty/exams/${id}`, {
-        ...settingsForm,
-        startTime: settingsForm.startTime
-          ? new Date(settingsForm.startTime).toISOString()
-          : undefined,
-        endTime: settingsForm.endTime ? new Date(settingsForm.endTime).toISOString() : undefined,
-        duration: parseInt(settingsForm.duration),
-        tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit || 3),
-        negativeValue: parseFloat(settingsForm.negativeValue || 0.25),
-      })
+      if (exam.status !== 'DRAFT') {
+        const payload = {
+          duration: parseInt(settingsForm.duration, 10),
+          tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit || 3, 10),
+          cameraRequired: Boolean(settingsForm.cameraRequired),
+          browserLock: Boolean(settingsForm.browserLock),
+          fullScreenMode: Boolean(settingsForm.fullScreenMode),
+        }
+        if (settingsForm.startTime) {
+          payload.startTime = new Date(settingsForm.startTime).toISOString()
+        }
+        if (settingsForm.endTime) {
+          payload.endTime = new Date(settingsForm.endTime).toISOString()
+        }
+        await api.patch(`/exams/${id}/settings`, payload)
+      } else {
+        await api.patch(`/faculty/exams/${id}`, {
+          ...settingsForm,
+          startTime: settingsForm.startTime
+            ? new Date(settingsForm.startTime).toISOString()
+            : undefined,
+          endTime: settingsForm.endTime ? new Date(settingsForm.endTime).toISOString() : undefined,
+          duration: parseInt(settingsForm.duration, 10),
+          tabSwitchLimit: parseInt(settingsForm.tabSwitchLimit || 3, 10),
+          negativeValue: parseFloat(settingsForm.negativeValue || 0.25),
+        })
+      }
       await fetchExam()
-      toast.success('Exam settings saved successfully!')
+      toast.success('Exam settings and schedule updated successfully!')
     } catch (err) {
       toast.error(extractErrorMessage(err, 'Failed to save settings'))
     } finally {
@@ -1794,11 +1842,11 @@ export default function ExamDetail() {
                   </p>
                 </div>
 
-                {exam.status !== 'DRAFT' && exam.status !== 'SCHEDULED' && (
+                {['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status) ? (
                   <div
                     style={{
-                      background: '#fffbe6',
-                      border: '1px solid #fde68a',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
                       borderRadius: '12px',
                       padding: '1rem 1.25rem',
                       marginBottom: '1.75rem',
@@ -1807,33 +1855,70 @@ export default function ExamDetail() {
                       gap: '0.75rem',
                     }}
                   >
-                    <Icon name="warning" size={20} style={{ color: '#b45309', flexShrink: 0 }} />
+                    <Icon name="warning" size={20} style={{ color: '#dc2626', flexShrink: 0 }} />
                     <div>
                       <div
                         style={{
                           fontSize: '0.8125rem',
                           fontWeight: 800,
-                          color: '#b45309',
+                          color: '#dc2626',
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
                         }}
                       >
-                        Settings Locked ({exam.status})
+                        Exam Concluded ({exam.status})
                       </div>
                       <div
                         style={{
                           fontSize: '0.8125rem',
-                          color: '#78350f',
+                          color: '#991b1b',
                           marginTop: '0.15rem',
                           fontWeight: 500,
                         }}
                       >
-                        This exam is currently <strong>{exam.status}</strong>. Configuration
-                        settings are in read-only mode and cannot be edited.
+                        This exam has concluded. Configuration and scheduling settings can no longer be edited.
                       </div>
                     </div>
                   </div>
-                )}
+                ) : exam.status !== 'DRAFT' ? (
+                  <div
+                    style={{
+                      background: '#eff6ff',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '12px',
+                      padding: '1rem 1.25rem',
+                      marginBottom: '1.75rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <Icon name="info" size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
+                    <div>
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          fontWeight: 800,
+                          color: '#1d4ed8',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        Live Operational Controls ({exam.status})
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          color: '#1e40af',
+                          marginTop: '0.15rem',
+                          fontWeight: 500,
+                        }}
+                      >
+                        This exam is <strong>{exam.status}</strong>. You can dynamically adjust schedules (Start/End Time), duration, tab switch limits, and security toggles. Core content (Title, Subject, Questions) remains locked.
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 <form
                   onSubmit={handleSaveSettings}
@@ -1878,20 +1963,19 @@ export default function ExamDetail() {
                           type="text"
                           value={settingsForm.title}
                           onChange={e => setSettingsForm(f => ({ ...f, title: e.target.value }))}
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={exam.status !== 'DRAFT'}
                           required
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
-                              ? '#f1f5f9'
-                              : '#f8fafc',
+                            background: exam.status !== 'DRAFT' ? '#f1f5f9' : '#f8fafc',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: exam.status !== 'DRAFT' ? 'not-allowed' : 'text',
                           }}
                         />
                       </div>
@@ -1914,19 +1998,18 @@ export default function ExamDetail() {
                           type="text"
                           value={settingsForm.subject}
                           onChange={e => setSettingsForm(f => ({ ...f, subject: e.target.value }))}
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={exam.status !== 'DRAFT'}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
-                              ? '#f1f5f9'
-                              : '#f8fafc',
+                            background: exam.status !== 'DRAFT' ? '#f1f5f9' : '#f8fafc',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: exam.status !== 'DRAFT' ? 'not-allowed' : 'text',
                           }}
                         />
                       </div>
@@ -1949,19 +2032,22 @@ export default function ExamDetail() {
                           type="number"
                           value={settingsForm.duration}
                           onChange={e => setSettingsForm(f => ({ ...f, duration: e.target.value }))}
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
+                            background: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
                               ? '#f1f5f9'
-                              : '#f8fafc',
+                              : '#ffffff',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
+                              ? 'not-allowed'
+                              : 'text',
                           }}
                         />
                       </div>
@@ -1972,15 +2058,100 @@ export default function ExamDetail() {
                   <div>
                     <div
                       style={{
-                        fontSize: '0.8125rem',
-                        fontWeight: 800,
-                        color: '#475569',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '0.75rem',
                         marginBottom: '1rem',
                       }}
                     >
-                      2. Timeframe & Violation Limits
+                      <div
+                        style={{
+                          fontSize: '0.8125rem',
+                          fontWeight: 800,
+                          color: '#475569',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        2. Timeframe & Violation Limits
+                      </div>
+                      {!['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status) && (
+                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={handleQuickMakeLive}
+                            title="Set start time to now and extend end time by duration"
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              background: '#ecfdf5',
+                              border: '1px solid #a7f3d0',
+                              color: '#065f46',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                            }}
+                          >
+                            ⚡ Make Live Now
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickExtend(15)}
+                            title="Extend end time by 15 minutes"
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#f1f5f9',
+                              border: '1px solid #cbd5e1',
+                              color: '#334155',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            +15m
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickExtend(30)}
+                            title="Extend end time by 30 minutes"
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#f1f5f9',
+                              border: '1px solid #cbd5e1',
+                              color: '#334155',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            +30m
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleQuickExtend(60)}
+                            title="Extend end time by 1 hour"
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              background: '#f1f5f9',
+                              border: '1px solid #cbd5e1',
+                              color: '#334155',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            +1h
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div
                       style={{
@@ -2009,19 +2180,22 @@ export default function ExamDetail() {
                           onChange={e =>
                             setSettingsForm(f => ({ ...f, startTime: e.target.value }))
                           }
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
+                            background: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
                               ? '#f1f5f9'
-                              : '#f8fafc',
+                              : '#ffffff',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
+                              ? 'not-allowed'
+                              : 'text',
                           }}
                         />
                       </div>
@@ -2044,19 +2218,22 @@ export default function ExamDetail() {
                           type="datetime-local"
                           value={settingsForm.endTime}
                           onChange={e => setSettingsForm(f => ({ ...f, endTime: e.target.value }))}
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
+                            background: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
                               ? '#f1f5f9'
-                              : '#f8fafc',
+                              : '#ffffff',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
+                              ? 'not-allowed'
+                              : 'text',
                           }}
                         />
                       </div>
@@ -2081,19 +2258,22 @@ export default function ExamDetail() {
                           onChange={e =>
                             setSettingsForm(f => ({ ...f, tabSwitchLimit: e.target.value }))
                           }
-                          disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                          disabled={['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)}
                           style={{
                             width: '100%',
                             padding: '0.75rem 1rem',
                             borderRadius: '10px',
                             border: '1.5px solid #cbd5e1',
-                            background: !['DRAFT', 'SCHEDULED'].includes(exam.status)
+                            background: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
                               ? '#f1f5f9'
-                              : '#f8fafc',
+                              : '#ffffff',
                             color: '#0f172a',
                             fontWeight: 700,
                             fontSize: '0.9375rem',
                             outline: 'none',
+                            cursor: ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
+                              ? 'not-allowed'
+                              : 'text',
                           }}
                         />
                       </div>
@@ -2133,44 +2313,59 @@ export default function ExamDetail() {
                         }}
                       >
                         {[
-                          ['cameraRequired', 'Webcam Monitoring'],
-                          ['browserLock', 'Browser Lockdown'],
-                          ['fullScreenMode', 'Enforce Fullscreen'],
-                          ['randomiseQuestions', 'Randomise Questions'],
-                          ['randomiseOptions', 'Randomise Options'],
-                          ['negativeMarking', 'Negative Marking'],
-                        ].map(([key, label]) => (
-                          <label
-                            key={key}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem',
-                              fontSize: '0.875rem',
-                              fontWeight: 700,
-                              color: '#1e293b',
-                              cursor: ['DRAFT', 'SCHEDULED'].includes(exam.status)
-                                ? 'pointer'
-                                : 'not-allowed',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={!!settingsForm[key]}
-                              disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
-                              onChange={e =>
-                                setSettingsForm(f => ({ ...f, [key]: e.target.checked }))
-                              }
+                          ['cameraRequired', 'Webcam Monitoring', false],
+                          ['browserLock', 'Browser Lockdown', false],
+                          ['fullScreenMode', 'Enforce Fullscreen', false],
+                          ['randomiseQuestions', 'Randomise Questions', true],
+                          ['randomiseOptions', 'Randomise Options', true],
+                          ['negativeMarking', 'Negative Marking', true],
+                        ].map(([key, label, isContentSpecific]) => {
+                          const isDisabled = isContentSpecific
+                            ? exam.status !== 'DRAFT'
+                            : ['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status)
+                          return (
+                            <label
+                              key={key}
                               style={{
-                                width: '18px',
-                                height: '18px',
-                                accentColor: '#4f46e5',
-                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                fontSize: '0.875rem',
+                                fontWeight: 700,
+                                color: isDisabled ? '#64748b' : '#1e293b',
+                                cursor: isDisabled ? 'not-allowed' : 'pointer',
                               }}
-                            />
-                            {label}
-                          </label>
-                        ))}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={!!settingsForm[key]}
+                                disabled={isDisabled}
+                                onChange={e =>
+                                  setSettingsForm(f => ({ ...f, [key]: e.target.checked }))
+                                }
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  accentColor: '#4f46e5',
+                                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                }}
+                              />
+                              {label}
+                              {isContentSpecific && exam.status !== 'DRAFT' && (
+                                <span
+                                  style={{
+                                    fontSize: '0.6875rem',
+                                    color: '#94a3b8',
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  (Locked)
+                                </span>
+                              )}
+                            </label>
+                          )
+                        })}
                       </div>
 
                       {settingsForm.negativeMarking && (
@@ -2201,17 +2396,18 @@ export default function ExamDetail() {
                             onChange={e =>
                               setSettingsForm(f => ({ ...f, negativeValue: e.target.value }))
                             }
-                            disabled={!['DRAFT', 'SCHEDULED'].includes(exam.status)}
+                            disabled={exam.status !== 'DRAFT'}
                             style={{
                               width: '100%',
                               maxWidth: '300px',
                               padding: '0.65rem 1rem',
                               borderRadius: '8px',
                               border: '1.5px solid #cbd5e1',
-                              background: '#ffffff',
+                              background: exam.status !== 'DRAFT' ? '#f1f5f9' : '#ffffff',
                               color: '#0f172a',
                               fontWeight: 700,
                               fontSize: '0.875rem',
+                              cursor: exam.status !== 'DRAFT' ? 'not-allowed' : 'text',
                             }}
                           />
                         </div>
@@ -2219,7 +2415,7 @@ export default function ExamDetail() {
                     </div>
                   </div>
 
-                  {['DRAFT', 'SCHEDULED'].includes(exam.status) && (
+                  {!['ENDED', 'EVALUATED', 'RESULT_PUBLISHED', 'COMPLETED'].includes(exam.status) && (
                     <button
                       type="submit"
                       disabled={settingsSaving}
@@ -2231,7 +2427,7 @@ export default function ExamDetail() {
                         background: '#4f46e5',
                         color: '#ffffff',
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: settingsSaving ? 'not-allowed' : 'pointer',
                         boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
                         alignSelf: 'flex-start',
                         marginTop: '0.5rem',

@@ -59,7 +59,21 @@ class FacultyService {
     }
   }
 
-  async updateExam(id, data, facultyId) {
+  async updateExam(id, data, facultyId, io = null) {
+    const exam = await facultyRepository.findExamById(id, facultyId)
+    if (!exam) throw new NotFoundError('Exam not found or access denied')
+
+    if (exam.status !== 'DRAFT') {
+      await examService.updateExamSettings(
+        id,
+        data,
+        { id: facultyId, role: ROLES.FACULTY },
+        io
+      )
+      const freshExam = await facultyRepository.findExamById(id, facultyId)
+      return toFacultyExamDTO(freshExam)
+    }
+
     const updated = await examService.updateExam(id, data, facultyId, ROLES.FACULTY)
     return toFacultyExamDTO(updated)
   }

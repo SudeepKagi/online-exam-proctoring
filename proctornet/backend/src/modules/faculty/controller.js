@@ -61,7 +61,8 @@ router.get('/exams/:id', async (req, res, next) => {
 
 router.patch('/exams/:id', validateBody(updateExamSchema), async (req, res, next) => {
   try {
-    const exam = await facultyService.updateExam(req.params.id, req.body, req.user.id)
+    const io = req.app.get('io')
+    const exam = await facultyService.updateExam(req.params.id, req.body, req.user.id, io)
     res.status(200).json({ success: true, exam })
   } catch (err) {
     next(err)
