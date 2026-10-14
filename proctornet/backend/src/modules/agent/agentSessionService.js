@@ -168,6 +168,33 @@ class AgentSessionService {
     agentPairingsTotal.inc({ scope: pairing.scope, result: 'success' })
     agentSessionsGauge.set({ state: 'HEALTHY' }, hotSessions.size)
 
+    // Notify student browser in real time via WebSocket
+    try {
+      const { getIO } = require('../../infra/websocket/socket.server')
+      const io = getIO()
+      if (io) {
+        const statusPayload = {
+          state: 'HEALTHY',
+          paired: true,
+          gatePassed: true,
+          agentVersion,
+          os,
+          arch,
+          scope: pairing.scope,
+          attemptId: pairing.attemptId,
+          studentId: pairing.studentId,
+          lastSeenAt: new Date().toISOString()
+        }
+        if (pairing.studentId) {
+          io.to(`student:${pairing.studentId}`).emit('agent:status', statusPayload)
+          io.to(`user:${pairing.studentId}`).emit('agent:status', statusPayload)
+        }
+        if (pairing.attemptId) {
+          io.to(`attempt:${pairing.attemptId}`).emit('agent:status', statusPayload)
+        }
+      }
+    } catch (_) {}
+
     return {
       sessionToken,
       sessionKey,

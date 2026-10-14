@@ -143,7 +143,7 @@ class AnswerRepository {
   /**
    * Batch save dirty answers (<= 100 items) using unnest
    */
-  async saveBatchAnswers(attemptId, studentId, items, client = prisma) {
+  async saveBatchAnswers(attemptId, studentId, items, client = prisma, submitGraceSeconds = 0, force = false) {
     if (!items || items.length === 0) return []
 
     // De-duplicate items by attemptQuestionId in-memory (last write wins) and cap at 100
@@ -180,16 +180,16 @@ class AnswerRepository {
         WHERE a.id = $1::uuid
           AND a.student_id = $2::uuid
           AND a.status = 'ACTIVE'
-          AND a.expires_at > now()
+          AND (a.expires_at + ($6 || ' seconds')::interval > now())
           AND (i.selected_option_id IS NULL OR EXISTS (
             SELECT 1 FROM question_options o
             WHERE o.id = i.selected_option_id AND o.question_id = aq.question_id
           ))
-          AND (
+          AND ($7::boolean = true OR (
             (ans.id IS NULL AND (i.expected_revision = 0 OR i.expected_revision = 1))
             OR
             (ans.id IS NOT NULL AND ans.revision = i.expected_revision)
-          )
+          ))
         FOR SHARE OF a
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
@@ -208,7 +208,9 @@ class AnswerRepository {
       studentId,
       qIds,
       optIds,
-      revs
+      revs,
+      (submitGraceSeconds || 0).toString(),
+      Boolean(force)
     )
 
     const updatedMap = new Map((updatedRows || []).map(r => [r.attempt_question_id, r.revision]))

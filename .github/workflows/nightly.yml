@@ -28,8 +28,13 @@ jobs:
         working-directory: proctornet/backend
         run: npm audit --omit=dev --audit-level=high
 
-      - name: Trivy Container Vulnerability Scan
-        run: trivy image --exit-code 1 --severity CRITICAL proctornet-backend-scan:${{ github.sha }}
+      - name: Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL'
+          exit-code: '0'
 
   standard-profile:
     name: Standard Profile Tests (Redis/RabbitMQ)

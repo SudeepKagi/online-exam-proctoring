@@ -22,6 +22,14 @@ const { proctoringService } = require('../../modules/proctoring/service')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
+// In-memory bounded cache of latest student screen frames for instant invigilator grid sync
+const latestScreenFrames = new Map() // attemptId -> { attemptId, examId, screenUrl, cameraUrl, frameAt }
+let globalIO = null
+
+function getIO() {
+  return globalIO
+}
+
 function createWebSocketServer(httpServer, options = {}) {
   const envOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((u) => u.trim()).filter(Boolean)
@@ -50,11 +58,13 @@ function createWebSocketServer(httpServer, options = {}) {
     transports: ['websocket'], // Pure websocket (Task 1)
     pingInterval: 25000,
     pingTimeout: 20000,
-    maxHttpBufferSize: 64 * 1024, // 64 KB max payload: events only, NO MEDIA (Task 1)
+    maxHttpBufferSize: 1024 * 1024, // 1 MB payload to support lightweight screen & camera frames
     perMessageDeflate: false, // Tiny JSON payloads; CPU cost > gain (Task 1)
     // connectionStateRecovery dropped per F-03 / C-06
     ...options
   })
+
+  globalIO = io
 
   // ── Redis Adapter for Multi-Process Horizontal Fan-Out (C-05 / C-06) ──
   // When CACHE_DRIVER=memory (single-process mode), use default in-memory adapter
@@ -334,6 +344,24 @@ function createWebSocketServer(httpServer, options = {}) {
         socket.join(`inv:${examId}`)
         logger.info({ userId: socket.user.id, role, examId }, 'Staff joined invigilator room')
 
+        // Send all latest screen frames for students currently in this exam
+        const initialFrames = {}
+        for (const [attId, f] of latestScreenFrames.entries()) {
+          if (f.examId === examId) {
+            initialFrames[attId] = {
+              screenUrl: f.screenUrl,
+              cameraUrl: f.cameraUrl,
+              frameAt: f.frameAt
+            }
+          }
+        }
+        if (Object.keys(initialFrames).length > 0) {
+          socket.emit('screen:initial_frames', {
+            examId,
+            frames: initialFrames
+          })
+        }
+
         if (typeof ack === 'function') ack({ success: true, examId })
       } catch (err) {
         logger.error({ error: err.message }, 'Error in inv:join')
@@ -557,6 +585,7 @@ function createWebSocketServer(httpServer, options = {}) {
       logger.info({ socketId: socket.id, userId: socket.user?.id }, 'Socket client disconnected')
 
       if (socket.user?.role === ROLES.STUDENT && socket.activeExamId && socket.activeAttemptId) {
+        latestScreenFrames.delete(socket.activeAttemptId)
         await presenceManager.markOffline(socket.activeExamId, socket.user.id)
         rosterCoalescer.queueDelta(socket.activeExamId, {
           attemptId: socket.activeAttemptId,
@@ -583,11 +612,11 @@ function createWebSocketServer(httpServer, options = {}) {
       // Note: this second handler fires *after* the first; authorisation already ran.
       const { attemptId } = data || {}
       if (!attemptId || socket.user?.role !== ROLES.STUDENT) return
-      // Default cadence: 30 s ± 3 s jitter. Client adds jitter itself; we seed it.
+      // Default near-live cadence: 3 s ± 500 ms jitter.
       socket.emit('proctor:cadence', {
         attemptId,
-        cadenceMs: 30_000,
-        jitterMs: 3_000,
+        cadenceMs: 3_000,
+        jitterMs: 500,
         reason: 'default',
         durationMs: null
       })
@@ -674,7 +703,7 @@ function createWebSocketServer(httpServer, options = {}) {
           if (attemptId === verifiedFocused) continue // handled separately below
           io.to(`attempt:${attemptId}`).emit('proctor:cadence', {
             attemptId,
-            cadenceMs: 5_000,
+            cadenceMs: 2_500,
             jitterMs: 500,
             reason: 'visible',
             durationMs: null
@@ -690,13 +719,13 @@ function createWebSocketServer(httpServer, options = {}) {
             durationMs: 60_000
           })
 
-          // After 60 s, decay back to 5 s if still visible, else 30 s
+          // After 60 s, decay back to 2.5 s if still visible, else 3 s
           socket._focusDecayTimer = setTimeout(() => {
-            const decayTarget = visibleSet.has(verifiedFocused) ? 5_000 : 30_000
+            const decayTarget = visibleSet.has(verifiedFocused) ? 2_500 : 3_000
             io.to(`attempt:${verifiedFocused}`).emit('proctor:cadence', {
               attemptId: verifiedFocused,
               cadenceMs: decayTarget,
-              jitterMs: decayTarget === 30_000 ? 3_000 : 500,
+              jitterMs: 500,
               reason: 'focus_decay',
               durationMs: null
             })
@@ -714,7 +743,61 @@ function createWebSocketServer(httpServer, options = {}) {
      * snapshot:uploaded (student → server)
      * Payload: { attemptId, frameAt: number (epoch ms) }
      * Server fans out frame:update to inv:{examId} for invigilator tiles.
-     * Zero bytes of image data — only metadata.
+    /**
+     * screen:frame (student → server)
+     * Direct live screen and camera feed delivery to invigilator live dashboard.
+     * Payload: { attemptId, frame: string (data URL), cameraFrame?: string, frameAt: number }
+     */
+    socket.on('screen:frame', async (data) => {
+      try {
+        if (socket.user?.role !== ROLES.STUDENT) return
+        const { attemptId, frame, cameraFrame, frameAt } = data || {}
+        if (!attemptId || (!frame && !cameraFrame)) return
+
+        // Authorize scope
+        if (!socket.authorizedAttempts.has(attemptId)) {
+          const attempt = await prisma.examAttempt.findFirst({
+            where: { id: attemptId, studentId: socket.user.id },
+            select: { id: true, examId: true }
+          })
+          if (!attempt) return
+          socket.authorizedAttempts.add(attemptId)
+          socket.activeAttemptId = attemptId
+          socket.activeExamId = attempt.examId
+        }
+
+        const verifiedExamId = socket.activeExamId
+        if (!verifiedExamId) return
+
+        const now = frameAt || Date.now()
+        const framePayload = {
+          attemptId,
+          screenUrl: frame || null,
+          cameraUrl: cameraFrame || null,
+          frameAt: now,
+          examId: verifiedExamId
+        }
+
+        // Cache latest frame in bounded in-memory map
+        latestScreenFrames.set(attemptId, framePayload)
+
+        // Instant fan-out to invigilators watching this exam
+        io.to(`inv:${verifiedExamId}`).emit('frame:update', framePayload)
+
+        // Queue roster delta (frame freshness)
+        rosterCoalescer.queueDelta(verifiedExamId, {
+          attemptId,
+          studentId: socket.user.id,
+          frameAt: now
+        })
+      } catch (err) {
+        logger.warn({ error: err.message }, 'screen:frame handling error')
+      }
+    })
+
+    /**
+     * snapshot:uploaded (student → server)
+     * Legacy/fallback event handler
      */
     socket.on('snapshot:uploaded', async (data) => {
       try {
@@ -737,12 +820,17 @@ function createWebSocketServer(httpServer, options = {}) {
         const verifiedExamId = socket.activeExamId
         if (!verifiedExamId) return
 
-        // Fan-out to invigilator room: metadata only, no image bytes
-        io.to(`inv:${verifiedExamId}`).emit('frame:update', {
+        const cached = latestScreenFrames.get(attemptId)
+        const framePayload = {
           attemptId,
           frameAt,
-          examId: verifiedExamId
-        })
+          examId: verifiedExamId,
+          screenUrl: cached?.screenUrl || null,
+          cameraUrl: cached?.cameraUrl || null
+        }
+
+        // Fan-out to invigilator room
+        io.to(`inv:${verifiedExamId}`).emit('frame:update', framePayload)
 
         // Queue roster delta (frame freshness)
         rosterCoalescer.queueDelta(verifiedExamId, {
@@ -760,5 +848,7 @@ function createWebSocketServer(httpServer, options = {}) {
 }
 
 module.exports = {
-  createWebSocketServer
+  createWebSocketServer,
+  getIO,
+  latestScreenFrames
 }

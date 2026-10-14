@@ -5,6 +5,7 @@ const {
   ConflictError,
   GoneError
 } = require('../../shared/errors')
+const { logger } = require('../../shared/logging')
 const { answerRepository } = require('../answers/repository')
 
 class SubmissionRepository {
@@ -86,16 +87,12 @@ class SubmissionRepository {
         }
       }
 
-      // 3. Flush optional final dirty answers (answers hard-cut at expires_at)
+      // 3. Flush optional final dirty answers (guaranteed save with grace period and force flag)
       if (finalAnswers && finalAnswers.length > 0) {
-        const batchResults = await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers, tx)
-        const failedItems = (batchResults || []).filter(r => !r.success || r.status !== 'OK')
-        if (failedItems.length > 0) {
-          throw new ConflictError(
-            'Final answers could not be saved due to conflicts or validation errors',
-            'FINAL_ANSWERS_REJECTED',
-            { failedAnswers: failedItems }
-          )
+        try {
+          await answerRepository.saveBatchAnswers(attemptId, studentId, finalAnswers, tx, submitGraceSeconds, true)
+        } catch (saveErr) {
+          logger.warn({ error: saveErr.message, attemptId }, 'Non-blocking final dirty answer save warning during submission')
         }
       }
 

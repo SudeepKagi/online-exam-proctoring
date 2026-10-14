@@ -35,8 +35,10 @@ const COST_PER_1K_TOKENS = {
   'gemini-1.5-flash': 0.000075,
   'gemini-1.5-flash-latest': 0.000075,
   'gemini-2.0-flash': 0.000075,
+  'gemini-2.0-flash-lite': 0.000038,
+  'gemini-2.0-flash-exp': 0.000075,
+  'gemini-2.5-flash-preview-04-17': 0.000075,
   'gemini-2.5-flash': 0.000075,
-  'gemini-2.0-flash-lite': 0.00005,
   'claude-3-5-sonnet-20241022': 0.003,
   'claude-3-haiku-20240307': 0.00025,
   default: 0.0005,
@@ -197,13 +199,14 @@ async function callOpenAI(prompt, model) {
 // ── Google Gemini driver ──────────────────────────────────────────────────────
 async function callGoogle(prompt, model) {
   const { default: axios } = require('axios')
+  // Ordered by preference: reliable available models tested with 200 OK
   const candidateModels = [
     model,
-    'gemini-1.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-pro',
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.8-flash',
   ].filter(Boolean)
 
   let lastErr

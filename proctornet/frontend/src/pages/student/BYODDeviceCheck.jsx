@@ -34,6 +34,20 @@ export default function BYODDeviceCheck() {
   const { examId } = useParams()
   const navigate = useNavigate()
 
+  // Exam Policy (OPTIONAL / OFF / REQUIRED)
+  const [examPolicy, setExamPolicy] = useState('REQUIRED')
+
+  useEffect(() => {
+    if (examId && examId !== 'demo') {
+      api.get(`/exams/${examId}`)
+        .then(res => {
+          const p = res.data?.exam?.deviceAgentPolicy || res.data?.deviceAgentPolicy || 'REQUIRED'
+          setExamPolicy(p)
+        })
+        .catch(() => {})
+    }
+  }, [examId])
+
   // State: Exam Device Companion
   const [companionDetails, setCompanionDetails] = useState(null)
 
@@ -222,9 +236,10 @@ export default function BYODDeviceCheck() {
     setScreenActive(false)
   }
 
-  const companionReady = Boolean(
+  const isCompanionOptionalOrOff = examPolicy === 'OFF' || examPolicy === 'OPTIONAL'
+  const companionReady = isCompanionOptionalOrOff || Boolean(
     companionDetails &&
-    (companionDetails.state === 'HEALTHY' || companionDetails.state === 'CONNECTED' || companionDetails.waiver) &&
+    (companionDetails.state === 'HEALTHY' || companionDetails.state === 'CONNECTED' || companionDetails.state === 'OPTIONAL' || companionDetails.waiver) &&
     (!companionDetails.findings || companionDetails.findings.length === 0)
   )
 
@@ -315,6 +330,7 @@ export default function BYODDeviceCheck() {
           {/* Card 1: Exam Device Companion */}
           <DeviceCompanionPanel
             isPrecheck={true}
+            policy={examPolicy}
             onStatusChange={(details) => setCompanionDetails(details)}
           />
 

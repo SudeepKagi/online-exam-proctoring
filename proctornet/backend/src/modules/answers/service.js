@@ -74,12 +74,19 @@ class AnswerService {
    * Batch save dirty answers (<= 100 items)
    */
   async batchSaveAnswers(attemptId, studentId, answers) {
+    if (!answers || answers.length === 0) {
+      return toBatchSaveAnswersResponseDTO([])
+    }
+
     const { prisma } = require('../../infra/postgres/client')
+    const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
+    const submitGraceSeconds = EXAM_CLOCK_CONFIG.submitGrace || 10
+
     const rows = await prisma.$queryRawUnsafe(`
-      SELECT status, expires_at, (expires_at < now()) AS is_expired
+      SELECT status, expires_at, (expires_at + ($3 || ' seconds')::interval < now()) AS is_expired
       FROM exam_attempts
       WHERE id = $1::uuid AND student_id = $2::uuid;
-    `, attemptId, studentId)
+    `, attemptId, studentId, submitGraceSeconds.toString())
 
     if (!rows || rows.length === 0) {
       throw new NotFoundError(`Attempt '${attemptId}' not found`)
@@ -96,7 +103,7 @@ class AnswerService {
       throw new GoneError('Exam attempt time has expired', 'EXAM_EXPIRED')
     }
 
-    const results = await answerRepository.saveBatchAnswers(attemptId, studentId, answers)
+    const results = await answerRepository.saveBatchAnswers(attemptId, studentId, answers, prisma, submitGraceSeconds)
     for (const res of results) {
       autosaveItemsTotal.inc({ result: res.status || (res.success ? 'OK' : 'ERROR') })
       if (res.status === 'STALE_REVISION') {

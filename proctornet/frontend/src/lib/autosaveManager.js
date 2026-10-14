@@ -430,9 +430,15 @@ export class AutosaveManager {
    */
   getStableIdempotencyKey() {
     if (!this.stableIdempotencyKey) {
-      this.stableIdempotencyKey = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `sub_${this.attemptId}_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        this.stableIdempotencyKey = crypto.randomUUID()
+      } else {
+        this.stableIdempotencyKey = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0
+          const v = c === 'x' ? r : (r & 0x3) | 0x8
+          return v.toString(16)
+        })
+      }
     }
     return this.stableIdempotencyKey
   }
@@ -463,8 +469,14 @@ export class AutosaveManager {
       if (this.dirtyMap.size > 0) {
         payload.answers = Array.from(this.dirtyMap.values()).map(entry => ({
           attemptQuestionId: entry.attemptQuestionId,
-          selectedOptionId: entry.selectedOptionId,
-          expectedRevision: entry.expectedRevision,
+          optionId: entry.selectedOptionId || null,
+          selectedOptionId: entry.selectedOptionId || null,
+          revision: typeof entry.expectedRevision === 'number'
+            ? entry.expectedRevision
+            : (this.revisionByAqId.get(entry.attemptQuestionId) ?? 0),
+          expectedRevision: typeof entry.expectedRevision === 'number'
+            ? entry.expectedRevision
+            : (this.revisionByAqId.get(entry.attemptQuestionId) ?? 0),
           clientTimestamp: entry.clientTimestamp
         }))
       }

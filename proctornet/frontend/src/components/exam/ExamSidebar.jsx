@@ -53,7 +53,13 @@ export default function ExamSidebar({
         </p>
         <div className="grid grid-cols-5 gap-1.5">
           {questions.map((q, i) => {
-            const isAnswered = Boolean(answers[q.id]?.selected || answers[q.id]?.code || answers[q.id]?.text)
+            const isAnswered = Boolean(
+              answers[q.id]?.selected ||
+              answers[q.attemptQuestionId]?.selected ||
+              answers[q.questionId]?.selected ||
+              answers[q.id]?.code ||
+              answers[q.id]?.text
+            )
             const isFlagged = flagged.has(q.id)
             const isCurrent = i === currentIdx
 

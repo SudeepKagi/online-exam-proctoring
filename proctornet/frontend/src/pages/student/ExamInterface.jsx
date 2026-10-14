@@ -400,6 +400,14 @@ export default function ExamInterface() {
     }
   }, [emitViolation])
 
+  // ── Sync Socket instance with MediaStore & Global fallback ──
+  useEffect(() => {
+    if (socket) {
+      window.__pnStudentSocket = socket
+      mediaStore.updateSocket(socket)
+    }
+  }, [socket, socketConnected])
+
   // ── Screen Share Streaming & Snapshotter (R3) ──
   useEffect(() => {
     if (!attemptId || loading || isWaiting || terminalState) return

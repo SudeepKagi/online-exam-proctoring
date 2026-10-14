@@ -240,6 +240,14 @@ class MediaStoreManager {
     }
   }
 
+  // ── Update socket (snapshot driver only) ────────────────────────────────
+
+  updateSocket(socket) {
+    if (this.state.snapshotter && typeof this.state.snapshotter.updateSocket === 'function') {
+      this.state.snapshotter.updateSocket(socket)
+    }
+  }
+
   // ── Disconnect / cleanup ─────────────────────────────────────────────────
 
   async disconnect() {

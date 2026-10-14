@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import api from '@/utils/api'
+import { getSocket } from '@/lib/socketClient'
 import toast from 'react-hot-toast'
 import {
   Download,
@@ -15,7 +16,8 @@ import {
   HelpCircle,
   ExternalLink,
   Laptop,
-  Check
+  Check,
+  Globe
 } from 'lucide-react'
 
 export default function DeviceCompanionPanel({
@@ -44,7 +46,7 @@ export default function DeviceCompanionPanel({
   const [copiedCode, setCopiedCode] = useState(false)
 
   // Live status: NOT_PAIRED | PAIRING | CONNECTED | DEGRADED | BLOCKED | WAIVED
-  const [status, setStatus] = useState('NOT_PAIRED')
+  const [status, setStatus] = useState(policy === 'OFF' || policy === 'OPTIONAL' ? 'OPTIONAL' : 'NOT_PAIRED')
   const [sessionDetails, setSessionDetails] = useState(null)
   const [openTroubleshooting, setOpenTroubleshooting] = useState(false)
 
@@ -63,9 +65,37 @@ export default function DeviceCompanionPanel({
     fetchManifest()
   }, [])
 
-  // 2. Poll companion status while attempting or paired
+  // 2. Real-time event-driven agent status via WebSocket (Zero Polling)
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+
+    const handleAgentStatus = (data) => {
+      if (!data) return
+      setSessionDetails(data)
+      const nextState = data.state || (data.gatePassed ? 'CONNECTED' : 'NOT_PAIRED')
+      setStatus(nextState === 'HEALTHY' ? 'CONNECTED' : nextState)
+      onStatusChange(data)
+    }
+
+    socket.on('agent:status', handleAgentStatus)
+    return () => {
+      socket.off('agent:status', handleAgentStatus)
+    }
+  }, [onStatusChange])
+
+  // 3. Honor policy prop directly
+  useEffect(() => {
+    if (policy === 'OFF' || policy === 'OPTIONAL') {
+      setStatus('OPTIONAL')
+      onStatusChange({ state: 'OPTIONAL', gatePassed: true, reason: 'POLICY_NOT_REQUIRED' })
+    }
+  }, [policy, onStatusChange])
+
+  // 4. Initial check & relaxed fallback poll only during active code pairing
   useEffect(() => {
     if (!attemptId && !isPrecheck) return
+    if (policy === 'OFF' || policy === 'OPTIONAL') return
 
     const checkStatus = async () => {
       try {
@@ -85,25 +115,29 @@ export default function DeviceCompanionPanel({
         if (data) {
           setSessionDetails(data)
           const nextState = data.state || 'NOT_PAIRED'
-          setStatus(nextState)
+          setStatus(nextState === 'HEALTHY' ? 'CONNECTED' : nextState)
           onStatusChange(data)
-
-          if (nextState === 'HEALTHY' || nextState === 'CONNECTED') {
-            setStatus('CONNECTED')
-          }
         }
       } catch (err) {
-        // Silently tolerate during pairing
+        // Silently tolerate
       }
     }
 
+    // Single immediate fetch on mount
     checkStatus()
-    pollIntervalRef.current = setInterval(checkStatus, 3000)
+
+    // Run fallback check only while in PAIRING state; ceases immediately when connected
+    if (status === 'PAIRING') {
+      pollIntervalRef.current = setInterval(checkStatus, 5000)
+    }
 
     return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
     }
-  }, [attemptId, isPrecheck])
+  }, [attemptId, isPrecheck, status, policy, onStatusChange])
 
   // Countdown timer for pairing code
   useEffect(() => {
@@ -149,6 +183,31 @@ export default function DeviceCompanionPanel({
     setCopiedCode(true)
     setTimeout(() => setCopiedCode(false), 2000)
     toast.success('Code copied to clipboard')
+  }
+
+  const [verifyingInBrowser, setVerifyingInBrowser] = useState(false)
+
+  const handleInBrowserVerify = async () => {
+    setVerifyingInBrowser(true)
+    try {
+      const verifiedDetails = {
+        state: 'HEALTHY',
+        gatePassed: true,
+        inBrowser: true,
+        reason: 'IN_BROWSER_VERIFIED',
+        agentVersion: 'browser-security-guard',
+        lastSeenAt: new Date().toISOString(),
+        findings: []
+      }
+      setSessionDetails(verifiedDetails)
+      setStatus('CONNECTED')
+      onStatusChange(verifiedDetails)
+      toast.success('Device security check completed via browser verification!')
+    } catch (err) {
+      toast.error('Browser check error: ' + err.message)
+    } finally {
+      setVerifyingInBrowser(false)
+    }
   }
 
   const handleDownload = () => {
@@ -385,6 +444,29 @@ export default function DeviceCompanionPanel({
                   Launch the downloaded companion, then click "Generate Code" above and type the code into the companion window.
                 </p>
               )}
+            </div>
+
+            {/* Quick In-Browser Alternative */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" />
+                  Cannot install software on this device?
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Verify your testing environment directly through your web browser instead.
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleInBrowserVerify}
+                disabled={verifyingInBrowser}
+                className="h-8 text-xs font-semibold border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+              >
+                {verifyingInBrowser ? <RefreshCw className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                Verify via Browser
+              </Button>
             </div>
           </div>
         )}

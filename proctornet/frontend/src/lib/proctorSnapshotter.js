@@ -17,6 +17,7 @@
  */
 
 import api from '@/utils/api'
+import { getSocket } from '@/lib/socketClient'
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const CAMERA_W = 320
@@ -26,8 +27,8 @@ const SCREEN_H = 360
 
 const MIN_INTERVAL_MS = 1_000
 const MAX_INTERVAL_MS = 60_000
-const DEFAULT_CADENCE_MS = 30_000
-const DEFAULT_JITTER_MS = 3_000
+const DEFAULT_CADENCE_MS = 3_000
+const DEFAULT_JITTER_MS = 500
 
 const BACKOFF_BASE_MS = 2_000
 const BACKOFF_MAX_MS = 30_000
@@ -44,51 +45,78 @@ function applyJitter(ms, jitterMs = 0) {
   return ms + Math.floor((Math.random() * 2 - 1) * jitterMs)
 }
 
+function blobToDataUrl(blob) {
+  if (!blob) return Promise.resolve(null)
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result)
+    reader.onerror = () => resolve(null)
+    reader.readAsDataURL(blob)
+  })
+}
+
+// Persistent offscreen video element cache per track to eliminate creation latency & race conditions
+const persistentVideoMap = new WeakMap()
+
 /**
  * Capture a video track's current frame onto an offscreen canvas and return a
- * Blob in image/webp format.
- * @param {MediaStreamTrack} track  – a video track
- * @param {number} width
- * @param {number} height
- * @returns {Promise<Blob|null>}
+ * Blob in image/webp format with guaranteed timeout safety.
  */
 async function captureFrame(track, width, height) {
   if (!track || track.readyState !== 'live') return null
 
-  // Prefer ImageCapture when available (avoids video element)
-  if (typeof ImageCapture !== 'undefined') {
-    try {
-      const ic = new ImageCapture(track)
-      const bitmap = await ic.grabFrame()
-      const canvas = new OffscreenCanvas(width, height)
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(bitmap, 0, 0, width, height)
-      bitmap.close()
-      return canvas.convertToBlob({ type: 'image/webp', quality: 0.75 })
-    } catch (_) {
-      // Fall through to video-element path
-    }
-  }
-
-  // Fallback: create a hidden video element
-  return new Promise((resolve) => {
-    const video = document.createElement('video')
-    video.srcObject = new MediaStream([track])
+  let video = persistentVideoMap.get(track)
+  if (!video || !video.srcObject) {
+    video = document.createElement('video')
     video.muted = true
     video.playsInline = true
-    video.onloadedmetadata = () => {
-      video.play().then(() => {
+    video.autoplay = true
+    video.srcObject = new MediaStream([track])
+    persistentVideoMap.set(track, video)
+    video.play().catch(() => {})
+  }
+
+  return new Promise((resolve) => {
+    let resolved = false
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true
+        resolve(null)
+      }
+    }, 1500)
+
+    const doCapture = () => {
+      if (resolved) return
+      resolved = true
+      clearTimeout(timer)
+      try {
         const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext('2d')
         ctx.drawImage(video, 0, 0, width, height)
-        video.pause()
-        video.srcObject = null
-        canvas.toBlob(resolve, 'image/webp', 0.75)
-      }).catch(() => resolve(null))
+        canvas.toBlob((blob) => resolve(blob), 'image/webp', 0.65)
+      } catch (_) {
+        resolve(null)
+      }
     }
-    video.onerror = () => resolve(null)
+
+    if (video.readyState >= 2) {
+      doCapture()
+    } else {
+      video.onloadedmetadata = () => {
+        video.play().then(doCapture).catch(() => {
+          if (!resolved) {
+            resolved = true
+            clearTimeout(timer)
+            resolve(null)
+          }
+        })
+      }
+      video.play().then(() => {
+        if (video.readyState >= 2) doCapture()
+      }).catch(() => {})
+    }
   })
 }
 
@@ -109,7 +137,7 @@ export class ProctorSnapshotter {
     this.attemptId = attemptId
     this.cameraTrack = cameraTrack
     this.screenTrack = screenTrack
-    this.socket = socket
+    this.socket = socket || window.__pnStudentSocket || (typeof getSocket === 'function' ? getSocket() : null)
     this.onError = onError
 
     // Cadence state
@@ -124,8 +152,8 @@ export class ProctorSnapshotter {
 
     // Bind socket listener
     this._onCadence = this._handleCadence.bind(this)
-    if (socket) {
-      socket.on('proctor:cadence', this._onCadence)
+    if (this.socket) {
+      this.socket.on('proctor:cadence', this._onCadence)
     }
   }
 
@@ -224,55 +252,79 @@ export class ProctorSnapshotter {
     this._scheduleNext(nextDelay)
   }
 
-  async _captureAndUpload() {
-    // 1. Get presigned PUT ticket from server (rate-limited server-side)
-    const ticketRes = await api.post(`/attempts/${this.attemptId}/snapshots/ticket`)
-    const { camera: camTicket, screen: scrTicket } = ticketRes.data
+  updateSocket(socket) {
+    if (socket) {
+      if (this.socket && this.socket !== socket) {
+        this.socket.off('proctor:cadence', this._onCadence)
+      }
+      this.socket = socket
+      this.socket.on('proctor:cadence', this._onCadence)
+    }
+  }
 
+  async _captureAndUpload() {
     const frameAt = Date.now()
 
-    // 2. Capture frames concurrently
+    // 1. Capture frames concurrently from live tracks
     const [cameraBlob, screenBlob] = await Promise.all([
       captureFrame(this.cameraTrack, CAMERA_W, CAMERA_H),
       captureFrame(this.screenTrack, SCREEN_W, SCREEN_H)
     ])
 
-    // 3. Upload directly to S3 (PUT, zero EC2 transcoding)
-    const uploads = []
+    // 2. Convert captured frames to lightweight data URLs for direct real-time streaming
+    const [screenDataUrl, cameraDataUrl] = await Promise.all([
+      blobToDataUrl(screenBlob),
+      blobToDataUrl(cameraBlob)
+    ])
 
-    if (cameraBlob && camTicket?.putUrl) {
-      uploads.push(
-        fetch(camTicket.putUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'image/webp' },
-          body: cameraBlob
-        }).then((r) => {
-          if (!r.ok) throw new Error(`Camera S3 PUT failed: ${r.status}`)
-        })
-      )
-    }
+    // 3. Emit real-time frame over WebSocket directly to invigilators
+    const activeSocket = (this.socket && this.socket.connected)
+      ? this.socket
+      : (window.__pnStudentSocket?.connected
+          ? window.__pnStudentSocket
+          : (typeof getSocket === 'function' ? getSocket() : null))
 
-    if (screenBlob && scrTicket?.putUrl) {
-      uploads.push(
-        fetch(scrTicket.putUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'image/webp' },
-          body: screenBlob
-        }).then((r) => {
-          if (!r.ok) throw new Error(`Screen S3 PUT failed: ${r.status}`)
-        })
-      )
-    }
-
-    // Wait for both uploads; any error bubbles up to backoff handler
-    await Promise.all(uploads)
-
-    // 4. Notify server (metadata only — zero bytes of image)
-    if (this.socket?.connected) {
-      this.socket.emit('snapshot:uploaded', {
+    if (activeSocket?.connected && (screenDataUrl || cameraDataUrl)) {
+      activeSocket.emit('screen:frame', {
+        attemptId: this.attemptId,
+        frame: screenDataUrl,
+        cameraFrame: cameraDataUrl,
+        frameAt
+      })
+      activeSocket.emit('snapshot:uploaded', {
         attemptId: this.attemptId,
         frameAt
       })
+    }
+
+    // 4. Background S3 archival (best-effort, non-blocking)
+    try {
+      const ticketRes = await api.post(`/attempts/${this.attemptId}/snapshots/ticket`).catch(() => null)
+      if (ticketRes?.data) {
+        const { camera: camTicket, screen: scrTicket } = ticketRes.data
+        const uploads = []
+        if (cameraBlob && camTicket?.putUrl) {
+          uploads.push(
+            fetch(camTicket.putUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'image/webp' },
+              body: cameraBlob
+            }).catch(() => {})
+          )
+        }
+        if (screenBlob && scrTicket?.putUrl) {
+          uploads.push(
+            fetch(scrTicket.putUrl, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'image/webp' },
+              body: screenBlob
+            }).catch(() => {})
+          )
+        }
+        await Promise.all(uploads)
+      }
+    } catch (_) {
+      // S3 failures are non-fatal and must never block live streaming
     }
   }
 }

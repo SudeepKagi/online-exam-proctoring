@@ -7,7 +7,14 @@ import { toast } from 'react-hot-toast'
  * Handles invigilator control plane events: coalesced roster deltas, new violations, and chat.
  * WebRTC video feeds are handled exclusively by LiveKit SFU (ProctorViewer) with selective subscription.
  */
-export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, enabled = true }) {
+export function useInvigilatorSocket({
+  examId,
+  onAlertReceived,
+  onRosterDelta,
+  onFrameUpdate,
+  onInitialFrames,
+  enabled = true
+}) {
   const socketRef = useRef(null)
   const onAlertRef = useRef(onAlertReceived)
   onAlertRef.current = onAlertReceived
@@ -15,7 +22,14 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
   const onRosterDeltaRef = useRef(onRosterDelta)
   onRosterDeltaRef.current = onRosterDelta
 
+  const onFrameUpdateRef = useRef(onFrameUpdate)
+  onFrameUpdateRef.current = onFrameUpdate
+
+  const onInitialFramesRef = useRef(onInitialFrames)
+  onInitialFramesRef.current = onInitialFrames
+
   const [connected, setConnected] = useState(false)
+  const [socketInstance, setSocketInstance] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [chats, setChats] = useState({})
 
@@ -25,6 +39,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
         socketRef.current.disconnect()
         socketRef.current = null
         setConnected(false)
+        setSocketInstance(null)
       }
       return
     }
@@ -42,6 +57,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
 
     socket.on('connect', () => {
       setConnected(true)
+      setSocketInstance(socket)
       socket.emit('inv:join', { examId })
       // R3: expose socket for IntersectionObserver cadence emitter and frame:update listener
       window.__invSocket = socket
@@ -49,7 +65,19 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
 
     socket.on('disconnect', () => {
       setConnected(false)
+      setSocketInstance(null)
       window.__invSocket = null
+    })
+
+    // ── Live Screen / Camera Frame Streaming (Direct WebSocket) ──
+    socket.on('screen:initial_frames', (data) => {
+      if (data?.frames) {
+        onInitialFramesRef.current?.(data.frames)
+      }
+    })
+
+    socket.on('frame:update', (data) => {
+      onFrameUpdateRef.current?.(data)
     })
 
     // ── 500ms Coalesced Roster Delta (P6) ──
@@ -135,7 +163,7 @@ export function useInvigilatorSocket({ examId, onAlertReceived, onRosterDelta, e
   }
 
   return {
-    socket: socketRef.current,
+    socket: socketInstance || socketRef.current,
     connected,
     alerts,
     chats,

@@ -64,7 +64,9 @@ export default function QuestionPanel({
     })
   }
 
-  const currentAnswer = answers[currentQ.id]?.selected
+  const currentAnswer = answers[currentQ.id]?.selected ??
+    answers[currentQ.attemptQuestionId]?.selected ??
+    answers[currentQ.questionId]?.selected
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden bg-background text-foreground">

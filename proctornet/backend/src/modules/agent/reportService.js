@@ -398,6 +398,26 @@ class ReportService {
       }).catch(err => logger.error({ err, sessionId: session.id }, 'Failed to persist agent session heartbeat'))
     }
 
+    if (stateChanged) {
+      try {
+        const { getIO } = require('../../infra/websocket/socket.server')
+        const io = this.io || getIO()
+        if (io) {
+          const payload = {
+            state: session.state,
+            paired: true,
+            gatePassed: session.state === 'HEALTHY',
+            attemptId: session.attemptId,
+            studentId: session.studentId,
+            lastSeenAt: new Date(now).toISOString(),
+            findings: Array.from(session.openFindings.values())
+          }
+          if (session.studentId) io.to(`student:${session.studentId}`).emit('agent:status', payload)
+          if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:status', payload)
+        }
+      } catch (_) {}
+    }
+
     agentReportsTotal.inc({ result: 'success' })
     agentFindingsOpenGauge.set({ category: 'TOTAL' }, session.openFindings.size)
 

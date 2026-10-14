@@ -21,6 +21,7 @@ import {
   LogOut,
   Monitor,
   Cpu,
+  CheckCircle2,
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -139,6 +140,7 @@ export default function InvigilatorLiveGrid() {
 
   const {
     connected,
+    socket: invSocket,
     requestStudentStream,
     sendWarning: sendSocketWarning,
     pauseStudentExam,
@@ -148,6 +150,28 @@ export default function InvigilatorLiveGrid() {
     chats,
   } = useInvigilatorSocket({
     examId: effectiveExamId,
+    onInitialFrames: frames => {
+      if (frames) {
+        setSnapshotFrames(prev => ({
+          ...prev,
+          ...frames
+        }))
+      }
+    },
+    onFrameUpdate: data => {
+      const { attemptId, screenUrl, cameraUrl, frameAt } = data || {}
+      if (attemptId) {
+        setSnapshotFrames(prev => ({
+          ...prev,
+          [attemptId]: {
+            ...(prev[attemptId] || {}),
+            screenUrl: screenUrl || prev[attemptId]?.screenUrl,
+            cameraUrl: cameraUrl || prev[attemptId]?.cameraUrl,
+            frameAt: frameAt || Date.now()
+          }
+        }))
+      }
+    },
     onAlertReceived: alert => {
       toast.error(
         `⚠️ Security Alert: Candidate ${alert.studentName || alert.studentUsn || ''} flagged (${alert.type || alert.details || 'Violation'})`
@@ -417,21 +441,25 @@ export default function InvigilatorLiveGrid() {
   }, [mediaDriver, currentCandidates, effectiveExamId, selectedCandidate, fetchBatchSnapshots])
 
   // ── R3: Listen for frame:update from server ─────────────────────────────────
-  // frame:update: { attemptId, frameAt, examId } — invigilator refreshes cache-busted img src
   useEffect(() => {
     if (mediaDriver !== 'snapshot') return
-    const sock = window.__invSocket
+    const sock = invSocket || window.__invSocket
     if (!sock) return
 
-    const handler = ({ attemptId, frameAt }) => {
+    const handler = ({ attemptId, screenUrl, cameraUrl, frameAt }) => {
       setSnapshotFrames(prev => ({
         ...prev,
-        [attemptId]: { ...(prev[attemptId] || {}), frameAt: frameAt || Date.now() },
+        [attemptId]: {
+          ...(prev[attemptId] || {}),
+          screenUrl: screenUrl || prev[attemptId]?.screenUrl,
+          cameraUrl: cameraUrl || prev[attemptId]?.cameraUrl,
+          frameAt: frameAt || Date.now()
+        },
       }))
     }
     sock.on('frame:update', handler)
     return () => sock.off('frame:update', handler)
-  }, [mediaDriver, window.__invSocket])
+  }, [mediaDriver, invSocket])
 
   // ── R3: Focus modal snapshot refresh at 1–2 s ──────────────────────────────
   useEffect(() => {
@@ -973,19 +1001,28 @@ export default function InvigilatorLiveGrid() {
                               cand.thumbUrl ||
                               cand.latestFrame
                             return scrSrc ? (
-                              <img
-                                key={sf?.frameAt || scrSrc}
-                                src={scrSrc}
-                                alt={`Live screen — ${cand.usn}`}
-                                className="w-full h-full object-cover"
-                                onError={e => {
-                                  e.currentTarget.style.display = 'none'
-                                }}
-                              />
+                              <div className="relative w-full h-full">
+                                <img
+                                  key={sf?.frameAt || scrSrc}
+                                  src={scrSrc}
+                                  alt={`Live screen — ${cand.usn}`}
+                                  className="w-full h-full object-cover"
+                                  onError={e => {
+                                    e.currentTarget.style.display = 'none'
+                                  }}
+                                />
+                                <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/75 backdrop-blur-xs text-[8px] font-bold text-emerald-400 flex items-center gap-1 shadow-sm">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                  LIVE SCREEN
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-[10px] text-neutral-500 font-mono">
-                                {cand.status === 'READY' ? 'Not joined' : 'No screen yet'}
-                              </span>
+                              <div className="flex flex-col items-center justify-center text-muted-foreground gap-1">
+                                <Monitor size={16} className="text-muted-foreground/40" />
+                                <span className="text-[10px] text-neutral-500 font-mono">
+                                  {cand.status === 'READY' ? 'Not joined' : 'No screen yet'}
+                                </span>
+                              </div>
                             )
                           })()
                         ) : (
