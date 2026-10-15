@@ -82,25 +82,32 @@ class AnswerService {
     const { EXAM_CLOCK_CONFIG } = require('../exams/examClock')
     const submitGraceSeconds = EXAM_CLOCK_CONFIG.submitGrace || 10
 
-    const rows = await prisma.$queryRawUnsafe(`
-      SELECT status, expires_at, (expires_at + ($3 || ' seconds')::interval < now()) AS is_expired
-      FROM exam_attempts
-      WHERE id = $1::uuid AND student_id = $2::uuid;
-    `, attemptId, studentId, submitGraceSeconds.toString())
+    const attempt = await prisma.examAttempt.findFirst({
+      where: {
+        id: attemptId,
+        studentId
+      },
+      select: {
+        status: true,
+        expiresAt: true
+      }
+    })
 
-    if (!rows || rows.length === 0) {
+    if (!attempt) {
       throw new NotFoundError(`Attempt '${attemptId}' not found`)
     }
 
-    const attempt = rows[0]
     if (attempt.status === 'SUSPENDED') {
       throw new ConflictError('Cannot save answers while attempt is suspended', 'ATTEMPT_SUSPENDED')
     }
     if (attempt.status !== 'ACTIVE') {
       throw new ConflictError(`Cannot save answers on attempt in state '${attempt.status}'`, 'INVALID_STATE')
     }
-    if (attempt.is_expired) {
-      throw new GoneError('Exam attempt time has expired', 'EXAM_EXPIRED')
+    if (attempt.expiresAt) {
+      const graceMs = submitGraceSeconds * 1000
+      if (Date.now() > new Date(attempt.expiresAt).getTime() + graceMs) {
+        throw new GoneError('Exam attempt time has expired', 'EXAM_EXPIRED')
+      }
     }
 
     const results = await answerRepository.saveBatchAnswers(attemptId, studentId, answers, prisma, submitGraceSeconds)

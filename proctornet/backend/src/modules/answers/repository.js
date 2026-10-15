@@ -18,9 +18,9 @@ class AnswerRepository {
         WHERE a.id = $1::uuid
           AND a.student_id = $2::uuid
           AND a.status = 'ACTIVE'
-          AND a.expires_at > now()
+          AND (a.expires_at IS NULL OR a.expires_at > now())
           AND aq.id = $3::uuid
-          AND ($4::uuid IS NULL OR EXISTS (
+          AND ($4::text IS NULL OR EXISTS (
             SELECT 1 FROM question_options o
             WHERE o.id = $4::uuid AND o.question_id = aq.question_id
           ))
@@ -29,7 +29,6 @@ class AnswerRepository {
             OR
             (ans.id IS NOT NULL AND ans.revision = $5::int)
           )
-        FOR SHARE OF a
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), attempt_id, attempt_question_id, $4::uuid, 1, now()
@@ -46,7 +45,7 @@ class AnswerRepository {
       attemptId,
       studentId,
       attemptQuestionId,
-      selectedOptionId,
+      selectedOptionId || null,
       expectedRevision
     )
 
@@ -63,12 +62,12 @@ class AnswerRepository {
         a.student_id,
         a.status,
         a.expires_at,
-        (a.expires_at <= now()) AS is_expired,
+        (a.expires_at IS NOT NULL AND a.expires_at <= now()) AS is_expired,
         aq.id AS question_exists,
         aq.question_id,
         ans.revision AS current_revision,
         CASE
-          WHEN $4::uuid IS NULL THEN true
+          WHEN $4::text IS NULL THEN true
           ELSE EXISTS (
             SELECT 1 FROM question_options o
             WHERE o.id = $4::uuid AND o.question_id = aq.question_id
@@ -84,7 +83,7 @@ class AnswerRepository {
       attemptId,
       studentId,
       attemptQuestionId,
-      selectedOptionId
+      selectedOptionId || null
     )
 
     if (!rows || rows.length === 0) {
@@ -154,14 +153,18 @@ class AnswerRepository {
     const dedupedItems = Array.from(itemMap.values()).slice(0, 100)
 
     const qIds = dedupedItems.map(i => i.attemptQuestionId)
-    const optIds = dedupedItems.map(i => i.optionId || null)
-    const revs = dedupedItems.map(i => i.revision)
+    const optIds = dedupedItems.map(i => (i.optionId ? String(i.optionId) : null))
+    const revs = dedupedItems.map(i => (typeof i.revision === 'number' ? i.revision : 0))
 
     const sql = `
       WITH input AS (
-        SELECT * FROM unnest(
+        SELECT
+          t.attempt_question_id,
+          t.selected_option_id::uuid AS selected_option_id,
+          t.expected_revision
+        FROM unnest(
           $3::uuid[],
-          $4::uuid[],
+          $4::text[],
           $5::int[]
         ) AS t(attempt_question_id, selected_option_id, expected_revision)
       ),
@@ -180,7 +183,7 @@ class AnswerRepository {
         WHERE a.id = $1::uuid
           AND a.student_id = $2::uuid
           AND a.status = 'ACTIVE'
-          AND (a.expires_at + ($6 || ' seconds')::interval > now())
+          AND (a.expires_at IS NULL OR (a.expires_at + ($6 || ' seconds')::interval > now()))
           AND (i.selected_option_id IS NULL OR EXISTS (
             SELECT 1 FROM question_options o
             WHERE o.id = i.selected_option_id AND o.question_id = aq.question_id
@@ -190,7 +193,6 @@ class AnswerRepository {
             OR
             (ans.id IS NOT NULL AND ans.revision = i.expected_revision)
           ))
-        FOR SHARE OF a
       )
       INSERT INTO answers (id, attempt_id, attempt_question_id, selected_option_id, revision, saved_at)
       SELECT gen_random_uuid(), g.attempt_id, g.attempt_question_id, g.selected_option_id, 1, now()

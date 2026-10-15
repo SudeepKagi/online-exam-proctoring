@@ -97,40 +97,53 @@ class SubmissionRepository {
       }
 
       // 4. Update status to SUBMITTED
-      const updatedRows = await tx.$queryRawUnsafe(`
-        UPDATE public.exam_attempts
-        SET status = 'SUBMITTED',
-            submitted_at = now()
-        WHERE id = $1::uuid
-        RETURNING *;
-      `, attemptId)
-
-      const updated = updatedRows[0]
+      const updated = await tx.examAttempt.update({
+        where: { id: attemptId },
+        data: {
+          status: 'SUBMITTED',
+          submittedAt: new Date()
+        }
+      })
 
       const responsePayload = {
         status: 'SUBMITTED',
-        submittedAt: updated.submitted_at ? new Date(updated.submitted_at).toISOString() : new Date().toISOString(),
+        submittedAt: updated.submittedAt ? updated.submittedAt.toISOString() : new Date().toISOString(),
         alreadySubmitted: false,
         message: 'Exam submitted successfully'
       }
 
       // 5. Insert outbox event for async evaluation worker
-      await tx.$executeRawUnsafe(`
-        INSERT INTO public.outbox_events (event_type, payload, status, next_attempt_at)
-        VALUES ('attempt.submitted', $1::jsonb, 'PENDING', now());
-      `, JSON.stringify({
-        attemptId: updated.id,
-        examId: updated.exam_id,
-        studentId: updated.student_id,
-        submittedAt: updated.submitted_at
-      }))
+      await tx.outboxEvent.create({
+        data: {
+          eventType: 'attempt.submitted',
+          payload: {
+            attemptId: updated.id,
+            examId: updated.examId,
+            studentId: updated.studentId,
+            submittedAt: updated.submittedAt
+          },
+          status: 'PENDING'
+        }
+      })
 
       // 6. Record idempotency key in the SAME transaction
-      await tx.$executeRawUnsafe(`
-        INSERT INTO public.idempotency_keys (scope, key, request_hash, response_status, response_body, expires_at, created_at)
-        VALUES ('global', $1, $2, 200, $3::jsonb, now() + interval '24 hours', now())
-        ON CONFLICT (scope, key) DO NOTHING;
-      `, idempotencyKey, requestHash, JSON.stringify(responsePayload))
+      await tx.idempotencyKey.upsert({
+        where: {
+          scope_key: {
+            scope: 'global',
+            key: idempotencyKey
+          }
+        },
+        update: {},
+        create: {
+          scope: 'global',
+          key: idempotencyKey,
+          requestHash,
+          responseStatus: 200,
+          responseBody: responsePayload,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        }
+      })
 
       return {
         alreadySubmitted: false,
