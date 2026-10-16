@@ -199,15 +199,21 @@ class ReportService {
         finding.cleanCount = 0
 
         // Periodic reminder warning (every 2 reports / ~10 seconds)
-        if (session.attemptId && this.io && finding.hitCount % 2 === 0) {
-          this.io.to(`attempt:${session.attemptId}`).emit('agent:warning', {
+        const io = this.io || require('../../infra/websocket/socket.server').getIO()
+        if (io && finding.hitCount % 2 === 0) {
+          const reminderPayload = {
             ruleId: rule.id,
             ruleName: rule.name,
             category: rule.category,
             action: rule.action,
             severity: rule.severity,
             message: `PROHIBITED SOFTWARE ACTIVE: ${rule.name}. Close this application immediately.`
-          })
+          }
+          if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:warning', reminderPayload)
+          if (session.studentId) {
+            io.to(`student:${session.studentId}`).emit('agent:warning', reminderPayload)
+            io.to(`user:${session.studentId}`).emit('agent:warning', reminderPayload)
+          }
         }
       } else {
         // New finding -> Record in DB & emit violation
@@ -225,6 +231,11 @@ class ReportService {
         session.openFindings.set(ruleId, {
           id: findingRecord.id,
           ruleId,
+          ruleName: rule?.name || ruleId,
+          category: rule?.category || 'OTHER',
+          action: rule?.action || 'FLAG',
+          severity: rule?.severity || 'HIGH',
+          evidence: rule?.name || ruleId,
           firstSeenAt: findingRecord.firstSeenAt,
           lastSeenAt: findingRecord.lastSeenAt,
           hitCount: 1,
@@ -258,30 +269,44 @@ class ReportService {
           } catch (err) {
             logger.warn({ err, attemptId: session.attemptId }, 'Failed to increment attempt flag count')
           }
+        }
 
-          // Real-time socket notification to student attempt room
-          if (this.io) {
-            this.io.to(`attempt:${session.attemptId}`).emit('agent:warning', {
-              ruleId: rule.id,
-              ruleName: rule.name,
-              category: rule.category,
-              action: rule.action,
-              severity: rule.severity,
-              message: `PROHIBITED SOFTWARE DETECTED: ${rule.name}. Close this application immediately to avoid exam suspension and cancellation.`
-            })
+        // Real-time socket notification to student attempt & student personal rooms
+        const io = this.io || require('../../infra/websocket/socket.server').getIO()
+        if (io) {
+          const warningPayload = {
+            ruleId: rule.id,
+            ruleName: rule.name,
+            category: rule.category,
+            action: rule.action,
+            severity: rule.severity,
+            message: `PROHIBITED SOFTWARE DETECTED: ${rule.name}. Close this application immediately to avoid exam suspension and cancellation.`
+          }
+          if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:warning', warningPayload)
+          if (session.studentId) {
+            io.to(`student:${session.studentId}`).emit('agent:warning', warningPayload)
+            io.to(`user:${session.studentId}`).emit('agent:warning', warningPayload)
+          }
 
-            this.io.to(`attempt:${session.attemptId}`).emit('proctor:warning', {
-              message: `SECURITY ALERT: Prohibited software (${rule.name}) detected on your computer. Close it immediately!`,
-              timestamp: new Date().toISOString()
-            })
+          const proctorPayload = {
+            message: `SECURITY ALERT: Prohibited software (${rule.name}) detected on your computer. Close it immediately!`,
+            timestamp: new Date().toISOString()
+          }
+          if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('proctor:warning', proctorPayload)
+          if (session.studentId) {
+            io.to(`student:${session.studentId}`).emit('proctor:warning', proctorPayload)
+            io.to(`user:${session.studentId}`).emit('proctor:warning', proctorPayload)
+          }
 
-            // Fan-out to invigilator room
+          // Fan-out to invigilator room if attempt exists
+          if (session.attemptId) {
             const attempt = await prisma.examAttempt.findUnique({
               where: { id: session.attemptId },
               select: { examId: true }
             })
             if (attempt?.examId) {
-              this.io.to(`inv:${attempt.examId}`).emit('violation:new', {
+              const eventType = CATEGORY_TO_VIOLATION[rule.category] || 'UNAUTHORIZED_APPLICATION'
+              io.to(`inv:${attempt.examId}`).emit('violation:new', {
                 attemptId: session.attemptId,
                 eventType,
                 severity: rule.severity,
@@ -341,17 +366,29 @@ class ReportService {
                   reason: 'AGENT_FINDING_CLEARED'
                 })
                 logger.info({ attemptId: session.attemptId }, 'Attempt auto-resumed after agent findings cleared')
-                if (this.io) {
-                  this.io.to(`attempt:${session.attemptId}`).emit('attempt:state', {
+                const io = this.io || require('../../infra/websocket/socket.server').getIO()
+                if (io) {
+                  const resumedPayload = {
                     status: 'ACTIVE',
                     reason: 'All prohibited applications closed. Exam session resumed.'
-                  })
+                  }
+                  io.to(`attempt:${session.attemptId}`).emit('attempt:state', resumedPayload)
+                  if (session.studentId) {
+                    io.to(`student:${session.studentId}`).emit('attempt:state', resumedPayload)
+                    io.to(`user:${session.studentId}`).emit('attempt:state', resumedPayload)
+                  }
                 }
               }
-              if (this.io) {
-                this.io.to(`attempt:${session.attemptId}`).emit('agent:cleared', {
+              const io = this.io || require('../../infra/websocket/socket.server').getIO()
+              if (io) {
+                const clearPayload = {
                   message: 'All prohibited applications have been verified closed. Resuming examination.'
-                })
+                }
+                if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:cleared', clearPayload)
+                if (session.studentId) {
+                  io.to(`student:${session.studentId}`).emit('agent:cleared', clearPayload)
+                  io.to(`user:${session.studentId}`).emit('agent:cleared', clearPayload)
+                }
               }
             } catch (resumeErr) {
               logger.debug({ err: resumeErr.message }, 'Auto-resume skipped')
@@ -385,6 +422,7 @@ class ReportService {
     // Write to DB on state change or periodically every 30s (§W2.2)
     const timeSinceLastDbPersist = now - (session.lastDbPersistAt || 0)
     const stateChanged = session.state !== previousState
+    const hasFindings = session.openFindings && session.openFindings.size > 0
 
     if (stateChanged || timeSinceLastDbPersist >= 30000) {
       session.lastDbPersistAt = now
@@ -398,7 +436,7 @@ class ReportService {
       }).catch(err => logger.error({ err, sessionId: session.id }, 'Failed to persist agent session heartbeat'))
     }
 
-    if (stateChanged) {
+    if (stateChanged || hasFindings || previousState === 'DEGRADED') {
       try {
         const { getIO } = require('../../infra/websocket/socket.server')
         const io = this.io || getIO()
@@ -406,13 +444,30 @@ class ReportService {
           const payload = {
             state: session.state,
             paired: true,
-            gatePassed: session.state === 'HEALTHY',
+            gatePassed: session.state === 'HEALTHY' && !hasFindings,
             attemptId: session.attemptId,
             studentId: session.studentId,
             lastSeenAt: new Date(now).toISOString(),
-            findings: Array.from(session.openFindings.values())
+            findings: Array.from(session.openFindings.values()).map(f => {
+              const rule = rulesMap.get(f.ruleId)
+              return {
+                id: f.id,
+                ruleId: f.ruleId,
+                ruleName: f.ruleName || rule?.name || f.ruleId,
+                category: f.category || rule?.category || 'OTHER',
+                action: f.action || rule?.action || 'FLAG',
+                severity: f.severity || rule?.severity || 'HIGH',
+                evidence: f.evidence || rule?.name || f.ruleId,
+                firstSeenAt: f.firstSeenAt,
+                lastSeenAt: f.lastSeenAt,
+                hitCount: f.hitCount
+              }
+            })
           }
-          if (session.studentId) io.to(`student:${session.studentId}`).emit('agent:status', payload)
+          if (session.studentId) {
+            io.to(`student:${session.studentId}`).emit('agent:status', payload)
+            io.to(`user:${session.studentId}`).emit('agent:status', payload)
+          }
           if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:status', payload)
         }
       } catch (_) {}

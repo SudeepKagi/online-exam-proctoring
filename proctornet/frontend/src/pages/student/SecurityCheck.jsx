@@ -53,39 +53,221 @@ export default function SecurityCheck() {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [screenShared, setScreenShared] = useState(false)
   const [timeToExamStart, setTimeToExamStart] = useState(0)
+  const [termsAgreed, setTermsAgreed] = useState(true)
 
-  // Listen to live fullscreen changes (§W2.5)
+  const updateStage = useCallback((key, status, detail) => {
+    setStageStatus(prev => ({ ...prev, [key]: status }))
+    setStageDetails(prev => ({ ...prev, [key]: detail }))
+  }, [])
+
+  // 1. Stage 0: Exam Device Companion Status Handler
+  const handleCompanionStatusChange = useCallback((statusData) => {
+    setCompanionDetails(statusData)
+    const isHealthy = statusData?.state === 'HEALTHY' || statusData?.state === 'CONNECTED'
+    const isWaived = Boolean(statusData?.waiver)
+    const isOptional = Boolean(statusData?.gatePassed || statusData?.state === 'OPTIONAL' || statusData?.reason === 'POLICY_NOT_REQUIRED' || exam?.deviceAgentPolicy === 'OPTIONAL' || exam?.deviceAgentPolicy === 'OFF')
+    const isDisconnected = statusData?.state === 'LOST_CONNECTION' || statusData?.state === 'DISCONNECTED' || statusData?.state === 'STALE'
+    const findings = statusData?.findings || []
+
+    if (isWaived) {
+      updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
+    } else if (isOptional) {
+      updateStage('system', 'pass', 'Exam Device Companion • Not required for this exam')
+    } else if (isHealthy && findings.length === 0) {
+      updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
+    } else if (findings.length > 0) {
+      const names = findings.map(f => f.ruleName || f.evidence || f.ruleId).join(', ')
+      updateStage('system', 'fail', `Prohibited software detected: ${names}. Please close to proceed.`)
+    } else if (isDisconnected) {
+      updateStage('system', 'fail', 'Device Companion connection lost. Please run the companion and enter code.')
+    } else {
+      updateStage('system', 'loading', 'Waiting for Exam Device Companion to connect...')
+    }
+  }, [exam?.deviceAgentPolicy, updateStage])
+
+  // Comprehensive Fullscreen Detection (HTML5, F11, Window Maximize)
+  const checkIsFullscreen = useCallback(() => {
+    if (typeof window === 'undefined') return false
+    const html5Fs = Boolean(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement)
+    const mediaFs = Boolean(window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches)
+    const screenFs = typeof screen !== 'undefined' && (
+      window.innerHeight >= screen.height - 35 ||
+      window.outerHeight >= screen.height - 35 ||
+      (window.screenTop === 0 && window.screenY === 0 && window.innerHeight >= screen.availHeight - 10)
+    )
+    return html5Fs || mediaFs || screenFs
+  }, [])
+
+  // Listen to live fullscreen changes (HTML5, F11, OS resize)
   useEffect(() => {
     const handleFsChange = () => {
-      const active = Boolean(document.fullscreenElement)
+      const active = checkIsFullscreen()
       setIsFullscreen(active)
       if (active) {
         updateStage('lock', 'pass', 'Full-screen assessment lock active')
+      } else {
+        updateStage('lock', 'loading', 'Ready for full-screen assessment lock activation')
       }
     }
+
     handleFsChange()
     document.addEventListener('fullscreenchange', handleFsChange)
-    return () => document.removeEventListener('fullscreenchange', handleFsChange)
-  }, [])
+    document.addEventListener('webkitfullscreenchange', handleFsChange)
+    document.addEventListener('mozfullscreenchange', handleFsChange)
+    window.addEventListener('resize', handleFsChange)
 
-  const isF11Mode = !isFullscreen && typeof window !== 'undefined' && typeof screen !== 'undefined' && (window.innerHeight >= screen.height - 10)
+    let mql = null
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      mql = window.matchMedia('(display-mode: fullscreen)')
+      mql.addEventListener?.('change', handleFsChange)
+    }
 
-  // Track socket connection
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange)
+      document.removeEventListener('webkitfullscreenchange', handleFsChange)
+      document.removeEventListener('mozfullscreenchange', handleFsChange)
+      window.removeEventListener('resize', handleFsChange)
+      if (mql) mql.removeEventListener?.('change', handleFsChange)
+    }
+  }, [checkIsFullscreen, updateStage])
+
+  const handleRequestFullscreen = async () => {
+    try {
+      const el = document.documentElement
+      const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen
+      if (rfs && !document.fullscreenElement) {
+        await rfs.call(el)
+      }
+      setIsFullscreen(true)
+      updateStage('lock', 'pass', 'Full-screen assessment lock active')
+      toast.success('Full-screen mode active!')
+    } catch (err) {
+      console.warn('Fullscreen request failed:', err)
+      if (checkIsFullscreen()) {
+        setIsFullscreen(true)
+        updateStage('lock', 'pass', 'Full-screen assessment lock active')
+        toast.success('Full-screen mode active!')
+      } else {
+        toast.error('Browser blocked full-screen request. Press F11 on your keyboard.')
+      }
+    }
+  }
+
+  // Track socket connection & companion real-time updates across ALL stages
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   useEffect(() => {
     const sock = connectSocket()
     if (sock) {
       setIsSocketConnected(Boolean(sock.connected))
-      const onConnect = () => setIsSocketConnected(true)
+      const onConnect = () => {
+        setIsSocketConnected(true)
+        if (attemptId) sock.emit('attempt:join', { attemptId })
+      }
       const onDisconnect = () => setIsSocketConnected(false)
       sock.on('connect', onConnect)
       sock.on('disconnect', onDisconnect)
+
+      const onAgentStatus = (data) => {
+        if (!data) return
+        handleCompanionStatusChange(data)
+        if (data.findings && data.findings.length > 0) {
+          const names = data.findings.map(f => f.ruleName || f.evidence || f.ruleId).join(', ')
+          toast.error(`⚠️ Prohibited software detected: ${names}. Close immediately to proceed!`, {
+            id: 'prohibited-app-alert',
+            duration: 8000
+          })
+        } else if (data.state === 'HEALTHY' || data.state === 'CONNECTED') {
+          toast.success('✓ Prohibited applications closed. Companion check clean!', {
+            id: 'prohibited-app-alert'
+          })
+        }
+      }
+
+      const onAgentWarning = (data) => {
+        const name = data?.ruleName || data?.ruleId || 'prohibited process'
+        toast.error(`⚠️ PROHIBITED SOFTWARE DETECTED: ${name}. Close this application immediately to proceed!`, {
+          id: 'prohibited-app-alert',
+          duration: 9000
+        })
+      }
+
+      const onAgentCleared = () => {
+        toast.success('✓ All prohibited applications closed. Security check passed!', {
+          id: 'prohibited-app-alert'
+        })
+      }
+
+      sock.on('agent:status', onAgentStatus)
+      sock.on('agent:warning', onAgentWarning)
+      sock.on('agent:cleared', onAgentCleared)
+
       return () => {
         sock.off('connect', onConnect)
         sock.off('disconnect', onDisconnect)
+        sock.off('agent:status', onAgentStatus)
+        sock.off('agent:warning', onAgentWarning)
+        sock.off('agent:cleared', onAgentCleared)
       }
     }
-  }, [])
+  }, [attemptId, handleCompanionStatusChange])
+
+  // Join attempt room when attemptId becomes available
+  useEffect(() => {
+    if (!attemptId) return
+    const sock = getSocket()
+    if (sock?.connected) {
+      sock.emit('attempt:join', { attemptId })
+    }
+  }, [attemptId])
+
+  // Continuous background polling for companion status (runs across all 4 stages)
+  const prevFindingsCountRef = useRef(0)
+  useEffect(() => {
+    if (!attemptId && !student?.id) return
+    let isCancelled = false
+
+    const pollCompanion = async () => {
+      try {
+        let data = null
+        if (attemptId) {
+          const res = await api.get(`/attempts/${attemptId}/agent/status`).catch(() => null)
+          if (res?.data && res.data.state !== 'NOT_PAIRED') {
+            data = res.data
+          }
+        }
+        if (!data) {
+          const res = await api.get('/student/agent/status').catch(() => null)
+          if (res?.data) {
+            data = res.data
+          }
+        }
+
+        if (data && !isCancelled) {
+          handleCompanionStatusChange(data)
+          const currFindings = data.findings || []
+          if (currFindings.length > 0 && prevFindingsCountRef.current === 0) {
+            const names = currFindings.map(f => f.ruleName || f.evidence || f.ruleId).join(', ')
+            toast.error(`⚠️ Prohibited software detected: ${names}. Close this application immediately!`, {
+              id: 'prohibited-app-alert',
+              duration: 8000
+            })
+          } else if (currFindings.length === 0 && prevFindingsCountRef.current > 0) {
+            toast.success('✓ Prohibited applications closed! Security integrity cleared.', {
+              id: 'prohibited-app-alert'
+            })
+          }
+          prevFindingsCountRef.current = currFindings.length
+        }
+      } catch (_) {}
+    }
+
+    pollCompanion()
+    const interval = setInterval(pollCompanion, 3500)
+    return () => {
+      isCancelled = true
+      clearInterval(interval)
+    }
+  }, [attemptId, student?.id, handleCompanionStatusChange])
 
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
@@ -223,34 +405,7 @@ export default function SecurityCheck() {
     loadExamAndStudent()
   }, [examId, navigate])
 
-  const updateStage = (key, status, detail) => {
-    setStageStatus(prev => ({ ...prev, [key]: status }))
-    setStageDetails(prev => ({ ...prev, [key]: detail }))
-  }
 
-  // 1. Stage 0: Exam Device Companion Status Listener
-  const handleCompanionStatusChange = (statusData) => {
-    setCompanionDetails(statusData)
-    const isHealthy = statusData?.state === 'HEALTHY' || statusData?.state === 'CONNECTED'
-    const isWaived = Boolean(statusData?.waiver)
-    const isOptional = Boolean(statusData?.gatePassed || statusData?.state === 'OPTIONAL' || statusData?.reason === 'POLICY_NOT_REQUIRED' || exam?.deviceAgentPolicy === 'OPTIONAL' || exam?.deviceAgentPolicy === 'OFF')
-    const isDisconnected = statusData?.state === 'LOST_CONNECTION' || statusData?.state === 'DISCONNECTED' || statusData?.state === 'STALE'
-    const findings = statusData?.findings || []
-
-    if (isWaived) {
-      updateStage('system', 'pass', 'Exam Device Companion • Staff Waiver Active')
-    } else if (isOptional) {
-      updateStage('system', 'pass', 'Exam Device Companion • Not required for this exam')
-    } else if (isHealthy && findings.length === 0) {
-      updateStage('system', 'pass', 'Exam Device Companion Active • 0 Prohibited Apps • Clean Integrity')
-    } else if (findings.length > 0) {
-      updateStage('system', 'fail', `Prohibited software detected: ${findings.map(f => f.ruleId).join(', ')}. Please close to proceed.`)
-    } else if (isDisconnected) {
-      updateStage('system', 'fail', 'Device Companion connection lost. Please run the companion and enter code.')
-    } else {
-      updateStage('system', 'loading', 'Waiting for Exam Device Companion to connect...')
-    }
-  }
 
   // 2. Camera Hardware Initialization
   const startCamera = async () => {
@@ -632,6 +787,11 @@ export default function SecurityCheck() {
 
   // 4. Stage 3: Lock Fullscreen & Start Exam (Activates attempt and starts clock)
   const handleLockAndStartExam = async () => {
+    if (hasProhibitedApps) {
+      toast.error(`Please close prohibited applications (${bannedAppNames}) before entering exam.`)
+      return
+    }
+
     if (!stage0Passed) {
       toast.error('Exam Device Companion must be active and healthy (or waived) to proceed.')
       setActiveStage(0)
@@ -646,12 +806,16 @@ export default function SecurityCheck() {
     }
 
     // Attempt fullscreen immediately to preserve user activation gesture
-    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
-      try {
-        await document.documentElement.requestFullscreen()
-      } catch (fsErr) {
-        console.warn('requestFullscreen before attempt call:', fsErr.message)
+    try {
+      const el = document.documentElement
+      const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen
+      if (rfs && !document.fullscreenElement) {
+        await rfs.call(el)
       }
+      setIsFullscreen(true)
+      updateStage('lock', 'pass', 'Full-screen assessment lock active')
+    } catch (fsErr) {
+      console.warn('requestFullscreen before attempt call:', fsErr.message)
     }
 
     if (exam?.endTime && new Date() > new Date(exam.endTime)) {
@@ -707,6 +871,10 @@ export default function SecurityCheck() {
       }
     }
   }
+
+  const companionFindings = companionDetails?.findings || []
+  const hasProhibitedApps = companionFindings.length > 0 || (companionDetails?.state === 'DEGRADED' && companionFindings.length > 0)
+  const bannedAppNames = companionFindings.map(f => f.ruleName || f.evidence || f.ruleId).filter(Boolean).join(', ')
 
   const stage0Passed = Boolean(
     companionDetails &&
@@ -868,6 +1036,37 @@ export default function SecurityCheck() {
                 </div>
               </div>
 
+              {/* Alert Banner for Prohibited Apps (Visible whenever prohibited software is detected) */}
+              {hasProhibitedApps && (
+                <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border-2 border-rose-500/40 text-rose-500 flex items-start gap-3 shadow-md animate-in fade-in slide-in-from-top-2 duration-300">
+                  <AlertOctagon size={24} className="shrink-0 text-rose-500 mt-0.5 animate-pulse" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <h4 className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                        Prohibited Software Detected
+                      </h4>
+                      <Badge variant="destructive" className="font-mono text-[10px] uppercase">
+                        Exam Entry Blocked
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-rose-700 dark:text-rose-300 mt-1">
+                      The integrity monitor detected prohibited applications running on your machine:
+                    </p>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {companionFindings.map((f, idx) => (
+                        <span key={idx} className="px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-300 font-mono text-xs font-semibold flex items-center gap-1.5 shadow-xs">
+                          <XCircle size={12} className="text-rose-500" />
+                          {f.ruleName || f.evidence || f.ruleId || 'Prohibited Process'}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2 font-mono">
+                      Please close these applications completely. This screen will update automatically once closed.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* STAGE 0: Exam Device Companion Audit */}
               {activeStage === 0 ? (
                 <div className="space-y-4 mb-6">
@@ -878,28 +1077,111 @@ export default function SecurityCheck() {
                   />
                 </div>
               ) : (
-                /* STAGES 1, 2, 3 OR STAGE 0 VERIFIED: Video Feed & Diagnostics */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center mb-6">
-                  <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover"
-                    />
-                    
-                    <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
-                      <div className="w-20 h-20 border border-primary/60 rounded-full animate-pulse" />
-                    </div>
+                /* STAGES 1, 2, 3: Workstation Layout */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch mb-6">
+                  {/* Left Column: Video Feed (Stages 1 & 2) OR Full-screen Lock & Terms (Stage 3) */}
+                  {activeStage === 3 ? (
+                    <div className="space-y-4 flex flex-col justify-between">
+                      {/* Viewport Lock Card */}
+                      <Card className={`p-4 border transition-all duration-300 ${
+                        isFullscreen
+                          ? 'bg-emerald-500/10 border-emerald-500/30'
+                          : 'bg-primary/5 border-primary/30'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2.5 rounded-xl shrink-0 ${
+                            isFullscreen ? 'bg-emerald-500/20 text-emerald-500' : 'bg-primary/20 text-primary'
+                          }`}>
+                            <Lock size={20} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h3 className="text-xs font-bold font-mono uppercase tracking-wider text-foreground">
+                                {isFullscreen ? 'Full-Screen Lock Active' : 'Full-Screen Lock Required'}
+                              </h3>
+                              <Badge variant={isFullscreen ? 'default' : 'secondary'} className={`text-[10px] font-mono ${isFullscreen ? 'bg-emerald-500 text-white' : ''}`}>
+                                {isFullscreen ? 'LOCKED' : 'READY TO ACTIVATE'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                              {isFullscreen
+                                ? 'Your browser viewport is locked in full-screen assessment mode. Window switching or minimizing will trigger proctoring security flags.'
+                                : 'The examination environment requires exclusive full-screen mode to prevent unauthorized window switching and background access.'}
+                            </p>
+                            {!isFullscreen && (
+                              <Button
+                                onClick={handleRequestFullscreen}
+                                className="mt-3.5 w-full text-xs font-mono font-bold bg-primary hover:bg-primary/90 text-white h-9 rounded-xl shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <Lock size={13} /> Enter Full Screen Mode
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
 
-                    {isFaceProcessing && (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
-                        <Loader2 size={32} className="text-primary animate-spin mb-2" />
-                        <p className="text-xs font-mono text-white font-semibold">Verifying Biometric Stream...</p>
+                      {/* Candidate Integrity Agreement */}
+                      <Card className="bg-background border-border p-4 space-y-3 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Shield size={16} className="text-primary" />
+                            <h4 className="text-xs font-bold font-mono uppercase tracking-wider text-foreground">
+                              Candidate Integrity Agreement
+                            </h4>
+                          </div>
+                          <ul className="space-y-2 text-xs text-muted-foreground">
+                            <li className="flex items-start gap-2">
+                              <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                              <span>I will remain in exclusive full-screen mode until my exam is submitted.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                              <span>No AI assistants (ChatGPT), messaging, or screen sharing tools are permitted.</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <Check size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                              <span>Continuous screen share and companion integrity monitoring remain enforced.</span>
+                            </li>
+                          </ul>
+                        </div>
+
+                        <div className="pt-3 border-t border-border flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            id="terms-agree"
+                            checked={termsAgreed}
+                            onChange={(e) => setTermsAgreed(e.target.checked)}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer accent-primary"
+                          />
+                          <label htmlFor="terms-agree" className="text-[11px] font-mono text-foreground cursor-pointer select-none">
+                            I understand and agree to the ProctorNet assessment rules.
+                          </label>
+                        </div>
+                      </Card>
+                    </div>
+                  ) : (
+                    /* Video Feed for Stages 1 & 2 */
+                    <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
+                        <div className="w-20 h-20 border border-primary/60 rounded-full animate-pulse" />
                       </div>
-                    )}
-                  </div>
+
+                      {isFaceProcessing && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center">
+                          <Loader2 size={32} className="text-primary animate-spin mb-2" />
+                          <p className="text-xs font-mono text-white font-semibold">Verifying Biometric Stream...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Diagnostics Log Card */}
                   <div className="space-y-4">
@@ -917,8 +1199,16 @@ export default function SecurityCheck() {
                       <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-muted-foreground">
                         <div className="p-2 rounded-lg bg-card border border-border">
                           <span className="text-muted-foreground">Companion:</span>
-                          <p className={`font-semibold mt-0.5 ${companionDetails?.state === 'HEALTHY' || companionDetails?.waiver ? 'text-emerald-500' : 'text-foreground/90'}`}>
-                            {companionDetails?.waiver ? 'Waived' : companionDetails?.state || 'Not Paired'}
+                          <p className={`font-semibold mt-0.5 truncate ${
+                            hasProhibitedApps
+                              ? 'text-rose-500 font-bold'
+                              : (companionDetails?.state === 'HEALTHY' || companionDetails?.waiver ? 'text-emerald-500 font-bold' : 'text-foreground/90')
+                          }`} title={hasProhibitedApps ? bannedAppNames : ''}>
+                            {hasProhibitedApps
+                              ? 'DEGRADED'
+                              : companionDetails?.waiver
+                              ? 'Waived'
+                              : companionDetails?.state || 'Not Paired'}
                           </p>
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
@@ -935,8 +1225,8 @@ export default function SecurityCheck() {
                         </div>
                         <div className="p-2 rounded-lg bg-card border border-border">
                           <span className="text-muted-foreground">Full-Screen Mode:</span>
-                          <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {isFullscreen ? 'Locked' : isF11Mode ? 'Click button below to enter full screen' : 'Standard'}
+                          <p className={`font-semibold mt-0.5 ${isFullscreen ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}`}>
+                            {isFullscreen ? 'Locked & Enforced' : 'Standard'}
                           </p>
                         </div>
                       </div>
@@ -999,7 +1289,7 @@ export default function SecurityCheck() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-              {activeStage > 0 && !allPassed && (
+              {activeStage > 0 && (
                 <Button 
                   variant="outline"
                   onClick={() => setActiveStage(prev => Math.max(0, prev - 1))}
@@ -1066,21 +1356,66 @@ export default function SecurityCheck() {
                 </Button>
               )}
 
-              {allPassed && (
-                <Button
-                  onClick={handleLockAndStartExam}
-                  className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-10 rounded-xl shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
-                >
-                  {timeToExamStart > 0 ? (
-                    <>
-                      <Lock size={14} /> Enter Secure Full-Screen Mode ({formatCountdown(timeToExamStart)}) →
-                    </>
-                  ) : (
-                    <>
-                      <Play size={14} className="fill-current" /> Enter Exam Environment (Live Now) →
-                    </>
+              {/* Stage 3 (Step 4) Explicit Controls */}
+              {activeStage === 3 && (
+                <>
+                  {!isFullscreen && (
+                    <Button
+                      onClick={handleRequestFullscreen}
+                      variant="outline"
+                      className="w-full sm:w-auto text-xs font-mono font-bold border-indigo-500/40 text-indigo-400 hover:bg-indigo-500/10 px-4 h-10 rounded-xl cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Lock size={14} /> Enter Full Screen
+                    </Button>
                   )}
-                </Button>
+
+                  {hasProhibitedApps ? (
+                    <Button
+                      disabled
+                      className="w-full sm:w-auto text-xs font-mono font-bold bg-rose-600/80 text-white px-6 h-10 rounded-xl cursor-not-allowed flex items-center gap-2 shadow-sm opacity-90"
+                      title={`Please close prohibited applications (${bannedAppNames}) before entering exam`}
+                    >
+                      <AlertTriangle size={14} className="animate-pulse" /> Close Prohibited Apps to Enter Exam
+                    </Button>
+                  ) : !stage0Passed ? (
+                    <Button
+                      onClick={() => setActiveStage(0)}
+                      className="w-full sm:w-auto text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center gap-2"
+                    >
+                      <Cpu size={14} /> Pair Companion on Step 1 →
+                    </Button>
+                  ) : stageStatus.media !== 'pass' ? (
+                    <Button
+                      onClick={() => setActiveStage(1)}
+                      className="w-full sm:w-auto text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center gap-2"
+                    >
+                      <Camera size={14} /> Authorize Media Feeds on Step 2 →
+                    </Button>
+                  ) : stageStatus.face !== 'pass' ? (
+                    <Button
+                      onClick={() => setActiveStage(2)}
+                      className="w-full sm:w-auto text-xs font-mono font-bold bg-amber-600 hover:bg-amber-500 text-white px-6 h-10 rounded-xl cursor-pointer shadow-md flex items-center gap-2"
+                    >
+                      <Shield size={14} /> Complete Biometrics on Step 3 →
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleLockAndStartExam}
+                      disabled={!termsAgreed}
+                      className="w-full sm:w-auto text-xs font-mono font-bold bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-10 rounded-xl shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {timeToExamStart > 0 ? (
+                        <>
+                          <Lock size={14} /> Enter Secure Full-Screen Mode ({formatCountdown(timeToExamStart)}) →
+                        </>
+                      ) : (
+                        <>
+                          <Play size={14} className="fill-current" /> Enter Exam Environment (Live Now) →
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>

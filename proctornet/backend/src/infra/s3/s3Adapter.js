@@ -33,7 +33,7 @@ class S3Adapter {
   async getPresignedReadUrl(_key, _expiresIn = 600, _signingDate = null) { throw new Error('Not implemented') }
   async getPresignedPutUrl(_key, _contentType = 'image/webp', _expiresIn = 120) { throw new Error('Not implemented') }
   async createDirectUploadPolicy({ _key, _contentType, _maxSizeBytes, _expiresIn = 120 } = {}) { throw new Error('Not implemented') }
-  destroy() {}
+  destroy() { }
 }
 
 /**
@@ -182,7 +182,8 @@ class AwsS3Adapter extends S3Adapter {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
-      ContentType: contentType
+      ContentType: contentType,
+      ServerSideEncryption: 'AES256'
     })
     return getSignedUrl(this.client, command, { expiresIn })
   }
@@ -225,10 +226,10 @@ class AwsS3Adapter extends S3Adapter {
   }
 
   destroy() {
-    try { this.client.destroy() } catch (_) {}
-    try { this.requestHandler.destroy() } catch (_) {}
-    try { this.httpsAgent.destroy() } catch (_) {}
-    try { this.httpAgent.destroy() } catch (_) {}
+    try { this.client.destroy() } catch (_) { }
+    try { this.requestHandler.destroy() } catch (_) { }
+    try { this.httpsAgent.destroy() } catch (_) { }
+    try { this.httpAgent.destroy() } catch (_) { }
   }
 }
 
@@ -243,7 +244,7 @@ class MemoryS3Adapter extends S3Adapter {
     this.versions = new Map() // key -> array of versions
     this.client = {
       send: async () => ({}),
-      destroy: () => {}
+      destroy: () => { }
     }
   }
 
