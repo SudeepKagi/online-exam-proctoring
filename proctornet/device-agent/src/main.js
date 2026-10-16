@@ -173,9 +173,11 @@ async function main() {
     }
 
     if (isRunning) {
-      // Jittered interval: ±2000 ms
-      const jitter = (Math.random() - 0.5) * 4000
-      const delay = Math.max(5000, heartbeatMs + jitter)
+      // Fast polling (3.5s) if findings are open to quickly detect when user closes prohibited apps
+      const hasOpenFindings = reportData?.findings?.length > 0
+      const baseMs = hasOpenFindings ? 3500 : (heartbeatMs || 10000)
+      const jitter = (Math.random() - 0.5) * (hasOpenFindings ? 1000 : 3000)
+      const delay = Math.max(3000, baseMs + jitter)
       setTimeout(runReportCycle, delay)
     }
   }

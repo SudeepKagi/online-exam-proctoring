@@ -187,7 +187,7 @@ class ReportService {
       const rule = rulesMap.get(ruleId)
       if (!rule) continue
 
-      if (['SUSPEND', 'BLOCK_START'].includes(rule.action)) {
+      if (['SUSPEND', 'BLOCK_START', 'FLAG'].includes(rule.action)) {
         hasCriticalOrBlock = true
       }
 
@@ -198,16 +198,16 @@ class ReportService {
         finding.lastSeenAt = new Date()
         finding.cleanCount = 0
 
-        // Periodic reminder warning (every 2 reports / ~10 seconds)
+        // Continuous reminder warning while prohibited software is active
         const io = this.io || require('../../infra/websocket/socket.server').getIO()
-        if (io && finding.hitCount % 2 === 0) {
+        if (io) {
           const reminderPayload = {
             ruleId: rule.id,
             ruleName: rule.name,
             category: rule.category,
             action: rule.action,
             severity: rule.severity,
-            message: `PROHIBITED SOFTWARE ACTIVE: ${rule.name}. Close this application immediately.`
+            message: `PROHIBITED SOFTWARE DETECTED: ${rule.name}. Close this application immediately.`
           }
           if (session.attemptId) io.to(`attempt:${session.attemptId}`).emit('agent:warning', reminderPayload)
           if (session.studentId) {
@@ -402,7 +402,7 @@ class ReportService {
     session.lastSeq = seq
     session.lastSeenAt = now
     const previousState = session.state
-    session.state = hasCriticalOrBlock ? 'DEGRADED' : 'HEALTHY'
+    session.state = (hasCriticalOrBlock || (session.openFindings && session.openFindings.size > 0)) ? 'DEGRADED' : 'HEALTHY'
 
     // Auto-resume if reconnecting after AGENT_STALE suspension
     if (previousState === 'STALE' && session.attemptId && !hasCriticalOrBlock) {

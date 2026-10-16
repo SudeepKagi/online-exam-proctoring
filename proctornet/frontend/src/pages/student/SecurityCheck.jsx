@@ -269,6 +269,32 @@ export default function SecurityCheck() {
     }
   }, [attemptId, student?.id, handleCompanionStatusChange])
 
+  // Window blur & tab visibility tracking for Candidate Integrity
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && activeStage === 3) {
+        toast.error('⚠️ Assessment Integrity Alert: Window switching or minimizing is strictly monitored.', {
+          id: 'tab-switch-alert',
+          duration: 5000
+        })
+      }
+    }
+    const handleBlur = () => {
+      if (activeStage === 3) {
+        toast.error('⚠️ Window Focus Lost: Please keep your exam browser window focused.', {
+          id: 'focus-lost-alert',
+          duration: 4000
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('blur', handleBlur)
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('blur', handleBlur)
+    }
+  }, [activeStage])
+
   // Biometric states
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false)
   const [isFaceProcessing, setIsFaceProcessing] = useState(false)
@@ -679,22 +705,48 @@ export default function SecurityCheck() {
 
             const { putUrl, postUrl, fields, key } = presignRes.data
 
-            // Upload directly to S3 / MinIO
+            // Upload directly to S3 / MinIO with fallback resilience
+            let uploadSuccess = false
+            let uploadErr = null
+
             if (putUrl) {
-              const uploadRes = await fetch(putUrl, {
-                method: 'PUT',
-                body: blob,
-                headers: { 'Content-Type': blob.type || 'image/jpeg' }
-              })
-              if (!uploadRes.ok) throw new Error(`Presigned PUT failed: ${uploadRes.status}`)
-            } else if (postUrl) {
-              const fd = new FormData()
-              if (fields) {
-                Object.entries(fields).forEach(([k, v]) => fd.append(k, v))
+              try {
+                const uploadRes = await fetch(putUrl, {
+                  method: 'PUT',
+                  body: blob,
+                  headers: { 'Content-Type': blob.type || 'image/jpeg' }
+                })
+                if (uploadRes.ok) {
+                  uploadSuccess = true
+                } else {
+                  uploadErr = new Error(`Presigned PUT responded ${uploadRes.status}`)
+                }
+              } catch (pErr) {
+                uploadErr = pErr
               }
-              fd.append('file', blob)
-              const uploadRes = await fetch(postUrl, { method: 'POST', body: fd })
-              if (!uploadRes.ok) throw new Error(`Presigned POST failed: ${uploadRes.status}`)
+            }
+
+            if (!uploadSuccess && postUrl) {
+              try {
+                const fd = new FormData()
+                if (fields) {
+                  Object.entries(fields).forEach(([k, v]) => fd.append(k, v))
+                }
+                fd.append('file', blob)
+                const uploadRes = await fetch(postUrl, { method: 'POST', body: fd })
+                if (uploadRes.ok) {
+                  uploadSuccess = true
+                  uploadErr = null
+                } else {
+                  uploadErr = new Error(`Presigned POST responded ${uploadRes.status}`)
+                }
+              } catch (postErr) {
+                uploadErr = postErr
+              }
+            }
+
+            if (!uploadSuccess && uploadErr) {
+              throw uploadErr
             }
 
             // Verify identity using server-issued key
@@ -1160,8 +1212,8 @@ export default function SecurityCheck() {
                       </Card>
                     </div>
                   ) : (
-                    /* Video Feed for Stages 1 & 2 */
-                    <div className="relative rounded-2xl bg-background border border-border overflow-hidden aspect-video flex items-center justify-center shadow-inner">
+                    <div className="relative rounded-2xl bg-black border border-border/80 overflow-hidden aspect-[4/3] sm:aspect-video flex items-center justify-center shadow-lg group">
+                      {/* Video Feed for Stages 1 & 2 */}
                       <video
                         ref={videoRef}
                         autoPlay
@@ -1170,8 +1222,58 @@ export default function SecurityCheck() {
                         className="w-full h-full object-cover"
                       />
                       
-                      <div className="absolute inset-4 border-2 border-dashed border-primary/40 rounded-xl pointer-events-none flex items-center justify-center">
-                        <div className="w-20 h-20 border border-primary/60 rounded-full animate-pulse" />
+                      {/* Biometric Target Reticle & Precision Corner Brackets */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        {/* Precision Corner Brackets */}
+                        <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-primary/60 rounded-tl-sm" />
+                        <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-primary/60 rounded-tr-sm" />
+                        <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-primary/60 rounded-bl-sm" />
+                        <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-primary/60 rounded-br-sm" />
+
+                        {/* Ergonomic Biometric Head Reticle */}
+                        <div className={`relative w-40 h-52 sm:w-48 sm:h-60 rounded-[50%] border-2 transition-all duration-300 flex items-center justify-center ${
+                          stageStatus.face === 'pass'
+                            ? 'border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.35)]'
+                            : isFaceProcessing
+                            ? 'border-primary shadow-[0_0_25px_rgba(99,102,241,0.35)] animate-pulse'
+                            : stageStatus.face === 'fail'
+                            ? 'border-rose-500/80 shadow-[0_0_15px_rgba(244,63,94,0.25)]'
+                            : 'border-primary/50'
+                        }`}>
+                          {/* Live Laser Scanline during processing */}
+                          {isFaceProcessing && (
+                            <div className="absolute inset-x-2 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse" />
+                          )}
+
+                          {/* Center Reticle Crosshairs */}
+                          <div className="w-2.5 h-0.5 bg-primary/40 absolute top-1/2 left-2 -translate-y-1/2" />
+                          <div className="w-2.5 h-0.5 bg-primary/40 absolute top-1/2 right-2 -translate-y-1/2" />
+                          <div className="h-2.5 w-0.5 bg-primary/40 absolute left-1/2 top-2 -translate-x-1/2" />
+                          <div className="h-2.5 w-0.5 bg-primary/40 absolute left-1/2 bottom-2 -translate-x-1/2" />
+                        </div>
+
+                        {/* Top Status HUD Pill */}
+                        <div className="absolute top-3 inset-x-0 flex justify-center">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold tracking-wide flex items-center gap-1.5 shadow-md ${
+                            stageStatus.face === 'pass'
+                              ? 'bg-emerald-500/95 text-white'
+                              : isFaceProcessing
+                              ? 'bg-primary/95 text-white animate-pulse'
+                              : stageStatus.face === 'fail'
+                              ? 'bg-rose-600/95 text-white'
+                              : 'bg-black/70 text-white/90 backdrop-blur-xs border border-white/10'
+                          }`}>
+                            {stageStatus.face === 'pass' ? (
+                              <><Check size={11} /> Biometric Identity Verified</>
+                            ) : isFaceProcessing ? (
+                              <><Loader2 size={11} className="animate-spin" /> Matching Live Stream...</>
+                            ) : stageStatus.face === 'fail' ? (
+                              <><AlertTriangle size={11} /> Verification Incomplete — Retry Below</>
+                            ) : (
+                              <><Camera size={11} /> Align Face Inside Guide</>
+                            )}
+                          </span>
+                        </div>
                       </div>
 
                       {isFaceProcessing && (
