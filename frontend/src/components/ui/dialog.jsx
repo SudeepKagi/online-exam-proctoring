@@ -2,22 +2,51 @@ import * as React from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const Dialog = ({ open, onOpenChange, children }) => {
-  if (!open) return null
+const DialogContext = React.createContext({ open: false, onOpenChange: () => {} })
 
+const Dialog = ({ open, onOpenChange, children }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity animate-in fade-in-0"
-        onClick={() => onOpenChange && onOpenChange(false)}
-      />
-      <div className="relative z-50 w-full max-w-lg p-6">
-        {children}
-      </div>
-    </div>
+    <DialogContext.Provider value={{ open, onOpenChange }}>
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity animate-in fade-in-0"
+            onClick={() => onOpenChange && onOpenChange(false)}
+          />
+          <div className="relative z-50 w-full max-w-lg p-6">
+            {children}
+          </div>
+        </div>
+      )}
+    </DialogContext.Provider>
   )
 }
+
+const DialogTrigger = React.forwardRef(({ asChild, children, onClick, ...props }, ref) => {
+  const { onOpenChange } = React.useContext(DialogContext)
+  const handleClick = (e) => {
+    if (onClick) onClick(e)
+    if (onOpenChange) onOpenChange(true)
+  }
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      ref,
+      onClick: (e) => {
+        if (children.props.onClick) children.props.onClick(e)
+        handleClick(e)
+      },
+      ...props,
+    })
+  }
+
+  return (
+    <button ref={ref} onClick={handleClick} {...props}>
+      {children}
+    </button>
+  )
+})
+DialogTrigger.displayName = 'DialogTrigger'
 
 const DialogContent = React.forwardRef(({ className, children, onClose, ...props }, ref) => (
   <div
@@ -74,4 +103,4 @@ const DialogFooter = ({ className, ...props }) => (
   />
 )
 
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter }
+export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter }

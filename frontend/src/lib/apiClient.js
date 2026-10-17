@@ -1,115 +1,82 @@
-/**
- * apiClient.js
- * Thin typed API client for ProctorNet frontend (Prompt 11 / V2 Contract Safety Net).
- * 
- * Guarantees:
- * 1. Array responses always default to `[]` (never `undefined`), preventing TypeError across list renders.
- * 2. Parses and validates response envelopes in dev/test via Zod schemas, logging anomalies.
- * 3. Canonical errorMessage extraction mapped through errorCatalog.
- * 4. PII-scrubbed production error reporting with release SHA and X-Request-ID.
- */
+import axios from 'axios'
 
-import api, { errorMessage as getCatalogErrorMessage } from '../utils/api'
-import { z } from 'zod'
+const baseURL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '/api/v1'
 
-export const errorMessage = getCatalogErrorMessage
+export const api = axios.create({
+  baseURL,
+  timeout: 30000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+  },
+})
 
-const APP_RELEASE_SHA = typeof import.meta !== 'undefined' && import.meta.env?.VITE_RELEASE_SHA
-  ? import.meta.env.VITE_RELEASE_SHA
-  : 'local-dev'
+api.interceptors.request.use(
+  (config) => {
+    if (!config.headers['X-Request-ID']) {
+      config.headers['X-Request-ID'] =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
 
-/**
- * Report uncaught client exception with release SHA and request id (PII-scrubbed)
- */
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.data?.error) {
+      const errObj = error.response.data.error
+      if (typeof errObj === 'object' && errObj !== null) {
+        error.code = errObj.code || error.code
+        error.message = errObj.message || errObj.code || error.message
+      } else if (typeof errObj === 'string') {
+        error.message = errObj
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
+export function errorMessage(err, fallback = 'Something went wrong. Please try again.') {
+  if (!err) return fallback
+  if (typeof err === 'string') return err
+  if (err.response?.data?.error) {
+    const error = err.response.data.error
+    if (typeof error === 'string') return error
+    if (error.message) return error.message
+    if (error.code) return error.code
+  }
+  if (err.response?.data?.message) return err.response.data.message
+  if (err.message) return err.message
+  return fallback
+}
+
 export function reportClientError(err, context = {}) {
   const payload = {
     message: err?.message || String(err),
-    stack: err?.stack ? err.stack.split('\n').slice(0, 5).join('\n') : null,
-    releaseSha: APP_RELEASE_SHA,
     url: typeof window !== 'undefined' ? window.location.pathname : '',
     timestamp: new Date().toISOString(),
-    context: {
-      ...context,
-      // Scrub potential PII
-      email: undefined,
-      password: undefined,
-      token: undefined
-    }
+    context,
   }
-
   if (process.env.NODE_ENV !== 'production') {
-    console.debug('[Contract/Client Watch]', payload)
-  }
-
-  // Best-effort beacon to error logging endpoint if available
-  if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-    try {
-      navigator.sendBeacon('/api/v1/telemetry/errors', JSON.stringify(payload))
-    } catch (_) {}
+    console.debug('[Client Error]', payload)
   }
 }
 
-/**
- * Canonical array normalizer
- */
 export function ensureArray(val) {
-  if (Array.isArray(val)) return val
-  return []
+  return Array.isArray(val) ? val : []
 }
 
-/**
- * Core client methods wrapping axios instance
- */
 export const apiClient = {
-  async get(url, config = {}) {
-    try {
-      const res = await api.get(url, config)
-      return res
-    } catch (err) {
-      reportClientError(err, { method: 'GET', url })
-      throw err
-    }
-  },
-
-  async post(url, data, config = {}) {
-    try {
-      const res = await api.post(url, data, config)
-      return res
-    } catch (err) {
-      reportClientError(err, { method: 'POST', url })
-      throw err
-    }
-  },
-
-  async put(url, data, config = {}) {
-    try {
-      const res = await api.put(url, data, config)
-      return res
-    } catch (err) {
-      reportClientError(err, { method: 'PUT', url })
-      throw err
-    }
-  },
-
-  async patch(url, data, config = {}) {
-    try {
-      const res = await api.patch(url, data, config)
-      return res
-    } catch (err) {
-      reportClientError(err, { method: 'PATCH', url })
-      throw err
-    }
-  },
-
-  async delete(url, config = {}) {
-    try {
-      const res = await api.delete(url, config)
-      return res
-    } catch (err) {
-      reportClientError(err, { method: 'DELETE', url })
-      throw err
-    }
-  }
+  get: (url, config) => api.get(url, config),
+  post: (url, data, config) => api.post(url, data, config),
+  put: (url, data, config) => api.put(url, data, config),
+  patch: (url, data, config) => api.patch(url, data, config),
+  delete: (url, config) => api.delete(url, config),
 }
 
 export default apiClient
