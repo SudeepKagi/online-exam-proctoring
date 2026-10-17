@@ -16,9 +16,9 @@ function sendAuthResponse(res, authResult, statusCode = 200) {
 
 async function login(req, res, next) {
   try {
-    const { email, password, usn, role } = req.body
+    const { email, password, usn } = req.body
     const identifier = email || usn
-    const result = await authService.authenticate(identifier, password, role || null)
+    const result = await authService.authenticate(identifier, password, null)
     return sendAuthResponse(res, result)
   } catch (err) {
     next(err)
@@ -92,7 +92,15 @@ async function me(req, res, next) {
     if (!user) {
       return res.status(404).json({ error: { message: 'User not found' } })
     }
-    return res.status(200).json({ status: 'success', user })
+    return res.status(200).json({
+      status: 'success',
+      user,
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName || user.name,
+      role: user.role,
+      institutionId: user.institutionId || user.usn || null
+    })
   } catch (err) {
     next(err)
   }

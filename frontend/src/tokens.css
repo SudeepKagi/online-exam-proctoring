@@ -1,0 +1,170 @@
+/* ── Local Satoshi Variable Font Definition ── */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Variable.woff2') format('woff2-variations'),
+       url('/fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+/* ── Design System Tokens ── */
+:root {
+  /* Typography Tokens */
+  --font-family-primary: 'Satoshi', sans-serif;
+  --font-family-stack: 'Satoshi', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 18px;
+  --font-size-3xl: 22px;
+  --font-size-4xl: 28px;
+  --font-size-base: 14px;
+  --font-weight-base: 400;
+  --line-height-base: 1.5;
+
+  /* Color Tokens: Brand & Semantic */
+  --color-brand-primary: #2f80ed;
+  --color-brand-hover: #2563eb;
+  --color-brand-active: #1c4d8e;
+
+  --color-text-primary: #18181b;
+  --color-text-secondary: #2b2f34;
+  --color-text-tertiary: #71717a;
+  --color-text-white: #ffffff;
+  --color-text-inverse: #2f80ed;
+
+  /* Surfaces */
+  --color-surface-base: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-muted: #eff6ff;
+  --color-surface-raised: #ffffff;
+  --color-surface-dark: #091a2f;
+
+  /* Distinctive Accents */
+  --color-accent-blue: #1c4d8e;
+  --color-accent-purple: #5b21b6;
+  --color-accent-green: #166534;
+
+  /* Borders */
+  --color-border-default: #e5e7eb;
+  --color-border-muted: #d5e6fb;
+  --color-border-dark: #13335f;
+  --color-border-focus: #2f80ed;
+
+  /* Status Colors */
+  --color-status-success: #16a34a;
+  --color-status-success-bg: #ecfdf5;
+  --color-status-success-border: #bbf7d0;
+
+  --color-status-warning: #f59e0b;
+  --color-status-warning-bg: #fffbeb;
+  --color-status-warning-border: #fde68a;
+
+  --color-status-danger: #ef4444;
+  --color-status-danger-bg: #fef2f2;
+  --color-status-danger-border: #fecaca;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 10px;
+  --space-4: 12px;
+  --space-5: 18px;
+  --space-6: 22px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Motion */
+  --duration-instant: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 800ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Elevation & Corners */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px 0 rgba(37, 99, 235, 0.05);
+  --shadow-card: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --shadow-raised: 0 8px 24px -8px rgba(47, 128, 237, 0.25);
+
+  /* Shadcn / Legacy compat variables */
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 214 100% 97%;
+  --accent-foreground: 217 91% 60%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 217 91% 60%;
+  --radius: 0.75rem;
+
+  /* Sidebar Tokens */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-primary: #2f80ed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1c4d8e;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #2f80ed;
+}
+
+/* Light Theme Guarantee */
+.dark {
+  --color-surface-base: #ffffff;
+  --color-surface-subtle: #f8fafc;
+  --color-surface-card: #ffffff;
+  --color-surface-muted: #eff6ff;
+  --color-surface-raised: #ffffff;
+  --color-text-primary: #18181b;
+  --color-text-secondary: #2b2f34;
+  --color-text-tertiary: #71717a;
+  --color-border-default: #e5e7eb;
+  --color-border-muted: #d5e6fb;
+  --color-border-dark: #13335f;
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 217 91% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 214 100% 97%;
+  --accent-foreground: 217 91% 60%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 217 91% 60%;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-primary: #2f80ed;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eff6ff;
+  --sidebar-accent-foreground: #1c4d8e;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #2f80ed;
+}

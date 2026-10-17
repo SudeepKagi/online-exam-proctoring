@@ -9,7 +9,9 @@ import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
 import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
-import { Clock, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react'
+import { getScreenStream } from '@/lib/screenStreamStore'
+import { getSocket } from '@/lib/socketClient'
+import { Clock, Bookmark, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 
 export default function ExamArenaPage() {
   const { id } = useParams()
@@ -23,6 +25,7 @@ export default function ExamArenaPage() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isSuspended, setIsSuspended] = useState(false)
 
   const handleSubmitExam = async () => {
     setSubmitting(true)
@@ -49,7 +52,7 @@ export default function ExamArenaPage() {
   })
 
   const { ScreenLostDialog } = useScreenProctoring({
-    stream: typeof window !== 'undefined' ? window.__proctorScreenStream : null,
+    stream: getScreenStream(),
     attemptId: attempt?.id,
     examId: id,
   })
@@ -62,12 +65,39 @@ export default function ExamArenaPage() {
     ]).then(([examRes, startRes]) => {
       if (!mounted) return
       const ex = examRes.data?.exam || examRes.data
+      const att = startRes.data?.attempt || startRes.data
       setExam(ex)
       setQuestions(ensureArray(ex?.questions))
-      setAttempt(startRes.data?.attempt || startRes.data)
+      setAttempt(att)
+      if (att?.status === 'SUSPENDED') setIsSuspended(true)
     }).finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }, [id])
+
+  useEffect(() => {
+    if (!attempt?.id) return
+    const socket = getSocket()
+    socket.emit('attempt:join', { attemptId: attempt.id })
+    const onSuspended = () => setIsSuspended(true)
+    const onResumed = () => setIsSuspended(false)
+    socket.on('attempt:suspended', onSuspended)
+    socket.on('attempt:resumed', onResumed)
+
+    const poller = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/attempts/${attempt.id}`)
+        const status = res.data?.attempt?.status || res.data?.status
+        if (status === 'SUSPENDED') setIsSuspended(true)
+        else if (status === 'IN_PROGRESS') setIsSuspended(false)
+      } catch (_) {}
+    }, 2000)
+
+    return () => {
+      socket.off('attempt:suspended', onSuspended)
+      socket.off('attempt:resumed', onResumed)
+      clearInterval(poller)
+    }
+  }, [attempt?.id])
 
   const currentQ = questions[currentIndex] || null
   const currentSelected = currentQ ? answers[currentQ.id] : null
@@ -174,6 +204,16 @@ export default function ExamArenaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isSuspended && (
+        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+          <div className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center mb-4 border border-red-500/30">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Examination Session Suspended</h2>
+          <p className="text-sm text-slate-300 max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
+        </div>
+      )}
 
       <ScreenLostDialog />
     </ExamArenaShell>

@@ -28,7 +28,7 @@ export default function LoginPage() {
       password,
     }
 
-    const res = await login(credentials, role)
+    const res = await login(credentials)
     setLoading(false)
 
     if (res.success) {

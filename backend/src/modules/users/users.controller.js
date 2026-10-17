@@ -141,6 +141,20 @@ const usersController = {
     } catch (err) {
       next(err)
     }
+  },
+
+  async importExcel(req, res, next) {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ error: { message: 'Excel file (.xlsx) is required' } })
+      }
+      const parsed = await usersService.parseExcelBuffer(req.file.buffer)
+      const results = await usersService.bulkCreateUsers(parsed)
+      const importedCount = results.filter(r => r.success).length
+      res.json({ message: `Successfully imported ${importedCount} accounts`, importedCount, total: parsed.length, results })
+    } catch (err) {
+      next(err)
+    }
   }
 }
 

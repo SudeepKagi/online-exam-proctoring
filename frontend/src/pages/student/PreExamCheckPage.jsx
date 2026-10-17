@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
+import { setScreenStream } from '@/lib/screenStreamStore'
 import { Camera, Monitor, Maximize, CheckCircle2, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react'
 
 export default function PreExamCheckPage() {
@@ -52,10 +53,17 @@ export default function PreExamCheckPage() {
       const imageBase64 = canvas.toDataURL('image/jpeg', 0.8)
 
       await apiClient.post('/media/verify-face', { image: imageBase64, examId: id })
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
       setFaceVerified(true)
       setStep(2)
     } catch (err) {
-      // Graceful fallback for offline dev/mock environments
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
+      }
       setFaceVerified(true)
       setStep(2)
     } finally {
@@ -82,7 +90,7 @@ export default function PreExamCheckPage() {
       }
 
       screenStreamRef.current = screenStream
-      window.__proctorScreenStream = screenStream
+      setScreenStream(screenStream)
       setScreenVerified(true)
       setStep(3)
     } catch (err) {
@@ -101,7 +109,9 @@ export default function PreExamCheckPage() {
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
       }
+      await apiClient.post('/attempts/start', { examId: id }).catch(() => {})
       navigate(`/student/exams/${id}/arena`)
     } catch (err) {
       setError(errorMessage(err, 'Failed to launch examination environment.'))

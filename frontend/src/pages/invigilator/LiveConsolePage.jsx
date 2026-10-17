@@ -31,17 +31,16 @@ export default function LiveConsolePage() {
     if (!selectedExamId) return
     setLoading(true)
     try {
-      const [examRes, logsRes] = await Promise.allSettled([
-        apiClient.get(`/exams/${selectedExamId}`),
+      const [attemptsRes, logsRes] = await Promise.allSettled([
+        apiClient.get(`/exams/${selectedExamId}/attempts`),
         apiClient.get(`/proctoring/exams/${selectedExamId}/logs`),
       ])
-      const examData = examRes.status === 'fulfilled' ? examRes.value.data?.exam || examRes.value.data : null
+      const attemptsList = attemptsRes.status === 'fulfilled' ? ensureArray(attemptsRes.value.data?.attempts || attemptsRes.value.data) : []
       const logs = logsRes.status === 'fulfilled' ? ensureArray(logsRes.value.data?.logs || logsRes.value.data) : []
 
-      const attemptsList = ensureArray(examData?.attempts || [])
       const mapped = attemptsList.map((att) => ({
         id: att.id,
-        studentName: att.student?.fullName || `Candidate ${att.studentId?.substring(0, 8)}`,
+        studentName: att.studentName || att.student?.fullName || `Candidate ${att.id?.substring(0, 8)}`,
         status: att.status || 'IN_PROGRESS',
         violationCount: logs.filter((l) => l.attemptId === att.id).length,
         logs: logs.filter((l) => l.attemptId === att.id),
@@ -55,14 +54,23 @@ export default function LiveConsolePage() {
   useEffect(() => { loadExamRoster() }, [selectedExamId])
 
   useEffect(() => {
+    if (!selectedExamId) return
     const socket = getSocket()
+    socket.emit('inv:join', { examId: selectedExamId })
+
     const handleViolation = (data) => {
-      if (data?.examId === selectedExamId) {
-        setStudents((prev) => prev.map((s) => (s.id === data.attemptId ? { ...s, violationCount: s.violationCount + 1, logs: [data, ...s.logs] } : s)))
-      }
+      setStudents((prev) => prev.map((s) => (
+        s.id === data?.attemptId ? { ...s, violationCount: s.violationCount + 1, logs: [data, ...s.logs] } : s
+      )))
     }
     socket.on('proctor:violation', handleViolation)
-    return () => socket.off('proctor:violation', handleViolation)
+    socket.on('student:violation', handleViolation)
+    socket.on('violation:new', handleViolation)
+    return () => {
+      socket.off('proctor:violation', handleViolation)
+      socket.off('student:violation', handleViolation)
+      socket.off('violation:new', handleViolation)
+    }
   }, [selectedExamId])
 
   const handleToggleSuspend = async () => {

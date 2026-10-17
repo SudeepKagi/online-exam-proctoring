@@ -35,7 +35,7 @@ router.get('/config', (req, res) => {
   })
 })
 
-// Scoped Domain Subrouters
+// Domain Subrouters with scoped prefixes
 router.use('/auth', authRoutes)
 router.use('/exams', examsRoutes)
 router.use('/attempts', attemptsRoutes)
@@ -43,13 +43,16 @@ router.use('/media', mediaRoutes)
 router.use('/proctoring', proctoringRoutes)
 router.use('/users', usersRoutes)
 
+// Specific role aliases
+router.use('/student', examsRoutes)
+router.use('/faculty', examsRoutes)
+
 // Flat-mounted routes for backward compatibility
 router.use('/', authRoutes)
-router.use('/', examsRoutes)
+router.use('/', usersRoutes)
 router.use('/', attemptsRoutes)
 router.use('/', mediaRoutes)
 router.use('/', proctoringRoutes)
-router.use('/', usersRoutes)
 
 module.exports = router
 

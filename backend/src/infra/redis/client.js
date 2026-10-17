@@ -108,16 +108,21 @@ class RedisManager {
     return fetchPromise
   }
 
-  async set(key, value, ttlSeconds = null) {
+  async set(key, value, ttlSeconds = null, ...rest) {
+    let ttl = ttlSeconds
+    if (typeof ttl === 'string' && ttl.toUpperCase() === 'EX' && rest.length > 0) {
+      ttl = rest[0]
+    }
+    const finalTtl = ttl ? parseInt(ttl, 10) : null
     if (this.l1Cache.isEmpty(value)) return
-    const l1TtlMs = ttlSeconds ? Math.min(ttlSeconds * 1000, 60000) : 60000
+    const l1TtlMs = finalTtl ? Math.min(finalTtl * 1000, 60000) : 60000
     this.l1Cache.set(key, value, l1TtlMs)
 
     if (this.isReady && this.client) {
       try {
         const stringVal = typeof value === 'string' ? value : JSON.stringify(value)
-        if (ttlSeconds) {
-          await this.client.set(key, stringVal, 'EX', ttlSeconds)
+        if (finalTtl) {
+          await this.client.set(key, stringVal, 'EX', finalTtl)
         } else {
           await this.client.set(key, stringVal)
         }

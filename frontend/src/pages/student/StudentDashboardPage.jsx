@@ -34,7 +34,7 @@ export default function StudentDashboardPage() {
     return () => { mounted = false }
   }, [])
 
-  const activeOrUpcoming = exams.filter((e) => e.status === 'PUBLISHED' || e.status === 'ACTIVE')
+  const activeOrUpcoming = exams.filter((e) => (e.status === 'PUBLISHED' || e.status === 'ACTIVE') && e.attemptStatus !== 'SUBMITTED')
   const completed = exams.filter((e) => e.status === 'COMPLETED' || e.attemptStatus === 'SUBMITTED')
 
   return (

@@ -7,17 +7,7 @@ const DialogContext = React.createContext({ open: false, onOpenChange: () => {} 
 const Dialog = ({ open, onOpenChange, children }) => {
   return (
     <DialogContext.Provider value={{ open, onOpenChange }}>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity animate-in fade-in-0"
-            onClick={() => onOpenChange && onOpenChange(false)}
-          />
-          <div className="relative z-50 w-full max-w-lg p-6">
-            {children}
-          </div>
-        </div>
-      )}
+      {children}
     </DialogContext.Provider>
   )
 }
@@ -48,27 +38,66 @@ const DialogTrigger = React.forwardRef(({ asChild, children, onClick, ...props }
 })
 DialogTrigger.displayName = 'DialogTrigger'
 
-const DialogContent = React.forwardRef(({ className, children, onClose, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      'relative w-full rounded-xl border border-border bg-card p-6 shadow-xl animate-in zoom-in-95',
-      className
-    )}
-    {...props}
-  >
-    {children}
-    {onClose && (
-      <button
-        onClick={onClose}
-        className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+const DialogClose = React.forwardRef(({ asChild, children, onClick, ...props }, ref) => {
+  const { onOpenChange } = React.useContext(DialogContext)
+  const handleClick = (e) => {
+    if (onClick) onClick(e)
+    if (onOpenChange) onOpenChange(false)
+  }
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, {
+      ref,
+      onClick: (e) => {
+        if (children.props.onClick) children.props.onClick(e)
+        handleClick(e)
+      },
+      ...props,
+    })
+  }
+
+  return (
+    <button ref={ref} onClick={handleClick} {...props}>
+      {children}
+    </button>
+  )
+})
+DialogClose.displayName = 'DialogClose'
+
+const DialogContent = React.forwardRef(({ className, children, onClose, ...props }, ref) => {
+  const { open, onOpenChange } = React.useContext(DialogContext)
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs transition-opacity animate-in fade-in-0"
+        onClick={() => onOpenChange && onOpenChange(false)}
+      />
+      <div
+        ref={ref}
+        className={cn(
+          'relative z-50 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl animate-in zoom-in-95',
+          className
+        )}
+        {...props}
       >
-        <X className="h-4 w-4 text-muted-foreground" />
-        <span className="sr-only">Close</span>
-      </button>
-    )}
-  </div>
-))
+        {children}
+        <button
+          type="button"
+          onClick={() => {
+            if (onClose) onClose()
+            if (onOpenChange) onOpenChange(false)
+          }}
+          className="absolute right-4 top-4 rounded-xs opacity-70 hover:opacity-100 transition-opacity"
+        >
+          <X className="h-4 w-4 text-slate-500" />
+          <span className="sr-only">Close</span>
+        </button>
+      </div>
+    </div>
+  )
+})
 DialogContent.displayName = 'DialogContent'
 
 const DialogHeader = ({ className, ...props }) => (
@@ -103,4 +132,4 @@ const DialogFooter = ({ className, ...props }) => (
   />
 )
 
-export { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter }
+export { Dialog, DialogTrigger, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter }

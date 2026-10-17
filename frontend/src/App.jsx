@@ -54,6 +54,13 @@ export default function App() {
             <Route path="/invigilator-login" element={<LoginPage />} />
             <Route path="/student/login" element={<LoginPage />} />
 
+            {/* Role Base Aliases */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/faculty" element={<Navigate to="/faculty/exams" replace />} />
+            <Route path="/invigilator" element={<Navigate to="/invigilator/console" replace />} />
+            <Route path="/student" element={<Navigate to="/student/dashboard" replace />} />
+            <Route path="/student/enrollment" element={<Navigate to="/student/dashboard" replace />} />
+
             {/* Admin Routes */}
             <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboardPage /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsersPage /></ProtectedRoute>} />

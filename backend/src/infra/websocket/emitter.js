@@ -54,15 +54,25 @@ class SocketEmitterManager {
       return false
     }
 
+    let emitted = false
+    try {
+      const { getIO } = require('./socket.server')
+      const io = getIO()
+      if (io) {
+        io.to(room).emit(event, payload)
+        emitted = true
+      }
+    } catch (_) {}
+
     try {
       if (this.emitter) {
         this.emitter.to(room).emit(event, payload)
-        return true
+        emitted = true
       }
     } catch (err) {
       logger.warn({ room, event, error: err.message }, 'Failed to emit via Redis emitter')
     }
-    return false
+    return emitted
   }
 
   emitToAttempt(attemptId, event, payload) {

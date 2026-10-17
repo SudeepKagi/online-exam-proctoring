@@ -17,18 +17,25 @@ async function findAttemptById(id) {
 }
 
 async function createOrGetReadinessAttempt(examId, studentId) {
-  return prisma.examAttempt.upsert({
-    where: {
-      examId_studentId: { examId, studentId }
-    },
-    create: {
-      examId,
-      studentId,
-      status: 'NOT_STARTED',
-      faceVerified: false
-    },
-    update: {}
+  const existing = await prisma.examAttempt.findUnique({
+    where: { examId_studentId: { examId, studentId } }
   })
+  if (existing) return existing
+
+  try {
+    return await prisma.examAttempt.create({
+      data: {
+        examId,
+        studentId,
+        status: 'NOT_STARTED',
+        faceVerified: false
+      }
+    })
+  } catch (err) {
+    return prisma.examAttempt.findUnique({
+      where: { examId_studentId: { examId, studentId } }
+    })
+  }
 }
 
 async function startAttempt(attemptId, durationMinutes) {

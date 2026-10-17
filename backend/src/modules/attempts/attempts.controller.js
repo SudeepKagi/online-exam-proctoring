@@ -12,7 +12,7 @@ async function getReadiness(req, res, next) {
 
 async function startAttempt(req, res, next) {
   try {
-    const examId = req.params.examId || req.params.id
+    const examId = req.params.examId || req.params.id || req.body?.examId
     const result = await attemptService.startAttempt(examId, req.user.id)
     return res.status(200).json({ status: 'success', ...result })
   } catch (err) {

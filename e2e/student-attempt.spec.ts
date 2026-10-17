@@ -1,155 +1,150 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
+import { resetCleanRoom, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('E2E: Student Attempt Flow', () => {
   test.describe.configure({ mode: 'serial' })
 
-  const adminCreds = { email: 'admin@proctornet.com', password: 'Admin@123' }
-  const facultyCreds = { email: 'babbage.faculty@proctornet.test', password: 'Faculty#1234' }
-  const studentCreds = { email: 'ada.lovelace@proctornet.test', usn: '1MS22CS001', password: 'Student#1234' }
+  let examId = ''
 
-  let examId: string
+  test.beforeAll(async () => {
+    await resetCleanRoom()
+  })
 
-  test('Student pre-exam 3-stage check -> enter Exam Arena -> answer & bookmark -> submit attempt', async ({ browser }) => {
-    test.setTimeout(180000)
+  test('Complete pre-check -> answer MCQs, bookmark, clear, palette -> submit & verify score', async ({ browser }) => {
+    test.setTimeout(120000)
 
-    const admin = await createActor(browser, 'admin')
+    // 1. Faculty Setup Exam with 3 MCQs (20 points each)
     const faculty = await createActor(browser, 'faculty')
-    const student = await createActor(browser, 'student')
-
     try {
-      // 1. Setup Active Exam by Faculty
-      await faculty.page.goto('/faculty/login')
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="email"], input[type="email"]'), facultyCreds.email)
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="password"], input[type="password"]'), facultyCreds.password)
-      await faculty.humanize.clickHuman(faculty.page, faculty.page.locator('button[type="submit"]'))
-      await faculty.page.waitForURL(url => url.pathname.includes('/faculty/dashboard'), { timeout: 15000 })
+      await faculty.page.goto('/login')
+      await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
+      await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
+      await faculty.page.locator('button[type="submit"]').click()
+      await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
-      const now = Date.now()
-      const startTime = new Date(now - 60 * 1000).toISOString()
-      const endTime = new Date(now + 120 * 60 * 1000).toISOString()
-
-      const examRes = await api.for(faculty).postRaw('/api/v1/faculty/exams', {
-        title: 'Distributed Systems Assessment Exam',
-        subject: 'CS801-ATTEMPT',
-        description: 'Comprehensive evaluation of quorum systems and Byzantine faults',
-        startTime,
-        endTime,
-        duration: 90,
-        totalMarks: 100,
-        allowedDepartments: ['CSE'],
-        allowedSemesters: [1, 6],
-        cameraRequired: true,
-        browserLock: false,
-        watermarkRequired: true
+      const now = new Date()
+      const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
+        title: 'Distributed Systems Certification',
+        subject: 'CS-801',
+        courseCode: 'CS-801',
+        startTime: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 180 * 60 * 1000).toISOString(),
+        durationMinutes: 90
       })
       expect(examRes.status).toBe(201)
       examId = examRes.body?.exam?.id
-      expect(examId).toBeDefined()
+      expect(examId).toBeTruthy()
 
-      // Add 3 MCQ questions
-      const questionsData = Array.from({ length: 3 }, (_, i) => ({
-        questionText: `Distributed Systems Exam Question ${i + 1}: What ensures safety under network partitions?`,
-        marks: 20,
-        options: [
-          { text: `Strict Quorum Overlap (R + W > N) for partition ${i + 1}`, isCorrect: true, order: 0 },
-          { text: 'Unbounded UDP Broadcast', isCorrect: false, order: 1 },
-          { text: 'Asynchronous Uncoordinated Flush', isCorrect: false, order: 2 },
-          { text: 'Single Coordinator without replication', isCorrect: false, order: 3 }
-        ],
-        correctAnswer: 'A',
-        difficulty: 'MEDIUM'
-      }))
+      // Add 3 Questions: Q1 -> Opt A (0), Q2 -> Opt B (1), Q3 -> Opt C (2)
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
+        questionText: 'Q1: What ensures safety under network partitions in distributed quorum?',
+        options: ['Strict Majority Overlap (R + W > N)', 'Async Unbounded Flush', 'Broadcast UDP', 'No replication'],
+        correctOptionIndex: 0,
+        marks: 20
+      })
 
-      await api.for(faculty).postRaw('/api/v1/faculty/questions/bulk', {
-        examId,
-        questions: questionsData
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
+        questionText: 'Q2: Which consensus algorithm uses term numbers and leader leases?',
+        options: ['Two-Phase Commit', 'Raft Consensus Protocol', 'Gossip Membership', 'MapReduce Shuffling'],
+        correctOptionIndex: 1,
+        marks: 20
+      })
+
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
+        questionText: 'Q3: What property guarantees that every read observes the latest write?',
+        options: ['Eventual Consistency', 'Read Uncommitted', 'Linearizability (Atomic Consistency)', 'Causal Order'],
+        correctOptionIndex: 2,
+        marks: 20
       })
 
       // Publish Exam
-      const publishRes = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${examId}/publish`, {})
-      expect(publishRes.status).toBe(200)
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect(pubRes.status).toBe(200)
+    } finally {
+      await faculty.close()
+    }
 
-      // 2. Ensure Student Profile is Verified
-      const studentAuth = await api.for(student).postRaw('/api/v1/auth/student/login', {
-        usn: studentCreds.usn,
-        password: studentCreds.password
-      })
-      const studentId = studentAuth.body?.user?.id
-      if (studentId) {
-        await api.for(admin).patchRaw(`/api/v1/admin/students/${studentId}/approve`).catch(() => {})
-      }
+    // 2. Student Logs in and Completes 3-Stage PreExamCheck
+    const student = await createActor(browser, 'student')
+    try {
+      await student.page.goto('/login')
+      await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
+      await student.page.locator('input[type="password"]').fill(SEEDED_STUDENTS[0].password)
+      await student.page.locator('button[type="submit"]').click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // 3. Student Logs In
-      await student.page.goto('/student/login')
-      await student.humanize.typeSlowly(student.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentCreds.usn)
-      await student.humanize.typeSlowly(student.page.locator('input[name="password"], input[type="password"]'), studentCreds.password)
-      await student.humanize.clickHuman(student.page, student.page.locator('button[type="submit"]'))
-      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/exams'), { timeout: 15000 })
+      // Navigate to Pre-Check
+      await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
 
-      // 4. Navigate to Pre-Exam Check (System & Identity Check)
-      await student.page.goto(`/student/exams/${examId}/security`)
-      await expect(student.page.getByText('System & Identity Check')).toBeVisible({ timeout: 15000 })
+      // Step 1: Verify Face
+      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
+      await expect(verifyFaceBtn).toBeVisible()
+      await verifyFaceBtn.click()
 
-      // Stage 1: Face Verification
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Verify Identity|Start Camera/i })
-      if (await verifyFaceBtn.isVisible()) {
-        await student.humanize.clickHuman(student.page, verifyFaceBtn)
-      }
+      // Step 2: Share Entire Screen
+      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
+      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
+      await shareScreenBtn.click()
 
-      // Pre-authorize readiness via API for test determinism
-      await api.for(student).postRaw(`/api/v1/exams/${examId}/readiness`, {
-        faceVerified: true,
-        screenVerified: true
-      })
+      // Step 3: Fullscreen & Launch Exam
+      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
+      await expect(launchBtn).toBeVisible({ timeout: 10000 })
+      await launchBtn.click()
 
-      // Stage 2: Screen Share
-      const screenBtn = student.page.getByRole('button', { name: /Authorize Entire Screen Share|Screen Shared/i })
-      if (await screenBtn.isVisible()) {
-        await student.humanize.clickHuman(student.page, screenBtn)
-      }
+      // 3. Exam Arena Verifications
+      await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
+      await expect(student.page.getByText('Question 1 of 3')).toBeVisible({ timeout: 10000 })
 
-      // Stage 3: Fullscreen & Launch Attempt
-      await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
-      await student.page.goto(`/student/exams/${examId}/exam`)
-      await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
+      // Answer Q1 with Option A
+      await student.page.locator('button').filter({ hasText: 'Strict Majority Overlap' }).click()
 
-      // 5. Exam Arena Invariants
-      // Question display check
-      await expect(student.page.getByText(/Distributed Systems Exam Question/i).first()).toBeVisible({ timeout: 15000 })
+      // Test Bookmark Question
+      const bookmarkBtn = student.page.getByRole('button', { name: /Bookmark/i })
+      await bookmarkBtn.click()
 
-      // Test Bookmark Question functionality
-      const bookmarkBtn = student.page.getByTitle(/Bookmark Question|Remove Bookmark/i).first()
-      if (await bookmarkBtn.isVisible()) {
-        await student.humanize.clickHuman(student.page, bookmarkBtn)
-      }
+      // Navigate to Q2 via Save & Next
+      await student.page.getByRole('button', { name: /Save & Next/i }).click()
+      await expect(student.page.getByText('Question 2 of 3')).toBeVisible({ timeout: 5000 })
 
-      // Select Answer (Option A)
-      const firstOption = student.page.locator('button, div').filter({ hasText: /Strict Quorum Overlap/i }).first()
-      if (await firstOption.isVisible()) {
-        await student.humanize.clickHuman(student.page, firstOption)
-      }
+      // Answer Q2 with Option A, then clear answer
+      await student.page.locator('button').filter({ hasText: 'Two-Phase Commit' }).click()
+      await student.page.getByRole('button', { name: /Clear/i }).click()
 
-      // 6. Submit Exam Attempt
-      const submitBtn = student.page.getByRole('button', { name: /Finish Attempt|Submit Exam/i })
-      if (await submitBtn.isVisible()) {
-        await student.humanize.clickHuman(student.page, submitBtn)
+      // Now select correct Option B (Raft Consensus)
+      await student.page.locator('button').filter({ hasText: 'Raft Consensus Protocol' }).click()
 
-        // Confirm dialog button
-        const confirmDialogBtn = student.page.getByRole('button', { name: /Confirm & Submit|Submit Anyway|Yes, Submit/i })
-        if (await confirmDialogBtn.isVisible()) {
-          await student.humanize.clickHuman(student.page, confirmDialogBtn)
-        }
-      }
+      // Navigate to Q3 via Question Palette
+      await student.page.getByRole('button', { name: '3', exact: true }).click()
+      await expect(student.page.getByText('Question 3 of 3')).toBeVisible({ timeout: 5000 })
 
-      // 7. Verification: Submit completes or navigates to results
-      await student.page.waitForURL(url => url.pathname.includes('/results') || url.pathname.includes('/exam'), { timeout: 15000 })
+      // Answer Q3 with Option C (Linearizability)
+      await student.page.locator('button').filter({ hasText: 'Linearizability' }).click()
+
+      // Test Previous button
+      await student.page.getByRole('button', { name: /Previous/i }).click()
+      await expect(student.page.getByText('Question 2 of 3')).toBeVisible({ timeout: 5000 })
+
+      // Return to Q3
+      await student.page.getByRole('button', { name: /Save & Next/i }).click()
+
+      // 4. Submit Exam via Dialog
+      await student.page.getByRole('button', { name: /Submit Exam/i }).click()
+      await expect(student.page.getByText('Submit Examination?')).toBeVisible()
+
+      await student.page.getByRole('button', { name: /Confirm Submission/i }).click()
+      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+
+      // 5. Verify Exact Calculated Score (3/3 correct = 60 pts)
+      const recordRow = student.page.locator('tr').filter({ hasText: 'Distributed Systems Certification' })
+      await expect(recordRow).toBeVisible({ timeout: 10000 })
+      await expect(recordRow.locator('text=SUBMITTED')).toBeVisible()
+      await expect(recordRow.locator('text=60 pts')).toBeVisible()
 
     } finally {
       await student.close()
-      await faculty.close()
-      await admin.close()
     }
   })
 })

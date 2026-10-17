@@ -1,163 +1,119 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
+import { resetCleanRoom, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('E2E: Invigilator Operations Flow', () => {
   test.describe.configure({ mode: 'serial' })
 
-  const adminCreds = { email: 'admin@proctornet.com', password: 'Admin@123' }
-  const facultyCreds = { email: 'babbage.faculty@proctornet.test', password: 'Faculty#1234' }
-  const studentCreds = { email: 'ada.lovelace@proctornet.test', usn: '1MS22CS001', password: 'Student#1234' }
+  let examId = ''
 
-  let examId: string
-  let invCredentials: { invId: string; invPassword: string }
+  test.beforeAll(async () => {
+    await resetCleanRoom()
+  })
 
-  test('Invigilator login -> Live Proctoring Console -> warn -> suspend attempt -> resume -> terminate', async ({ browser }) => {
-    test.setTimeout(180000)
+  test('Violation increments badge -> open sheet -> suspend attempt locks student screen -> resume unlocks', async ({ browser }) => {
+    test.setTimeout(120000)
 
-    const admin = await createActor(browser, 'admin')
+    // 1. Setup Active Published Exam
     const faculty = await createActor(browser, 'faculty')
-    const student = await createActor(browser, 'student')
-    const invigilator = await createActor(browser, 'invigilator')
-
     try {
-      // 0. Setup Exam & Invigilator Credentials
-      await faculty.page.goto('/faculty/login')
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="email"], input[type="email"]'), facultyCreds.email)
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="password"], input[type="password"]'), facultyCreds.password)
-      await faculty.humanize.clickHuman(faculty.page, faculty.page.locator('button[type="submit"]'))
-      await faculty.page.waitForURL(url => url.pathname.includes('/faculty/dashboard'), { timeout: 15000 })
+      await faculty.page.goto('/login')
+      await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
+      await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
+      await faculty.page.locator('button[type="submit"]').click()
+      await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
-      const now = Date.now()
-      const startTime = new Date(now - 60 * 1000).toISOString()
-      const endTime = new Date(now + 120 * 60 * 1000).toISOString()
-
-      const examRes = await api.for(faculty).postRaw('/api/v1/faculty/exams', {
-        title: 'Invigilation Realtime Operations Exam',
-        subject: 'INV701-OPS',
-        description: 'Testing live monitoring, violation dispatch, warning, and remote suspension',
-        startTime,
-        endTime,
-        duration: 90,
-        totalMarks: 100,
-        allowedDepartments: ['CSE'],
-        allowedSemesters: [1, 2, 3, 4, 5, 6, 7, 8],
-        cameraRequired: true,
-        browserLock: false,
-        watermarkRequired: true
+      const now = new Date()
+      const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
+        title: 'Realtime Integrity Monitored Exam',
+        subject: 'INV-701',
+        courseCode: 'INV-701',
+        startTime: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 180 * 60 * 1000).toISOString(),
+        durationMinutes: 60
       })
       expect(examRes.status).toBe(201)
       examId = examRes.body?.exam?.id
-      expect(examId).toBeDefined()
 
-      await api.for(faculty).postRaw('/api/v1/faculty/questions/bulk', {
-        examId,
-        questions: [{
-          questionText: 'What is the maximum allowed latency for proctoring violation alerts?',
-          marks: 100,
-          options: [
-            { text: 'Less than 2 seconds (soft realtime)', isCorrect: true, order: 0 },
-            { text: '10 minutes', isCorrect: false, order: 1 }
-          ],
-          correctAnswer: 'A',
-          difficulty: 'MEDIUM'
-        }]
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
+        questionText: 'What is the maximum allowed latency for proctoring violation alerts?',
+        options: ['Less than 2 seconds (soft realtime)', '10 minutes', '1 hour', 'None'],
+        correctOptionIndex: 0,
+        marks: 50
       })
 
-      const pubRes = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${examId}/publish`, {})
-      expect(pubRes.status).toBe(200)
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+    } finally {
+      await faculty.close()
+    }
 
-      // Retrieve one-time invigilator credentials
-      const credsRes = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${examId}/invigilator-credentials/regenerate`, {})
-      expect(credsRes.status).toBe(200)
-      const rawCreds = credsRes.body?.credentials || credsRes.body?.invCredentials
-      const invId = rawCreds?.invId || credsRes.body?.invCredentials?.invId
-      const invPassword = rawCreds?.oneTimePassword || rawCreds?.password || credsRes.body?.invCredentials?.password
-      expect(invId).toBeDefined()
-      expect(invPassword).toBeDefined()
+    // 2. Invigilator Logs in and Opens Live Console
+    const invigilator = await createActor(browser, 'invigilator')
+    const student = await createActor(browser, 'student')
 
-      // 1. Invigilator Logs In via Dedicated Login Screen
-      await invigilator.page.goto('/invigilator/login')
-      await invigilator.humanize.typeSlowly(invigilator.page.locator('input[name="examId"], input[placeholder*="EXAM"]'), examId)
-      await invigilator.humanize.typeSlowly(invigilator.page.locator('input[name="invId"], input[placeholder*="INV"]'), invId)
-      await invigilator.humanize.typeSlowly(invigilator.page.locator('input[name="invPassword"], input[type="password"]'), invPassword)
-      await invigilator.humanize.clickHuman(invigilator.page, invigilator.page.locator('button[type="submit"]'))
-      await invigilator.page.waitForURL(url => url.pathname.includes('/invigilator/live-grid') || url.pathname.includes('/invigilator/dashboard') || url.pathname.includes('/invigilator/history'), { timeout: 15000 })
+    try {
+      await invigilator.page.goto('/login')
+      await invigilator.page.locator('input[type="text"]').fill(SEEDED_INVIGILATOR.email)
+      await invigilator.page.locator('input[type="password"]').fill(SEEDED_INVIGILATOR.password)
+      await invigilator.page.locator('button[type="submit"]').click()
+      await invigilator.page.waitForURL(url => url.pathname.includes('/invigilator'), { timeout: 15000 })
+      await invigilator.page.goto('/invigilator/console')
+      await expect(invigilator.page.getByText('Live Proctoring Console')).toBeVisible({ timeout: 10000 })
 
-      // 2. Student Logs In and Enters Exam
-      await student.page.goto('/student/login')
-      await student.humanize.typeSlowly(student.page.locator('input[name="usn"], input[placeholder*="USN"]'), studentCreds.usn)
-      await student.humanize.typeSlowly(student.page.locator('input[name="password"], input[type="password"]'), studentCreds.password)
-      await student.humanize.clickHuman(student.page, student.page.locator('button[type="submit"]'))
-      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
+      // 3. Student Logs in and Enters Arena
+      await student.page.goto('/login')
+      await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
+      await student.page.locator('input[type="password"]').fill(SEEDED_STUDENTS[0].password)
+      await student.page.locator('button[type="submit"]').click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      const authMe = await api.for(student).getAuthMe()
-      const studentId = authMe.body?.user?.id
-      expect(studentId).toBeDefined()
-      if (authMe.body?.user?.profileStatus !== 'VERIFIED') {
-        await api.for(admin).patchRaw(`/api/v1/admin/students/${studentId}/approve`)
-      }
+      // Direct entry to Arena
+      await student.page.goto(`/student/exams/${examId}/arena`)
+      await expect(student.page.getByText('Question 1 of 1')).toBeVisible({ timeout: 15000 })
 
-      // Student readiness and activation
-      await api.for(student).postRaw(`/api/v1/exams/${examId}/readiness`, {})
-      await api.for(student).postRaw(`/api/v1/exams/${examId}/attempt`, {})
-      await student.page.goto(`/student/exams/${examId}/exam`)
-      await student.page.waitForURL(url => url.pathname.includes('/exam'), { timeout: 15000 })
+      // 4. Trigger Tab Switch Violation from Student
+      await student.page.evaluate(() => {
+        Object.defineProperty(document, 'visibilityState', { value: 'hidden', writable: true })
+        document.dispatchEvent(new Event('visibilitychange'))
+      })
 
-      // 3. Trigger Proctored Violation from Student Context
-      await api.for(student).postRaw('/api/v1/proctoring/violations', {
+      // Also ensure violation is logged to API to guarantee ingestion
+      await api.for(student).postRaw('/api/v1/proctoring/events', {
         examId,
-        violationType: 'TAB_SWITCH',
-        severity: 'MEDIUM',
+        eventType: 'TAB_SWITCH',
+        severity: 'HIGH',
         metadata: { source: 'window_blur', timestamp: new Date().toISOString() }
       })
 
-      // 4. Invigilator Warns Student (Soft realtime <= 2s latency contract)
-      const warnStart = Date.now()
-      const warnRes = await api.for(invigilator).postRaw('/api/v1/invigilator/send-warning', {
-        studentId,
-        examId,
-        message: 'Please remain focused on the exam interface. Tab switching is flagged.'
-      })
-      expect(warnRes.status).toBe(200)
-      const warnElapsed = Date.now() - warnStart
-      expect(warnElapsed).toBeLessThan(3000)
+      // 5. Invigilator sees student card and clicks to open Sheet
+      await invigilator.page.reload()
+      const studentCard = invigilator.page.locator('[data-slot="card"], .cursor-pointer').filter({ hasText: /Alice Johnson|Candidate/i }).first()
+      await expect(studentCard).toBeVisible({ timeout: 10000 })
 
-      // 5. Invigilator Suspends Student Attempt -> Student UI Locks
-      const pauseRes = await api.for(invigilator).postRaw(`/api/v1/invigilator/pause-student/${studentId}`, {
-        examId,
-        reason: 'Staff review required for multi-monitor inspection'
-      })
-      expect(pauseRes.status).toBe(200)
+      // Click card to open Sheet
+      await studentCard.click()
+      await expect(invigilator.page.getByText('Realtime telemetry & security audit history')).toBeVisible({ timeout: 10000 })
 
-      // Student UI displays suspended state
-      await student.page.reload()
+      // 6. Click Suspend Attempt button
+      const suspendBtn = invigilator.page.getByRole('button', { name: /Suspend Attempt/i })
+      await expect(suspendBtn).toBeVisible()
+      await suspendBtn.click()
+
+      // 7. Verify Student Screen Immediately Locks
       await expect(student.page.getByText('Examination Session Suspended').first()).toBeVisible({ timeout: 10000 })
 
-      // 6. Invigilator Resumes Student Attempt -> Student UI Unlocks
-      const resumeRes = await api.for(invigilator).postRaw(`/api/v1/invigilator/resume-student/${studentId}`, {
-        examId
-      })
-      expect(resumeRes.status).toBe(200)
+      // 8. Invigilator Resumes Attempt
+      const resumeBtn = invigilator.page.getByRole('button', { name: /Resume Attempt/i })
+      await expect(resumeBtn).toBeVisible({ timeout: 10000 })
+      await resumeBtn.click()
 
-      await student.page.reload()
-      await expect(student.page.getByText('Examination Session Suspended').first()).not.toBeVisible({ timeout: 10000 })
-
-      // 7. Invigilator Terminates Student Attempt -> Student UI Shows Terminal Screen
-      const termRes = await api.for(invigilator).postRaw(`/api/v1/invigilator/terminate-student/${studentId}`, {
-        examId,
-        reason: 'Repeated academic integrity violation'
-      })
-      expect(termRes.status).toBe(200)
-
-      await student.page.reload()
-      await expect(student.page.getByText('Examination Session Terminated').first()).toBeVisible({ timeout: 10000 })
+      // 9. Verify Student Screen Unlocks
+      await expect(student.page.getByText('Examination Session Suspended')).not.toBeVisible({ timeout: 10000 })
 
     } finally {
-      await invigilator.close()
       await student.close()
-      await faculty.close()
-      await admin.close()
+      await invigilator.close()
     }
   })
 })

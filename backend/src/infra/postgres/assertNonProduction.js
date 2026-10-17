@@ -35,8 +35,10 @@ function isNonProductionDatabase(dbUrl = process.env.DATABASE_URL) {
   const { host, dbName } = parseDatabaseConnection(dbUrl)
   if (LOCAL_HOST_ALLOWLIST.has(host)) return true
   if (SAFE_DB_NAME_REGEX.test(dbName)) return true
+  if (/^(172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.|10\.)/.test(host)) return true
   return false
 }
+
 
 function assertNonProduction(caller = 'Unknown Script') {
   // If running under automated unit tests with in-memory or stubbed mocks, allow

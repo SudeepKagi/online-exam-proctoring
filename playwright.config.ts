@@ -38,18 +38,6 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome']
       }
-    },
-    {
-      name: 'chrome',
-      use: {
-        channel: 'chrome'
-      }
-    },
-    {
-      name: 'msedge',
-      use: {
-        channel: 'msedge'
-      }
     }
   ],
   webServer: [
@@ -60,28 +48,22 @@ export default defineConfig({
       env: {
         PORT: '5000',
         INTERNAL_PORT: '9100',
-        CACHE_DRIVER: 'memory',
+        CACHE_DRIVER: 'redis',
         QUEUE_DRIVER: 'postgres',
         START_WORKERS: 'true',
-        FACE_DRIVER: 'test',
-        FACE_VERIFIER_DRIVER: 'test',
-        NODE_ENV: 'production',
+        FACE_DRIVER: 'off',
+        FACE_VERIFIER_DRIVER: 'off',
+        NODE_ENV: 'development',
         COOKIE_SECURE: 'false',
         E2E_PROFILE: 'prod-parity',
         FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
         ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173',
-        AGENT_PAIRING_PEPPER: process.env.AGENT_PAIRING_PEPPER || 'dummy_e2e_pairing_pepper_secret_32_characters_min',
-        AGENT_POLICY_SIGNING_KEY: process.env.AGENT_POLICY_SIGNING_KEY || 'dummy_e2e_policy_signing_key_32_characters_min',
-        ...(process.env.DATABASE_URL ? { DATABASE_URL: process.env.DATABASE_URL } : {}),
-        ...(process.env.DIRECT_URL ? { DIRECT_URL: process.env.DIRECT_URL } : {}),
-        ...(process.env.JWT_SECRET ? { JWT_SECRET: process.env.JWT_SECRET } : {}),
-        ...(process.env.S3_BUCKET ? { S3_BUCKET: process.env.S3_BUCKET } : {}),
-        ...(process.env.S3_ENDPOINT ? { S3_ENDPOINT: process.env.S3_ENDPOINT } : {}),
-        ...(process.env.S3_FORCE_PATH_STYLE ? { S3_FORCE_PATH_STYLE: process.env.S3_FORCE_PATH_STYLE } : {}),
-        ...(process.env.AWS_ACCESS_KEY_ID ? { AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID } : {}),
-        ...(process.env.AWS_SECRET_ACCESS_KEY ? { AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY } : {}),
-        ...(process.env.AWS_REGION ? { AWS_REGION: process.env.AWS_REGION } : {}),
-        ...(process.env.REDIS_URL ? { REDIS_URL: process.env.REDIS_URL } : {})
+        JWT_SECRET: process.env.JWT_SECRET || 'supersecret_jwt_proctornet_production_key_32bytes',
+        S3_BUCKET: process.env.S3_BUCKET || 'proctornet-storage',
+        AWS_REGION: process.env.AWS_REGION || 'ap-south-1',
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://proctornet:proctornet_password@172.24.171.5:5432/proctornet?schema=public',
+        DIRECT_URL: process.env.DIRECT_URL || 'postgresql://proctornet:proctornet_password@172.24.171.5:5432/proctornet?schema=public',
+        REDIS_URL: process.env.REDIS_URL || 'redis://172.24.171.5:6379'
       },
       timeout: 30000,
       reuseExistingServer: !process.env.CI,

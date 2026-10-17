@@ -15,7 +15,9 @@ router.post('/attempts/:attemptId/violations', authenticateToken, proctoringCont
 
 // Invigilator Live Console Logs
 router.get('/attempts/:attemptId/violations', authenticateToken, proctoringController.getAttemptLogs)
+router.get('/attempts/:attemptId/logs', authenticateToken, proctoringController.getAttemptLogs)
 router.get('/exams/:examId/violations', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
+router.get('/exams/:examId/logs', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
 router.get('/proctoring/attempts/:attemptId/logs', authenticateToken, proctoringController.getAttemptLogs)
 router.get('/proctoring/exams/:examId/logs', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
 

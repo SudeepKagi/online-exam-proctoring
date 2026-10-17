@@ -56,11 +56,19 @@ router.post('/admin/bulk-upload/parse', authenticateToken, usersController.uploa
 router.post('/admin/bulk-upload/confirm', authenticateToken, usersController.bulkConfirm)
 
 // Standard User Endpoints
+router.get('/', authenticateToken, usersController.listUsers)
 router.get('/users', authenticateToken, usersController.listUsers)
+router.get('/:id', authenticateToken, usersController.getUser)
 router.get('/users/:id', authenticateToken, usersController.getUser)
+router.post('/', authenticateToken, usersController.createUser)
 router.post('/users', authenticateToken, usersController.createUser)
+router.post('/import-excel', authenticateToken, usersController.uploadMiddleware, usersController.importExcel)
+router.post('/users/import-excel', authenticateToken, usersController.uploadMiddleware, usersController.importExcel)
+router.patch('/:id/suspend', authenticateToken, usersController.suspendUser)
 router.patch('/users/:id/suspend', authenticateToken, usersController.suspendUser)
+router.patch('/:id/unsuspend', authenticateToken, usersController.unsuspendUser)
 router.patch('/users/:id/unsuspend', authenticateToken, usersController.unsuspendUser)
+router.delete('/:id', authenticateToken, usersController.deleteUser)
 router.delete('/users/:id', authenticateToken, usersController.deleteUser)
 
 module.exports = router

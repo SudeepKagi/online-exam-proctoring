@@ -6,10 +6,21 @@ async function logViolation(req, res, next) {
     const results = []
     for (const evt of rawEvents) {
       if (!evt) continue
-      const targetAttemptId = evt.attemptId || req.params.attemptId || req.body?.attemptId
+      let targetAttemptId = evt.attemptId || req.params.attemptId || req.body?.attemptId
+      const targetExamId = evt.examId || req.body?.examId
+      if (!targetAttemptId && req.user?.id && targetExamId) {
+        const { prisma } = require('../../infra/postgres/client')
+        const att = await prisma.examAttempt.findFirst({
+          where: { studentId: req.user.id, examId: targetExamId },
+          orderBy: { startedAt: 'desc' }
+        })
+        if (att) targetAttemptId = att.id
+      }
+      if (!targetAttemptId) continue
+
       const result = await proctoringService.recordViolation({
         attemptId: targetAttemptId,
-        examId: evt.examId || req.body?.examId,
+        examId: targetExamId,
         eventType: evt.eventType || evt.type || 'SCREEN_PROCTOR_EVENT',
         severity: evt.severity || 'MEDIUM',
         metadata: evt.metadata || evt,

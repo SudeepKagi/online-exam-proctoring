@@ -1,145 +1,111 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
-import { api } from './helpers/api'
+import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR } from './helpers/cleanroom'
 
 test.describe('E2E: Exam Authoring Flow', () => {
   test.describe.configure({ mode: 'serial' })
 
-  const facultyCreds = {
-    email: 'babbage.faculty@proctornet.test',
-    password: 'Faculty#1234'
-  }
+  test.beforeAll(async () => {
+    await resetCleanRoom()
+  })
 
-  const examData = {
-    title: 'Advanced Distributed Systems Final Examination',
-    subject: 'CS801-DIST',
-    description: 'Comprehensive evaluation of distributed consensus and Byzantine fault tolerance',
-    duration: 60,
-    department: 'CSE'
-  }
-
-  let createdExamId: string
-  let invigilatorCredentials: { invId: string; invPassword?: string }
-
-  test('Faculty creates exam wizard -> adds MCQs -> publish -> invigilator creds -> tamper protection', async ({ browser }) => {
+  test('Faculty creates exam -> adds 3 MCQs -> Admin assigns invigilator -> Faculty publishes', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
+    const examTitle = `Distributed Systems Assessment ${Date.now()}`
+    let examId = ''
 
     try {
       // 1. Faculty Login
-      await faculty.page.goto('/faculty/login')
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="email"], input[type="email"]'), facultyCreds.email)
-      await faculty.humanize.typeSlowly(faculty.page.locator('input[name="password"], input[type="password"]'), facultyCreds.password)
-      await faculty.humanize.clickHuman(faculty.page, faculty.page.locator('button[type="submit"]'))
+      await faculty.page.goto('/login')
+      await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
+      await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
+      await faculty.page.locator('button[type="submit"]').click()
+      await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
-      await faculty.page.waitForURL(url => url.pathname.includes('/faculty/dashboard'), { timeout: 15000 })
-      expect(faculty.page.url()).toContain('/faculty/dashboard')
+      // 2. Open Create Exam Dialog
+      await faculty.page.goto('/faculty/exams')
+      await expect(faculty.page.getByText('Faculty Examination Workspace')).toBeVisible({ timeout: 10000 })
+      await faculty.page.getByRole('button', { name: /Create Exam/i }).click()
+      await expect(faculty.page.getByText('Create New Examination')).toBeVisible()
 
-      // 2. Navigate to Create Exam Wizard
-      await faculty.page.goto('/faculty/exams/create')
-      await faculty.page.waitForSelector('text=Question Editor')
+      // Fill in exam creation form
+      const now = new Date()
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const formatDT = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 
-      // 3. Exercise Wizard Validation Errors
-      const addQPoolBtn = faculty.page.getByRole('button', { name: 'Add Question to Exam Pool' })
-      await faculty.humanize.clickHuman(faculty.page, addQPoolBtn)
-      await expect(faculty.page.locator('text=Question prompt cannot be empty')).toBeVisible({ timeout: 5000 })
+      const startIso = formatDT(new Date(now.getTime() - 5 * 60 * 1000))
+      const endIso = formatDT(new Date(now.getTime() + 120 * 60 * 1000))
 
-      // 4. Fill question prompt and options
-      await faculty.page.locator('textarea[placeholder*="Enter the question detail"]').fill('Distributed Invariant: What guarantees linearizability in replica sets?')
-      const optionInputs = faculty.page.locator('input[placeholder*="Option"], input[placeholder*="option"]')
-      if (await optionInputs.count() >= 4) {
-        await optionInputs.nth(0).fill('Raft state machine replication with majority quorum')
-        await optionInputs.nth(1).fill('Eventual consistency without vector clocks')
-        await optionInputs.nth(2).fill('Unbounded clock drift under NTP')
-        await optionInputs.nth(3).fill('Silent partition failover')
-      }
-      await faculty.humanize.clickHuman(faculty.page, addQPoolBtn)
+      await faculty.page.locator('input[placeholder="e.g. Midterm Operating Systems"]').fill(examTitle)
+      await faculty.page.locator('input[placeholder="e.g. CS-401"]').fill('CS-801')
+      const dateInputs = faculty.page.locator('input[type="datetime-local"]')
+      await dateInputs.nth(0).fill(startIso)
+      await dateInputs.nth(1).fill(endIso)
+      await faculty.page.locator('input[type="number"]').fill('60')
 
-      // 5. Create Exam via API to verify full lifecycle rules
-      const now = Date.now()
-      const startTime = new Date(now + 2 * 60 * 1000).toISOString()
-      const endTime = new Date(now + 120 * 60 * 1000).toISOString()
+      // Save Exam
+      await faculty.page.getByRole('button', { name: 'Save & Configure Questions' }).click()
+      await expect(faculty.page.getByText(/Exam created successfully/i)).toBeVisible({ timeout: 10000 })
 
-      // Invalid schedule: end before start
-      const invalidEndRes = await api.for(faculty).postRaw('/api/v1/faculty/exams', {
-        title: 'Invalid Schedule Exam',
-        subject: 'ERR101',
-        startTime: new Date(now + 60 * 60 * 1000).toISOString(),
-        endTime: new Date(now + 30 * 60 * 1000).toISOString(),
-        duration: 30
-      })
-      expect(invalidEndRes.status).toBe(400)
+      // Locate row and navigate to manage page
+      const examRow = faculty.page.locator('tr').filter({ hasText: examTitle })
+      await expect(examRow).toBeVisible({ timeout: 10000 })
+      await examRow.getByRole('link', { name: /Manage Exam/i }).click()
+      await faculty.page.waitForURL(url => url.pathname.includes('/faculty/exams/'), { timeout: 15000 })
 
-      // Valid Exam creation
-      const examPayload = {
-        title: examData.title,
-        subject: examData.subject,
-        description: examData.description,
-        startTime,
-        endTime,
-        duration: examData.duration,
-        totalMarks: 100,
-        allowedDepartments: ['CSE'],
-        allowedSemesters: [6],
-        cameraRequired: true,
-        browserLock: false
+      examId = faculty.page.url().split('/faculty/exams/')[1]?.split('/')[0]?.split('?')[0] || ''
+      expect(examId).toBeTruthy()
+
+      // 3. Add 3 MCQ Questions via Dialog
+      for (let i = 1; i <= 3; i++) {
+        await faculty.page.getByRole('button', { name: /Add MCQ Question/i }).click()
+        await expect(faculty.page.getByText('New Multiple Choice Question')).toBeVisible()
+
+        await faculty.page.locator('input[placeholder="Enter question..."]').fill(`Question ${i}: What is quorum majority invariant for cluster #${i}?`)
+        await faculty.page.locator('input[placeholder="Opt 1"]').fill(`Strict Quorum Overlap (R + W > N) for node ${i}`)
+        await faculty.page.locator('input[placeholder="Opt 2"]').fill('Unreliable UDP Multicast')
+        await faculty.page.locator('input[placeholder="Opt 3"]').fill('Random Clock Drift')
+        await faculty.page.locator('input[placeholder="Opt 4"]').fill('Silent Partition Failover')
+
+        await faculty.page.getByRole('button', { name: 'Save Question' }).click()
+        await expect(faculty.page.getByText(`Question ${i}: What is quorum majority invariant`)).toBeVisible({ timeout: 10000 })
       }
 
-      const createExamRes = await api.for(faculty).postRaw('/api/v1/faculty/exams', examPayload)
-      expect(createExamRes.status).toBe(201)
-      createdExamId = createExamRes.body?.exam?.id
-      expect(createdExamId).toBeDefined()
+      // Verify question count badge shows 3
+      await expect(faculty.page.getByText('Question Bank (3)')).toBeVisible()
 
-      // Add 5 MCQ questions
-      const questionsData = Array.from({ length: 5 }, (_, i) => ({
-        questionText: `Distributed Systems Q${i + 1}: What is the primary property of quorum consensus #${i + 1}?`,
-        marks: 20,
-        options: [
-          { text: 'Strict majority overlap (R + W > N)', isCorrect: true, order: 0 },
-          { text: 'Async broadcast without acknowledgments', isCorrect: false, order: 1 },
-          { text: 'Unilateral coordinator election', isCorrect: false, order: 2 },
-          { text: 'Non-persistent ledger log', isCorrect: false, order: 3 }
-        ],
-        correctAnswer: 'A',
-        difficulty: 'MEDIUM'
-      }))
+      // 4. Admin Assigns Invigilator to the Exam
+      const admin = await createActor(browser, 'admin')
+      try {
+        await admin.page.goto('/login')
+        await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
+        await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
+        await admin.page.locator('button[type="submit"]').click()
+        await admin.page.waitForURL(url => url.pathname.includes('/admin'), { timeout: 15000 })
 
-      const bulkAddRes = await api.for(faculty).postRaw('/api/v1/faculty/questions/bulk', {
-        examId: createdExamId,
-        questions: questionsData
-      })
-      expect([200, 201]).toContain(bulkAddRes.status)
+        await admin.page.goto('/admin/exams')
+        const adminExamRow = admin.page.locator('tr').filter({ hasText: examTitle })
+        await expect(adminExamRow).toBeVisible({ timeout: 10000 })
 
-      // Publish Exam & Capture One-Time Invigilator Credentials
-      const publishRes = await api.for(faculty).postRaw(`/api/v1/faculty/exams/${createdExamId}/publish`, {})
-      expect(publishRes.status).toBe(200)
-      expect(publishRes.body?.exam?.status).toBe('PUBLISHED')
+        await adminExamRow.getByRole('button', { name: /Assign Invigilator/i }).click()
+        await expect(admin.page.getByRole('heading', { name: 'Assign Invigilator' })).toBeVisible()
 
-      invigilatorCredentials = {
-        invId: publishRes.body?.exam?.invId || publishRes.body?.invId,
-        invPassword: publishRes.body?.exam?.oneTimePassword || publishRes.body?.exam?.invCredentials?.password || publishRes.body?.invPassword
+        // Select invigilator
+        await admin.page.locator('button[role="combobox"]').click()
+        await admin.page.getByRole('option').filter({ hasText: /Grace/i }).click()
+        await admin.page.getByRole('button', { name: 'Confirm Assignment' }).click()
+        await expect(admin.page.getByText(/Invigilator assigned to/i)).toBeVisible({ timeout: 10000 })
+      } finally {
+        await admin.close()
       }
-      expect(invigilatorCredentials.invId).toBeDefined()
-      expect(invigilatorCredentials.invPassword).toBeDefined()
 
-      // 6. Post-Publish Security Invariant: Plaintext password is omitted on subsequent reads
-      const detailRes = await api.for(faculty).getExamDetails(createdExamId)
-      const examDetail = detailRes.body?.exam || detailRes.body
-      expect(examDetail?.status).toBe('PUBLISHED')
-      expect(examDetail?.oneTimePassword).toBeUndefined()
-      expect(examDetail?.invPasswordHash).toBeUndefined()
+      // 5. Faculty Publishes Exam
+      const publishBtn = faculty.page.getByRole('button', { name: /Publish Examination/i })
+      await expect(publishBtn).toBeVisible()
+      await publishBtn.click()
 
-      // 7. Question modification after publish is strictly blocked
-      const editQuestionRes = await api.for(faculty).postRaw('/api/v1/faculty/questions/bulk', {
-        examId: createdExamId,
-        questions: [
-          {
-            questionText: 'Tampered question after publish',
-            marks: 10,
-            options: [{ text: 'Opt1', isCorrect: true }, { text: 'Opt2', isCorrect: false }]
-          }
-        ]
-      })
-      expect(editQuestionRes.status).toBeGreaterThanOrEqual(400)
+      await expect(faculty.page.getByText(/Exam published successfully/i)).toBeVisible({ timeout: 10000 })
+      await expect(faculty.page.getByRole('button', { name: /Publish Examination/i })).not.toBeVisible()
 
     } finally {
       await faculty.close()

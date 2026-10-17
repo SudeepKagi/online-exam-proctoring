@@ -5,6 +5,7 @@ const { authenticateToken, requireRole } = require('../auth/auth.routes')
 const router = express.Router()
 
 // Pre-exam Readiness & Attempt Activation
+router.post('/start', authenticateToken, attemptsController.startAttempt)
 router.post('/exams/:examId/readiness', authenticateToken, attemptsController.getReadiness)
 router.post('/exams/:examId/start', authenticateToken, attemptsController.startAttempt)
 router.post('/student/exams/:examId/start', authenticateToken, attemptsController.startAttempt)

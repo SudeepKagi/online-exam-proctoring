@@ -76,6 +76,17 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleToggleStatus = async (user) => {
+    try {
+      const endpoint = user.status === 'ACTIVE' ? `/users/${user.id}/suspend` : `/users/${user.id}/unsuspend`
+      await apiClient.patch(endpoint)
+      setMsg({ text: `Account status updated for ${user.fullName}.`, type: 'success' })
+      loadUsers()
+    } catch (err) {
+      setMsg({ text: errorMessage(err, 'Failed to toggle status'), type: 'error' })
+    }
+  }
+
   const filtered = users.filter((u) => u.role === activeTab)
 
   return (
@@ -148,13 +159,14 @@ export default function AdminUsersPage() {
                   <TableHead className="text-xs font-semibold text-slate-600">Email Address</TableHead>
                   <TableHead className="text-xs font-semibold text-slate-600">Institutional ID</TableHead>
                   <TableHead className="text-xs font-semibold text-slate-600">Status</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-600 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-sm text-slate-500">Loading accounts...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-slate-500">Loading accounts...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-sm text-slate-500">No {activeTab.toLowerCase()} accounts registered.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={5} className="text-center py-8 text-sm text-slate-500">No {activeTab.toLowerCase()} accounts registered.</TableCell></TableRow>
                 ) : (
                   filtered.map((user) => (
                     <TableRow key={user.id} className="border-slate-100">
@@ -165,6 +177,17 @@ export default function AdminUsersPage() {
                         <Badge variant="outline" className={user.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-xs' : 'bg-red-50 text-red-700 border-red-200 text-xs'}>
                           {user.status}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid="toggle-status-btn"
+                          onClick={() => handleToggleStatus(user)}
+                          className={`h-7 px-2 text-xs font-medium ${user.status === 'ACTIVE' ? 'text-amber-600 hover:text-amber-700' : 'text-emerald-600 hover:text-emerald-700'}`}
+                        >
+                          {user.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

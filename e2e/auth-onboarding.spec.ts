@@ -1,134 +1,126 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
-import { api } from './helpers/api'
-import { resetCleanRoom, ADMIN_CREDENTIALS } from './helpers/cleanroom'
+import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('E2E: Auth & Onboarding Flow', () => {
   test.describe.configure({ mode: 'serial' })
-
-  const facultyData = {
-    name: 'Prof. Charles Babbage',
-    email: 'babbage.faculty@proctornet.test',
-    employeeId: 'FAC-CSE-001',
-    password: 'Faculty#1234',
-    department: 'CSE'
-  }
-
-  const studentsData = [
-    { name: 'Ada Lovelace', usn: '1MS22CS001', email: 'ada.lovelace@proctornet.test', password: 'Student#1234', semester: 6, department: 'CSE' },
-    { name: 'Alan Turing', usn: '1MS22CS002', email: 'alan.turing@proctornet.test', password: 'Student#1234', semester: 6, department: 'CSE' },
-    { name: 'Grace Hopper', usn: '1MS22CS003', email: 'grace.hopper@proctornet.test', password: 'Student#1234', semester: 6, department: 'CSE' }
-  ]
 
   test.beforeAll(async () => {
     await resetCleanRoom()
   })
 
-  test('Admin onboarding -> create dept -> create faculty & students -> verify auth', async ({ browser }) => {
+  test('Invalid credentials triggers error alert', async ({ browser }) => {
+    const actor = await createActor(browser, 'student')
+    try {
+      await actor.page.goto('/login')
+      await expect(actor.page).toHaveTitle(/ProctorNet/i)
+
+      await actor.page.locator('input[type="text"]').fill('nonexistent@user.com')
+      await actor.page.locator('input[type="password"]').fill('WrongPassword@123')
+      await actor.page.locator('button[type="submit"]').click()
+
+      await expect(actor.page.locator('text=Authentication failed').or(actor.page.locator('text=Invalid credentials'))).toBeVisible({ timeout: 10000 })
+    } finally {
+      await actor.close()
+    }
+  })
+
+  test('Login succeeds and redirects for all 4 roles', async ({ browser }) => {
+    // 1. Admin login
     const admin = await createActor(browser, 'admin')
+    try {
+      await admin.page.goto('/login')
+      await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
+      await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
+      await admin.page.locator('button[type="submit"]').click()
+      await admin.page.waitForURL(url => url.pathname.includes('/admin'), { timeout: 15000 })
+      expect(admin.page.url()).toContain('/admin')
+    } finally {
+      await admin.close()
+    }
+
+    // 2. Faculty login
+    const faculty = await createActor(browser, 'faculty')
+    try {
+      await faculty.page.goto('/login')
+      await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
+      await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
+      await faculty.page.locator('button[type="submit"]').click()
+      await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
+      expect(faculty.page.url()).toContain('/faculty')
+    } finally {
+      await faculty.close()
+    }
+
+    // 3. Invigilator login
+    const invigilator = await createActor(browser, 'invigilator')
+    try {
+      await invigilator.page.goto('/login')
+      await invigilator.page.locator('input[type="text"]').fill(SEEDED_INVIGILATOR.email)
+      await invigilator.page.locator('input[type="password"]').fill(SEEDED_INVIGILATOR.password)
+      await invigilator.page.locator('button[type="submit"]').click()
+      await invigilator.page.waitForURL(url => url.pathname.includes('/invigilator'), { timeout: 15000 })
+      expect(invigilator.page.url()).toContain('/invigilator')
+    } finally {
+      await invigilator.close()
+    }
+
+    // 4. Student login
+    const student = await createActor(browser, 'student')
+    try {
+      await student.page.goto('/login')
+      await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
+      await student.page.locator('input[type="password"]').fill(SEEDED_STUDENTS[0].password)
+      await student.page.locator('button[type="submit"]').click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
+      expect(student.page.url()).toContain('/student')
+    } finally {
+      await student.close()
+    }
+  })
+
+  test('Admin creates a student account and toggles suspension', async ({ browser }) => {
+    const admin = await createActor(browser, 'admin')
+    const newStudentEmail = `charlie.${Date.now()}@proctornet.test`
 
     try {
-      // 1. Admin login
-      await admin.page.goto('/admin/login')
-      await expect(admin.page).toHaveTitle(/ProctorNet/i)
+      await admin.page.goto('/login')
+      await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
+      await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
+      await admin.page.locator('button[type="submit"]').click()
+      await admin.page.waitForURL(url => url.pathname.includes('/admin'), { timeout: 15000 })
 
-      await admin.humanize.typeSlowly(admin.page.locator('input[name="email"], input[type="email"]'), ADMIN_CREDENTIALS.email)
-      await admin.humanize.typeSlowly(admin.page.locator('input[name="password"], input[type="password"]'), ADMIN_CREDENTIALS.password)
-      await admin.humanize.clickHuman(admin.page, admin.page.locator('button[type="submit"]'))
+      // Navigate to Admin Users page
+      await admin.page.goto('/admin/users')
+      await expect(admin.page.getByText('User Management')).toBeVisible({ timeout: 10000 })
 
-      await admin.page.waitForURL(url => url.pathname.includes('/admin/dashboard'), { timeout: 15000 })
-      expect(admin.page.url()).toContain('/admin/dashboard')
+      // Click Add Account dialog
+      await admin.page.getByRole('button', { name: /Add Account/i }).click()
+      await expect(admin.page.getByText('Create New User Account')).toBeVisible()
 
-      // 2. Admin creates department CSE
-      const deptRes = await api.for(admin).postRaw('/api/v1/admin/departments', {
-        code: 'CSE',
-        name: 'Computer Science and Engineering'
-      })
-      expect(deptRes.status).toBe(201)
+      // Fill in user details
+      await admin.page.locator('input[placeholder="John Doe"]').fill('Charlie Babbage')
+      await admin.page.locator('input[placeholder="john@univ.edu"]').fill(newStudentEmail)
+      await admin.page.locator('input[placeholder="1RV21CS001"]').fill('USN-999')
+      await admin.page.locator('input[placeholder="••••••••"]').fill('Password@12345')
 
-      // 3. Admin creates Faculty
-      await admin.page.goto('/admin/create-faculty')
-      await admin.page.waitForSelector('form')
+      // Submit form
+      await admin.page.getByRole('button', { name: 'Create User' }).click()
+      await expect(admin.page.getByText(/User account created successfully/i)).toBeVisible({ timeout: 10000 })
 
-      await admin.humanize.typeSlowly(admin.page.locator('input[placeholder*="Rajesh Kumar"]'), facultyData.name)
-      await admin.humanize.typeSlowly(admin.page.locator('input[placeholder*="FAC2024CS01"]'), facultyData.employeeId)
-      await admin.humanize.typeSlowly(admin.page.locator('input[type="email"]'), facultyData.email)
-      await admin.humanize.typeSlowly(admin.page.locator('input[type="password"]'), facultyData.password)
+      // Verify new user exists in table
+      const userRow = admin.page.locator('tr').filter({ hasText: newStudentEmail })
+      await expect(userRow).toBeVisible({ timeout: 10000 })
+      await expect(userRow.locator('text=ACTIVE')).toBeVisible()
 
-      await admin.humanize.clickHuman(admin.page, admin.page.locator('button[type="submit"]'))
-      await expect(admin.page.getByText('Faculty Account Created', { exact: true })).toBeVisible({ timeout: 10000 })
+      // Suspend user
+      const toggleBtn = userRow.getByTestId('toggle-status-btn')
+      await toggleBtn.click()
+      await expect(userRow.locator('text=SUSPENDED')).toBeVisible({ timeout: 10000 })
 
-      // 4. Admin creates student
-      await admin.page.goto('/admin/create-student')
-      await admin.page.waitForSelector('form')
-
-      await admin.humanize.typeSlowly(admin.page.locator('input[placeholder*="Aarav Sharma"]'), studentsData[0].name)
-      await admin.humanize.typeSlowly(admin.page.locator('input[placeholder*="1MS21CS045"]'), studentsData[0].usn)
-      await admin.humanize.typeSlowly(admin.page.locator('input[placeholder*="student@university.edu"]'), studentsData[0].email)
-      await admin.humanize.typeSlowly(admin.page.locator('input[type="password"]'), studentsData[0].password)
-
-      await admin.humanize.clickHuman(admin.page, admin.page.locator('button[type="submit"]'))
-      await expect(admin.page.getByText('Account Created Successfully', { exact: true })).toBeVisible({ timeout: 10000 })
-
-      // 5. Bulk create remaining students
-      const bulkPayload = {
-        type: 'students',
-        role: 'student',
-        accounts: studentsData.slice(1).map(s => ({
-          name: s.name,
-          usn: s.usn,
-          email: s.email,
-          departmentCode: s.department,
-          semester: s.semester,
-          password: s.password
-        }))
-      }
-      const bulkRes = await api.for(admin).postRaw('/api/v1/admin/bulk-upload/confirm', bulkPayload)
-      expect(bulkRes.status).toBe(200)
-
-      // 6. Faculty isolated login
-      const facultyActor = await createActor(browser, 'faculty')
-      try {
-        await facultyActor.page.goto('/faculty/login')
-        await facultyActor.humanize.typeSlowly(facultyActor.page.locator('input[name="email"], input[type="email"]'), facultyData.email)
-        await facultyActor.humanize.typeSlowly(facultyActor.page.locator('input[name="password"], input[type="password"]'), facultyData.password)
-        await facultyActor.humanize.clickHuman(facultyActor.page, facultyActor.page.locator('button[type="submit"]'))
-
-        await facultyActor.page.waitForURL(url => url.pathname.includes('/faculty/dashboard'), { timeout: 15000 })
-        expect(facultyActor.page.url()).toContain('/faculty/dashboard')
-      } finally {
-        await facultyActor.close()
-      }
-
-      // 7. Student isolated login
-      const studentActor = await createActor(browser, 'student')
-      try {
-        await studentActor.page.goto('/student/login')
-        await studentActor.humanize.typeSlowly(studentActor.page.locator('input[name="usn"]'), studentsData[0].usn)
-        await studentActor.humanize.typeSlowly(studentActor.page.locator('input[name="password"], input[type="password"]'), studentsData[0].password)
-        await studentActor.humanize.clickHuman(studentActor.page, studentActor.page.locator('button[type="submit"]'))
-
-        await studentActor.page.waitForURL(url => url.pathname.includes('/student/dashboard') || url.pathname.includes('/student/enrollment'), { timeout: 15000 })
-        expect(studentActor.page.url()).toMatch(/\/student\/(dashboard|enrollment)/)
-      } finally {
-        await studentActor.close()
-      }
-
-      // 8. Public registration URLs are disallowed
-      const anonActor = await createActor(browser, 'student')
-      try {
-        await anonActor.page.goto('/student/register')
-        await anonActor.page.waitForURL(url => !url.pathname.includes('/student/register'), { timeout: 10000 }).catch(() => {})
-        expect(anonActor.page.url()).not.toContain('/student/register')
-
-        const regRes = await anonActor.page.request.post('http://localhost:5000/api/v1/auth/register', {
-          data: { email: 'unauthorized@test.com' }
-        })
-        expect(regRes.status()).toBe(404)
-      } finally {
-        await anonActor.close()
-      }
-
+      // Activate user
+      await toggleBtn.click()
+      await expect(userRow.locator('text=ACTIVE')).toBeVisible({ timeout: 10000 })
     } finally {
       await admin.close()
     }

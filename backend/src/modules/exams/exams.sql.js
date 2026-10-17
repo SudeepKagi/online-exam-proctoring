@@ -43,7 +43,9 @@ async function listExams(filter = {}) {
   const where = {}
   if (filter.createdBy || filter.createdById) {
     where.createdById = filter.createdById || filter.createdBy
-  } else {
+  } else if (filter.status) {
+    where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status
+  } else if (filter.role === 'STUDENT') {
     where.status = { in: ['PUBLISHED', 'ACTIVE'] }
   }
 

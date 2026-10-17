@@ -12,11 +12,17 @@ function mapUserRecord(user) {
   }
 }
 
-async function findUserByEmail(email) {
-  if (!email) return null
-  const cleanEmail = email.toLowerCase().trim()
-  const user = await prisma.user.findUnique({
-    where: { email: cleanEmail }
+async function findUserByEmail(identifier) {
+  if (!identifier) return null
+  const clean = identifier.toLowerCase().trim()
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: clean },
+        { institutionId: identifier.trim() },
+        { institutionId: { equals: identifier.trim(), mode: 'insensitive' } }
+      ]
+    }
   })
   return mapUserRecord(user)
 }

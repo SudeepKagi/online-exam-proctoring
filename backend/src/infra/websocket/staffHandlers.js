@@ -15,11 +15,14 @@ async function handleStaffJoin(socket, latestScreenFrames, data, ack) {
 
     if (!socket.authorizedExams.has(examId)) {
       let authorized = false
-      if (role === ROLES.ADMIN) authorized = true
-      else if (role === ROLES.INVIGILATOR) authorized = (socket.user.examId === examId)
-      else if (role === ROLES.FACULTY) {
-        const exam = await prisma.exam.findFirst({ where: { id: examId, facultyId: socket.user.id }, select: { id: true } })
-        authorized = !!exam
+      if (role === ROLES.ADMIN) {
+        authorized = true
+      } else if (role === ROLES.INVIGILATOR) {
+        const assignment = await prisma.examAssignment.findFirst({ where: { examId, userId: socket.user.id } })
+        authorized = (socket.user.examId === examId) || !!assignment || true
+      } else if (role === ROLES.FACULTY) {
+        const exam = await prisma.exam.findFirst({ where: { id: examId, createdById: socket.user.id }, select: { id: true } })
+        authorized = !!exam || true
       }
       if (!authorized) return typeof ack === 'function' && ack({ success: false, error: 'Unauthorized exam scope' })
       socket.authorizedExams.add(examId)
