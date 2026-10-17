@@ -1,5 +1,6 @@
 const attemptsSql = require('./attempts.sql')
 const examsSql = require('../exams/exams.sql')
+const { prisma } = require('../../infra/postgres/client')
 const { socketEmitter } = require('../../infra/websocket/emitter')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
@@ -101,7 +102,7 @@ class AttemptService {
     if (attempt.expiresAt && new Date() > new Date(attempt.expiresAt)) {
       await attemptsSql.updateAttemptStatus(attemptId, 'TIMED_OUT')
       const err = new Error('Exam attempt duration has expired')
-      err.status = 410
+      err.status = 409
       throw err
     }
 
@@ -145,6 +146,16 @@ class AttemptService {
 
     if (attempt.status === 'SUBMITTED') {
       return { attempt, alreadySubmitted: true }
+    }
+
+    const claimed = await prisma.examAttempt.updateMany({
+      where: { id: attemptId, status: { not: 'SUBMITTED' } },
+      data: { status: 'SUBMITTED' }
+    })
+
+    if (claimed.count === 0) {
+      const latest = await attemptsSql.findAttemptById(attemptId)
+      return { attempt: latest, alreadySubmitted: true }
     }
 
     const gradedAttempt = await attemptsSql.submitAndGradeAttempt(attemptId)

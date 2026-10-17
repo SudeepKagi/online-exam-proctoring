@@ -62,18 +62,27 @@ async function upsertAnswer(attemptId, questionId, selectedOptionIndex, isBookma
     data.isBookmarked = Boolean(isBookmarked)
   }
 
-  return prisma.attemptAnswer.upsert({
-    where: {
-      attemptId_questionId: { attemptId, questionId }
-    },
-    create: {
-      attemptId,
-      questionId,
-      selectedOptionIndex: data.selectedOptionIndex !== undefined ? data.selectedOptionIndex : null,
-      isBookmarked: Boolean(isBookmarked)
-    },
-    update: data
-  })
+  try {
+    return await prisma.attemptAnswer.upsert({
+      where: {
+        attemptId_questionId: { attemptId, questionId }
+      },
+      create: {
+        attemptId,
+        questionId,
+        selectedOptionIndex: data.selectedOptionIndex !== undefined ? data.selectedOptionIndex : null,
+        isBookmarked: Boolean(isBookmarked)
+      },
+      update: data
+    })
+  } catch (_) {
+    return prisma.attemptAnswer.update({
+      where: {
+        attemptId_questionId: { attemptId, questionId }
+      },
+      data
+    })
+  }
 }
 
 async function getAttemptAnswers(attemptId) {

@@ -31,12 +31,19 @@ async function createExam({ title, subject, courseCode, description, startTime, 
   return mapExamRecord(exam)
 }
 
+const examCache = new Map()
+const questionsCache = new Map()
+
 async function findExamById(id) {
   if (!id) return null
+  const cached = examCache.get(id)
+  if (cached && Date.now() - cached.ts < 10000) return cached.val
   const exam = await prisma.exam.findUnique({
     where: { id }
   })
-  return mapExamRecord(exam)
+  const mapped = mapExamRecord(exam)
+  if (mapped) examCache.set(id, { val: mapped, ts: Date.now() })
+  return mapped
 }
 
 async function listExams(filter = {}) {
@@ -58,6 +65,7 @@ async function listExams(filter = {}) {
 }
 
 async function updateExamStatus(id, status) {
+  examCache.delete(id)
   const exam = await prisma.exam.update({
     where: { id },
     data: { status: String(status).toUpperCase() }
@@ -66,6 +74,7 @@ async function updateExamStatus(id, status) {
 }
 
 async function addQuestion({ examId, questionText, options, correctOptionIndex, marks = 1, negativeMarks = 0, order = 0, displayOrder = 0 }) {
+  questionsCache.delete(examId)
   const question = await prisma.question.create({
     data: {
       examId,
@@ -84,12 +93,19 @@ async function addQuestion({ examId, questionText, options, correctOptionIndex, 
 }
 
 async function getQuestionsByExamId(examId, includeAnswer = true) {
-  const questions = await prisma.question.findMany({
-    where: { examId },
-    orderBy: { displayOrder: 'asc' }
-  })
+  let list = null
+  const cached = questionsCache.get(examId)
+  if (cached && Date.now() - cached.ts < 10000) {
+    list = cached.val
+  } else {
+    list = await prisma.question.findMany({
+      where: { examId },
+      orderBy: { displayOrder: 'asc' }
+    })
+    questionsCache.set(examId, { val: list, ts: Date.now() })
+  }
 
-  return questions.map(q => ({
+  return list.map(q => ({
     id: q.id,
     examId: q.examId,
     questionText: q.questionText,
@@ -103,6 +119,7 @@ async function getQuestionsByExamId(examId, includeAnswer = true) {
 }
 
 async function deleteQuestion(questionId) {
+  questionsCache.clear()
   return prisma.question.delete({
     where: { id: questionId },
     select: { id: true }

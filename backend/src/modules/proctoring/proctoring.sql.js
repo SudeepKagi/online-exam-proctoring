@@ -28,6 +28,22 @@ async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata =
       metadata: metadata || {}
     }
   })
+  if (attemptId) {
+    try {
+      const updated = await prisma.examAttempt.update({
+        where: { id: attemptId },
+        data: { violationCount: { increment: 1 } }
+      })
+      if (updated.violationCount >= 50 && updated.status === 'IN_PROGRESS') {
+        await prisma.examAttempt.update({
+          where: { id: attemptId },
+          data: { status: 'SUSPENDED' }
+        })
+        const { socketEmitter } = require('../../infra/websocket/emitter')
+        socketEmitter.emitToAttempt(attemptId, 'attempt:suspended', { reason: 'Automated threshold suspension', by: 'SYSTEM' })
+      }
+    } catch (_) {}
+  }
   return mapLogRecord(log)
 }
 

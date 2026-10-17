@@ -81,6 +81,10 @@ class ProctoringService {
       logger.error({ error: err.message }, 'Failed to flush proctoring batch to database')
       batch.forEach(b => b.reject(err))
     }
+
+    if (this.buffer.length > 0) {
+      this.timer = setTimeout(() => this.flush(), this.flushIntervalMs)
+    }
   }
 
   async getAttemptLogs(attemptId) {

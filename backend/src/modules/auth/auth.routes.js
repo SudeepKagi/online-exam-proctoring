@@ -23,7 +23,9 @@ function requireRole(...roles) {
     if (!req.user) {
       return res.status(401).json({ error: { message: 'Authentication required' } })
     }
-    if (!roles.includes(req.user.role)) {
+    const userRole = String(req.user.role || '').toUpperCase()
+    const allowed = roles.map(r => String(r).toUpperCase())
+    if (!allowed.includes(userRole)) {
       return res.status(403).json({ error: { message: 'Insufficient permissions' } })
     }
     next()
