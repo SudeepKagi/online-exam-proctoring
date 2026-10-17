@@ -10,7 +10,7 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const { logger } = require('../../observability/logger');
+const { logger } = require('../../shared/logging');
 
 let prismaInstance = null;
 

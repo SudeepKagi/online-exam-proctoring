@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["metrics"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -10,7 +9,7 @@ datasource db {
 }
 
 // -------------------------------------------------------------
-// Core Institutional Roles (4 Only)
+// Enums
 // -------------------------------------------------------------
 
 enum Role {
@@ -20,12 +19,16 @@ enum Role {
   STUDENT
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum ExamStatus {
   DRAFT
   PUBLISHED
-  LIVE
-  ENDED
-  EVALUATED
+  ACTIVE
+  COMPLETED
 }
 
 enum AttemptStatus {
@@ -45,59 +48,53 @@ enum Severity {
 }
 
 // -------------------------------------------------------------
-// 1. Users (Institutional Identity)
+// 1. User
 // -------------------------------------------------------------
 
 model User {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email               String   @unique
-  password            String
-  name                String
-  role                Role
-  referencePhotoS3Key String?  @map("reference_photo_s3_key")
-  isActive            Boolean  @default(true) @map("is_active")
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                 String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionId      String?    @map("institution_id")
+  email              String     @unique
+  passwordHash       String     @map("password_hash")
+  fullName           String     @map("full_name")
+  role               Role       @default(STUDENT)
+  status             UserStatus @default(ACTIVE)
+  referencePhotoKey  String?    @map("reference_photo_key")
+  createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  createdExams        Exam[]           @relation("ExamCreator")
-  assignments         ExamAssignment[]
-  attempts            ExamAttempt[]
+  createdExams       Exam[]           @relation("ExamCreator")
+  assignments        ExamAssignment[]
+  attempts           ExamAttempt[]
 
   @@map("users")
 }
 
 // -------------------------------------------------------------
-// 2. Exams (Metadata, Lifecycle & Proctoring Configuration)
+// 2. Exam
 // -------------------------------------------------------------
 
 model Exam {
   id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   title            String
-  subject          String
-  description      String?
+  courseCode       String     @map("course_code")
+  createdById      String     @map("created_by_id") @db.Uuid
+  creator          User       @relation("ExamCreator", fields: [createdById], references: [id], onDelete: Cascade)
   startTime        DateTime   @map("start_time") @db.Timestamptz(3)
   endTime          DateTime   @map("end_time") @db.Timestamptz(3)
-  duration         Int        @default(60)
-  totalMarks       Float      @default(100) @map("total_marks")
+  durationMinutes  Int        @default(60) @map("duration_minutes")
   status           ExamStatus @default(DRAFT)
-  requireVpn       Boolean    @default(false) @map("require_vpn")
   proctoringConfig Json?      @map("proctoring_config")
-  createdBy        String     @map("created_by") @db.Uuid
-  creator          User       @relation("ExamCreator", fields: [createdBy], references: [id], onDelete: Cascade)
   createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   questions        Question[]
   assignments      ExamAssignment[]
   attempts         ExamAttempt[]
 
-  @@index([status])
-  @@index([createdBy])
   @@map("exams")
 }
 
 // -------------------------------------------------------------
-// 3. Questions (Strict 4-Option MCQ Format)
+// 3. Question
 // -------------------------------------------------------------
 
 model Question {
@@ -109,96 +106,83 @@ model Question {
   correctOptionIndex Int      @map("correct_option_index")
   marks              Float    @default(1)
   negativeMarks      Float    @default(0) @map("negative_marks")
-  order              Int      @default(0)
-  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  displayOrder       Int      @default(0) @map("display_order")
 
   answers            AttemptAnswer[]
 
-  @@index([examId], map: "idx_questions_exam_id")
   @@map("questions")
 }
 
 // -------------------------------------------------------------
-// 4. Exam Assignments (Mapping Students & Invigilators to Exams)
+// 4. ExamAssignment
 // -------------------------------------------------------------
 
 model ExamAssignment {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  examId     String   @map("exam_id") @db.Uuid
-  exam       Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
-  userId     String   @map("user_id") @db.Uuid
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role       Role
-  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  examId       String   @map("exam_id") @db.Uuid
+  exam         Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedRole Role     @default(STUDENT) @map("assigned_role")
 
-  @@unique([examId, userId], map: "idx_exam_assignments_exam_user")
-  @@index([userId])
+  @@id([examId, userId])
   @@map("exam_assignments")
 }
 
 // -------------------------------------------------------------
-// 5. Exam Attempts (Candidate Session Lifecycle)
+// 5. ExamAttempt
 // -------------------------------------------------------------
 
 model ExamAttempt {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  examId           String        @map("exam_id") @db.Uuid
-  exam             Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
-  studentId        String        @map("student_id") @db.Uuid
-  student          User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  status           AttemptStatus @default(NOT_STARTED)
-  startedAt        DateTime?     @map("started_at") @db.Timestamptz(3)
-  submittedAt      DateTime?     @map("submitted_at") @db.Timestamptz(3)
-  expiresAt        DateTime?     @map("expires_at") @db.Timestamptz(3)
-  suspendedAt      DateTime?     @map("suspended_at") @db.Timestamptz(3)
-  totalSuspendedMs Int           @default(0) @map("total_suspended_ms")
-  score            Float         @default(0)
-  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  examId         String        @map("exam_id") @db.Uuid
+  exam           Exam          @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId      String        @map("student_id") @db.Uuid
+  student        User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status         AttemptStatus @default(NOT_STARTED)
+  faceVerified   Boolean       @default(false) @map("face_verified")
+  startedAt      DateTime?     @map("started_at") @db.Timestamptz(3)
+  expiresAt      DateTime?     @map("expires_at") @db.Timestamptz(3)
+  submittedAt    DateTime?     @map("submitted_at") @db.Timestamptz(3)
+  score          Float?        @default(0)
+  violationCount Int           @default(0) @map("violation_count")
 
-  answers          AttemptAnswer[]
-  proctoringLogs   ProctoringLog[]
+  answers        AttemptAnswer[]
+  proctoringLogs ProctoringLog[]
 
-  @@unique([examId, studentId], map: "idx_exam_attempts_exam_student")
-  @@index([examId, status])
-  @@index([studentId, status])
+  @@unique([examId, studentId])
   @@map("exam_attempts")
 }
 
 // -------------------------------------------------------------
-// 6. Attempt Answers (Hot Path: BigInt PK, Fast Upsert, MCQ Eval)
+// 6. AttemptAnswer
 // -------------------------------------------------------------
 
 model AttemptAnswer {
-  id                  BigInt      @id @default(autoincrement())
   attemptId           String      @map("attempt_id") @db.Uuid
   attempt             ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId          String      @map("question_id") @db.Uuid
   question            Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   selectedOptionIndex Int?        @map("selected_option_index")
-  isCorrect           Boolean?    @map("is_correct")
-  marksAwarded        Float       @default(0) @map("marks_awarded")
-  savedAt             DateTime    @default(now()) @map("saved_at") @db.Timestamptz(3)
+  isBookmarked        Boolean     @default(false) @map("is_bookmarked")
+  updatedAt           DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@unique([attemptId, questionId], map: "idx_attempt_answers_attempt_question")
-  @@index([attemptId])
+  @@id([attemptId, questionId])
   @@map("attempt_answers")
 }
 
 // -------------------------------------------------------------
-// 7. Proctoring Logs (Append-Heavy Violation & Evidence Events)
+// 7. ProctoringLog
 // -------------------------------------------------------------
 
 model ProctoringLog {
-  id            BigInt      @id @default(autoincrement())
-  attemptId     String      @map("attempt_id") @db.Uuid
-  attempt       ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  eventType     String      @map("event_type")
-  severity      Severity    @default(MEDIUM)
-  metadata      Json?
-  evidenceS3Key String?     @map("evidence_s3_key")
-  timestamp     DateTime    @default(now()) @db.Timestamptz(3)
+  id          BigInt      @id @default(autoincrement())
+  attemptId   String      @map("attempt_id") @db.Uuid
+  attempt     ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  eventType   String      @map("event_type")
+  severity    Severity    @default(MEDIUM)
+  evidenceKey String?     @map("evidence_key")
+  metadata    Json?
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  @@index([attemptId, timestamp(sort: Desc)])
   @@map("proctoring_logs")
 }

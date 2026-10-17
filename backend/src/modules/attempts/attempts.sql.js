@@ -1,135 +1,128 @@
 const { prisma } = require('../../infra/postgres/client')
 
 async function findAttemptByExamAndStudent(examId, studentId) {
-  const result = await prisma.$queryRaw`
-    SELECT id::text, 
-           exam_id::text AS "examId", 
-           student_id::text AS "studentId", 
-           status, 
-           started_at AS "startedAt", 
-           submitted_at AS "submittedAt", 
-           expires_at AS "expiresAt", 
-           suspended_at AS "suspendedAt", 
-           total_suspended_ms AS "totalSuspendedMs", 
-           score, 
-           created_at AS "createdAt", 
-           updated_at AS "updatedAt"
-    FROM exam_attempts
-    WHERE exam_id = ${examId}::uuid AND student_id = ${studentId}::uuid
-    LIMIT 1;
-  `
-  return result[0] || null
+  if (!examId || !studentId) return null
+  return prisma.examAttempt.findUnique({
+    where: {
+      examId_studentId: { examId, studentId }
+    }
+  })
 }
 
 async function findAttemptById(id) {
-  const result = await prisma.$queryRaw`
-    SELECT id::text, 
-           exam_id::text AS "examId", 
-           student_id::text AS "studentId", 
-           status, 
-           started_at AS "startedAt", 
-           submitted_at AS "submittedAt", 
-           expires_at AS "expiresAt", 
-           suspended_at AS "suspendedAt", 
-           total_suspended_ms AS "totalSuspendedMs", 
-           score, 
-           created_at AS "createdAt", 
-           updated_at AS "updatedAt"
-    FROM exam_attempts
-    WHERE id = ${id}::uuid
-    LIMIT 1;
-  `
-  return result[0] || null
+  if (!id) return null
+  return prisma.examAttempt.findUnique({
+    where: { id }
+  })
 }
 
 async function createOrGetReadinessAttempt(examId, studentId) {
-  const result = await prisma.$queryRaw`
-    INSERT INTO exam_attempts (exam_id, student_id, status, created_at, updated_at)
-    VALUES (${examId}::uuid, ${studentId}::uuid, 'NOT_STARTED'::"AttemptStatus", NOW(), NOW())
-    ON CONFLICT (exam_id, student_id)
-    DO UPDATE SET updated_at = NOW()
-    RETURNING id::text, exam_id::text AS "examId", student_id::text AS "studentId", status;
-  `
-  return result[0]
+  return prisma.examAttempt.upsert({
+    where: {
+      examId_studentId: { examId, studentId }
+    },
+    create: {
+      examId,
+      studentId,
+      status: 'NOT_STARTED',
+      faceVerified: false
+    },
+    update: {}
+  })
 }
 
 async function startAttempt(attemptId, durationMinutes) {
-  const durationInterval = `${Math.max(1, durationMinutes)} minutes`
-  const result = await prisma.$queryRaw`
-    UPDATE exam_attempts
-    SET status = 'IN_PROGRESS'::"AttemptStatus",
-        started_at = COALESCE(started_at, NOW()),
-        expires_at = COALESCE(expires_at, NOW() + ${durationInterval}::interval),
-        updated_at = NOW()
-    WHERE id = ${attemptId}::uuid AND status IN ('NOT_STARTED'::"AttemptStatus", 'IN_PROGRESS'::"AttemptStatus")
-    RETURNING id::text, exam_id::text AS "examId", student_id::text AS "studentId", status, 
-              started_at AS "startedAt", expires_at AS "expiresAt";
-  `
-  return result[0] || null
+  const dur = Math.max(1, Number(durationMinutes) || 60)
+  const now = new Date()
+  const expiresAt = new Date(now.getTime() + dur * 60 * 1000)
+
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      status: 'IN_PROGRESS',
+      startedAt: now,
+      expiresAt
+    }
+  })
 }
 
-async function upsertAnswer(attemptId, questionId, selectedOptionIndex) {
-  const result = await prisma.$queryRaw`
-    INSERT INTO attempt_answers (attempt_id, question_id, selected_option_index, saved_at)
-    VALUES (${attemptId}::uuid, ${questionId}::uuid, ${selectedOptionIndex}, NOW())
-    ON CONFLICT (attempt_id, question_id)
-    DO UPDATE SET
-      selected_option_index = EXCLUDED.selected_option_index,
-      saved_at = NOW()
-    RETURNING id::text, attempt_id::text AS "attemptId", question_id::text AS "questionId", 
-              selected_option_index AS "selectedOptionIndex", saved_at AS "savedAt";
-  `
-  return result[0]
+async function upsertAnswer(attemptId, questionId, selectedOptionIndex, isBookmarked) {
+  const data = {}
+  if (selectedOptionIndex !== undefined && selectedOptionIndex !== null) {
+    data.selectedOptionIndex = Number(selectedOptionIndex)
+  }
+  if (isBookmarked !== undefined) {
+    data.isBookmarked = Boolean(isBookmarked)
+  }
+
+  return prisma.attemptAnswer.upsert({
+    where: {
+      attemptId_questionId: { attemptId, questionId }
+    },
+    create: {
+      attemptId,
+      questionId,
+      selectedOptionIndex: data.selectedOptionIndex !== undefined ? data.selectedOptionIndex : null,
+      isBookmarked: Boolean(isBookmarked)
+    },
+    update: data
+  })
 }
 
 async function getAttemptAnswers(attemptId) {
-  return prisma.$queryRaw`
-    SELECT id::text, attempt_id::text AS "attemptId", question_id::text AS "questionId", 
-           selected_option_index AS "selectedOptionIndex", saved_at AS "savedAt"
-    FROM attempt_answers
-    WHERE attempt_id = ${attemptId}::uuid;
-  `
+  return prisma.attemptAnswer.findMany({
+    where: { attemptId }
+  })
 }
 
 async function submitAndGradeAttempt(attemptId) {
-  const result = await prisma.$queryRaw`
-    WITH graded AS (
-      UPDATE attempt_answers aa
-      SET is_correct = (aa.selected_option_index = q.correct_option_index),
-          marks_awarded = CASE
-            WHEN aa.selected_option_index IS NULL THEN 0
-            WHEN aa.selected_option_index = q.correct_option_index THEN q.marks
-            ELSE -ABS(q.negative_marks)
-          END
-      FROM questions q
-      WHERE aa.attempt_id = ${attemptId}::uuid AND aa.question_id = q.id
-      RETURNING aa.marks_awarded
-    ),
-    total_score AS (
-      SELECT COALESCE(SUM(marks_awarded), 0) AS total FROM graded
-    )
-    UPDATE exam_attempts
-    SET status = 'SUBMITTED'::"AttemptStatus",
-        submitted_at = NOW(),
-        score = GREATEST(0, (SELECT total FROM total_score)),
-        updated_at = NOW()
-    WHERE id = ${attemptId}::uuid
-    RETURNING id::text, exam_id::text AS "examId", student_id::text AS "studentId", 
-              status, score, started_at AS "startedAt", submitted_at AS "submittedAt";
-  `
-  return result[0] || null
+  const attempt = await prisma.examAttempt.findUnique({
+    where: { id: attemptId },
+    include: {
+      answers: true,
+      exam: {
+        include: { questions: true }
+      }
+    }
+  })
+
+  if (!attempt) return null
+
+  // Calculate score based on Question correctOptionIndex and marks
+  const questionsMap = new Map()
+  attempt.exam?.questions?.forEach(q => questionsMap.set(q.id, q))
+
+  let totalScore = 0
+  for (const ans of attempt.answers || []) {
+    const q = questionsMap.get(ans.questionId)
+    if (q) {
+      if (ans.selectedOptionIndex === q.correctOptionIndex) {
+        totalScore += Number(q.marks || 1)
+      } else if (ans.selectedOptionIndex !== null && ans.selectedOptionIndex !== undefined) {
+        totalScore -= Math.abs(Number(q.negativeMarks || 0))
+      }
+    }
+  }
+
+  totalScore = Math.max(0, totalScore)
+
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      status: 'SUBMITTED',
+      submittedAt: new Date(),
+      score: totalScore
+    }
+  })
 }
 
 async function updateAttemptStatus(attemptId, status) {
-  const result = await prisma.$queryRaw`
-    UPDATE exam_attempts
-    SET status = ${status}::"AttemptStatus",
-        suspended_at = CASE WHEN ${status}::text = 'SUSPENDED' THEN NOW() ELSE suspended_at END,
-        updated_at = NOW()
-    WHERE id = ${attemptId}::uuid
-    RETURNING id::text, status, updated_at AS "updatedAt";
-  `
-  return result[0] || null
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      status: String(status).toUpperCase()
+    }
+  })
 }
 
 module.exports = {

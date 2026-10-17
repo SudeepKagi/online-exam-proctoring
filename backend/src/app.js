@@ -13,7 +13,7 @@ const { prisma }  = require('./infra/postgres/client')
 
 // ── Global BigInt Serialization Safety Net (Prompt 8 / U2) ──
 // DTO mappers must convert BigInt to string; prototype handler is a monitored last-resort fallback.
-const { bigintSerializedTotal } = require('./observability/metrics')
+const { bigintSerializedTotal } = require('./shared/metrics')
 if (!BigInt.prototype.toJSON) {
   BigInt.prototype.toJSON = function () {
     try {
@@ -31,8 +31,8 @@ const server = http.createServer(app)
 const cookieParser = require('cookie-parser')
 const { verifyToken } = require('./utils/jwt')
 const { extractTokenFromReq } = require('./utils/cookies')
-const { requestContextMiddleware, logger } = require('./observability/logger')
-const { metricsMiddleware, metricsHandler } = require('./observability/metrics')
+const { requestContextMiddleware, logger } = require('./shared/logging')
+const { metricsMiddleware, metricsHandler } = require('./shared/metrics')
 const { ROLES } = require('./shared/roles')
 
 // ── Environment-Aware CORS Configuration (D-9) ──
@@ -155,7 +155,10 @@ app.use(helmet({
   }
 }))
 
-const { requestIdMiddleware } = require('./middleware/requestId')
+const requestIdMiddleware = (req, res, next) => {
+  req.requestId = req.headers['x-request-id'] || require('crypto').randomUUID()
+  next()
+}
 
 // In production, Caddy handles zstd/gzip compression to save Node CPU (S1 / EDGE-01)
 if (!isProd) {
@@ -372,13 +375,10 @@ internalApp.get('/metrics', metricsHandler)
 
 // ── Canonical Modular Monolith Routes (/api/v1) ──
 const v1Router = require('./modules/router')
-const { loadShed } = require('./middleware/loadShed')
 const { errorHandler } = require('./middleware/errorHandler')
 const config = require('./shared/config')
 const { proctoringService: _procService } = require('./modules/proctoring/proctoring.service')
 const { redisClient } = require('./infra/redis/client')
-
-app.use(loadShed)
 
 app.use('/api/v1', v1Router)
 app.use('/api', (req, res, next) => {

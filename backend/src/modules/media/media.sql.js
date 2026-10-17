@@ -1,24 +1,34 @@
 const { prisma } = require('../../infra/postgres/client')
 
 async function getUserReferencePhotoKey(userId) {
-  const result = await prisma.$queryRaw`
-    SELECT id::text, reference_photo_s3_key AS "referencePhotoS3Key"
-    FROM users
-    WHERE id = ${userId}::uuid
-    LIMIT 1;
-  `
-  return result[0]?.referencePhotoS3Key || null
+  if (!userId) return null
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { referencePhotoKey: true }
+  })
+  return user?.referencePhotoKey || null
 }
 
 async function getStudentReferencePhotoByAttempt(attemptId) {
-  const result = await prisma.$queryRaw`
-    SELECT u.id::text AS "studentId", u.reference_photo_s3_key AS "referencePhotoS3Key"
-    FROM exam_attempts ea
-    JOIN users u ON ea.student_id = u.id
-    WHERE ea.id = ${attemptId}::uuid
-    LIMIT 1;
-  `
-  return result[0] || null
+  if (!attemptId) return null
+  const attempt = await prisma.examAttempt.findUnique({
+    where: { id: attemptId },
+    select: {
+      studentId: true,
+      student: {
+        select: {
+          id: true,
+          referencePhotoKey: true
+        }
+      }
+    }
+  })
+  if (!attempt || !attempt.student) return null
+  return {
+    studentId: attempt.student.id,
+    referencePhotoS3Key: attempt.student.referencePhotoKey,
+    referencePhotoKey: attempt.student.referencePhotoKey
+  }
 }
 
 module.exports = {

@@ -4,6 +4,7 @@ const examsRoutes = require('./exams/exams.routes')
 const attemptsRoutes = require('./attempts/attempts.routes')
 const mediaRoutes = require('./media/media.routes')
 const proctoringRoutes = require('./proctoring/proctoring.routes')
+const usersRoutes = require('./users/users.routes')
 
 const router = express.Router()
 
@@ -40,6 +41,7 @@ router.use('/exams', examsRoutes)
 router.use('/attempts', attemptsRoutes)
 router.use('/media', mediaRoutes)
 router.use('/proctoring', proctoringRoutes)
+router.use('/users', usersRoutes)
 
 // Flat-mounted routes for backward compatibility
 router.use('/', authRoutes)
@@ -47,5 +49,7 @@ router.use('/', examsRoutes)
 router.use('/', attemptsRoutes)
 router.use('/', mediaRoutes)
 router.use('/', proctoringRoutes)
+router.use('/', usersRoutes)
 
 module.exports = router
+

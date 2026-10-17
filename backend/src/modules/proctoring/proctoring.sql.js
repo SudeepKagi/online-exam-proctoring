@@ -1,14 +1,34 @@
 const { prisma } = require('../../infra/postgres/client')
 
-async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata = null, evidenceS3Key = null }) {
-  const metadataJson = metadata ? JSON.stringify(metadata) : null
-  const result = await prisma.$queryRaw`
-    INSERT INTO proctoring_logs (attempt_id, event_type, severity, metadata, evidence_s3_key, timestamp)
-    VALUES (${attemptId}::uuid, ${eventType}, ${severity}::"Severity", ${metadataJson}::jsonb, ${evidenceS3Key}, NOW())
-    RETURNING id::text, attempt_id::text AS "attemptId", event_type AS "eventType", 
-              severity, metadata, evidence_s3_key AS "evidenceS3Key", timestamp;
-  `
-  return result[0]
+function mapLogRecord(log) {
+  if (!log) return null
+  return {
+    id: String(log.id),
+    attemptId: log.attemptId,
+    eventType: log.eventType,
+    severity: log.severity,
+    metadata: log.metadata,
+    evidenceS3Key: log.evidenceKey,
+    evidenceKey: log.evidenceKey,
+    timestamp: log.createdAt,
+    createdAt: log.createdAt,
+    studentId: log.attempt?.studentId,
+    studentName: log.attempt?.student?.fullName,
+    studentEmail: log.attempt?.student?.email
+  }
+}
+
+async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata = null, evidenceS3Key = null, evidenceKey = null }) {
+  const log = await prisma.proctoringLog.create({
+    data: {
+      attemptId,
+      eventType,
+      severity: String(severity).toUpperCase(),
+      evidenceKey: evidenceKey || evidenceS3Key || null,
+      metadata: metadata || {}
+    }
+  })
+  return mapLogRecord(log)
 }
 
 async function batchInsertLogs(logs = []) {
@@ -22,28 +42,30 @@ async function batchInsertLogs(logs = []) {
 }
 
 async function getLogsByAttempt(attemptId, limit = 100) {
-  return prisma.$queryRaw`
-    SELECT id::text, attempt_id::text AS "attemptId", event_type AS "eventType", 
-           severity, metadata, evidence_s3_key AS "evidenceS3Key", timestamp
-    FROM proctoring_logs
-    WHERE attempt_id = ${attemptId}::uuid
-    ORDER BY timestamp DESC
-    LIMIT ${limit};
-  `
+  const logs = await prisma.proctoringLog.findMany({
+    where: { attemptId },
+    orderBy: { createdAt: 'desc' },
+    take: Number(limit) || 100
+  })
+  return logs.map(mapLogRecord)
 }
 
 async function getLogsByExam(examId, limit = 200) {
-  return prisma.$queryRaw`
-    SELECT pl.id::text, pl.attempt_id::text AS "attemptId", pl.event_type AS "eventType", 
-           pl.severity, pl.metadata, pl.evidence_s3_key AS "evidenceS3Key", pl.timestamp,
-           ea.student_id::text AS "studentId", u.name AS "studentName", u.email AS "studentEmail"
-    FROM proctoring_logs pl
-    JOIN exam_attempts ea ON pl.attempt_id = ea.id
-    JOIN users u ON ea.student_id = u.id
-    WHERE ea.exam_id = ${examId}::uuid
-    ORDER BY pl.timestamp DESC
-    LIMIT ${limit};
-  `
+  const logs = await prisma.proctoringLog.findMany({
+    where: {
+      attempt: { examId }
+    },
+    include: {
+      attempt: {
+        include: {
+          student: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' },
+    take: Number(limit) || 200
+  })
+  return logs.map(mapLogRecord)
 }
 
 module.exports = {

@@ -1,0 +1,66 @@
+const express = require('express')
+const usersController = require('./users.controller')
+const { authenticateToken, requireRole } = require('../auth/auth.routes')
+const { prisma } = require('../../infra/postgres/client')
+
+const router = express.Router()
+
+// Admin dashboard summary stats
+router.get('/admin/dashboard', authenticateToken, async (req, res, next) => {
+  try {
+    const [facultyCount, studentCount, examCount, flagCount] = await Promise.all([
+      prisma.user.count({ where: { role: 'FACULTY' } }).catch(() => 0),
+      prisma.user.count({ where: { role: 'STUDENT' } }).catch(() => 0),
+      prisma.exam.count().catch(() => 0),
+      prisma.proctoringLog.count({ where: { severity: { in: ['HIGH', 'CRITICAL'] } } }).catch(() => 0)
+    ])
+    res.json({
+      faculty: { total: facultyCount, pending: 0 },
+      students: { total: studentCount, pending: 0 },
+      exams: { total: examCount, active: 0 },
+      flags: { highSeverity: flagCount }
+    })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// Departments stub (for onboarding and faculty creation)
+router.get('/admin/departments', authenticateToken, (req, res) => {
+  res.json({ departments: [{ code: 'CSE', name: 'Computer Science and Engineering' }] })
+})
+router.post('/admin/departments', authenticateToken, (req, res) => {
+  res.status(201).json({ department: { code: req.body.code || 'CSE', name: req.body.name || 'Computer Science' } })
+})
+
+// Admin Student Management
+router.get('/admin/students', authenticateToken, usersController.listStudents)
+router.get('/admin/students/pending', authenticateToken, (req, res) => res.json({ students: [] }))
+router.post('/admin/students', authenticateToken, usersController.createStudent)
+router.patch('/admin/students/:id/approve', authenticateToken, usersController.approveUser)
+router.patch('/admin/students/:id/reject', authenticateToken, usersController.rejectUser)
+router.patch('/admin/students/:id/suspend', authenticateToken, usersController.suspendUser)
+router.patch('/admin/students/:id/unsuspend', authenticateToken, usersController.unsuspendUser)
+
+// Admin Faculty Management
+router.get('/admin/faculty', authenticateToken, usersController.listFaculty)
+router.get('/admin/faculty/pending', authenticateToken, (req, res) => res.json({ faculty: [] }))
+router.post('/admin/faculty', authenticateToken, usersController.createFaculty)
+router.patch('/admin/faculty/:id/approve', authenticateToken, usersController.approveUser)
+router.patch('/admin/faculty/:id/reject', authenticateToken, usersController.rejectUser)
+router.patch('/admin/faculty/:id/suspend', authenticateToken, usersController.suspendUser)
+router.patch('/admin/faculty/:id/unsuspend', authenticateToken, usersController.unsuspendUser)
+
+// Admin Bulk Upload
+router.post('/admin/bulk-upload/parse', authenticateToken, usersController.uploadMiddleware, usersController.bulkParse)
+router.post('/admin/bulk-upload/confirm', authenticateToken, usersController.bulkConfirm)
+
+// Standard User Endpoints
+router.get('/users', authenticateToken, usersController.listUsers)
+router.get('/users/:id', authenticateToken, usersController.getUser)
+router.post('/users', authenticateToken, usersController.createUser)
+router.patch('/users/:id/suspend', authenticateToken, usersController.suspendUser)
+router.patch('/users/:id/unsuspend', authenticateToken, usersController.unsuspendUser)
+router.delete('/users/:id', authenticateToken, usersController.deleteUser)
+
+module.exports = router

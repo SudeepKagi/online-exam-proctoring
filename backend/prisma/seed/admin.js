@@ -10,13 +10,13 @@ async function seedAdmin() {
   try {
     const email = process.env.ADMIN_EMAIL || 'admin@proctornet.com'
     const password = process.env.ADMIN_PASSWORD || 'Admin@12345'
-    const name = process.env.ADMIN_NAME || 'System Administrator'
+    const fullName = process.env.ADMIN_NAME || 'System Administrator'
     const hashed = await bcrypt.hash(password, 12)
 
     const admin = await prisma.user.upsert({
       where: { email },
-      update: { name, password: hashed, role: 'ADMIN', isActive: true },
-      create: { name, email, password: hashed, role: 'ADMIN', isActive: true }
+      update: { fullName, passwordHash: hashed, role: 'ADMIN', status: 'ACTIVE', institutionId: 'ADMIN-001' },
+      create: { fullName, email, passwordHash: hashed, role: 'ADMIN', status: 'ACTIVE', institutionId: 'ADMIN-001' }
     })
 
     console.log(`✅ Admin user seeded idempotently: ${admin.email} (ID: ${admin.id})`)

@@ -1,61 +1,57 @@
 const { prisma } = require('../../infra/postgres/client')
 
+function mapUserRecord(user) {
+  if (!user) return null
+  return {
+    ...user,
+    password: user.passwordHash,
+    name: user.fullName,
+    isActive: user.status === 'ACTIVE',
+    referencePhotoS3Key: user.referencePhotoKey,
+    usn: user.institutionId
+  }
+}
+
 async function findUserByEmail(email) {
   if (!email) return null
   const cleanEmail = email.toLowerCase().trim()
-  const result = await prisma.$queryRaw`
-    SELECT id, email, password, name, role, 
-           reference_photo_s3_key AS "referencePhotoS3Key", 
-           is_active AS "isActive", 
-           created_at AS "createdAt", 
-           updated_at AS "updatedAt"
-    FROM users
-    WHERE LOWER(email) = ${cleanEmail}
-    LIMIT 1;
-  `
-  return result[0] || null
+  const user = await prisma.user.findUnique({
+    where: { email: cleanEmail }
+  })
+  return mapUserRecord(user)
 }
 
 async function findUserById(id) {
   if (!id) return null
-  const result = await prisma.$queryRaw`
-    SELECT id, email, password, name, role, 
-           reference_photo_s3_key AS "referencePhotoS3Key", 
-           is_active AS "isActive", 
-           created_at AS "createdAt", 
-           updated_at AS "updatedAt"
-    FROM users
-    WHERE id = ${id}::uuid
-    LIMIT 1;
-  `
-  return result[0] || null
+  const user = await prisma.user.findUnique({
+    where: { id }
+  })
+  return mapUserRecord(user)
 }
 
-async function createUser({ email, password, name, role, referencePhotoS3Key = null }) {
+async function createUser({ email, password, name, fullName, role, referencePhotoKey, referencePhotoS3Key, institutionId, usn }) {
   const cleanEmail = email.toLowerCase().trim()
-  const cleanName = name.trim()
-  const result = await prisma.$queryRaw`
-    INSERT INTO users (email, password, name, role, reference_photo_s3_key, is_active, created_at, updated_at)
-    VALUES (${cleanEmail}, ${password}, ${cleanName}, ${role}::"Role", ${referencePhotoS3Key}, true, NOW(), NOW())
-    RETURNING id, email, name, role, 
-              reference_photo_s3_key AS "referencePhotoS3Key", 
-              is_active AS "isActive", 
-              created_at AS "createdAt", 
-              updated_at AS "updatedAt";
-  `
-  return result[0]
+  const cleanName = (fullName || name || '').trim()
+  const user = await prisma.user.create({
+    data: {
+      email: cleanEmail,
+      passwordHash: password,
+      fullName: cleanName,
+      role: String(role).toUpperCase(),
+      referencePhotoKey: referencePhotoKey || referencePhotoS3Key || null,
+      institutionId: institutionId || usn || null,
+      status: 'ACTIVE'
+    }
+  })
+  return mapUserRecord(user)
 }
 
 async function listUsersByRole(role) {
-  return prisma.$queryRaw`
-    SELECT id, email, name, role, 
-           reference_photo_s3_key AS "referencePhotoS3Key", 
-           is_active AS "isActive", 
-           created_at AS "createdAt"
-    FROM users
-    WHERE role = ${role}::"Role"
-    ORDER BY created_at DESC;
-  `
+  const users = await prisma.user.findMany({
+    where: { role: String(role).toUpperCase() },
+    orderBy: { createdAt: 'desc' }
+  })
+  return users.map(mapUserRecord)
 }
 
 module.exports = {
