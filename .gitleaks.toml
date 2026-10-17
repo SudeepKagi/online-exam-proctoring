@@ -12,15 +12,14 @@ useDefault = true
 description = "Global allowlists for test fixtures and false positives"
 paths = [
   '''^\.env\.example$''',
-  '''^proctornet/backend/\.env\.example$''',
-  '''^proctornet/frontend/\.env\.example$''',
-  '''^proctornet/python-service/\.env\.example$''',
+  '''^backend/\.env\.example$''',
+  '''^frontend/\.env\.example$''',
+  '''^python-service/\.env\.example$''',
   '''^ops/terraform/terraform\.tfvars\.example$''',
   '''^\.github/workflows/.*''',
   '''^tests/.*''',
-  '''^proctornet/backend/tests/.*''',
-  '''^docs/.*''',
-  '''^proctornet/vpn_architecture_and_verification_report\.md$'''
+  '''^backend/tests/.*''',
+  '''^docs/.*'''
 ]
 
 commits = [

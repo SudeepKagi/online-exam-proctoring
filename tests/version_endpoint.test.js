@@ -1,4 +1,4 @@
-import { test, describe } from 'node:test'
+﻿import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -7,9 +7,9 @@ import { pathToFileURL } from 'node:url'
 
 const REPO_ROOT = path.resolve('.')
 
-describe('Version & Build Metadata Endpoint (S5 / CI-10 / §3.2)', () => {
+describe('Version & Build Metadata Endpoint (S5 / CI-10 / Â§3.2)', () => {
   test('version utility exists and resolves version and commit SHA', async () => {
-    const versionUtilPath = path.join(REPO_ROOT, 'proctornet/backend/src/utils/version.js')
+    const versionUtilPath = path.join(REPO_ROOT, 'backend/src/utils/version.js')
     assert.ok(fs.existsSync(versionUtilPath), 'version.js utility must exist')
     
     const versionUtil = await import(pathToFileURL(versionUtilPath).href)
@@ -22,7 +22,7 @@ describe('Version & Build Metadata Endpoint (S5 / CI-10 / §3.2)', () => {
   })
 
   test('GET /api/v1/version route is registered in v1Router', () => {
-    const routerPath = path.join(REPO_ROOT, 'proctornet/backend/src/modules/router.js')
+    const routerPath = path.join(REPO_ROOT, 'backend/src/modules/router.js')
     const content = fs.readFileSync(routerPath, 'utf8')
     assert.match(
       content,
@@ -31,3 +31,4 @@ describe('Version & Build Metadata Endpoint (S5 / CI-10 / §3.2)', () => {
     )
   })
 })
+

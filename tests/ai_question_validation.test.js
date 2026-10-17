@@ -1,11 +1,11 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
 const {
   validateMcqQuestion,
   normalizeExcelQuestionRow
-} = require(path.join(__dirname, '../proctornet/backend/src/modules/questions/validation'))
+} = require(path.join(__dirname, '../backend/src/modules/questions/validation'))
 
 describe('BUG-E07: AI Question Preview Validation', () => {
   it('rejects question with missing unambiguous correct option (0 correct)', () => {
@@ -139,3 +139,4 @@ describe('BUG-E07: AI Question Preview Validation', () => {
     assert.equal(correct[0].text, 'Paris')
   })
 })
+

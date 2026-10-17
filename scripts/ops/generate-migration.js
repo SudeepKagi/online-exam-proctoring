@@ -1,8 +1,8 @@
-const { execSync } = require('child_process')
+﻿const { execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
-const cwd = path.resolve(__dirname, '../../proctornet/backend')
+const cwd = path.resolve(__dirname, '../../backend')
 const diff = execSync('npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script', { cwd }).toString()
 
 const header = `-- =============================================================
@@ -53,3 +53,4 @@ const targetFile = path.resolve(cwd, 'prisma/migrations/0001_init/migration.sql'
 const fullContent = header + diff + footer
 fs.writeFileSync(targetFile, fullContent, 'utf8')
 console.log('Successfully wrote canonical migration to:', targetFile, 'size:', fullContent.length)
+

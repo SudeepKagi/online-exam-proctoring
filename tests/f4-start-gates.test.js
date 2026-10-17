@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
@@ -10,12 +10,12 @@ const assert = require('node:assert')
 const path = require('path')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
-const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 
 const { assertCanStart, isStudentEligible } = require(path.join(BACKEND_ROOT, 'src/modules/exams/eligibility'))
 const { ForbiddenError } = require(path.join(BACKEND_ROOT, 'src/shared/errors'))
 
-describe('F4 — Start Gates Authoritative Server-Side Enforcement', () => {
+describe('F4 â€” Start Gates Authoritative Server-Side Enforcement', () => {
   const baseExam = {
     id: 'exam-1',
     allowedDepartments: ['CSE', 'ISE'],
@@ -75,3 +75,4 @@ describe('F4 — Start Gates Authoritative Server-Side Enforcement', () => {
     assert.strictEqual(isStudentEligible(baseExam, { ...baseStudent, profileStatus: 'PENDING' }), false)
   })
 })
+

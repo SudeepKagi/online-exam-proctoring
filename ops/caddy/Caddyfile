@@ -62,14 +62,14 @@ proctornet.duckdns.org {
         path /assets/*
     }
     handle @assets {
-        root * /opt/proctornet/current/proctornet/frontend/dist
+        root * /opt/proctornet/current/frontend/dist
         header Cache-Control "public, max-age=31536000, immutable"
         file_server
     }
 
     # Single Page Application (SPA) - HTML fallback with no-store
     handle {
-        root * /opt/proctornet/current/proctornet/frontend/dist
+        root * /opt/proctornet/current/frontend/dist
         header Cache-Control "no-store, no-cache, must-revalidate"
         try_files {path} /index.html
         file_server

@@ -1,6 +1,6 @@
-#!/usr/bin/env bash
+ï»¿#!/usr/bin/env bash
 # ==============================================================================
-# ProctorNet Dev Stack — one-command startup (Linux / macOS / WSL2)
+# ProctorNet Dev Stack â€” one-command startup (Linux / macOS / WSL2)
 # Usage: bash scripts/dev/up.sh [--no-seed] [--profiles observability,...]
 # ==============================================================================
 set -euo pipefail
@@ -40,7 +40,7 @@ fi
 
 # -- .env guard ----------------------------------------------------------------
 if [[ ! -f "${ROOT}/.env" ]]; then
-  echo "  [INFO] .env not found — copying from .env.example"
+  echo "  [INFO] .env not found â€” copying from .env.example"
   cp "${ROOT}/.env.example" "${ROOT}/.env"
   echo "  [WARN] Review .env and set real secrets before production use."
 fi
@@ -80,7 +80,7 @@ done
 # -- Seed admin ----------------------------------------------------------------
 if [[ "${NO_SEED}" == "false" ]]; then
   echo "  Seeding admin account..."
-  (cd "${ROOT}/proctornet/backend" && node prisma/seed/admin.js)
+  (cd "${ROOT}/backend" && node prisma/seed/admin.js)
 fi
 
 # -- Print URLs ----------------------------------------------------------------
@@ -98,3 +98,4 @@ echo "    docker compose -f docker-compose.prod.yml -f docker-compose.override.y
 echo "  Logs: docker compose logs -f"
 echo "=================================================================="
 echo ""
+

@@ -1,13 +1,13 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
-const { attemptService } = require('../proctornet/backend/src/modules/attempts/service')
-const { prisma } = require('../proctornet/backend/src/infra/postgres/client')
-const { attemptRepository } = require('../proctornet/backend/src/modules/attempts/repository')
-const { redisClient } = require('../proctornet/backend/src/infra/redis/client')
+const { attemptService } = require('../backend/src/modules/attempts/service')
+const { prisma } = require('../backend/src/infra/postgres/client')
+const { attemptRepository } = require('../backend/src/modules/attempts/repository')
+const { redisClient } = require('../backend/src/infra/redis/client')
 
-describe('BUG D — Re-entry allowed after student has submitted / exam expired', () => {
+describe('BUG D â€” Re-entry allowed after student has submitted / exam expired', () => {
   after(() => {
     try {
       if (redisClient?.client) {
@@ -104,7 +104,7 @@ describe('BUG D — Re-entry allowed after student has submitted / exam expired'
   })
 
   it('D.3: frontend isAttemptFinished correctly identifies all terminal attempt states and rejects re-entry', async () => {
-    const { isAttemptFinished } = await import('../proctornet/frontend/src/utils/examAttemptState.js')
+    const { isAttemptFinished } = await import('../frontend/src/utils/examAttemptState.js')
 
     // Finished attempt scenarios
     assert.strictEqual(isAttemptFinished({ attempt: { status: 'SUBMITTED' } }), true)
@@ -121,3 +121,4 @@ describe('BUG D — Re-entry allowed after student has submitted / exam expired'
     assert.strictEqual(isAttemptFinished(null), false)
   })
 })
+

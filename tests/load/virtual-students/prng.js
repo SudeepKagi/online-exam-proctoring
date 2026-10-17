@@ -1,4 +1,4 @@
-/**
+﻿/**
  * prng.js - Deterministic Seeded PRNG for ProctorNet Virtual Students
  *
  * Provides mathematically accurate random distributions:
@@ -9,7 +9,7 @@
  */
 
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
+module.paths.push(path.resolve(__dirname, '../../../backend/node_modules'))
 const seedrandom = require('seedrandom')
 
 class DeterministicPRNG {
@@ -111,3 +111,4 @@ class DeterministicPRNG {
 }
 
 module.exports = { DeterministicPRNG }
+

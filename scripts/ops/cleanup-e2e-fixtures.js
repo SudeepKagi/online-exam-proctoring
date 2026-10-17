@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 /**
  * scripts/ops/cleanup-e2e-fixtures.js
@@ -12,8 +12,8 @@
  */
 
 const path = require('path')
-require('dotenv').config({ path: path.resolve(__dirname, '../../proctornet/backend/.env') })
-const { PrismaClient } = require(path.resolve(__dirname, '../../proctornet/backend/node_modules/@prisma/client'))
+require('dotenv').config({ path: path.resolve(__dirname, '../../backend/.env') })
+const { PrismaClient } = require(path.resolve(__dirname, '../../backend/node_modules/@prisma/client'))
 
 const prisma = new PrismaClient()
 
@@ -23,12 +23,12 @@ async function main() {
   const confirmText = confirmIndex !== -1 ? process.argv[confirmIndex + 1] : ''
 
   console.log('=============================================================')
-  console.log(' ProctorNet Ops — Purge Test Fixtures (@proctornet.test)')
+  console.log(' ProctorNet Ops â€” Purge Test Fixtures (@proctornet.test)')
   console.log(` Mode: ${isExecute ? 'EXECUTE (DESTRUCTIVE)' : 'DRY-RUN (READ-ONLY AUDIT)'}`)
   console.log('=============================================================\n')
 
   if (isExecute) {
-    const { assertNonProduction } = require('../../proctornet/backend/src/infra/postgres/assertNonProduction')
+    const { assertNonProduction } = require('../../backend/src/infra/postgres/assertNonProduction')
     assertNonProduction('cleanup-e2e-fixtures')
 
     if (confirmText !== 'DELETE_PROCTORNET_TEST_FIXTURES') {
@@ -78,7 +78,7 @@ async function main() {
 
     if (!isExecute) {
       console.log('\n-------------------------------------------------------------')
-      console.log('[✓] DRY-RUN COMPLETE. No data was modified.')
+      console.log('[âœ“] DRY-RUN COMPLETE. No data was modified.')
       console.log('To execute this purge, re-run with:')
       console.log('  node scripts/ops/cleanup-e2e-fixtures.js --execute --confirm "DELETE_PROCTORNET_TEST_FIXTURES"')
       console.log('-------------------------------------------------------------\n')
@@ -117,7 +117,7 @@ async function main() {
     }
 
     console.log('\n=============================================================')
-    console.log('🎉 SUCCESS: All test fixtures cleanly purged.')
+    console.log('ðŸŽ‰ SUCCESS: All test fixtures cleanly purged.')
     console.log('=============================================================\n')
   } catch (err) {
     console.error('\n[FATAL] Error cleaning test fixtures:', err.message)
@@ -132,3 +132,4 @@ if (require.main === module) {
 }
 
 module.exports = { main }
+

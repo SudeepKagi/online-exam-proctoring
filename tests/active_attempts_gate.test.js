@@ -1,18 +1,18 @@
-import { test, describe } from 'node:test'
+﻿import { test, describe } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { execSync } from 'node:child_process'
 
 const REPO_ROOT = path.resolve('.')
-const SCRIPT_PATH = path.join(REPO_ROOT, 'proctornet/backend/scripts/ops/active-attempts.js')
+const SCRIPT_PATH = path.join(REPO_ROOT, 'backend/scripts/ops/active-attempts.js')
 const DEPLOY_SCRIPT_PATH = path.join(REPO_ROOT, 'ops/aws/scripts/deploy-release.sh')
 
 describe('Exam-Aware Deployment Gate (FLW-09 / S5 / Appendix D)', () => {
-  test('active-attempts.js script exists in proctornet/backend/scripts/ops/', () => {
+  test('active-attempts.js script exists in backend/scripts/ops/', () => {
     assert.ok(
       fs.existsSync(SCRIPT_PATH),
-      'active-attempts.js must exist at proctornet/backend/scripts/ops/active-attempts.js'
+      'active-attempts.js must exist at backend/scripts/ops/active-attempts.js'
     )
   })
 
@@ -54,3 +54,4 @@ describe('Exam-Aware Deployment Gate (FLW-09 / S5 / Appendix D)', () => {
     )
   })
 })
+

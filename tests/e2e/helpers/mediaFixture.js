@@ -1,10 +1,10 @@
-const path = require('path')
+﻿const path = require('path')
 const crypto = require('crypto')
-require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/dotenv')).config({ path: path.resolve(__dirname, '../../../proctornet/backend/.env') })
-const { PrismaClient } = require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/@prisma/client'))
-const bcrypt = require(path.resolve(__dirname, '../../../proctornet/backend/node_modules/bcryptjs'))
-const { signToken } = require(path.resolve(__dirname, '../../../proctornet/backend/src/utils/jwt'))
-const { mediaService } = require(path.resolve(__dirname, '../../../proctornet/backend/src/modules/media/media.service'))
+require(path.resolve(__dirname, '../../../backend/node_modules/dotenv')).config({ path: path.resolve(__dirname, '../../../backend/.env') })
+const { PrismaClient } = require(path.resolve(__dirname, '../../../backend/node_modules/@prisma/client'))
+const bcrypt = require(path.resolve(__dirname, '../../../backend/node_modules/bcryptjs'))
+const { signToken } = require(path.resolve(__dirname, '../../../backend/src/utils/jwt'))
+const { mediaService } = require(path.resolve(__dirname, '../../../backend/src/modules/media/media.service'))
 
 const prisma = new PrismaClient()
 
@@ -193,3 +193,4 @@ module.exports = {
   setupMediaPlaneFixture,
   cleanupMediaPlaneFixture
 }
+

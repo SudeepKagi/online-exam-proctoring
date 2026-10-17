@@ -1,11 +1,11 @@
-'use strict'
+﻿'use strict'
 
-const { tokenService } = require('../../proctornet/backend/src/modules/auth/tokenService')
-const { ROLES } = require('../../proctornet/backend/src/shared/roles')
+const { tokenService } = require('../../backend/src/modules/auth/tokenService')
+const { ROLES } = require('../../backend/src/shared/roles')
 
 /**
  * Creates a real session in auth_sessions and returns a valid access token with `sid`
- * (§1 CI-C, SEC-1, C1.3)
+ * (Â§1 CI-C, SEC-1, C1.3)
  *
  * @param {Object} user User object with { id, role, email }
  * @param {Object} [options] Optional examId, ip, userAgent
@@ -36,3 +36,4 @@ async function loginAs(user, options = {}) {
 module.exports = {
   loginAs
 }
+

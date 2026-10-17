@@ -85,8 +85,9 @@ export function isValidViolationType(type) {
 }
 `
 
-const backendTarget = path.join(rootDir, 'proctornet', 'backend', 'src', 'shared', 'violationTypes.js')
-const frontendTarget = path.join(rootDir, 'proctornet', 'frontend', 'src', 'shared', 'violationTypes.js')
+const backendTarget = path.join(rootDir, 'backend', 'src', 'shared', 'violationTypes.js')
+const frontendTarget = path.join(rootDir, 'frontend', 'src', 'shared', 'violationTypes.js')
+const sharedTarget = path.join(rootDir, 'shared', 'violationTypes.js')
 
 fs.mkdirSync(path.dirname(backendTarget), { recursive: true })
 fs.writeFileSync(backendTarget, backendContent, 'utf8')
@@ -94,6 +95,9 @@ fs.writeFileSync(backendTarget, backendContent, 'utf8')
 fs.mkdirSync(path.dirname(frontendTarget), { recursive: true })
 fs.writeFileSync(frontendTarget, frontendContent, 'utf8')
 
+fs.writeFileSync(sharedTarget, backendContent, 'utf8')
+
 console.log('✅ Generated violation types:')
 console.log('  →', backendTarget)
 console.log('  →', frontendTarget)
+console.log('  →', sharedTarget)

@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
@@ -7,14 +7,14 @@ try {
   z = require('zod')
 } catch (_) {
   try {
-    z = require('../proctornet/node_modules/zod')
+    z = require('../node_modules/zod')
   } catch (__) {
-    z = require('../proctornet/backend/node_modules/zod')
+    z = require('../backend/node_modules/zod')
   }
 }
 if (z.z) z = z.z
-const { KNOWN_DEFAULTS } = require('../proctornet/backend/src/shared/validateConfig')
-const config = require('../proctornet/backend/src/shared/config')
+const { KNOWN_DEFAULTS } = require('../backend/src/shared/validateConfig')
+const config = require('../backend/src/shared/config')
 
 describe('Hermetic Environment & Configuration Integrity Gates (Phase C2)', () => {
   it('C2.1: Production boot-time validation fails closed on insecure or missing JWT_SECRET', () => {
@@ -35,7 +35,7 @@ describe('Hermetic Environment & Configuration Integrity Gates (Phase C2)', () =
     delete process.env.JWT_SECRET
 
     // Re-evaluating should not fallback to a hardcoded string
-    const freshConfig = require('../proctornet/backend/src/shared/config')
+    const freshConfig = require('../backend/src/shared/config')
     // In test environment, it reads process.env.JWT_SECRET if set, but never hardcodes 'dummy-secret'
     assert.notStrictEqual(freshConfig.jwtSecret, 'dummy-secret')
     assert.notStrictEqual(freshConfig.jwtSecret, 'secret')
@@ -72,7 +72,7 @@ describe('Hermetic Environment & Configuration Integrity Gates (Phase C2)', () =
     // Inspect s3.client.js source to assert IS_PROD credential rule
     const fs = require('fs')
     const path = require('path')
-    const s3Source = fs.readFileSync(path.join(__dirname, '../proctornet/backend/src/infra/s3/s3.client.js'), 'utf8')
+    const s3Source = fs.readFileSync(path.join(__dirname, '../backend/src/infra/s3/s3.client.js'), 'utf8')
 
     // Must guard credentials with if (!IS_PROD)
     assert.match(s3Source, /if\s*\(!IS_PROD\)/, 'Static credentials must only be allowed when !IS_PROD')
@@ -87,3 +87,4 @@ describe('Hermetic Environment & Configuration Integrity Gates (Phase C2)', () =
     assert.doesNotMatch(ciContent, /cp\s+.*\.env\.example\s+.*\.env/, 'ci.yml must not copy .env.example')
   })
 })
+

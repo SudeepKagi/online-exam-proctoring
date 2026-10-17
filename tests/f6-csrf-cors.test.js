@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
@@ -10,10 +10,10 @@ const assert = require('node:assert')
 const path = require('path')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
-const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 const { tokenService } = require(path.join(BACKEND_ROOT, 'src/modules/auth/tokenService'))
 
-describe('F6 — CSRF & CORS Production Parity Enforcement', () => {
+describe('F6 â€” CSRF & CORS Production Parity Enforcement', () => {
   it('rejects cross-origin requests from arbitrary sslip.io subdomains (e.g. evil.sslip.io)', () => {
     // Test exact origin evaluation function pattern in app.js
     const allowedOrigins = ['https://exam.myuniversity.edu']
@@ -106,3 +106,4 @@ describe('F6 — CSRF & CORS Production Parity Enforcement', () => {
     assert.strictEqual(capturedCookies['pn_rt'].sameSite, 'lax', 'pn_rt must be SameSite=lax')
   })
 })
+

@@ -1,0 +1,14 @@
+{
+  "roles": [
+    "ADMIN",
+    "FACULTY",
+    "INVIGILATOR",
+    "STUDENT"
+  ],
+  "roleValues": {
+    "ADMIN": "admin",
+    "FACULTY": "faculty",
+    "INVIGILATOR": "invigilator",
+    "STUDENT": "student"
+  }
+}

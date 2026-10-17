@@ -1,13 +1,13 @@
-const { describe, it, after } = require('node:test')
+﻿const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
-const { questionService } = require(path.join(__dirname, '../proctornet/backend/src/modules/questions/service'))
-const { questionRepository } = require(path.join(__dirname, '../proctornet/backend/src/modules/questions/repository'))
-const facultyService = require(path.join(__dirname, '../proctornet/backend/src/modules/faculty/service'))
-const facultyRepository = require(path.join(__dirname, '../proctornet/backend/src/modules/faculty/repository'))
-const { ConflictError, ValidationError } = require(path.join(__dirname, '../proctornet/backend/src/shared/errors'))
-const { ROLES } = require(path.join(__dirname, '../proctornet/backend/src/shared/roles'))
+const { questionService } = require(path.join(__dirname, '../backend/src/modules/questions/service'))
+const { questionRepository } = require(path.join(__dirname, '../backend/src/modules/questions/repository'))
+const facultyService = require(path.join(__dirname, '../backend/src/modules/faculty/service'))
+const facultyRepository = require(path.join(__dirname, '../backend/src/modules/faculty/repository'))
+const { ConflictError, ValidationError } = require(path.join(__dirname, '../backend/src/shared/errors'))
+const { ROLES } = require(path.join(__dirname, '../backend/src/shared/roles'))
 
 const TEST_EXAM_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
 const TEST_QUESTION_ID = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'
@@ -106,7 +106,7 @@ describe('BUG-E06: Question Immutability After Publish & In-Place Option Updates
   })
 
   it('updates options in-place in facultyRepository without deleting existing option IDs', async () => {
-    const { prisma } = require(path.join(__dirname, '../proctornet/backend/src/infra/postgres/client'))
+    const { prisma } = require(path.join(__dirname, '../backend/src/infra/postgres/client'))
     const origTransaction = prisma.$transaction
 
     try {
@@ -170,8 +170,9 @@ describe('BUG-E06: Question Immutability After Publish & In-Place Option Updates
 
   after(async () => {
     try {
-      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      const { closeAll } = require('../backend/src/lifecycle')
       await closeAll()
     } catch {}
   })
 })
+

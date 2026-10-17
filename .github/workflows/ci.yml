@@ -92,8 +92,8 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
         run: |
-          npx prisma migrate deploy --schema=proctornet/backend/prisma/schema.prisma
-          node proctornet/backend/prisma/seed/admin.js
+          npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+          node backend/prisma/seed/admin.js
 
       - name: Backend Integration Tests
         env:
@@ -188,11 +188,11 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
           DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
         run: |
-          npx prisma migrate deploy --schema=proctornet/backend/prisma/schema.prisma
-          node proctornet/backend/prisma/seed/admin.js
+          npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+          node backend/prisma/seed/admin.js
 
       - name: Create MinIO S3 Test Bucket
-        working-directory: proctornet/backend
+        working-directory: backend
         run: |
           node -e "
             const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');

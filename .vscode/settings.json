@@ -1,9 +1,9 @@
-{
+﻿{
   "python.defaultInterpreterPath": "C:\\Users\\sudee\\AppData\\Local\\Python\\bin\\python.exe",
   "python.analysis.extraPaths": [
-    "./proctornet/python-service",
-    "./proctornet/python-service/services",
-    "./proctornet/python-service/routes"
+    "./python-service",
+    "./python-service/services",
+    "./python-service/routes"
   ],
   "files.watcherExclude": {
     "**/.git/objects/**": true,
@@ -20,3 +20,4 @@
     "**/.terraform": true
   }
 }
+

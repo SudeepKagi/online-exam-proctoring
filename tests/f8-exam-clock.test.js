@@ -1,4 +1,4 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const path = require('path')
 
@@ -7,7 +7,7 @@ process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
 process.env.START_WORKERS = 'false'
 
-const BACKEND_ROOT = path.resolve(__dirname, '../proctornet/backend')
+const BACKEND_ROOT = path.resolve(__dirname, '../backend')
 const {
   calculateAttemptExpiry,
   isAttemptExpired,
@@ -21,7 +21,7 @@ const {
   ANSWER_CUTOFF_GRACE_SECONDS
 } = require(path.join(BACKEND_ROOT, 'src/modules/exams/examClock'))
 
-describe('F8 — Unified examClock module & consistent time rules', () => {
+describe('F8 â€” Unified examClock module & consistent time rules', () => {
   const examStart = new Date('2026-10-10T10:00:00.000Z')
   const examEnd = new Date('2026-10-10T11:00:00.000Z') // 60 min window
   const duration = 30 // 30 min duration
@@ -97,3 +97,4 @@ describe('F8 — Unified examClock module & consistent time rules', () => {
     assert.ok(Object.isFrozen(EXAM_CLOCK_CONFIG))
   })
 })
+

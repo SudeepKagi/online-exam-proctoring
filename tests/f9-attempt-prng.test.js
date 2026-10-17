@@ -1,4 +1,4 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const path = require('path')
 
@@ -7,14 +7,14 @@ process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
 process.env.START_WORKERS = 'false'
 
-const BACKEND_ROOT = path.resolve(__dirname, '../proctornet/backend')
+const BACKEND_ROOT = path.resolve(__dirname, '../backend')
 const {
   createSeededRng,
   shuffleArray,
   buildAttemptQuestions
 } = require(path.join(BACKEND_ROOT, 'src/modules/attempts/repository'))
 
-describe('F9 — Deterministic Mulberry32 PRNG & Unified buildAttemptQuestions', () => {
+describe('F9 â€” Deterministic Mulberry32 PRNG & Unified buildAttemptQuestions', () => {
   it('F9.1: createSeededRng never collapses to zero on empty seed', () => {
     const rng = createSeededRng('')
     const v1 = rng()
@@ -39,7 +39,7 @@ describe('F9 — Deterministic Mulberry32 PRNG & Unified buildAttemptQuestions',
     assert.ok(mean >= 0.46 && mean <= 0.54, `Mean ${mean} must be close to 0.5`)
   })
 
-  it('F9.3: deterministic replay — identical seed produces identical order', () => {
+  it('F9.3: deterministic replay â€” identical seed produces identical order', () => {
     const questions = [
       { id: 'q1', order: 1, options: [{ id: 'o1', order: 1 }, { id: 'o2', order: 2 }, { id: 'o3', order: 3 }, { id: 'o4', order: 4 }] },
       { id: 'q2', order: 2, options: [{ id: 'o5', order: 1 }, { id: 'o6', order: 2 }, { id: 'o7', order: 3 }, { id: 'o8', order: 4 }] },
@@ -112,3 +112,4 @@ describe('F9 — Deterministic Mulberry32 PRNG & Unified buildAttemptQuestions',
     assert.strictEqual(res[1].displayOrder, 2)
   })
 })
+

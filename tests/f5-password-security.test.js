@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
@@ -9,14 +9,14 @@ const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const path = require('path')
 const REPO_ROOT = path.resolve(__dirname, '..')
-const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 
 let bcrypt
 try {
   bcrypt = require('bcrypt')
 } catch {
   try {
-    bcrypt = require(path.join(REPO_ROOT, 'proctornet/node_modules/bcrypt'))
+    bcrypt = require(path.join(REPO_ROOT, 'node_modules/bcrypt'))
   } catch {
     bcrypt = require(path.join(REPO_ROOT, 'node_modules/bcryptjs'))
   }
@@ -26,7 +26,7 @@ const { authenticate } = require(path.join(BACKEND_ROOT, 'src/middleware/authent
 const { tokenService } = require(path.join(BACKEND_ROOT, 'src/modules/auth/tokenService'))
 const { KNOWN_DEFAULT_PASSWORDS } = require(path.join(REPO_ROOT, 'scripts/ops/check-default-credentials'))
 
-describe('F5 — Default Password Security & Mandatory Password Change Gate', () => {
+describe('F5 â€” Default Password Security & Mandatory Password Change Gate', () => {
   it('KNOWN_DEFAULT_PASSWORDS includes known defaults Admin@123, Faculty@123, Student@123', () => {
     assert.strictEqual(KNOWN_DEFAULT_PASSWORDS.includes('Admin@123'), true)
     assert.strictEqual(KNOWN_DEFAULT_PASSWORDS.includes('Faculty@123'), true)
@@ -91,3 +91,4 @@ describe('F5 — Default Password Security & Mandatory Password Change Gate', ()
     assert.strictEqual(passed, true, 'change-password route should be allowed')
   })
 })
+

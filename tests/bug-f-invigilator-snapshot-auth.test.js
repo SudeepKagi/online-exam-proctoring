@@ -1,14 +1,14 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const crypto = require('crypto')
-const { proctoringService } = require('../proctornet/backend/src/modules/proctoring/service')
-const { examIdParamSchema } = require('../proctornet/backend/src/modules/proctoring/validation')
-const { prisma } = require('../proctornet/backend/src/infra/postgres/client')
-const { redisClient } = require('../proctornet/backend/src/infra/redis/client')
+const { proctoringService } = require('../backend/src/modules/proctoring/service')
+const { examIdParamSchema } = require('../backend/src/modules/proctoring/validation')
+const { prisma } = require('../backend/src/infra/postgres/client')
+const { redisClient } = require('../backend/src/infra/redis/client')
 
-describe('BUG F — Invigilator live feed snapshot authorization & routing', () => {
+describe('BUG F â€” Invigilator live feed snapshot authorization & routing', () => {
   after(async () => {
     try {
       if (redisClient?.client) {
@@ -83,3 +83,4 @@ describe('BUG F — Invigilator live feed snapshot authorization & routing', () 
     assert.ok(parsedWithExamId.success, 'examIdParamSchema must successfully validate params with examId')
   })
 })
+

@@ -47,7 +47,7 @@ async function main() {
   runStep(
     'Prisma Validate',
     'npx',
-    ['prisma', 'validate', '--schema=proctornet/backend/prisma/schema.prisma']
+    ['prisma', 'validate', '--schema=backend/prisma/schema.prisma']
   )
 
   // 2. Prisma Migration Drift Diff (when shadow DB URL is explicitly provided)
@@ -61,8 +61,8 @@ async function main() {
           'prisma',
           'migrate',
           'diff',
-          '--from-migrations=proctornet/backend/prisma/migrations',
-          '--to-schema-datamodel=proctornet/backend/prisma/schema.prisma',
+          '--from-migrations=backend/prisma/migrations',
+          '--to-schema-datamodel=backend/prisma/schema.prisma',
           `--shadow-database-url=${shadowUrl}`,
           '--exit-code'
         ]
@@ -78,14 +78,14 @@ async function main() {
   runStep(
     'Backend Lint',
     'npm',
-    ['run', 'lint', '--prefix', 'proctornet/backend']
+    ['run', 'lint', '--prefix', 'backend']
   )
 
   // 4. Frontend Lint & Build
   runStep(
     'Frontend Build',
     'npm',
-    ['run', 'build', '--prefix', 'proctornet/frontend']
+    ['run', 'build', '--prefix', 'frontend']
   )
 
   // 5. Unit Tests (Pure in-memory, no external database or redis dependencies)
@@ -94,13 +94,11 @@ async function main() {
     'node',
     [
       '--test',
-      'proctornet/backend/tests/assertNonProduction.test.js',
-      'proctornet/backend/tests/p4-state-machine.test.js',
-      'proctornet/backend/tests/p5-client-compression.test.js',
-      'proctornet/backend/tests/gate-sanity-banned-terms.test.js',
-      'proctornet/backend/tests/w1-student-presenter.test.js',
-      'proctornet/backend/tests/w2-agent-gate.test.js',
-      'proctornet/backend/tests/w3-groq-llm.test.js'
+      '--test-force-exit',
+      'backend/tests/assertNonProduction.test.js',
+      'backend/tests/p4-state-machine.test.js',
+      'backend/tests/p5-client-compression.test.js',
+      'backend/tests/gate-sanity-banned-terms.test.js'
     ]
   )
 

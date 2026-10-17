@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * ==============================================================================
  * ProctorNet Post-Run Data Integrity Reconciliation (Phase P10 Task 10.3)
@@ -7,8 +7,8 @@
  */
 
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../proctornet/backend/node_modules'))
-require('dotenv').config({ path: path.resolve(__dirname, '../../proctornet/backend/.env') })
+module.paths.push(path.resolve(__dirname, '../../backend/node_modules'))
+require('dotenv').config({ path: path.resolve(__dirname, '../../backend/.env') })
 const fs = require('fs')
 const readline = require('readline')
 const { PrismaClient } = require('@prisma/client')
@@ -28,7 +28,7 @@ const REPORT_DIR = path.resolve(
   RUN_ID || ''
 )
 
-// Valid State Transitions per ADR-004 & Notion 13.7 §16
+// Valid State Transitions per ADR-004 & Notion 13.7 Â§16
 const VALID_NEXT_STATES = {
   READY: ['ACTIVE', 'TIMED_OUT', 'TERMINATED'],
   ACTIVE: ['SUBMITTED', 'SUSPENDED', 'TERMINATED', 'TIMED_OUT'],
@@ -40,7 +40,7 @@ const VALID_NEXT_STATES = {
 
 async function verifyIntegrity() {
   console.log(`\n================================================================================`)
-  console.log(`🔍 ProctorNet Post-Load Integrity Reconciliation`)
+  console.log(`ðŸ” ProctorNet Post-Load Integrity Reconciliation`)
   console.log(`   Target Run: ${RUN_ID || '(Auto-Detect Latest)'}`)
   console.log(`   Report Dir: ${REPORT_DIR}`)
   console.log(`================================================================================\n`)
@@ -79,7 +79,7 @@ async function verifyIntegrity() {
         // Skip malformed lines
       }
     }
-    console.log(`[✓] Parsed ${totalLedgerRecords} acknowledged writes across ${latestAckedByQuestion.size} distinct questions.`)
+    console.log(`[âœ“] Parsed ${totalLedgerRecords} acknowledged writes across ${latestAckedByQuestion.size} distinct questions.`)
   } else {
     console.warn(`[-] No ledger.ndjson found at ${ledgerPath}. Proceeding with database-only invariant checks.`)
   }
@@ -128,16 +128,16 @@ async function verifyIntegrity() {
 
         if (!dbAnswer) {
           results.lostAcknowledgedAnswers++
-          console.error(`  ❌ CRITICAL: Missing DB Answer for acknowledged question: ${qId}`)
+          console.error(`  âŒ CRITICAL: Missing DB Answer for acknowledged question: ${qId}`)
         } else {
           // Verify option and revision
           if (acked.optionId && dbAnswer.selectedOptionId !== acked.optionId) {
             results.lostAcknowledgedAnswers++
-            console.error(`  ❌ CRITICAL: Option mismatch on ${qId}. Acked=${acked.optionId}, DB=${dbAnswer.selectedOptionId}`)
+            console.error(`  âŒ CRITICAL: Option mismatch on ${qId}. Acked=${acked.optionId}, DB=${dbAnswer.selectedOptionId}`)
           }
           if (dbAnswer.revision < acked.revision) {
             results.divergentRevisions++
-            console.error(`  ❌ CRITICAL: DB Revision ${dbAnswer.revision} < Acked Revision ${acked.revision} on ${qId}`)
+            console.error(`  âŒ CRITICAL: DB Revision ${dbAnswer.revision} < Acked Revision ${acked.revision} on ${qId}`)
           }
         }
       }
@@ -145,7 +145,7 @@ async function verifyIntegrity() {
   }
 
   if (results.lostAcknowledgedAnswers === 0 && results.divergentRevisions === 0) {
-    console.log('  ✅ PASS: Zero lost acknowledged answers verified across all ledger records.')
+    console.log('  âœ… PASS: Zero lost acknowledged answers verified across all ledger records.')
   } else {
     results.passed = false
   }
@@ -165,9 +165,9 @@ async function verifyIntegrity() {
   if (duplicateResults.length > 0) {
     results.duplicateResults = duplicateResults.length
     results.passed = false
-    console.error(`  ❌ FAIL: Found ${duplicateResults.length} duplicate results!`)
+    console.error(`  âŒ FAIL: Found ${duplicateResults.length} duplicate results!`)
   } else {
-    console.log('  ✅ PASS: Zero duplicate (attempt_id) results in exam_results table.')
+    console.log('  âœ… PASS: Zero duplicate (attempt_id) results in exam_results table.')
   }
 
   // Wait briefly for in-flight evaluations to settle if worker is processing
@@ -191,9 +191,9 @@ async function verifyIntegrity() {
 
   if (submittedWithoutResult.length > 0) {
     results.missingResultsForSubmitted = submittedWithoutResult.length
-    console.log(`  ℹ️ Note: ${submittedWithoutResult.length} attempts currently pending asynchronous worker grading.`)
+    console.log(`  â„¹ï¸ Note: ${submittedWithoutResult.length} attempts currently pending asynchronous worker grading.`)
   } else {
-    console.log('  ✅ PASS: Exactly one result per submitted/expired attempt.')
+    console.log('  âœ… PASS: Exactly one result per submitted/expired attempt.')
   }
 
   // ----------------------------------------------------------------------------
@@ -210,9 +210,9 @@ async function verifyIntegrity() {
   results.staleActiveAttempts = staleActive.length
   if (staleActive.length > 0) {
     results.passed = false
-    console.error(`  ❌ FAIL: Found ${staleActive.length} ACTIVE attempts that should have been expired by sweeper!`)
+    console.error(`  âŒ FAIL: Found ${staleActive.length} ACTIVE attempts that should have been expired by sweeper!`)
   } else {
-    console.log('  ✅ PASS: No lingering ACTIVE attempts past expires_at + 60s.')
+    console.log('  âœ… PASS: No lingering ACTIVE attempts past expires_at + 60s.')
   }
 
   // ----------------------------------------------------------------------------
@@ -236,11 +236,11 @@ async function verifyIntegrity() {
 
   if (failedOutbox.length > 0) {
     results.passed = false
-    console.error(`  ❌ FAIL: Found ${failedOutbox.length} permanently FAILED outbox events!`)
+    console.error(`  âŒ FAIL: Found ${failedOutbox.length} permanently FAILED outbox events!`)
   } else if (pendingOutbox.length > 0) {
-    console.log(`  ⚠️ Note: ${pendingOutbox.length} outbox events currently in-flight/pending drain.`)
+    console.log(`  âš ï¸ Note: ${pendingOutbox.length} outbox events currently in-flight/pending drain.`)
   } else {
-    console.log('  ✅ PASS: Outbox is completely drained with zero failed or pending events.')
+    console.log('  âœ… PASS: Outbox is completely drained with zero failed or pending events.')
   }
 
   // ----------------------------------------------------------------------------
@@ -285,13 +285,13 @@ async function verifyIntegrity() {
       if (allowedFrom && Array.isArray(allowedFrom)) {
         if (!allowedFrom.includes(currentState) && currentState !== targetState) {
           illegalTransitions++
-          console.error(`  ❌ Illegal Transition on Attempt ${attemptId}: ${currentState} not in [${allowedFrom.join(', ')}] -> ${targetState}`)
+          console.error(`  âŒ Illegal Transition on Attempt ${attemptId}: ${currentState} not in [${allowedFrom.join(', ')}] -> ${targetState}`)
         }
       } else if (currentState && targetState) {
         const allowed = VALID_NEXT_STATES[currentState] || []
         if (!allowed.includes(targetState) && currentState !== targetState) {
           illegalTransitions++
-          console.error(`  ❌ Illegal Transition on Attempt ${attemptId}: ${currentState} -> ${targetState}`)
+          console.error(`  âŒ Illegal Transition on Attempt ${attemptId}: ${currentState} -> ${targetState}`)
         }
       }
       currentState = targetState
@@ -300,7 +300,7 @@ async function verifyIntegrity() {
 
   results.illegalStateTransitions = illegalTransitions
   if (illegalTransitions === 0) {
-    console.log(`  ✅ PASS: Verified ${attemptAuditLogs.length} state transitions across ${historyByAttempt.size} attempts with zero illegal steps.`)
+    console.log(`  âœ… PASS: Verified ${attemptAuditLogs.length} state transitions across ${historyByAttempt.size} attempts with zero illegal steps.`)
   } else {
     results.passed = false
   }
@@ -324,9 +324,9 @@ async function verifyIntegrity() {
   results.bolaBreaches = crossTenantAttempts.length
   if (crossTenantAttempts.length > 0) {
     results.passed = false
-    console.error(`  ❌ FAIL: Detected ${crossTenantAttempts.length} cross-tenant or unauthorized attempt accesses!`)
+    console.error(`  âŒ FAIL: Detected ${crossTenantAttempts.length} cross-tenant or unauthorized attempt accesses!`)
   } else {
-    console.log('  ✅ PASS: Zero BOLA successes (100% tenant & object-level authorization enforced).')
+    console.log('  âœ… PASS: Zero BOLA successes (100% tenant & object-level authorization enforced).')
   }
 
   // ----------------------------------------------------------------------------
@@ -352,7 +352,7 @@ async function verifyIntegrity() {
 
     if (sampleAttempt) {
       // Simulate DTO mapper
-      const { toStudentAttemptDTO } = require(path.resolve(__dirname, '../../proctornet/backend/src/modules/attempts/repository'))
+      const { toStudentAttemptDTO } = require(path.resolve(__dirname, '../../backend/src/modules/attempts/repository'))
       const rawQuestions = await prisma.question.findMany({
         where: { examId: sampleAttempt.examId },
         include: { options: true }
@@ -362,7 +362,7 @@ async function verifyIntegrity() {
 
       if (serialized.includes('isCorrect') || serialized.includes('is_correct')) {
         isCorrectLeaks++
-        console.error('  ❌ FAIL: Student Attempt DTO contains leaked isCorrect / is_correct property!')
+        console.error('  âŒ FAIL: Student Attempt DTO contains leaked isCorrect / is_correct property!')
       }
     }
   } catch (dtoErr) {
@@ -371,7 +371,7 @@ async function verifyIntegrity() {
 
   results.isCorrectLeaks = isCorrectLeaks
   if (isCorrectLeaks === 0) {
-    console.log('  ✅ PASS: Zero isCorrect leaks across student question payloads and response DTOs.')
+    console.log('  âœ… PASS: Zero isCorrect leaks across student question payloads and response DTOs.')
   } else {
     results.passed = false
   }
@@ -396,7 +396,7 @@ async function verifyIntegrity() {
   // Final Reconciliation Verdict
   // ----------------------------------------------------------------------------
   console.log(`\n================================================================================`)
-  console.log(`🏁 Integrity Reconciliation Verdict: ${results.passed ? 'PASSED ✅' : 'FAILED ❌'}`)
+  console.log(`ðŸ Integrity Reconciliation Verdict: ${results.passed ? 'PASSED âœ…' : 'FAILED âŒ'}`)
   console.log(`================================================================================\n`)
 
   return results
@@ -408,10 +408,11 @@ if (require.main === module) {
       process.exit(results.passed ? 0 : 1)
     })
     .catch((err) => {
-      console.error('\n❌ Fatal Integrity Verification Error:', err)
+      console.error('\nâŒ Fatal Integrity Verification Error:', err)
       process.exit(1)
     })
     .finally(() => prisma.$disconnect())
 }
 
 module.exports = { verifyIntegrity }
+

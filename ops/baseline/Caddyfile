@@ -45,7 +45,7 @@ http://43.204.45.86, http://43.204.45.86.sslip.io, http://43-204-45-86.sslip.io 
     }
 
     handle {
-        root * /opt/proctornet/current/proctornet/frontend/dist
+        root * /opt/proctornet/current/frontend/dist
         try_files {path} /index.html
         file_server
     }

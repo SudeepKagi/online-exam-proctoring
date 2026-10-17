@@ -1,4 +1,4 @@
-/**
+﻿/**
  * student.js - Full-Fidelity Virtual Student Agent
  *
  * Implements the Section 10.1 load model:
@@ -16,7 +16,7 @@
  */
 
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
+module.paths.push(path.resolve(__dirname, '../../../backend/node_modules'))
 const { io } = require('socket.io-client')
 const crypto = require('crypto')
 
@@ -556,3 +556,4 @@ class VirtualStudent {
 }
 
 module.exports = { VirtualStudent }
+

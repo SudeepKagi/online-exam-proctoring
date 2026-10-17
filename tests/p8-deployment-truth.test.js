@@ -1,4 +1,4 @@
-/**
+﻿/**
  * P8 Deployment Truth Test Suite (Q7)
  *
  * Validates infrastructure contracts without starting Docker:
@@ -180,7 +180,7 @@ describe('P8 Deployment Truth Test Suite', () => {
   describe('4. Frontend Dockerfile', () => {
     let dockerfile
 
-    before(() => { dockerfile = readFile('proctornet/frontend/Dockerfile') })
+    before(() => { dockerfile = readFile('frontend/Dockerfile') })
 
     it('4.1 multi-stage build: builder stage with npm ci + npm run build', () => {
       assert.match(dockerfile, /AS builder/, 'must have builder stage')
@@ -209,7 +209,7 @@ describe('P8 Deployment Truth Test Suite', () => {
   describe('5. Worker heartbeat (G-04)', () => {
     let workerSrc
 
-    before(() => { workerSrc = readFile('proctornet/backend/src/worker.js') })
+    before(() => { workerSrc = readFile('backend/src/worker.js') })
 
     it('5.1 worker.js writes /tmp/worker.ready heartbeat file', () => {
       assert.match(workerSrc, /worker\.ready/, 'must reference worker.ready sentinel file')
@@ -327,3 +327,4 @@ describe('P8 Deployment Truth Test Suite', () => {
     })
   })
 })
+

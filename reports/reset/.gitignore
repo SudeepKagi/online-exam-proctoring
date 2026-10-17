@@ -1,3 +1,0 @@
-# Ignore timestamped dry-run plans
-*-plan.json
-!.gitignore

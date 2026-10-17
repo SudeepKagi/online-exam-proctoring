@@ -14,7 +14,7 @@ const fs = require('fs');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '../..');
-const FRONTEND_SRC = path.join(REPO_ROOT, 'proctornet/frontend/src');
+const FRONTEND_SRC = path.join(REPO_ROOT, 'frontend/src');
 
 // §4.1 Banned vocabulary in user-visible text (case-insensitive)
 const BANNED_PATTERNS = [
@@ -122,9 +122,9 @@ function walk(dir) {
 }
 
 const files = walk(FRONTEND_SRC);
-const rootIndexHtml = path.join(REPO_ROOT, 'proctornet/frontend/index.html');
+const rootIndexHtml = path.join(REPO_ROOT, 'frontend/index.html');
 if (fs.existsSync(rootIndexHtml)) files.push(rootIndexHtml);
-const distIndexHtml = path.join(REPO_ROOT, 'proctornet/frontend/dist/index.html');
+const distIndexHtml = path.join(REPO_ROOT, 'frontend/dist/index.html');
 if (fs.existsSync(distIndexHtml)) files.push(distIndexHtml);
 
 const violations = [];

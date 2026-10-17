@@ -1,4 +1,4 @@
-/**
+﻿/**
  * tests/e2e/r2-evidence-invigilator.spec.js
  * Mandatory Playwright E2E verification test suite for Phase R2:
  *
@@ -23,18 +23,18 @@ const { test, expect } = require('@playwright/test')
 const path = require('path')
 const crypto = require('crypto')
 
-require(path.resolve(__dirname, '../../proctornet/backend/node_modules/dotenv')).config({
-  path: path.resolve(__dirname, '../../proctornet/backend/.env')
+require(path.resolve(__dirname, '../../backend/node_modules/dotenv')).config({
+  path: path.resolve(__dirname, '../../backend/.env')
 })
 
-const { PrismaClient } = require(path.resolve(__dirname, '../../proctornet/backend/node_modules/@prisma/client'))
-const bcrypt = require(path.resolve(__dirname, '../../proctornet/backend/node_modules/bcryptjs'))
-const { putObject } = require(path.resolve(__dirname, '../../proctornet/backend/src/infra/s3/s3.client'))
-const { generateUnambiguousPassword } = require(path.resolve(__dirname, '../../proctornet/backend/src/modules/exams/service'))
+const { PrismaClient } = require(path.resolve(__dirname, '../../backend/node_modules/@prisma/client'))
+const bcrypt = require(path.resolve(__dirname, '../../backend/node_modules/bcryptjs'))
+const { putObject } = require(path.resolve(__dirname, '../../backend/src/infra/s3/s3.client'))
+const { generateUnambiguousPassword } = require(path.resolve(__dirname, '../../backend/src/modules/exams/service'))
 
 const prisma = new PrismaClient()
 
-test.describe('R2 — Evidence & Invigilator Experience E2E Suite', () => {
+test.describe('R2 â€” Evidence & Invigilator Experience E2E Suite', () => {
   let dept
   let faculty
   let student
@@ -312,3 +312,4 @@ test.describe('R2 — Evidence & Invigilator Experience E2E Suite', () => {
     }
   })
 })
+

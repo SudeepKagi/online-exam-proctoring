@@ -1,10 +1,10 @@
-const { describe, it, after } = require('node:test')
+﻿const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
-const studentService = require(path.join(__dirname, '../proctornet/backend/src/modules/student/service'))
-const studentRepository = require(path.join(__dirname, '../proctornet/backend/src/modules/student/repository'))
-const { ForbiddenError } = require(path.join(__dirname, '../proctornet/backend/src/shared/errors'))
+const studentService = require(path.join(__dirname, '../backend/src/modules/student/service'))
+const studentRepository = require(path.join(__dirname, '../backend/src/modules/student/repository'))
+const { ForbiddenError } = require(path.join(__dirname, '../backend/src/shared/errors'))
 
 describe('BUG-B06: Student Profile Guard Security', () => {
   it('blocks updating USN with ForbiddenError', async () => {
@@ -147,8 +147,9 @@ describe('BUG-B06: Student Profile Guard Security', () => {
 
   after(async () => {
     try {
-      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      const { closeAll } = require('../backend/src/lifecycle')
       await closeAll()
     } catch {}
   })
 })
+

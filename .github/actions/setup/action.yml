@@ -14,9 +14,8 @@ runs:
       shell: bash
       run: |
         npm ci --prefer-offline --no-audit
-        cd proctornet && npm ci --prefer-offline --no-audit
 
     - name: Generate Prisma Client
       shell: bash
       run: |
-        npx prisma generate --schema=proctornet/backend/prisma/schema.prisma
+        npx prisma generate --schema=backend/prisma/schema.prisma

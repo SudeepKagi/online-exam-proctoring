@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 set -euo pipefail
 
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # ProctorNet Lite Production Bootstrapper (Cloud-Init)
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 echo "=== [1/8] Configuring 2 GB Swap & Kernel Swappiness ==="
 if [ ! -f /swapfile ]; then
@@ -118,7 +118,7 @@ After=network.target
 [Service]
 Type=simple
 User=proctornet
-WorkingDirectory=/opt/proctornet/current/proctornet/backend
+WorkingDirectory=/opt/proctornet/current/backend
 Environment=NODE_ENV=production
 Environment=PORT=5000
 Environment=APP_PROFILE=lite
@@ -217,13 +217,13 @@ $${DOMAIN_NAME} {
         path /assets/*
     }
     handle @assets {
-        root * /opt/proctornet/current/proctornet/frontend/dist
+        root * /opt/proctornet/current/frontend/dist
         header Cache-Control "public, max-age=31536000, immutable"
         file_server
     }
 
     handle {
-        root * /opt/proctornet/current/proctornet/frontend/dist
+        root * /opt/proctornet/current/frontend/dist
         header Cache-Control "no-store, no-cache, must-revalidate"
         try_files {path} /index.html
         file_server
@@ -235,3 +235,4 @@ systemctl enable caddy
 systemctl restart caddy
 
 echo "=== ProctorNet Cloud-Init Bootstrap Complete ==="
+

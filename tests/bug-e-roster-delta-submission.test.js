@@ -1,14 +1,14 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
-const { submissionService } = require('../proctornet/backend/src/modules/submissions/service')
-const { submissionRepository } = require('../proctornet/backend/src/modules/submissions/repository')
-const { rosterCoalescer } = require('../proctornet/backend/src/infra/websocket/rosterCoalescer')
-const { socketEmitter } = require('../proctornet/backend/src/infra/websocket/emitter')
-const { redisClient } = require('../proctornet/backend/src/infra/redis/client')
+const { submissionService } = require('../backend/src/modules/submissions/service')
+const { submissionRepository } = require('../backend/src/modules/submissions/repository')
+const { rosterCoalescer } = require('../backend/src/infra/websocket/rosterCoalescer')
+const { socketEmitter } = require('../backend/src/infra/websocket/emitter')
+const { redisClient } = require('../backend/src/infra/redis/client')
 
-describe('BUG E — Invigilator sees student as "Live" after student has submitted', () => {
+describe('BUG E â€” Invigilator sees student as "Live" after student has submitted', () => {
   after(() => {
     try {
       if (socketEmitter?.redisClient) {
@@ -92,3 +92,4 @@ describe('BUG E — Invigilator sees student as "Live" after student has submitt
     assert.strictEqual(expectedDelta.online, false)
   })
 })
+

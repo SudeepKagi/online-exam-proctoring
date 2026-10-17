@@ -1,15 +1,15 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
-const { authService } = require('../proctornet/backend/src/modules/auth/service')
-const authRepository = require('../proctornet/backend/src/modules/auth/repository')
-const { tokenService } = require('../proctornet/backend/src/modules/auth/tokenService')
-const { redisClient } = require('../proctornet/backend/src/infra/redis/client')
+const { authService } = require('../backend/src/modules/auth/service')
+const authRepository = require('../backend/src/modules/auth/repository')
+const { tokenService } = require('../backend/src/modules/auth/tokenService')
+const { redisClient } = require('../backend/src/infra/redis/client')
 
-describe('BUG G — Hard-coded invigilator backdoor credentials rejection', () => {
+describe('BUG G â€” Hard-coded invigilator backdoor credentials rejection', () => {
   after(async () => {
     try {
       if (redisClient?.client) {
@@ -114,3 +114,4 @@ describe('BUG G — Hard-coded invigilator backdoor credentials rejection', () =
     }
   })
 })
+

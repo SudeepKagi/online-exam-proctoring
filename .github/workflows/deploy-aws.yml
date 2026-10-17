@@ -100,21 +100,16 @@ jobs:
           # If not found via gh run download, build once locally as fallback
           if [ ! -f "${TAR_FILE}" ]; then
             echo "CI artifact not found in workflow run context, generating authoritative bundle..."
-            cd proctornet
             npm ci
-            cd frontend && npm run build
-            cd ..
-            npm ci --omit=dev
-            cd backend && npx prisma generate
-            cd ../..
+            npm run build --workspace=frontend
+            npx prisma generate --schema=backend/prisma/schema.prisma
 
             printf '{\n  "version": "%s",\n  "gitSha": "%s",\n  "builtAt": "%s"\n}\n' \
               "${RELEASE_TAG}" "${HEAD_SHA}" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > VERSION
 
             tar -czf "${TAR_FILE}" \
-              proctornet/backend \
-              proctornet/node_modules \
-              proctornet/frontend/dist \
+              backend \
+              frontend/dist \
               shared \
               ops/caddy/Caddyfile \
               scripts \
@@ -205,6 +200,7 @@ jobs:
               echo "=========================================================="
               echo "[x] Deployment failed or automatically rolled back!"
               echo "=========================================================="
+              
               echo "--- Standard Output ---"
               aws ssm get-command-invocation \
                 --command-id "${COMMAND_ID}" \

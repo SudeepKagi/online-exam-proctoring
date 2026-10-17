@@ -1,6 +1,6 @@
-<#
+ï»¿<#
 .SYNOPSIS
-  ProctorNet Dev Stack — one-command startup for Windows 11 developers.
+  ProctorNet Dev Stack â€” one-command startup for Windows 11 developers.
 .DESCRIPTION
   From a clean clone: validates prerequisites, copies .env.example if
   needed, brings up the full dev stack, runs migrations, seeds admin,
@@ -42,7 +42,7 @@ if (-not $dockerRunning) {
 # -- .env guard ---------------------------------------------------------------
 $envFile = "$ROOT\.env"
 if (-not (Test-Path $envFile)) {
-  Write-Host "  [INFO] .env not found — copying from .env.example" -ForegroundColor Yellow
+  Write-Host "  [INFO] .env not found â€” copying from .env.example" -ForegroundColor Yellow
   Copy-Item "$ROOT\.env.example" $envFile
   Write-Host "  [WARN] Review $envFile and set real secrets before production use." -ForegroundColor Yellow
 }
@@ -85,7 +85,7 @@ if ($status -ne "healthy") {
 # -- Seed admin ----------------------------------------------------------------
 if (-not $NoSeed) {
   Write-Host "  Seeding admin account..." -ForegroundColor Cyan
-  Push-Location "$ROOT\proctornet\backend"
+  Push-Location "$ROOT\backend"
   node prisma/seed/admin.js
   Pop-Location
 }
@@ -108,3 +108,4 @@ Write-Host "  To stop: docker compose -f docker-compose.prod.yml -f docker-compo
 Write-Host "  Logs   : docker compose logs -f" -ForegroundColor DarkGray
 Write-Host "==================================================================" -ForegroundColor Green
 Write-Host ""
+

@@ -1,5 +1,5 @@
-# ==============================================================================
-# ProctorNet � Makefile
+﻿# ==============================================================================
+# ProctorNet — Makefile
 # Targets: smoke, up, down, build, migrate, seed, lint, test, backup
 # ==============================================================================
 .PHONY: up down build migrate seed smoke lint test backup restore
@@ -29,7 +29,7 @@ migrate:
 
 # Seed admin from .env or backup
 seed:
-	cd proctornet\backend && node prisma\seed\admin.js
+	cd backend && node prisma\seed\admin.js
 
 # --------------------------------------------------------------------------
 # smoke: golden path test against the running nginx edge (port 80)
@@ -41,12 +41,12 @@ smoke:
 
 # Lint backend + frontend
 lint:
-	cd proctornet\backend && npx eslint src --max-warnings 0
-	cd proctornet\frontend && npx eslint src --max-warnings 0
+	cd backend && npx eslint src --max-warnings 0
+	cd frontend && npx eslint src --max-warnings 0
 
 # Unit + integration tests (node --test)
 test:
-	cd proctornet\backend && node --test tests
+	cd backend && node --test tests
 
 # Backup: pg_dump + admin JSON export
 backup:
@@ -55,3 +55,4 @@ backup:
 # Restore: pg_restore into scratch DB and verify counts
 restore:
 	.\scripts\ops\backup-restore-drill.ps1
+

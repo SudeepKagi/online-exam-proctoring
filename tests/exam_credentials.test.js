@@ -1,19 +1,19 @@
-const { describe, it, after } = require('node:test')
+﻿const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
-const bcrypt = require(path.join(__dirname, '../proctornet/node_modules/bcrypt'))
+const bcrypt = require(path.join(__dirname, '../node_modules/bcrypt'))
 
 const { examService } = require(
-  path.join(__dirname, '../proctornet/backend/src/modules/exams/service')
+  path.join(__dirname, '../backend/src/modules/exams/service')
 )
 const { examRepository } = require(
-  path.join(__dirname, '../proctornet/backend/src/modules/exams/repository')
+  path.join(__dirname, '../backend/src/modules/exams/repository')
 )
-const { prisma } = require(path.join(__dirname, '../proctornet/backend/src/infra/postgres/client'))
+const { prisma } = require(path.join(__dirname, '../backend/src/infra/postgres/client'))
 const { ValidationError, ForbiddenError } = require(
-  path.join(__dirname, '../proctornet/backend/src/shared/errors')
+  path.join(__dirname, '../backend/src/shared/errors')
 )
-const { ROLES } = require(path.join(__dirname, '../proctornet/backend/src/shared/roles'))
+const { ROLES } = require(path.join(__dirname, '../backend/src/shared/roles'))
 
 const TEST_EXAM_ID = '11111111-1111-1111-1111-111111111111'
 const TEST_FACULTY_ID = '22222222-2222-2222-2222-222222222222'
@@ -175,7 +175,7 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
 
   it('facultyService.publishExam returns complete invCredentials with invId and password', async () => {
     const facultyService = require(
-      path.join(__dirname, '../proctornet/backend/src/modules/faculty/service')
+      path.join(__dirname, '../backend/src/modules/faculty/service')
     )
     const origFind = examRepository.findById
     const origUpdate = examRepository.update
@@ -227,8 +227,9 @@ describe('BUG-B07: Cryptographic Invigilator Credentials & Publish Guard', () =>
 
   after(async () => {
     try {
-      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      const { closeAll } = require('../backend/src/lifecycle')
       await closeAll()
     } catch {}
   })
 })
+

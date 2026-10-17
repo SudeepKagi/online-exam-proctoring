@@ -86,10 +86,7 @@ function discoverTests() {
   walk(path.join(REPO_ROOT, 'tests'), /\.test\.js$/)
 
   // 2. Backend tests
-  walk(path.join(REPO_ROOT, 'proctornet/backend/tests'), /\.js$/)
-
-  // 3. Device Agent tests
-  walk(path.join(REPO_ROOT, 'proctornet/device-agent/test'), /\.test\.js$/)
+  walk(path.join(REPO_ROOT, 'backend/tests'), /\.js$/)
 
   return testFiles
 }
@@ -135,7 +132,7 @@ function main() {
     process.stdout.write(`[${i + 1}/${activeTests.length}] Running ${relPath} ... `)
 
     const start = Date.now()
-    const backendNodeModules = path.join(REPO_ROOT, 'proctornet/backend/node_modules')
+    const backendNodeModules = path.join(REPO_ROOT, 'backend/node_modules')
     const rootNodeModules = path.join(REPO_ROOT, 'node_modules')
     const nodePath = [backendNodeModules, rootNodeModules, process.env.NODE_PATH].filter(Boolean).join(path.delimiter)
 

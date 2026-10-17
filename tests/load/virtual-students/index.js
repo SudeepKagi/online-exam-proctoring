@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * ==============================================================================
  * ProctorNet Virtual Students Orchestrator (Phase P10 Task 10.3)
@@ -8,7 +8,7 @@
 
 const fs = require('fs')
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
+module.paths.push(path.resolve(__dirname, '../../../backend/node_modules'))
 const { DeterministicPRNG } = require('./prng')
 const { WriteLedger } = require('./ledger')
 const { MetricsCollector } = require('./metrics')
@@ -33,7 +33,7 @@ const CONCURRENCY = parseInt(getArg('--concurrency', '50'), 10)
 
 async function main() {
   console.log(`\n================================================================================`)
-  console.log(`🎓 ProctorNet Virtual Students Load Campaign`)
+  console.log(`ðŸŽ“ ProctorNet Virtual Students Load Campaign`)
   console.log(`   Run ID:      ${RUN_ID}`)
   console.log(`   Profile:     ${PROFILE.toUpperCase()}`)
   console.log(`   Students:    ${N_STUDENTS}`)
@@ -139,7 +139,7 @@ async function main() {
   }
 
   await Promise.all(workers)
-  console.log(`\n[✓] All student lifecycle simulations finished.`)
+  console.log(`\n[âœ“] All student lifecycle simulations finished.`)
 
   // Stop invigilators
   invigilators.forEach(inv => inv.cleanup())
@@ -156,12 +156,12 @@ async function main() {
 
   // Print results
   metrics.printReport(N_STUDENTS >= 500 ? 'A' : 'A')
-  console.log(`💾 Run artifacts saved to: ${ledger.reportDir}`)
+  console.log(`ðŸ’¾ Run artifacts saved to: ${ledger.reportDir}`)
   console.log(`   - summary.json`)
   console.log(`   - ledger.ndjson\n`)
 
   if (!summary.allSlosPassed) {
-    console.warn(`⚠️ Warning: Some SLO thresholds were breached during this run.`)
+    console.warn(`âš ï¸ Warning: Some SLO thresholds were breached during this run.`)
   }
 
   return summary
@@ -169,9 +169,10 @@ async function main() {
 
 if (require.main === module) {
   main().catch(err => {
-    console.error('\n❌ Virtual Students Orchestrator Error:', err)
+    console.error('\nâŒ Virtual Students Orchestrator Error:', err)
     process.exit(1)
   })
 }
 
 module.exports = { main }
+

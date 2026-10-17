@@ -1,10 +1,10 @@
-const { describe, it, after } = require('node:test')
+﻿const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
-const facultyService = require(path.join(__dirname, '../proctornet/backend/src/modules/faculty/service'))
-const facultyRepository = require(path.join(__dirname, '../proctornet/backend/src/modules/faculty/repository'))
-const { ForbiddenError, NotFoundError } = require(path.join(__dirname, '../proctornet/backend/src/shared/errors'))
+const facultyService = require(path.join(__dirname, '../backend/src/modules/faculty/service'))
+const facultyRepository = require(path.join(__dirname, '../backend/src/modules/faculty/repository'))
+const { ForbiddenError, NotFoundError } = require(path.join(__dirname, '../backend/src/shared/errors'))
 
 describe('BUG-B05: Faculty Department Approval Authorization', () => {
   it('approves student when faculty and student belong to the same department', async () => {
@@ -113,9 +113,10 @@ describe('BUG-B05: Faculty Department Approval Authorization', () => {
 
   after(async () => {
     try {
-      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      const { closeAll } = require('../backend/src/lifecycle')
       await closeAll()
     } catch {}
   })
 })
+
 

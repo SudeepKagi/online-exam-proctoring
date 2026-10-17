@@ -10,11 +10,9 @@
 const { spawn } = require('child_process')
 const http = require('http')
 const path = require('path')
-
 const REPO_ROOT = path.resolve(__dirname, '../..')
-const BACKEND_DIR = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_DIR = path.join(REPO_ROOT, 'backend')
 const TEST_PORT = process.env.BOOT_SMOKE_PORT || '5099'
-
 console.log(`\n======================================================`)
 console.log(`[BOOT-SMOKE] Starting Real Server Boot Smoke Test`)
 console.log(`[BOOT-SMOKE] Port: ${TEST_PORT}`)

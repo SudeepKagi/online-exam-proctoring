@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
@@ -11,9 +11,9 @@ const path = require('path')
 const fs = require('fs')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
-const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 
-// ── Helpers & Modules ─────────────────────────────────────────────────────────
+// â”€â”€ Helpers & Modules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const { evaluationWorker } = require(path.join(BACKEND_ROOT, 'src/modules/results/evaluationWorker'))
 const { evidenceWorker } = require(path.join(BACKEND_ROOT, 'src/modules/media/evidenceWorker'))
 const { adminService } = require(path.join(BACKEND_ROOT, 'src/modules/admin/service'))
@@ -22,8 +22,8 @@ const { proctoringService } = require(path.join(BACKEND_ROOT, 'src/modules/proct
 
 describe('P9 Defect Reproduction & Baseline Verification', () => {
 
-  // ── F1: Worker Handlers Dead Code in Production ─────────────────────────────
-  describe('F1 — Worker Handlers Dead Code', () => {
+  // â”€â”€ F1: Worker Handlers Dead Code in Production â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F1 â€” Worker Handlers Dead Code', () => {
     it('F1.1: evaluationWorker must define handleEvent method', () => {
       assert.strictEqual(
         typeof evaluationWorker.handleEvent,
@@ -41,8 +41,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F2: Resume After Expiry Silently Loses Result ───────────────────────────
-  describe('F2 — Resume After Expiry', () => {
+  // â”€â”€ F2: Resume After Expiry Silently Loses Result â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F2 â€” Resume After Expiry', () => {
     it('F2.1: startOrResumeAttempt must not bypass attemptStateMachine on expired resume', () => {
       const attemptsServiceSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/attempts/service.js'), 'utf8')
       const hasDirectStatusUpdate = /await\s+prisma\.examAttempt\.update\(\s*\{\s*where:\s*\{\s*id:\s*attempt\.id\s*\},\s*data:\s*\{\s*status:\s*['"]EXPIRED['"]\s*\}\s*\}\)/.test(attemptsServiceSrc)
@@ -64,8 +64,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F3: Exams Stuck in ENDED Forever & Absent Students ──────────────────────
-  describe('F3 — Exam Lifecycle & Absent Students', () => {
+  // â”€â”€ F3: Exams Stuck in ENDED Forever & Absent Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F3 â€” Exam Lifecycle & Absent Students', () => {
     it('F3.1: createAbsentResultsForEndedExam must be invoked by examScheduler', () => {
       const schedulerSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/exams/examScheduler.js'), 'utf8')
       assert.strictEqual(
@@ -87,8 +87,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F4: Server-Side Start Gates Bypassable ──────────────────────────────────
-  describe('F4 — Start Gates Server Enforcement', () => {
+  // â”€â”€ F4: Server-Side Start Gates Bypassable â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F4 â€” Start Gates Server Enforcement', () => {
     it('F4.1: createStudent must default approvalStatus to PENDING until approved', () => {
       const adminServiceSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/admin/service.js'), 'utf8')
       const createStudentMatch = adminServiceSrc.match(/async\s+createStudent\s*\([^)]*\)\s*\{[\s\S]*?return\s+toStudentAdminDTO/i)
@@ -124,8 +124,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F5: Known Default Passwords on Admin-Created Accounts ───────────────────
-  describe('F5 — Default Password Security', () => {
+  // â”€â”€ F5: Known Default Passwords on Admin-Created Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F5 â€” Default Password Security', () => {
     it('F5.1: adminService must not use hard-coded default passwords Faculty@123 / Student@123', () => {
       const adminServiceSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/admin/service.js'), 'utf8')
       const hasFacultyDefault = adminServiceSrc.includes('Faculty@123')
@@ -147,8 +147,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F6: CSRF/CORS Origin Wildcard Bypass ────────────────────────────────────
-  describe('F6 — CSRF/CORS Wildcard & Header Bypasses', () => {
+  // â”€â”€ F6: CSRF/CORS Origin Wildcard Bypass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F6 â€” CSRF/CORS Wildcard & Header Bypasses', () => {
     it('F6.1: CORS origin validator must not allow arbitrary *.sslip.io domains', () => {
       const appSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/app.js'), 'utf8')
       const hasWildcardDomain = /\*\.sslip\.io|\.\*\.sslip\.io/.test(appSrc)
@@ -170,8 +170,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F7: Settings Saved But Never Enforced (tabSwitchLimit) ──────────────────
-  describe('F7 — Unenforced Settings (tabSwitchLimit)', () => {
+  // â”€â”€ F7: Settings Saved But Never Enforced (tabSwitchLimit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F7 â€” Unenforced Settings (tabSwitchLimit)', () => {
     it('F7.1: proctoringService must enforce tabSwitchLimit server-side', () => {
       const proctoringSrc = fs.readFileSync(path.join(BACKEND_ROOT, 'src/modules/proctoring/service.js'), 'utf8')
       const enforcesTabLimit = proctoringSrc.includes('tabSwitchLimit') || proctoringSrc.includes('tab_switch_limit')
@@ -183,8 +183,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F8: Contradictory Time Rules ───────────────────────────────────────────
-  describe('F8 — Contradictory Time Rules Across Start Paths', () => {
+  // â”€â”€ F8: Contradictory Time Rules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F8 â€” Contradictory Time Rules Across Start Paths', () => {
     it('F8.1: unified examClock module must exist and govern expiry calculation', () => {
       let examClockExists = false
       try {
@@ -199,8 +199,8 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 
-  // ── F9: Diverging Attempt Construction & Degenerate PRNG ────────────────────
-  describe('F9 — Diverging Attempt Construction & RNG Degeneracy', () => {
+  // â”€â”€ F9: Diverging Attempt Construction & Degenerate PRNG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  describe('F9 â€” Diverging Attempt Construction & RNG Degeneracy', () => {
     it('F9.1: createSeededRng must not collapse to perpetual zero if seed hash is zero', () => {
       // Find a string whose initial hash evaluates to 0, or test with degenerate state
       // In LCG: next = (48271 * 0) % 2147483647 = 0
@@ -230,3 +230,4 @@ describe('P9 Defect Reproduction & Baseline Verification', () => {
     })
   })
 })
+

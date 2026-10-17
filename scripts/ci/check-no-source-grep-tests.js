@@ -46,7 +46,7 @@ function walkDir(dir) {
 function main() {
   const testFiles = [
     ...walkDir(path.join(REPO_ROOT, 'tests')),
-    ...walkDir(path.join(REPO_ROOT, 'proctornet/backend/tests'))
+    ...walkDir(path.join(REPO_ROOT, 'backend/tests'))
   ]
 
   const violations = []

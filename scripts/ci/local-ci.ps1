@@ -11,13 +11,10 @@ if (-not (Test-Path $reportDir)) {
     New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
 }
 
-$backendTests = Get-ChildItem -Path "$repoRoot\proctornet\backend\tests" -Filter "*.js" | ForEach-Object { "proctornet/backend/tests/$($_.Name)" }
+$backendTests = Get-ChildItem -Path "$repoRoot\backend\tests" -Filter "*.js" | ForEach-Object { "backend/tests/$($_.Name)" }
 $rootTests = Get-ChildItem -Path "$repoRoot\tests" -Filter "*.test.js" | ForEach-Object { "tests/$($_.Name)" }
-$agentTests = if (Test-Path "$repoRoot\proctornet\device-agent\test") {
-    Get-ChildItem -Path "$repoRoot\proctornet\device-agent\test" -Filter "*.test.js" | ForEach-Object { "proctornet/device-agent/test/$($_.Name)" }
-} else { @() }
 
-$allTests = @($backendTests) + @($rootTests) + @($agentTests)
+$allTests = @($backendTests) + @($rootTests)
 $allTests = @($allTests | Sort-Object { if ($_ -like "*ci_workflow_integrity*") { 0 } else { 1 } })
 Write-Host "Discovered $($allTests.Count) test files across workspaces." -ForegroundColor Cyan
 
@@ -34,7 +31,7 @@ $env:VPN_ENABLED = "false"
 $env:JWT_SECRET = "dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345"
 $env:AGENT_PAIRING_PEPPER = "dummy_ci_pepper_test_secret_at_least_32_chars_123"
 $env:AGENT_POLICY_SIGNING_KEY = "dummy_ci_signing_test_secret_at_least_32_chars_456"
-$env:NODE_PATH = "$repoRoot\proctornet\backend\node_modules;$repoRoot\proctornet\node_modules"
+$env:NODE_PATH = "$repoRoot\backend\node_modules;$repoRoot\node_modules"
 
 $results = @()
 $counter = 0

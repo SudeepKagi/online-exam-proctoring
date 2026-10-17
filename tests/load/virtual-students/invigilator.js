@@ -1,4 +1,4 @@
-/**
+﻿/**
  * invigilator.js - Virtual Invigilator Agent
  *
  * Simulates invigilator / proctor behaviors:
@@ -11,7 +11,7 @@
  */
 
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
+module.paths.push(path.resolve(__dirname, '../../../backend/node_modules'))
 const { io } = require('socket.io-client')
 
 class VirtualInvigilator {
@@ -164,3 +164,4 @@ class VirtualInvigilator {
 }
 
 module.exports = { VirtualInvigilator }
+

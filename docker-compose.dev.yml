@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # ProctorNet Local Development Compose Override (Phase P9 Task 1 & 2)
 # Usage: docker compose -f docker-compose.prod.yml -f docker-compose.dev.yml up
 # ==============================================================================
@@ -14,7 +14,7 @@ services:
       START_WORKERS: "true"
     read_only: false
     volumes:
-      - ./proctornet/backend/src:/app/src:ro
+      - ./backend/src:/app/src:ro
 
   # Allow local direct connection to database (127.0.0.1 only)
   postgres:
@@ -38,7 +38,7 @@ services:
       - "127.0.0.1:5001:5001"
     read_only: false
     volumes:
-      - ./proctornet/python-service:/app:ro
+      - ./python-service:/app:ro
 
   # Expose MinIO S3 API & Web Console (127.0.0.1 only)
   minio:
@@ -54,3 +54,4 @@ services:
   grafana:
     ports:
       - "127.0.0.1:3001:3000"
+

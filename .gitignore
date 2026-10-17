@@ -25,7 +25,6 @@ venv/
 !.env.example
 !**/.env.example
 !ci/ci.env
-reports/secrets*
 
 # Antigravity / Agents
 .agents/
@@ -77,6 +76,9 @@ playwright-report/
 *.tfvars
 !*.tfvars.example
 
+# Reports
+reports/
+
 # Database dumps and local backup archives
 *.sql.gz
 *.json.gz
@@ -84,3 +86,4 @@ baseline_backup.json.gz
 backups/*.dump
 backups/*.sql
 backups/*.json
+backups/**/*.gz

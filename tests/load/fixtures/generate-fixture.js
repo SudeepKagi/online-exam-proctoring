@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * ==============================================================================
  * ProctorNet Bulk Fixture Generator (Phase P10 Task 10.3)
@@ -7,8 +7,8 @@
  */
 
 const path = require('path')
-module.paths.push(path.resolve(__dirname, '../../../proctornet/backend/node_modules'))
-require('dotenv').config({ path: path.resolve(__dirname, '../../../proctornet/backend/.env'), override: true })
+module.paths.push(path.resolve(__dirname, '../../../backend/node_modules'))
+require('dotenv').config({ path: path.resolve(__dirname, '../../../backend/.env'), override: true })
 if (!process.env.REDIS_URL || process.env.REDIS_URL.includes('@redis:')) {
   process.env.REDIS_URL = 'redis://127.0.0.1:6379'
 }
@@ -26,7 +26,7 @@ const prisma = new PrismaClient()
 // Safety Guardrails (Section 0 Rule 11 & Section 10.3)
 // ------------------------------------------------------------------------------
 if ((process.env.LOADTEST_ALLOW || '').trim() !== '1') {
-  console.error('\n❌ SAFETY REFUSAL: Fixture generation is blocked unless LOADTEST_ALLOW=1 is explicitly set in environment.\n')
+  console.error('\nâŒ SAFETY REFUSAL: Fixture generation is blocked unless LOADTEST_ALLOW=1 is explicitly set in environment.\n')
   process.exit(1)
 }
 
@@ -35,7 +35,7 @@ const allowedHosts = (process.env.RESET_ALLOWED_HOSTS || 'localhost,127.0.0.1,po
 const hostMatch = allowedHosts.some(h => dbUrl.includes(h))
 
 if (!hostMatch && !process.env.ALLOW_CLOUD_FIXTURE) {
-  console.error(`\n❌ SAFETY REFUSAL: Target database host does not match allowed loadtest hosts (${allowedHosts.join(', ')}).\n`)
+  console.error(`\nâŒ SAFETY REFUSAL: Target database host does not match allowed loadtest hosts (${allowedHosts.join(', ')}).\n`)
   process.exit(1)
 }
 
@@ -58,7 +58,7 @@ const N_QUESTIONS = parseInt(getArg('--questions', '50'), 10)
 // Cleanup Routine
 // ------------------------------------------------------------------------------
 async function cleanup() {
-  console.log('\n🧹 [CLEANUP] Purging all prior loadtest fixtures (prefix: loadtest-*)...')
+  console.log('\nðŸ§¹ [CLEANUP] Purging all prior loadtest fixtures (prefix: loadtest-*)...')
 
   // Find loadtest exams
   const exams = await prisma.exam.findMany({
@@ -110,7 +110,7 @@ async function cleanup() {
     where: { email: { startsWith: 'loadtest-' } }
   })
 
-  console.log(`[✓] Cleanup complete. Removed ${deletedStudents.count} students, ${deletedFaculty.count} faculty.\n`)
+  console.log(`[âœ“] Cleanup complete. Removed ${deletedStudents.count} students, ${deletedFaculty.count} faculty.\n`)
 }
 
 // ------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ async function cleanup() {
 // ------------------------------------------------------------------------------
 async function generate() {
   console.log(`\n================================================================================`)
-  console.log(`🚀 Generating ProctorNet Load Test Fixture`)
+  console.log(`ðŸš€ Generating ProctorNet Load Test Fixture`)
   console.log(`   Students: ${N_STUDENTS} | Exams: ${N_EXAMS} | Questions per Exam: ${N_QUESTIONS}`)
   console.log(`================================================================================\n`)
 
@@ -285,12 +285,12 @@ async function generate() {
     await Promise.all(promises)
     process.stdout.write(`    Seeded ${batchLimit}/${N_STUDENTS} students\r`)
   }
-  console.log(`\n[✓] Successfully seeded ${studentFixtures.length} student accounts.`)
+  console.log(`\n[âœ“] Successfully seeded ${studentFixtures.length} student accounts.`)
 
   // 5. Pre-warm READY attempts and question permutations
   console.log(`[+] Pre-warming READY attempts via attemptPrewarmJob...`)
   try {
-    const { attemptPrewarmJob } = require(path.resolve(__dirname, '../../../proctornet/backend/src/modules/attempts/prewarmJob'))
+    const { attemptPrewarmJob } = require(path.resolve(__dirname, '../../../backend/src/modules/attempts/prewarmJob'))
     for (const exam of createdExams) {
       const prewarmResult = await attemptPrewarmJob.prewarmExam(exam.id)
       console.log(`    Prewarmed ${prewarmResult.prewarmedCount || 0} attempts for ${exam.title}.`)
@@ -315,9 +315,9 @@ async function generate() {
     generatedAt: new Date().toISOString()
   }, null, 2))
 
-  console.log(`\n💾 Saved student fixtures: ${studentsPath}`)
-  console.log(`💾 Saved exam metadata:    ${examMetaPath}`)
-  console.log(`\n[✓] Fixture generation completed successfully!\n`)
+  console.log(`\nðŸ’¾ Saved student fixtures: ${studentsPath}`)
+  console.log(`ðŸ’¾ Saved exam metadata:    ${examMetaPath}`)
+  console.log(`\n[âœ“] Fixture generation completed successfully!\n`)
 }
 
 async function main() {
@@ -332,6 +332,7 @@ main()
     prisma.$disconnect().then(() => process.exit(0))
   })
   .catch((err) => {
-    console.error('\n❌ Fatal Fixture Error:', err)
+    console.error('\nâŒ Fatal Fixture Error:', err)
     process.exit(1)
   })
+

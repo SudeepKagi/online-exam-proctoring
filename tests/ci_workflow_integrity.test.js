@@ -1,4 +1,4 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
@@ -8,7 +8,7 @@ const YAML = require('yaml')
 
 const REPO_ROOT = path.resolve(__dirname, '..')
 
-describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)', () => {
+describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, Â§1 CI-B, C1.7)', () => {
   const ciWorkflowPath = path.join(REPO_ROOT, '.github/workflows/ci.yml')
   const deployWorkflowPath = path.join(REPO_ROOT, '.github/workflows/deploy-aws.yml')
   const rollbackWorkflowPath = path.join(REPO_ROOT, '.github/workflows/rollback.yml')
@@ -143,7 +143,7 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)',
 
   it('CI-06: Pinned Prisma CLI in dependencies and Node >= 22 engines', () => {
     const backendPkg = JSON.parse(
-      fs.readFileSync(path.join(REPO_ROOT, 'proctornet/backend/package.json'), 'utf8')
+      fs.readFileSync(path.join(REPO_ROOT, 'backend/package.json'), 'utf8')
     )
     assert.ok(
       backendPkg.dependencies && backendPkg.dependencies.prisma,
@@ -162,7 +162,7 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)',
     assert.strictEqual(envName, 'production', 'rollback job must target production environment')
   })
 
-  it('CI-08: Test suite safety & hygiene — zero process.exit or unbounded deleteMany({}) in test files (SEC-2 / C7.2)', () => {
+  it('CI-08: Test suite safety & hygiene â€” zero process.exit or unbounded deleteMany({}) in test files (SEC-2 / C7.2)', () => {
     const { discoverTests } = require('../scripts/ci/run-tests')
     const allTests = discoverTests()
     assert.ok(allTests.length > 50, 'Discovered test suites must be populated')
@@ -182,3 +182,4 @@ describe('CI/CD Pipeline Integrity Gates (CI-01 through CI-10, §1 CI-B, C1.7)',
     }
   })
 })
+

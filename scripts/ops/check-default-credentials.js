@@ -1,9 +1,9 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 'use strict'
 
 /**
  * check-default-credentials.js
- * Read-only security audit script for production and staging environments (§P9 F5).
+ * Read-only security audit script for production and staging environments (Â§P9 F5).
  * Validates that no administrator accounts are using known default passwords.
  *
  * Exit code 0: Clean (no default credentials detected)
@@ -12,7 +12,7 @@
 
 const path = require('path')
 const REPO_ROOT = path.resolve(__dirname, '../..')
-const BACKEND_ROOT = path.join(REPO_ROOT, 'proctornet/backend')
+const BACKEND_ROOT = path.join(REPO_ROOT, 'backend')
 if (!process.env.NODE_PATH) {
   process.env.NODE_PATH = `${path.join(BACKEND_ROOT, 'node_modules')}${path.delimiter}${path.join(REPO_ROOT, 'node_modules')}`
   require('module').Module._initPaths()
@@ -123,3 +123,4 @@ module.exports = {
   checkAdminCredentials,
   KNOWN_DEFAULT_PASSWORDS
 }
+

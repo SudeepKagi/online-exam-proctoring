@@ -1,11 +1,11 @@
-'use strict'
+﻿'use strict'
 
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
-const { ServiceUnavailableError, toErrorEnvelope, ForbiddenError } = require('../proctornet/backend/src/shared/errors')
-const { errorHandler } = require('../proctornet/backend/src/middleware/errorHandler')
+const { ServiceUnavailableError, toErrorEnvelope, ForbiddenError } = require('../backend/src/shared/errors')
+const { errorHandler } = require('../backend/src/middleware/errorHandler')
 
-describe('BUG C — A failed submit is shown to the student as "Submitted"', () => {
+describe('BUG C â€” A failed submit is shown to the student as "Submitted"', () => {
   it('C.1: media teardown never runs before a confirmed submit', async () => {
     let streamStopped = false
     const mockMediaStream = {
@@ -130,3 +130,4 @@ describe('BUG C — A failed submit is shown to the student as "Submitted"', () 
     assert.strictEqual(suspendedErr.statusCode, 403)
   })
 })
+

@@ -1,4 +1,4 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert')
 const path = require('path')
 const fs = require('fs')
@@ -8,12 +8,12 @@ process.env.CACHE_DRIVER = 'memory'
 process.env.QUEUE_DRIVER = 'postgres'
 process.env.START_WORKERS = 'false'
 
-const BACKEND_ROOT = path.resolve(__dirname, '../proctornet/backend')
+const BACKEND_ROOT = path.resolve(__dirname, '../backend')
 const { proctoringService } = require(path.join(BACKEND_ROOT, 'src/modules/proctoring/service'))
 const { proctoringRepository } = require(path.join(BACKEND_ROOT, 'src/modules/proctoring/repository'))
 const { attemptService } = require(path.join(BACKEND_ROOT, 'src/modules/attempts/service'))
 
-describe('F7 — Server-side tabSwitchLimit enforcement & settings audit', () => {
+describe('F7 â€” Server-side tabSwitchLimit enforcement & settings audit', () => {
   it('F7.1: proctoringService records TAB_SWITCH with MEDIUM severity below limit', async () => {
     const fakeAttemptId = '11111111-1111-1111-1111-111111111111'
     const fakeStudentId = '22222222-2222-2222-2222-222222222222'
@@ -150,8 +150,8 @@ describe('F7 — Server-side tabSwitchLimit enforcement & settings audit', () =>
   })
 
   it('F7.3: client useProctoringMonitors hook and ExamInterface reflect exam controls', () => {
-    const monitorsSrc = fs.readFileSync(path.join(__dirname, '../proctornet/frontend/src/hooks/useProctoringMonitors.js'), 'utf8')
-    const examInterfaceSrc = fs.readFileSync(path.join(__dirname, '../proctornet/frontend/src/pages/student/ExamInterface.jsx'), 'utf8')
+    const monitorsSrc = fs.readFileSync(path.join(__dirname, '../frontend/src/hooks/useProctoringMonitors.js'), 'utf8')
+    const examInterfaceSrc = fs.readFileSync(path.join(__dirname, '../frontend/src/pages/student/ExamInterface.jsx'), 'utf8')
 
     assert.ok(monitorsSrc.includes('allowTabSwitch'), 'Hook must support allowTabSwitch')
     assert.ok(monitorsSrc.includes('requireFullscreen'), 'Hook must support requireFullscreen')
@@ -160,3 +160,4 @@ describe('F7 — Server-side tabSwitchLimit enforcement & settings audit', () =>
     assert.ok(examInterfaceSrc.includes('requireFullscreen: exam?.fullScreenMode !== false'), 'ExamInterface must plumb fullScreenMode')
   })
 })
+

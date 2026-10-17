@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
-# ─────────────────────────────────────────────────────────────
+﻿#!/usr/bin/env bash
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # deploy-release.sh v2
-# S5 / R5 — Exam-Aware Release Deployment & Automated Rollback
+# S5 / R5 â€” Exam-Aware Release Deployment & Automated Rollback
 # Executed on EC2 instance via AWS SSM send-command during CI/CD
-# ─────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 set -eo pipefail
 
@@ -87,7 +87,7 @@ echo " Starting ProctorNet Release Deployment: $RELEASE_ID"
 echo " Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 echo "=========================================================="
 
-# 0. Preflight Validations: Disk Space & Exam-Aware Gate (§3.3 & Appendix D)
+# 0. Preflight Validations: Disk Space & Exam-Aware Gate (Â§3.3 & Appendix D)
 echo "[0/6] Running deployment preflight checks..."
 
 # Check available disk space (require >= 2048 MB free)
@@ -96,7 +96,7 @@ if [ "$AVAILABLE_MB" -lt 2048 ]; then
     echo "[x] Preflight failed: Insufficient disk space ($AVAILABLE_MB MB available < 2048 MB required)."
     exit 1
 fi
-echo "[✓] Disk space verified: ${AVAILABLE_MB} MB available."
+echo "[âœ“] Disk space verified: ${AVAILABLE_MB} MB available."
 
 # Check Node.js runtime parity (load nvm Node 22 if installed, accept Node >= 20 LTS)
 if command -v nvm >/dev/null 2>&1 || [ -s "$HOME/.nvm/nvm.sh" ] || [ -s "/home/ubuntu/.nvm/nvm.sh" ] || [ -s "/root/.nvm/nvm.sh" ]; then
@@ -112,7 +112,7 @@ if [ "$NODE_MAJOR" -lt 20 ]; then
     echo "    Upgrade Node.js to v20+ LTS before proceeding with release deployment."
     exit 1
 fi
-echo "[✓] Node.js runtime verified: Node v$NODE_MAJOR (compatible LTS release)."
+echo "[âœ“] Node.js runtime verified: Node v$NODE_MAJOR (compatible LTS release)."
 
 # Sync updated DATABASE_URL and DIRECT_URL to persistent configuration if supplied
 if [ -n "$NEW_DB_URL" ] || [ -n "$NEW_DIRECT_URL" ]; then
@@ -144,12 +144,12 @@ if [ -n "$NEW_DB_URL" ] || [ -n "$NEW_DIRECT_URL" ]; then
       }
       fs.writeFileSync(p, c);
     "
-    echo "[✓] Persistent database credentials updated."
+    echo "[âœ“] Persistent database credentials updated."
 fi
 
 # Exam-Aware Gate: Refuse deploy if any attempts are ACTIVE unless explicit override is given
-ACTIVE_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/active-attempts.js"
-ABANDON_SCRIPT="$CURRENT_LINK/proctornet/backend/scripts/ops/abandon-stale-attempts.js"
+ACTIVE_SCRIPT="$CURRENT_LINK/backend/scripts/ops/active-attempts.js"
+ABANDON_SCRIPT="$CURRENT_LINK/backend/scripts/ops/abandon-stale-attempts.js"
 if [ -L "$CURRENT_LINK" ] && [ -f "$ACTIVE_SCRIPT" ]; then
     # Auto-abandon ACTIVE attempts whose exam endTime has already passed (stale/orphaned rows)
     if [ -f "$ABANDON_SCRIPT" ]; then
@@ -169,7 +169,7 @@ if [ -L "$CURRENT_LINK" ] && [ -f "$ACTIVE_SCRIPT" ]; then
         echo "[!] OVERRIDE APPLIED: Proceeding with deployment despite $ACTIVE active attempts."
         echo "    Override reason: $OVERRIDE_REASON"
     else
-        echo "[✓] Zero active attempts. Safe to proceed with release."
+        echo "[âœ“] Zero active attempts. Safe to proceed with release."
     fi
 else
     echo "[-] No existing release found or active-attempts script not present. Skipping active attempt check."
@@ -179,7 +179,7 @@ fi
 PREV_RELEASE_DIR=""
 if [ -L "$CURRENT_LINK" ]; then
     PREV_RELEASE_DIR=$(readlink -f "$CURRENT_LINK" || true)
-    echo "[✓] Captured previous release for rollback: $PREV_RELEASE_DIR"
+    echo "[âœ“] Captured previous release for rollback: $PREV_RELEASE_DIR"
 fi
 
 # 2. Download and Unpack New Release
@@ -191,7 +191,7 @@ echo "[2/6] Extracting release payload..."
 tar -xzf "/tmp/$RELEASE_TARBALL" -C "$NEW_RELEASE_DIR"
 rm -f "/tmp/$RELEASE_TARBALL"
 
-# Verify EXPECTED_SHA against extracted VERSION file (§1 DEP-1 / C5.1)
+# Verify EXPECTED_SHA against extracted VERSION file (Â§1 DEP-1 / C5.1)
 if [ -n "$EXPECTED_SHA" ]; then
     if [ -f "$NEW_RELEASE_DIR/VERSION" ]; then
         DEPLOYED_SHA=$(grep '"gitSha"' "$NEW_RELEASE_DIR/VERSION" | cut -d '"' -f 4 || true)
@@ -200,7 +200,7 @@ if [ -n "$EXPECTED_SHA" ]; then
             rm -rf "$NEW_RELEASE_DIR"
             exit 1
         fi
-        echo "[✓] Git SHA verified against release payload: $DEPLOYED_SHA"
+        echo "[âœ“] Git SHA verified against release payload: $DEPLOYED_SHA"
     else
         echo "[-] Warning: $NEW_RELEASE_DIR/VERSION missing, skipping SHA verification."
     fi
@@ -212,7 +212,7 @@ chown -R proctornet:proctornet "$NEW_RELEASE_DIR"
 # 3. Symlink Shared Environment Variables
 echo "[3/6] Linking persistent configuration (.env)..."
 if [ -f "$SHARED_ENV" ]; then
-    ln -sf "$SHARED_ENV" "$NEW_RELEASE_DIR/proctornet/backend/.env"
+    ln -sf "$SHARED_ENV" "$NEW_RELEASE_DIR/backend/.env"
 else
     echo "[-] WARNING: $SHARED_ENV does not exist. Using environment or defaults."
 fi
@@ -228,7 +228,7 @@ if [ -f "$SHARED_ENV" ]; then
     CLEAN_DB_URL=$(echo "$DB_URL" | sed 's/[?&]pgbouncer=[^&]*//g; s/[?&]connection_limit=[^&]*//g; s/[?&]pool_timeout=[^&]*//g; s/?$//')
     if [ -n "$CLEAN_DB_URL" ] && command -v pg_dump >/dev/null 2>&1; then
         if pg_dump "$CLEAN_DB_URL" 2>/dev/null | gzip > "$SNAPSHOT_FILE"; then
-            echo "[✓] Database snapshot created: $SNAPSHOT_FILE"
+            echo "[âœ“] Database snapshot created: $SNAPSHOT_FILE"
             aws s3 cp "$SNAPSHOT_FILE" "s3://${BUCKET_NAME}/backups/$(basename "$SNAPSHOT_FILE")" 2>/dev/null || true
         fi
     fi
@@ -236,18 +236,18 @@ fi
 
 echo "[-] Ensuring production dependencies and executing database migrations..."
 if [ -n "$PREV_RELEASE_DIR" ]; then
-    if [ -d "$PREV_RELEASE_DIR/proctornet/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/proctornet/node_modules" ]; then
+    if [ -d "$PREV_RELEASE_DIR/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/node_modules" ]; then
         echo "[-] Copying root node_modules cache from $PREV_RELEASE_DIR..."
-        cp -rp "$PREV_RELEASE_DIR/proctornet/node_modules" "$NEW_RELEASE_DIR/proctornet/node_modules"
+        cp -rp "$PREV_RELEASE_DIR/node_modules" "$NEW_RELEASE_DIR/node_modules"
     fi
-    if [ -d "$PREV_RELEASE_DIR/proctornet/backend/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/proctornet/backend/node_modules" ]; then
+    if [ -d "$PREV_RELEASE_DIR/backend/node_modules" ] && [ ! -d "$NEW_RELEASE_DIR/backend/node_modules" ]; then
         echo "[-] Copying backend node_modules cache from $PREV_RELEASE_DIR..."
-        cp -rp "$PREV_RELEASE_DIR/proctornet/backend/node_modules" "$NEW_RELEASE_DIR/proctornet/backend/node_modules"
+        cp -rp "$PREV_RELEASE_DIR/backend/node_modules" "$NEW_RELEASE_DIR/backend/node_modules"
     fi
     chown -R proctornet:proctornet "$NEW_RELEASE_DIR"
 fi
 
-cd "$NEW_RELEASE_DIR/proctornet/backend"
+cd "$NEW_RELEASE_DIR/backend"
 if [ ! -d "node_modules" ] || ! node -e "require('express'); require('body-parser');" >/dev/null 2>&1; then
     echo "[-] Ensuring complete production dependencies..."
     sudo -u proctornet npm install --omit=dev --no-audit --no-fund
@@ -263,7 +263,7 @@ else
 fi
 
 if $MIGRATE_CMD; then
-    echo "[✓] Prisma migrations successfully applied."
+    echo "[âœ“] Prisma migrations successfully applied."
 else
     echo "[x] Database migration failed! Aborting before switching active symlink."
     rm -rf "$NEW_RELEASE_DIR"
@@ -286,7 +286,7 @@ if [ -f "$NEW_RELEASE_DIR/ops/caddy/Caddyfile" ]; then
     cp "$NEW_RELEASE_DIR/ops/caddy/Caddyfile" /etc/caddy/Caddyfile
     if caddy validate --adapter caddyfile --config /etc/caddy/Caddyfile; then
         systemctl reload caddy || systemctl restart caddy
-        echo "[✓] Caddy configuration successfully validated and reloaded."
+        echo "[âœ“] Caddy configuration successfully validated and reloaded."
     else
         echo "[x] WARNING: Caddyfile validation failed! Retaining previous configuration."
     fi
@@ -304,11 +304,11 @@ for i in {1..15}; do
     CONFIG_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/api/v1/config || true)
 
     if [ "$HEALTH_STATUS" = "200" ] && [ "$READY_STATUS" = "200" ] && [ "$CONFIG_STATUS" = "200" ]; then
-        echo "[✓] Health & Config checks passed on attempt $i (healthz=$HEALTH_STATUS, readyz=$READY_STATUS, config=$CONFIG_STATUS)."
+        echo "[âœ“] Health & Config checks passed on attempt $i (healthz=$HEALTH_STATUS, readyz=$READY_STATUS, config=$CONFIG_STATUS)."
         
         # Verify /api/v1/version
         VERSION_RESP=$(curl -s http://127.0.0.1:5000/api/v1/version || true)
-        echo "[✓] Release version probe: $VERSION_RESP"
+        echo "[âœ“] Release version probe: $VERSION_RESP"
         
         HEALTHY=true
         break
@@ -320,7 +320,7 @@ done
 
 if [ "$HEALTHY" = true ]; then
     echo "=========================================================="
-    echo " [✓] Deployment SUCCESSFUL for release: $RELEASE_ID"
+    echo " [âœ“] Deployment SUCCESSFUL for release: $RELEASE_ID"
     echo "=========================================================="
 
     # Prune old releases, retaining last 5
@@ -342,7 +342,7 @@ else
         sleep 3
         ROLLBACK_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || true)
         if [ "$ROLLBACK_HEALTH" = "200" ]; then
-            echo "[ROLLBACK ✓] Successfully restored traffic to previous release ($PREV_RELEASE_DIR)."
+            echo "[ROLLBACK âœ“] Successfully restored traffic to previous release ($PREV_RELEASE_DIR)."
         else
             echo "[ROLLBACK x] CRITICAL: Rollback failed to achieve 200 OK."
         fi
@@ -354,3 +354,4 @@ else
     rm -rf "$NEW_RELEASE_DIR"
     exit 1
 fi
+

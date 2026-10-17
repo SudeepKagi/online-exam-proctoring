@@ -1,4 +1,4 @@
-# ==============================================================================
+﻿# ==============================================================================
 # ProctorNet Production Infrastructure Stack  --  Single Source of Truth
 # Usage: docker compose -f docker-compose.prod.yml up
 # Dev  : docker compose -f docker-compose.prod.yml -f docker-compose.override.yml up
@@ -14,7 +14,7 @@ x-logging: &default-logging
 # Shared anchor for all API / Worker containers
 x-api-common: &api-common
   build:
-    context: ./proctornet/backend
+    context: ./backend
     dockerfile: Dockerfile
   image: proctornet-backend:latest
   restart: unless-stopped
@@ -92,7 +92,7 @@ services:
   # ----------------------------------------------------------------------------
   frontend:
     build:
-      context: ./proctornet/frontend
+      context: ./frontend
       dockerfile: Dockerfile
     image: proctornet-frontend:latest
     container_name: proctornet-frontend
@@ -337,7 +337,7 @@ services:
   # ----------------------------------------------------------------------------
   python-service:
     build:
-      context: ./proctornet/python-service
+      context: ./python-service
       dockerfile: Dockerfile
     container_name: proctornet-python
     restart: unless-stopped
@@ -638,3 +638,4 @@ volumes:
   prometheus-data:
   grafana-data:
   minio-storage:
+

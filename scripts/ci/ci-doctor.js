@@ -45,7 +45,7 @@ const SIGNATURES = [
     name: 'Prisma Schema Drift / Migration Failure',
     pattern: /P3005|P3006|P3009|The migration.*failed to apply cleanly/i,
     cause: 'Database schema drift or pending Prisma migration conflict.',
-    reproduce: 'npx prisma migrate diff --from-migrations proctornet/backend/prisma/migrations --to-schema-datamodel proctornet/backend/prisma/schema.prisma --exit-code'
+    reproduce: 'npx prisma migrate diff --from-migrations backend/prisma/migrations --to-schema-datamodel backend/prisma/schema.prisma --exit-code'
   },
   {
     name: 'Playwright E2E Timeout',

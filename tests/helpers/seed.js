@@ -6,33 +6,16 @@ try {
   bcrypt = require('bcryptjs')
 } catch (e) {
   try {
-    bcrypt = require('../../proctornet/backend/node_modules/bcryptjs')
+    bcrypt = require('../../backend/node_modules/bcryptjs')
   } catch (err) {
     bcrypt = require('bcrypt')
   }
 }
-const { assertNonProduction } = require('../../proctornet/backend/src/infra/postgres/assertNonProduction')
+const { assertNonProduction } = require('../../backend/src/infra/postgres/assertNonProduction')
 assertNonProduction('tests/helpers/seed.js')
-const { prisma } = require('../../proctornet/backend/src/infra/postgres/client')
-const { policyService } = require('../../proctornet/backend/src/modules/agent/policyService')
+const { prisma } = require('../../backend/src/infra/postgres/client')
 
 const TEST_RUN_ID = crypto.randomBytes(4).toString('hex')
-
-/**
- * Deterministic Agent Release Hashes for Tests
- */
-const DETERMINISTIC_RELEASES = [
-  { version: '1.0.0', os: 'win', arch: 'x64', sha256: 'test-build-hash-a1' },
-  { version: '1.0.0', os: 'win', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
-  { version: '1.0.0', os: 'win', arch: 'x64-report', sha256: 'test-build-hash-report' },
-  { version: '1.0.0', os: 'win', arch: 'x64-lifecycle', sha256: 'test-build-lifecycle' },
-  { version: '1.0.0', os: 'win', arch: 'x64-sweeper', sha256: 'test-build-sweeper' },
-  { version: '1.0.0', os: 'linux', arch: 'x64', sha256: 'test-build-hash-linux-v1' },
-  { version: '1.0.0', os: 'linux', arch: 'x64-adv', sha256: 'official-adv-release-hash' },
-  { version: '1.0.0', os: 'darwin', arch: 'arm64', sha256: 'test-build-hash-mac-v1' },
-  { version: '1.0.0', os: 'darwin', arch: 'arm64-adv', sha256: 'official-adv-release-hash' },
-  { version: '1.0.0', os: 'all', arch: 'x64', sha256: 'official-agent-release-hash-v1.0.0' }
-]
 
 /**
  * Idempotently seed reference data (departments, settings, admin, agent rules & releases)
@@ -110,43 +93,6 @@ async function seedReference() {
     }).catch(() => {})
   }
 
-  // 4. Seed Agent Rules
-  try {
-    if (policyService?.seedRulesIfEmpty) {
-      await policyService.seedRulesIfEmpty()
-    }
-  } catch (err) {
-    // Ignore if already seeded
-  }
-
-  // 5. Seed Deterministic Agent Releases
-  for (const rel of DETERMINISTIC_RELEASES) {
-    await prisma.agentRelease.upsert({
-      where: {
-        version_os_arch: {
-          version: rel.version,
-          os: rel.os,
-          arch: rel.arch
-        }
-      },
-      update: {
-        sha256: rel.sha256,
-        revokedAt: null
-      },
-      create: {
-        id: crypto.randomUUID(),
-        version: rel.version,
-        os: rel.os,
-        arch: rel.arch,
-        sha256: rel.sha256,
-        sizeBytes: 15420000n,
-        s3Key: `releases/proctornet-agent-${rel.version}-${rel.os}-${rel.arch}.zip`,
-        signed: true,
-        minSupported: true,
-        revokedAt: null
-      }
-    }).catch(() => {})
-  }
 }
 
 /**
@@ -177,10 +123,7 @@ function createFixtureTracker() {
       const adminIds = Array.from(tracked.adminIds)
 
       if (attemptIds.length > 0) {
-        await prisma.agentFinding.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
-        await prisma.agentSession.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
-        await prisma.agentPairing.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
-        await prisma.deviceAgentWaiver.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
+        await prisma.proctoringLog.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
         await prisma.violationEvent.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
         await prisma.auditLog.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})
         await prisma.answer.deleteMany({ where: { attemptId: { in: attemptIds } } }).catch(() => {})

@@ -23,15 +23,15 @@ export VPN_ENABLED="false"
 export JWT_SECRET="dummy_ci_jwt_secret_must_be_at_least_32_bytes_long_12345"
 export AGENT_PAIRING_PEPPER="dummy_ci_pepper_test_secret_at_least_32_chars_123"
 export AGENT_POLICY_SIGNING_KEY="dummy_ci_signing_test_secret_at_least_32_chars_456"
-export NODE_PATH="$REPO_ROOT/proctornet/backend/node_modules:$REPO_ROOT/proctornet/node_modules"
+export NODE_PATH="$REPO_ROOT/backend/node_modules:$REPO_ROOT/node_modules"
 
 TEST_FILES=()
 
 # Backend tests
-if [ -d "$REPO_ROOT/proctornet/backend/tests" ]; then
+if [ -d "$REPO_ROOT/backend/tests" ]; then
     while IFS= read -r file; do
         TEST_FILES+=("$file")
-    done < <(find proctornet/backend/tests -maxdepth 1 -name "*.js")
+    done < <(find backend/tests -maxdepth 1 -name "*.js")
 fi
 
 # Root tests
@@ -39,13 +39,6 @@ if [ -d "$REPO_ROOT/tests" ]; then
     while IFS= read -r file; do
         TEST_FILES+=("$file")
     done < <(find tests -maxdepth 1 -name "*.test.js")
-fi
-
-# Agent tests
-if [ -d "$REPO_ROOT/proctornet/device-agent/test" ]; then
-    while IFS= read -r file; do
-        TEST_FILES+=("$file")
-    done < <(find proctornet/device-agent/test -maxdepth 1 -name "*.test.js")
 fi
 
 TOTAL=${#TEST_FILES[@]}

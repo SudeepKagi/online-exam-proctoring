@@ -57,7 +57,7 @@ async function main() {
 
   // 3. Database migrations against CI container
   console.log('\n📦 Applying database migrations to CI Postgres container...')
-  run('npx', ['prisma', 'migrate', 'deploy', '--schema=proctornet/backend/prisma/schema.prisma'])
+  run('npx', ['prisma', 'migrate', 'deploy', '--schema=backend/prisma/schema.prisma'])
 
   // 4. Run Integration Tests & Boot Smoke
   console.log('\n🧪 Executing backend integration tests and boot smoke...')

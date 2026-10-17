@@ -1,10 +1,10 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
 describe('BUG-H06: Axios Client Interceptors for Idempotency-Key & Request-ID', async () => {
-  const apiModuleUrl = pathToFileURL(path.join(__dirname, '../proctornet/frontend/src/utils/api.js')).href
+  const apiModuleUrl = pathToFileURL(path.join(__dirname, '../frontend/src/utils/api.js')).href
   const { default: api, extractErrorMessage } = await import(apiModuleUrl)
 
   it('automatically adds X-Request-ID to outgoing requests', async () => {
@@ -79,3 +79,4 @@ describe('BUG-H06: Axios Client Interceptors for Idempotency-Key & Request-ID', 
     assert.equal(extractErrorMessage(null, 'Custom fallback'), 'Custom fallback')
   })
 })
+

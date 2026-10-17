@@ -1,9 +1,9 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
-const { tokenService } = require(path.join(__dirname, '../proctornet/backend/src/modules/auth/tokenService'))
-const { attemptRepository } = require(path.join(__dirname, '../proctornet/backend/src/modules/attempts/repository'))
+const { tokenService } = require(path.join(__dirname, '../backend/src/modules/auth/tokenService'))
+const { attemptRepository } = require(path.join(__dirname, '../backend/src/modules/attempts/repository'))
 
 describe('FLW-09: Server Restart & Chaos Resilience', () => {
   describe('Attempt Expiry & Permutation Immutability Across Restarts', () => {
@@ -42,7 +42,7 @@ describe('FLW-09: Server Restart & Chaos Resilience', () => {
     })
 
     it('ensures question order permutations are deterministic from shuffleSeed', () => {
-      const { createSeededRng, shuffleArray } = require(path.join(__dirname, '../proctornet/backend/src/modules/attempts/repository'))
+      const { createSeededRng, shuffleArray } = require(path.join(__dirname, '../backend/src/modules/attempts/repository'))
       const seed = 'deterministic-seed-42'
 
       const questions1 = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6']
@@ -86,3 +86,4 @@ describe('FLW-09: Server Restart & Chaos Resilience', () => {
     })
   })
 })
+

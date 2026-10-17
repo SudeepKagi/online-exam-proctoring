@@ -1,11 +1,11 @@
-const { describe, it } = require('node:test')
+﻿const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
 const {
   isStudentEligible,
   SQL_ELIGIBILITY_WHERE
-} = require(path.join(__dirname, '../proctornet/backend/src/modules/exams/eligibility'))
+} = require(path.join(__dirname, '../backend/src/modules/exams/eligibility'))
 
 describe('FLW-08: Unified Exam Eligibility Matrix', () => {
   const baseStudent = {
@@ -111,3 +111,4 @@ describe('FLW-08: Unified Exam Eligibility Matrix', () => {
     })
   })
 })
+

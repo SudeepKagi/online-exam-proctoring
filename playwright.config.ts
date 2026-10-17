@@ -55,7 +55,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'node src/app.js',
-      cwd: 'proctornet/backend',
+      cwd: 'backend',
       url: 'http://localhost:5000/health',
       env: {
         PORT: '5000',
@@ -90,7 +90,7 @@ export default defineConfig({
     },
     {
       command: 'npm run dev',
-      cwd: 'proctornet/frontend',
+      cwd: 'frontend',
       url: 'http://localhost:5173',
       timeout: 30000,
       reuseExistingServer: !process.env.CI,

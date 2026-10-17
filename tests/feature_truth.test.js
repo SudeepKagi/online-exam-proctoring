@@ -1,10 +1,10 @@
-const { describe, it, after } = require('node:test')
+﻿const { describe, it, after } = require('node:test')
 const assert = require('node:assert/strict')
 const path = require('node:path')
 
-const adminService = require(path.join(__dirname, '../proctornet/backend/src/modules/admin/service'))
-const adminRepository = require(path.join(__dirname, '../proctornet/backend/src/modules/admin/repository'))
-const { ValidationError } = require(path.join(__dirname, '../proctornet/backend/src/shared/errors'))
+const adminService = require(path.join(__dirname, '../backend/src/modules/admin/service'))
+const adminRepository = require(path.join(__dirname, '../backend/src/modules/admin/repository'))
+const { ValidationError } = require(path.join(__dirname, '../backend/src/shared/errors'))
 
 describe('BUG-J02: Feature-Truth Audit & Admin Settings Wire-Up', () => {
   it('supports receiving and saving a flat settings object', async () => {
@@ -116,8 +116,9 @@ describe('BUG-J02: Feature-Truth Audit & Admin Settings Wire-Up', () => {
 
   after(async () => {
     try {
-      const { closeAll } = require('../proctornet/backend/src/lifecycle')
+      const { closeAll } = require('../backend/src/lifecycle')
       await closeAll()
     } catch {}
   })
 })
+

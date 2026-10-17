@@ -22,8 +22,7 @@ const INVENTORY_FILE = path.join(REPO_ROOT, 'docs/api/ROUTE_INVENTORY.md')
 
 // Ensure backend and workspace node_modules are resolvable when script is executed from repo root
 const candidateDirs = [
-  path.join(REPO_ROOT, 'proctornet/backend/node_modules'),
-  path.join(REPO_ROOT, 'proctornet/node_modules'),
+  path.join(REPO_ROOT, 'backend/node_modules'),
   path.join(REPO_ROOT, 'node_modules')
 ]
 const existingDirs = candidateDirs.filter(d => fs.existsSync(d))
@@ -34,7 +33,7 @@ if (existingDirs.length > 0) {
 }
 
 function extractRoutes() {
-  const v1Router = require('../../proctornet/backend/src/modules/router')
+  const v1Router = require('../../backend/src/modules/router')
   const routes = []
 
   function inspectRouter(router, parentPrefix = '', inheritedAuth = false, inheritedRoles = []) {

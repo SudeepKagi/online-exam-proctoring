@@ -55,8 +55,8 @@ const jsxWalkBase = {
 
 // Directories to scan
 const SCAN_ROOTS = [
-  path.join(REPO_ROOT, 'proctornet/backend/src'),
-  path.join(REPO_ROOT, 'proctornet/frontend/src'),
+  path.join(REPO_ROOT, 'backend/src'),
+  path.join(REPO_ROOT, 'frontend/src'),
   path.join(REPO_ROOT, 'shared')
 ]
 

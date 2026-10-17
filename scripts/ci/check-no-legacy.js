@@ -9,7 +9,7 @@ const fs = require('fs')
 const path = require('path')
 
 const REPO_ROOT = path.resolve(__dirname, '../..')
-const SRC_DIR = path.join(REPO_ROOT, 'proctornet/backend/src')
+const SRC_DIR = path.join(REPO_ROOT, 'backend/src')
 
 const FORBIDDEN_DIRS = [
   path.join(SRC_DIR, 'controllers'),

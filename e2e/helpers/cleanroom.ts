@@ -1,12 +1,12 @@
-import path from 'path'
+﻿import path from 'path'
 import dotenv from 'dotenv'
 
-dotenv.config({ path: path.resolve(process.cwd(), 'proctornet/backend/.env') })
+dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') })
 
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 
-const { prisma } = require(path.resolve(process.cwd(), 'proctornet/backend/src/infra/postgres/client'))
+const { prisma } = require(path.resolve(process.cwd(), 'backend/src/infra/postgres/client'))
 
 
 export const ADMIN_CREDENTIALS = {
@@ -16,7 +16,7 @@ export const ADMIN_CREDENTIALS = {
 }
 
 /**
- * Clean-Room Reset Helper (Prompt 8 §2 U4)
+ * Clean-Room Reset Helper (Prompt 8 Â§2 U4)
  * Ensures ONLY the admin exists at test start.
  * Everything else is wiped so the test must create all entities
  * exclusively through the UI by the authentic actors.
@@ -56,3 +56,4 @@ export async function resetCleanRoom(): Promise<void> {
 export async function disconnectPrisma(): Promise<void> {
   await prisma.$disconnect()
 }
+
