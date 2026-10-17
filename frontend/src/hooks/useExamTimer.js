@@ -1,91 +1,67 @@
-import { useState, useEffect, useRef } from 'react'
-import { serverClock } from '@/lib/serverClock'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 /**
- * useExamTimer Hook (Q3.3)
- * - Timer computed from expiresAt using serverClock offset
- * - Recomputes from deadline every tick (no background tab drift)
- * - Auto-submits at 0
- * - Handles "already past" upon initialization
+ * useExamTimer Hook
+ * Realtime countdown timer immune to background tab throttling via Date.now() delta.
+ * Synchronizes against server expiresAt timestamp.
  */
-export function useExamTimer({ expiresAt, endTime, durationMinutes, onTimeUp, autoStart = true }) {
-  const [timeLeft, setTimeLeft] = useState(null)
-  const timerRef = useRef(null)
-  const onTimeUpRef = useRef(onTimeUp)
-  onTimeUpRef.current = onTimeUp
+export function useExamTimer({ expiresAt, durationMinutes = 60, onExpire } = {}) {
+  const getRemainingSeconds = useCallback(() => {
+    if (expiresAt) {
+      const expiry = new Date(expiresAt).getTime()
+      return Math.max(0, Math.floor((expiry - Date.now()) / 1000))
+    }
+    return Math.max(0, durationMinutes * 60)
+  }, [expiresAt, durationMinutes])
+
+  const [remaining, setRemaining] = useState(getRemainingSeconds)
+  const onExpireRef = useRef(onExpire)
+  onExpireRef.current = onExpire
+  const firedRef = useRef(false)
 
   useEffect(() => {
-    if (!autoStart) return
+    firedRef.current = false
+    const targetTimestamp = expiresAt
+      ? new Date(expiresAt).getTime()
+      : Date.now() + durationMinutes * 60 * 1000
 
-    const targetDeadline = expiresAt || endTime
+    const updateTimer = () => {
+      const now = Date.now()
+      const diff = Math.max(0, Math.floor((targetTimestamp - now) / 1000))
+      setRemaining(diff)
 
-    // Function to calculate authoritative remaining seconds using serverClock offset
-    const computeRemainingSeconds = () => {
-      if (targetDeadline) {
-        const remMs = serverClock.getRemainingMs(targetDeadline)
-        return Math.max(0, Math.floor(remMs / 1000))
-      }
-      return null
-    }
-
-    if (targetDeadline) {
-      const initialSeconds = computeRemainingSeconds()
-
-      if (initialSeconds <= 0) {
-        // Deadline is already in the past (Q3.3)
-        setTimeLeft(0)
-        onTimeUpRef.current?.()
-        return
-      }
-
-      setTimeLeft(initialSeconds)
-
-      timerRef.current = setInterval(() => {
-        // Recompute from deadline every tick to eliminate background tab drift (Q3.3)
-        const rem = computeRemainingSeconds()
-        setTimeLeft(rem)
-
-        if (rem <= 0) {
-          if (timerRef.current) clearInterval(timerRef.current)
-          onTimeUpRef.current?.()
+      if (diff <= 0 && !firedRef.current) {
+        firedRef.current = true
+        if (onExpireRef.current) {
+          onExpireRef.current()
         }
-      }, 1000)
-    } else if (durationMinutes) {
-      // Fallback if no target deadline
-      let seconds = Math.floor(durationMinutes * 60)
-      setTimeLeft(seconds)
-
-      timerRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev === null) return null
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current)
-            onTimeUpRef.current?.()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
+      }
     }
 
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [expiresAt, endTime, durationMinutes, autoStart])
+    updateTimer()
+    const interval = setInterval(updateTimer, 1000)
+    return () => clearInterval(interval)
+  }, [expiresAt, durationMinutes])
 
-  const formatTime = (secs) => {
-    if (secs === null || secs === undefined) return '--:--'
-    const pad = (n) => String(n).padStart(2, '0')
-    const h = Math.floor(secs / 3600)
-    const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
-    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+  const formatTime = () => {
+    const hours = Math.floor(remaining / 3600)
+    const minutes = Math.floor((remaining % 3600) / 60)
+    const seconds = remaining % 60
+
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
   return {
-    timeLeft,
-    formattedTime: formatTime(timeLeft),
-    isUrgent: timeLeft !== null && timeLeft <= 300, // <= 5 minutes
-    isCritical: timeLeft !== null && timeLeft <= 60  // <= 1 minute
+    remaining,
+    formatTime,
+    isExpired: remaining <= 0,
+    isLowTime: remaining > 0 && remaining <= 300,
   }
 }
+
+export default useExamTimer

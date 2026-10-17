@@ -2,17 +2,22 @@ const { proctoringService } = require('./proctoring.service')
 
 async function logViolation(req, res, next) {
   try {
-    const { attemptId, examId, eventType, severity, metadata, evidenceS3Key } = req.body
-    const targetAttemptId = attemptId || req.params.attemptId
-    const result = await proctoringService.recordViolation({
-      attemptId: targetAttemptId,
-      examId,
-      eventType: eventType || 'GENERIC_VIOLATION',
-      severity: severity || 'MEDIUM',
-      metadata: metadata || {},
-      evidenceS3Key: evidenceS3Key || null
-    })
-    return res.status(200).json({ status: 'success', result })
+    const rawEvents = Array.isArray(req.body) ? req.body : req.body?.events || [req.body]
+    const results = []
+    for (const evt of rawEvents) {
+      if (!evt) continue
+      const targetAttemptId = evt.attemptId || req.params.attemptId || req.body?.attemptId
+      const result = await proctoringService.recordViolation({
+        attemptId: targetAttemptId,
+        examId: evt.examId || req.body?.examId,
+        eventType: evt.eventType || evt.type || 'SCREEN_PROCTOR_EVENT',
+        severity: evt.severity || 'MEDIUM',
+        metadata: evt.metadata || evt,
+        evidenceS3Key: evt.evidenceS3Key || evt.evidenceKey || null
+      })
+      results.push(result)
+    }
+    return res.status(200).json({ status: 'success', recorded: results.length, result: results[0] })
   } catch (err) {
     next(err)
   }

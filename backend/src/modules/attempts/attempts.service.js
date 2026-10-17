@@ -78,7 +78,7 @@ class AttemptService {
     return { attempt, answers: answers || [] }
   }
 
-  async saveAnswer(attemptId, studentId, questionId, selectedOptionIndex) {
+  async saveAnswer(attemptId, studentId, questionId, selectedOptionIndex, isBookmarked) {
     const attempt = await attemptsSql.findAttemptById(attemptId)
     if (!attempt) {
       const err = new Error('Attempt not found')
@@ -105,14 +105,26 @@ class AttemptService {
       throw err
     }
 
-    return attemptsSql.upsertAnswer(attemptId, questionId, selectedOptionIndex)
+    return attemptsSql.upsertAnswer(attemptId, questionId, selectedOptionIndex, isBookmarked)
   }
 
-  async batchSaveAnswers(attemptId, studentId, answersList = []) {
+  async batchSaveAnswers(attemptId, studentId, answersInput = []) {
+    let list = []
+    if (Array.isArray(answersInput)) {
+      list = answersInput
+    } else if (answersInput && typeof answersInput === 'object') {
+      list = Object.entries(answersInput).map(([qId, val]) => ({
+        questionId: qId,
+        selectedOptionIndex: typeof val === 'object' ? val?.selectedOptionIndex : val,
+        isBookmarked: typeof val === 'object' ? Boolean(val?.isBookmarked) : false
+      }))
+    }
     const results = []
-    for (const item of answersList) {
-      const res = await this.saveAnswer(attemptId, studentId, item.questionId, item.selectedOptionIndex)
-      results.push(res)
+    for (const item of list) {
+      if (item && item.questionId) {
+        const res = await this.saveAnswer(attemptId, studentId, item.questionId, item.selectedOptionIndex, item.isBookmarked)
+        results.push(res)
+      }
     }
     return results
   }

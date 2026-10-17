@@ -5,6 +5,8 @@ const { authenticateToken, requireRole } = require('../auth/auth.routes')
 const router = express.Router()
 
 // Browser Lockdown & Integrity Violation Event Intake
+router.post('/events', authenticateToken, proctoringController.logViolation)
+router.post('/proctoring/events', authenticateToken, proctoringController.logViolation)
 router.post('/violation', authenticateToken, proctoringController.logViolation)
 router.post('/violations', authenticateToken, proctoringController.logViolation)
 router.post('/proctoring/violation', authenticateToken, proctoringController.logViolation)

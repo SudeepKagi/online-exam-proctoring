@@ -82,6 +82,7 @@ export default function PreExamCheckPage() {
       }
 
       screenStreamRef.current = screenStream
+      window.__proctorScreenStream = screenStream
       setScreenVerified(true)
       setStep(3)
     } catch (err) {

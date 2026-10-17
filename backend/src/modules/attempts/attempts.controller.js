@@ -43,8 +43,8 @@ async function saveAnswer(req, res, next) {
 async function batchSaveAnswers(req, res, next) {
   try {
     const { attemptId } = req.params
-    const { answers } = req.body
-    const results = await attemptService.batchSaveAnswers(attemptId, req.user.id, answers || [])
+    const answersData = req.body?.answers !== undefined ? req.body.answers : req.body
+    const results = await attemptService.batchSaveAnswers(attemptId, req.user.id, answersData || [])
     return res.status(200).json({ status: 'success', savedCount: results.length, answers: results })
   } catch (err) {
     next(err)

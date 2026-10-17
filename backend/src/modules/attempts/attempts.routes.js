@@ -15,6 +15,7 @@ router.post('/:examId/start', authenticateToken, attemptsController.startAttempt
 // Hot-Path Answer Upsert & State Sync
 router.get('/:attemptId', authenticateToken, attemptsController.getAttempt)
 router.post('/:attemptId/answers', authenticateToken, attemptsController.saveAnswer)
+router.put('/:attemptId/answers', authenticateToken, attemptsController.batchSaveAnswers)
 router.post('/:attemptId/answers/batch', authenticateToken, attemptsController.batchSaveAnswers)
 
 // Final Submission & Deterministic Grading

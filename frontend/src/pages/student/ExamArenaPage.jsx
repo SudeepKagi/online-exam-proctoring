@@ -6,6 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
+import { useExamTimer } from '@/hooks/useExamTimer'
+import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
+import { useScreenProctoring } from '@/hooks/useScreenProctoring'
 import { Clock, Bookmark, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function ExamArenaPage() {
@@ -17,10 +20,39 @@ export default function ExamArenaPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [bookmarks, setBookmarks] = useState({})
-  const [timeLeft, setTimeLeft] = useState(3600)
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  const handleSubmitExam = async () => {
+    setSubmitting(true)
+    try {
+      if (flushDirtyAnswers) await flushDirtyAnswers()
+      if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
+      if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
+      navigate('/student/dashboard')
+    } catch (err) {
+      alert(errorMessage(err, 'Submission failed.'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const { formatTime } = useExamTimer({
+    expiresAt: attempt?.expiresAt,
+    durationMinutes: exam?.durationMinutes || 60,
+    onExpire: handleSubmitExam,
+  })
+
+  const { recordAnswer, flushDirtyAnswers } = useAnswerAutosave({
+    attemptId: attempt?.id,
+  })
+
+  const { ScreenLostDialog } = useScreenProctoring({
+    stream: typeof window !== 'undefined' ? window.__proctorScreenStream : null,
+    attemptId: attempt?.id,
+    examId: id,
+  })
 
   useEffect(() => {
     let mounted = true
@@ -33,16 +65,9 @@ export default function ExamArenaPage() {
       setExam(ex)
       setQuestions(ensureArray(ex?.questions))
       setAttempt(startRes.data?.attempt || startRes.data)
-      if (ex?.durationMinutes) setTimeLeft(ex.durationMinutes * 60)
     }).finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }, [id])
-
-  useEffect(() => {
-    if (timeLeft <= 0) return
-    const timer = setInterval(() => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)), 1000)
-    return () => clearInterval(timer)
-  }, [timeLeft])
 
   const currentQ = questions[currentIndex] || null
   const currentSelected = currentQ ? answers[currentQ.id] : null
@@ -51,13 +76,14 @@ export default function ExamArenaPage() {
   const handleSelectOption = (optIdx) => {
     if (!currentQ) return
     setAnswers({ ...answers, [currentQ.id]: optIdx })
-    if (attempt?.id) apiClient.post(`/attempts/${attempt.id}/answers`, { questionId: currentQ.id, selectedOptionIndex: optIdx, isBookmarked }).catch(() => {})
+    recordAnswer(currentQ.id, optIdx, isBookmarked)
   }
 
   const handleToggleBookmark = () => {
     if (!currentQ) return
-    setBookmarks({ ...bookmarks, [currentQ.id]: !isBookmarked })
-    if (attempt?.id) apiClient.post(`/attempts/${attempt.id}/answers`, { questionId: currentQ.id, selectedOptionIndex: currentSelected, isBookmarked: !isBookmarked }).catch(() => {})
+    const nextState = !isBookmarked
+    setBookmarks({ ...bookmarks, [currentQ.id]: nextState })
+    recordAnswer(currentQ.id, currentSelected, nextState)
   }
 
   const handleClearAnswer = () => {
@@ -65,22 +91,8 @@ export default function ExamArenaPage() {
     const copy = { ...answers }
     delete copy[currentQ.id]
     setAnswers(copy)
+    recordAnswer(currentQ.id, null, isBookmarked)
   }
-
-  const handleSubmitExam = async () => {
-    setSubmitting(true)
-    try {
-      if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
-      if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      navigate('/student/dashboard')
-    } catch (err) {
-      alert(errorMessage(err, 'Submission failed.'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const formatTime = (secs) => `${Math.floor(secs / 60).toString().padStart(2, '0')}:${(secs % 60).toString().padStart(2, '0')}`
 
   if (loading) return <ExamArenaShell className="items-center justify-center p-8"><div className="text-slate-500 text-sm">Initializing arena...</div></ExamArenaShell>
 
@@ -93,7 +105,7 @@ export default function ExamArenaPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-slate-50 px-3 py-1 rounded-md border border-slate-200 text-slate-800">
-            <Clock className="w-4 h-4 text-blue-600" /><span>{formatTime(timeLeft)}</span>
+            <Clock className="w-4 h-4 text-blue-600" /><span>{formatTime()}</span>
           </div>
           <Button size="sm" onClick={() => setSubmitDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">Submit Exam</Button>
         </div>
@@ -162,6 +174,8 @@ export default function ExamArenaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ScreenLostDialog />
     </ExamArenaShell>
   )
 }
