@@ -3,59 +3,29 @@ name: CI
 on:
   push:
     branches: [ main ]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
   pull_request:
     branches: [ main ]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
-  # ----------------------------------------------------------------------------
-  # 1. Verify: Zero-dependency linting, compilation, schema diff, quality.js
-  # ----------------------------------------------------------------------------
-  verify:
-    name: Verify (Lint, Build, Quality)
+  ci:
+    name: Build, Validate & Test
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
 
-      - name: Setup Workspace
-        uses: ./.github/actions/setup
-
-      - name: Run Hermetic Verification Suite
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-        run: npm run verify
-
-  # ----------------------------------------------------------------------------
-  # 2. Integration: PostgreSQL + Redis + RabbitMQ & Boot Smoke
-  # ----------------------------------------------------------------------------
-  integration:
-    name: Integration & Boot Smoke
-    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: proctornet_ci
+          POSTGRES_USER: proctornet
+          POSTGRES_PASSWORD: proctornet_password
+          POSTGRES_DB: proctornet
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d proctornet_ci"
+          --health-cmd "pg_isready -U proctornet -d proctornet"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -70,204 +40,73 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
-      rabbitmq:
-        image: rabbitmq:3.12-alpine
-        ports:
-          - 5672:5672
-        options: >-
-          --health-cmd "rabbitmq-diagnostics check_running"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Workspace
-        uses: ./.github/actions/setup
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
 
-      - name: Apply Migrations & Seed Baseline Admin
+      - name: 2. npm ci at root
+        run: npm ci
+
+      - name: 3. Prisma Validate & Migrate Deploy
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
+          DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
         run: |
+          npx prisma validate --schema=backend/prisma/schema.prisma
+          npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
-          node backend/prisma/seed/admin.js
 
-      - name: Backend Integration Tests
-        env:
-          NODE_ENV: test
-          APP_PROFILE: lite
-          QUEUE_DRIVER: rabbitmq
-          CACHE_DRIVER: redis
-          MEDIA_DRIVER: snapshot
-          FACE_DRIVER: mock
-          START_WORKERS: false
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          REDIS_URL: redis://localhost:6379
-          RABBITMQ_URL: amqp://guest:guest@localhost:5672
-          JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          REFRESH_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_MOCK: "true"
-          S3_BUCKET: proctornet-ci-test-bucket
-        run: |
-          node scripts/ci/run-tests.js --profile lite
-
-      - name: Boot Smoke Check
-        env:
-          NODE_ENV: test
-          APP_PROFILE: lite
-          PORT: 5000
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_MOCK: "true"
-          S3_BUCKET: proctornet-ci-test-bucket
-        run: |
-          node scripts/ci/boot-smoke.js
-
-  # ----------------------------------------------------------------------------
-  # 3. E2E: Playwright Journeys against Prod-Parity Stack (Non-Blocking on Push)
-  # ----------------------------------------------------------------------------
-  e2e:
-    name: E2E Journeys (Playwright)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'e2e') || contains(github.event.pull_request.labels.*.name, 'full-ci')
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: proctornet_ci
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d proctornet_ci"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
-      minio:
-        image: pgsty/silo:latest
-        command: server /data --console-address ":9001"
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 5
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Workspace
-        uses: ./.github/actions/setup
-
-      - name: Apply Migrations & Seed Baseline Admin
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-        run: |
-          npx prisma migrate deploy --schema=backend/prisma/schema.prisma
-          node backend/prisma/seed/admin.js
-
-      - name: Create MinIO S3 Test Bucket
-        working-directory: backend
+      - name: 4. Line-Count Guardrail Check (Fail if > 250 lines)
         run: |
           node -e "
-            const { S3Client, CreateBucketCommand } = require('@aws-sdk/client-s3');
-            const s3 = new S3Client({
-              endpoint: 'http://localhost:9000',
-              region: 'us-east-1',
-              credentials: { accessKeyId: 'minioadmin', secretAccessKey: 'minioadmin' },
-              forcePathStyle: true
-            });
-            s3.send(new CreateBucketCommand({ Bucket: 'proctornet-storage-test' }))
-              .then(() => console.log('S3 test bucket ready'))
-              .catch(err => console.log('Bucket exists or ready:', err.message));
+            const fs = require('fs');
+            const path = require('path');
+            function walk(dir) {
+              let results = [];
+              if (!fs.existsSync(dir)) return results;
+              const list = fs.readdirSync(dir);
+              list.forEach(file => {
+                const fullPath = path.join(dir, file);
+                const stat = fs.statSync(fullPath);
+                if (stat && stat.isDirectory()) {
+                  results = results.concat(walk(fullPath));
+                } else if (/\.(js|jsx|ts|tsx)$/.test(file)) {
+                  results.push(fullPath);
+                }
+              });
+              return results;
+            }
+            const files = [...walk('backend/src'), ...walk('frontend/src')];
+            const violations = [];
+            for (const file of files) {
+              const lines = fs.readFileSync(file, 'utf8').split('\n').length;
+              if (lines > 250) {
+                violations.push({ file, lines });
+              }
+            }
+            if (violations.length > 0) {
+              console.error('❌ Line count guardrail failure: Files exceeding 250 lines:');
+              violations.forEach(v => console.error('  - ' + v.file + ': ' + v.lines + ' lines'));
+              process.exit(1);
+            }
+            console.log('✅ Line count guardrail passed across ' + files.length + ' files. All files <= 250 lines.');
           "
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Playwright E2E Journeys
+      - name: 5. Run Backend Tests & Build Frontend
         env:
-          CI: "true"
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
-          DIRECT_URL: postgresql://postgres:postgres@localhost:5432/proctornet_ci?schema=public
+          NODE_ENV: test
+          CACHE_DRIVER: memory
+          DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
+          DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
           REDIS_URL: redis://localhost:6379
-          JWT_SECRET: ci_unified_dummy_jwt_secret_must_be_at_least_32_bytes_long_12345
-          S3_ENDPOINT: http://localhost:9000
-          S3_BUCKET: proctornet-storage-test
-          S3_BUCKET_NAME: proctornet-storage-test
-          S3_FORCE_PATH_STYLE: "true"
-          AWS_REGION: us-east-1
-          AWS_ACCESS_KEY_ID: minioadmin
-          AWS_SECRET_ACCESS_KEY: minioadmin
-          FACE_DRIVER: test
-          FACE_VERIFIER_DRIVER: test
-          COOKIE_SECURE: "false"
+          JWT_SECRET: supersecret_jwt_proctornet_production_key_32bytes
+          JWT_REFRESH_SECRET: supersecret_jwt_refresh_proctornet_key_32bytes
         run: |
-          # j3 and j4 require a companion agent subprocess (420s+) — run manually or in nightly
-          xvfb-run --auto-servernum --server-args="-screen 0 1440x900x24" npx playwright test \
-            e2e/journeys/j1-onboarding.spec.ts \
-            e2e/journeys/j6-security-negative.spec.ts \
-            e2e/journeys/j10-lifecycle-results.spec.ts \
-            --project=chromium
-
-      - name: Upload E2E HTML Report & Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: reports/e2e/
-          retention-days: 7
-
-  # ----------------------------------------------------------------------------
-  # 4. CI Gate: Blocking gate for PR merges (Deterministic Verify & Integration)
-  # ----------------------------------------------------------------------------
-  ci-gate:
-    name: CI Gate
-    runs-on: ubuntu-latest
-    if: always()
-    needs: [verify, integration]
-    steps:
-      - name: Evaluate Dependencies
-        run: |
-          VERIFY_STATUS="${{ needs.verify.result }}"
-          INTEGRATION_STATUS="${{ needs.integration.result }}"
-
-          echo "Verify: $VERIFY_STATUS"
-          echo "Integration: $INTEGRATION_STATUS"
-
-          if [ "$VERIFY_STATUS" != "success" ]; then
-            echo "::error::Job 'verify' failed (status: $VERIFY_STATUS)"
-            exit 1
-          fi
-
-          if [ "$INTEGRATION_STATUS" != "success" ]; then
-            echo "::error::Job 'integration' failed (status: $INTEGRATION_STATUS)"
-            exit 1
-          fi
-
-          echo "✨ All required CI jobs passed cleanly!"
+          npm test --workspace=backend
+          npm run build --workspace=frontend

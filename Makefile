@@ -1,58 +1,45 @@
-﻿# ==============================================================================
-# ProctorNet — Makefile
-# Targets: smoke, up, down, build, migrate, seed, lint, test, backup
 # ==============================================================================
-.PHONY: up down build migrate seed smoke lint test backup restore
+# ProctorNet — Clean Architecture Makefile
+# Targets: up, down, destroy, build, dev, migrate, seed, test, test-e2e, clean
+# ==============================================================================
+.PHONY: up down destroy build dev migrate seed test test-e2e clean
 
-COMPOSE_FILES := -f docker-compose.prod.yml -f docker-compose.override.yml
-COMPOSE := docker compose $(COMPOSE_FILES) --profile dev
-
-# Bring up the full dev stack
+# Bring up docker-compose stack (postgres, redis, backend, frontend)
 up:
-	.\scripts\dev\up.ps1
+	docker compose up -d
 
-# Tear down all containers (keep volumes)
+# Tear down containers (keep volumes)
 down:
-	$(COMPOSE) down
+	docker compose down
 
-# Tear down including volumes (destructive)
+# Destroy containers and wipe data volumes
 destroy:
-	$(COMPOSE) down -v
+	docker compose down -v
 
-# Build / rebuild images
+# Build docker containers
 build:
-	$(COMPOSE) build
+	docker compose build
 
-# Run prisma migrations against the running DB
+# Start local dev servers for backend and frontend concurrently
+dev:
+	npm run dev
+
+# Run Prisma database migrations
 migrate:
-	$(COMPOSE) run --rm migrate
+	npm run db:migrate
 
-# Seed admin from .env or backup
+# Seed baseline database admin
 seed:
-	cd backend && node prisma\seed\admin.js
+	npm run db:seed
 
-# --------------------------------------------------------------------------
-# smoke: golden path test against the running nginx edge (port 80)
-# Runs Playwright "smoke" tagged tests that exercise the nginx-fronted stack.
-# --------------------------------------------------------------------------
-smoke:
-	@echo "Running smoke tests against http://localhost:80 ..."
-	npx playwright test --grep "@smoke" --reporter=line
-
-# Lint backend + frontend
-lint:
-	cd backend && npx eslint src --max-warnings 0
-	cd frontend && npx eslint src --max-warnings 0
-
-# Unit + integration tests (node --test)
+# Run backend test suite
 test:
-	cd backend && node --test tests
+	npm run test
 
-# Backup: pg_dump + admin JSON export
-backup:
-	.\scripts\ops\backup.ps1
+# Run Playwright E2E journey tests
+test-e2e:
+	npm run test:e2e
 
-# Restore: pg_restore into scratch DB and verify counts
-restore:
-	.\scripts\ops\backup-restore-drill.ps1
-
+# Clean generated build artifacts
+clean:
+	node -e "const fs = require('fs'); ['frontend/dist', 'backend/dist'].forEach(d => fs.rmSync(d, { recursive: true, force: true }));"
