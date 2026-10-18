@@ -38,7 +38,7 @@ jobs:
         run: |
           npm ci
           npm run build --workspace=frontend
-          npx prisma generate --schema=backend/prisma/schema.prisma
+          cd backend && npm install --omit=dev --no-audit --no-fund && npx prisma generate && cd ..
           RELEASE_TAG="release-${{ github.sha }}"
           TAR_FILE="${RELEASE_TAG}.tar.gz"
           printf '{\n  "version": "%s",\n  "gitSha": "%s",\n  "builtAt": "%s"\n}\n' \
@@ -108,18 +108,44 @@ jobs:
           fi
 
           echo "[4/6] Executing 7-Table Schema Cutover & Baseline Seed..."
+          PREV_RELEASE_DIR=""
+          if [ -L "$CURRENT_LINK" ]; then
+            PREV_RELEASE_DIR=$(readlink -f "$CURRENT_LINK" || true)
+          fi
+
+          if [ -n "$PREV_RELEASE_DIR" ] && [ -d "$PREV_RELEASE_DIR/backend/node_modules" ] && [ ! -d "$NEW_RELEASE/backend/node_modules" ]; then
+            echo "[-] Copying backend node_modules cache from $PREV_RELEASE_DIR..."
+            cp -rp "$PREV_RELEASE_DIR/backend/node_modules" "$NEW_RELEASE/backend/node_modules" || true
+          fi
+
           cd "$NEW_RELEASE/backend"
+          if [ ! -d "node_modules" ]; then
+            echo "[-] Installing production dependencies..."
+            npm install --omit=dev --no-audit --no-fund || true
+          fi
+
+          PRISMA_BIN="./node_modules/.bin/prisma"
+          if [ ! -f "$PRISMA_BIN" ]; then
+            PRISMA_BIN="npx --yes prisma@5.22.0"
+          fi
+
           export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL:-}"
           if [ -n "${DATABASE_URL:-}" ]; then
             export DATABASE_URL="${DATABASE_URL}"
           fi
 
-          if ! npx prisma migrate deploy; then
+          $PRISMA_BIN generate
+
+          if ! $PRISMA_BIN migrate deploy; then
             echo "[!] Migration drift detected on live database. Applying 7-table schema cutover..."
-            npx prisma db push --force-reset --accept-data-loss
-            npx prisma migrate resolve --applied 0001_core_tables || true
+            $PRISMA_BIN db push --force-reset --accept-data-loss
+            $PRISMA_BIN migrate resolve --applied 0001_core_tables || true
           fi
           node prisma/seed/admin.js
+
+          if id -u proctornet >/dev/null 2>&1; then
+            chown -R proctornet:proctornet "$NEW_RELEASE" || true
+          fi
 
           echo "[5/6] Updating active symlink & reloading services..."
           ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
