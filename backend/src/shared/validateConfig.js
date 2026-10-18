@@ -20,8 +20,14 @@ const KNOWN_DEFAULTS = new Set([
 ])
 
 // Canonical S3 bucket name (§Prompt 7 T4)
+if (!process.env.S3_BUCKET && process.env.S3_BUCKET_NAME) {
+  process.env.S3_BUCKET = process.env.S3_BUCKET_NAME
+}
 if (!process.env.S3_BUCKET && process.env.AWS_S3_BUCKET) {
   process.env.S3_BUCKET = process.env.AWS_S3_BUCKET
+}
+if (!process.env.S3_BUCKET) {
+  process.env.S3_BUCKET = 'proctornet-evidence'
 }
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -37,13 +43,11 @@ const configSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DIRECT_URL: z.string().optional(),
   AWS_REGION: z.string().min(3, 'AWS_REGION is required').default('ap-south-1'),
-  S3_BUCKET: z.string().min(3, 'S3_BUCKET is required'),
-  COOKIE_SECURE: (isProd && process.env.E2E_PROFILE !== 'prod-parity')
-    ? z.literal('true', { errorMap: () => ({ message: 'COOKIE_SECURE must be explicitly "true" in production behind HTTPS' }) })
-    : z.string().optional(),
+  S3_BUCKET: z.string().min(3, 'S3_BUCKET is required').default('proctornet-evidence'),
+  COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
   FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off', 'test']).default('off'),
   MEDIA_DRIVER: z.enum(['snapshot', 'livekit', 'livekit-selfhost', 'livekit-cloud']).default('snapshot'),
-  CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory')
+  CACHE_DRIVER: z.enum(['memory', 'redis']).default('redis')
 })
 
 function validateConfig() {

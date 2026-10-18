@@ -21,6 +21,7 @@ services:
     image: redis:7-alpine
     container_name: proctornet-redis
     restart: unless-stopped
+    command: redis-server --protected-mode no
     ports:
       - "6379:6379"
     volumes:
@@ -43,10 +44,15 @@ services:
       NODE_ENV: production
       PORT: 4000
       DATABASE_URL: postgresql://proctornet:proctornet_password@postgres:5432/proctornet?schema=public
+      DIRECT_URL: postgresql://proctornet:proctornet_password@postgres:5432/proctornet?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: supersecret_jwt_proctornet_production_key_32bytes
       JWT_REFRESH_SECRET: supersecret_jwt_refresh_proctornet_key_32bytes
+      CORS_ORIGIN: http://localhost:5173,http://localhost:80,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:80
       ALLOWED_ORIGINS: http://localhost:5173,http://localhost:80,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:80
+      S3_BUCKET: proctornet-production-evidence
+      AWS_REGION: ap-south-1
+      CACHE_DRIVER: redis
     depends_on:
       postgres:
         condition: service_healthy

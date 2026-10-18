@@ -10,7 +10,7 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Native compilation prerequisites for bcrypt / sharp
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ openssl
 
 COPY package*.json ./
 RUN npm ci || npm install
@@ -27,31 +27,31 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Install tini for clean signal forwarding and zombie reaping, and tools for healthcheck
-RUN apk add --no-cache tini wget curl
+RUN apk add --no-cache tini wget curl openssl
 
 ENV NODE_ENV=production
 ENV UV_THREADPOOL_SIZE=64
-ENV PORT=5000
+ENV PORT=4000
 
 # Create dedicated non-root application user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S proctornet -u 1001 -G nodejs
 
 # Copy pruned dependencies, generated Prisma client, and application source
-COPY package*.json ./
+COPY --chown=proctornet:nodejs package*.json ./
 COPY --from=builder --chown=proctornet:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=proctornet:nodejs /app/prisma ./prisma
 COPY --chown=proctornet:nodejs src ./src
 
 # Create tmp directory with write permissions for tmpfs mounts
-RUN mkdir -p /app/tmp && chown -R proctornet:nodejs /app
+RUN mkdir -p /app/tmp && chown -R proctornet:nodejs /app/tmp
 
 USER proctornet
 
-EXPOSE 5000
+EXPOSE 4000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://127.0.0.1:5000/healthz || exit 1
+  CMD wget -q --spider http://127.0.0.1:4000/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "--max-old-space-size=2048", "src/app.js"]
+CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && npx prisma migrate deploy && node --max-old-space-size=2048 src/app.js"]

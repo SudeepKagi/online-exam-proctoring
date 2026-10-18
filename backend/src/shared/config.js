@@ -61,6 +61,7 @@ const config = {
   // S3 / Object Storage (Unified S3_BUCKET env)
   s3Bucket:
     process.env.S3_BUCKET ||
+    process.env.S3_BUCKET_NAME ||
     process.env.AWS_S3_BUCKET ||
     (process.env.NODE_ENV === 'test' ? 'proctornet-test-bucket' : undefined),
   s3Region: process.env.AWS_REGION || 'ap-south-1',

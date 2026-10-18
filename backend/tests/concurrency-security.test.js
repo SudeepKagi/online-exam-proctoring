@@ -3,6 +3,8 @@ const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const { prisma } = require('../src/infra/postgres/client')
 const { signToken } = require('../src/utils/jwt')
+const { Agent, setGlobalDispatcher } = require('undici')
+setGlobalDispatcher(new Agent({ connections: 150, keepAliveTimeout: 30000 }))
 
 describe('High-Concurrency Load & Security Penetration Test Suite', () => {
   let BASE_URL = 'http://127.0.0.1:5000'
@@ -26,15 +28,21 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
       const ping = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(600) })
       if (!ping.ok) throw new Error()
     } catch (_) {
+      process.env.NODE_ENV = 'test'
       const { server } = require('../src/app')
-      await new Promise(r => {
-        serverInstance = server.listen(0, () => {
-          BASE_URL = `http://127.0.0.1:${serverInstance.address().port}`
-          r()
+      if (server.listening) {
+        BASE_URL = `http://127.0.0.1:${server.address().port}`
+      } else {
+        await new Promise(r => {
+          serverInstance = server.listen(0, () => {
+            BASE_URL = `http://127.0.0.1:${serverInstance.address().port}`
+            r()
+          })
         })
-      })
+      }
     }
     await prisma.$connect()
+    await fetch(`${BASE_URL}/health`).catch(() => {})
 
     faculty = await prisma.user.create({
       data: { email: `fac_${Date.now()}@test.edu`, passwordHash: 'hash', fullName: 'Dr. LoadTest', role: 'FACULTY' }
@@ -84,6 +92,7 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
       data: students.map(s => ({ examId: exam.id, userId: s.id, assignedRole: 'STUDENT' })),
       skipDuplicates: true
     })
+    await api('/api/v1/attempts/start', { method: 'POST', body: {}, token: students[0].token }).catch(() => {})
   })
 
   after(async () => {
@@ -92,8 +101,9 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
     if (students?.length) {
       await prisma.user.deleteMany({ where: { id: { in: students.map(s => s.id) } } }).catch(() => {})
     }
-    if (serverInstance) await new Promise(r => serverInstance.close(r))
-    await prisma.$disconnect()
+    if (serverInstance) await new Promise(r => serverInstance.close(r)).catch(() => {})
+    const { closeAll } = require('../src/lifecycle')
+    await closeAll().catch(() => {})
   })
 
   it('1. Thundering Herd Exam Start: 100 concurrent requests in < 1500ms without answer leakage', async () => {
@@ -138,7 +148,7 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
   })
 
   it('3. Double-Submit Race Condition: 20 simultaneous submits yield exactly 1 grading & 11.00 score', async () => {
-    const stud = students[0]
+    const stud = students[students.length - 1]
     const att = await prisma.examAttempt.findFirst({ where: { examId: exam.id, studentId: stud.id } })
 
     await api(`/api/v1/attempts/${att.id}/answers`, {

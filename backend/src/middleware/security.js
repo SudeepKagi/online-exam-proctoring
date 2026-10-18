@@ -16,6 +16,12 @@ if (process.env.ALLOWED_ORIGINS) {
     if (trimmed && !allowedOrigins.includes(trimmed)) allowedOrigins.push(trimmed)
   })
 }
+if (process.env.CORS_ORIGIN) {
+  process.env.CORS_ORIGIN.split(',').forEach((u) => {
+    const trimmed = u.trim()
+    if (trimmed && !allowedOrigins.includes(trimmed)) allowedOrigins.push(trimmed)
+  })
+}
 if (process.env.PUBLIC_ORIGIN) {
   process.env.PUBLIC_ORIGIN.split(',').forEach((u) => {
     const trimmed = u.trim()
@@ -50,7 +56,7 @@ const derivedWsOrigins = allowedOrigins.map((orig) => {
   }
 }).filter(Boolean)
 
-const s3Bucket = process.env.S3_BUCKET || 'proctornet-storage'
+const s3Bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'proctornet-storage'
 const awsRegion = process.env.AWS_REGION || 'ap-south-1'
 const s3Hosts = isProd
   ? [`https://${s3Bucket}.s3.${awsRegion}.amazonaws.com`, `https://${s3Bucket}.s3.amazonaws.com`, 'https://*.amazonaws.com']
