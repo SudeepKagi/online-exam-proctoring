@@ -8,54 +8,66 @@
   font-style: normal;
 }
 
-/* ── Design System Tokens ── */
+/* ── Design System Tokens: Mercury Fintech Standard ── */
 :root {
   /* Typography Tokens */
-  --font-family-primary: 'DM Sans', sans-serif;
-  --font-family-display: 'Plus Jakarta Sans', sans-serif;
-  --font-family-stack: 'DM Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-primary: 'Inter', 'DM Sans', sans-serif;
+  --font-family-display: 'Inter', 'Plus Jakarta Sans', sans-serif;
+  --font-family-stack: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
   --font-family-mono: 'JetBrains Mono', monospace;
   --font-size-xs: 11px;
   --font-size-sm: 12px;
-  --font-size-md: 13px;
-  --font-size-lg: 14px;
-  --font-size-xl: 16px;
-  --font-size-2xl: 18px;
-  --font-size-3xl: 22px;
-  --font-size-4xl: 28px;
-  --font-size-base: 14px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 28px;
+  --font-size-4xl: 42px;
+  --font-size-display: 52px;
+  --font-size-stat: 60px;
+  --font-size-base: 16px;
+  --font-weight-light: 360;
   --font-weight-base: 400;
-  --line-height-base: 1.5;
+  --font-weight-ui: 420;
+  --font-weight-heading: 480;
+  --font-weight-eyebrow: 500;
+  --line-height-base: 1.4;
 
-  /* Color Tokens: Brand & Semantic */
-  --color-brand-primary: #2f80ed;
-  --color-brand-hover: #2563eb;
-  --color-brand-active: #1c4d8e;
+  /* Mercury Brand & Accent */
+  --color-brand-primary: #5266eb;
+  --color-brand-hover: #4354d0;
+  --color-brand-active: #3745b5;
+  --color-mercury-periwinkle: #9cb4e8;
 
-  --color-text-primary: #18181b;
-  --color-text-secondary: #2b2f34;
-  --color-text-tertiary: #71717a;
+  /* Mercury Text Tokens */
+  --color-text-primary: #28253b;
+  --color-text-secondary: #554e7b;
+  --color-text-tertiary: #70707d;
   --color-text-white: #ffffff;
-  --color-text-inverse: #2f80ed;
+  --color-text-inverse: #5266eb;
+  --color-text-on-dark: #ededf3;
+  --color-text-fog: #c3c3cc;
 
-  /* Surfaces */
-  --color-surface-base: #ffffff;
-  --color-surface-subtle: #f8fafc;
+  /* Mercury Surfaces */
+  --color-surface-base: #fbfcfd;
+  --color-surface-subtle: #fbfcfd;
   --color-surface-card: #ffffff;
-  --color-surface-muted: #eff6ff;
+  --color-surface-muted: #edecfb;
   --color-surface-raised: #ffffff;
-  --color-surface-dark: #091a2f;
+  --color-surface-tint: #fbfbff;
+  --color-surface-dark: #171721;
+  --color-surface-dark-raised: #1e1e2a;
 
   /* Distinctive Accents */
-  --color-accent-blue: #1c4d8e;
-  --color-accent-purple: #5b21b6;
+  --color-accent-blue: #5266eb;
+  --color-accent-purple: #554e7b;
   --color-accent-green: #166534;
 
   /* Borders */
-  --color-border-default: #e5e7eb;
-  --color-border-muted: #d5e6fb;
-  --color-border-dark: #13335f;
-  --color-border-focus: #2f80ed;
+  --color-border-default: #e9eaf2;
+  --color-border-muted: #edecfb;
+  --color-border-dark: #28253b;
+  --color-border-focus: #5266eb;
 
   /* Status Colors */
   --color-status-success: #16a34a;

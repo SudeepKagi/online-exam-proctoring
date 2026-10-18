@@ -68,66 +68,66 @@ export default function FacultyExamsPage() {
   return (
     <DashboardShell title="Faculty Examination Workspace">
       {/* 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Total Exams</CardTitle>
-            <BookOpen className="w-4 h-4 text-blue-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Exams</CardTitle>
+            <BookOpen className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{exams.length}</div>
-            <p className="text-xs text-slate-500 mt-1">Authored examinations</p>
+            <div className="text-2xl font-[480] text-[#28253b]">{exams.length}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Authored examinations</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Published / Live</CardTitle>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Published / Live</CardTitle>
+            <CheckCircle2 className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-emerald-600">{publishedCount}</div>
-            <p className="text-xs text-slate-500 mt-1">Ready for candidate entry</p>
+            <div className="text-2xl font-[480] text-[#5266eb]">{publishedCount}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Ready for candidate entry</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Questions Authored</CardTitle>
-            <HelpCircle className="w-4 h-4 text-indigo-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Questions Authored</CardTitle>
+            <HelpCircle className="w-4 h-4 text-[#554e7b]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{totalQuestions || 'Active'}</div>
-            <p className="text-xs text-slate-500 mt-1">Standardized MCQ pool</p>
+            <div className="text-2xl font-[480] text-[#28253b]">{totalQuestions || 'Active'}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Standardized MCQ pool</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Proctoring Mode</CardTitle>
-            <Users className="w-4 h-4 text-purple-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Proctoring Mode</CardTitle>
+            <Users className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-purple-600">Pure Browser</div>
-            <p className="text-xs text-slate-500 mt-1">Zero-install screen & camera lock</p>
+            <div className="text-2xl font-[480] text-[#28253b]">Pure Browser</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Zero-install screen & camera lock</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6 font-sans">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Your Authored Examination Cohorts</h2>
-          <p className="text-xs text-slate-500">Design assessments, run AI question synthesis, and generate invigilator access pins.</p>
+          <h2 className="text-sm font-[480] text-[#28253b]">Your Authored Examination Cohorts</h2>
+          <p className="text-xs text-[#70707d] font-[360]">Design assessments, run AI question synthesis, and generate invigilator access pins.</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs font-bold rounded-xl shadow-xs">
+            <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-5 h-10 shadow-xs cursor-pointer">
               <PlusCircle className="w-3.5 h-3.5" /> + Create Exam
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md font-sans">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold">Create New Examination</DialogTitle>
+              <DialogTitle className="text-base font-[480] text-[#28253b]">Create New Examination</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-3 pt-2">
               <FormField label="Exam Title" required>
@@ -147,7 +147,7 @@ export default function FacultyExamsPage() {
               <FormField label="Duration (Minutes)" required>
                 <Input required type="number" min={5} max={300} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} className="h-9 text-xs" />
               </FormField>
-              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2 cursor-pointer">
+              <Button type="submit" disabled={submitting} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
                 {submitting ? 'Creating...' : 'Save & Configure Questions'}
               </Button>
             </form>
@@ -156,52 +156,52 @@ export default function FacultyExamsPage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-xl text-xs font-medium ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
           {msg.text}
         </div>
       )}
 
-      <Card className="border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden">
+      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-200 bg-slate-50/70">
-                <TableHead className="text-xs font-semibold text-slate-600">Exam Title</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Course Code</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Schedule Window</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Duration</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Status</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 text-right">Actions</TableHead>
+              <TableRow>
+                <TableHead>Exam Title</TableHead>
+                <TableHead>Course Code</TableHead>
+                <TableHead>Schedule Window</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-slate-500">Loading exams...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">Loading exams...</TableCell></TableRow>
               ) : exams.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-slate-500">No exams authored yet. Click "+ Create Exam" to begin.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">No exams authored yet. Click "+ Create Exam" to begin.</TableCell></TableRow>
               ) : (
                 exams.map((exam) => (
-                  <TableRow key={exam.id} className="border-slate-100 hover:bg-slate-50/60">
-                    <TableCell className="font-bold text-slate-900 text-xs">{exam.title}</TableCell>
-                    <TableCell className="text-slate-600 text-xs font-mono">{exam.courseCode}</TableCell>
-                    <TableCell className="text-slate-600 text-xs">
+                  <TableRow key={exam.id}>
+                    <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
+                    <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
+                    <TableCell className="text-[#554e7b] text-xs">
                       {new Date(exam.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
                       {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </TableCell>
-                    <TableCell className="text-slate-600 text-xs">{exam.durationMinutes}m</TableCell>
+                    <TableCell className="text-[#554e7b] text-xs">{exam.durationMinutes}m</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-[10px] font-bold ${
+                      <Badge variant="outline" className={`text-[10px] font-[420] ${
                         exam.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        exam.status === 'PUBLISHED' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        'bg-slate-100 text-slate-700 border-slate-200'
+                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent' :
+                        'bg-[#fbfbff] text-[#70707d] border-[#e9eaf2]'
                       }`}>
                         {exam.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-xl">
+                      <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420]">
                         <Link to={`/faculty/exams/${exam.id}`}>
-                          <Settings className="w-3.5 h-3.5 text-blue-600" /> Manage Exam
+                          <Settings className="w-3.5 h-3.5 text-[#5266eb]" /> Manage Exam
                         </Link>
                       </Button>
                     </TableCell>

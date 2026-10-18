@@ -90,26 +90,26 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl font-sans max-h-[92vh] overflow-y-auto">
-          <DialogHeader className="border-b border-slate-100 pb-3 flex flex-row items-center justify-between">
-            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" /> Review & Verify Identity Profile — {user.fullName}
+        <DialogContent className="max-w-3xl font-sans max-h-[92vh] overflow-y-auto bg-white border-[#e9eaf2] text-[#28253b] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+          <DialogHeader className="border-b border-[#e9eaf2] pb-3 flex flex-row items-center justify-between">
+            <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#5266eb]" /> Review & Verify Identity Profile — {user.fullName}
             </DialogTitle>
-            <Badge variant="outline" className={user.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-xs' : 'bg-amber-50 text-amber-700 border-amber-200 text-xs'}>
+            <Badge variant="outline" className={user.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-xs rounded-full' : 'bg-[#edecfb] text-[#5266eb] border-[#9cb4e8]/30 text-xs rounded-full'}>
               {user.role} • {user.status}
             </Badge>
           </DialogHeader>
 
-          {error && <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium">{error}</div>}
+          {error && <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-[420]">{error}</div>}
 
-          {/* User Metadata Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs">
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">Full Name</span><span className="font-bold text-slate-900 truncate block">{user.fullName}</span></div>
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">Email</span><span className="font-medium text-slate-700 truncate block">{user.email}</span></div>
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'USN' : 'Employee ID'}</span><span className="font-mono font-bold text-blue-600 truncate block">{user.institutionId || '—'}</span></div>
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">Department</span><span className="font-medium text-slate-700 truncate block">{meta.department || user.department || '—'}</span></div>
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'Semester' : 'Designation'}</span><span className="font-medium text-slate-700 truncate block">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span></div>
-            <div><span className="text-slate-400 block text-[10px] font-bold uppercase">Phone</span><span className="font-medium text-slate-700 truncate block">{meta.phone || '—'}</span></div>
+          {/* User Metadata Grid: Mercury surface-tint */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 p-3.5 bg-[#fbfbff] border border-[#e9eaf2] rounded-xl text-xs">
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Full Name</span><span className="font-[480] text-[#28253b] truncate block">{user.fullName}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Email</span><span className="font-[420] text-[#28253b] truncate block">{user.email}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'USN' : 'Employee ID'}</span><span className="font-mono font-[480] text-[#5266eb] truncate block">{user.institutionId || '—'}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Department</span><span className="font-[420] text-[#28253b] truncate block">{meta.department || user.department || '—'}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'Semester' : 'Designation'}</span><span className="font-[420] text-[#28253b] truncate block">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Phone</span><span className="font-[420] text-[#28253b] truncate block">{meta.phone || '—'}</span></div>
           </div>
 
           {/* Photo Inspection Section */}
@@ -117,34 +117,34 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
             {isStudent && (
               <div className="space-y-1.5 text-center">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><User className="w-4 h-4 text-blue-600" /> Biometric Face Photo</span>
+                  <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><User className="w-4 h-4 text-[#5266eb]" /> Biometric Face Photo</span>
                   {photos.referencePhotoUrl && (
-                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Biometric Face Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-blue-600">
+                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Biometric Face Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
                       <ZoomIn className="w-3 h-3" /> Zoom
                     </Button>
                   )}
                 </div>
-                <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center relative group">
+                <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] flex items-center justify-center relative group">
                   {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photos.referencePhotoUrl ? (
                     <img src={photos.referencePhotoUrl} alt="Face Reference" className="w-full h-full object-cover cursor-pointer" onClick={() => setZoomedImage({ title: 'Biometric Face Photo', url: photos.referencePhotoUrl })} />
-                  ) : <span className="text-xs text-slate-400 font-medium">No biometric face photo</span>}
+                  ) : <span className="text-xs text-[#70707d] font-[400]">No biometric face photo</span>}
                 </div>
               </div>
             )}
 
             <div className="space-y-1.5 text-center">
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><FileText className="w-4 h-4 text-blue-600" /> College ID Card Photo</span>
+                <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><FileText className="w-4 h-4 text-[#5266eb]" /> College ID Card Photo</span>
                 {photos.idCardPhotoUrl && (
-                  <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} className="h-6 text-[10px] gap-1 text-blue-600">
+                  <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
                     <ZoomIn className="w-3 h-3" /> Zoom
                   </Button>
                 )}
               </div>
-              <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center p-2 relative group">
+              <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] flex items-center justify-center p-2 relative group">
                 {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photos.idCardPhotoUrl ? (
                   <img src={photos.idCardPhotoUrl} alt="College ID" className="w-full h-full object-contain cursor-pointer" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} />
-                ) : <span className="text-xs text-slate-400 font-medium">No College ID card uploaded</span>}
+                ) : <span className="text-xs text-[#70707d] font-[400]">No College ID card uploaded</span>}
               </div>
             </div>
           </div>
@@ -170,22 +170,22 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           )}
 
           {/* Modal Actions */}
-          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="pt-3 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-semibold rounded-xl">Close</Button>
-              <Button variant="ghost" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-semibold text-slate-600 gap-1 rounded-xl"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full border-[#e9eaf2]">Close</Button>
+              <Button variant="ghost" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-[#554e7b] gap-1 rounded-full"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
             </div>
             <div className="flex items-center gap-2">
               {!showRejectBox ? (
-                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-xl">
+                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-full">
                   <XCircle className="w-4 h-4 mr-1.5" /> Reject & Request Re-upload
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl">
+                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-red-600 hover:bg-red-700 text-white text-xs font-[420] rounded-full">
                   {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null} Confirm Rejection
                 </Button>
               )}
-              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs">
+              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-[32px] px-5 shadow-xs">
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />} Approve Account
               </Button>
             </div>

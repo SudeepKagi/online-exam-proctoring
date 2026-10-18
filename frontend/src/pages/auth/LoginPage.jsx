@@ -112,32 +112,32 @@ export default function LoginPage() {
   const RoleIcon = config.icon
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
-      <div className="absolute top-1/3 left-1/4 w-[600px] h-[350px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#171721] text-[#ededf3] flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden">
+      <div className="absolute top-1/3 left-1/4 w-[600px] h-[350px] bg-[#5266eb]/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Navbar */}
-      <div className="w-full max-w-6xl mx-auto flex items-center justify-between z-10">
-        <Link to="/" className="inline-flex items-center gap-2 text-white group">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-md group-hover:scale-105 transition">P</div>
-          <span className="font-extrabold text-base tracking-tight text-white">ProctorNet</span>
+      {/* Top Navbar: Mercury 72px Night Bar */}
+      <div className="w-full max-w-6xl mx-auto flex items-center justify-between z-10 h-[72px]">
+        <Link to="/" className="inline-flex items-center gap-2.5 text-[#ededf3] group">
+          <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
+          <span className="font-[480] text-base tracking-wide text-[#ededf3]">ProctorNet</span>
         </Link>
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-white transition">
+        <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-[420] text-[#c3c3cc] hover:text-[#ededf3] px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 transition">
           <ArrowLeft className="w-3.5 h-3.5" /> Return to Home
         </Link>
       </div>
 
       {/* 2-Column Layout */}
       <div className="w-full max-w-6xl mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
-        {/* Left Column: Brand Showcase & Security Badges */}
-        <div className="lg:col-span-5 space-y-6 text-slate-100 pr-0 lg:pr-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full text-xs font-bold">
+        {/* Left Column: Brand Showcase */}
+        <div className="lg:col-span-5 space-y-6 text-[#ededf3] pr-0 lg:pr-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#5266eb]/10 border border-[#5266eb]/20 text-[#9cb4e8] rounded-full text-xs font-[420]">
             <Shield className="w-3.5 h-3.5" /> Institutional Security Gateway
           </div>
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-tight">
+            <h1 className="text-3xl sm:text-4xl font-[480] text-[#ededf3] tracking-tight leading-tight">
               Unified Proctoring & Identity Verification
             </h1>
-            <p className="text-sm text-slate-400 mt-2.5 leading-relaxed">
+            <p className="text-sm text-[#c3c3cc] mt-2.5 leading-relaxed font-[360]">
               Standardized examination security with AI continuous gaze tracking, zero-client browser lockdown, and biometric ID authentication.
             </p>
           </div>
@@ -148,34 +148,34 @@ export default function LoginPage() {
               { label: 'Biometric Face Verification', desc: 'Face match against institutional reference' },
               { label: 'Multi-Role Identity Access', desc: 'Dedicated portals for students, faculty & proctors' }
             ].map((b, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 bg-slate-800/40 border border-slate-800 rounded-xl">
+              <div key={i} className="flex items-start gap-3 p-3.5 bg-[#1e1e2a] border border-[#28253b] rounded-xl">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="text-xs font-bold text-white leading-none">{b.label}</h2>
-                  <p className="text-[11px] text-slate-400 mt-1">{b.desc}</p>
+                  <h2 className="text-xs font-[480] text-[#ededf3]">{b.label}</h2>
+                  <p className="text-[11px] text-[#c3c3cc] mt-0.5 font-[360]">{b.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Right Column: Tabbed Elevated Login Card */}
+        {/* Right Column: Mercury Night-Raised Form Card */}
         <div className="lg:col-span-7 max-w-lg w-full mx-auto">
-          <Card className="border-slate-800 bg-slate-950/90 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden text-slate-100">
-            <CardHeader className="text-center pb-3 pt-6 bg-slate-900/40 border-b border-slate-800/80">
-              <div className="w-11 h-11 bg-blue-600 text-white rounded-xl mx-auto flex items-center justify-center mb-2 shadow-md shadow-blue-600/30">
+          <Card className="border-[#28253b] bg-[#1e1e2a] rounded-xl overflow-hidden text-[#ededf3] shadow-xs">
+            <CardHeader className="text-center pb-3 pt-6 bg-[#171721]/50 border-b border-[#28253b]">
+              <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
                 <RoleIcon className="w-5 h-5" />
               </div>
-              <CardTitle className="text-lg font-black text-white tracking-tight">{config.title}</CardTitle>
-              <CardDescription className="text-slate-400 text-xs">{config.desc}</CardDescription>
+              <CardTitle className="text-lg font-[480] text-[#ededf3] tracking-tight">{config.title}</CardTitle>
+              <CardDescription className="text-[#c3c3cc] text-xs font-[360]">{config.desc}</CardDescription>
 
               <div className="pt-4">
                 <Tabs value={activeRole} onValueChange={handleRoleChange} className="w-full">
-                  <TabsList className="grid grid-cols-4 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
-                    <TabsTrigger value="STUDENT" className="text-[11px] font-bold py-1.5 cursor-pointer">Student</TabsTrigger>
-                    <TabsTrigger value="FACULTY" className="text-[11px] font-bold py-1.5 cursor-pointer">Faculty</TabsTrigger>
-                    <TabsTrigger value="INVIGILATOR" className="text-[11px] font-bold py-1.5 cursor-pointer">Invigilator</TabsTrigger>
-                    <TabsTrigger value="ADMIN" className="text-[11px] font-bold py-1.5 cursor-pointer">Admin</TabsTrigger>
+                  <TabsList className="grid grid-cols-4 bg-[#171721] border border-[#28253b] p-1 rounded-full">
+                    <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Student</TabsTrigger>
+                    <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Faculty</TabsTrigger>
+                    <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Invigilator</TabsTrigger>
+                    <TabsTrigger value="ADMIN" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Admin</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -184,7 +184,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-6">
                 {error && (
-                  <div className="p-3 bg-red-950/50 border border-red-800/80 text-xs text-red-300 rounded-xl flex items-center gap-2.5 font-medium">
+                  <div className="p-3 bg-red-950/40 border border-red-800 text-xs text-red-300 rounded-xl flex items-center gap-2.5 font-[420]">
                     <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
                     <span>{error}</span>
                   </div>
@@ -197,7 +197,7 @@ export default function LoginPage() {
                     placeholder={config.idPlaceholder}
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    className="h-10 text-xs bg-slate-900 border-slate-800 text-white rounded-xl placeholder:text-slate-500"
+                    className="h-10 text-xs bg-[#171721] border-[#28253b] text-[#ededf3] rounded-xl placeholder:text-[#70707d]"
                   />
                 </FormField>
 
@@ -207,13 +207,13 @@ export default function LoginPage() {
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="h-10 text-xs bg-slate-900 border-slate-800 text-white rounded-xl placeholder:text-slate-500"
+                    className="h-10 text-xs bg-[#171721] border-[#28253b] text-[#ededf3] rounded-xl placeholder:text-[#70707d]"
                   />
                 </FormField>
 
                 <div className="flex items-center justify-between text-[11px] pt-1">
-                  <span className="text-slate-400">{config.hint}</span>
-                  <Link to="/forgot-password" className="text-blue-400 hover:text-blue-300 font-bold shrink-0 ml-2 transition">
+                  <span className="text-[#c3c3cc] font-[360]">{config.hint}</span>
+                  <Link to="/forgot-password" className="text-[#9cb4e8] hover:text-white font-[420] shrink-0 ml-2 transition">
                     Forgot password?
                   </Link>
                 </div>
@@ -223,7 +223,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer transition"
+                  className="w-full h-10 bg-[#5266eb] hover:bg-[#4354d0] text-white text-xs font-[420] rounded-[32px] shadow-xs cursor-pointer transition"
                 >
                   {loading ? 'Authenticating Credentials...' : `Sign In to ${activeRole.charAt(0) + activeRole.slice(1).toLowerCase()} Portal`}
                 </Button>
@@ -233,7 +233,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="text-center text-[11px] text-slate-500 pb-2 z-10">
+      <div className="text-center text-[11px] text-[#c3c3cc] pb-2 z-10 font-[360]">
         ProctorNet Institutional Examination Platform • Zero Plugins • Browser Lockdown
       </div>
     </div>

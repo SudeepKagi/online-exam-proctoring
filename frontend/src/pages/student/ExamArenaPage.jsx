@@ -127,33 +127,33 @@ export default function ExamArenaPage() {
   if (loading) return <ExamArenaShell className="items-center justify-center p-8"><div className="text-slate-500 text-sm">Initializing arena...</div></ExamArenaShell>
 
   return (
-    <ExamArenaShell className="h-screen flex flex-col bg-slate-100">
-      <header className="h-14 bg-white border-b border-slate-200 px-6 flex items-center justify-between shadow-xs shrink-0">
+    <ExamArenaShell className="h-screen flex flex-col bg-[#fbfcfd] font-sans">
+      <header className="h-14 bg-[#171721] border-b border-[#1e1e2a] px-6 flex items-center justify-between shadow-xs shrink-0 text-[#ededf3]">
         <div className="flex items-center gap-3">
-          <span className="font-bold text-slate-900 text-sm">{exam?.title || 'Exam'}</span>
-          <Badge variant="outline" className="text-xs bg-slate-50 font-mono">{exam?.courseCode}</Badge>
+          <span className="font-[480] text-[#ededf3] text-sm">{exam?.title || 'Exam'}</span>
+          <Badge variant="outline" className="text-xs bg-[rgba(156,180,232,0.15)] text-[#9cb4e8] border border-[#9cb4e8]/30 font-mono font-[420]">{exam?.courseCode}</Badge>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-slate-50 px-3 py-1 rounded-md border border-slate-200 text-slate-800">
-            <Clock className="w-4 h-4 text-blue-600" /><span>{formatTime()}</span>
+          <div className="flex items-center gap-1.5 font-mono text-sm font-[480] bg-[rgba(175,178,206,0.18)] px-3 py-1 rounded-[40px] border border-[rgba(175,178,206,0.36)] text-[#ededf3]">
+            <Clock className="w-4 h-4 text-[#9cb4e8]" /><span>{formatTime()}</span>
           </div>
-          <Button size="sm" onClick={() => setSubmitDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">Submit Exam</Button>
+          <Button size="sm" onClick={() => setSubmitDialogOpen(true)} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer">Submit Exam</Button>
         </div>
       </header>
 
       <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0 overflow-hidden">
         <div className="col-span-12 lg:col-span-9 flex flex-col min-h-0">
-          <Card className="flex-1 flex flex-col border-slate-200 bg-white overflow-hidden shadow-xs">
-            <CardHeader className="py-3 px-6 border-b border-slate-100 flex flex-row items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase">Question {currentIndex + 1} of {questions.length}</span>
-              <Badge variant="outline" className="text-xs text-slate-600">{currentQ?.marks || 1} Point(s)</Badge>
+          <Card className="flex-1 flex flex-col border-[#e9eaf2] bg-white overflow-hidden shadow-xs rounded-[12px]">
+            <CardHeader className="py-3 px-6 border-b border-[#e9eaf2] bg-[#fbfbff] flex flex-row items-center justify-between">
+              <span className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Question {currentIndex + 1} of {questions.length}</span>
+              <Badge variant="outline" className="text-xs font-[420] text-[#554e7b] border-[#e9eaf2] bg-white">{currentQ?.marks || 1} Point(s)</Badge>
             </CardHeader>
             <CardContent className="flex-1 p-6 overflow-y-auto space-y-4">
-              <p className="text-base font-medium text-slate-900 leading-relaxed">{currentQ?.questionText || 'Loading question...'}</p>
+              <p className="text-base font-[480] text-[#28253b] leading-relaxed">{currentQ?.questionText || 'Loading question...'}</p>
               <div className="space-y-2.5 pt-2">
                 {(Array.isArray(currentQ?.options) ? currentQ.options : []).map((opt, idx) => (
-                  <button key={idx} type="button" onClick={() => handleSelectOption(idx)} className={`w-full p-3.5 rounded-lg border text-left text-sm flex items-center gap-3 transition-colors ${currentSelected === idx ? 'border-blue-600 bg-blue-50/70 text-blue-900 font-medium' : 'border-slate-200 hover:bg-slate-50 text-slate-800'}`}>
-                    <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold shrink-0 ${currentSelected === idx ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                  <button key={idx} type="button" onClick={() => handleSelectOption(idx)} className={`w-full p-3.5 rounded-[12px] border text-left text-sm flex items-center gap-3 transition-colors cursor-pointer ${currentSelected === idx ? 'border-[#5266eb] bg-[rgba(82,102,235,0.08)] text-[#28253b] font-[480]' : 'border-[#e9eaf2] hover:bg-[#fbfbff] text-[#28253b] font-[400]'}`}>
+                    <span className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-[480] shrink-0 ${currentSelected === idx ? 'bg-[#5266eb] text-white' : 'bg-[#fbfbff] text-[#554e7b] border border-[#e9eaf2]'}`}>
                       {String.fromCharCode(65 + idx)}
                     </span>
                     <span>{opt}</span>
@@ -161,27 +161,27 @@ export default function ExamArenaPage() {
                 ))}
               </div>
             </CardContent>
-            <CardFooter className="py-3 px-6 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <CardFooter className="py-3 px-6 border-t border-[#e9eaf2] flex items-center justify-between bg-[#fbfbff]">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))} disabled={currentIndex === 0} className="gap-1 text-xs"><ChevronLeft className="w-4 h-4" /> Previous</Button>
-                <Button variant="outline" size="sm" onClick={handleToggleBookmark} className={`text-xs gap-1.5 ${isBookmarked ? 'bg-amber-50 text-amber-700 border-amber-300' : ''}`}><Bookmark className="w-3.5 h-3.5" /> Bookmark</Button>
-                <Button variant="ghost" size="sm" onClick={handleClearAnswer} className="text-xs text-slate-500">Clear</Button>
+                <Button variant="outline" size="sm" onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))} disabled={currentIndex === 0} className="gap-1 text-xs font-[420] rounded-[40px] px-3.5 h-8 bg-white border-[#c3c3cc]/60"><ChevronLeft className="w-4 h-4" /> Previous</Button>
+                <Button variant="outline" size="sm" onClick={handleToggleBookmark} className={`text-xs gap-1.5 font-[420] rounded-[40px] px-3.5 h-8 ${isBookmarked ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-white border-[#c3c3cc]/60 text-[#28253b]'}`}><Bookmark className="w-3.5 h-3.5" /> Bookmark</Button>
+                <Button variant="ghost" size="sm" onClick={handleClearAnswer} className="text-xs text-[#70707d] font-[420] rounded-[40px] px-3 h-8">Clear</Button>
               </div>
-              <Button size="sm" onClick={() => setCurrentIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={currentIndex >= questions.length - 1} className="bg-blue-600 hover:bg-blue-700 text-white gap-1 text-xs">Save & Next <ChevronRight className="w-4 h-4" /></Button>
+              <Button size="sm" onClick={() => setCurrentIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={currentIndex >= questions.length - 1} className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1 text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer">Save & Next <ChevronRight className="w-4 h-4" /></Button>
             </CardFooter>
           </Card>
         </div>
 
         <div className="col-span-12 lg:col-span-3 flex flex-col min-h-0">
-          <Card className="flex-1 flex flex-col border-slate-200 bg-white overflow-hidden shadow-xs">
-            <CardHeader className="py-3 px-4 border-b border-slate-100"><CardTitle className="text-xs font-semibold uppercase text-slate-500">Question Palette</CardTitle></CardHeader>
+          <Card className="flex-1 flex flex-col border-[#e9eaf2] bg-white overflow-hidden shadow-xs rounded-[12px]">
+            <CardHeader className="py-3 px-4 border-b border-[#e9eaf2] bg-[#fbfbff]"><CardTitle className="text-xs font-[500] uppercase text-[#554e7b] tracking-[0.28px]">Question Palette</CardTitle></CardHeader>
             <CardContent className="flex-1 p-4 overflow-y-auto">
               <div className="grid grid-cols-5 gap-2">
                 {questions.map((q, idx) => {
                   const answered = answers[q.id] !== undefined
                   const marked = !!bookmarks[q.id]
                   return (
-                    <button key={q.id || idx} type="button" onClick={() => setCurrentIndex(idx)} className={`h-9 rounded-md text-xs font-bold transition-all ${currentIndex === idx ? 'ring-2 ring-blue-600 ring-offset-1 ' : ''}${marked ? 'bg-amber-500 text-white' : answered ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+                    <button key={q.id || idx} type="button" onClick={() => setCurrentIndex(idx)} className={`h-9 rounded-lg text-xs font-[480] transition-all cursor-pointer ${currentIndex === idx ? 'ring-2 ring-[#5266eb] ring-offset-1 ' : ''}${marked ? 'bg-amber-500 text-white' : answered ? 'bg-emerald-600 text-white' : 'bg-[#fbfbff] border border-[#e9eaf2] text-[#28253b] hover:bg-[#edecfb]/60'}`}>
                       {idx + 1}
                     </button>
                   )
@@ -193,25 +193,25 @@ export default function ExamArenaPage() {
       </div>
 
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md font-sans">
           <DialogHeader>
-            <DialogTitle>Submit Examination?</DialogTitle>
-            <DialogDescription>You have answered {Object.keys(answers).length} of {questions.length} questions. You cannot change answers after submission.</DialogDescription>
+            <DialogTitle className="text-base font-[480] text-[#28253b]">Submit Examination?</DialogTitle>
+            <DialogDescription className="text-xs font-[360] text-[#554e7b]">You have answered {Object.keys(answers).length} of {questions.length} questions. You cannot change answers after submission.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setSubmitDialogOpen(false)}>Continue Exam</Button>
-            <Button onClick={handleSubmitExam} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700 text-white">{submitting ? 'Submitting...' : 'Confirm Submission'}</Button>
+            <Button variant="outline" onClick={() => setSubmitDialogOpen(false)} className="rounded-[40px] px-4 font-[420] text-xs h-9">Continue Exam</Button>
+            <Button onClick={handleSubmitExam} disabled={submitting} className="bg-[#5266eb] hover:bg-[#4353c7] text-white rounded-[32px] px-4 font-[420] text-xs h-9">{submitting ? 'Submitting...' : 'Confirm Submission'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {isSuspended && (
-        <div className="fixed inset-0 z-50 bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-white text-center">
+        <div className="fixed inset-0 z-50 bg-[#171721]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#ededf3] text-center font-sans">
           <div className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center mb-4 border border-red-500/30">
             <AlertTriangle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Examination Session Suspended</h2>
-          <p className="text-sm text-slate-300 max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
+          <h2 className="text-xl font-[480] text-[#ededf3] mb-2">Examination Session Suspended</h2>
+          <p className="text-sm font-[360] text-[#c3c3cc] max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
         </div>
       )}
 

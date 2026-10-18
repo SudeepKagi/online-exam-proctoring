@@ -102,30 +102,30 @@ export default function AdminUsersPage() {
     <DashboardShell title="User Management & Approvals">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-sans">
         <div>
-          <h2 className="text-xs text-slate-500">Provision candidate accounts, upload rosters, and inspect onboarding biometrics.</h2>
+          <h2 className="text-xs text-[#70707d] font-[360]">Provision candidate accounts, upload rosters, and inspect onboarding biometrics.</h2>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5 text-xs rounded-xl cursor-pointer">
+          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5 text-xs font-[420] rounded-[40px] px-3.5 h-9 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer">
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
             Upload Excel Roster
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs rounded-xl cursor-pointer">
+              <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
                 <UserPlus className="w-3.5 h-3.5" /> Provision Account
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md font-sans">
               <DialogHeader>
-                <DialogTitle className="text-base font-bold">Provision New User Account</DialogTitle>
+                <DialogTitle className="text-base font-[480] text-[#28253b]">Provision New User Account</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-3 pt-2">
                 <FormField label="Account Role" required>
                   <select
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
-                    className="w-full h-9 text-xs border border-slate-300 rounded-lg px-2 bg-white"
+                    className="w-full h-10 text-xs text-[#28253b] font-[420] border border-[#c3c3cc]/60 rounded-xl px-3 bg-white outline-none focus:border-[#5266eb]"
                   >
                     <option value="STUDENT">Student</option>
                     <option value="FACULTY">Faculty</option>
@@ -143,7 +143,7 @@ export default function AdminUsersPage() {
                 <FormField label="Temporary Password" required>
                   <PasswordInput showStrength required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Temp@123" />
                 </FormField>
-                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2 cursor-pointer">
+                <Button type="submit" className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
                   Create Provisioned Account
                 </Button>
               </form>
@@ -153,14 +153,14 @@ export default function AdminUsersPage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-xl text-xs font-medium ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
           {msg.text}
         </div>
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full font-sans">
-        <TabsList className="bg-slate-100 p-1 border border-slate-200 rounded-xl">
-          <TabsTrigger value="APPROVALS" className="text-xs flex items-center gap-1.5 font-bold cursor-pointer">
+        <TabsList>
+          <TabsTrigger value="APPROVALS" className="text-xs flex items-center gap-1.5 cursor-pointer">
             <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
             Pending Approvals
             {approvalsCount > 0 && (
@@ -169,8 +169,8 @@ export default function AdminUsersPage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="STUDENT" className="text-xs font-semibold cursor-pointer">Students ({users.filter(u => u.role === 'STUDENT').length})</TabsTrigger>
-          <TabsTrigger value="FACULTY" className="text-xs font-semibold cursor-pointer">Faculty ({users.filter(u => u.role === 'FACULTY').length})</TabsTrigger>
+          <TabsTrigger value="STUDENT" className="cursor-pointer">Students ({users.filter(u => u.role === 'STUDENT').length})</TabsTrigger>
+          <TabsTrigger value="FACULTY" className="cursor-pointer">Faculty ({users.filter(u => u.role === 'FACULTY').length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="APPROVALS" className="mt-4">

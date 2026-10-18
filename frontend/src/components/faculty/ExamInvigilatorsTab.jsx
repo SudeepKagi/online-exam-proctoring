@@ -96,19 +96,19 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
     <div className="space-y-4 font-sans">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-bold text-slate-900">Assigned Exam Invigilators</h3>
-          <p className="text-xs text-slate-500">Generate and distribute credentials for proctors overseeing candidate rooms.</p>
+          <h3 className="text-sm font-[480] text-[#28253b]">Assigned Exam Invigilators</h3>
+          <p className="text-xs text-[#70707d] font-[360]">Generate and distribute credentials for proctors overseeing candidate rooms.</p>
         </div>
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1.5 text-xs font-bold rounded-xl shadow-xs">
+            <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
               <UserPlus className="w-3.5 h-3.5" /> + Generate Invigilator Account
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-md font-sans">
             <DialogHeader>
-              <DialogTitle className="text-base font-bold">Generate Invigilator Account</DialogTitle>
+              <DialogTitle className="text-base font-[480] text-[#28253b]">Generate Invigilator Account</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleGenerate} className="space-y-3 pt-2">
               <FormField label="Invigilator Full Name" required>
@@ -120,7 +120,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
               <FormField label="Access Password" hint="Leave empty for auto-generated secure PIN">
                 <PasswordInput placeholder="Leave blank to auto-generate" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </FormField>
-              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2 cursor-pointer">
+              <Button type="submit" disabled={submitting} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
                 {submitting ? 'Generating Account...' : 'Generate & Assign Invigilator'}
               </Button>
             </form>
@@ -129,42 +129,42 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium">
+        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
           {error}
         </div>
       )}
 
-      <Card className="border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden">
+      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-200 bg-slate-50/70">
-                <TableHead className="text-xs font-semibold text-slate-600">Invigilator</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">ID / Access Code</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Room / Hall</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600">Password Hint</TableHead>
-                <TableHead className="text-xs font-semibold text-slate-600 text-right">Actions</TableHead>
+              <TableRow>
+                <TableHead>Invigilator</TableHead>
+                <TableHead>ID / Access Code</TableHead>
+                <TableHead>Room / Hall</TableHead>
+                <TableHead>Password Hint</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-slate-500">Loading invigilators...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">Loading invigilators...</TableCell></TableRow>
               ) : invigilators.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-slate-500">No invigilators assigned yet. Click "+ Generate Invigilator Account" to create credentials.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">No invigilators assigned yet. Click "+ Generate Invigilator Account" to create credentials.</TableCell></TableRow>
               ) : (
                 invigilators.map((invig) => {
                   const isRevealed = revealedIds.has(invig.id)
                   const isCopied = copiedId === invig.id
                   return (
-                    <TableRow key={invig.id} className="border-slate-100 hover:bg-slate-50/60">
+                    <TableRow key={invig.id}>
                       <TableCell>
-                        <div className="font-bold text-slate-900 text-xs">{invig.fullName}</div>
-                        <div className="text-[11px] font-mono text-slate-500">{invig.email}</div>
+                        <div className="font-[480] text-[#28253b] text-xs">{invig.fullName}</div>
+                        <div className="text-[11px] font-mono text-[#70707d]">{invig.email}</div>
                       </TableCell>
-                      <TableCell className="font-mono text-xs font-bold text-blue-600">
+                      <TableCell className="font-mono text-xs font-[480] text-[#5266eb]">
                         {invig.institutionId}
                       </TableCell>
-                      <TableCell className="text-xs font-medium text-slate-700">
+                      <TableCell className="text-xs font-[400] text-[#554e7b]">
                         {invig.room}
                       </TableCell>
                       <TableCell>
@@ -173,7 +173,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
                           {invig.generatedPasswordHint && (
                             <button
                               onClick={() => toggleReveal(invig.id)}
-                              className="text-slate-400 hover:text-slate-700 p-0.5"
+                              className="text-[#70707d] hover:text-[#28253b] p-0.5 cursor-pointer"
                             >
                               {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                             </button>
@@ -186,16 +186,16 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
                             variant="outline"
                             size="sm"
                             onClick={() => copyCredentials(invig)}
-                            className="h-7 px-2.5 text-xs font-semibold gap-1 rounded-lg"
+                            className="h-7 px-3 text-xs font-[420] gap-1 rounded-[40px] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer"
                           >
-                            {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-slate-500" />}
+                            {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#554e7b]" />}
                             {isCopied ? 'Copied!' : 'Copy Info'}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemove(invig.id)}
-                            className="h-7 px-2 text-slate-400 hover:text-red-600 rounded-lg"
+                            className="h-7 px-2 text-[#70707d] hover:text-red-600 rounded-lg cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>

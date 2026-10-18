@@ -49,28 +49,31 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans antialiased selection:bg-blue-600 selection:text-white relative overflow-hidden">
-      {/* Radial Slate/Blue Mesh Backdrop */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-b from-blue-600/20 via-indigo-600/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-96 -left-48 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[#171721] text-[#ededf3] font-sans antialiased selection:bg-[#5266eb] selection:text-white relative overflow-hidden">
+      {/* Mercury Night Atmosphere Luminous Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[550px] bg-gradient-to-b from-[#5266eb]/20 via-[#9cb4e8]/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-96 -left-48 w-96 h-96 bg-[#5266eb]/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Navbar */}
-      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      {/* Mercury Night Nav Bar: 72px, #171721 */}
+      <header className="sticky top-0 z-50 bg-[#171721]/90 backdrop-blur-xl border-b border-[#28253b]">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8 h-[72px] flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black shadow-md shadow-blue-500/20">P</div>
+            <div className="w-9 h-9 rounded-full bg-[#5266eb] flex items-center justify-center text-white font-[480] shadow-xs">P</div>
             <div>
-              <span className="text-base font-black tracking-tight text-white">Proctor<span className="text-blue-500">Net</span></span>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest -mt-1">Enterprise</span>
+              <span className="text-base font-[480] tracking-wide text-[#ededf3]">Proctor<span className="text-[#9cb4e8]">Net</span></span>
+              <span className="block text-[10px] font-[500] text-[#c3c3cc] uppercase tracking-widest -mt-1">Institutional</span>
             </div>
           </div>
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-400">
-            <a href="#features" className="hover:text-white transition">Features Bento</a>
-            <a href="#roles" className="hover:text-white transition">Portals</a>
-            <Link to="/forgot-password" className="hover:text-white transition">Reset Password</Link>
+          <nav className="hidden md:flex items-center gap-2 text-sm font-[420] text-[#ededf3]">
+            <a href="#features" className="px-4 py-2 rounded-full hover:bg-white/10 text-[#ededf3] transition">Features</a>
+            <a href="#roles" className="px-4 py-2 rounded-full hover:bg-white/10 text-[#ededf3] transition">Portals</a>
+            <Link to="/forgot-password" className="px-4 py-2 rounded-full hover:bg-white/10 text-[#c3c3cc] hover:text-[#ededf3] transition">Reset Password</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/login')} className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-md shadow-blue-600/30 cursor-pointer">
+            <button
+              onClick={() => navigate('/login')}
+              className="px-5 h-10 rounded-[32px] text-xs font-[420] text-white bg-[#5266eb] hover:bg-[#4354d0] transition shadow-xs cursor-pointer"
+            >
               Sign In to Portal
             </button>
           </div>
@@ -78,56 +81,62 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center z-10">
+      <section className="relative pt-20 pb-24 px-6 sm:px-8 max-w-7xl mx-auto text-center z-10">
         {/* Live System Status Pill */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-slate-200 text-xs font-semibold mb-6 shadow-sm">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1e1e2a] border border-[#28253b] text-[#ededf3] text-xs font-[420] mb-8 shadow-xs">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-bold text-emerald-400">INSTITUTIONAL EXAMINATION INFRASTRUCTURE</span>
-          <span className="text-slate-400">• All Systems Operational</span>
+          <span className="font-[500] text-emerald-300">INSTITUTIONAL EXAMINATION INFRASTRUCTURE</span>
+          <span className="text-[#c3c3cc]">• Online</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white tracking-tight max-w-4xl mx-auto leading-[1.12]">
-          Next-Generation AI & Browser-Lockdown <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-sky-400">Examination Platform</span>
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-[480] text-[#ededf3] tracking-tight max-w-4xl mx-auto leading-[1.12]">
+          Next-Generation AI & Browser-Lockdown <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#9cb4e8] via-[#edecfb] to-[#ffffff]">Examination Platform</span>
         </h1>
-        <p className="mt-5 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto font-medium leading-relaxed">
+        <p className="mt-6 text-base sm:text-lg text-[#c3c3cc] max-w-2xl mx-auto font-[360] leading-relaxed">
           Standardized high-stakes assessments with pure browser containment, real-time AI gaze analytics, reference photo matching, and deterministic instant grading.
         </p>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <button onClick={() => navigate('/login')} className="px-6 py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-blue-600/25 cursor-pointer">
-            Sign In to Examination Portal <ArrowRight className="w-4 h-4" />
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+          <button
+            onClick={() => navigate('/login')}
+            className="px-6 h-11 rounded-[32px] bg-[#5266eb] hover:bg-[#4354d0] text-white text-sm font-[420] transition flex items-center gap-2 shadow-xs cursor-pointer"
+          >
+            Open Examination Portal <ArrowRight className="w-4 h-4" />
           </button>
-          <a href="#features" className="px-6 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-bold transition">
+          <a
+            href="#features"
+            className="px-6 h-11 rounded-full bg-[rgba(175,178,206,0.2)] hover:bg-[rgba(175,178,206,0.28)] border border-[rgba(175,178,206,0.36)] text-[#ededf3] text-sm font-[420] transition flex items-center"
+          >
             Explore Architecture
           </a>
         </div>
 
-        {/* Hero Metrics Bar */}
-        <div className="mt-14 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
+        {/* Hero Metrics Bar: Mercury Stat Block */}
+        <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
           {[
             { val: '99.98%', label: 'Biometric Match Precision' },
             { val: '< 50ms', label: 'Proctor State Sync' },
             { val: '0 Installs', label: 'Pure Browser Lockdown' },
             { val: '100%', label: 'Deterministic Grading' }
           ].map((m, idx) => (
-            <div key={idx} className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 text-center backdrop-blur-md">
-              <div className="text-2xl font-black text-blue-400">{m.val}</div>
-              <div className="text-[11px] font-semibold text-slate-400 mt-1">{m.label}</div>
+            <div key={idx} className="bg-[#1e1e2a] border border-[#28253b] rounded-xl p-5 text-center">
+              <div className="text-3xl font-[480] text-[#ededf3]">{m.val}</div>
+              <div className="text-xs font-[400] text-[#c3c3cc] mt-1.5">{m.label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Interactive Feature Bento Grid */}
-      <section id="features" className="py-20 bg-slate-950/60 border-y border-slate-800/80 z-10 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-400">SYSTEM CAPABILITIES</span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-2">Engineered for Academic Integrity</h2>
-            <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Four integrated protective tiers delivering zero-compromise institutional assurance.</p>
+      {/* Interactive Feature Bento Grid: Mercury feature-card-dark */}
+      <section id="features" className="py-24 bg-[#171721] border-y border-[#28253b] z-10 relative">
+        <div className="max-w-7xl mx-auto px-6 sm:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="text-xs font-[500] uppercase tracking-wider text-[#9cb4e8]">SYSTEM CAPABILITIES</span>
+            <h2 className="text-3xl font-[480] text-[#ededf3] mt-2">Engineered for Academic Integrity</h2>
+            <p className="text-sm text-[#c3c3cc] mt-2 font-[360]">Four integrated protective tiers delivering zero-compromise institutional assurance.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
             {bentoFeatures.map((b, idx) => {
               const Icon = b.icon
               const isSelected = activeBento === idx
@@ -135,21 +144,21 @@ export default function LandingPage() {
                 <div
                   key={idx}
                   onClick={() => setActiveBento(idx)}
-                  className={`p-6 rounded-2xl border transition-all cursor-pointer ${b.accent} ${
-                    isSelected ? 'ring-2 ring-blue-500/50 shadow-xl' : 'hover:border-slate-700'
+                  className={`p-8 rounded-xl border transition-all cursor-pointer bg-[#1e1e2a] ${
+                    isSelected ? 'border-[#5266eb] ring-1 ring-[#5266eb]' : 'border-[#28253b] hover:border-[#554e7b]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-[#5266eb]/15 border border-[#5266eb]/30 text-[#9cb4e8] flex items-center justify-center">
                       <Icon className="w-5 h-5" />
                     </div>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                    <span className="text-xs font-mono font-[420] px-2.5 py-1 rounded-full bg-[#171721] text-[#ededf3] border border-[#28253b]">
                       {b.stat}
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400">{b.category}</span>
-                  <h3 className="text-base font-bold text-white mt-1">{b.title}</h3>
-                  <p className="text-xs text-slate-400 mt-2 leading-relaxed">{b.desc}</p>
+                  <span className="text-xs font-[500] uppercase tracking-wider text-[#9cb4e8]">{b.category}</span>
+                  <h3 className="text-lg font-[480] text-[#ededf3] mt-1">{b.title}</h3>
+                  <p className="text-sm text-[#c3c3cc] mt-2 leading-relaxed font-[360]">{b.desc}</p>
                 </div>
               )
             })}
@@ -157,27 +166,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4 Role Workflow Cards */}
-      <section id="roles" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10 relative">
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-bold uppercase tracking-wider text-blue-400">INSTITUTIONAL ECOSYSTEM</span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-white mt-2">Tailored Portals for Every Stakeholder</h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-2 font-medium">Dedicated workflows built for administrators, faculty examiners, students and invigilators.</p>
+      {/* 4 Role Workflow Cards: Mercury night-raised cards */}
+      <section id="roles" className="py-24 max-w-7xl mx-auto px-6 sm:px-8 z-10 relative">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="text-xs font-[500] uppercase tracking-wider text-[#9cb4e8]">INSTITUTIONAL ECOSYSTEM</span>
+          <h2 className="text-3xl font-[480] text-[#ededf3] mt-2">Tailored Portals for Every Stakeholder</h2>
+          <p className="text-sm text-[#c3c3cc] mt-2 font-[360]">Dedicated workflows built for administrators, faculty examiners, students and invigilators.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {roles.map((r, idx) => (
-            <div key={idx} className="bg-slate-950/70 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between hover:border-slate-700 hover:shadow-xl transition">
+            <div key={idx} className="bg-[#1e1e2a] border border-[#28253b] rounded-xl p-7 flex flex-col justify-between hover:border-[#554e7b] transition">
               <div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded border border-blue-500/30 bg-blue-500/10 text-blue-400">
+                <span className="text-xs font-[500] px-2.5 py-1 rounded-full border border-[#9cb4e8]/25 bg-[#9cb4e8]/10 text-[#9cb4e8]">
                   {r.role}
                 </span>
-                <h3 className="text-base font-bold text-white mt-3">{r.name}</h3>
-                <p className="text-xs text-slate-400 mt-2 font-medium leading-relaxed">{r.desc}</p>
+                <h3 className="text-base font-[480] text-[#ededf3] mt-3.5">{r.name}</h3>
+                <p className="text-xs text-[#c3c3cc] mt-2 font-[360] leading-relaxed">{r.desc}</p>
               </div>
               <button
                 onClick={() => navigate(r.route)}
-                className="mt-6 w-full py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-blue-600 text-slate-300 hover:text-white border border-slate-800 hover:border-blue-600 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                className="mt-6 w-full h-10 rounded-full bg-[rgba(156,180,232,0.1)] hover:bg-[#5266eb] text-[#ededf3] hover:text-white border border-[rgba(156,180,232,0.2)] text-xs font-[420] flex items-center justify-center gap-1.5 transition cursor-pointer"
               >
                 Enter Portal <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -186,20 +195,20 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-800/80 py-10 px-4 sm:px-6 lg:px-8 text-center text-xs text-slate-500 z-10 relative">
+      {/* Mercury Site Footer */}
+      <footer className="bg-[#171721] border-t border-[#28253b] py-12 px-6 sm:px-8 text-xs text-[#c3c3cc] z-10 relative">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-xs">P</div>
-            <span className="font-bold text-slate-300">ProctorNet Platform</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-xs">P</div>
+            <span className="font-[480] text-[#ededf3]">ProctorNet Platform</span>
           </div>
-          <div className="text-[11px] text-slate-500">
+          <div className="text-[12px] text-[#c3c3cc]">
             © {new Date().getFullYear()} ProctorNet Examination Systems. AWS Rekognition & Pure Browser Lockdown.
           </div>
-          <div className="flex items-center gap-4 text-xs font-semibold">
-            <Link to="/login" className="hover:text-blue-400 transition">Portal Login</Link>
-            <span className="text-slate-700">•</span>
-            <Link to="/forgot-password" className="hover:text-blue-400 transition">Password Reset</Link>
+          <div className="flex items-center gap-4 text-xs font-[420]">
+            <Link to="/login" className="text-[#ededf3] hover:text-[#9cb4e8] transition">Portal Login</Link>
+            <span className="text-[#554e7b]">•</span>
+            <Link to="/forgot-password" className="text-[#ededf3] hover:text-[#9cb4e8] transition">Password Reset</Link>
           </div>
         </div>
       </footer>

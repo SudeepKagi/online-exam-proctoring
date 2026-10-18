@@ -5,17 +5,17 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&>svg]:pointer-events-none [&>svg]:size-3 font-sans",
+  "inline-flex w-fit shrink-0 items-center justify-center gap-1.5 overflow-hidden rounded-full border px-2.5 py-0.5 text-xs font-[420] whitespace-nowrap transition-all duration-150 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&>svg]:pointer-events-none [&>svg]:size-3 font-sans",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-white shadow-xs [a&]:hover:bg-blue-600",
+        default: "border-transparent bg-[#5266eb] text-white shadow-xs [a&]:hover:bg-[#4353c7]",
         secondary:
-          "bg-[#eff6ff] text-[#1c4d8e] border-[#d5e6fb] [a&]:hover:bg-blue-100",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent [a&]:hover:bg-[rgba(82,102,235,0.15)]",
         outline:
-          "border-border text-foreground bg-card [a&]:hover:bg-neutral-100",
+          "border-[#c3c3cc]/60 text-[#554e7b] bg-white [a&]:hover:bg-[#fbfbff]",
         purple:
-          "bg-[#f5f3ff] text-[#5b21b6] border-[#ddd6fe] [a&]:hover:bg-purple-100",
+          "bg-[#edecfb] text-[#554e7b] border-[#d8d6f8] [a&]:hover:bg-[#e4e2f9]",
         green:
           "bg-[#ecfdf5] text-[#166534] border-[#bbf7d0] [a&]:hover:bg-emerald-100",
         success:
@@ -25,7 +25,7 @@ const badgeVariants = cva(
         destructive:
           "bg-[#fef2f2] text-[#b91c1c] border-[#fecaca] [a&]:hover:bg-red-100",
         ghost: "border-transparent [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "border-transparent text-primary underline-offset-4 [a&]:hover:underline",
+        link: "border-transparent text-[#5266eb] underline-offset-4 [a&]:hover:underline",
       },
     },
     defaultVariants: {

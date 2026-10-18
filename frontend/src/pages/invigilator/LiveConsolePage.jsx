@@ -106,70 +106,80 @@ export default function LiveConsolePage() {
   return (
     <DashboardShell title="Live Proctoring Console">
       {/* Live Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase block">Active Candidates</span>
-          <span className="text-xl font-black text-slate-900">{inProgressCount}</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 font-sans">
+        <div className="bg-white border border-[#e9eaf2] rounded-[12px] p-3.5 shadow-xs">
+          <span className="text-[10px] font-[500] text-[#554e7b] uppercase tracking-[0.28px] block">Active Candidates</span>
+          <span className="text-xl font-[480] text-[#28253b]">{inProgressCount}</span>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-          <span className="text-[10px] font-bold text-amber-600 uppercase block">Flagged Violations</span>
-          <span className="text-xl font-black text-amber-600">{flaggedCount}</span>
+        <div className="bg-white border border-[#e9eaf2] rounded-[12px] p-3.5 shadow-xs">
+          <span className="text-[10px] font-[500] text-amber-700 uppercase tracking-[0.28px] block">Flagged Violations</span>
+          <span className="text-xl font-[480] text-amber-600">{flaggedCount}</span>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-          <span className="text-[10px] font-bold text-red-600 uppercase block">Suspended</span>
-          <span className="text-xl font-black text-red-600">{suspendedCount}</span>
+        <div className="bg-white border border-[#e9eaf2] rounded-[12px] p-3.5 shadow-xs">
+          <span className="text-[10px] font-[500] text-red-700 uppercase tracking-[0.28px] block">Suspended</span>
+          <span className="text-xl font-[480] text-red-600">{suspendedCount}</span>
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
-          <span className="text-[10px] font-bold text-emerald-600 uppercase block">Submitted</span>
-          <span className="text-xl font-black text-emerald-600">{submittedCount}</span>
+        <div className="bg-white border border-[#e9eaf2] rounded-[12px] p-3.5 shadow-xs">
+          <span className="text-[10px] font-[500] text-emerald-700 uppercase tracking-[0.28px] block">Submitted</span>
+          <span className="text-xl font-[480] text-emerald-600">{submittedCount}</span>
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 font-sans">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger className="w-64 bg-white border-slate-300 rounded-xl text-xs h-9">
+            <SelectTrigger className="w-64 bg-white border border-[#c3c3cc]/60 rounded-xl text-xs font-[420] text-[#28253b] h-9">
               <SelectValue placeholder="Select examination" />
             </SelectTrigger>
             <SelectContent>
               {exams.map((e) => (
-                <SelectItem key={e.id} value={e.id} className="text-xs">{e.title} ({e.courseCode})</SelectItem>
+                <SelectItem key={e.id} value={e.id} className="text-xs font-[420] text-[#28253b]">{e.title} ({e.courseCode})</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 border border-slate-200 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-[#fbfbff] p-1 border border-[#e9eaf2] rounded-[40px]">
           {['ALL', 'FLAGGED', 'SUSPENDED'].map((f) => (
-            <Button key={f} size="sm" variant={filter === f ? 'default' : 'ghost'} onClick={() => setFilter(f)} className={`text-xs h-7 rounded-lg font-bold ${filter === f ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>
+            <Button
+              key={f}
+              size="sm"
+              variant={filter === f ? 'default' : 'ghost'}
+              onClick={() => setFilter(f)}
+              className={`text-xs h-7 rounded-[40px] px-3 font-[420] cursor-pointer ${
+                filter === f
+                  ? 'bg-[#5266eb] hover:bg-[#4353c7] text-white shadow-xs'
+                  : 'text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb]/60'
+              }`}
+            >
               {f} ({f === 'ALL' ? students.length : f === 'FLAGGED' ? flaggedCount : suspendedCount})
             </Button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4 font-sans">
         {filtered.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 shadow-xs">
+          <div className="col-span-full py-16 text-center text-xs text-[#70707d] font-[360] bg-white rounded-[12px] border border-[#e9eaf2] shadow-xs">
             No active candidate sessions match this filter.
           </div>
         ) : (
           filtered.map((s) => (
-            <Card key={s.id} onClick={() => { setSelectedStudent(s); setSheetOpen(true) }} className="border-slate-200 bg-white hover:border-blue-400 cursor-pointer transition-shadow shadow-xs hover:shadow-md rounded-xl overflow-hidden">
-              <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between bg-slate-50/50 border-b border-slate-100">
-                <CardTitle className="text-xs font-bold text-slate-900 truncate">{s.studentName}</CardTitle>
-                <Badge variant="outline" className={`text-[10px] font-bold ${s.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            <Card key={s.id} onClick={() => { setSelectedStudent(s); setSheetOpen(true) }} className="border-[#e9eaf2] bg-white hover:border-[#5266eb]/60 cursor-pointer transition shadow-[0_1px_3px_rgba(40,37,59,0.04)] hover:shadow-md rounded-[12px] overflow-hidden">
+              <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between bg-[#fbfbff] border-b border-[#e9eaf2]">
+                <CardTitle className="text-xs font-[480] text-[#28253b] truncate">{s.studentName}</CardTitle>
+                <Badge variant="outline" className={`text-[10px] font-[420] ${s.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                   {s.status}
                 </Badge>
               </CardHeader>
               <CardContent className="p-3 pt-3 space-y-2">
-                <div className="aspect-video bg-slate-950 rounded-lg flex flex-col items-center justify-center text-slate-400 text-xs gap-1 shadow-inner">
-                  <Monitor className="w-5 h-5 text-blue-500 animate-pulse" />
-                  <span className="text-[10px] font-mono text-slate-400">Pure Browser Stream</span>
+                <div className="aspect-video bg-[#171721] rounded-lg flex flex-col items-center justify-center text-[#c3c3cc] text-xs gap-1 shadow-inner">
+                  <Monitor className="w-5 h-5 text-[#5266eb] animate-pulse" />
+                  <span className="text-[10px] font-mono text-[#c3c3cc]">Pure Browser Stream</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-slate-500">Security Events:</span>
-                  <Badge variant={s.violationCount > 0 ? 'destructive' : 'secondary'} className="text-[10px]">
+                  <span className="text-[#554e7b] font-[360]">Security Events:</span>
+                  <Badge variant={s.violationCount > 0 ? 'destructive' : 'secondary'} className="text-[10px] font-[420]">
                     {s.violationCount} flags
                   </Badge>
                 </div>
@@ -180,34 +190,34 @@ export default function LiveConsolePage() {
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto font-sans">
+        <SheetContent className="sm:max-w-md overflow-y-auto font-sans bg-white border-l border-[#e9eaf2]">
           <SheetHeader>
-            <SheetTitle className="text-sm font-bold">{selectedStudent?.studentName}</SheetTitle>
-            <SheetDescription className="text-xs">Realtime telemetry & security audit history</SheetDescription>
+            <SheetTitle className="text-sm font-[480] text-[#28253b]">{selectedStudent?.studentName}</SheetTitle>
+            <SheetDescription className="text-xs font-[360] text-[#554e7b]">Realtime telemetry & security audit history</SheetDescription>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
-              <span className="text-slate-600 font-semibold">Session State:</span>
+            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#e9eaf2] flex justify-between items-center text-xs">
+              <span className="text-[#554e7b] font-[420]">Session State:</span>
               <Badge variant="outline" className={selectedStudent?.status === 'SUSPENDED' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}>
                 {selectedStudent?.status}
               </Badge>
             </div>
-            <Button onClick={handleToggleSuspend} disabled={actionLoading} variant={selectedStudent?.status === 'SUSPENDED' ? 'default' : 'destructive'} className="w-full text-xs font-bold rounded-xl h-10 cursor-pointer">
+            <Button onClick={handleToggleSuspend} disabled={actionLoading} variant={selectedStudent?.status === 'SUSPENDED' ? 'default' : 'destructive'} className="w-full text-xs font-[420] rounded-[32px] h-10 cursor-pointer">
               {selectedStudent?.status === 'SUSPENDED' ? <PlayCircle className="w-4 h-4 mr-1.5" /> : <PauseCircle className="w-4 h-4 mr-1.5" />}
               {selectedStudent?.status === 'SUSPENDED' ? 'Resume Attempt Access' : 'Suspend Attempt Access'}
             </Button>
             <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Violation Timeline Feed</h4>
+              <h4 className="text-xs font-[500] uppercase text-[#554e7b] tracking-[0.28px]">Violation Timeline Feed</h4>
               {selectedStudent?.logs?.length === 0 ? (
-                <p className="text-xs text-slate-400 py-3 text-center">No integrity violations recorded for this attempt.</p>
+                <p className="text-xs text-[#70707d] py-3 text-center font-[360]">No integrity violations recorded for this attempt.</p>
               ) : (
                 selectedStudent?.logs?.map((l, i) => (
-                  <div key={i} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1">
-                    <div className="flex justify-between font-bold text-slate-800">
+                  <div key={i} className="p-2.5 rounded-[12px] border border-[#e9eaf2] bg-[#fbfbff] text-xs space-y-1">
+                    <div className="flex justify-between font-[480] text-[#28253b]">
                       <span>{l.eventType}</span>
                       <span className="text-red-600 font-mono text-[10px]">{l.severity}</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 font-mono">{new Date(l.createdAt || Date.now()).toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-[#70707d] font-mono">{new Date(l.createdAt || Date.now()).toLocaleTimeString()}</p>
                   </div>
                 ))
               )}

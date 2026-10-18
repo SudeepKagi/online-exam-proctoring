@@ -71,13 +71,13 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="fixed inset-0 bg-slate-950/50 backdrop-blur-xs transition-opacity animate-in fade-in-0"
+        className="fixed inset-0 bg-[#171721]/60 backdrop-blur-xs transition-opacity animate-in fade-in-0"
         onClick={() => onOpenChange && onOpenChange(false)}
       />
       <div
         ref={ref}
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-xl animate-in zoom-in-95',
+          'relative z-50 w-full max-w-lg rounded-[12px] border border-[#e9eaf2] bg-white p-6 shadow-[0_8px_30px_rgba(40,37,59,0.08)] animate-in zoom-in-95 font-sans',
           className
         )}
         {...props}
@@ -89,9 +89,9 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
             if (onClose) onClose()
             if (onOpenChange) onOpenChange(false)
           }}
-          className="absolute right-4 top-4 rounded-xs opacity-70 hover:opacity-100 transition-opacity"
+          className="absolute right-4 top-4 rounded-full p-1 text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb]/60 transition-colors cursor-pointer"
         >
-          <X className="h-4 w-4 text-slate-500" />
+          <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </button>
       </div>
@@ -110,7 +110,7 @@ const DialogHeader = ({ className, ...props }) => (
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <h2
     ref={ref}
-    className={cn('text-lg font-semibold leading-none tracking-tight text-foreground', className)}
+    className={cn('text-lg font-[480] leading-none tracking-tight text-[#28253b]', className)}
     {...props}
   />
 ))
@@ -119,7 +119,7 @@ DialogTitle.displayName = 'DialogTitle'
 const DialogDescription = React.forwardRef(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn('text-sm text-muted-foreground', className)}
+    className={cn('text-sm font-[360] text-[#554e7b]', className)}
     {...props}
   />
 ))

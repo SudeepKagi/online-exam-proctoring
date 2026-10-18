@@ -74,41 +74,41 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl font-sans max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="border-b border-slate-100 pb-3">
+        <DialogHeader className="border-b border-[#e9eaf2] pb-3">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-blue-600" />
+            <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-[#5266eb]" />
               Review & Verify Identity Profile
             </DialogTitle>
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+            <Badge variant="outline" className="bg-[#fffbeb] text-[#b45309] border-[#fde68a] text-xs font-[420]">
               {user.role} PENDING APPROVAL
             </Badge>
           </div>
         </DialogHeader>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium">
+          <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
             {error}
           </div>
         )}
 
         {/* Profile Details */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] text-xs">
           <div>
-            <span className="text-slate-400 block text-[10px] font-bold uppercase">Candidate</span>
-            <span className="font-bold text-slate-900">{user.fullName}</span>
+            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Candidate</span>
+            <span className="font-[480] text-[#28253b]">{user.fullName}</span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
-            <span className="font-mono font-bold text-blue-600">{user.institutionId || '—'}</span>
+            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
+            <span className="font-mono font-[480] text-[#5266eb]">{user.institutionId || '—'}</span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] font-bold uppercase">Department</span>
-            <span className="font-medium text-slate-700">{meta.department || '—'}</span>
+            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Department</span>
+            <span className="font-[400] text-[#554e7b]">{meta.department || '—'}</span>
           </div>
           <div>
-            <span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'Semester' : 'Designation'}</span>
-            <span className="font-medium text-slate-700">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span>
+            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]{isStudent ? 'Semester' : 'Designation'}</span>
+            <span className="font-[400] text-[#554e7b]">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span>
           </div>
         </div>
 
@@ -116,61 +116,61 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           {/* Live Face Photo */}
           <div className="space-y-1.5 text-center">
-            <span className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
-              <User className="w-4 h-4 text-blue-600" /> Live Webcam Face Photo
+            <span className="text-xs font-[480] text-[#28253b] flex items-center justify-center gap-1.5">
+              <User className="w-4 h-4 text-[#5266eb]" /> Live Webcam Face Photo
             </span>
-            <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center">
+            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#e9eaf2] bg-[#fbfbff] flex items-center justify-center">
               {loadingPhotos ? (
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#70707d]" />
               ) : photos.referencePhotoUrl ? (
                 <img src={photos.referencePhotoUrl} alt="Live Reference Face" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-xs text-slate-400 font-medium">No live face snapshot</span>
+                <span className="text-xs text-[#70707d] font-[360]">No live face snapshot</span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400">Captured via browser webcam during onboarding</span>
+            <span className="text-[10px] text-[#70707d] font-[360]">Captured via browser webcam during onboarding</span>
           </div>
 
           {/* College ID Card */}
           <div className="space-y-1.5 text-center">
-            <span className="text-xs font-bold text-slate-700 flex items-center justify-center gap-1.5">
-              <FileText className="w-4 h-4 text-blue-600" /> College ID Card Document
+            <span className="text-xs font-[480] text-[#28253b] flex items-center justify-center gap-1.5">
+              <FileText className="w-4 h-4 text-[#5266eb]" /> College ID Card Document
             </span>
-            <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center p-2">
+            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#e9eaf2] bg-[#fbfbff] flex items-center justify-center p-2">
               {loadingPhotos ? (
-                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                <Loader2 className="w-6 h-6 animate-spin text-[#70707d]" />
               ) : photos.idCardPhotoUrl ? (
                 <img src={photos.idCardPhotoUrl} alt="College ID Document" className="w-full h-full object-contain" />
               ) : (
-                <span className="text-xs text-slate-400 font-medium">No College ID card uploaded</span>
+                <span className="text-xs text-[#70707d] font-[360]">No College ID card uploaded</span>
               )}
             </div>
-            <span className="text-[10px] text-slate-400">Official institutional document upload</span>
+            <span className="text-[10px] text-[#70707d] font-[360]">Official institutional document upload</span>
           </div>
         </div>
 
         {/* Rejection Input */}
         {showRejectBox && (
-          <div className="space-y-2 p-3 bg-red-50/60 border border-red-200 rounded-xl">
-            <Label className="text-xs font-bold text-red-900">Rejection Reason (Visible to candidate):</Label>
+          <div className="space-y-2 p-3 bg-red-50/60 border border-red-200 rounded-[12px]">
+            <Label className="text-xs font-[480] text-red-900">Rejection Reason (Visible to candidate):</Label>
             <textarea
               rows={2}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="e.g. ID card photo is blurry, or face photo does not match..."
-              className="w-full bg-white border border-red-200 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:border-red-500 font-sans"
+              className="w-full bg-white border border-red-200 rounded-xl p-2.5 text-xs text-[#28253b] focus:outline-none focus:border-red-500 font-sans"
             />
           </div>
         )}
 
         {/* Modal Actions */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+        <div className="pt-4 border-t border-[#e9eaf2] flex items-center justify-between gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={actionLoading}
-            className="text-xs font-semibold rounded-xl cursor-pointer"
+            className="text-xs font-[420] rounded-[40px] px-4 cursor-pointer"
           >
             Cancel
           </Button>
@@ -182,7 +182,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
                 size="sm"
                 onClick={() => setShowRejectBox(true)}
                 disabled={actionLoading}
-                className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-xl cursor-pointer"
+                className="text-xs font-[420] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-[32px] px-3.5 cursor-pointer"
               >
                 <XCircle className="w-4 h-4 mr-1.5" /> Reject & Request Re-upload
               </Button>
@@ -191,7 +191,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
                 size="sm"
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl cursor-pointer"
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-[420] rounded-[32px] px-4 cursor-pointer"
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
                 Confirm Rejection
@@ -202,7 +202,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
               size="sm"
               onClick={handleApprove}
               disabled={actionLoading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-[32px] px-4 shadow-xs cursor-pointer"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
               Approve Account

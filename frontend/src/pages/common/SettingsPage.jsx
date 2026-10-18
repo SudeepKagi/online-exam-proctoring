@@ -72,50 +72,50 @@ export default function SettingsPage() {
     <DashboardShell title="Account & Identity Settings">
       <div className="max-w-4xl space-y-6 font-sans">
         {msg.text && (
-          <div className={`p-3 rounded-xl text-xs font-medium ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+          <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
             {msg.text}
           </div>
         )}
 
         {/* Identity & Verification Status Card */}
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden">
-          <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-3">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
+          <CardHeader className="bg-[#fbfbff] border-b border-[#e9eaf2] pb-3">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <CardTitle className="text-sm font-[480] text-[#28253b] flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-emerald-600" />
                   Institutional Identity Verification
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
+                <CardDescription className="text-xs font-[360] text-[#554e7b]">
                   Government & College ID biometrics verified by administration.
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold">
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-[420]">
                 {user?.status || 'ACTIVE'}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <span className="text-slate-400 block text-[10px] font-bold uppercase">Account Role</span>
-              <span className="font-bold text-slate-900">{user?.role}</span>
+            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+              <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Account Role</span>
+              <span className="font-[480] text-[#28253b]">{user?.role}</span>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
-              <span className="font-mono font-bold text-blue-600">{user?.institutionId || '—'}</span>
+            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+              <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
+              <span className="font-mono font-[480] text-[#5266eb]">{user?.institutionId || '—'}</span>
             </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <span className="text-slate-400 block text-[10px] font-bold uppercase">Registered Email</span>
-              <span className="font-mono text-slate-700 truncate block">{user?.email}</span>
+            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+              <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Registered Email</span>
+              <span className="font-mono text-[#28253b] truncate block">{user?.email}</span>
             </div>
           </CardContent>
         </Card>
 
         {/* Profile & Password Form */}
         <form onSubmit={handleSave} className="space-y-6">
-          <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-3">
-              <CardTitle className="text-sm font-bold text-slate-900">Personal & Academic Details</CardTitle>
+          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
+            <CardHeader className="border-b border-[#e9eaf2] pb-3">
+              <CardTitle className="text-sm font-[480] text-[#28253b]">Personal & Academic Details</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -144,12 +144,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
-            <CardHeader className="border-b border-slate-100 pb-3">
-              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <KeyRound className="w-4 h-4 text-blue-600" /> Change Security Password
+          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
+            <CardHeader className="border-b border-[#e9eaf2] pb-3">
+              <CardTitle className="text-sm font-[480] text-[#28253b] flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-[#5266eb]" /> Change Security Password
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">Leave blank if you do not want to alter your password.</CardDescription>
+              <CardDescription className="text-xs font-[360] text-[#554e7b]">Leave blank if you do not want to alter your password.</CardDescription>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
               <FormField label="Current Password">
@@ -167,7 +167,7 @@ export default function SettingsPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 px-6 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer">
+            <Button type="submit" disabled={saving} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 px-6 rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Changes
             </Button>

@@ -45,7 +45,7 @@ export function PasswordInput({
   return (
     <div className="w-full space-y-1.5 font-sans">
       <div className="relative flex items-center">
-        <div className="absolute left-3 text-slate-400 pointer-events-none flex items-center">
+        <div className="absolute left-3 text-[#70707d] pointer-events-none flex items-center">
           <Lock className="w-4 h-4" />
         </div>
 
@@ -59,7 +59,7 @@ export function PasswordInput({
           required={required}
           autoComplete={autoComplete}
           placeholder={placeholder}
-          className={`w-full h-10 pl-9 pr-10 text-xs text-slate-900 bg-white border border-slate-300 rounded-lg transition-colors placeholder:text-slate-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/25 focus-visible:border-blue-600 disabled:opacity-50 disabled:bg-slate-50 ${className}`}
+          className={`w-full h-10 pl-9 pr-10 text-xs text-[#28253b] font-[420] bg-white border border-[#c3c3cc]/60 rounded-xl transition-colors placeholder:text-[#70707d] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#5266eb]/20 focus-visible:border-[#5266eb] disabled:opacity-50 disabled:bg-[#fbfbff] ${className}`}
           {...props}
         />
 
@@ -69,7 +69,7 @@ export function PasswordInput({
           disabled={disabled}
           tabIndex={-1}
           aria-label={visible ? 'Hide password' : 'Show password'}
-          className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-700 rounded-md transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-600 cursor-pointer"
+          className="absolute right-2.5 p-1 text-[#70707d] hover:text-[#28253b] rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#5266eb] cursor-pointer"
         >
           {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>

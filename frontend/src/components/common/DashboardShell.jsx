@@ -39,35 +39,42 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
-      <header className="h-16 border-b border-slate-200 bg-white px-6 flex items-center justify-between sticky top-0 z-30 shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow-sm">
-            <Shield className="w-5 h-5" />
+    <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col font-sans">
+      {/* Mercury Night Nav Bar: 72px, #171721 with #ededf3 on-dark text */}
+      <header className="h-[72px] border-b border-[#28253b] bg-[#171721] px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-full bg-[#5266eb] flex items-center justify-center text-white font-bold shadow-xs">
+            <Shield className="w-4 h-4" />
           </div>
           <div>
-            <span className="font-semibold text-slate-900 tracking-tight text-base">ProctorNet</span>
-            <span className="ml-2 text-xs text-slate-400 font-mono hidden sm:inline">v2.0</span>
+            <span className="font-[480] text-[#ededf3] tracking-wide text-base">ProctorNet</span>
+            <span className="ml-2 text-xs text-[#c3c3cc] font-mono hidden sm:inline">v2.0</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <Badge variant="outline" className="text-xs font-medium border-blue-200 bg-blue-50 text-blue-700">
+          <Badge variant="outline" className="text-xs font-[420] border-[#9cb4e8]/30 bg-[#9cb4e8]/10 text-[#ededf3] rounded-full px-3 py-0.5">
             {role}
           </Badge>
-          <span className="text-xs text-slate-600 font-medium hidden md:inline">
+          <span className="text-xs text-[#c3c3cc] font-[420] hidden md:inline">
             {user?.fullName || user?.email || 'User'}
           </span>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-slate-600 hover:text-red-600 gap-1.5 h-8">
-            <LogOut className="w-4 h-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="text-[#c3c3cc] hover:text-white hover:bg-white/10 gap-1.5 h-8 rounded-full cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Sign Out</span>
           </Button>
         </div>
       </header>
 
       <div className="flex-1 flex min-h-0">
-        <aside className="w-56 border-r border-slate-200 bg-white p-4 hidden md:flex flex-col gap-1.5">
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 px-3 py-2">
+        {/* Mercury App Shell Sidebar */}
+        <aside className="w-60 border-r border-[#e9eaf2] bg-[#fbfcfd] p-4 hidden md:flex flex-col gap-1.5">
+          <div className="text-[12px] font-[500] uppercase tracking-wider text-[#554e7b] px-3 py-2">
             Navigation
           </div>
           {navItems.map((item) => {
@@ -77,8 +84,10 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  active ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-[420] transition-colors ${
+                  active
+                    ? 'bg-[#5266eb] text-white shadow-xs'
+                    : 'text-[#28253b] hover:bg-[#edecfb] hover:text-[#5266eb]'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -88,15 +97,22 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
           })}
         </aside>
 
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">
+        {/* Mercury Light-World Main Canvas */}
+        <main className="flex-1 p-6 lg:p-8 overflow-y-auto bg-[#fbfcfd]">
           <div className="max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+            <div className="flex items-center justify-between pb-3 border-b border-[#e9eaf2]">
+              <h1 className="text-2xl font-[480] tracking-tight text-[#28253b]">{title}</h1>
             </div>
             {children}
           </div>
         </main>
       </div>
+
+      {/* Mercury Night World Footer */}
+      <footer className="bg-[#171721] text-[#c3c3cc] border-t border-[#28253b] px-6 sm:px-8 py-3 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
+        <span className="text-[#ededf3] font-[480]">ProctorNet Academic Integrity</span>
+        <span className="text-[11px] text-[#c3c3cc]">Institutional Proctoring Platform • Protected by TLS 1.3 & AWS Rekognition</span>
+      </footer>
     </div>
   )
 }

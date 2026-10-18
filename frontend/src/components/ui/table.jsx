@@ -60,7 +60,7 @@ function TableRow({
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-border transition-colors hover:bg-neutral-50 dark:hover:bg-neutral-800/50 data-[state=selected]:bg-accent",
+        "border-b border-[#e9eaf2] transition-colors hover:bg-[#fbfbff] data-[state=selected]:bg-[#edecfb]",
         className
       )}
       {...props} />
@@ -75,7 +75,7 @@ function TableHead({
     <th
       data-slot="table-head"
       className={cn(
-        "h-11 px-4 text-left align-middle font-bold text-xs uppercase tracking-wider text-muted-foreground bg-[#f8fafc] dark:bg-neutral-900 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "h-11 px-4 text-left align-middle font-[500] text-xs uppercase tracking-[0.28px] text-[#554e7b] bg-[#fbfbff] border-b border-[#e9eaf2] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props} />
@@ -90,7 +90,7 @@ function TableCell({
     <td
       data-slot="table-cell"
       className={cn(
-        "px-4 py-3.5 align-middle text-sm text-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-4 py-3.5 align-middle text-sm text-[#28253b] font-[400] [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props} />

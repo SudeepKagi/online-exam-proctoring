@@ -5,31 +5,35 @@ import { Slot } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl text-sm font-semibold whitespace-nowrap cursor-pointer transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 select-none",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl text-sm font-[420] whitespace-nowrap cursor-pointer transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#5266eb] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 select-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-blue-600 active:bg-[#1c4d8e] active:scale-[0.98]",
+          "bg-[#5266eb] text-white hover:bg-[#4354d0] active:bg-[#3745b5] shadow-xs rounded-[32px]",
         destructive:
-          "bg-destructive text-white shadow-sm hover:bg-red-600 active:bg-red-700 active:scale-[0.98] focus-visible:ring-destructive",
+          "bg-destructive text-white shadow-xs hover:bg-red-600 active:bg-red-700 active:scale-[0.98] focus-visible:ring-destructive rounded-full",
         outline:
-          "border border-border bg-card text-foreground shadow-xs hover:bg-neutral-100 hover:text-foreground active:bg-neutral-200 active:scale-[0.98] dark:hover:bg-neutral-800",
+          "border border-[#e9eaf2] bg-white text-[#28253b] hover:bg-[#fbfcfd] hover:text-[#5266eb] active:scale-[0.98] rounded-full",
         secondary:
-          "bg-[#eff6ff] text-[#1c4d8e] border border-[#d5e6fb] hover:bg-[#dbeafe] active:scale-[0.98] dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] border border-[rgba(82,102,235,0.15)] hover:bg-[rgba(82,102,235,0.15)] active:scale-[0.98] rounded-full",
         ghost:
-          "hover:bg-[#eff6ff] hover:text-primary active:scale-[0.98] dark:hover:bg-neutral-800",
-        link: "text-primary underline-offset-4 hover:underline p-0 h-auto font-medium",
+          "text-[#28253b] hover:bg-[rgba(82,102,235,0.08)] hover:text-[#5266eb] active:scale-[0.98] rounded-full",
+        glass:
+          "bg-[rgba(175,178,206,0.2)] text-[#ededf3] hover:bg-[rgba(175,178,206,0.3)] border border-[rgba(175,178,206,0.36)] rounded-full",
+        tint:
+          "bg-[rgba(82,102,235,0.1)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] rounded-full",
+        link: "text-[#5266eb] underline-offset-4 hover:underline p-0 h-auto font-medium",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3 text-sm",
-        xs: "h-6 gap-1 rounded-lg px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-8 gap-1.5 rounded-lg px-3 text-xs has-[>svg]:px-2.5",
-        lg: "h-11 rounded-xl px-6 text-base font-bold has-[>svg]:px-4",
-        icon: "size-9 rounded-xl",
-        "icon-xs": "size-6 rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-8 rounded-lg",
-        "icon-lg": "size-10 rounded-xl",
+        default: "h-10 px-5 py-2 has-[>svg]:px-4 text-sm",
+        xs: "h-6 gap-1 rounded-full px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-8 gap-1.5 rounded-full px-3.5 text-xs has-[>svg]:px-2.5",
+        lg: "h-11 rounded-full px-6 text-sm font-medium has-[>svg]:px-5",
+        icon: "size-10 rounded-full",
+        "icon-xs": "size-6 rounded-full [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm": "size-8 rounded-full",
+        "icon-lg": "size-11 rounded-full",
       },
     },
     defaultVariants: {

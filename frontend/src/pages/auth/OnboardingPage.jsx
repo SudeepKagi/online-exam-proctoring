@@ -82,29 +82,30 @@ export default function OnboardingPage() {
   const totalSteps = isStudent ? 3 : 2
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between p-4 sm:p-6 font-sans">
-      <div className="w-full max-w-2xl mx-auto pt-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs">P</div>
-          <span className="font-bold text-slate-900 text-sm">ProctorNet Onboarding</span>
+    <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col justify-between font-sans">
+      {/* Mercury Night Framing Nav Bar: 72px */}
+      <header className="h-[72px] bg-[#171721] border-b border-[#28253b] px-6 sm:px-8 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
+          <span className="font-[480] text-[#ededf3] text-base tracking-wide">ProctorNet Onboarding</span>
         </div>
         <button
           onClick={logout}
-          className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 font-semibold cursor-pointer"
+          className="text-xs font-[420] text-[#c3c3cc] hover:text-[#ededf3] px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5 cursor-pointer transition"
         >
           <LogOut className="w-3.5 h-3.5" /> Sign Out
         </button>
-      </div>
+      </header>
 
-      <div className="w-full max-w-2xl mx-auto my-auto py-6">
-        <Card className="border-slate-200 shadow-md bg-white rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
+      <div className="w-full max-w-2xl mx-auto my-auto py-8 px-4">
+        <Card className="border-[#e9eaf2] bg-white rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)] overflow-hidden">
+          <CardHeader className="border-b border-[#e9eaf2] bg-[#fbfbff] pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-xl font-black text-slate-900">
+                <CardTitle className="text-xl font-[480] text-[#28253b]">
                   {isStudent ? 'Student Identity Verification' : 'Faculty Profile Setup'}
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500 mt-0.5">
+                <CardDescription className="text-xs text-[#554e7b] mt-0.5 font-[360]">
                   Step {step} of {totalSteps}: {
                     step === 1 ? (isStudent ? 'Academic Information & Password' : 'Faculty Details & Password') :
                     step === 2 && isStudent ? 'Biometric Face Verification' : 'Official ID Card Document'
@@ -112,13 +113,13 @@ export default function OnboardingPage() {
                 </CardDescription>
               </div>
 
-              {/* Step indicator */}
+              {/* Mercury Step Indicator */}
               <div className="flex items-center gap-1.5">
                 {Array.from({ length: totalSteps }).map((_, i) => (
                   <div
                     key={i}
                     className={`h-2 rounded-full transition-all ${
-                      step === i + 1 ? 'w-6 bg-blue-600' : (step > i + 1 ? 'w-2 bg-emerald-500' : 'w-2 bg-slate-200')
+                      step === i + 1 ? 'w-6 bg-[#5266eb]' : (step > i + 1 ? 'w-2 bg-emerald-500' : 'w-2 bg-[#edecfb]')
                     }`}
                   />
                 ))}
@@ -126,10 +127,10 @@ export default function OnboardingPage() {
             </div>
 
             {user?.status === 'REJECTED' && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800">
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800 font-[420]">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
                 <div>
-                  <span className="font-bold">Previous Submission Rejected: </span>
+                  <span className="font-[480]">Previous Submission Rejected: </span>
                   <span>{rejectionReason || 'Please provide clearer photos and verify your details.'}</span>
                 </div>
               </div>
@@ -170,9 +171,11 @@ export default function OnboardingPage() {
         </Card>
       </div>
 
-      <div className="text-center text-[11px] text-slate-400 pb-2">
-        Institutional Identity Verification Powered by AWS Rekognition
-      </div>
+      {/* Mercury Night Footer */}
+      <footer className="bg-[#171721] text-[#c3c3cc] border-t border-[#28253b] px-6 sm:px-8 py-3 text-xs flex items-center justify-between font-[360]">
+        <span className="text-[#ededf3] font-[480]">ProctorNet Identity Assurance</span>
+        <span className="text-[11px] text-[#c3c3cc]">Institutional Biometric Onboarding • AWS Rekognition</span>
+      </footer>
     </div>
   )
 }

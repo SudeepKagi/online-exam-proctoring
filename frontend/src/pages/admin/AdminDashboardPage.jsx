@@ -43,74 +43,74 @@ export default function AdminDashboardPage() {
   return (
     <DashboardShell title="Administrative Overview">
       {/* 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Total Students</CardTitle>
-            <Users className="w-4 h-4 text-blue-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Students</CardTitle>
+            <Users className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{totalStudents}</div>
-            <p className="text-xs text-slate-500 mt-1">Enrolled candidate accounts</p>
+            <div className="text-2xl font-[480] text-[#28253b]">{totalStudents}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Enrolled candidate accounts</p>
           </CardContent>
         </Card>
 
-        <Card className="border-amber-200 bg-amber-50/40 shadow-xs rounded-xl">
+        <Card className="border-[#fde68a] bg-[#fffbeb]/50 shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-amber-700 uppercase">Pending ID Approvals</CardTitle>
+            <CardTitle className="text-xs font-[500] text-[#b45309] uppercase tracking-[0.28px]">Pending ID Approvals</CardTitle>
             <ShieldAlert className="w-4 h-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-amber-900">{approvals.length}</div>
-            <Link to="/admin/users" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 mt-1">
+            <div className="text-2xl font-[480] text-amber-900">{approvals.length}</div>
+            <Link to="/admin/users" className="text-xs font-[420] text-[#5266eb] hover:underline flex items-center gap-1 mt-1">
               Review Queue <ArrowRight className="w-3 h-3" />
             </Link>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Verified Faculty</CardTitle>
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Verified Faculty</CardTitle>
             <Award className="w-4 h-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{verifiedFaculty}</div>
-            <p className="text-xs text-slate-500 mt-1">Authorized test authors</p>
+            <div className="text-2xl font-[480] text-[#28253b]">{verifiedFaculty}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Authorized test authors</p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-bold text-slate-500 uppercase">Active / Published Exams</CardTitle>
-            <BookOpen className="w-4 h-4 text-indigo-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Active / Published Exams</CardTitle>
+            <BookOpen className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-slate-900">{activeExams.length}</div>
-            <p className="text-xs text-slate-500 mt-1">{exams.length} Total Cohorts</p>
+            <div className="text-2xl font-[480] text-[#28253b]">{activeExams.length}</div>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">{exams.length} Total Cohorts</p>
           </CardContent>
         </Card>
       </div>
 
       {/* System Health Status */}
-      <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+      <div className="p-4 bg-[#ecfdf5]/80 border border-[#bbf7d0] rounded-[12px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-sans">
         <div className="flex items-center gap-2.5">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-bold text-emerald-900">Institutional Examination Pipeline Operational</span>
-          <span className="text-emerald-700 hidden md:inline">• AWS Rekognition Engine, S3 Evidence Storage & Redis Socket.IO Clustered</span>
+          <span className="font-[480] text-emerald-950">Institutional Examination Pipeline Operational</span>
+          <span className="text-emerald-700 hidden md:inline font-[360]">• AWS Rekognition Engine, S3 Evidence Storage & Redis Socket.IO Clustered</span>
         </div>
-        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[11px] font-bold">
+        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[11px] font-[420]">
           100% HEALTHY
         </Badge>
       </div>
 
       {/* Recent Onboarding Activity */}
-      <Card className="border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden mt-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-3 bg-slate-50/50 border-b border-slate-100">
+      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden mt-6 font-sans">
+        <CardHeader className="flex flex-row items-center justify-between pb-3 bg-[#fbfbff] border-b border-[#e9eaf2]">
           <div>
-            <CardTitle className="text-xs font-bold text-slate-900">Recent Onboarding Activity</CardTitle>
-            <p className="text-[11px] text-slate-500 mt-0.5">Latest provisioned and verified candidate accounts</p>
+            <CardTitle className="text-xs font-[480] text-[#28253b]">Recent Onboarding Activity</CardTitle>
+            <p className="text-[11px] text-[#70707d] font-[360] mt-0.5">Latest provisioned and verified candidate accounts</p>
           </div>
-          <Button variant="outline" size="sm" asChild className="gap-1 text-xs rounded-xl">
+          <Button variant="outline" size="sm" asChild className="gap-1 text-xs font-[420] rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent">
             <Link to="/admin/users">
               View All Users <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -119,48 +119,48 @@ export default function AdminDashboardPage() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-200 bg-slate-50/70">
-                <TableHead className="text-xs font-semibold">Candidate</TableHead>
-                <TableHead className="text-xs font-semibold">Institutional ID</TableHead>
-                <TableHead className="text-xs font-semibold">Role</TableHead>
-                <TableHead className="text-xs font-semibold">Onboarding Status</TableHead>
-                <TableHead className="text-xs font-semibold text-right">Action</TableHead>
+              <TableRow>
+                <TableHead>Candidate</TableHead>
+                <TableHead>Institutional ID</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Onboarding Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-slate-500">Loading activity...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">Loading activity...</TableCell></TableRow>
               ) : recentUsers.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-slate-500">No recent accounts recorded.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">No recent accounts recorded.</TableCell></TableRow>
               ) : (
                 recentUsers.map((u) => (
-                  <TableRow key={u.id} className="border-slate-100 hover:bg-slate-50/60">
+                  <TableRow key={u.id}>
                     <TableCell>
-                      <div className="font-bold text-slate-900 text-xs">{u.fullName}</div>
-                      <div className="text-[11px] font-mono text-slate-500">{u.email}</div>
+                      <div className="font-[480] text-[#28253b] text-xs">{u.fullName}</div>
+                      <div className="text-[11px] font-mono text-[#70707d]">{u.email}</div>
                     </TableCell>
-                    <TableCell className="font-mono text-xs font-bold text-blue-600">{u.institutionId || '—'}</TableCell>
+                    <TableCell className="font-mono text-xs font-[480] text-[#5266eb]">{u.institutionId || '—'}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={u.role === 'STUDENT' ? 'bg-blue-50 text-blue-700 border-blue-200 text-[10px]' : 'bg-purple-50 text-purple-700 border-purple-200 text-[10px]'}>
+                      <Badge variant="outline" className={u.role === 'STUDENT' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent text-[10px]' : 'bg-[#edecfb] text-[#554e7b] border-transparent text-[10px]'}>
                         {u.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={
                         u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]' :
-                        u.status === 'PENDING_APPROVAL' ? 'bg-amber-50 text-amber-700 border-amber-200 text-[10px]' :
-                        'bg-slate-100 text-slate-700 border-slate-200 text-[10px]'
+                        u.status === 'PENDING_APPROVAL' ? 'bg-[#fffbeb] text-[#b45309] border-[#fde68a] text-[10px]' :
+                        'bg-[#fbfbff] text-[#70707d] border-[#e9eaf2] text-[10px]'
                       }>
                         {u.status}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       {u.status === 'PENDING_APPROVAL' ? (
-                        <Button size="sm" asChild className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                        <Button size="sm" asChild className="h-7 text-xs bg-[#5266eb] hover:bg-[#4353c7] text-white rounded-[32px] px-3 font-[420]">
                           <Link to="/admin/users">Verify</Link>
                         </Button>
                       ) : (
-                        <span className="text-xs text-slate-400 font-medium">Ready</span>
+                        <span className="text-xs text-[#70707d] font-[360]">Ready</span>
                       )}
                     </TableCell>
                   </TableRow>
