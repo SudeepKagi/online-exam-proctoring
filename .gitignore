@@ -27,7 +27,7 @@ venv/
 !ci/ci.env
 
 # Antigravity / Agents
-.agents/
+# .agents is tracked for shared skills, design system, and instructions
 
 # Build outputs
 dist
