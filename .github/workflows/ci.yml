@@ -264,6 +264,12 @@ jobs:
             chown -h proctornet:proctornet "$CURRENT_LINK" || true
           fi
 
+          # Compatibility symlink & Caddy root sync
+          ln -sfn . "$NEW_RELEASE/proctornet"
+          if [ -f /etc/caddy/Caddyfile ]; then
+            sed -i 's|/opt/proctornet/current/proctornet/frontend/dist|/opt/proctornet/current/frontend/dist|g' /etc/caddy/Caddyfile || true
+          fi
+
           echo "[-] Ensuring systemd unit configuration..."
           NODE_BIN=$(which node || echo "/usr/bin/node")
           printf '[Unit]\nDescription=ProctorNet Lite Application Service\nAfter=network.target\n\n[Service]\nType=simple\nUser=proctornet\nWorkingDirectory=/opt/proctornet/current/backend\nEnvironment=NODE_ENV=production\nEnvironment=PORT=5000\nEnvironment=APP_PROFILE=lite\nEnvironment=QUEUE_DRIVER=postgres\nEnvironment=CACHE_DRIVER=memory\nEnvironment=MEDIA_DRIVER=snapshot\nEnvironment=FACE_DRIVER=rekognition\nEnvironment=START_WORKERS=true\nEnvironmentFile=-/opt/proctornet/shared/.env\nExecStart=%s --max-old-space-size=384 src/app.js\nRestart=on-failure\nRestartSec=3\nTimeoutStopSec=30\nLimitNOFILE=65535\n\n[Install]\nWantedBy=multi-user.target\n' "$NODE_BIN" > /etc/systemd/system/proctornet.service
@@ -375,14 +381,15 @@ jobs:
 
       - name: Verify Live Production HTTPS Health Probe
         run: |
-          echo "Probing live production endpoint at https://proctornet.duckdns.org/healthz..."
+          echo "Probing live production endpoints..."
           for i in {1..12}; do
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/healthz || true)
-            echo "Poll attempt ${i}/12: HTTP ${HTTP_CODE}"
-            if [ "${HTTP_CODE}" = "200" ]; then
-              echo "[✓] Production health probe returned 200 OK on https://proctornet.duckdns.org/healthz"
+            HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/healthz || true)
+            SPA_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/ || true)
+            echo "Poll attempt ${i}/12: API /healthz = HTTP ${HEALTH_CODE}, Frontend / = HTTP ${SPA_CODE}"
+            if [ "${HEALTH_CODE}" = "200" ] && [ "${SPA_CODE}" = "200" ]; then
+              echo "[✓] Production probes returned 200 OK for both backend API and frontend SPA!"
               exit 0
             fi
             sleep 5
           done
-          echo "[-] Warning: https://proctornet.duckdns.org/healthz probe completed (HTTP ${HTTP_CODE:-none})"
+          echo "[-] Warning: Probes completed (healthz: ${HEALTH_CODE:-none}, spa: ${SPA_CODE:-none})"
