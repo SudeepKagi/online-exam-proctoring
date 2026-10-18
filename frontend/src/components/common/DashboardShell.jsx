@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut } from 'lucide-react'
+import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut, Settings } from 'lucide-react'
 
 export default function DashboardShell({ children, title = 'Dashboard' }) {
   const { user, logout } = useAuth()
@@ -16,15 +16,21 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
   if (role === 'ADMIN') {
     navItems.push(
       { label: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard },
-      { label: 'Users', path: '/admin/users', icon: Users },
+      { label: 'Users & Approvals', path: '/admin/users', icon: Users },
       { label: 'Exams', path: '/admin/exams', icon: BookOpen }
     )
   } else if (role === 'FACULTY') {
-    navItems.push({ label: 'My Exams', path: '/faculty/exams', icon: BookOpen })
+    navItems.push(
+      { label: 'My Exams', path: '/faculty/exams', icon: BookOpen },
+      { label: 'Account Settings', path: '/settings', icon: Settings }
+    )
   } else if (role === 'INVIGILATOR') {
     navItems.push({ label: 'Live Console', path: '/invigilator/console', icon: MonitorPlay })
   } else {
-    navItems.push({ label: 'My Exams', path: '/student/dashboard', icon: BookOpen })
+    navItems.push(
+      { label: 'My Exams', path: '/student/dashboard', icon: BookOpen },
+      { label: 'Profile & Settings', path: '/settings', icon: Settings }
+    )
   }
 
   const handleLogout = async () => {

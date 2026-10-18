@@ -7,22 +7,28 @@ const ACCESS_TOKEN_TTL = '15m'
 const REFRESH_TOKEN_TTL = '12h'
 
 class AuthService {
-  async authenticate(email, plainPassword, expectedRole = null) {
-    if (!email || !plainPassword) {
-      const err = new Error('Email and password are required')
+  async authenticate(identifier, plainPassword, expectedRole = null) {
+    if (!identifier || !plainPassword) {
+      const err = new Error('Identifier and password are required')
       err.status = 400
       throw err
     }
 
-    const user = await authSql.findUserByEmail(email)
-    if (!user || !user.isActive) {
-      const err = new Error('Invalid credentials or account is inactive')
+    const user = await authSql.findUserByEmail(identifier)
+    if (!user) {
+      const err = new Error('Invalid credentials')
       err.status = 401
       throw err
     }
 
-    if (expectedRole && user.role !== expectedRole) {
-      const err = new Error(`Access denied for role ${expectedRole}`)
+    if (user.status === 'SUSPENDED') {
+      const err = new Error('Account is suspended. Please contact institutional administrator.')
+      err.status = 403
+      throw err
+    }
+
+    if (expectedRole && String(user.role).toUpperCase() !== String(expectedRole).toUpperCase()) {
+      const err = new Error(`Access denied: this account is not registered under ${expectedRole}`)
       err.status = 403
       throw err
     }
@@ -35,7 +41,7 @@ class AuthService {
     }
 
     const tokens = this.issueTokens(user)
-    const { password, ...safeUser } = user
+    const { password, passwordHash, ...safeUser } = user
     return { user: safeUser, ...tokens }
   }
 
@@ -91,7 +97,82 @@ class AuthService {
   async getUserById(id) {
     const user = await authSql.findUserById(id)
     if (!user) return null
-    const { password, ...safeUser } = user
+    const { password, passwordHash, ...safeUser } = user
+    return safeUser
+  }
+
+  async submitOnboarding(userId, { newPassword, department, semester, designation, phone, usn, fullName, referencePhotoKey, idCardPhotoKey }) {
+    const user = await authSql.findUserById(userId)
+    if (!user) {
+      const err = new Error('User not found')
+      err.status = 404
+      throw err
+    }
+
+    const updates = {
+      status: 'PENDING_APPROVAL',
+      profileMetadata: {
+        ...(user.profileMetadata || {}),
+        department: department || user.profileMetadata?.department || 'CSE',
+        semester: semester || user.profileMetadata?.semester || null,
+        designation: designation || user.profileMetadata?.designation || null,
+        phone: phone || user.profileMetadata?.phone || null,
+        submittedAt: new Date().toISOString(),
+        rejectionReason: null
+      }
+    }
+
+    if (newPassword && newPassword.length >= 6) {
+      updates.passwordHash = await bcrypt.hash(newPassword, 10)
+    }
+    if (referencePhotoKey) updates.referencePhotoKey = referencePhotoKey
+    if (idCardPhotoKey) updates.idCardPhotoKey = idCardPhotoKey
+    if (fullName) updates.fullName = fullName.trim()
+    if (usn) updates.institutionId = usn.trim()
+
+    const updated = await authSql.updateUserProfile(userId, updates)
+    const tokens = this.issueTokens(updated)
+    const { password, passwordHash, ...safeUser } = updated
+    return { user: safeUser, ...tokens }
+  }
+
+  async updateSettings(userId, { fullName, phone, department, semester, designation, currentPassword, newPassword }) {
+    const user = await authSql.findUserById(userId)
+    if (!user) {
+      const err = new Error('User not found')
+      err.status = 404
+      throw err
+    }
+
+    const updates = {
+      profileMetadata: {
+        ...(user.profileMetadata || {}),
+        phone: phone !== undefined ? phone : user.profileMetadata?.phone,
+        department: department !== undefined ? department : user.profileMetadata?.department,
+        semester: semester !== undefined ? semester : user.profileMetadata?.semester,
+        designation: designation !== undefined ? designation : user.profileMetadata?.designation
+      }
+    }
+
+    if (fullName) updates.fullName = fullName.trim()
+
+    if (newPassword) {
+      if (!currentPassword) {
+        const err = new Error('Current password is required to change password')
+        err.status = 400
+        throw err
+      }
+      const isMatch = await bcrypt.compare(currentPassword, user.password)
+      if (!isMatch) {
+        const err = new Error('Current password is incorrect')
+        err.status = 400
+        throw err
+      }
+      updates.passwordHash = await bcrypt.hash(newPassword, 10)
+    }
+
+    const updated = await authSql.updateUserProfile(userId, updates)
+    const { password, passwordHash, ...safeUser } = updated
     return safeUser
   }
 }

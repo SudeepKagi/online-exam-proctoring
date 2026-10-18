@@ -75,6 +75,44 @@ const usersController = {
     }
   },
 
+  async listPendingApprovals(req, res, next) {
+    try {
+      const { limit, offset } = req.query
+      const result = await usersService.listPendingApprovals({ limit, offset })
+      res.json({ users: result.users, pendingUsers: result.users, total: result.total })
+    } catch (err) {
+      next(err)
+    }
+  },
+
+  async getUserPhotos(req, res, next) {
+    try {
+      const { mediaService } = require('../media/media.service')
+      const user = await usersService.getUserById(req.params.id)
+      if (!user) return res.status(404).json({ error: { message: 'User not found' } })
+
+      let referencePhotoUrl = null
+      let idCardPhotoUrl = null
+
+      if (user.referencePhotoKey) {
+        referencePhotoUrl = await mediaService.getReadUrl(user.referencePhotoKey).catch(() => null)
+      }
+      if (user.idCardPhotoKey) {
+        idCardPhotoUrl = await mediaService.getReadUrl(user.idCardPhotoKey).catch(() => null)
+      }
+
+      res.json({
+        userId: user.id,
+        referencePhotoKey: user.referencePhotoKey,
+        idCardPhotoKey: user.idCardPhotoKey,
+        referencePhotoUrl,
+        idCardPhotoUrl
+      })
+    } catch (err) {
+      next(err)
+    }
+  },
+
   async approveUser(req, res, next) {
     try {
       const user = await usersService.setUserStatus(req.params.id, 'ACTIVE')
@@ -86,8 +124,9 @@ const usersController = {
 
   async rejectUser(req, res, next) {
     try {
-      await usersService.deleteUser(req.params.id)
-      res.json({ success: true, message: 'User registration rejected' })
+      const reason = req.body?.reason || req.body?.rejectionReason || 'Verification rejected by administrator'
+      const user = await usersService.setUserStatus(req.params.id, 'REJECTED', reason)
+      res.json({ success: true, message: 'User registration rejected', user })
     } catch (err) {
       next(err)
     }

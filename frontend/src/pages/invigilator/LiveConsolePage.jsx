@@ -5,9 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
+import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import { getSocket } from '@/lib/socketClient'
-import { Monitor, AlertTriangle, UserCheck, ShieldAlert, PauseCircle, PlayCircle, Clock } from 'lucide-react'
+import { Monitor, AlertTriangle, UserCheck, ShieldAlert, PauseCircle, PlayCircle, Users, CheckCircle2 } from 'lucide-react'
 
 export default function LiveConsolePage() {
   const [exams, setExams] = useState([])
@@ -20,7 +20,7 @@ export default function LiveConsolePage() {
   const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
-    apiClient.get('/exams').then((res) => {
+    api.get('/exams').then((res) => {
       const list = ensureArray(res.data?.exams || res.data)
       setExams(list)
       if (list.length > 0) setSelectedExamId(list[0].id)
@@ -32,8 +32,8 @@ export default function LiveConsolePage() {
     setLoading(true)
     try {
       const [attemptsRes, logsRes] = await Promise.allSettled([
-        apiClient.get(`/exams/${selectedExamId}/attempts`),
-        apiClient.get(`/proctoring/exams/${selectedExamId}/logs`),
+        api.get(`/exams/${selectedExamId}/attempts`),
+        api.get(`/proctoring/exams/${selectedExamId}/logs`),
       ])
       const attemptsList = attemptsRes.status === 'fulfilled' ? ensureArray(attemptsRes.value.data?.attempts || attemptsRes.value.data) : []
       const logs = logsRes.status === 'fulfilled' ? ensureArray(logsRes.value.data?.logs || logsRes.value.data) : []
@@ -79,7 +79,7 @@ export default function LiveConsolePage() {
     const isSuspended = selectedStudent.status === 'SUSPENDED'
     const endpoint = isSuspended ? `/attempts/${selectedStudent.id}/resume` : `/attempts/${selectedStudent.id}/suspend`
     try {
-      await apiClient.post(endpoint)
+      await api.post(endpoint)
       const newStatus = isSuspended ? 'IN_PROGRESS' : 'SUSPENDED'
       setSelectedStudent((p) => ({ ...p, status: newStatus }))
       setStudents((prev) => prev.map((s) => (s.id === selectedStudent.id ? { ...s, status: newStatus } : s)))
@@ -90,32 +90,59 @@ export default function LiveConsolePage() {
     }
   }
 
+  const inProgressCount = students.filter(s => s.status === 'IN_PROGRESS').length
+  const flaggedCount = students.filter(s => s.violationCount > 0).length
+  const suspendedCount = students.filter(s => s.status === 'SUSPENDED').length
+  const submittedCount = students.filter(s => s.status === 'SUBMITTED').length
+
   const filtered = students.filter((s) => {
     if (filter === 'FLAGGED') return s.violationCount > 0
     if (filter === 'SUSPENDED') return s.status === 'SUSPENDED'
     return true
   })
 
+  const currentExam = exams.find(e => e.id === selectedExamId)
+
   return (
     <DashboardShell title="Live Proctoring Console">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Live Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase block">Active Candidates</span>
+          <span className="text-xl font-black text-slate-900">{inProgressCount}</span>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+          <span className="text-[10px] font-bold text-amber-600 uppercase block">Flagged Violations</span>
+          <span className="text-xl font-black text-amber-600">{flaggedCount}</span>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+          <span className="text-[10px] font-bold text-red-600 uppercase block">Suspended</span>
+          <span className="text-xl font-black text-red-600">{suspendedCount}</span>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs">
+          <span className="text-[10px] font-bold text-emerald-600 uppercase block">Submitted</span>
+          <span className="text-xl font-black text-emerald-600">{submittedCount}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger className="w-64 bg-white border-slate-300">
+            <SelectTrigger className="w-64 bg-white border-slate-300 rounded-xl text-xs h-9">
               <SelectValue placeholder="Select examination" />
             </SelectTrigger>
             <SelectContent>
               {exams.map((e) => (
-                <SelectItem key={e.id} value={e.id}>{e.title} ({e.courseCode})</SelectItem>
+                <SelectItem key={e.id} value={e.id} className="text-xs">{e.title} ({e.courseCode})</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 border border-slate-200 rounded-lg">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 border border-slate-200 rounded-xl">
           {['ALL', 'FLAGGED', 'SUSPENDED'].map((f) => (
-            <Button key={f} size="sm" variant={filter === f ? 'default' : 'ghost'} onClick={() => setFilter(f)} className={`text-xs h-7 ${filter === f ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>
-              {f} ({f === 'ALL' ? students.length : f === 'FLAGGED' ? students.filter((s) => s.violationCount > 0).length : students.filter((s) => s.status === 'SUSPENDED').length})
+            <Button key={f} size="sm" variant={filter === f ? 'default' : 'ghost'} onClick={() => setFilter(f)} className={`text-xs h-7 rounded-lg font-bold ${filter === f ? 'bg-blue-600 text-white' : 'text-slate-600'}`}>
+              {f} ({f === 'ALL' ? students.length : f === 'FLAGGED' ? flaggedCount : suspendedCount})
             </Button>
           ))}
         </div>
@@ -123,27 +150,27 @@ export default function LiveConsolePage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-4">
         {filtered.length === 0 ? (
-          <div className="col-span-full py-16 text-center text-sm text-slate-500 bg-white rounded-lg border border-slate-200">
-            No active candidates found for this cohort filter.
+          <div className="col-span-full py-16 text-center text-xs text-slate-500 bg-white rounded-xl border border-slate-200 shadow-xs">
+            No active candidate sessions match this filter.
           </div>
         ) : (
           filtered.map((s) => (
-            <Card key={s.id} onClick={() => { setSelectedStudent(s); setSheetOpen(true) }} className="border-slate-200 bg-white hover:border-blue-400 cursor-pointer transition-shadow shadow-xs hover:shadow-md">
-              <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between">
-                <CardTitle className="text-xs font-semibold text-slate-900 truncate">{s.studentName}</CardTitle>
-                <Badge variant="outline" className={`text-xs ${s.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+            <Card key={s.id} onClick={() => { setSelectedStudent(s); setSheetOpen(true) }} className="border-slate-200 bg-white hover:border-blue-400 cursor-pointer transition-shadow shadow-xs hover:shadow-md rounded-xl overflow-hidden">
+              <CardHeader className="p-3 pb-2 flex flex-row items-center justify-between bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className="text-xs font-bold text-slate-900 truncate">{s.studentName}</CardTitle>
+                <Badge variant="outline" className={`text-[10px] font-bold ${s.status === 'SUSPENDED' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
                   {s.status}
                 </Badge>
               </CardHeader>
-              <CardContent className="p-3 pt-0 space-y-2">
-                <div className="aspect-video bg-slate-900 rounded flex flex-col items-center justify-center text-slate-400 text-xs gap-1">
-                  <Monitor className="w-5 h-5 text-slate-500" />
-                  <span>Realtime Feed Active</span>
+              <CardContent className="p-3 pt-3 space-y-2">
+                <div className="aspect-video bg-slate-950 rounded-lg flex flex-col items-center justify-center text-slate-400 text-xs gap-1 shadow-inner">
+                  <Monitor className="w-5 h-5 text-blue-500 animate-pulse" />
+                  <span className="text-[10px] font-mono text-slate-400">Pure Browser Stream</span>
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1">
-                  <span className="text-slate-500">Security Flags:</span>
-                  <Badge variant={s.violationCount > 0 ? 'destructive' : 'secondary'} className="text-xs">
-                    {s.violationCount} events
+                  <span className="text-slate-500">Security Events:</span>
+                  <Badge variant={s.violationCount > 0 ? 'destructive' : 'secondary'} className="text-[10px]">
+                    {s.violationCount} flags
                   </Badge>
                 </div>
               </CardContent>
@@ -153,34 +180,34 @@ export default function LiveConsolePage() {
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent className="sm:max-w-md overflow-y-auto">
+        <SheetContent className="sm:max-w-md overflow-y-auto font-sans">
           <SheetHeader>
-            <SheetTitle>{selectedStudent?.studentName}</SheetTitle>
-            <SheetDescription>Realtime telemetry & security audit history</SheetDescription>
+            <SheetTitle className="text-sm font-bold">{selectedStudent?.studentName}</SheetTitle>
+            <SheetDescription className="text-xs">Realtime telemetry & security audit history</SheetDescription>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex justify-between items-center text-xs">
-              <span className="text-slate-600 font-medium">Session Status:</span>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+              <span className="text-slate-600 font-semibold">Session State:</span>
               <Badge variant="outline" className={selectedStudent?.status === 'SUSPENDED' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}>
                 {selectedStudent?.status}
               </Badge>
             </div>
-            <Button onClick={handleToggleSuspend} disabled={actionLoading} variant={selectedStudent?.status === 'SUSPENDED' ? 'default' : 'destructive'} className="w-full text-xs">
+            <Button onClick={handleToggleSuspend} disabled={actionLoading} variant={selectedStudent?.status === 'SUSPENDED' ? 'default' : 'destructive'} className="w-full text-xs font-bold rounded-xl h-10 cursor-pointer">
               {selectedStudent?.status === 'SUSPENDED' ? <PlayCircle className="w-4 h-4 mr-1.5" /> : <PauseCircle className="w-4 h-4 mr-1.5" />}
-              {selectedStudent?.status === 'SUSPENDED' ? 'Resume Attempt' : 'Suspend Attempt'}
+              {selectedStudent?.status === 'SUSPENDED' ? 'Resume Attempt Access' : 'Suspend Attempt Access'}
             </Button>
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold uppercase text-slate-500">Violation Timeline</h4>
+              <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">Violation Timeline Feed</h4>
               {selectedStudent?.logs?.length === 0 ? (
-                <p className="text-xs text-slate-400 py-3 text-center">No integrity violations recorded.</p>
+                <p className="text-xs text-slate-400 py-3 text-center">No integrity violations recorded for this attempt.</p>
               ) : (
                 selectedStudent?.logs?.map((l, i) => (
-                  <div key={i} className="p-2.5 rounded border border-slate-200 bg-white text-xs space-y-1">
-                    <div className="flex justify-between font-semibold text-slate-800">
+                  <div key={i} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs space-y-1">
+                    <div className="flex justify-between font-bold text-slate-800">
                       <span>{l.eventType}</span>
-                      <span className="text-red-600 font-mono text-[11px]">{l.severity}</span>
+                      <span className="text-red-600 font-mono text-[10px]">{l.severity}</span>
                     </div>
-                    <p className="text-[11px] text-slate-500">{new Date(l.createdAt || Date.now()).toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-slate-500 font-mono">{new Date(l.createdAt || Date.now()).toLocaleTimeString()}</p>
                   </div>
                 ))
               )}

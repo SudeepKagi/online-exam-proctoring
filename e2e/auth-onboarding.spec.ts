@@ -2,19 +2,33 @@ import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
-test.describe('E2E: Auth & Onboarding Flow', () => {
+test.describe('E2E: Auth, Onboarding & Admin Approval Flow', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeAll(async () => {
     await resetCleanRoom()
   })
 
-  test('Invalid credentials triggers error alert', async ({ browser }) => {
+  test('1. Public Landing Page renders and navigates to Login', async ({ browser }) => {
     const actor = await createActor(browser, 'student')
     try {
-      await actor.page.goto('/login')
-      await expect(actor.page).toHaveTitle(/ProctorNet/i)
+      await actor.page.goto('/')
+      await expect(actor.page.locator('text=Next-Generation AI & Browser-Lockdown')).toBeVisible({ timeout: 10000 })
+      await expect(actor.page.locator('text=INSTITUTIONAL EXAMINATION INFRASTRUCTURE')).toBeVisible()
 
+      // Click Sign In to Portal
+      await actor.page.locator('header').getByRole('button', { name: /Sign In to Portal/i }).click()
+      await actor.page.waitForURL(url => url.pathname.includes('/login'), { timeout: 10000 })
+      expect(actor.page.url()).toContain('/login')
+    } finally {
+      await actor.close()
+    }
+  })
+
+  test('2. Invalid credentials triggers error alert', async ({ browser }) => {
+    const actor = await createActor(browser, 'student')
+    try {
+      await actor.page.goto('/login?role=student')
       await actor.page.locator('input[type="text"]').fill('nonexistent@user.com')
       await actor.page.locator('input[type="password"]').fill('WrongPassword@123')
       await actor.page.locator('button[type="submit"]').click()
@@ -25,11 +39,11 @@ test.describe('E2E: Auth & Onboarding Flow', () => {
     }
   })
 
-  test('Login succeeds and redirects for all 4 roles', async ({ browser }) => {
+  test('3. Login succeeds and redirects for all 4 roles', async ({ browser }) => {
     // 1. Admin login
     const admin = await createActor(browser, 'admin')
     try {
-      await admin.page.goto('/login')
+      await admin.page.goto('/login?role=admin')
       await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
       await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
       await admin.page.locator('button[type="submit"]').click()
@@ -42,7 +56,7 @@ test.describe('E2E: Auth & Onboarding Flow', () => {
     // 2. Faculty login
     const faculty = await createActor(browser, 'faculty')
     try {
-      await faculty.page.goto('/login')
+      await faculty.page.goto('/login?role=faculty')
       await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
       await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
       await faculty.page.locator('button[type="submit"]').click()
@@ -55,7 +69,7 @@ test.describe('E2E: Auth & Onboarding Flow', () => {
     // 3. Invigilator login
     const invigilator = await createActor(browser, 'invigilator')
     try {
-      await invigilator.page.goto('/login')
+      await invigilator.page.goto('/login?role=invigilator')
       await invigilator.page.locator('input[type="text"]').fill(SEEDED_INVIGILATOR.email)
       await invigilator.page.locator('input[type="password"]').fill(SEEDED_INVIGILATOR.password)
       await invigilator.page.locator('button[type="submit"]').click()
@@ -68,7 +82,7 @@ test.describe('E2E: Auth & Onboarding Flow', () => {
     // 4. Student login
     const student = await createActor(browser, 'student')
     try {
-      await student.page.goto('/login')
+      await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
       await student.page.locator('input[type="password"]').fill(SEEDED_STUDENTS[0].password)
       await student.page.locator('button[type="submit"]').click()
@@ -79,49 +93,87 @@ test.describe('E2E: Auth & Onboarding Flow', () => {
     }
   })
 
-  test('Admin creates a student account and toggles suspension', async ({ browser }) => {
+  test('4. Full Lifecycle: Admin provisions Student -> Student Onboarding -> Admin Approval -> Dashboard Access', async ({ browser }) => {
     const admin = await createActor(browser, 'admin')
-    const newStudentEmail = `charlie.${Date.now()}@proctornet.test`
+    const student = await createActor(browser, 'student')
+    const testStudentEmail = `eva.${Date.now()}@proctornet.test`
+    const tempPassword = 'TempPassword@123'
+    const permanentPassword = 'PermanentPass@456'
 
     try {
-      await admin.page.goto('/login')
+      // 1. Admin logs in and provisions a student account
+      await admin.page.goto('/login?role=admin')
       await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
       await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
       await admin.page.locator('button[type="submit"]').click()
       await admin.page.waitForURL(url => url.pathname.includes('/admin'), { timeout: 15000 })
 
-      // Navigate to Admin Users page
       await admin.page.goto('/admin/users')
-      await expect(admin.page.getByText('User Management')).toBeVisible({ timeout: 10000 })
+      await expect(admin.page.getByText('User Management & Approvals')).toBeVisible({ timeout: 10000 })
 
-      // Click Add Account dialog
-      await admin.page.getByRole('button', { name: /Add Account/i }).click()
-      await expect(admin.page.getByText('Create New User Account')).toBeVisible()
+      await admin.page.getByRole('button', { name: /Provision Account/i }).click()
+      await expect(admin.page.getByText('Provision New User Account')).toBeVisible()
 
-      // Fill in user details
-      await admin.page.locator('input[placeholder="John Doe"]').fill('Charlie Babbage')
-      await admin.page.locator('input[placeholder="john@univ.edu"]').fill(newStudentEmail)
-      await admin.page.locator('input[placeholder="1RV21CS001"]').fill('USN-999')
-      await admin.page.locator('input[placeholder="••••••••"]').fill('Password@12345')
+      await admin.page.locator('input[placeholder="Alex Rivera"]').fill('Eva Lovelace')
+      await admin.page.locator('input[placeholder="alex@univ.edu"]').fill(testStudentEmail)
+      await admin.page.locator('input[placeholder="1RV21CS042"]').fill('1RV21CS099')
+      await admin.page.locator('input[placeholder="Temp@123"]').fill(tempPassword)
+      await admin.page.getByRole('button', { name: 'Create Provisioned Account' }).click()
 
-      // Submit form
-      await admin.page.getByRole('button', { name: 'Create User' }).click()
-      await expect(admin.page.getByText(/User account created successfully/i)).toBeVisible({ timeout: 10000 })
+      await expect(admin.page.getByText(/User account created with PENDING_SETUP/i)).toBeVisible({ timeout: 10000 })
 
-      // Verify new user exists in table
-      const userRow = admin.page.locator('tr').filter({ hasText: newStudentEmail })
-      await expect(userRow).toBeVisible({ timeout: 10000 })
-      await expect(userRow.locator('text=ACTIVE')).toBeVisible()
+      // 2. Student logs in with temporary password -> Redirects to /onboarding
+      await student.page.goto('/login?role=student')
+      await student.page.locator('input[type="text"]').fill(testStudentEmail)
+      await student.page.locator('input[type="password"]').fill(tempPassword)
+      await student.page.locator('button[type="submit"]').click()
 
-      // Suspend user
-      const toggleBtn = userRow.getByTestId('toggle-status-btn')
-      await toggleBtn.click()
-      await expect(userRow.locator('text=SUSPENDED')).toBeVisible({ timeout: 10000 })
+      await student.page.waitForURL(url => url.pathname.includes('/onboarding'), { timeout: 15000 })
+      await expect(student.page.getByText('Student Identity Verification')).toBeVisible()
 
-      // Activate user
-      await toggleBtn.click()
-      await expect(userRow.locator('text=ACTIVE')).toBeVisible({ timeout: 10000 })
+      // 3. Step 1: Set permanent password & academic details
+      await student.page.locator('input[placeholder="Min 6 characters"]').fill(permanentPassword)
+      await student.page.locator('input[placeholder="Repeat password"]').fill(permanentPassword)
+      await student.page.locator('input[placeholder="+91 98765 43210"]').fill('+91 9876543210')
+      await student.page.getByRole('button', { name: /Proceed to Face Verification/i }).click()
+
+      // 4. Step 2: Snap Webcam live photo
+      await expect(student.page.getByText('Webcam Face Reference')).toBeVisible({ timeout: 10000 })
+      await student.page.getByRole('button', { name: /Snap Live Photo/i }).click()
+      await student.page.getByRole('button', { name: /Proceed to College ID/i }).click()
+
+      // 5. Step 3: Upload College ID Card photo
+      await expect(student.page.getByText('Click to upload College ID Card Photo')).toBeVisible({ timeout: 10000 })
+      const samplePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64')
+      await student.page.locator('input[type="file"]').setInputFiles({
+        name: 'college_id.png',
+        mimeType: 'image/png',
+        buffer: samplePng
+      })
+
+      await student.page.getByRole('button', { name: /Submit Profile for Approval/i }).click()
+      await student.page.waitForURL(url => url.pathname.includes('/pending-approval'), { timeout: 15000 })
+      await expect(student.page.getByText('Identity Profile Under Review')).toBeVisible()
+
+      // 6. Admin reviews and approves the student
+      await admin.page.goto('/admin/users')
+      await admin.page.getByRole('tab', { name: /Pending Approvals/i }).click()
+      const studentRow = admin.page.locator('tr').filter({ hasText: testStudentEmail })
+      await expect(studentRow).toBeVisible({ timeout: 10000 })
+
+      await studentRow.getByRole('button', { name: /Review & Verify/i }).click()
+      await expect(admin.page.getByText('Review & Verify Identity Profile')).toBeVisible()
+      await admin.page.getByRole('button', { name: /Approve Account/i }).click()
+
+      await expect(admin.page.getByText(/Account approved for Eva Lovelace/i)).toBeVisible({ timeout: 10000 })
+
+      // 7. Student checks review status -> Unlocked to Student Dashboard!
+      await student.page.getByRole('button', { name: /Check Approval Status/i }).click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
+      await expect(student.page.getByText('Student Examination Portal')).toBeVisible()
+      await expect(student.page.getByText('Identity Verified')).toBeVisible()
     } finally {
+      await student.close()
       await admin.close()
     }
   })

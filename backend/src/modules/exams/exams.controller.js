@@ -9,6 +9,24 @@ async function createExam(req, res, next) {
   }
 }
 
+async function updateExam(req, res, next) {
+  try {
+    const exam = await examService.updateExam(req.params.id, req.body)
+    return res.status(200).json({ status: 'success', exam })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function deleteExam(req, res, next) {
+  try {
+    await examService.deleteExam(req.params.id)
+    return res.status(200).json({ status: 'success', message: 'Exam deleted successfully' })
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function getExam(req, res, next) {
   try {
     const exam = await examService.getExamById(req.params.id, req.user?.role)
@@ -180,6 +198,8 @@ async function exportResultsCsv(req, res, next) {
 
 module.exports = {
   createExam,
+  updateExam,
+  deleteExam,
   getExam,
   listExams,
   publishExam,

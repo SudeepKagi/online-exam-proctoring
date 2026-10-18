@@ -1,0 +1,186 @@
+import React, { useState } from 'react'
+import { DashboardShell } from '@/components/common/DashboardShell'
+import { useAuth } from '@/context/AuthContext'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { api, errorMessage } from '@/lib/apiClient'
+import { CheckCircle2, ShieldCheck, KeyRound, User, Loader2, Save, FileText, Camera } from 'lucide-react'
+
+export default function SettingsPage() {
+  const { user, updateUser } = useAuth()
+  const isStudent = user?.role === 'STUDENT'
+  const meta = (user?.profileMetadata && typeof user?.profileMetadata === 'object') ? user?.profileMetadata : {}
+
+  const [form, setForm] = useState({
+    fullName: user?.fullName || '',
+    phone: meta.phone || '',
+    department: meta.department || '',
+    semester: meta.semester || '',
+    designation: meta.designation || '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState({ text: '', type: '' })
+
+  const handleChange = (f, v) => setForm(p => ({ ...p, [f]: v }))
+
+  const handleSave = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setMsg({ text: '', type: '' })
+
+    if (form.newPassword && form.newPassword !== form.confirmPassword) {
+      setMsg({ text: 'New passwords do not match.', type: 'error' })
+      setSaving(false)
+      return
+    }
+
+    try {
+      const payload = {
+        fullName: form.fullName,
+        phone: form.phone,
+        department: form.department,
+        semester: form.semester,
+        designation: form.designation,
+      }
+      if (form.newPassword) {
+        payload.currentPassword = form.currentPassword
+        payload.newPassword = form.newPassword
+      }
+
+      const res = await api.put('/auth/settings', payload)
+      if (res.data?.user) {
+        updateUser(res.data.user)
+      }
+      setMsg({ text: 'Profile & account settings saved successfully.', type: 'success' })
+      setForm(p => ({ ...p, currentPassword: '', newPassword: '', confirmPassword: '' }))
+    } catch (err) {
+      setMsg({ text: errorMessage(err, 'Failed to update settings'), type: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <DashboardShell title="Account & Identity Settings">
+      <div className="max-w-4xl space-y-6 font-sans">
+        {msg.text && (
+          <div className={`p-3 rounded-xl text-xs font-medium ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+            {msg.text}
+          </div>
+        )}
+
+        {/* Identity & Verification Status Card */}
+        <Card className="border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden">
+          <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Institutional Identity Verification
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Government & College ID biometrics verified by administration.
+                </CardDescription>
+              </div>
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold">
+                {user?.status || 'ACTIVE'}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-slate-400 block text-[10px] font-bold uppercase">Account Role</span>
+              <span className="font-bold text-slate-900">{user?.role}</span>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-slate-400 block text-[10px] font-bold uppercase">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
+              <span className="font-mono font-bold text-blue-600">{user?.institutionId || '—'}</span>
+            </div>
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+              <span className="text-slate-400 block text-[10px] font-bold uppercase">Registered Email</span>
+              <span className="font-mono text-slate-700 truncate block">{user?.email}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile & Password Form */}
+        <form onSubmit={handleSave} className="space-y-6">
+          <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+            <CardHeader className="border-b border-slate-100 pb-3">
+              <CardTitle className="text-sm font-bold text-slate-900">Personal & Academic Details</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Full Name</Label>
+                  <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} className="h-9 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Contact Phone</Label>
+                  <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} className="h-9 text-xs" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Department</Label>
+                  <Input value={form.department} onChange={(e) => handleChange('department', e.target.value)} className="h-9 text-xs" />
+                </div>
+                {isStudent ? (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">Semester</Label>
+                    <Input value={form.semester} onChange={(e) => handleChange('semester', e.target.value)} className="h-9 text-xs" />
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold">Designation</Label>
+                    <Input value={form.designation} onChange={(e) => handleChange('designation', e.target.value)} className="h-9 text-xs" />
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-200 bg-white shadow-xs rounded-xl">
+            <CardHeader className="border-b border-slate-100 pb-3">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-blue-600" /> Change Security Password
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">Leave blank if you do not want to alter your password.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-bold">Current Password</Label>
+                <Input type="password" value={form.currentPassword} onChange={(e) => handleChange('currentPassword', e.target.value)} placeholder="Enter current password" className="h-9 text-xs" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">New Password</Label>
+                  <Input type="password" value={form.newPassword} onChange={(e) => handleChange('newPassword', e.target.value)} placeholder="Min 6 characters" className="h-9 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold">Confirm New Password</Label>
+                  <Input type="password" value={form.confirmPassword} onChange={(e) => handleChange('confirmPassword', e.target.value)} placeholder="Repeat new password" className="h-9 text-xs" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 px-6 rounded-xl shadow-xs flex items-center gap-2 cursor-pointer">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </div>
+    </DashboardShell>
+  )
+}

@@ -39,6 +39,26 @@ class ExamService {
     })
   }
 
+  async updateExam(id, data) {
+    const exam = await examsSql.findExamById(id)
+    if (!exam) {
+      const err = new Error('Exam not found')
+      err.status = 404
+      throw err
+    }
+    return examsSql.updateExam(id, data)
+  }
+
+  async deleteExam(id) {
+    const exam = await examsSql.findExamById(id)
+    if (!exam) {
+      const err = new Error('Exam not found')
+      err.status = 404
+      throw err
+    }
+    return examsSql.deleteExam(id)
+  }
+
   async getExamById(id, userRole = null) {
     const exam = await examsSql.findExamById(id)
     if (!exam) {

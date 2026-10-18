@@ -21,7 +21,10 @@ enum Role {
 }
 
 enum UserStatus {
+  PENDING_SETUP
+  PENDING_APPROVAL
   ACTIVE
+  REJECTED
   SUSPENDED
 }
 
@@ -59,8 +62,10 @@ model User {
   passwordHash       String     @map("password_hash")
   fullName           String     @map("full_name")
   role               Role       @default(STUDENT)
-  status             UserStatus @default(ACTIVE)
+  status             UserStatus @default(PENDING_SETUP)
   referencePhotoKey  String?    @map("reference_photo_key")
+  idCardPhotoKey     String?    @map("id_card_photo_key")
+  profileMetadata    Json?      @map("profile_metadata")
   createdAt          DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
 
   createdExams       Exam[]           @relation("ExamCreator")

@@ -106,6 +106,30 @@ async function me(req, res, next) {
   }
 }
 
+async function onboarding(req, res, next) {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: { message: 'Authentication required' } })
+    }
+    const result = await authService.submitOnboarding(req.user.id, req.body)
+    return sendAuthResponse(res, result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function updateSettings(req, res, next) {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ error: { message: 'Authentication required' } })
+    }
+    const updated = await authService.updateSettings(req.user.id, req.body)
+    return res.status(200).json({ status: 'success', user: updated })
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function logout(req, res) {
   clearAuthCookie(res)
   return res.status(200).json({ status: 'success', message: 'Logged out successfully' })
@@ -119,5 +143,7 @@ module.exports = {
   invigilatorLogin,
   register,
   me,
+  onboarding,
+  updateSettings,
   logout
 }

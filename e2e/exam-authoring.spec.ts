@@ -1,22 +1,21 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
-import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR } from './helpers/cleanroom'
+import { resetCleanRoom, SEEDED_FACULTY } from './helpers/cleanroom'
 
-test.describe('E2E: Exam Authoring Flow', () => {
+test.describe('E2E: Exam Authoring, AI Question Generation & Invigilator Provisioning', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeAll(async () => {
     await resetCleanRoom()
   })
 
-  test('Faculty creates exam -> adds 3 MCQs -> Admin assigns invigilator -> Faculty publishes', async ({ browser }) => {
+  test('Faculty creates exam -> AI generates MCQs -> generates Invigilator -> publishes exam', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const examTitle = `Distributed Systems Assessment ${Date.now()}`
-    let examId = ''
 
     try {
       // 1. Faculty Login
-      await faculty.page.goto('/login')
+      await faculty.page.goto('/login?role=faculty')
       await faculty.page.locator('input[type="text"]').fill(SEEDED_FACULTY.email)
       await faculty.page.locator('input[type="password"]').fill(SEEDED_FACULTY.password)
       await faculty.page.locator('button[type="submit"]').click()
@@ -53,59 +52,35 @@ test.describe('E2E: Exam Authoring Flow', () => {
       await examRow.getByRole('link', { name: /Manage Exam/i }).click()
       await faculty.page.waitForURL(url => url.pathname.includes('/faculty/exams/'), { timeout: 15000 })
 
-      examId = faculty.page.url().split('/faculty/exams/')[1]?.split('/')[0]?.split('?')[0] || ''
-      expect(examId).toBeTruthy()
+      // 3. AI Generate Questions
+      await faculty.page.getByRole('button', { name: /AI Generate Questions/i }).click()
+      await expect(faculty.page.getByText('AI MCQ Generator & Question Assistant')).toBeVisible()
 
-      // 3. Add 3 MCQ Questions via Dialog
-      for (let i = 1; i <= 3; i++) {
-        await faculty.page.getByRole('button', { name: /Add MCQ Question/i }).click()
-        await expect(faculty.page.getByText('New Multiple Choice Question')).toBeVisible()
+      await faculty.page.locator('input[placeholder*="Process Scheduling"]').fill('Distributed Consensus & Raft')
+      await faculty.page.getByRole('button', { name: /Generate Questions Preview/i }).click()
 
-        await faculty.page.locator('input[placeholder="Enter question..."]').fill(`Question ${i}: What is quorum majority invariant for cluster #${i}?`)
-        await faculty.page.locator('input[placeholder="Opt 1"]').fill(`Strict Quorum Overlap (R + W > N) for node ${i}`)
-        await faculty.page.locator('input[placeholder="Opt 2"]').fill('Unreliable UDP Multicast')
-        await faculty.page.locator('input[placeholder="Opt 3"]').fill('Random Clock Drift')
-        await faculty.page.locator('input[placeholder="Opt 4"]').fill('Silent Partition Failover')
+      await expect(faculty.page.getByRole('button', { name: /Insert All .* Questions into Exam/i })).toBeVisible({ timeout: 20000 })
+      await faculty.page.getByRole('button', { name: /Insert All .* Questions into Exam/i }).click()
 
-        await faculty.page.getByRole('button', { name: 'Save Question' }).click()
-        await expect(faculty.page.getByText(`Question ${i}: What is quorum majority invariant`)).toBeVisible({ timeout: 10000 })
-      }
+      await expect(faculty.page.getByText(/Successfully added .* AI-generated questions/i)).toBeVisible({ timeout: 10000 })
 
-      // Verify question count badge shows 3
-      await expect(faculty.page.getByText('Question Bank (3)')).toBeVisible()
+      // 4. Generate Invigilator Account
+      await faculty.page.getByRole('tab', { name: /Invigilators & Credentials/i }).click()
+      await faculty.page.getByRole('button', { name: /Generate Invigilator Account/i }).click()
+      await expect(faculty.page.getByRole('heading', { name: 'Generate Invigilator Account' })).toBeVisible()
 
-      // 4. Admin Assigns Invigilator to the Exam
-      const admin = await createActor(browser, 'admin')
-      try {
-        await admin.page.goto('/login')
-        await admin.page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
-        await admin.page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
-        await admin.page.locator('button[type="submit"]').click()
-        await admin.page.waitForURL(url => url.pathname.includes('/admin'), { timeout: 15000 })
+      await faculty.page.locator('input[placeholder="e.g. Dr. Ramesh Kumar"]').fill('Prof. Margaret Hamilton')
+      await faculty.page.locator('input[placeholder="e.g. Lab 302 or Hall B"]').fill('Room 404')
+      await faculty.page.getByRole('button', { name: 'Generate & Assign Invigilator' }).click()
 
-        await admin.page.goto('/admin/exams')
-        const adminExamRow = admin.page.locator('tr').filter({ hasText: examTitle })
-        await expect(adminExamRow).toBeVisible({ timeout: 10000 })
+      await expect(faculty.page.getByText(/Invigilator account generated successfully/i)).toBeVisible({ timeout: 10000 })
+      await expect(faculty.page.locator('tr').filter({ hasText: 'Prof. Margaret Hamilton' })).toBeVisible()
+      await expect(faculty.page.locator('tr').filter({ hasText: 'Room 404' })).toBeVisible()
 
-        await adminExamRow.getByRole('button', { name: /Assign Invigilator/i }).click()
-        await expect(admin.page.getByRole('heading', { name: 'Assign Invigilator' })).toBeVisible()
-
-        // Select invigilator
-        await admin.page.locator('button[role="combobox"]').click()
-        await admin.page.getByRole('option').filter({ hasText: /Grace/i }).click()
-        await admin.page.getByRole('button', { name: 'Confirm Assignment' }).click()
-        await expect(admin.page.getByText(/Invigilator assigned to/i)).toBeVisible({ timeout: 10000 })
-      } finally {
-        await admin.close()
-      }
-
-      // 5. Faculty Publishes Exam
-      const publishBtn = faculty.page.getByRole('button', { name: /Publish Examination/i })
-      await expect(publishBtn).toBeVisible()
-      await publishBtn.click()
-
+      // 5. Publish Exam
+      await faculty.page.getByRole('button', { name: /Publish Exam/i }).click()
       await expect(faculty.page.getByText(/Exam published successfully/i)).toBeVisible({ timeout: 10000 })
-      await expect(faculty.page.getByRole('button', { name: /Publish Examination/i })).not.toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Publish Exam/i })).not.toBeVisible()
 
     } finally {
       await faculty.close()

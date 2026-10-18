@@ -22,7 +22,8 @@ function isIgnoredConsoleError(text: string): boolean {
 function isIgnoredPageError(message: string): boolean {
   return (
     message.includes('$RefreshSig$') ||
-    message.includes('$RefreshReg$')
+    message.includes('$RefreshReg$') ||
+    message.includes('play() request was interrupted')
   )
 }
 

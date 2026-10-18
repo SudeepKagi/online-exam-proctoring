@@ -12,9 +12,12 @@ class MediaService {
 
   async generatePresignedUpload({ purpose, attemptId, contentType = 'image/jpeg', bytes = 1048576 }) {
     const uuid = crypto.randomUUID()
-    const folder = purpose === 'LIVE_FRAME' ? 'frames' : 'evidence'
+    let folder = 'evidence'
+    if (purpose === 'LIVE_FRAME') folder = 'frames'
+    else if (purpose === 'REFERENCE_PHOTO') folder = 'reference-photos'
+    else if (purpose === 'ID_CARD') folder = 'id-cards'
     const ext = contentType.includes('png') ? 'png' : 'jpg'
-    const key = `${folder}/${attemptId || 'general'}/${Date.now()}-${uuid}.${ext}`
+    const key = `${folder}/${attemptId || 'users'}/${Date.now()}-${uuid}.${ext}`
 
     try {
       const policy = await createDirectUploadPolicy({

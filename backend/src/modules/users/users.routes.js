@@ -8,15 +8,17 @@ const router = express.Router()
 // Admin dashboard summary stats
 router.get('/admin/dashboard', authenticateToken, async (req, res, next) => {
   try {
-    const [facultyCount, studentCount, examCount, flagCount] = await Promise.all([
+    const [facultyCount, studentCount, examCount, flagCount, pendingStudents, pendingFaculty] = await Promise.all([
       prisma.user.count({ where: { role: 'FACULTY' } }).catch(() => 0),
       prisma.user.count({ where: { role: 'STUDENT' } }).catch(() => 0),
       prisma.exam.count().catch(() => 0),
-      prisma.proctoringLog.count({ where: { severity: { in: ['HIGH', 'CRITICAL'] } } }).catch(() => 0)
+      prisma.proctoringLog.count({ where: { severity: { in: ['HIGH', 'CRITICAL'] } } }).catch(() => 0),
+      prisma.user.count({ where: { role: 'STUDENT', status: 'PENDING_APPROVAL' } }).catch(() => 0),
+      prisma.user.count({ where: { role: 'FACULTY', status: 'PENDING_APPROVAL' } }).catch(() => 0)
     ])
     res.json({
-      faculty: { total: facultyCount, pending: 0 },
-      students: { total: studentCount, pending: 0 },
+      faculty: { total: facultyCount, pending: pendingFaculty },
+      students: { total: studentCount, pending: pendingStudents },
       exams: { total: examCount, active: 0 },
       flags: { highSeverity: flagCount }
     })
@@ -33,9 +35,13 @@ router.post('/admin/departments', authenticateToken, (req, res) => {
   res.status(201).json({ department: { code: req.body.code || 'CSE', name: req.body.name || 'Computer Science' } })
 })
 
+// Admin Approvals Queue & Photos
+router.get('/admin/approvals', authenticateToken, requireRole('ADMIN'), usersController.listPendingApprovals)
+router.get('/admin/users/:id/photos', authenticateToken, requireRole('ADMIN'), usersController.getUserPhotos)
+
 // Admin Student Management
 router.get('/admin/students', authenticateToken, usersController.listStudents)
-router.get('/admin/students/pending', authenticateToken, (req, res) => res.json({ students: [] }))
+router.get('/admin/students/pending', authenticateToken, usersController.listPendingApprovals)
 router.post('/admin/students', authenticateToken, usersController.createStudent)
 router.patch('/admin/students/:id/approve', authenticateToken, usersController.approveUser)
 router.patch('/admin/students/:id/reject', authenticateToken, usersController.rejectUser)
@@ -44,7 +50,7 @@ router.patch('/admin/students/:id/unsuspend', authenticateToken, usersController
 
 // Admin Faculty Management
 router.get('/admin/faculty', authenticateToken, usersController.listFaculty)
-router.get('/admin/faculty/pending', authenticateToken, (req, res) => res.json({ faculty: [] }))
+router.get('/admin/faculty/pending', authenticateToken, usersController.listPendingApprovals)
 router.post('/admin/faculty', authenticateToken, usersController.createFaculty)
 router.patch('/admin/faculty/:id/approve', authenticateToken, usersController.approveUser)
 router.patch('/admin/faculty/:id/reject', authenticateToken, usersController.rejectUser)

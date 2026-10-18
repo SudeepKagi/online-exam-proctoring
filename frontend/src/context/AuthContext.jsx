@@ -66,6 +66,18 @@ export function AuthProvider({ children }) {
     setUser((prev) => (prev ? { ...prev, ...data } : data))
   }
 
+  const refreshUser = async () => {
+    try {
+      const res = await api.get('/auth/me')
+      if (res.data?.user) {
+        setUser(res.data.user)
+        setRole(res.data.user.role)
+        return res.data.user
+      }
+    } catch (_) {}
+    return null
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -77,6 +89,7 @@ export function AuthProvider({ children }) {
         login,
         logout,
         updateUser,
+        refreshUser,
       }}
     >
       {children}

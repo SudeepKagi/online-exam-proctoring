@@ -43,6 +43,8 @@ router.post('/student/register', authController.register)
 router.post('/faculty/register', authController.register)
 router.post('/register', authController.register)
 router.get('/me', authenticateToken, authController.me)
+router.post('/onboarding', authenticateToken, authController.onboarding)
+router.put('/settings', authenticateToken, authController.updateSettings)
 router.post('/logout', authController.logout)
 
 module.exports = router

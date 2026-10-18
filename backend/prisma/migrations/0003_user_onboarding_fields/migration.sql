@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "id_card_photo_key" TEXT;
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "profile_metadata" JSONB;
+ALTER TABLE "users" ALTER COLUMN "status" SET DEFAULT 'PENDING_SETUP';

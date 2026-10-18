@@ -8,7 +8,9 @@ function mapUserRecord(user) {
     name: user.fullName,
     isActive: user.status === 'ACTIVE',
     referencePhotoS3Key: user.referencePhotoKey,
-    usn: user.institutionId
+    usn: user.institutionId,
+    idCardPhotoKey: user.idCardPhotoKey,
+    profileMetadata: user.profileMetadata || {}
   }
 }
 
@@ -35,7 +37,7 @@ async function findUserById(id) {
   return mapUserRecord(user)
 }
 
-async function createUser({ email, password, name, fullName, role, referencePhotoKey, referencePhotoS3Key, institutionId, usn }) {
+async function createUser({ email, password, name, fullName, role, referencePhotoKey, referencePhotoS3Key, institutionId, usn, status = 'ACTIVE' }) {
   const cleanEmail = email.toLowerCase().trim()
   const cleanName = (fullName || name || '').trim()
   const user = await prisma.user.create({
@@ -46,8 +48,25 @@ async function createUser({ email, password, name, fullName, role, referencePhot
       role: String(role).toUpperCase(),
       referencePhotoKey: referencePhotoKey || referencePhotoS3Key || null,
       institutionId: institutionId || usn || null,
-      status: 'ACTIVE'
+      status: status || 'ACTIVE'
     }
+  })
+  return mapUserRecord(user)
+}
+
+async function updateUserProfile(id, data) {
+  const updateData = {}
+  if (data.passwordHash) updateData.passwordHash = data.passwordHash
+  if (data.status) updateData.status = data.status
+  if (data.referencePhotoKey !== undefined) updateData.referencePhotoKey = data.referencePhotoKey
+  if (data.idCardPhotoKey !== undefined) updateData.idCardPhotoKey = data.idCardPhotoKey
+  if (data.profileMetadata !== undefined) updateData.profileMetadata = data.profileMetadata
+  if (data.fullName) updateData.fullName = data.fullName
+  if (data.institutionId) updateData.institutionId = data.institutionId
+
+  const user = await prisma.user.update({
+    where: { id },
+    data: updateData
   })
   return mapUserRecord(user)
 }
@@ -64,5 +83,6 @@ module.exports = {
   findUserByEmail,
   findUserById,
   createUser,
+  updateUserProfile,
   listUsersByRole
 }

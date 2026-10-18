@@ -1,16 +1,12 @@
 const bcrypt = require('bcryptjs')
-const ExcelJS = require('exceljs')
 const { prisma } = require('../../infra/postgres/client')
+const { parseExcelBuffer } = require('./users.excel')
 
 class UsersService {
   async listUsers({ role, status, search, limit = 50, offset = 0 } = {}) {
     const where = {}
-    if (role) {
-      where.role = String(role).toUpperCase()
-    }
-    if (status) {
-      where.status = String(status).toUpperCase()
-    }
+    if (role) where.role = String(role).toUpperCase()
+    if (status) where.status = String(status).toUpperCase()
     if (search) {
       where.OR = [
         { email: { contains: search, mode: 'insensitive' } },
@@ -33,22 +29,27 @@ class UsersService {
           role: true,
           status: true,
           referencePhotoKey: true,
+          idCardPhotoKey: true,
+          profileMetadata: true,
           createdAt: true
         }
       }),
       prisma.user.count({ where })
     ])
 
-    // Format safe response for frontend consumers
     const formatted = users.map(u => ({
       ...u,
       name: u.fullName,
       usn: u.institutionId,
-      department: 'CSE',
+      department: u.profileMetadata?.department || 'CSE',
       isActive: u.status === 'ACTIVE'
     }))
 
     return { users: formatted, total }
+  }
+
+  async listPendingApprovals({ limit = 50, offset = 0 } = {}) {
+    return this.listUsers({ status: 'PENDING_APPROVAL', limit, offset })
   }
 
   async getUserById(id) {
@@ -62,6 +63,8 @@ class UsersService {
         role: true,
         status: true,
         referencePhotoKey: true,
+        idCardPhotoKey: true,
+        profileMetadata: true,
         createdAt: true
       }
     })
@@ -74,7 +77,7 @@ class UsersService {
     }
   }
 
-  async createUser({ email, password, fullName, name, role = 'STUDENT', institutionId, usn, referencePhotoKey }) {
+  async createUser({ email, password, fullName, name, role = 'STUDENT', institutionId, usn, referencePhotoKey, idCardPhotoKey, profileMetadata, status }) {
     if (!email || (!fullName && !name)) {
       const err = new Error('Email and name are required')
       err.status = 400
@@ -89,18 +92,22 @@ class UsersService {
       throw err
     }
 
+    const targetRole = String(role).toUpperCase()
     const rawPassword = password || 'Default#1234'
     const passwordHash = await bcrypt.hash(rawPassword, 10)
+    const initialStatus = status || (targetRole === 'ADMIN' || targetRole === 'INVIGILATOR' ? 'ACTIVE' : 'PENDING_SETUP')
 
     const user = await prisma.user.create({
       data: {
         email: cleanEmail,
         passwordHash,
         fullName: (fullName || name).trim(),
-        role: String(role).toUpperCase(),
+        role: targetRole,
         institutionId: (institutionId || usn || '').trim() || null,
         referencePhotoKey: referencePhotoKey || null,
-        status: 'ACTIVE'
+        idCardPhotoKey: idCardPhotoKey || null,
+        profileMetadata: profileMetadata || (targetRole === 'INVIGILATOR' ? { generatedPasswordHint: rawPassword } : {}),
+        status: initialStatus
       },
       select: {
         id: true,
@@ -110,6 +117,8 @@ class UsersService {
         role: true,
         status: true,
         referencePhotoKey: true,
+        idCardPhotoKey: true,
+        profileMetadata: true,
         createdAt: true
       }
     })
@@ -129,6 +138,8 @@ class UsersService {
     if (data.role) updateData.role = String(data.role).toUpperCase()
     if (data.status) updateData.status = String(data.status).toUpperCase()
     if (data.referencePhotoKey) updateData.referencePhotoKey = data.referencePhotoKey
+    if (data.idCardPhotoKey) updateData.idCardPhotoKey = data.idCardPhotoKey
+    if (data.profileMetadata) updateData.profileMetadata = data.profileMetadata
     if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 10)
 
     const user = await prisma.user.update({
@@ -142,6 +153,8 @@ class UsersService {
         role: true,
         status: true,
         referencePhotoKey: true,
+        idCardPhotoKey: true,
+        profileMetadata: true,
         createdAt: true
       }
     })
@@ -154,12 +167,23 @@ class UsersService {
     }
   }
 
-  async setUserStatus(id, status) {
-    const validStatus = String(status).toUpperCase() === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE'
+  async setUserStatus(id, status, reason = null) {
+    const targetStatus = String(status).toUpperCase()
+    const existing = await prisma.user.findUnique({ where: { id }, select: { profileMetadata: true } })
+    const metadata = { ...(existing?.profileMetadata || {}) }
+
+    if (targetStatus === 'REJECTED') {
+      metadata.rejectionReason = reason || 'Identity photo or credential verification rejected'
+      metadata.rejectedAt = new Date().toISOString()
+    } else if (targetStatus === 'ACTIVE') {
+      metadata.rejectionReason = null
+      metadata.approvedAt = new Date().toISOString()
+    }
+
     return prisma.user.update({
       where: { id },
-      data: { status: validStatus },
-      select: { id: true, email: true, status: true }
+      data: { status: targetStatus, profileMetadata: metadata },
+      select: { id: true, email: true, status: true, profileMetadata: true }
     })
   }
 
@@ -171,42 +195,7 @@ class UsersService {
   }
 
   async parseExcelBuffer(buffer) {
-    const workbook = new ExcelJS.Workbook()
-    await workbook.xlsx.load(buffer)
-    const worksheet = workbook.worksheets[0]
-    if (!worksheet) {
-      throw new Error('Excel workbook contains no sheets')
-    }
-
-    const rows = []
-    let headerMap = {}
-
-    worksheet.eachRow((row, rowNumber) => {
-      const values = Array.isArray(row.values) ? row.values.slice(1) : []
-      if (rowNumber === 1) {
-        values.forEach((v, idx) => {
-          const col = String(v || '').toLowerCase().trim()
-          headerMap[col] = idx
-        })
-      } else {
-        const getVal = (col) => {
-          const idx = headerMap[col]
-          return idx !== undefined && values[idx] !== undefined ? String(values[idx]).trim() : ''
-        }
-
-        const email = getVal('email')
-        const name = getVal('name') || getVal('fullname') || getVal('full name')
-        const usn = getVal('usn') || getVal('id') || getVal('institutionid') || getVal('employee id')
-        const role = getVal('role') || 'STUDENT'
-        const password = getVal('password') || 'Default#1234'
-
-        if (email && name) {
-          rows.push({ email, name, fullName: name, usn, institutionId: usn, role, password })
-        }
-      }
-    })
-
-    return rows
+    return parseExcelBuffer(buffer)
   }
 
   async bulkCreateUsers(accounts = []) {
@@ -218,7 +207,8 @@ class UsersService {
           fullName: acc.name || acc.fullName,
           institutionId: acc.usn || acc.institutionId || acc.departmentCode,
           role: acc.role || 'STUDENT',
-          password: acc.password || 'Default#1234'
+          password: acc.password || 'Default#1234',
+          status: 'PENDING_SETUP'
         })
         results.push({ success: true, email: acc.email, user })
       } catch (err) {

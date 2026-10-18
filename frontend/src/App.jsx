@@ -2,7 +2,11 @@ import React, { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 
+const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const OnboardingPage = lazy(() => import('@/pages/auth/OnboardingPage'))
+const PendingApprovalPage = lazy(() => import('@/pages/auth/PendingApprovalPage'))
+const SettingsPage = lazy(() => import('@/pages/common/SettingsPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'))
 const AdminExamsPage = lazy(() => import('@/pages/admin/AdminExamsPage'))
@@ -19,6 +23,15 @@ function ProtectedRoute({ children, allowedRoles }) {
     return <div className="min-h-screen bg-slate-50 flex items-center justify-center text-xs text-slate-500">Loading session...</div>
   }
   if (!user) return <Navigate to="/login" replace />
+
+  const status = user.status
+  if (status === 'PENDING_SETUP' || status === 'REJECTED') {
+    return <Navigate to="/onboarding" replace />
+  }
+  if (status === 'PENDING_APPROVAL') {
+    return <Navigate to="/pending-approval" replace />
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role?.toUpperCase())) {
     const role = user.role?.toUpperCase()
     if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />
@@ -29,15 +42,18 @@ function ProtectedRoute({ children, allowedRoles }) {
   return children
 }
 
-function RootRedirect() {
+function OnboardingGuard({ children }) {
   const { user, loading } = useAuth()
   if (loading) return null
   if (!user) return <Navigate to="/login" replace />
-  const role = user.role?.toUpperCase()
-  if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />
-  if (role === 'FACULTY') return <Navigate to="/faculty/exams" replace />
-  if (role === 'INVIGILATOR') return <Navigate to="/invigilator/console" replace />
-  return <Navigate to="/student/dashboard" replace />
+  if (user.status === 'ACTIVE') {
+    const role = user.role?.toUpperCase()
+    if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />
+    if (role === 'FACULTY') return <Navigate to="/faculty/exams" replace />
+    if (role === 'INVIGILATOR') return <Navigate to="/invigilator/console" replace />
+    return <Navigate to="/student/dashboard" replace />
+  }
+  return children
 }
 
 export default function App() {
@@ -46,13 +62,25 @@ export default function App() {
       <AuthProvider>
         <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-xs text-slate-500">Loading view...</div>}>
           <Routes>
-            <Route path="/" element={<RootRedirect />} />
+            {/* Public Landing Page */}
+            <Route path="/" element={<LandingPage />} />
+
+            {/* Role-Specific Tabbed Login Gate */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/admin/login" element={<LoginPage />} />
             <Route path="/faculty/login" element={<LoginPage />} />
             <Route path="/invigilator/login" element={<LoginPage />} />
             <Route path="/invigilator-login" element={<LoginPage />} />
             <Route path="/student/login" element={<LoginPage />} />
+
+            {/* Onboarding & Approval Queue */}
+            <Route path="/onboarding" element={<OnboardingGuard><OnboardingPage /></OnboardingGuard>} />
+            <Route path="/pending-approval" element={<OnboardingGuard><PendingApprovalPage /></OnboardingGuard>} />
+
+            {/* Common Settings Routes */}
+            <Route path="/settings" element={<ProtectedRoute allowedRoles={['STUDENT', 'FACULTY', 'ADMIN']}><SettingsPage /></ProtectedRoute>} />
+            <Route path="/student/settings" element={<ProtectedRoute allowedRoles={['STUDENT']}><SettingsPage /></ProtectedRoute>} />
+            <Route path="/faculty/settings" element={<ProtectedRoute allowedRoles={['FACULTY', 'ADMIN']}><SettingsPage /></ProtectedRoute>} />
 
             {/* Role Base Aliases */}
             <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
