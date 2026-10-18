@@ -256,20 +256,21 @@ jobs:
           EOF
           )
 
+          ENCODED_SCRIPT=$(printf "%s" "$DEPLOY_SCRIPT" | base64 -w 0)
           PAYLOAD=$(jq -n \
             --arg bucket "$BUCKET" \
             --arg sha "$HEAD_SHA" \
             --arg tar "$TAR_FILE" \
             --arg db "${DATABASE_URL:-}" \
             --arg direct "${DIRECT_URL:-}" \
-            --arg script "$DEPLOY_SCRIPT" \
+            --arg b64 "$ENCODED_SCRIPT" \
             '{commands: [
-              "export BUCKET=\"" + $bucket + "\"",
-              "export HEAD_SHA=\"" + $sha + "\"",
-              "export TAR_FILE=\"" + $tar + "\"",
-              "export DATABASE_URL=\"" + $db + "\"",
-              "export DIRECT_URL=\"" + $direct + "\"",
-              "bash -c \x27" + $script + "\x27"
+              ("export BUCKET=" + ($bucket | @sh)),
+              ("export HEAD_SHA=" + ($sha | @sh)),
+              ("export TAR_FILE=" + ($tar | @sh)),
+              ("export DATABASE_URL=" + ($db | @sh)),
+              ("export DIRECT_URL=" + ($direct | @sh)),
+              ("echo " + ($b64 | @sh) + " | base64 -d | bash")
             ]}')
 
           echo "Dispatching SSM Command to instance ${INSTANCE_ID}..."
