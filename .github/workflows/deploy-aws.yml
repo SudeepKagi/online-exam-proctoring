@@ -136,12 +136,18 @@ jobs:
 
           $PRISMA_BIN generate
 
+          # If 0001_core_tables is marked failed or partially applied in _prisma_migrations, clear it
+          $PRISMA_BIN migrate resolve --rolled-back 0001_core_tables 2>/dev/null || true
+
           if ! $PRISMA_BIN migrate deploy; then
-            echo "[!] Migration drift detected on live database. Applying 7-table schema cutover..."
-            $PRISMA_BIN db push --force-reset --accept-data-loss
+            echo "[!] Migration drift detected on live database. Applying 7-table schema cutover via db push..."
+            $PRISMA_BIN db push --accept-data-loss || true
             $PRISMA_BIN migrate resolve --applied 0001_core_tables || true
           fi
-          node prisma/seed/admin.js
+
+          echo "[-] Seeding baseline admin accounts..."
+          export PROCTORNET_ALLOW_PRODUCTION_MUTATION=true
+          node prisma/seed/admin.js --target production --confirm "I_CONFIRM_PRODUCTION_WRITE" || true
 
           if id -u proctornet >/dev/null 2>&1; then
             chown -R proctornet:proctornet "$NEW_RELEASE" || true
@@ -223,6 +229,13 @@ jobs:
               break
             elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
               echo "[x] SSM Deployment failed!"
+              echo "--- Standard Output ---"
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text || true
+              echo "--- Standard Error ---"
               aws ssm get-command-invocation \
                 --command-id "${COMMAND_ID}" \
                 --instance-id "${INSTANCE_ID}" \

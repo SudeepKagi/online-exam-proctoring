@@ -1,17 +1,37 @@
 -- CreateEnum
-CREATE TYPE "Role" AS ENUM ('ADMIN', 'FACULTY', 'INVIGILATOR', 'STUDENT');
+DO $$ BEGIN
+    CREATE TYPE "Role" AS ENUM ('ADMIN', 'FACULTY', 'INVIGILATOR', 'STUDENT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED');
+DO $$ BEGIN
+    CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "ExamStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ACTIVE', 'COMPLETED');
+DO $$ BEGIN
+    CREATE TYPE "ExamStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ACTIVE', 'COMPLETED');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "AttemptStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'SUBMITTED', 'SUSPENDED', 'TIMED_OUT');
+DO $$ BEGIN
+    CREATE TYPE "AttemptStatus" AS ENUM ('NOT_STARTED', 'IN_PROGRESS', 'SUBMITTED', 'SUSPENDED', 'TIMED_OUT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateEnum
-CREATE TYPE "Severity" AS ENUM ('INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+DO $$ BEGIN
+    CREATE TYPE "Severity" AS ENUM ('INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- CreateTable
 CREATE TABLE "users" (
