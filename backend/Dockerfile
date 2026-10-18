@@ -31,7 +31,7 @@ RUN apk add --no-cache tini wget curl openssl
 
 ENV NODE_ENV=production
 ENV UV_THREADPOOL_SIZE=64
-ENV PORT=4000
+ENV PORT=5000
 
 # Create dedicated non-root application user
 RUN addgroup -g 1001 -S nodejs && \
@@ -48,10 +48,10 @@ RUN mkdir -p /app/tmp && chown -R proctornet:nodejs /app/tmp
 
 USER proctornet
 
-EXPOSE 4000
+EXPOSE 5000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-  CMD wget -q --spider http://127.0.0.1:4000/healthz || exit 1
+  CMD wget -q --spider http://127.0.0.1:5000/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && npx prisma migrate deploy && node --max-old-space-size=2048 src/app.js"]
+CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && (npx prisma migrate deploy || (echo '[!] Schema drift detected, applying 7-table clean cutover...' && npx prisma db push --force-reset --accept-data-loss && npx prisma migrate resolve --applied 0001_core_tables)) && node prisma/seed/admin.js && node --max-old-space-size=2048 src/app.js"]

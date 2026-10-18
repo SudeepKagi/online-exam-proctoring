@@ -1,4 +1,4 @@
-﻿# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1
 # ==============================================================================
 # ProctorNet Frontend — Multi-Stage Production Dockerfile (G-02)
 # Stage 1 (builder): npm ci + vite build + brotli/gzip pre-compression
@@ -46,6 +46,7 @@ server {
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
+    client_max_body_size 15M;
 
     # Serve pre-compressed assets (.gz / .br) automatically
     gzip_static on;
@@ -64,7 +65,7 @@ server {
 
     # Proxy API requests to backend
     location /api/ {
-        proxy_pass http://backend:4000;
+        proxy_pass http://backend:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -73,11 +74,12 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
     }
 
     # Proxy WebSocket / Socket.io requests to backend
     location /socket.io/ {
-        proxy_pass http://backend:4000;
+        proxy_pass http://backend:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -86,6 +88,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
     }
 
     # SPA routing fallback: index.html never aggressively cached

@@ -20,7 +20,11 @@ function setupGracefulShutdown({ server, internalServer, io, rosterCoalescer, pr
     }
 
     try {
-      await proctoringService.flush()
+      if (typeof proctoringService?.flushBuffer === 'function') {
+        await proctoringService.flushBuffer()
+      } else if (typeof proctoringService?.flush === 'function') {
+        await proctoringService.flush()
+      }
       logger.info('Proctoring logs batcher drained successfully')
     } catch (err) {
       logger.warn({ error: err.message }, 'Error draining proctoring logs batcher')

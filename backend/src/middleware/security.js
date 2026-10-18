@@ -35,6 +35,10 @@ if (process.env.FRONTEND_URL) {
   })
 }
 
+;['https://proctornet.duckdns.org', 'http://proctornet.duckdns.org'].forEach((o) => {
+  if (!allowedOrigins.includes(o)) allowedOrigins.push(o)
+})
+
 if (!isProd) {
   const localDevOrigins = [
     'http://localhost:5173', 'http://127.0.0.1:5173',

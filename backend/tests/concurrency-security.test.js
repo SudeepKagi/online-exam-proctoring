@@ -4,7 +4,7 @@ const assert = require('node:assert/strict')
 const { prisma } = require('../src/infra/postgres/client')
 const { signToken } = require('../src/utils/jwt')
 const { Agent, setGlobalDispatcher } = require('undici')
-setGlobalDispatcher(new Agent({ connections: 150, keepAliveTimeout: 30000 }))
+setGlobalDispatcher(new Agent({ connections: 150, keepAliveTimeout: 1000, keepAliveMaxTimeout: 1000 }))
 
 describe('High-Concurrency Load & Security Penetration Test Suite', () => {
   let BASE_URL = 'http://127.0.0.1:5000'

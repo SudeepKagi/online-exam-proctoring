@@ -8,6 +8,7 @@ const crypto = require('crypto')
 class MemoryS3Adapter {
   constructor(options = {}) {
     this.bucket = options.bucket || 'test-bucket'
+    this.maxKeys = options.maxKeys || 100
     this.store = new Map() // key -> { buffer, contentType, lastModified, versionId }
     this.versions = new Map() // key -> array of versions
     this.client = {
@@ -51,6 +52,13 @@ class MemoryS3Adapter {
       lastModified: new Date(),
       versionId
     }
+
+    if (!this.store.has(key) && this.store.size >= this.maxKeys) {
+      const oldestKey = this.store.keys().next().value
+      this.store.delete(oldestKey)
+      this.versions.delete(oldestKey)
+    }
+
     this.store.set(key, entry)
 
     if (!this.versions.has(key)) {

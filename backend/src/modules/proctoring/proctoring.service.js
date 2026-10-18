@@ -87,6 +87,20 @@ class ProctoringService {
     }
   }
 
+  async flushBuffer() {
+    if (this.timer) {
+      clearTimeout(this.timer)
+      this.timer = null
+    }
+    while (this.buffer.length > 0) {
+      await this.flush()
+    }
+  }
+
+  async shutdownProctoringBuffer() {
+    return this.flushBuffer()
+  }
+
   async getAttemptLogs(attemptId) {
     return proctoringSql.getLogsByAttempt(attemptId)
   }
@@ -97,4 +111,12 @@ class ProctoringService {
 }
 
 const proctoringService = new ProctoringService()
-module.exports = { proctoringService, ProctoringService }
+const flushBuffer = () => proctoringService.flushBuffer()
+const shutdownProctoringBuffer = () => proctoringService.shutdownProctoringBuffer()
+
+module.exports = {
+  proctoringService,
+  ProctoringService,
+  flushBuffer,
+  shutdownProctoringBuffer
+}

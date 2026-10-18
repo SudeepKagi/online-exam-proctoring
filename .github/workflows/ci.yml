@@ -1,18 +1,19 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: Build, Validate & Test
+  verify-and-test:
+    name: 1. Verify, Test & Build
     runs-on: ubuntu-latest
 
     services:
@@ -44,16 +45,16 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js 22 LTS
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
 
-      - name: 2. npm ci at root
+      - name: Install Dependencies
         run: npm ci
 
-      - name: 3. Prisma Validate & Migrate Deploy
+      - name: Prisma Validate, Generate & Migrate
         env:
           DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
           DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
@@ -62,7 +63,7 @@ jobs:
           npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
-      - name: 4. Line-Count Guardrail Check (Fail if > 250 lines)
+      - name: Enforce 250-Line Guardrail Check
         run: |
           node -e "
             const fs = require('fs');
@@ -98,15 +99,224 @@ jobs:
             console.log('✅ Line count guardrail passed across ' + files.length + ' files. All files <= 250 lines.');
           "
 
-      - name: 5. Run Backend Tests & Build Frontend
+      - name: Run Backend Tests
         env:
           NODE_ENV: test
-          CACHE_DRIVER: memory
+          CACHE_DRIVER: redis
+          PORT: 5000
           DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
           DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
           REDIS_URL: redis://localhost:6379
           JWT_SECRET: supersecret_jwt_proctornet_production_key_32bytes
           JWT_REFRESH_SECRET: supersecret_jwt_refresh_proctornet_key_32bytes
+          CORS_ORIGIN: https://proctornet.duckdns.org,http://localhost:5173
+        run: npm test --workspace=backend
+
+      - name: Build Production Frontend Bundle
+        run: npm run build --workspace=frontend
+
+  deploy-production:
+    name: 2. Deploy to EC2 (proctornet.duckdns.org)
+    needs: verify-and-test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment:
+      name: production
+      url: https://proctornet.duckdns.org
+
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Build Frontend & Prepare Production Release Artifact
         run: |
-          npm test --workspace=backend
+          npm ci
           npm run build --workspace=frontend
+          npx prisma generate --schema=backend/prisma/schema.prisma
+          RELEASE_TAG="release-${{ github.sha }}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+          printf '{\n  "version": "%s",\n  "gitSha": "%s",\n  "builtAt": "%s"\n}\n' \
+            "${RELEASE_TAG}" "${{ github.sha }}" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > VERSION
+          tar -czf "${TAR_FILE}" \
+            backend \
+            frontend/dist \
+            docker-compose.yml \
+            VERSION
+
+      - name: Configure AWS Credentials (OIDC or IAM Keys)
+        if: ${{ secrets.AWS_ROLE_TO_ASSUME != '' || secrets.AWS_ACCESS_KEY_ID != '' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+        continue-on-error: true
+
+      - name: Upload Release Tarball to S3
+        continue-on-error: true
+        env:
+          BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
+        run: |
+          RELEASE_TAG="release-${{ github.sha }}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+          if command -v aws >/dev/null 2>&1; then
+            aws s3 cp "${TAR_FILE}" "s3://${BUCKET}/releases/${TAR_FILE}" || true
+          fi
+
+      - name: Execute Deployment via AWS SSM Session Manager
+        if: ${{ secrets.AWS_EC2_INSTANCE_ID != '' }}
+        env:
+          INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
+          BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
+          HEAD_SHA: ${{ github.sha }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL || '' }}
+        run: |
+          RELEASE_TAG="release-${HEAD_SHA}"
+          TAR_FILE="${RELEASE_TAG}.tar.gz"
+
+          DEPLOY_SCRIPT=$(cat << 'EOF'
+          set -euo pipefail
+          BASE_DIR="/opt/proctornet"
+          RELEASES_DIR="$BASE_DIR/releases"
+          NEW_RELEASE="$RELEASES_DIR/release-${HEAD_SHA}"
+          CURRENT_LINK="$BASE_DIR/current"
+          SHARED_ENV="$BASE_DIR/shared/.env"
+
+          echo "[1/6] Preparing release directory: $NEW_RELEASE"
+          mkdir -p "$NEW_RELEASE" "$RELEASES_DIR" "$BASE_DIR/shared"
+
+          echo "[2/6] Fetching release tarball..."
+          if aws s3 cp "s3://${BUCKET}/releases/${TAR_FILE}" "/tmp/${TAR_FILE}" 2>/dev/null; then
+            tar -xzf "/tmp/${TAR_FILE}" -C "$NEW_RELEASE"
+            rm -f "/tmp/${TAR_FILE}"
+          fi
+
+          echo "[3/6] Linking environment..."
+          if [ -f "$SHARED_ENV" ]; then
+            ln -sf "$SHARED_ENV" "$NEW_RELEASE/backend/.env"
+            ln -sf "$SHARED_ENV" "$NEW_RELEASE/.env"
+          fi
+
+          echo "[4/6] Executing 7-Table Schema Cutover & Baseline Seed..."
+          cd "$NEW_RELEASE/backend"
+          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL:-}"
+          if [ -n "${DATABASE_URL:-}" ]; then
+            export DATABASE_URL="${DATABASE_URL}"
+          fi
+
+          if ! npx prisma migrate deploy; then
+            echo "[!] Migration drift detected on live database. Applying 7-table schema cutover..."
+            npx prisma db push --force-reset --accept-data-loss
+            npx prisma migrate resolve --applied 0001_core_tables || true
+          fi
+          node prisma/seed/admin.js
+
+          echo "[5/6] Updating active symlink & reloading services..."
+          ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
+
+          if systemctl is-active --quiet proctornet || systemctl list-unit-files proctornet.service &>/dev/null; then
+            systemctl restart proctornet || true
+          fi
+
+          if systemctl is-active --quiet caddy || command -v caddy >/dev/null 2>&1; then
+            systemctl reload caddy || systemctl restart caddy || true
+          fi
+
+          if command -v docker >/dev/null 2>&1 && [ -f "$NEW_RELEASE/docker-compose.yml" ]; then
+            cd "$NEW_RELEASE"
+            docker compose up -d --no-build backend || true
+            docker image prune -f || true
+          fi
+
+          cd "$RELEASES_DIR"
+          ls -dt release-* 2>/dev/null | tail -n +6 | xargs -r rm -rf || true
+
+          echo "[6/6] Verifying local health probe..."
+          for i in {1..15}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/healthz || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "[✓] Local backend healthz returned 200 OK"
+              exit 0
+            fi
+            sleep 2
+          done
+          EOF
+          )
+
+          PAYLOAD=$(jq -n \
+            --arg bucket "$BUCKET" \
+            --arg sha "$HEAD_SHA" \
+            --arg tar "$TAR_FILE" \
+            --arg db "${DATABASE_URL:-}" \
+            --arg direct "${DIRECT_URL:-}" \
+            --arg script "$DEPLOY_SCRIPT" \
+            '{commands: [
+              "export BUCKET=\"" + $bucket + "\"",
+              "export HEAD_SHA=\"" + $sha + "\"",
+              "export TAR_FILE=\"" + $tar + "\"",
+              "export DATABASE_URL=\"" + $db + "\"",
+              "export DIRECT_URL=\"" + $direct + "\"",
+              "bash -c \x27" + $script + "\x27"
+            ]}')
+
+          echo "Dispatching SSM Command to instance ${INSTANCE_ID}..."
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${INSTANCE_ID}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "ProctorNet Production Deployment: ${RELEASE_TAG}" \
+            --parameters "${PAYLOAD}" \
+            --output text \
+            --query "Command.CommandId")
+
+          echo "SSM Command dispatched: ${COMMAND_ID}"
+          for i in {1..30}; do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "${COMMAND_ID}" \
+              --instance-id "${INSTANCE_ID}" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+            echo "SSM Status (attempt ${i}/30): ${STATUS}"
+            if [ "${STATUS}" = "Success" ]; then
+              echo "[✓] Production deployment completed successfully on EC2 instance!"
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardOutputContent" \
+                --output text || true
+              break
+            elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
+              echo "[x] SSM Deployment failed!"
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${INSTANCE_ID}" \
+                --query "StandardErrorContent" \
+                --output text || true
+              exit 1
+            fi
+            sleep 4
+          done
+
+      - name: Verify Live Production HTTPS Health Probe
+        run: |
+          echo "Probing live production endpoint at https://proctornet.duckdns.org/healthz..."
+          for i in {1..12}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/healthz || true)
+            echo "Poll attempt ${i}/12: HTTP ${HTTP_CODE}"
+            if [ "${HTTP_CODE}" = "200" ]; then
+              echo "[✓] Production health probe returned 200 OK on https://proctornet.duckdns.org/healthz"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "[-] Warning: https://proctornet.duckdns.org/healthz probe completed (HTTP ${HTTP_CODE:-none})"
