@@ -83,15 +83,15 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col justify-between font-sans">
-      {/* Mercury Night Framing Nav Bar: 72px */}
-      <header className="h-[72px] bg-[#171721] border-b border-[#28253b] px-6 sm:px-8 flex items-center justify-between">
+      {/* Mercury Light Framing Nav Bar: 72px */}
+      <header className="h-[72px] bg-white border-b border-[#e9eaf2] px-6 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
-          <span className="font-[480] text-[#ededf3] text-base tracking-wide">ProctorNet Onboarding</span>
+          <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Onboarding</span>
         </div>
         <button
           onClick={logout}
-          className="text-xs font-[420] text-[#c3c3cc] hover:text-[#ededf3] px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5 cursor-pointer transition"
+          className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-[#fbfbff] border border-[#e9eaf2] flex items-center gap-1.5 cursor-pointer transition"
         >
           <LogOut className="w-3.5 h-3.5" /> Sign Out
         </button>
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
                 <CardDescription className="text-xs text-[#554e7b] mt-0.5 font-[360]">
                   Step {step} of {totalSteps}: {
                     step === 1 ? (isStudent ? 'Academic Information & Password' : 'Faculty Details & Password') :
-                    step === 2 && isStudent ? 'Biometric Face Verification' : 'Official ID Card Document'
+                    step === 2 && isStudent ? 'Reference Photo Verification' : 'Official ID Card Document'
                   }
                 </CardDescription>
               </div>
@@ -171,10 +171,10 @@ export default function OnboardingPage() {
         </Card>
       </div>
 
-      {/* Mercury Night Footer */}
-      <footer className="bg-[#171721] text-[#c3c3cc] border-t border-[#28253b] px-6 sm:px-8 py-3 text-xs flex items-center justify-between font-[360]">
-        <span className="text-[#ededf3] font-[480]">ProctorNet Identity Assurance</span>
-        <span className="text-[11px] text-[#c3c3cc]">Institutional Biometric Onboarding • AWS Rekognition</span>
+      {/* Mercury Light Footer */}
+      <footer className="bg-white text-[#554e7b] border-t border-[#e9eaf2] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
+        <span className="text-[#28253b] font-[480]">ProctorNet Identity Assurance</span>
+        <span className="text-[11px] text-[#554e7b]">Institutional Student Identity Verification</span>
       </footer>
     </div>
   )

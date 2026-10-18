@@ -43,20 +43,20 @@ export default function StudentDashboardPage() {
 
   return (
     <DashboardShell title="Student Examination Portal">
-      {/* Welcome Banner - Mercury Night World */}
-      <div className="bg-[#171721] border border-[#1e1e2a] rounded-[16px] p-6 text-[#ededf3] shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-sans">
+      {/* Welcome Banner - Mercury Light World */}
+      <div className="bg-gradient-to-r from-[#edecfb] via-[#fbfbff] to-white border border-[#e9eaf2] rounded-[16px] p-6 text-[#28253b] shadow-[0_1px_3px_rgba(40,37,59,0.04)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-sans">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <h2 className="text-xl font-[480] tracking-wide text-[#ededf3]">{user?.fullName || 'Welcome, Candidate'}</h2>
-            <span className="inline-flex items-center gap-1 text-[11px] font-[420] bg-[rgba(156,180,232,0.15)] text-[#9cb4e8] border border-[#9cb4e8]/30 px-2.5 py-0.5 rounded-full">
+            <h2 className="text-xl font-[480] tracking-wide text-[#28253b]">{user?.fullName || 'Welcome, Student'}</h2>
+            <span className="inline-flex items-center gap-1 text-[11px] font-[420] bg-white text-[#5266eb] border border-[#5266eb]/20 px-2.5 py-0.5 rounded-full shadow-xs">
               <ShieldCheck className="w-3.5 h-3.5" /> Identity Verified
             </span>
           </div>
-          <p className="text-xs text-[#c3c3cc] font-[360]">
-            Roll Number: <strong className="text-[#ededf3] font-mono font-[480]">{user?.institutionId || '—'}</strong> • Department: <strong className="text-[#ededf3] font-[480]">{meta.department || 'Computer Science'}</strong> • Semester: <strong className="text-[#ededf3] font-[480]">{meta.semester ? `Sem ${meta.semester}` : '6'}</strong>
+          <p className="text-xs text-[#554e7b] font-[360]">
+            Roll Number: <strong className="text-[#28253b] font-mono font-[480]">{user?.institutionId || '—'}</strong> • Department: <strong className="text-[#28253b] font-[480]">{meta.department || 'Computer Science'}</strong> • Semester: <strong className="text-[#28253b] font-[480]">{meta.semester ? `Sem ${meta.semester}` : '6'}</strong>
           </p>
         </div>
-        <Link to="/settings" className="px-4 py-2 rounded-[40px] bg-[rgba(175,178,206,0.18)] hover:bg-[rgba(175,178,206,0.28)] border border-[rgba(175,178,206,0.36)] text-xs font-[420] text-[#ededf3] transition-colors cursor-pointer">
+        <Link to="/settings" className="px-4 py-2 rounded-[40px] bg-white hover:bg-[#fbfbff] border border-[#e9eaf2] text-xs font-[420] text-[#28253b] shadow-xs transition-colors cursor-pointer">
           View Profile & Settings
         </Link>
       </div>

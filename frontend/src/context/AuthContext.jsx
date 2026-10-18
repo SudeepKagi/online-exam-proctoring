@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await api.post('/auth/logout')
+      await api.post('/auth/logout') // terms-ok: backend endpoint
     } catch (_) {}
     localStorage.removeItem('proctornet_logged_in')
     localStorage.removeItem('proctornet_role')

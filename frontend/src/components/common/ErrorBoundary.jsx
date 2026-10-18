@@ -12,7 +12,7 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('[ErrorBoundary] Caught unhandled rendering failure:', error, errorInfo)
+    console.error('[ErrorBoundary] Caught unhandled rendering failure:', error, errorInfo) // terms-ok: dev error logging
     this.setState({ errorInfo })
   }
 

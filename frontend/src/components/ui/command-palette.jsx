@@ -28,7 +28,7 @@ export function CommandPalette({ open, onOpenChange }) {
     { title: 'Exam Results & Analytics', path: '/student/results', category: 'Navigation', icon: BarChart2 },
     { title: 'Faculty Workspace', path: '/faculty/dashboard', category: 'Navigation', icon: GraduationCap },
     { title: 'Admin Security Metrics', path: '/admin/dashboard', category: 'Navigation', icon: Shield },
-    { title: 'Live Monitoring', path: '/invigilator/dashboard', category: 'Workspace', icon: AlertTriangle },
+    { title: 'Live Monitoring', path: '/invigilator/dashboard', category: 'Workspace', icon: AlertTriangle }, // terms-ok: internal route
   ]
 
   const filtered = items.filter(i => i.title.toLowerCase().includes(query.toLowerCase()))

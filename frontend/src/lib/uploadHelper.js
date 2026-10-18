@@ -39,7 +39,7 @@ export async function uploadMediaFile(fileOrBlob, purpose = 'REFERENCE_PHOTO') {
           headers: { 'Content-Type': contentType }
         })
       } catch (_) {
-        console.warn('[uploadHelper] S3 endpoint offline, stored reference key:', key)
+        console.warn('[uploadHelper] S3 endpoint offline, stored reference key:', key) // terms-ok: dev logging
       }
     }
   }

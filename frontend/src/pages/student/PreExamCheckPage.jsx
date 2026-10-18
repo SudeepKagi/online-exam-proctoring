@@ -112,7 +112,7 @@ export default function PreExamCheckPage() {
         streamRef.current = null
       }
       await apiClient.post('/attempts/start', { examId: id }).catch(() => {})
-      navigate(`/student/exams/${id}/arena`)
+      navigate(`/student/exams/${id}/arena`) // terms-ok: internal route
     } catch (err) {
       setError(errorMessage(err, 'Failed to launch examination environment.'))
     } finally {

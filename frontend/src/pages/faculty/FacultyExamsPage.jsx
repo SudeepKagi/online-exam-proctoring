@@ -117,7 +117,7 @@ export default function FacultyExamsPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6 font-sans">
         <div>
           <h2 className="text-sm font-[480] text-[#28253b]">Your Authored Examination Cohorts</h2>
-          <p className="text-xs text-[#70707d] font-[360]">Design assessments, run AI question synthesis, and generate invigilator access pins.</p>
+          <p className="text-xs text-[#70707d] font-[360]">Design assessments, run AI question synthesis, and generate proctor access pins.</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>

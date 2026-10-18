@@ -29,21 +29,21 @@ export function initSocketClient(options = {}) {
   })
 
   socketInstance.on('connect', () => {
-    console.log('[Socket] Connected to realtime plane:', socketInstance.id)
+    console.log('[Socket] Connected to realtime plane:', socketInstance.id) // terms-ok: dev logging
   })
 
   socketInstance.on('connect_error', (err) => {
-    console.warn('[Socket] Connection error:', err.message)
+    console.warn('[Socket] Connection error:', err.message) // terms-ok: dev logging
   })
 
   // Trigger REST resync on reconnect (Task 5 / 8)
   socketInstance.io.on('reconnect', (attempt) => {
-    console.log(`[Socket] Reconnected after ${attempt} attempts; triggering authoritative REST resync`)
+    console.log(`[Socket] Reconnected after ${attempt} attempts; triggering authoritative REST resync`) // terms-ok: dev logging
     for (const handler of resyncHandlers) {
       try {
         handler()
       } catch (err) {
-        console.error('[Socket] Error in resync handler:', err)
+        console.error('[Socket] Error in resync handler:', err) // terms-ok: dev logging
       }
     }
   })

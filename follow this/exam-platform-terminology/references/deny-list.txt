@@ -1,0 +1,97 @@
+# Deny-list for scripts/check-terms.mjs
+#
+# phrase: banned anywhere inside a user-facing string (whole word or phrase, case-insensitive)
+# exact:  banned only when it is the ENTIRE text of a label (case-sensitive, so type="submit" is fine)
+#
+# Keep in sync with glossary.md section 11. Add a line per new banned term.
+
+# Branding metaphors
+phrase: Command Center
+phrase: Mission Control
+phrase: Control Tower
+phrase: Nexus
+phrase: Sentinel
+phrase: Guardian
+phrase: Watchtower
+phrase: Vault
+phrase: Arena
+phrase: Launchpad
+phrase: Cockpit
+phrase: Beacon
+
+# Military or security theatre
+phrase: Initiate
+phrase: Deploy
+phrase: Engage
+phrase: Terminate
+phrase: Eject
+phrase: Neutralize
+phrase: Breach
+phrase: Threat
+phrase: Strike
+phrase: Lockdown
+
+# Hype
+phrase: AI-powered
+phrase: Next-gen
+phrase: Seamless
+phrase: Revolutionary
+phrase: Supercharged
+phrase: Intelligent
+phrase: Smart
+
+# Technology names (the UI shows services, not the stack)
+phrase: WebRTC
+phrase: Socket
+phrase: SFU
+phrase: Redis
+phrase: RabbitMQ
+phrase: Prisma
+phrase: Postgres
+phrase: PostgreSQL
+phrase: Cloudinary
+phrase: S3
+phrase: EC2
+phrase: DeepFace
+phrase: OpenCV
+phrase: Tesseract
+phrase: Flask
+phrase: JWT
+phrase: payload
+phrase: endpoint
+phrase: stack trace
+phrase: Internal server error
+phrase: undefined
+phrase: null
+
+# Accusatory language aimed at students
+phrase: cheating
+phrase: cheater
+phrase: fraud
+phrase: guilty
+phrase: caught
+
+# Jargon
+phrase: Anomaly
+phrase: Heuristic
+phrase: Telemetry
+phrase: Biometric
+phrase: BYOD
+
+# Synonyms of canonical terms (see glossary)
+phrase: Logout
+phrase: Log in
+phrase: Log out
+phrase: Examinee
+phrase: Test taker
+phrase: Invigilator
+
+# Vague labels
+exact: Submit
+exact: SUBMIT
+exact: OK
+exact: Ok
+exact: Yes
+exact: No
+exact: Click here
+exact: Click Here

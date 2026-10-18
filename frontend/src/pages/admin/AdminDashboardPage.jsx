@@ -96,7 +96,7 @@ export default function AdminDashboardPage() {
         <div className="flex items-center gap-2.5">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-[480] text-emerald-950">Institutional Examination Pipeline Operational</span>
-          <span className="text-emerald-700 hidden md:inline font-[360]">• AWS Rekognition Engine, S3 Evidence Storage & Redis Socket.IO Clustered</span>
+          <span className="text-emerald-700 hidden md:inline font-[360]">• Cloud Verification Engine, Encrypted Storage & Realtime Cluster</span>
         </div>
         <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[11px] font-[420]">
           100% HEALTHY

@@ -38,15 +38,15 @@ export default function PendingApprovalPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col justify-between font-sans">
-      {/* Mercury Night Framing Nav Bar: 72px */}
-      <header className="h-[72px] bg-[#171721] border-b border-[#28253b] px-6 sm:px-8 flex items-center justify-between">
+      {/* Mercury Light Framing Nav Bar: 72px */}
+      <header className="h-[72px] bg-white border-b border-[#e9eaf2] px-6 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
-          <span className="font-[480] text-[#ededf3] text-base tracking-wide">ProctorNet Verification</span>
+          <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Verification</span>
         </div>
         <button
           onClick={logout}
-          className="text-xs font-[420] text-[#c3c3cc] hover:text-[#ededf3] px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5 cursor-pointer transition"
+          className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-[#fbfbff] border border-[#e9eaf2] flex items-center gap-1.5 cursor-pointer transition"
         >
           <LogOut className="w-3.5 h-3.5" /> Sign Out
         </button>
@@ -69,7 +69,7 @@ export default function PendingApprovalPage() {
           <CardContent className="space-y-4 px-6 text-left">
             <div className="p-4 rounded-xl bg-[#fbfbff] border border-[#e9eaf2] text-xs space-y-2">
               <div className="flex justify-between items-center pb-2 border-b border-[#e9eaf2]">
-                <span className="text-[#554e7b] font-[400]">Candidate Name</span>
+                <span className="text-[#554e7b] font-[400]">Student Name</span>
                 <span className="font-[480] text-[#28253b]">{user?.fullName || '—'}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#e9eaf2]">
@@ -113,10 +113,10 @@ export default function PendingApprovalPage() {
         </Card>
       </div>
 
-      {/* Mercury Night Footer */}
-      <footer className="bg-[#171721] text-[#c3c3cc] border-t border-[#28253b] px-6 sm:px-8 py-3 text-xs flex items-center justify-between font-[360]">
-        <span className="text-[#ededf3] font-[480]">ProctorNet Identity Assurance</span>
-        <span className="text-[11px] text-[#c3c3cc]">Institutional Identity Verification Powered by AWS Rekognition</span>
+      {/* Mercury Light Footer */}
+      <footer className="bg-white text-[#554e7b] border-t border-[#e9eaf2] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
+        <span className="text-[#28253b] font-[480]">ProctorNet Identity Assurance</span>
+        <span className="text-[11px] text-[#554e7b]">Institutional Verification Queue</span>
       </footer>
     </div>
   )

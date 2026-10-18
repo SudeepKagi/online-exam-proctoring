@@ -124,18 +124,18 @@ export default function ExamArenaPage() {
     recordAnswer(currentQ.id, null, isBookmarked)
   }
 
-  if (loading) return <ExamArenaShell className="items-center justify-center p-8"><div className="text-slate-500 text-sm">Initializing arena...</div></ExamArenaShell>
+  if (loading) return <ExamArenaShell className="items-center justify-center p-8"><div className="text-slate-500 text-sm">Initializing exam session...</div></ExamArenaShell>
 
   return (
     <ExamArenaShell className="h-screen flex flex-col bg-[#fbfcfd] font-sans">
-      <header className="h-14 bg-[#171721] border-b border-[#1e1e2a] px-6 flex items-center justify-between shadow-xs shrink-0 text-[#ededf3]">
+      <header className="h-14 bg-white border-b border-[#e9eaf2] px-6 flex items-center justify-between shadow-xs shrink-0 text-[#28253b]">
         <div className="flex items-center gap-3">
-          <span className="font-[480] text-[#ededf3] text-sm">{exam?.title || 'Exam'}</span>
-          <Badge variant="outline" className="text-xs bg-[rgba(156,180,232,0.15)] text-[#9cb4e8] border border-[#9cb4e8]/30 font-mono font-[420]">{exam?.courseCode}</Badge>
+          <span className="font-[480] text-[#28253b] text-sm">{exam?.title || 'Exam'}</span>
+          <Badge variant="outline" className="text-xs bg-[#edecfb] text-[#5266eb] border border-[#5266eb]/20 font-mono font-[420]">{exam?.courseCode}</Badge>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 font-mono text-sm font-[480] bg-[rgba(175,178,206,0.18)] px-3 py-1 rounded-[40px] border border-[rgba(175,178,206,0.36)] text-[#ededf3]">
-            <Clock className="w-4 h-4 text-[#9cb4e8]" /><span>{formatTime()}</span>
+          <div className="flex items-center gap-1.5 font-mono text-sm font-[480] bg-[#fbfbff] px-3 py-1 rounded-[40px] border border-[#e9eaf2] text-[#28253b]">
+            <Clock className="w-4 h-4 text-[#5266eb]" /><span>{formatTime()}</span>
           </div>
           <Button size="sm" onClick={() => setSubmitDialogOpen(true)} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer">Submit Exam</Button>
         </div>

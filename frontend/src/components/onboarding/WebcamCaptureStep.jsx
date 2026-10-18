@@ -32,7 +32,7 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
 
   const handleContinue = () => {
     if (!previewUrl) {
-      setError('Please capture your biometric face photo to continue.')
+      setError('Please capture your reference photo to continue.')
       return
     }
     onNext(photoKey || previewUrl, previewUrl)
@@ -42,7 +42,7 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
     <div className="space-y-4 font-sans">
       <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-start gap-2.5">
         <Camera className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
-        <span>Position your face clearly inside the camera frame. This biometric reference is used by AWS Rekognition for exam continuous proctoring.</span>
+        <span>Position your face clearly inside the camera frame. This reference photo is used for identity verification during exams.</span>
       </div>
 
       {error && (
@@ -56,7 +56,7 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
         <PhotoUploadCard
           mode="webcam"
           label="Webcam Face Reference"
-          description="Live camera capture for biometric identity verification"
+          description="Live camera capture for student identity verification"
           value={previewUrl}
           onChange={handlePhotoCapture}
           onClear={handleClear}

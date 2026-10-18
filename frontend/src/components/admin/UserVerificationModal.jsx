@@ -117,17 +117,17 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
             {isStudent && (
               <div className="space-y-1.5 text-center">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><User className="w-4 h-4 text-[#5266eb]" /> Biometric Face Photo</span>
+                  <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><User className="w-4 h-4 text-[#5266eb]" /> Reference Photo</span>
                   {photos.referencePhotoUrl && (
-                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Biometric Face Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
+                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
                       <ZoomIn className="w-3 h-3" /> Zoom
                     </Button>
                   )}
                 </div>
                 <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] flex items-center justify-center relative group">
                   {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photos.referencePhotoUrl ? (
-                    <img src={photos.referencePhotoUrl} alt="Face Reference" className="w-full h-full object-cover cursor-pointer" onClick={() => setZoomedImage({ title: 'Biometric Face Photo', url: photos.referencePhotoUrl })} />
-                  ) : <span className="text-xs text-[#70707d] font-[400]">No biometric face photo</span>}
+                    <img src={photos.referencePhotoUrl} alt="Face Reference" className="w-full h-full object-cover cursor-pointer" onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} />
+                  ) : <span className="text-xs text-[#70707d] font-[400]">No reference photo available</span>}
                 </div>
               </div>
             )}

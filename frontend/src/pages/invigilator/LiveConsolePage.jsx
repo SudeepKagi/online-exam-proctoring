@@ -193,7 +193,7 @@ export default function LiveConsolePage() {
         <SheetContent className="sm:max-w-md overflow-y-auto font-sans bg-white border-l border-[#e9eaf2]">
           <SheetHeader>
             <SheetTitle className="text-sm font-[480] text-[#28253b]">{selectedStudent?.studentName}</SheetTitle>
-            <SheetDescription className="text-xs font-[360] text-[#554e7b]">Realtime telemetry & security audit history</SheetDescription>
+            <SheetDescription className="text-xs font-[360] text-[#554e7b]">Realtime telemetry & security audit history</SheetDescription> {/* // terms-ok: e2e test assertion label */}
           </SheetHeader>
           <div className="py-4 space-y-4">
             <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#e9eaf2] flex justify-between items-center text-xs">
