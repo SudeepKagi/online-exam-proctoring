@@ -21,8 +21,14 @@ function createWebSocketServer(httpServer, options = {}) {
   const envOrigins = process.env.FRONTEND_URL
     ? process.env.FRONTEND_URL.split(',').map((u) => u.trim()).filter(Boolean)
     : []
+  const corsOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',').map((u) => u.trim()).filter(Boolean)
+    : []
   const allowedOrigins = [
+    'https://proctornet.duckdns.org',
+    'http://proctornet.duckdns.org',
     ...envOrigins,
+    ...corsOrigins,
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:3000'

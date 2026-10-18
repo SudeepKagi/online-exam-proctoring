@@ -259,10 +259,14 @@ jobs:
           echo "[5/6] Updating active symlink & reloading services..."
           ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
 
-          if systemctl is-active --quiet proctornet || systemctl list-unit-files proctornet.service &>/dev/null; then
-            systemctl restart proctornet || true
-          fi
+          echo "[-] Reloading systemd daemon and restarting proctornet service..."
+          systemctl daemon-reload || true
+          systemctl restart proctornet || systemctl start proctornet || true
+          sleep 2
+          echo "=== systemctl status proctornet ==="
+          systemctl status proctornet -l --no-pager || true
 
+          echo "[-] Reloading Caddy..."
           if systemctl is-active --quiet caddy || command -v caddy >/dev/null 2>&1; then
             systemctl reload caddy || systemctl restart caddy || true
           fi
@@ -277,14 +281,24 @@ jobs:
           ls -dt release-* 2>/dev/null | tail -n +6 | xargs -r rm -rf || true
 
           echo "[6/6] Verifying local health probe..."
-          for i in {1..15}; do
+          HEALTHY=false
+          for i in {1..20}; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/healthz || true)
+            echo "Local probe attempt $i/20: HTTP $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "[✓] Local backend healthz returned 200 OK"
-              exit 0
+              HEALTHY=true
+              break
             fi
             sleep 2
           done
+
+          if [ "$HEALTHY" != "true" ]; then
+            echo "[x] Local backend health probe failed (last HTTP status: $STATUS)!"
+            echo "=== journalctl -u proctornet (last 60 lines) ==="
+            journalctl -u proctornet -n 60 --no-pager || true
+            exit 1
+          fi
           EOF
           )
 
