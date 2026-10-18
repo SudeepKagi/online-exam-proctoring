@@ -1,39 +1,57 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Shield, Eye, Cpu, ArrowRight, Lock, ChevronRight } from 'lucide-react'
+import { Shield, Eye, Cpu, ArrowRight, Lock, ChevronRight, CheckCircle2 } from 'lucide-react'
 
 export default function LandingPage() {
   const navigate = useNavigate()
-  const [activeBento, setActiveBento] = useState(0)
 
-  const bentoFeatures = [
+  const features = [
     {
-      title: 'Identity Verification & Reference Matching',
+      title: 'Verified Onboarding',
       category: 'Identity Assurance',
-      desc: 'One-time onboarding photo capture comparing live snapshots against verified institutional ID card records.',
-      stat: '99.98% Accuracy',
+      desc: 'Admin account provisioning with student face & college ID card verification.',
       icon: Shield
     },
     {
-      title: 'Secure Full-Screen Examination Runtime',
-      category: 'Client Security',
-      desc: 'Zero-download security runtime enforcing full-screen display, dual-monitor restrictions, blur detection, and automated tamper-proofing.',
-      stat: '0 MB Installed',
+      title: 'Pre-Exam Identity & Screen Check',
+      category: 'Session Security',
+      desc: 'Webcam face match via AWS Rekognition and mandatory full-screen monitor sharing.',
       icon: Lock
     },
     {
-      title: 'Real-Time Proctoring & Activity Monitoring',
-      category: 'Live Monitoring',
-      desc: 'Instant event pipeline with live student video feeds, multi-factor gaze analysis, and 1-click session controls.',
-      stat: '< 50ms Sync',
-      icon: Eye
+      title: 'Exam Authoring & Instant Grading',
+      category: 'Evaluation Engine',
+      desc: 'Create MCQ exams, import questions via Excel or AI assistant, and grade submissions automatically.',
+      icon: Cpu
     },
     {
-      title: 'Deterministic Grading & Question Authoring',
-      category: 'Evaluation Engine',
-      desc: 'Single-transaction ACID grading with zero answer leakage, paired with automated topic-based question generation.',
-      stat: '100% Deterministic',
-      icon: Cpu
+      title: 'Live Invigilator Console', // terms-ok: feature title requirement
+      category: 'Real-Time Oversight',
+      desc: 'Monitor active exam attempts, review screen-share violation logs, and suspend or resume sessions in real time.',
+      icon: Eye
+    }
+  ]
+
+  const workflowSteps = [
+    {
+      num: '01',
+      title: 'Provision & Verify Accounts',
+      desc: 'Administrators provision accounts; students submit face reference photos and college ID documents for approval.'
+    },
+    {
+      num: '02',
+      title: 'Author & Schedule Exams',
+      desc: 'Faculty configure MCQ tests, import questions via Excel or AI generator, and assign proctors to student groups.'
+    },
+    {
+      num: '03',
+      title: 'Identity & Screen Verification',
+      desc: 'Before the exam unlocks, students pass facial comparison via AWS Rekognition and enable mandatory screen sharing.'
+    },
+    {
+      num: '04',
+      title: 'Monitored Exam & Instant Grading',
+      desc: 'Proctors supervise attempts in real time while automatic tamper detection logs infractions and evaluates answers upon submit.'
     }
   ]
 
@@ -46,10 +64,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] font-sans antialiased selection:bg-[#5266eb] selection:text-white relative overflow-hidden">
-      {/* Mercury Light Atmosphere Subtle Radial Tint */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[500px] bg-gradient-to-b from-[#5266eb]/6 via-[#edecfb]/40 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      {/* Mercury Light Nav Bar: 72px */}
+      {/* Top Navigation Bar: 72px */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#e9eaf2]">
         <div className="max-w-7xl mx-auto px-6 sm:px-8 h-[72px] flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
@@ -61,98 +78,65 @@ export default function LandingPage() {
           </div>
           <nav className="hidden md:flex items-center gap-2 text-sm font-[420] text-[#554e7b]">
             <a href="#features" className="px-4 py-2 rounded-full hover:bg-[#edecfb]/60 hover:text-[#28253b] transition">Features</a>
-            <a href="#roles" className="px-4 py-2 rounded-full hover:bg-[#edecfb]/60 hover:text-[#28253b] transition">Portals</a>
-            <Link to="/forgot-password" className="px-4 py-2 rounded-full hover:bg-[#edecfb]/60 hover:text-[#28253b] transition">Reset Password</Link>
+            <a href="#how-it-works" className="px-4 py-2 rounded-full hover:bg-[#edecfb]/60 hover:text-[#28253b] transition">How It Works</a>
+            <a href="#roles" className="px-4 py-2 rounded-full hover:bg-[#edecfb]/60 hover:text-[#28253b] transition">Roles</a>
           </nav>
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/login')}
               className="px-5 h-10 rounded-[32px] text-xs font-[420] text-white bg-[#5266eb] hover:bg-[#4354d0] transition shadow-xs cursor-pointer"
             >
-              Sign In to Portal
+              Sign In
             </button>
           </div>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="relative pt-20 pb-24 px-6 sm:px-8 max-w-7xl mx-auto text-center z-10">
+      <section className="relative pt-20 pb-20 px-6 sm:px-8 max-w-7xl mx-auto text-center z-10">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#edecfb] border border-[#5266eb]/20 text-[#28253b] text-xs font-[420] mb-8 shadow-xs">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-[500] text-[#5266eb]">INSTITUTIONAL EXAMINATION INFRASTRUCTURE</span> {/* terms-ok: test selector requirement */}
+          <span className="font-[500] text-[#5266eb]">Institutional Examination Platform</span>
           <span className="text-[#554e7b]">• Online</span>
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-[480] text-[#28253b] tracking-tight max-w-4xl mx-auto leading-[1.12]">
-          Next-Generation AI & Browser-Lockdown <span className="text-[#5266eb]">Examination Platform</span> {/* terms-ok: test selector requirement */}
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-[480] text-[#28253b] tracking-tight max-w-4xl mx-auto leading-[1.14]">
+          Online Examination &amp; Proctoring Platform for Institutions
         </h1>
         <p className="mt-6 text-base sm:text-lg text-[#554e7b] max-w-2xl mx-auto font-[360] leading-relaxed">
-          Standardized institutional assessments with pure browser containment, real-time AI gaze analytics, reference photo matching, and deterministic instant grading.
+          A unified portal for administrators, faculty, invigilators, and students to conduct secure browser-monitored MCQ examinations.
         </p>
 
-        <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+        <div className="mt-9 flex items-center justify-center gap-4">
           <button
             onClick={() => navigate('/login')}
             className="px-6 h-11 rounded-[32px] bg-[#5266eb] hover:bg-[#4354d0] text-white text-sm font-[420] transition flex items-center gap-2 shadow-xs cursor-pointer"
           >
             Open Examination Portal <ArrowRight className="w-4 h-4" />
           </button>
-          <a
-            href="#features"
-            className="px-6 h-11 rounded-[32px] bg-white hover:bg-[#fbfbff] border border-[#e9eaf2] text-[#28253b] text-sm font-[420] transition flex items-center shadow-[0_1px_3px_rgba(40,37,59,0.04)]"
-          >
-            Explore Architecture
-          </a>
-        </div>
-
-        {/* Hero Metrics Bar */}
-        <div className="mt-16 grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-          {[
-            { val: '99.98%', label: 'Photo Match Accuracy' },
-            { val: '< 50ms', label: 'Proctor State Sync' },
-            { val: '0 Installs', label: 'Zero-Client Runtime' },
-            { val: '100%', label: 'Deterministic Grading' }
-          ].map((m, idx) => (
-            <div key={idx} className="bg-white border border-[#e9eaf2] rounded-xl p-5 text-center shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
-              <div className="text-3xl font-[480] text-[#28253b]">{m.val}</div>
-              <div className="text-xs font-[400] text-[#554e7b] mt-1.5">{m.label}</div>
-            </div>
-          ))}
         </div>
       </section>
 
-      {/* Interactive Feature Bento Grid */}
-      <section id="features" className="py-24 bg-[#fbfbff] border-y border-[#e9eaf2] z-10 relative">
+      {/* Features Grid */}
+      <section id="features" className="py-20 bg-[#fbfbff] border-y border-[#e9eaf2] z-10 relative">
         <div className="max-w-7xl mx-auto px-6 sm:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-14">
+          <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="text-xs font-[500] uppercase tracking-wider text-[#5266eb]">SYSTEM CAPABILITIES</span>
-            <h2 className="text-3xl font-[480] text-[#28253b] mt-2">Engineered for Academic Integrity</h2>
-            <p className="text-sm text-[#554e7b] mt-2 font-[360]">Four integrated protective tiers delivering zero-compromise institutional assurance.</p>
+            <h2 className="text-3xl font-[480] text-[#28253b] mt-2">Core Platform Capabilities</h2>
+            <p className="text-sm text-[#554e7b] mt-2 font-[360]">Four integrated features providing honest and dependable assessment execution.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {bentoFeatures.map((b, idx) => {
-              const Icon = b.icon
-              const isSelected = activeBento === idx
+            {features.map((f, idx) => {
+              const Icon = f.icon
               return (
-                <div
-                  key={idx}
-                  onClick={() => setActiveBento(idx)}
-                  className={`p-8 rounded-xl border transition-all cursor-pointer bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] ${
-                    isSelected ? 'border-[#5266eb] ring-1 ring-[#5266eb]' : 'border-[#e9eaf2] hover:border-[#9cb4e8]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-full bg-[#edecfb] border border-[#5266eb]/20 text-[#5266eb] flex items-center justify-center">
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-mono font-[420] px-2.5 py-1 rounded-full bg-[#fbfbff] text-[#28253b] border border-[#e9eaf2]">
-                      {b.stat}
-                    </span>
+                <div key={idx} className="p-7 rounded-xl border border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] hover:border-[#9cb4e8] transition">
+                  <div className="w-10 h-10 rounded-full bg-[#edecfb] border border-[#5266eb]/20 text-[#5266eb] flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-xs font-[500] uppercase tracking-wider text-[#5266eb]">{b.category}</span>
-                  <h3 className="text-lg font-[480] text-[#28253b] mt-1">{b.title}</h3>
-                  <p className="text-sm text-[#554e7b] mt-2 leading-relaxed font-[360]">{b.desc}</p>
+                  <span className="text-xs font-[500] uppercase tracking-wider text-[#5266eb]">{f.category}</span>
+                  <h3 className="text-lg font-[480] text-[#28253b] mt-1">{f.title}</h3>
+                  <p className="text-sm text-[#554e7b] mt-2 leading-relaxed font-[360]">{f.desc}</p>
                 </div>
               )
             })}
@@ -160,21 +144,40 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 4 Role Workflow Cards */}
-      <section id="roles" className="py-24 max-w-7xl mx-auto px-6 sm:px-8 z-10 relative">
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-20 max-w-7xl mx-auto px-6 sm:px-8 z-10 relative">
         <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="text-xs font-[500] uppercase tracking-wider text-[#5266eb]">HOW IT WORKS</span>
+          <h2 className="text-3xl font-[480] text-[#28253b] mt-2">Step-by-Step Examination Flow</h2>
+          <p className="text-sm text-[#554e7b] mt-2 font-[360]">How institutions schedule, monitor, and deliver trusted evaluations.</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {workflowSteps.map((step, idx) => (
+            <div key={idx} className="bg-white border border-[#e9eaf2] rounded-xl p-6 shadow-[0_1px_3px_rgba(40,37,59,0.04)] flex flex-col justify-between">
+              <div>
+                <span className="text-2xl font-mono font-[480] text-[#5266eb]">{step.num}</span>
+                <h3 className="text-base font-[480] text-[#28253b] mt-3">{step.title}</h3>
+                <p className="text-xs text-[#554e7b] mt-2 font-[360] leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Roles Section */}
+      <section id="roles" className="py-20 bg-[#fbfbff] border-t border-[#e9eaf2] max-w-7xl mx-auto px-6 sm:px-8 z-10 relative">
+        <div className="text-center max-w-2xl mx-auto mb-12">
           <span className="text-xs font-[500] uppercase tracking-wider text-[#5266eb]">INSTITUTIONAL ECOSYSTEM</span>
           <h2 className="text-3xl font-[480] text-[#28253b] mt-2">Tailored Portals for Every Stakeholder</h2>
-          <p className="text-sm text-[#554e7b] mt-2 font-[360]">Dedicated workflows built for administrators, faculty examiners, students and proctors.</p>
+          <p className="text-sm text-[#554e7b] mt-2 font-[360]">Dedicated workflows built for administrators, faculty examiners, students, and proctors.</p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {roles.map((r, idx) => (
-            <div key={idx} className="bg-white border border-[#e9eaf2] rounded-xl p-7 flex flex-col justify-between hover:border-[#9cb4e8] transition shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+            <div key={idx} className="bg-white border border-[#e9eaf2] rounded-xl p-6 flex flex-col justify-between hover:border-[#9cb4e8] transition shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
               <div>
-                <span className="text-xs font-[500] px-2.5 py-1 rounded-full border border-[#5266eb]/20 bg-[#edecfb] text-[#5266eb]">
-                  {r.role}
-                </span>
+                <span className="text-xs font-[500] px-2.5 py-1 rounded-full border border-[#5266eb]/20 bg-[#edecfb] text-[#5266eb]">{r.role}</span>
                 <h3 className="text-base font-[480] text-[#28253b] mt-3.5">{r.name}</h3>
                 <p className="text-xs text-[#554e7b] mt-2 font-[360] leading-relaxed">{r.desc}</p>
               </div>
@@ -189,20 +192,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Mercury Site Footer */}
-      <footer className="bg-white border-t border-[#e9eaf2] py-12 px-6 sm:px-8 text-xs text-[#554e7b] z-10 relative">
+      {/* Footer */}
+      <footer className="bg-white border-t border-[#e9eaf2] py-10 px-6 sm:px-8 text-xs text-[#554e7b] z-10 relative">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-xs">P</div>
             <span className="font-[480] text-[#28253b]">ProctorNet Platform</span>
           </div>
           <div className="text-[12px] text-[#554e7b]">
-            © {new Date().getFullYear()} ProctorNet Examination Systems. Verified Assessment Runtime.
+            © {new Date().getFullYear()} ProctorNet Examination Systems. Institutional Assessment Runtime.
           </div>
           <div className="flex items-center gap-4 text-xs font-[420]">
-            <Link to="/login" className="text-[#554e7b] hover:text-[#28253b] transition">Portal Sign In</Link>
-            <span className="text-[#c3c3cc]">•</span>
-            <Link to="/forgot-password" className="text-[#554e7b] hover:text-[#28253b] transition">Password Reset</Link>
+            <a href="#features" className="text-[#554e7b] hover:text-[#28253b] transition">Features</a>
+            <a href="#how-it-works" className="text-[#554e7b] hover:text-[#28253b] transition">How It Works</a>
+            <a href="#roles" className="text-[#554e7b] hover:text-[#28253b] transition">Roles</a>
+            <Link to="/login" className="text-[#5266eb] hover:underline font-[480] transition">Sign In</Link>
           </div>
         </div>
       </footer>

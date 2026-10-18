@@ -2,11 +2,10 @@ const { prisma } = require('../../infra/postgres/client')
 
 async function getUserReferencePhotoKey(userId) {
   if (!userId) return null
-  const user = await prisma.user.findUnique({
+  return prisma.user.findUnique({
     where: { id: userId },
-    select: { referencePhotoKey: true }
+    select: { referencePhotoKey: true, profileMetadata: true }
   })
-  return user?.referencePhotoKey || null
 }
 
 async function getStudentReferencePhotoByAttempt(attemptId) {
@@ -18,7 +17,8 @@ async function getStudentReferencePhotoByAttempt(attemptId) {
       student: {
         select: {
           id: true,
-          referencePhotoKey: true
+          referencePhotoKey: true,
+          profileMetadata: true
         }
       }
     }
@@ -26,8 +26,9 @@ async function getStudentReferencePhotoByAttempt(attemptId) {
   if (!attempt || !attempt.student) return null
   return {
     studentId: attempt.student.id,
+    referencePhotoKey: attempt.student.referencePhotoKey,
     referencePhotoS3Key: attempt.student.referencePhotoKey,
-    referencePhotoKey: attempt.student.referencePhotoKey
+    profileMetadata: attempt.student.profileMetadata
   }
 }
 

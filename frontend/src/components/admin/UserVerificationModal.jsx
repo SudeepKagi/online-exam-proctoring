@@ -7,6 +7,7 @@ import { CheckCircle2, XCircle, ShieldCheck, Loader2, ZoomIn, ZoomOut, User, Fil
 
 export default function UserVerificationModal({ user, open, onOpenChange, onSuccess }) {
   const [photos, setPhotos] = useState({ referencePhotoUrl: null, idCardPhotoUrl: null })
+  const [photoErrors, setPhotoErrors] = useState({ ref: false, id: false })
   const [loadingPhotos, setLoadingPhotos] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [showRejectBox, setShowRejectBox] = useState(false)
@@ -20,6 +21,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
       setShowRejectBox(false)
       setRejectionReason('')
       setError('')
+      setPhotoErrors({ ref: false, id: false })
       setAdminPasswordReset({ open: false, password: '', loading: false, msg: '' })
 
       if (user.referencePhotoUrl || user.idCardPhotoUrl) {
@@ -90,8 +92,8 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl font-sans max-h-[92vh] overflow-y-auto bg-white border-[#e9eaf2] text-[#28253b] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
-          <DialogHeader className="border-b border-[#e9eaf2] pb-3 flex flex-row items-center justify-between">
+        <DialogContent className="max-w-3xl w-full p-6 font-sans max-h-[92vh] overflow-y-auto bg-white border-[#e9eaf2] text-[#28253b] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+          <DialogHeader className="border-b border-[#e9eaf2] pb-3 flex flex-row items-center justify-between pr-10">
             <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#5266eb]" /> Review & Verify Identity Profile — {user.fullName}
             </DialogTitle>
@@ -102,32 +104,32 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
 
           {error && <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-[420]">{error}</div>}
 
-          {/* User Metadata Grid: Mercury surface-tint */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 p-3.5 bg-[#fbfbff] border border-[#e9eaf2] rounded-xl text-xs">
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Full Name</span><span className="font-[480] text-[#28253b] truncate block">{user.fullName}</span></div>
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Email</span><span className="font-[420] text-[#28253b] truncate block">{user.email}</span></div>
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'USN' : 'Employee ID'}</span><span className="font-mono font-[480] text-[#5266eb] truncate block">{user.institutionId || '—'}</span></div>
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Department</span><span className="font-[420] text-[#28253b] truncate block">{meta.department || user.department || '—'}</span></div>
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'Semester' : 'Designation'}</span><span className="font-[420] text-[#28253b] truncate block">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span></div>
-            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Phone</span><span className="font-[420] text-[#28253b] truncate block">{meta.phone || '—'}</span></div>
+          {/* User Metadata Grid: 3-column, 2-row spacious card */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Full Name</span><span className="font-[480] text-[#28253b] block">{user.fullName}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Email Address</span><span className="font-[420] text-[#28253b] block break-all">{user.email}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'USN' : 'Employee ID'}</span><span className="font-mono font-[480] text-[#5266eb] block">{user.institutionId || '—'}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Department</span><span className="font-[420] text-[#28253b] block">{meta.department || user.department || '—'}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'Semester' : 'Designation'}</span><span className="font-[420] text-[#28253b] block">{isStudent ? (meta.semester ? `Semester ${meta.semester}` : '—') : (meta.designation || '—')}</span></div>
+            <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Phone Number</span><span className="font-[420] text-[#28253b] block">{meta.phone || '—'}</span></div>
           </div>
 
           {/* Photo Inspection Section */}
-          <div className={`grid gap-4 pt-1 ${isStudent ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto w-full'}`}>
+          <div className={`grid gap-5 pt-1 ${isStudent ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 max-w-md mx-auto w-full'}`}>
             {isStudent && (
               <div className="space-y-1.5 text-center">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><User className="w-4 h-4 text-[#5266eb]" /> Reference Photo</span>
-                  {photos.referencePhotoUrl && (
-                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
-                      <ZoomIn className="w-3 h-3" /> Zoom
-                    </Button>
+                  {photos.referencePhotoUrl && !photoErrors.ref && (
+                    <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full"><ZoomIn className="w-3 h-3" /> Zoom</Button>
                   )}
                 </div>
-                <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] flex items-center justify-center relative group">
-                  {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photos.referencePhotoUrl ? (
-                    <img src={photos.referencePhotoUrl} alt="Face Reference" className="w-full h-full object-cover cursor-pointer" onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} />
-                  ) : <span className="text-xs text-[#70707d] font-[400]">No reference photo available</span>}
+                <div className="w-full aspect-4/3 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center relative group">
+                  {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photoErrors.ref || !photos.referencePhotoUrl ? (
+                    <div className="p-4 text-center text-xs text-slate-500 font-[400]">Photo not uploaded or unreadable — click Reject &amp; Request Re-upload</div>
+                  ) : (
+                    <img src={photos.referencePhotoUrl} alt="Face Reference" className="w-full h-full object-cover cursor-pointer" onError={() => setPhotoErrors(p => ({ ...p, ref: true }))} onClick={() => setZoomedImage({ title: 'Reference Photo', url: photos.referencePhotoUrl })} />
+                  )}
                 </div>
               </div>
             )}
@@ -135,16 +137,16 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
             <div className="space-y-1.5 text-center">
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5"><FileText className="w-4 h-4 text-[#5266eb]" /> College ID Card Photo</span>
-                {photos.idCardPhotoUrl && (
-                  <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full">
-                    <ZoomIn className="w-3 h-3" /> Zoom
-                  </Button>
+                {photos.idCardPhotoUrl && !photoErrors.id && (
+                  <Button variant="ghost" size="xs" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} className="h-6 text-[10px] gap-1 text-[#5266eb] rounded-full"><ZoomIn className="w-3 h-3" /> Zoom</Button>
                 )}
               </div>
-              <div className="w-full aspect-4/3 rounded-xl overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] flex items-center justify-center p-2 relative group">
-                {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photos.idCardPhotoUrl ? (
-                  <img src={photos.idCardPhotoUrl} alt="College ID" className="w-full h-full object-contain cursor-pointer" onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} />
-                ) : <span className="text-xs text-[#70707d] font-[400]">No College ID card uploaded</span>}
+              <div className="w-full aspect-4/3 bg-slate-100 rounded-xl overflow-hidden border border-slate-200 flex items-center justify-center p-2 relative group">
+                {loadingPhotos ? <Loader2 className="w-6 h-6 animate-spin text-slate-400" /> : photoErrors.id || !photos.idCardPhotoUrl ? (
+                  <div className="p-4 text-center text-xs text-slate-500 font-[400]">Photo not uploaded or unreadable — click Reject &amp; Request Re-upload</div>
+                ) : (
+                  <img src={photos.idCardPhotoUrl} alt="College ID" className="w-full h-full object-contain cursor-pointer" onError={() => setPhotoErrors(p => ({ ...p, id: true }))} onClick={() => setZoomedImage({ title: 'College ID Card Document', url: photos.idCardPhotoUrl })} />
+                )}
               </div>
             </div>
           </div>
@@ -170,22 +172,22 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           )}
 
           {/* Modal Actions */}
-          <div className="pt-3 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full border-[#e9eaf2]">Close</Button>
-              <Button variant="ghost" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-[#554e7b] gap-1 rounded-full"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
+          <div className="pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <Button variant="outline" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-slate-700 gap-1.5 rounded-full border-slate-200"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full text-slate-600 hover:text-slate-900">Cancel</Button>
               {!showRejectBox ? (
-                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-full">
-                  <XCircle className="w-4 h-4 mr-1.5" /> Reject & Request Re-upload
+                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 rounded-full">
+                  <XCircle className="w-4 h-4 mr-1.5" /> Reject &amp; Request Re-upload
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-red-600 hover:bg-red-700 text-white text-xs font-[420] rounded-full">
+                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-[420] rounded-full">
                   {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null} Confirm Rejection
                 </Button>
               )}
-              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-[32px] px-5 shadow-xs">
+              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-full px-5 shadow-xs">
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />} Approve Account
               </Button>
             </div>

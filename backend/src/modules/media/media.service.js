@@ -46,16 +46,17 @@ class MediaService {
   }
 
   async verifyLiveFaceAgainstReference(studentId, liveFrameKey, attemptId = null) {
-    let referencePhotoKey = null
+    let studentData = null
     if (studentId) {
-      referencePhotoKey = await mediaSql.getUserReferencePhotoKey(studentId)
+      studentData = await mediaSql.getUserReferencePhotoKey(studentId)
     } else if (attemptId) {
-      const studentData = await mediaSql.getStudentReferencePhotoByAttempt(attemptId)
-      referencePhotoKey = studentData?.referencePhotoS3Key
+      studentData = await mediaSql.getStudentReferencePhotoByAttempt(attemptId)
     }
 
-    // If no reference photo exists yet, grant verification for pre-check flow
-    if (!referencePhotoKey) {
+    const referencePhotoKey = studentData?.referencePhotoKey
+    const dataUrl = studentData?.profileMetadata?.facePhotoDataUrl || (referencePhotoKey?.startsWith('data:') ? referencePhotoKey : null)
+
+    if (!referencePhotoKey && !dataUrl) {
       return {
         verified: true,
         similarity: null,
@@ -64,15 +65,21 @@ class MediaService {
       }
     }
 
-    // AWS Rekognition CompareFaces execution
+    let referencePhotoBuffer = null
+    if (dataUrl?.includes(';base64,')) {
+      referencePhotoBuffer = Buffer.from(dataUrl.split(';base64,')[1], 'base64')
+    }
+
     try {
       const { RekognitionClient, CompareFacesCommand } = require('@aws-sdk/client-rekognition')
       const client = new RekognitionClient({ region: this.region })
 
+      const sourceImage = referencePhotoBuffer
+        ? { Bytes: referencePhotoBuffer }
+        : { S3Object: { Bucket: this.bucket, Name: referencePhotoKey } }
+
       const command = new CompareFacesCommand({
-        SourceImage: {
-          S3Object: { Bucket: this.bucket, Name: referencePhotoKey }
-        },
+        SourceImage: sourceImage,
         TargetImage: {
           S3Object: { Bucket: this.bucket, Name: liveFrameKey }
         },
@@ -99,7 +106,6 @@ class MediaService {
       }
     } catch (err) {
       logger.warn({ error: err.message, referencePhotoKey, liveFrameKey }, 'Rekognition compare failed; checking dev fallback')
-      // Fallback for dev / offline test environment without live AWS credentials
       if (process.env.NODE_ENV !== 'production' || process.env.FACE_DRIVER === 'off') {
         return {
           verified: true,
@@ -119,7 +125,7 @@ class MediaService {
   }
 
   async uploadVerificationPhoto(userId, { imageBase64, category }) {
-    if (!imageBase64) {
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
       const err = new Error('Image data is required')
       err.status = 400
       throw err
@@ -135,42 +141,84 @@ class MediaService {
     let base64Data = imageBase64
     if (imageBase64.includes(';base64,')) {
       const parts = imageBase64.split(';base64,')
-      contentType = parts[0].replace('data:', '') || 'image/jpeg'
+      contentType = parts[0].replace(/^data:/, '') || 'image/jpeg'
       base64Data = parts[1]
+    } else {
+      base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '')
     }
+
+    const dataUrl = imageBase64.startsWith('data:') ? imageBase64 : `data:${contentType};base64,${base64Data}`
     const buffer = Buffer.from(base64Data, 'base64')
+    if (buffer.length === 0) {
+      const err = new Error('Invalid image buffer')
+      err.status = 400
+      throw err
+    }
+
     const ext = contentType.includes('png') ? 'png' : 'jpg'
     const uuid = crypto.randomUUID()
     const folder = cat === 'FACE' ? 'reference-photos' : 'id-cards'
     const key = `${folder}/${userId}/${Date.now()}-${uuid}.${ext}`
 
-    let storedKey = key
+    let s3Uploaded = false
     try {
       await putObject(key, buffer, contentType)
+      s3Uploaded = true
     } catch (err) {
       logger.warn({ error: err.message, key }, 'S3 putObject failed, storing data URI in fallback mode')
-      storedKey = imageBase64.startsWith('data:') ? imageBase64 : `data:${contentType};base64,${base64Data}`
     }
 
-    const updateData = {}
-    if (cat === 'FACE') {
-      updateData.referencePhotoKey = storedKey
-    } else {
-      updateData.idCardPhotoKey = storedKey
-    }
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { profileMetadata: true } })
+    const existingMeta = (user?.profileMetadata && typeof user.profileMetadata === 'object') ? user.profileMetadata : {}
+    const updatedMeta = { ...existingMeta }
+    if (cat === 'FACE') updatedMeta.facePhotoDataUrl = dataUrl
+    else updatedMeta.idCardPhotoDataUrl = dataUrl
+
+    const updateData = { profileMetadata: updatedMeta }
+    if (cat === 'FACE') updateData.referencePhotoKey = s3Uploaded ? key : dataUrl
+    else updateData.idCardPhotoKey = s3Uploaded ? key : dataUrl
 
     await prisma.user.update({
       where: { id: userId },
       data: updateData
     })
 
-    const url = await getPresignedReadUrl(storedKey)
     return {
       success: true,
       category: cat,
-      key: storedKey,
-      url
+      key: s3Uploaded ? key : dataUrl,
+      url: dataUrl
     }
+  }
+
+  async getPhotoBytes(userId, type) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referencePhotoKey: true, idCardPhotoKey: true, profileMetadata: true }
+    })
+    if (!user) return null
+
+    const isFace = type === 'face' || type === 'reference'
+    const dataUrl = isFace
+      ? (user.profileMetadata?.facePhotoDataUrl || (user.referencePhotoKey?.startsWith('data:') ? user.referencePhotoKey : null))
+      : (user.profileMetadata?.idCardPhotoDataUrl || (user.idCardPhotoKey?.startsWith('data:') ? user.idCardPhotoKey : null))
+
+    if (dataUrl?.includes(';base64,')) {
+      const parts = dataUrl.split(';base64,')
+      const contentType = parts[0].replace(/^data:/, '') || 'image/jpeg'
+      const buffer = Buffer.from(parts[1] || '', 'base64')
+      return { buffer, contentType }
+    }
+
+    const s3Key = isFace ? user.referencePhotoKey : user.idCardPhotoKey
+    if (s3Key) {
+      const { getObjectBuffer } = require('../../infra/s3/s3.client')
+      try {
+        const buffer = await getObjectBuffer(s3Key)
+        if (buffer) return { buffer, contentType: s3Key.endsWith('.png') ? 'image/png' : 'image/jpeg' }
+      } catch (_) {}
+    }
+    return null
   }
 
   async getReadUrl(key) {

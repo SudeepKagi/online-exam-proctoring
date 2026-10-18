@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Camera, Upload, RefreshCw, ZoomIn, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react'
+import { compressImageToDataUrl } from '@/lib/uploadHelper'
 
 export function PhotoUploadCard({
   mode = 'file',
@@ -67,43 +68,67 @@ export function PhotoUploadCard({
     return () => stopCamera()
   }, [mode, previewUrl])
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     const video = videoRef.current
     if (!video) return
-    const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth || 640
-    canvas.height = video.videoHeight || 480
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        const url = URL.createObjectURL(blob)
-        setPreviewUrl(url)
-        stopCamera()
-        onChange?.(blob, url)
-      }
-    }, 'image/jpeg', 0.9)
-  }
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-      onChange?.(file, url)
+    try {
+      const dataUrl = await compressImageToDataUrl(video, 800, 0.75)
+      setPreviewUrl(dataUrl)
+      stopCamera()
+      const res = await fetch(dataUrl)
+      const blob = await res.blob()
+      onChange?.(blob, dataUrl)
+    } catch (_) {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob)
+          setPreviewUrl(url)
+          stopCamera()
+          onChange?.(blob, url)
+        }
+      }, 'image/jpeg', 0.75)
     }
   }
 
-  const handleDrop = (e) => {
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      try {
+        const dataUrl = await compressImageToDataUrl(file, 800, 0.75)
+        setPreviewUrl(dataUrl)
+        const res = await fetch(dataUrl)
+        const blob = await res.blob()
+        onChange?.(blob, dataUrl)
+      } catch (_) {
+        const url = URL.createObjectURL(file)
+        setPreviewUrl(url)
+        onChange?.(file, url)
+      }
+    }
+  }
+
+  const handleDrop = async (e) => {
     e.preventDefault()
     setIsDragging(false)
     if (disabled) return
     const file = e.dataTransfer.files?.[0]
     if (file && file.type.startsWith('image/')) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-      onChange?.(file, url)
+      try {
+        const dataUrl = await compressImageToDataUrl(file, 800, 0.75)
+        setPreviewUrl(dataUrl)
+        const res = await fetch(dataUrl)
+        const blob = await res.blob()
+        onChange?.(blob, dataUrl)
+      } catch (_) {
+        const url = URL.createObjectURL(file)
+        setPreviewUrl(url)
+        onChange?.(file, url)
+      }
     }
   }
 

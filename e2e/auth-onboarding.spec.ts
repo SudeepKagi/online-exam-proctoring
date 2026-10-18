@@ -13,11 +13,11 @@ test.describe('E2E: Auth, Onboarding & Admin Approval Flow', () => {
     const actor = await createActor(browser, 'student')
     try {
       await actor.page.goto('/')
-      await expect(actor.page.locator('text=Next-Generation AI & Browser-Lockdown')).toBeVisible({ timeout: 10000 })
-      await expect(actor.page.locator('text=INSTITUTIONAL EXAMINATION INFRASTRUCTURE')).toBeVisible()
+      await expect(actor.page.locator('text=Online Examination & Proctoring Platform for Institutions')).toBeVisible({ timeout: 10000 })
+      await expect(actor.page.locator('text=Institutional Examination Platform')).toBeVisible()
 
-      // Click Sign In to Portal
-      await actor.page.locator('header').getByRole('button', { name: /Sign In to Portal/i }).click()
+      // Click Sign In
+      await actor.page.locator('header').getByRole('button', { name: /^Sign In$/i }).click()
       await actor.page.waitForURL(url => url.pathname.includes('/login'), { timeout: 10000 })
       expect(actor.page.url()).toContain('/login')
     } finally {
@@ -163,6 +163,21 @@ test.describe('E2E: Auth, Onboarding & Admin Approval Flow', () => {
 
       await studentRow.getByRole('button', { name: /Review & Verify/i }).click()
       await expect(admin.page.getByText('Review & Verify Identity Profile')).toBeVisible()
+
+      // Real Image Pixel Check in Playwright: assert complete === true AND naturalWidth > 0
+      const faceImg = admin.page.locator('img[alt="Face Reference"]')
+      const idImg = admin.page.locator('img[alt="College ID"]')
+      await expect(faceImg).toBeVisible({ timeout: 10000 })
+      await expect(idImg).toBeVisible({ timeout: 10000 })
+
+      await expect.poll(async () => {
+        return faceImg.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+      }, { timeout: 10000 }).toBe(true)
+
+      await expect.poll(async () => {
+        return idImg.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+      }, { timeout: 10000 }).toBe(true)
+
       await admin.page.getByRole('button', { name: /Approve Account/i }).click()
 
       await expect(admin.page.getByText(/Account approved for Eva Lovelace/i)).toBeVisible({ timeout: 10000 })

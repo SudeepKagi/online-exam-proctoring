@@ -47,22 +47,90 @@ export async function uploadMediaFile(fileOrBlob, purpose = 'REFERENCE_PHOTO') {
   return key
 }
 
+export function compressImageToDataUrl(source, maxDim = 800, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    if (!source) return reject(new Error('No image source provided'))
+
+    if (typeof source === 'string' && source.startsWith('data:image/jpeg;base64,') && source.length < 90000) {
+      return resolve(source)
+    }
+
+    if (typeof HTMLVideoElement !== 'undefined' && source instanceof HTMLVideoElement) {
+      const v = source
+      let w = v.videoWidth || 640
+      let h = v.videoHeight || 480
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim }
+        else { w = Math.round((w * maxDim) / h); h = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(v, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+      return
+    }
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      let w = img.width || 640
+      let h = img.height || 480
+      if (w > maxDim || h > maxDim) {
+        if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim }
+        else { w = Math.round((w * maxDim) / h); h = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, w, h)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => {
+      if (source instanceof Blob || source instanceof File) {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(source)
+      } else if (typeof source === 'string') {
+        resolve(source)
+      } else {
+        reject(new Error('Failed to load image'))
+      }
+    }
+
+    if (typeof source === 'string') {
+      img.src = source
+    } else {
+      img.src = URL.createObjectURL(source)
+    }
+  })
+}
+
 export async function uploadVerificationImage(fileOrBlob, category = 'FACE') {
   let base64String = ''
-  if (typeof fileOrBlob === 'string' && fileOrBlob.startsWith('data:')) {
-    base64String = fileOrBlob
-  } else {
-    base64String = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = (err) => reject(err)
-      reader.readAsDataURL(fileOrBlob)
-    })
+  try {
+    base64String = await compressImageToDataUrl(fileOrBlob, 800, 0.75)
+  } catch (_) {
+    if (typeof fileOrBlob === 'string') base64String = fileOrBlob
+    else {
+      base64String = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = (err) => reject(err)
+        reader.readAsDataURL(fileOrBlob)
+      })
+    }
   }
 
   const res = await api.post('/media/upload-verification', {
     imageBase64: base64String,
     category
   })
-  return res.data
+  return {
+    ...res.data,
+    dataUrl: base64String
+  }
 }

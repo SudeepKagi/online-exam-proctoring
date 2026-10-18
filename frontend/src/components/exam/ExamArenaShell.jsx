@@ -10,7 +10,7 @@ import React from 'react'
  */
 export default function ExamArenaShell({ children, className = '' }) {
   return (
-    <div className={`min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none relative overflow-x-hidden ${className}`}>
+    <div className={`min-h-screen w-full bg-[#fbfcfd] text-[#28253b] flex flex-col font-sans select-none relative overflow-x-hidden ${className}`}>
       {children}
     </div>
   )

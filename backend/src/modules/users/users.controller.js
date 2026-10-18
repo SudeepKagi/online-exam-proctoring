@@ -91,15 +91,8 @@ const usersController = {
       const user = await usersService.getUserById(req.params.id)
       if (!user) return res.status(404).json({ error: { message: 'User not found' } })
 
-      let referencePhotoUrl = null
-      let idCardPhotoUrl = null
-
-      if (user.referencePhotoKey) {
-        referencePhotoUrl = await mediaService.getReadUrl(user.referencePhotoKey).catch(() => null)
-      }
-      if (user.idCardPhotoKey) {
-        idCardPhotoUrl = await mediaService.getReadUrl(user.idCardPhotoKey).catch(() => null)
-      }
+      const referencePhotoUrl = user.referencePhotoUrl || (user.referencePhotoKey ? await mediaService.getReadUrl(user.referencePhotoKey).catch(() => null) : null)
+      const idCardPhotoUrl = user.idCardPhotoUrl || (user.idCardPhotoKey ? await mediaService.getReadUrl(user.idCardPhotoKey).catch(() => null) : null)
 
       res.json({
         userId: user.id,

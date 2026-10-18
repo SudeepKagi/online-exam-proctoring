@@ -20,6 +20,7 @@ router.get('/attempts/:attemptId/identity-status', authenticateToken, (req, res)
 
 // Signed URL viewing
 router.get('/view', authenticateToken, mediaController.getReadUrl)
+router.get('/photo/:userId/:type', mediaController.serveUserPhoto)
 
 // Local Dev Upload Intake
 router.put('/upload-mock', mediaController.localUploadHandler)

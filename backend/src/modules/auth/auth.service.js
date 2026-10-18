@@ -185,8 +185,14 @@ class AuthService {
     }
 
     if (newPassword && newPassword.length >= 6) updates.passwordHash = await bcrypt.hash(newPassword, 10)
-    if (referencePhotoKey) updates.referencePhotoKey = referencePhotoKey
-    if (idCardPhotoKey) updates.idCardPhotoKey = idCardPhotoKey
+    if (referencePhotoKey) {
+      updates.referencePhotoKey = referencePhotoKey
+      if (referencePhotoKey.startsWith('data:')) updates.profileMetadata.facePhotoDataUrl = referencePhotoKey
+    }
+    if (idCardPhotoKey) {
+      updates.idCardPhotoKey = idCardPhotoKey
+      if (idCardPhotoKey.startsWith('data:')) updates.profileMetadata.idCardPhotoDataUrl = idCardPhotoKey
+    }
     if (fullName) updates.fullName = fullName.trim()
     if (usn) updates.institutionId = usn.trim()
 

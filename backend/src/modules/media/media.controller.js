@@ -52,6 +52,21 @@ async function uploadVerificationPhoto(req, res, next) {
   }
 }
 
+async function serveUserPhoto(req, res, next) {
+  try {
+    const { userId, type } = req.params
+    const photo = await mediaService.getPhotoBytes(userId, type)
+    if (!photo || !photo.buffer) {
+      return res.status(404).json({ error: { message: 'Photo not found' } })
+    }
+    res.setHeader('Content-Type', photo.contentType || 'image/jpeg')
+    res.setHeader('Cache-Control', 'public, max-age=86400')
+    return res.send(photo.buffer)
+  } catch (err) {
+    next(err)
+  }
+}
+
 function localUploadHandler(req, res) {
   return res.status(200).json({ status: 'ok', message: 'Local upload endpoint accepted' })
 }
@@ -60,6 +75,7 @@ module.exports = {
   presignUpload,
   verifyFace,
   uploadVerificationPhoto,
+  serveUserPhoto,
   getReadUrl,
   localUploadHandler
 }

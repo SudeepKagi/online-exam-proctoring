@@ -48,7 +48,6 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
           </div>
           <div>
             <span className="font-[480] text-[#28253b] tracking-wide text-base">ProctorNet</span>
-            <span className="ml-2 text-xs text-[#554e7b] font-mono hidden sm:inline">v2.0</span>
           </div>
         </div>
 
@@ -73,7 +72,7 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
 
       <div className="flex-1 flex min-h-0">
         {/* Mercury App Shell Sidebar */}
-        <aside className="w-60 border-r border-[#e9eaf2] bg-white p-4 hidden md:flex flex-col gap-1.5">
+        <aside className="w-64 border-r border-[#e9eaf2] bg-white p-4 hidden md:flex flex-col gap-1.5 shrink-0">
           <div className="text-[12px] font-[500] uppercase tracking-wider text-[#554e7b] px-3 py-2">
             Navigation
           </div>
@@ -111,7 +110,7 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
       {/* Mercury Light World Footer */}
       <footer className="bg-white text-[#554e7b] border-t border-[#e9eaf2] px-6 sm:px-8 py-3.5 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
         <span className="text-[#28253b] font-[480]">ProctorNet Academic Integrity</span>
-        <span className="text-[11px] text-[#554e7b]">Institutional Examination System • Verifiable Assessment Runtime</span>
+        <span className="text-[11px] text-[#554e7b]">Institutional Examination System</span>
       </footer>
     </div>
   )

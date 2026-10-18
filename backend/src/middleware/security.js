@@ -66,7 +66,17 @@ const s3Hosts = isProd
   ? [`https://${s3Bucket}.s3.${awsRegion}.amazonaws.com`, `https://${s3Bucket}.s3.amazonaws.com`, 'https://*.amazonaws.com']
   : ['http://localhost:9000', 'http://127.0.0.1:9000']
 
-const dynamicImgSrc = ["'self'", 'data:', 'blob:', ...s3Hosts]
+const dynamicImgSrc = [
+  "'self'",
+  'data:',
+  'blob:',
+  'https://*.amazonaws.com',
+  'https://*.s3.ap-south-1.amazonaws.com',
+  'https://*.s3.amazonaws.com',
+  'https://proctornet.duckdns.org',
+  'http://proctornet.duckdns.org',
+  ...s3Hosts
+]
 if (process.env.S3_ENDPOINT) dynamicImgSrc.push(process.env.S3_ENDPOINT)
 
 const dynamicConnectSrc = ["'self'", ...derivedWsOrigins, ...s3Hosts, ...(isProd ? [] : ['ws://localhost:5000', 'ws://127.0.0.1:5000'])]

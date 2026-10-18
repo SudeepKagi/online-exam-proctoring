@@ -18,14 +18,19 @@ const USER_FIELDS = {
 
 async function resolvePhotoUrls(user) {
   if (!user) return user
-  const [refUrl, idUrl] = await Promise.all([
-    user.referencePhotoKey ? getPresignedReadUrl(user.referencePhotoKey).catch(() => null) : null,
-    user.idCardPhotoKey ? getPresignedReadUrl(user.idCardPhotoKey).catch(() => null) : null
+  const meta = user.profileMetadata || {}
+  const faceDataUrl = meta.facePhotoDataUrl || (user.referencePhotoKey?.startsWith('data:') ? user.referencePhotoKey : null)
+  const idDataUrl = meta.idCardPhotoDataUrl || (user.idCardPhotoKey?.startsWith('data:') ? user.idCardPhotoKey : null)
+
+  const [s3RefUrl, s3IdUrl] = await Promise.all([
+    (!faceDataUrl && user.referencePhotoKey) ? getPresignedReadUrl(user.referencePhotoKey).catch(() => null) : null,
+    (!idDataUrl && user.idCardPhotoKey) ? getPresignedReadUrl(user.idCardPhotoKey).catch(() => null) : null
   ])
+
   return {
     ...user,
-    referencePhotoUrl: refUrl || (user.referencePhotoKey?.startsWith('data:') ? user.referencePhotoKey : null),
-    idCardPhotoUrl: idUrl || (user.idCardPhotoKey?.startsWith('data:') ? user.idCardPhotoKey : null)
+    referencePhotoUrl: faceDataUrl || s3RefUrl || (user.referencePhotoKey ? `/api/v1/media/photo/${user.id}/face` : null),
+    idCardPhotoUrl: idDataUrl || s3IdUrl || (user.idCardPhotoKey ? `/api/v1/media/photo/${user.id}/id-card` : null)
   }
 }
 
