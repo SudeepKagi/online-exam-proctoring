@@ -109,19 +109,38 @@ export function compressImageToDataUrl(source, maxDim = 800, quality = 0.75) {
   })
 }
 
+export function dataUrlToBlob(dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) {
+    return new Blob([], { type: 'image/jpeg' })
+  }
+  const parts = dataUrl.split(',')
+  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg'
+  const binary = atob(parts[1])
+  const len = binary.length
+  const buffer = new Uint8Array(len)
+  for (let i = 0; i < len; i++) {
+    buffer[i] = binary.charCodeAt(i)
+  }
+  return new Blob([buffer], { type: mime })
+}
+
 export async function uploadVerificationImage(fileOrBlob, category = 'FACE') {
   let base64String = ''
-  try {
-    base64String = await compressImageToDataUrl(fileOrBlob, 800, 0.75)
-  } catch (_) {
-    if (typeof fileOrBlob === 'string') base64String = fileOrBlob
-    else {
-      base64String = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result)
-        reader.onerror = (err) => reject(err)
-        reader.readAsDataURL(fileOrBlob)
-      })
+  if (typeof fileOrBlob === 'string' && fileOrBlob.startsWith('data:image/')) {
+    base64String = fileOrBlob
+  } else {
+    try {
+      base64String = await compressImageToDataUrl(fileOrBlob, 800, 0.75)
+    } catch (_) {
+      if (typeof fileOrBlob === 'string') base64String = fileOrBlob
+      else {
+        base64String = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = (err) => reject(err)
+          reader.readAsDataURL(fileOrBlob)
+        })
+      }
     }
   }
 

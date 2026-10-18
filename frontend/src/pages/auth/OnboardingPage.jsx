@@ -131,7 +131,7 @@ export default function OnboardingPage() {
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
                 <div>
                   <span className="font-[480]">Previous Submission Rejected: </span>
-                  <span>{rejectionReason || 'Please provide clearer photos and verify your details.'}</span>
+                  <span>{rejectionReason && rejectionReason !== 'null' && rejectionReason !== 'undefined' ? rejectionReason : 'Please provide clearer photos and verify your details.'}</span>
                 </div>
               </div>
             )}
