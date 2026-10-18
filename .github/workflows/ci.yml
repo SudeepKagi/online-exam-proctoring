@@ -252,17 +252,27 @@ jobs:
           export PROCTORNET_ALLOW_PRODUCTION_MUTATION=true
           node prisma/seed/admin.js --target production --confirm "I_CONFIRM_PRODUCTION_WRITE" || true
 
+          echo "[5/6] Updating active symlink & reloading services..."
+          chmod 755 /opt /opt/proctornet "$RELEASES_DIR" "$NEW_RELEASE" "$NEW_RELEASE/backend" 2>/dev/null || true
+          chmod -R a+rX "$NEW_RELEASE" 2>/dev/null || true
           if id -u proctornet >/dev/null 2>&1; then
-            chown -R proctornet:proctornet "$NEW_RELEASE" || true
+            chown -R proctornet:proctornet /opt/proctornet || true
           fi
 
-          echo "[5/6] Updating active symlink & reloading services..."
           ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
+          if id -u proctornet >/dev/null 2>&1; then
+            chown -h proctornet:proctornet "$CURRENT_LINK" || true
+          fi
+
+          echo "[-] Ensuring systemd unit configuration..."
+          NODE_BIN=$(which node || echo "/usr/bin/node")
+          printf '[Unit]\nDescription=ProctorNet Lite Application Service\nAfter=network.target\n\n[Service]\nType=simple\nUser=proctornet\nWorkingDirectory=/opt/proctornet/current/backend\nEnvironment=NODE_ENV=production\nEnvironment=PORT=5000\nEnvironment=APP_PROFILE=lite\nEnvironment=QUEUE_DRIVER=postgres\nEnvironment=CACHE_DRIVER=memory\nEnvironment=MEDIA_DRIVER=snapshot\nEnvironment=FACE_DRIVER=rekognition\nEnvironment=START_WORKERS=true\nEnvironmentFile=-/opt/proctornet/shared/.env\nExecStart=%s --max-old-space-size=384 src/app.js\nRestart=on-failure\nRestartSec=3\nTimeoutStopSec=30\nLimitNOFILE=65535\n\n[Install]\nWantedBy=multi-user.target\n' "$NODE_BIN" > /etc/systemd/system/proctornet.service
 
           echo "[-] Reloading systemd daemon and restarting proctornet service..."
           systemctl daemon-reload || true
+          systemctl enable proctornet 2>/dev/null || true
           systemctl restart proctornet || systemctl start proctornet || true
-          sleep 2
+          sleep 3
           echo "=== systemctl status proctornet ==="
           systemctl status proctornet -l --no-pager || true
 
