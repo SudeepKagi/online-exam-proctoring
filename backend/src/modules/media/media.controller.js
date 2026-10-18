@@ -38,6 +38,20 @@ async function getReadUrl(req, res, next) {
   }
 }
 
+async function uploadVerificationPhoto(req, res, next) {
+  try {
+    const { imageBase64, category } = req.body
+    const userId = req.user?.id
+    if (!userId) {
+      return res.status(401).json({ error: { message: 'Authentication required' } })
+    }
+    const result = await mediaService.uploadVerificationPhoto(userId, { imageBase64, category })
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
 function localUploadHandler(req, res) {
   return res.status(200).json({ status: 'ok', message: 'Local upload endpoint accepted' })
 }
@@ -45,6 +59,7 @@ function localUploadHandler(req, res) {
 module.exports = {
   presignUpload,
   verifyFace,
+  uploadVerificationPhoto,
   getReadUrl,
   localUploadHandler
 }

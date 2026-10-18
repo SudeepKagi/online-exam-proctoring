@@ -166,7 +166,7 @@ export function PhotoUploadCard({
                 <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
                   <Upload className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Click to upload or drag & drop</span>
+                <span className="text-xs font-bold text-slate-800">Click to upload College ID Card Photo</span>
                 <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, or WebP up to 10MB</span>
               </div>
             )}

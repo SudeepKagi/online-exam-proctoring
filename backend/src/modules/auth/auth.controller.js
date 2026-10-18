@@ -130,6 +130,30 @@ async function updateSettings(req, res, next) {
   }
 }
 
+async function forgotPassword(req, res, next) {
+  try {
+    const { identifier, email, usn, role } = req.body
+    const result = await authService.forgotPassword(identifier || email || usn, role)
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function resetPassword(req, res, next) {
+  try {
+    const { identifier, email, usn, otp, newPassword, password } = req.body
+    const result = await authService.resetPassword({
+      identifier: identifier || email || usn,
+      otp,
+      newPassword: newPassword || password
+    })
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function logout(req, res) {
   clearAuthCookie(res)
   return res.status(200).json({ status: 'success', message: 'Logged out successfully' })
@@ -145,5 +169,7 @@ module.exports = {
   me,
   onboarding,
   updateSettings,
+  forgotPassword,
+  resetPassword,
   logout
 }

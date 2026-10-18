@@ -4,7 +4,8 @@ import { useAuth } from '@/context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Badge } from '@/components/ui/badge'
 import { api, errorMessage } from '@/lib/apiClient'
 import { CheckCircle2, ShieldCheck, KeyRound, User, Loader2, Save, FileText, Camera } from 'lucide-react'
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   const [form, setForm] = useState({
     fullName: user?.fullName || '',
     phone: meta.phone || '',
-    department: meta.department || '',
+    department: meta.department || user?.department || '',
     semester: meta.semester || '',
     designation: meta.designation || '',
     currentPassword: '',
@@ -118,31 +119,26 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="p-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Full Name</Label>
+                <FormField label="Full Name">
                   <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} className="h-9 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Contact Phone</Label>
+                </FormField>
+                <FormField label="Contact Phone">
                   <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} className="h-9 text-xs" />
-                </div>
+                </FormField>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Department</Label>
+                <FormField label="Department">
                   <Input value={form.department} onChange={(e) => handleChange('department', e.target.value)} className="h-9 text-xs" />
-                </div>
+                </FormField>
                 {isStudent ? (
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold">Semester</Label>
+                  <FormField label="Semester">
                     <Input value={form.semester} onChange={(e) => handleChange('semester', e.target.value)} className="h-9 text-xs" />
-                  </div>
+                  </FormField>
                 ) : (
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold">Designation</Label>
+                  <FormField label="Designation">
                     <Input value={form.designation} onChange={(e) => handleChange('designation', e.target.value)} className="h-9 text-xs" />
-                  </div>
+                  </FormField>
                 )}
               </div>
             </CardContent>
@@ -156,19 +152,16 @@ export default function SettingsPage() {
               <CardDescription className="text-xs text-slate-500">Leave blank if you do not want to alter your password.</CardDescription>
             </CardHeader>
             <CardContent className="p-4 space-y-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Current Password</Label>
-                <Input type="password" value={form.currentPassword} onChange={(e) => handleChange('currentPassword', e.target.value)} placeholder="Enter current password" className="h-9 text-xs" />
-              </div>
+              <FormField label="Current Password">
+                <PasswordInput value={form.currentPassword} onChange={(e) => handleChange('currentPassword', e.target.value)} placeholder="Enter current password" />
+              </FormField>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">New Password</Label>
-                  <Input type="password" value={form.newPassword} onChange={(e) => handleChange('newPassword', e.target.value)} placeholder="Min 6 characters" className="h-9 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Confirm New Password</Label>
-                  <Input type="password" value={form.confirmPassword} onChange={(e) => handleChange('confirmPassword', e.target.value)} placeholder="Repeat new password" className="h-9 text-xs" />
-                </div>
+                <FormField label="New Password">
+                  <PasswordInput showStrength value={form.newPassword} onChange={(e) => handleChange('newPassword', e.target.value)} placeholder="Min 6 characters" />
+                </FormField>
+                <FormField label="Confirm New Password">
+                  <PasswordInput value={form.confirmPassword} onChange={(e) => handleChange('confirmPassword', e.target.value)} placeholder="Repeat new password" />
+                </FormField>
               </div>
             </CardContent>
           </Card>

@@ -194,6 +194,16 @@ const usersController = {
     } catch (err) {
       next(err)
     }
+  },
+
+  async adminResetPassword(req, res, next) {
+    try {
+      const { password, newPassword } = req.body
+      const result = await usersService.adminResetPassword(req.params.id, newPassword || password)
+      res.json(result)
+    } catch (err) {
+      next(err)
+    }
   }
 }
 

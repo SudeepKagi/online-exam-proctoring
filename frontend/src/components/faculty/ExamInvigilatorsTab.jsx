@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import { UserCheck, UserPlus, Copy, Trash2, Eye, EyeOff, Check, Loader2, KeyRound } from 'lucide-react'
@@ -110,40 +111,16 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator`
               <DialogTitle className="text-base font-bold">Generate Invigilator Account</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleGenerate} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Invigilator Name</Label>
-                <Input
-                  required
-                  placeholder="e.g. Dr. Ramesh Kumar"
-                  value={form.fullName}
-                  onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Exam Hall / Room Number</Label>
-                <Input
-                  required
-                  placeholder="e.g. Lab 302 or Hall B"
-                  value={form.room}
-                  onChange={(e) => setForm({ ...form, room: e.target.value })}
-                  className="h-9 text-xs"
-                />
-              </div>
-              <div className="space-y-1">
-                <div className="flex justify-between items-center">
-                  <Label className="text-xs font-bold">Access Password (Optional)</Label>
-                  <span className="text-[10px] text-slate-400">Leave blank to auto-generate</span>
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Leave empty for auto secure pin"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="h-9 text-xs font-mono"
-                />
-              </div>
-              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2">
+              <FormField label="Invigilator Full Name" required>
+                <Input required placeholder="e.g. Dr. Ramesh Kumar" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} className="h-9 text-xs" />
+              </FormField>
+              <FormField label="Exam Hall / Room" required>
+                <Input required placeholder="e.g. Lab 302 or Hall B" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} className="h-9 text-xs" />
+              </FormField>
+              <FormField label="Access Password" hint="Leave empty for auto-generated secure PIN">
+                <PasswordInput placeholder="Leave blank to auto-generate" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              </FormField>
+              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2 cursor-pointer">
                 {submitting ? 'Generating Account...' : 'Generate & Assign Invigilator'}
               </Button>
             </form>

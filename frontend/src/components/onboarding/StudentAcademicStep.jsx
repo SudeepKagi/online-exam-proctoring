@@ -1,18 +1,18 @@
 import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ArrowRight, Lock, Key, GraduationCap } from 'lucide-react'
+import { FormField } from '@/components/ui/form-field'
+import { PasswordInput } from '@/components/ui/password-input'
+import { ArrowRight, GraduationCap } from 'lucide-react'
 
 const DEPARTMENTS = [
   'Computer Science and Engineering',
   'Information Science and Engineering',
-  'Electronics and Communication Engineering',
+  'Electronics & Communication Engineering',
+  'Artificial Intelligence & Data Science',
   'Mechanical Engineering',
-  'Electrical and Electronics Engineering',
-  'Civil Engineering',
-  'Artificial Intelligence & Data Science'
+  'Civil Engineering'
 ]
 
 export default function StudentAcademicStep({ initialData, onNext }) {
@@ -49,7 +49,6 @@ export default function StudentAcademicStep({ initialData, onNext }) {
       setError('Contact phone number is required.')
       return
     }
-
     onNext(formData)
   }
 
@@ -57,7 +56,7 @@ export default function StudentAcademicStep({ initialData, onNext }) {
     <form onSubmit={handleSubmit} className="space-y-4 font-sans">
       <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-start gap-2.5">
         <GraduationCap className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
-        <span>Please configure your permanent account password and verify your institutional academic records.</span>
+        <span>Configure your permanent account password and verify your institutional student records.</span>
       </div>
 
       {error && (
@@ -67,46 +66,39 @@ export default function StudentAcademicStep({ initialData, onNext }) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Permanent Password</Label>
-          <Input
-            type="password"
+        <FormField label="Permanent Password" required>
+          <PasswordInput
+            showStrength
             required
             placeholder="Min 6 characters"
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Confirm Password</Label>
-          <Input
-            type="password"
+        <FormField label="Confirm Password" required>
+          <PasswordInput
             required
             placeholder="Repeat password"
             value={formData.confirmPassword}
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Roll Number / USN</Label>
+        <FormField label="Roll Number / USN" required hint="Your official university registration number">
           <Input
             type="text"
             required
-            placeholder="e.g. 1RV21CS042"
+            placeholder="e.g., 1BM22CS104"
             value={formData.institutionId}
             onChange={(e) => handleChange('institutionId', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl uppercase"
+            className="h-10 text-xs border-slate-300 rounded-xl uppercase font-mono tracking-wider"
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Contact Phone Number</Label>
+        <FormField label="Contact Phone Number" required>
           <Input
             type="tel"
             required
@@ -115,36 +107,38 @@ export default function StudentAcademicStep({ initialData, onNext }) {
             onChange={(e) => handleChange('phone', e.target.value)}
             className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2 space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Department</Label>
-          <Select value={formData.department} onValueChange={(val) => handleChange('department', val)}>
-            <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
-              <SelectValue placeholder="Select Department" />
-            </SelectTrigger>
-            <SelectContent>
-              {DEPARTMENTS.map(d => (
-                <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="sm:col-span-2">
+          <FormField label="Department" required>
+            <Select value={formData.department} onValueChange={(val) => handleChange('department', val)}>
+              <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
+                <SelectValue placeholder="Select Department" />
+              </SelectTrigger>
+              <SelectContent>
+                {DEPARTMENTS.map(d => (
+                  <SelectItem key={d} value={d} className="text-xs">{d}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </div>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Semester</Label>
-          <Select value={formData.semester} onValueChange={(val) => handleChange('semester', val)}>
-            <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
-              <SelectValue placeholder="Semester" />
-            </SelectTrigger>
-            <SelectContent>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
-                <SelectItem key={s} value={String(s)} className="text-xs">{`Sem ${s}`}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div>
+          <FormField label="Semester" required>
+            <Select value={formData.semester} onValueChange={(val) => handleChange('semester', val)}>
+              <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
+                <SelectValue placeholder="Semester" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(s => (
+                  <SelectItem key={s} value={String(s)} className="text-xs">{`Semester ${s}`}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
         </div>
       </div>
 

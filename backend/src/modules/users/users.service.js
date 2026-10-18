@@ -1,6 +1,33 @@
 const bcrypt = require('bcryptjs')
 const { prisma } = require('../../infra/postgres/client')
 const { parseExcelBuffer } = require('./users.excel')
+const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+
+const USER_FIELDS = {
+  id: true,
+  institutionId: true,
+  email: true,
+  fullName: true,
+  role: true,
+  status: true,
+  referencePhotoKey: true,
+  idCardPhotoKey: true,
+  profileMetadata: true,
+  createdAt: true
+}
+
+async function resolvePhotoUrls(user) {
+  if (!user) return user
+  const [refUrl, idUrl] = await Promise.all([
+    user.referencePhotoKey ? getPresignedReadUrl(user.referencePhotoKey).catch(() => null) : null,
+    user.idCardPhotoKey ? getPresignedReadUrl(user.idCardPhotoKey).catch(() => null) : null
+  ])
+  return {
+    ...user,
+    referencePhotoUrl: refUrl || (user.referencePhotoKey?.startsWith('data:') ? user.referencePhotoKey : null),
+    idCardPhotoUrl: idUrl || (user.idCardPhotoKey?.startsWith('data:') ? user.idCardPhotoKey : null)
+  }
+}
 
 class UsersService {
   async listUsers({ role, status, search, limit = 50, offset = 0 } = {}) {
@@ -21,28 +48,20 @@ class UsersService {
         take: Number(limit) || 50,
         skip: Number(offset) || 0,
         orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          institutionId: true,
-          email: true,
-          fullName: true,
-          role: true,
-          status: true,
-          referencePhotoKey: true,
-          idCardPhotoKey: true,
-          profileMetadata: true,
-          createdAt: true
-        }
+        select: USER_FIELDS
       }),
       prisma.user.count({ where })
     ])
 
-    const formatted = users.map(u => ({
-      ...u,
-      name: u.fullName,
-      usn: u.institutionId,
-      department: u.profileMetadata?.department || 'CSE',
-      isActive: u.status === 'ACTIVE'
+    const formatted = await Promise.all(users.map(async u => {
+      const resolved = await resolvePhotoUrls(u)
+      return {
+        ...resolved,
+        name: u.fullName,
+        usn: u.institutionId,
+        department: u.profileMetadata?.department || 'CSE',
+        isActive: u.status === 'ACTIVE'
+      }
     }))
 
     return { users: formatted, total }
@@ -53,28 +72,10 @@ class UsersService {
   }
 
   async getUserById(id) {
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        institutionId: true,
-        email: true,
-        fullName: true,
-        role: true,
-        status: true,
-        referencePhotoKey: true,
-        idCardPhotoKey: true,
-        profileMetadata: true,
-        createdAt: true
-      }
-    })
+    const user = await prisma.user.findUnique({ where: { id }, select: USER_FIELDS })
     if (!user) return null
-    return {
-      ...user,
-      name: user.fullName,
-      usn: user.institutionId,
-      isActive: user.status === 'ACTIVE'
-    }
+    const resolved = await resolvePhotoUrls(user)
+    return { ...resolved, name: user.fullName, usn: user.institutionId, isActive: user.status === 'ACTIVE' }
   }
 
   async createUser({ email, password, fullName, name, role = 'STUDENT', institutionId, usn, referencePhotoKey, idCardPhotoKey, profileMetadata, status }) {
@@ -109,26 +110,10 @@ class UsersService {
         profileMetadata: profileMetadata || (targetRole === 'INVIGILATOR' ? { generatedPasswordHint: rawPassword } : {}),
         status: initialStatus
       },
-      select: {
-        id: true,
-        institutionId: true,
-        email: true,
-        fullName: true,
-        role: true,
-        status: true,
-        referencePhotoKey: true,
-        idCardPhotoKey: true,
-        profileMetadata: true,
-        createdAt: true
-      }
+      select: USER_FIELDS
     })
 
-    return {
-      ...user,
-      name: user.fullName,
-      usn: user.institutionId,
-      isActive: user.status === 'ACTIVE'
-    }
+    return { ...user, name: user.fullName, usn: user.institutionId, isActive: user.status === 'ACTIVE' }
   }
 
   async updateUser(id, data) {
@@ -145,26 +130,10 @@ class UsersService {
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
-      select: {
-        id: true,
-        institutionId: true,
-        email: true,
-        fullName: true,
-        role: true,
-        status: true,
-        referencePhotoKey: true,
-        idCardPhotoKey: true,
-        profileMetadata: true,
-        createdAt: true
-      }
+      select: USER_FIELDS
     })
 
-    return {
-      ...user,
-      name: user.fullName,
-      usn: user.institutionId,
-      isActive: user.status === 'ACTIVE'
-    }
+    return { ...user, name: user.fullName, usn: user.institutionId, isActive: user.status === 'ACTIVE' }
   }
 
   async setUserStatus(id, status, reason = null) {
@@ -187,11 +156,19 @@ class UsersService {
     })
   }
 
+  async adminResetPassword(id, newPassword) {
+    if (!newPassword || newPassword.length < 6) {
+      const err = new Error('Password must be at least 6 characters')
+      err.status = 400
+      throw err
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10)
+    await prisma.user.update({ where: { id }, data: { passwordHash } })
+    return { success: true, message: 'Password reset successfully' }
+  }
+
   async deleteUser(id) {
-    return prisma.user.delete({
-      where: { id },
-      select: { id: true, email: true }
-    })
+    return prisma.user.delete({ where: { id }, select: { id: true, email: true } })
   }
 
   async parseExcelBuffer(buffer) {

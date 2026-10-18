@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from '@/context/AuthContext'
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'))
 const OnboardingPage = lazy(() => import('@/pages/auth/OnboardingPage'))
 const PendingApprovalPage = lazy(() => import('@/pages/auth/PendingApprovalPage'))
 const SettingsPage = lazy(() => import('@/pages/common/SettingsPage'))
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/invigilator/login" element={<LoginPage />} />
             <Route path="/invigilator-login" element={<LoginPage />} />
             <Route path="/student/login" element={<LoginPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
             {/* Onboarding & Approval Queue */}
             <Route path="/onboarding" element={<OnboardingGuard><OnboardingPage /></OnboardingGuard>} />

@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
-import ReviewUserDialog from './ReviewUserDialog'
+import UserVerificationModal from './UserVerificationModal'
 import { CheckCircle2, ShieldCheck, Loader2, RefreshCw } from 'lucide-react'
 
 export default function AdminApprovalsTab({ onStatusUpdate }) {
@@ -135,7 +135,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
         </CardContent>
       </Card>
 
-      <ReviewUserDialog
+      <UserVerificationModal
         user={selectedUser}
         open={dialogOpen}
         onOpenChange={setDialogOpen}

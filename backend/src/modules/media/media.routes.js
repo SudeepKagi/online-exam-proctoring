@@ -7,6 +7,7 @@ const router = express.Router()
 // Presigned S3 uploads for live snapshots & screen share evidence
 router.post('/presign-upload', authenticateToken, mediaController.presignUpload)
 router.post('/media/presign-upload', authenticateToken, mediaController.presignUpload)
+router.post('/upload-verification', authenticateToken, mediaController.uploadVerificationPhoto)
 
 // AWS Rekognition Face Verification
 router.post('/verify-face', authenticateToken, mediaController.verifyFace)

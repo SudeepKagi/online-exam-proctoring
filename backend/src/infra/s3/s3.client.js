@@ -89,6 +89,7 @@ function extractS3Key(urlOrKey) {
 
 async function getPresignedReadUrl(key, expiresIn = 600) {
   if (!key) return null
+  if (key.startsWith('data:') || key.startsWith('http://') || key.startsWith('https://')) return key
   const canonicalKey = extractS3Key(key)
   const roundedMs = Math.floor(Date.now() / 300000) * 300000
   const roundedSigningDate = new Date(roundedMs)

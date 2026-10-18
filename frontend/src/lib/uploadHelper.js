@@ -46,3 +46,23 @@ export async function uploadMediaFile(fileOrBlob, purpose = 'REFERENCE_PHOTO') {
 
   return key
 }
+
+export async function uploadVerificationImage(fileOrBlob, category = 'FACE') {
+  let base64String = ''
+  if (typeof fileOrBlob === 'string' && fileOrBlob.startsWith('data:')) {
+    base64String = fileOrBlob
+  } else {
+    base64String = await new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = (err) => reject(err)
+      reader.readAsDataURL(fileOrBlob)
+    })
+  }
+
+  const res = await api.post('/media/upload-verification', {
+    imageBase64: base64String,
+    category
+  })
+  return res.data
+}

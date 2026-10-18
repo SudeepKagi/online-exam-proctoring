@@ -1,6 +1,7 @@
 const crypto = require('crypto')
 const mediaSql = require('./media.sql')
-const { createDirectUploadPolicy, getPresignedReadUrl } = require('../../infra/s3/s3.client')
+const { createDirectUploadPolicy, getPresignedReadUrl, putObject } = require('../../infra/s3/s3.client')
+const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
 
 class MediaService {
@@ -114,6 +115,61 @@ class MediaService {
         decision: 'FAIL',
         reason: `Face verification service unavailable: ${err.message}`
       }
+    }
+  }
+
+  async uploadVerificationPhoto(userId, { imageBase64, category }) {
+    if (!imageBase64) {
+      const err = new Error('Image data is required')
+      err.status = 400
+      throw err
+    }
+    const cat = String(category || 'FACE').toUpperCase()
+    if (cat !== 'FACE' && cat !== 'ID_CARD') {
+      const err = new Error('Invalid category. Must be FACE or ID_CARD')
+      err.status = 400
+      throw err
+    }
+
+    let contentType = 'image/jpeg'
+    let base64Data = imageBase64
+    if (imageBase64.includes(';base64,')) {
+      const parts = imageBase64.split(';base64,')
+      contentType = parts[0].replace('data:', '') || 'image/jpeg'
+      base64Data = parts[1]
+    }
+    const buffer = Buffer.from(base64Data, 'base64')
+    const ext = contentType.includes('png') ? 'png' : 'jpg'
+    const uuid = crypto.randomUUID()
+    const folder = cat === 'FACE' ? 'reference-photos' : 'id-cards'
+    const key = `${folder}/${userId}/${Date.now()}-${uuid}.${ext}`
+
+    let storedKey = key
+    try {
+      await putObject(key, buffer, contentType)
+    } catch (err) {
+      logger.warn({ error: err.message, key }, 'S3 putObject failed, storing data URI in fallback mode')
+      storedKey = imageBase64.startsWith('data:') ? imageBase64 : `data:${contentType};base64,${base64Data}`
+    }
+
+    const updateData = {}
+    if (cat === 'FACE') {
+      updateData.referencePhotoKey = storedKey
+    } else {
+      updateData.idCardPhotoKey = storedKey
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: updateData
+    })
+
+    const url = await getPresignedReadUrl(storedKey)
+    return {
+      success: true,
+      category: cat,
+      key: storedKey,
+      url
     }
   }
 

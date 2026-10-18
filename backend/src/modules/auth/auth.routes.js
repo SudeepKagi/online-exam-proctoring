@@ -44,6 +44,8 @@ router.post('/faculty/register', authController.register)
 router.post('/register', authController.register)
 router.get('/me', authenticateToken, authController.me)
 router.post('/onboarding', authenticateToken, authController.onboarding)
+router.post('/forgot-password', authController.forgotPassword)
+router.post('/reset-password', authController.resetPassword)
 router.put('/settings', authenticateToken, authController.updateSettings)
 router.post('/logout', authController.logout)
 

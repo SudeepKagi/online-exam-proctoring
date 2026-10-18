@@ -1,27 +1,25 @@
 import React, { useState } from 'react'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/ui/form-field'
+import { PasswordInput } from '@/components/ui/password-input'
 import { ArrowRight, Building2 } from 'lucide-react'
 
 const DEPARTMENTS = [
   'Computer Science and Engineering',
   'Information Science and Engineering',
-  'Electronics and Communication Engineering',
+  'Electronics & Communication Engineering',
+  'Artificial Intelligence & Data Science',
   'Mechanical Engineering',
-  'Electrical and Electronics Engineering',
-  'Civil Engineering',
-  'Artificial Intelligence & Data Science'
+  'Civil Engineering'
 ]
 
 const DESIGNATIONS = [
-  'Assistant Professor',
-  'Associate Professor',
+  'Professor & HOD',
   'Professor',
-  'Head of Department (HoD)',
-  'Senior Lecturer',
-  'Visiting Faculty'
+  'Associate Professor',
+  'Assistant Professor'
 ]
 
 export default function FacultyDetailsStep({ initialData, onNext }) {
@@ -30,7 +28,7 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
     confirmPassword: '',
     institutionId: initialData?.institutionId || '',
     department: initialData?.department || DEPARTMENTS[0],
-    designation: initialData?.designation || DESIGNATIONS[0],
+    designation: initialData?.designation || DESIGNATIONS[3],
     phone: initialData?.phone || ''
   })
   const [error, setError] = useState('')
@@ -58,7 +56,6 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
       setError('Contact phone number is required.')
       return
     }
-
     onNext(formData)
   }
 
@@ -66,7 +63,7 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
     <form onSubmit={handleSubmit} className="space-y-4 font-sans">
       <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 text-xs text-emerald-800 flex items-start gap-2.5">
         <Building2 className="w-4 h-4 shrink-0 text-emerald-600 mt-0.5" />
-        <span>Configure your permanent credentials and institutional faculty profile details.</span>
+        <span>Configure your permanent credentials and verify institutional faculty appointment records.</span>
       </div>
 
       {error && (
@@ -76,46 +73,39 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Permanent Password</Label>
-          <Input
-            type="password"
+        <FormField label="Permanent Password" required>
+          <PasswordInput
+            showStrength
             required
             placeholder="Min 6 characters"
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Confirm Password</Label>
-          <Input
-            type="password"
+        <FormField label="Confirm Password" required>
+          <PasswordInput
             required
             placeholder="Repeat password"
             value={formData.confirmPassword}
             onChange={(e) => handleChange('confirmPassword', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Faculty Employee ID</Label>
+        <FormField label="Employee ID / Faculty Code" required hint="Your official employee identification number">
           <Input
             type="text"
             required
-            placeholder="e.g. EMP-9821"
+            placeholder="e.g., FAC-CSE-108"
             value={formData.institutionId}
             onChange={(e) => handleChange('institutionId', e.target.value)}
-            className="h-10 text-xs border-slate-300 rounded-xl uppercase"
+            className="h-10 text-xs border-slate-300 rounded-xl uppercase font-mono tracking-wider"
           />
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Contact Phone Number</Label>
+        <FormField label="Contact Phone Number" required>
           <Input
             type="tel"
             required
@@ -124,12 +114,11 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
             onChange={(e) => handleChange('phone', e.target.value)}
             className="h-10 text-xs border-slate-300 rounded-xl"
           />
-        </div>
+        </FormField>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Department</Label>
+        <FormField label="Department" required>
           <Select value={formData.department} onValueChange={(val) => handleChange('department', val)}>
             <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
               <SelectValue placeholder="Select Department" />
@@ -140,10 +129,9 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-700">Designation</Label>
+        <FormField label="Designation" required>
           <Select value={formData.designation} onValueChange={(val) => handleChange('designation', val)}>
             <SelectTrigger className="h-10 text-xs border-slate-300 rounded-xl">
               <SelectValue placeholder="Select Designation" />
@@ -154,13 +142,13 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
 
       <div className="pt-4 flex justify-end">
         <Button
           type="submit"
-          className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+          className="h-11 px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
         >
           Proceed to College ID Upload <ArrowRight className="w-4 h-4" />
         </Button>

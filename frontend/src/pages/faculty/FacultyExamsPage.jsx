@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { FormField } from '@/components/ui/form-field'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, ArrowRight } from 'lucide-react'
@@ -130,29 +130,24 @@ export default function FacultyExamsPage() {
               <DialogTitle className="text-base font-bold">Create New Examination</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Exam Title</Label>
+              <FormField label="Exam Title" required>
                 <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Midterm Operating Systems" className="h-9 text-xs" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Course Code</Label>
-                <Input required value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CS-401" className="h-9 text-xs" />
-              </div>
+              </FormField>
+              <FormField label="Course Code" required>
+                <Input required value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CS-401" className="h-9 text-xs font-mono uppercase" />
+              </FormField>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">Start Window</Label>
+                <FormField label="Start Window" required>
                   <Input required type="datetime-local" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="h-9 text-xs" />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-bold">End Window</Label>
+                </FormField>
+                <FormField label="End Window" required>
                   <Input required type="datetime-local" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="h-9 text-xs" />
-                </div>
+                </FormField>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-bold">Duration (Minutes)</Label>
+              <FormField label="Duration (Minutes)" required>
                 <Input required type="number" min={5} max={300} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} className="h-9 text-xs" />
-              </div>
-              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2">
+              </FormField>
+              <Button type="submit" disabled={submitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold h-10 rounded-xl mt-2 cursor-pointer">
                 {submitting ? 'Creating...' : 'Save & Configure Questions'}
               </Button>
             </form>

@@ -107,7 +107,7 @@ export default function OnboardingPage() {
                 <CardDescription className="text-xs text-slate-500 mt-0.5">
                   Step {step} of {totalSteps}: {
                     step === 1 ? (isStudent ? 'Academic Information & Password' : 'Faculty Details & Password') :
-                    step === 2 && isStudent ? 'Webcam Face Reference' : 'College ID Card Photo'
+                    step === 2 && isStudent ? 'Biometric Face Verification' : 'Official ID Card Document'
                   }
                 </CardDescription>
               </div>
