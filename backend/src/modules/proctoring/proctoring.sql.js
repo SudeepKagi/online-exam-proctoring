@@ -28,11 +28,14 @@ async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata =
       metadata: metadata || {}
     }
   })
-  if (attemptId) {
+  let updated = null
+  const isHeartbeat = eventType === 'HEARTBEAT_SNAPSHOT' || eventType === 'SCREEN_SAMPLE'
+  if (attemptId && !isHeartbeat) {
     try {
-      const updated = await prisma.examAttempt.update({
+      updated = await prisma.examAttempt.update({
         where: { id: attemptId },
-        data: { violationCount: { increment: 1 } }
+        data: { violationCount: { increment: 1 } },
+        include: { student: true }
       })
       if (updated.violationCount >= 50 && updated.status === 'IN_PROGRESS') {
         await prisma.examAttempt.update({
@@ -44,7 +47,7 @@ async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata =
       }
     } catch (_) {}
   }
-  return mapLogRecord(log)
+  return { ...mapLogRecord(log), updatedAttempt: updated }
 }
 
 async function batchInsertLogs(logs = []) {

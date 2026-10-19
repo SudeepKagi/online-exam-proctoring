@@ -53,9 +53,40 @@ async function removeInvigilator(req, res, next) {
   }
 }
 
+async function generateFromPdf(req, res, next) {
+  try {
+    const { examWizardService } = require('./exam.wizard.service')
+    const { pdfBase64, fileName, count, difficulty, topicHint } = req.body || {}
+    const fileBuffer = req.file?.buffer
+    const result = await examWizardService.generateFromPdf({
+      pdfBase64,
+      pdfBuffer: fileBuffer,
+      fileName: fileName || req.file?.originalname,
+      count: count || 10,
+      difficulty: difficulty || 'MEDIUM',
+      topicHint
+    })
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function publishWizard(req, res, next) {
+  try {
+    const { examWizardService } = require('./exam.wizard.service')
+    const result = await examWizardService.publishWizard(req.user?.id, req.body)
+    return res.status(201).json({ status: 'success', ...result })
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   generateQuestions,
   generateInvigilator,
   listInvigilators,
-  removeInvigilator
+  removeInvigilator,
+  generateFromPdf,
+  publishWizard
 }

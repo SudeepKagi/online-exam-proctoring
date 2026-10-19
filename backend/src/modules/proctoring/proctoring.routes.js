@@ -18,7 +18,9 @@ router.get('/attempts/:attemptId/violations', authenticateToken, proctoringContr
 router.get('/attempts/:attemptId/logs', authenticateToken, proctoringController.getAttemptLogs)
 router.get('/exams/:examId/violations', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
 router.get('/exams/:examId/logs', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
+router.get('/exams/:examId/live', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getLiveExamFeed)
 router.get('/proctoring/attempts/:attemptId/logs', authenticateToken, proctoringController.getAttemptLogs)
 router.get('/proctoring/exams/:examId/logs', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getExamLogs)
+router.get('/proctoring/exams/:examId/live', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), proctoringController.getLiveExamFeed)
 
 module.exports = router

@@ -197,6 +197,29 @@ const usersController = {
     } catch (err) {
       next(err)
     }
+  },
+
+  async getStudentsCount(req, res, next) {
+    try {
+      const { department, semester } = req.query
+      const { prisma } = require('../../infra/postgres/client')
+      const students = await prisma.user.findMany({
+        where: { role: 'STUDENT', status: 'ACTIVE' },
+        select: { profileMetadata: true }
+      })
+      const count = students.filter(s => {
+        const meta = s.profileMetadata || {}
+        const matchesDept = !department ||
+          String(meta.department || '').toLowerCase().includes(department.toLowerCase()) ||
+          department.toLowerCase().includes(String(meta.department || '').toLowerCase())
+        const sSem = String(meta.semester || '').replace(/sem\s*/i, '').trim()
+        const targetSem = String(semester || '').replace(/sem\s*/i, '').trim()
+        return matchesDept && (!semester || sSem === targetSem)
+      }).length
+      return res.status(200).json({ status: 'success', count, department, semester })
+    } catch (err) {
+      next(err)
+    }
   }
 }
 

@@ -132,7 +132,7 @@ test.describe('E2E: Auth, Onboarding & Admin Approval Flow', () => {
       await expect(student.page.getByText('Student Identity Verification')).toBeVisible()
 
       // 3. Step 1: Set permanent password & academic details
-      await student.page.locator('input[placeholder="Min 6 characters"]').fill(permanentPassword)
+      await student.page.locator('input[placeholder*="characters"]').first().fill(permanentPassword)
       await student.page.locator('input[placeholder="Repeat password"]').fill(permanentPassword)
       await student.page.locator('input[placeholder="+91 98765 43210"]').fill('+91 9876543210')
       await student.page.getByRole('button', { name: /Proceed to Face Verification/i }).click()
@@ -187,6 +187,19 @@ test.describe('E2E: Auth, Onboarding & Admin Approval Flow', () => {
       await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
       await expect(student.page.getByText('Student Examination Portal')).toBeVisible()
       await expect(student.page.getByText('Identity Verified')).toBeVisible()
+
+      // 8. Verify Password Persistence: Logout, old temp password FAILS, new permanent password SUCCEEDS
+      await student.page.goto('/login?role=student')
+      await student.page.locator('input[type="text"]').fill(testStudentEmail)
+      await student.page.locator('input[type="password"]').fill(tempPassword)
+      await student.page.locator('button[type="submit"]').click()
+      await expect(student.page.locator('text=Authentication failed').or(student.page.locator('text=Invalid credentials'))).toBeVisible({ timeout: 10000 })
+
+      // Login with new permanent password succeeds
+      await student.page.locator('input[type="password"]').fill(permanentPassword)
+      await student.page.locator('button[type="submit"]').click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
+      expect(student.page.url()).toContain('/student')
     } finally {
       await student.close()
       await admin.close()

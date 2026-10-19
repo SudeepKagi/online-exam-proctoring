@@ -7,39 +7,24 @@ const JWT_SECRET = process.env.JWT_SECRET || 'proctornet_super_secret_jwt_key_lo
 const ACCESS_TOKEN_TTL = '15m'
 const REFRESH_TOKEN_TTL = '12h'
 
+function err(msg, status = 400) {
+  const e = new Error(msg)
+  e.status = status
+  return e
+}
+
 class AuthService {
   async authenticate(identifier, plainPassword, expectedRole = null) {
-    if (!identifier || !plainPassword) {
-      const err = new Error('Identifier and password are required')
-      err.status = 400
-      throw err
-    }
-
+    if (!identifier || !plainPassword) throw err('Identifier and password are required', 400)
     const user = await authSql.findUserByEmail(identifier)
-    if (!user) {
-      const err = new Error('Invalid credentials')
-      err.status = 401
-      throw err
-    }
-
-    if (user.status === 'SUSPENDED') {
-      const err = new Error('Account is suspended. Please contact institutional administrator.')
-      err.status = 403
-      throw err
-    }
-
+    if (!user) throw err('Invalid credentials', 401)
+    if (user.status === 'SUSPENDED') throw err('Account is suspended. Please contact institutional administrator.', 403)
     if (expectedRole && String(user.role).toUpperCase() !== String(expectedRole).toUpperCase()) {
-      const err = new Error(`Access denied: this account is not registered under ${expectedRole}`)
-      err.status = 403
-      throw err
+      throw err(`Access denied: this account is not registered under ${expectedRole}`, 403)
     }
 
     const isMatch = await bcrypt.compare(plainPassword, user.password)
-    if (!isMatch) {
-      const err = new Error('Invalid credentials')
-      err.status = 401
-      throw err
-    }
+    if (!isMatch) throw err('Invalid credentials', 401)
 
     const tokens = this.issueTokens(user)
     const { password, passwordHash, ...safeUser } = user
@@ -47,26 +32,13 @@ class AuthService {
   }
 
   async register({ email, password, name, role, referencePhotoS3Key }) {
-    if (!email || !password || !name || !role) {
-      const err = new Error('Missing required fields for registration')
-      err.status = 400
-      throw err
-    }
-
+    if (!email || !password || !name || !role) throw err('Missing required fields for registration', 400)
     const existing = await authSql.findUserByEmail(email)
-    if (existing) {
-      const err = new Error('Email is already registered')
-      err.status = 409
-      throw err
-    }
+    if (existing) throw err('Email is already registered', 409)
 
     const hashedPassword = await bcrypt.hash(password, 12)
     const newUser = await authSql.createUser({
-      email,
-      password: hashedPassword,
-      name,
-      role,
-      referencePhotoS3Key
+      email, password: hashedPassword, name, role, referencePhotoS3Key
     })
 
     const tokens = this.issueTokens(newUser)
@@ -163,7 +135,8 @@ class AuthService {
     return { success: true, message: 'Password reset successfully' }
   }
 
-  async submitOnboarding(userId, { newPassword, department, semester, designation, phone, usn, fullName, referencePhotoKey, idCardPhotoKey }) {
+  async submitOnboarding(userId, payload = {}) {
+    const { newPassword, password, department, semester, designation, phone, usn, institutionId, fullName, referencePhotoKey, idCardPhotoKey, profileMetadata } = payload
     const user = await authSql.findUserById(userId)
     if (!user) {
       const err = new Error('User not found')
@@ -171,20 +144,35 @@ class AuthService {
       throw err
     }
 
+    const pwd = newPassword || password
+    if (!pwd || pwd.length < 8) {
+      const err = new Error('New password must be at least 8 characters long')
+      err.status = 400
+      throw err
+    }
+
+    const meta = profileMetadata || {}
+    const rawDept = department || meta.department || user.profileMetadata?.department || 'Computer Science and Engineering'
+    const rawSem = semester || meta.semester || user.profileMetadata?.semester || 'Sem 6'
+    const normSem = String(rawSem).startsWith('Sem') ? String(rawSem) : `Sem ${rawSem}`
+    const normDept = String(rawDept).trim()
+
+    const passwordHash = await bcrypt.hash(pwd, 12)
     const updates = {
+      passwordHash,
       status: 'PENDING_APPROVAL',
       profileMetadata: {
         ...(user.profileMetadata || {}),
-        department: department || user.profileMetadata?.department || 'CSE',
-        semester: semester || user.profileMetadata?.semester || null,
-        designation: designation || user.profileMetadata?.designation || null,
-        phone: phone || user.profileMetadata?.phone || null,
+        ...meta,
+        department: normDept,
+        semester: normSem,
+        designation: designation || meta.designation || user.profileMetadata?.designation || null,
+        phone: phone || meta.phone || user.profileMetadata?.phone || null,
         submittedAt: new Date().toISOString(),
         rejectionReason: null
       }
     }
 
-    if (newPassword && newPassword.length >= 6) updates.passwordHash = await bcrypt.hash(newPassword, 10)
     if (referencePhotoKey) {
       updates.referencePhotoKey = referencePhotoKey
       if (referencePhotoKey.startsWith('data:')) updates.profileMetadata.facePhotoDataUrl = referencePhotoKey
@@ -194,11 +182,12 @@ class AuthService {
       if (idCardPhotoKey.startsWith('data:')) updates.profileMetadata.idCardPhotoDataUrl = idCardPhotoKey
     }
     if (fullName) updates.fullName = fullName.trim()
-    if (usn) updates.institutionId = usn.trim()
+    const instId = institutionId || usn
+    if (instId) updates.institutionId = instId.trim()
 
     const updated = await authSql.updateUserProfile(userId, updates)
     const tokens = this.issueTokens(updated)
-    const { password, passwordHash, ...safeUser } = updated
+    const { password: _p, passwordHash: _ph, ...safeUser } = updated
     return { user: safeUser, ...tokens }
   }
 

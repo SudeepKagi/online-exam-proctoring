@@ -40,8 +40,8 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!formData.password || formData.password.length < 6) {
-      setError('Permanent password must be at least 6 characters long.')
+    if (!formData.password || formData.password.length < 8) {
+      setError('Permanent password must be at least 8 characters long.')
       return
     }
     if (formData.password !== formData.confirmPassword) {
@@ -77,7 +77,7 @@ export default function FacultyDetailsStep({ initialData, onNext }) {
           <PasswordInput
             showStrength
             required
-            placeholder="Min 6 characters"
+            placeholder="Min 8 characters"
             value={formData.password}
             onChange={(e) => handleChange('password', e.target.value)}
           />

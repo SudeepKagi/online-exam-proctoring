@@ -1,0 +1,118 @@
+import React from 'react'
+import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { ChevronLeft, ChevronRight, Bookmark } from 'lucide-react'
+
+export default function QuestionCard({
+  currentQ,
+  currentIndex,
+  totalQuestions,
+  currentSelected,
+  isBookmarked,
+  onSelectOption,
+  onToggleBookmark,
+  onClearAnswer,
+  onPrev,
+  onNext
+}) {
+  const options = Array.isArray(currentQ?.options) ? currentQ.options : []
+
+  return (
+    <Card className="flex-1 flex flex-col border-[#e9eaf2] bg-white overflow-hidden shadow-xs rounded-[12px] font-sans">
+      <CardHeader className="py-3 px-6 border-b border-[#e9eaf2] bg-[#fbfbff] flex flex-row items-center justify-between">
+        <span className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">
+          Question {currentIndex + 1} of {totalQuestions}
+        </span>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs font-mono font-[420] text-emerald-700 border-emerald-300 bg-emerald-50">
+            +{Number(currentQ?.marks || 1).toFixed(2)}
+          </Badge>
+          {Number(currentQ?.negativeMarks) > 0 && (
+            <Badge variant="outline" className="text-xs font-mono font-[420] text-rose-700 border-rose-300 bg-rose-50">
+              -{Number(currentQ?.negativeMarks).toFixed(2)}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex-1 p-6 overflow-y-auto space-y-4">
+        <p className="text-base font-[480] text-[#28253b] leading-relaxed">
+          {currentQ?.questionText || 'Loading question...'}
+        </p>
+
+        <div className="space-y-2.5 pt-2">
+          {options.map((opt, idx) => {
+            const isSelected = currentSelected === idx
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => onSelectOption(idx)}
+                className={`w-full p-3.5 rounded-[12px] border text-left text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'border-[#5266eb] bg-[rgba(82,102,235,0.08)] text-[#28253b] font-[480]'
+                    : 'border-[#e9eaf2] hover:bg-[#fbfbff] text-[#28253b]'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-[480] shrink-0 ${
+                      isSelected ? 'bg-[#5266eb] text-white' : 'bg-[#fbfbff] text-[#554e7b] border border-[#e9eaf2]'
+                    }`}
+                  >
+                    {String.fromCharCode(65 + idx)}
+                  </span>
+                  <span>{opt}</span>
+                </div>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase hidden sm:inline">
+                  [{idx + 1}]
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </CardContent>
+
+      <CardFooter className="py-3 px-6 border-t border-[#e9eaf2] flex items-center justify-between bg-[#fbfbff]">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onPrev}
+            disabled={currentIndex === 0}
+            className="gap-1 text-xs font-[420] rounded-[40px] px-3.5 h-8 bg-white border-[#c3c3cc]/60"
+          >
+            <ChevronLeft className="w-4 h-4" /> Previous
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onToggleBookmark}
+            className={`text-xs gap-1.5 font-[420] rounded-[40px] px-3.5 h-8 ${
+              isBookmarked ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-white border-[#c3c3cc]/60 text-[#28253b]'
+            }`}
+          >
+            <Bookmark className="w-3.5 h-3.5" /> Bookmark
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClearAnswer}
+            className="text-xs text-[#70707d] font-[420] rounded-[40px] px-3 h-8"
+          >
+            Clear Answer
+          </Button>
+        </div>
+        <Button
+          size="sm"
+          onClick={onNext}
+          disabled={currentIndex >= totalQuestions - 1}
+          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1 text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer"
+        >
+          Save & Next <ChevronRight className="w-4 h-4" />
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}

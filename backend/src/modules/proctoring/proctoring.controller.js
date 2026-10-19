@@ -18,12 +18,16 @@ async function logViolation(req, res, next) {
       }
       if (!targetAttemptId) continue
 
+      const snapshotDataUrl = evt.snapshotDataUrl || req.body?.snapshotDataUrl || null
+      const meta = typeof evt.metadata === 'object' && evt.metadata !== null ? { ...evt.metadata } : { ...evt }
+      if (snapshotDataUrl) meta.snapshotDataUrl = snapshotDataUrl
+
       const result = await proctoringService.recordViolation({
         attemptId: targetAttemptId,
         examId: targetExamId,
         eventType: evt.eventType || evt.type || 'SCREEN_PROCTOR_EVENT',
         severity: evt.severity || 'MEDIUM',
-        metadata: evt.metadata || evt,
+        metadata: meta,
         evidenceS3Key: evt.evidenceS3Key || evt.evidenceKey || null
       })
       results.push(result)
@@ -52,8 +56,18 @@ async function getExamLogs(req, res, next) {
   }
 }
 
+async function getLiveExamFeed(req, res, next) {
+  try {
+    const result = await proctoringService.getLiveExamFeed(req.params.examId)
+    return res.status(200).json(result)
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   logViolation,
   getAttemptLogs,
-  getExamLogs
+  getExamLogs,
+  getLiveExamFeed
 }

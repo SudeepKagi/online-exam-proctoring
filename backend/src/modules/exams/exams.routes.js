@@ -30,6 +30,10 @@ router.patch('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsCo
 router.delete('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.deleteExam)
 router.post('/:id/publish', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.publishExam)
 
+// 4-Step Exam Wizard Endpoints
+router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
+router.post('/publish-wizard', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.publishWizard)
+
 // AI Question Generator
 router.post('/:id/generate-questions', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.generateQuestions)
 

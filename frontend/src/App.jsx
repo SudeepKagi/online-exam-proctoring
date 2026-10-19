@@ -102,8 +102,8 @@ export default function App() {
             <Route path="/faculty/exams/:id" element={<ProtectedRoute allowedRoles={['FACULTY', 'ADMIN']}><ExamManagePage /></ProtectedRoute>} />
 
             {/* Invigilator Routes */}
-            <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['INVIGILATOR', 'ADMIN']}><LiveConsolePage /></ProtectedRoute>} /> {/* // terms-ok: internal route */}
-            <Route path="/invigilator/console" element={<ProtectedRoute allowedRoles={['INVIGILATOR', 'ADMIN']}><LiveConsolePage /></ProtectedRoute>} /> {/* // terms-ok: internal route */}
+            <Route path="/invigilator/dashboard" element={<ProtectedRoute allowedRoles={['INVIGILATOR', 'FACULTY', 'ADMIN']}><LiveConsolePage /></ProtectedRoute>} /> {/* // terms-ok: internal route */}
+            <Route path="/invigilator/console" element={<ProtectedRoute allowedRoles={['INVIGILATOR', 'FACULTY', 'ADMIN']}><LiveConsolePage /></ProtectedRoute>} /> {/* // terms-ok: internal route */}
 
             {/* Student Routes */}
             <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboardPage /></ProtectedRoute>} />

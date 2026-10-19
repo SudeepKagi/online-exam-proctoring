@@ -2,16 +2,17 @@ import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { resetCleanRoom, SEEDED_FACULTY } from './helpers/cleanroom'
 
-test.describe('E2E: Exam Authoring, AI Question Generation & Invigilator Provisioning', () => {
+test.describe('E2E: 4-Step Faculty Exam Creation Wizard & Invigilator Provisioning', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeAll(async () => {
     await resetCleanRoom()
   })
 
-  test('Faculty creates exam -> AI generates MCQs -> generates Invigilator -> publishes exam', async ({ browser }) => {
+  test('Faculty completes 4-step wizard with questions, schedule, cohort assignment & invigilator key generation', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
-    const examTitle = `Distributed Systems Assessment ${Date.now()}`
+    const subjectName = `Distributed Systems Assessment ${Date.now()}`
+    const subjectCode = '22CS72'
 
     try {
       // 1. Faculty Login
@@ -21,66 +22,61 @@ test.describe('E2E: Exam Authoring, AI Question Generation & Invigilator Provisi
       await faculty.page.locator('button[type="submit"]').click()
       await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
-      // 2. Open Create Exam Dialog
+      // 2. Open 4-Step AI Exam Creation Wizard
       await faculty.page.goto('/faculty/exams')
       await expect(faculty.page.getByText('Faculty Examination Workspace')).toBeVisible({ timeout: 10000 })
-      await faculty.page.getByRole('button', { name: /Create Exam/i }).click()
-      await expect(faculty.page.getByText('Create New Examination')).toBeVisible()
+      await faculty.page.getByRole('button', { name: /4-Step AI Exam Wizard/i }).click()
+      await expect(faculty.page.getByText('4-Step AI Exam Creation Wizard')).toBeVisible()
 
-      // Fill in exam creation form
-      const now = new Date()
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const formatDT = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+      // Step 1: Add MCQ manually
+      await faculty.page.getByRole('button', { name: /Add MCQ Manually/i }).click()
+      await faculty.page.locator('input[placeholder*="Which algorithm is used"]').fill('What is Byzantine Fault Tolerance in distributed systems?')
+      const optionInputs = faculty.page.locator('input[placeholder*="Option"]')
+      await optionInputs.nth(0).fill('Consensus protocol tolerating arbitrary failures')
+      await optionInputs.nth(1).fill('A hardware caching algorithm')
+      await optionInputs.nth(2).fill('A relational database constraint')
+      await optionInputs.nth(3).fill('An optical network transmission protocol')
 
-      const startIso = formatDT(new Date(now.getTime() - 5 * 60 * 1000))
-      const endIso = formatDT(new Date(now.getTime() + 120 * 60 * 1000))
+      await faculty.page.getByRole('button', { name: /Save Question to Bank/i }).click()
+      await expect(faculty.page.getByText('1 Question in Bank')).toBeVisible()
 
-      await faculty.page.locator('input[placeholder="e.g. Midterm Operating Systems"]').fill(examTitle)
-      await faculty.page.locator('input[placeholder="e.g. CS-401"]').fill('CS-801')
-      const dateInputs = faculty.page.locator('input[type="datetime-local"]')
-      await dateInputs.nth(0).fill(startIso)
-      await dateInputs.nth(1).fill(endIso)
-      await faculty.page.locator('input[type="number"]').fill('60')
+      // Continue to Step 2
+      await faculty.page.getByRole('button', { name: /Continue/i }).click()
 
-      // Save Exam
-      await faculty.page.getByRole('button', { name: 'Save & Configure Questions' }).click()
-      await expect(faculty.page.getByText(/Exam created successfully/i)).toBeVisible({ timeout: 10000 })
+      // Step 2: Subject Details & Auto-Calculated Schedule
+      await expect(faculty.page.getByText('Subject Details & Schedule')).toBeVisible()
+      await faculty.page.locator('input[placeholder="e.g. Digital Signal Processing"]').fill(subjectName)
+      await faculty.page.locator('input[placeholder="e.g. 22EC71"]').fill(subjectCode)
+      await expect(faculty.page.getByText('Calculated End Time')).toBeVisible()
 
-      // Locate row and navigate to manage page
-      const examRow = faculty.page.locator('tr').filter({ hasText: examTitle })
+      // Continue to Step 3
+      await faculty.page.getByRole('button', { name: /Continue/i }).click()
+
+      // Step 3: Audience & Cohort Assignment
+      await expect(faculty.page.getByText('Target Semester & Department')).toBeVisible()
+      await expect(faculty.page.getByText('Target Cohort')).toBeVisible()
+
+      // Continue to Step 4
+      await faculty.page.getByRole('button', { name: /Continue/i }).click()
+
+      // Step 4: Auto-Generate Invigilator Credentials & Publish
+      await expect(faculty.page.getByText('Auto-Generated Invigilator Credentials')).toBeVisible()
+      await expect(faculty.page.getByText('Invigilator Surveillance Access')).toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Copy Credentials/i })).toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Download Slip/i })).toBeVisible()
+
+      // Publish Exam
+      await faculty.page.getByRole('button', { name: /Publish Exam Now/i }).click()
+
+      // Verify exam is published on Faculty Exams table
+      await expect(faculty.page.getByText(/published successfully/i)).toBeVisible({ timeout: 15000 })
+      const examRow = faculty.page.locator('tr').filter({ hasText: subjectName })
       await expect(examRow).toBeVisible({ timeout: 10000 })
-      await examRow.getByRole('link', { name: /Manage Exam/i }).click()
-      await faculty.page.waitForURL(url => url.pathname.includes('/faculty/exams/'), { timeout: 15000 })
 
-      // 3. AI Generate Questions
-      await faculty.page.getByRole('button', { name: /AI Generate Questions/i }).click()
-      await expect(faculty.page.getByText('AI MCQ Generator & Question Assistant')).toBeVisible()
-
-      await faculty.page.locator('input[placeholder*="Process Scheduling"]').fill('Distributed Consensus & Raft')
-      await faculty.page.getByRole('button', { name: /Generate Questions Preview/i }).click()
-
-      await expect(faculty.page.getByRole('button', { name: /Insert All .* Questions into Exam/i })).toBeVisible({ timeout: 20000 })
-      await faculty.page.getByRole('button', { name: /Insert All .* Questions into Exam/i }).click()
-
-      await expect(faculty.page.getByText(/Successfully added .* AI-generated questions/i)).toBeVisible({ timeout: 10000 })
-
-      // 4. Generate Invigilator Account
-      await faculty.page.getByRole('tab', { name: /Invigilators & Credentials/i }).click()
-      await faculty.page.getByRole('button', { name: /Generate Invigilator Account/i }).click()
-      await expect(faculty.page.getByRole('heading', { name: 'Generate Invigilator Account' })).toBeVisible()
-
-      await faculty.page.locator('input[placeholder="e.g. Dr. Ramesh Kumar"]').fill('Prof. Margaret Hamilton')
-      await faculty.page.locator('input[placeholder="e.g. Lab 302 or Hall B"]').fill('Room 404')
-      await faculty.page.getByRole('button', { name: 'Generate & Assign Invigilator' }).click()
-
-      await expect(faculty.page.getByText(/Invigilator account generated successfully/i)).toBeVisible({ timeout: 10000 })
-      await expect(faculty.page.locator('tr').filter({ hasText: 'Prof. Margaret Hamilton' })).toBeVisible()
-      await expect(faculty.page.locator('tr').filter({ hasText: 'Room 404' })).toBeVisible()
-
-      // 5. Publish Exam
-      await faculty.page.getByRole('button', { name: /Publish Exam/i }).click()
-      await expect(faculty.page.getByText(/Exam published successfully/i)).toBeVisible({ timeout: 10000 })
-      await expect(faculty.page.getByRole('button', { name: /Publish Exam/i })).not.toBeVisible()
+      // Verify Invigilator Credentials Modal opens from table
+      await examRow.getByRole('button', { name: /Invigilator Key/i }).click()
+      await expect(faculty.page.getByText('Invigilator Surveillance Credentials')).toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Copy Credentials/i })).toBeVisible()
 
     } finally {
       await faculty.close()

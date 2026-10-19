@@ -3,28 +3,19 @@ import { Link } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { FormField } from '@/components/ui/form-field'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
-import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, ArrowRight } from 'lucide-react'
+import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, KeyRound } from 'lucide-react'
+import ExamWizardModal from '@/components/faculty/ExamWizardModal'
+import ExamCredentialsModal from '@/components/faculty/ExamCredentialsModal'
 
 export default function FacultyExamsPage() {
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [selectedExamForCreds, setSelectedExamForCreds] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
-
-  const [form, setForm] = useState({
-    title: '',
-    courseCode: '',
-    startTime: '',
-    endTime: '',
-    durationMinutes: 60,
-  })
 
   const loadExams = async () => {
     setLoading(true)
@@ -40,26 +31,12 @@ export default function FacultyExamsPage() {
 
   useEffect(() => { loadExams() }, [])
 
-  const handleCreate = async (e) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setMsg({ text: '', type: '' })
-    try {
-      await api.post('/exams', {
-        ...form,
-        durationMinutes: parseInt(form.durationMinutes, 10),
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString(),
-      })
-      setDialogOpen(false)
-      setForm({ title: '', courseCode: '', startTime: '', endTime: '', durationMinutes: 60 })
-      setMsg({ text: 'Exam created successfully. Configure questions and invigilators now.', type: 'success' })
-      loadExams()
-    } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to create exam'), type: 'error' })
-    } finally {
-      setSubmitting(false)
-    }
+  const handleExamCreated = (newExam, publishConfig) => {
+    setMsg({
+      text: `Exam "${newExam?.title || 'Assessment'}" published successfully with ${publishConfig?.invigilatorId || 'Invigilator'} credentials generated!`,
+      type: 'success'
+    })
+    loadExams()
   }
 
   const publishedCount = exams.filter(e => e.status === 'PUBLISHED' || e.status === 'ACTIVE').length
@@ -67,9 +44,8 @@ export default function FacultyExamsPage() {
 
   return (
     <DashboardShell title="Faculty Examination Workspace">
-      {/* 4 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Exams</CardTitle>
             <BookOpen className="w-4 h-4 text-[#5266eb]" />
@@ -80,7 +56,7 @@ export default function FacultyExamsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Published / Live</CardTitle>
             <CheckCircle2 className="w-4 h-4 text-[#5266eb]" />
@@ -91,7 +67,7 @@ export default function FacultyExamsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Questions Authored</CardTitle>
             <HelpCircle className="w-4 h-4 text-[#554e7b]" />
@@ -102,14 +78,14 @@ export default function FacultyExamsPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Proctoring Mode</CardTitle>
             <Users className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-[480] text-[#28253b]">Pure Browser</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Zero-install screen & camera lock</p>
+            <p className="text-xs text-[#70707d] font-[360] mt-1">Screen snapshots & monitoring</p>
           </CardContent>
         </Card>
       </div>
@@ -119,40 +95,13 @@ export default function FacultyExamsPage() {
           <h2 className="text-sm font-[480] text-[#28253b]">Your Authored Examination Cohorts</h2>
           <p className="text-xs text-[#70707d] font-[360]">Design assessments, run AI question synthesis, and generate proctor access pins.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-5 h-10 shadow-xs cursor-pointer">
-              <PlusCircle className="w-3.5 h-3.5" /> + Create Exam
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md font-sans">
-            <DialogHeader>
-              <DialogTitle className="text-base font-[480] text-[#28253b]">Create New Examination</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleCreate} className="space-y-3 pt-2">
-              <FormField label="Exam Title" required>
-                <Input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Midterm Operating Systems" className="h-9 text-xs" />
-              </FormField>
-              <FormField label="Course Code" required>
-                <Input required value={form.courseCode} onChange={(e) => setForm({ ...form, courseCode: e.target.value })} placeholder="e.g. CS-401" className="h-9 text-xs font-mono uppercase" />
-              </FormField>
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="Start Window" required>
-                  <Input required type="datetime-local" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="h-9 text-xs" />
-                </FormField>
-                <FormField label="End Window" required>
-                  <Input required type="datetime-local" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="h-9 text-xs" />
-                </FormField>
-              </div>
-              <FormField label="Duration (Minutes)" required>
-                <Input required type="number" min={5} max={300} value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} className="h-9 text-xs" />
-              </FormField>
-              <Button type="submit" disabled={submitting} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
-                {submitting ? 'Creating...' : 'Save & Configure Questions'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button
+          size="sm"
+          onClick={() => setWizardOpen(true)}
+          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-5 h-10 shadow-xs cursor-pointer"
+        >
+          <PlusCircle className="w-3.5 h-3.5" /> + 4-Step AI Exam Wizard
+        </Button>
       </div>
 
       {msg.text && (
@@ -178,7 +127,7 @@ export default function FacultyExamsPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">Loading exams...</TableCell></TableRow>
               ) : exams.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">No exams authored yet. Click "+ Create Exam" to begin.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">No exams authored yet. Click "+ 4-Step AI Exam Wizard" to begin.</TableCell></TableRow>
               ) : (
                 exams.map((exam) => (
                   <TableRow key={exam.id}>
@@ -198,10 +147,20 @@ export default function FacultyExamsPage() {
                         {exam.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right space-x-1.5">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setSelectedExamForCreds(exam)}
+                        className="h-8 text-xs gap-1 rounded-[40px] px-2.5 text-[#554e7b] hover:text-[#5266eb]"
+                        title="View Invigilator Access Credentials"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="hidden sm:inline">Invigilator Key</span>
+                      </Button>
                       <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420]">
                         <Link to={`/faculty/exams/${exam.id}`}>
-                          <Settings className="w-3.5 h-3.5 text-[#5266eb]" /> Manage Exam
+                          <Settings className="w-3.5 h-3.5 text-[#5266eb]" /> Manage
                         </Link>
                       </Button>
                     </TableCell>
@@ -212,6 +171,18 @@ export default function FacultyExamsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <ExamWizardModal
+        isOpen={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onExamCreated={handleExamCreated}
+      />
+
+      <ExamCredentialsModal
+        isOpen={!!selectedExamForCreds}
+        onClose={() => setSelectedExamForCreds(null)}
+        exam={selectedExamForCreds}
+      />
     </DashboardShell>
   )
 }

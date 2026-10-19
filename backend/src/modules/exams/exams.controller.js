@@ -86,17 +86,31 @@ async function getStudentExams(req, res, next) {
   try {
     const { prisma } = require('../../infra/postgres/client')
     const studentId = req.user?.id
-    const [exams, attempts] = await Promise.all([
+    const [allExams, attempts, userRec, assignments] = await Promise.all([
       examService.listExams({ role: 'STUDENT' }),
-      studentId ? prisma.examAttempt.findMany({ where: { studentId } }) : []
+      studentId ? prisma.examAttempt.findMany({ where: { studentId } }) : [],
+      studentId ? prisma.user.findUnique({ where: { id: studentId }, select: { profileMetadata: true } }) : null,
+      studentId ? prisma.examAssignment.findMany({ where: { userId: studentId } }) : []
     ])
 
-    const attemptMap = new Map()
-    for (const a of attempts) {
-      attemptMap.set(a.examId, a)
-    }
+    const sMeta = userRec?.profileMetadata || {}
+    const sDept = String(sMeta.department || '').toLowerCase()
+    const sSem = String(sMeta.semester || '').replace(/sem\s*/i, '').trim()
+    const assignedIds = new Set(assignments.map(a => a.examId))
+    const attemptMap = new Map(attempts.map(a => [a.examId, a]))
 
-    const formatted = (exams || []).map(e => {
+    const filtered = (allExams || []).filter(e => {
+      if (assignedIds.has(e.id)) return true
+      const pConfig = e.proctoringConfig || {}
+      const eDept = String(pConfig.department || '').toLowerCase()
+      const eSem = String(pConfig.semester || '').replace(/sem\s*/i, '').trim()
+      if (!eDept && !eSem) return true
+      const matchesDept = !eDept || sDept.includes(eDept) || eDept.includes(sDept)
+      const matchesSem = !eSem || sSem === eSem
+      return matchesDept && matchesSem
+    })
+
+    const formatted = filtered.map(e => {
       const att = attemptMap.get(e.id)
       return {
         ...e,

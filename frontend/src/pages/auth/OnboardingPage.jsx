@@ -52,19 +52,31 @@ export default function OnboardingPage() {
   }
 
   const handleFinalSubmit = async (idCardKey) => {
+    if (!formData.password || formData.password.length < 8) {
+      setGlobalError('New permanent password must be at least 8 characters long.')
+      return
+    }
     setSubmitting(true)
     setGlobalError('')
 
     try {
       const payload = {
+        newPassword: formData.password,
         password: formData.password,
+        fullName: formData.fullName || user?.fullName,
         institutionId: formData.institutionId,
         department: formData.department,
         semester: formData.semester,
         designation: formData.designation,
         phone: formData.phone,
         referencePhotoKey: formData.referencePhotoKey,
-        idCardPhotoKey: idCardKey
+        idCardPhotoKey: idCardKey,
+        profileMetadata: {
+          department: formData.department,
+          semester: formData.semester,
+          designation: formData.designation,
+          phone: formData.phone
+        }
       }
 
       const res = await api.post('/auth/onboarding', payload)

@@ -61,6 +61,10 @@ router.patch('/admin/faculty/:id/unsuspend', authenticateToken, usersController.
 router.post('/admin/bulk-upload/parse', authenticateToken, usersController.uploadMiddleware, usersController.bulkParse)
 router.post('/admin/bulk-upload/confirm', authenticateToken, usersController.bulkConfirm)
 
+// Cohort preview count
+router.get('/students/count', authenticateToken, usersController.getStudentsCount)
+router.get('/users/students/count', authenticateToken, usersController.getStudentsCount)
+
 // Standard User Endpoints
 router.get('/', authenticateToken, requireRole('ADMIN', 'FACULTY'), usersController.listUsers)
 router.get('/users', authenticateToken, requireRole('ADMIN', 'FACULTY'), usersController.listUsers)
