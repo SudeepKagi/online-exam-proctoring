@@ -18,6 +18,8 @@
     "db:migrate": "npx prisma migrate dev --schema=backend/prisma/schema.prisma",
     "db:migrate:deploy": "npx prisma migrate deploy --schema=backend/prisma/schema.prisma",
     "db:seed": "node backend/prisma/seed/admin.js",
+    "typecheck": "npm run typecheck --workspace=frontend && npm run typecheck --workspace=backend",
+    "lint": "npm run lint --workspace=frontend && npm run lint --workspace=backend",
     "test": "npm test --workspace=backend",
     "test:backend": "npm test --workspace=backend",
     "test:e2e": "playwright test",

@@ -34,7 +34,7 @@ Login URL: ${window.location.origin}/login`
   }
 
   const downloadSlip = (format = 'txt') => {
-    let content = ''
+    let content
     let filename = `Exam_Credentials_${publishConfig.examCode || 'Slip'}.${format}`
     let mimeType = 'text/plain'
 

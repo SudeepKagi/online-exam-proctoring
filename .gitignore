@@ -46,8 +46,11 @@ build/
 *.tar
 *.zip
 
-# Logs
+# Logs & Coverage
 *.log
+coverage/
+**/coverage/
+*.csv
 
 # OS files
 .DS_Store

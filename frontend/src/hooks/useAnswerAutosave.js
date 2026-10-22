@@ -12,10 +12,27 @@ export function useAnswerAutosave({ attemptId, onFlushSuccess, onFlushError } = 
   const [lastSavedAt, setLastSavedAt] = useState(null)
   const isFlushingRef = useRef(false)
 
+  // Restore offline queued answers on mount
+  useEffect(() => {
+    if (!attemptId) return
+    try {
+      const cached = localStorage.getItem(`pn_offline_answers_${attemptId}`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        dirtyAnswers.current = { ...parsed, ...dirtyAnswers.current }
+      }
+    } catch (_) {}
+  }, [attemptId])
+
   const recordAnswer = useCallback((questionId, selectedOptionIndex, isBookmarked = false) => {
     if (!questionId) return
     dirtyAnswers.current[questionId] = { selectedOptionIndex, isBookmarked }
-  }, [])
+    if (attemptId) {
+      try {
+        localStorage.setItem(`pn_offline_answers_${attemptId}`, JSON.stringify(dirtyAnswers.current))
+      } catch (_) {}
+    }
+  }, [attemptId])
 
   const flushDirtyAnswers = useCallback(async () => {
     if (!attemptId || isFlushingRef.current) return
@@ -34,6 +51,13 @@ export function useAnswerAutosave({ attemptId, onFlushSuccess, onFlushError } = 
           delete dirtyAnswers.current[qId]
         }
       }
+      try {
+        if (Object.keys(dirtyAnswers.current).length === 0) {
+          localStorage.removeItem(`pn_offline_answers_${attemptId}`)
+        } else {
+          localStorage.setItem(`pn_offline_answers_${attemptId}`, JSON.stringify(dirtyAnswers.current))
+        }
+      } catch (_) {}
       const now = new Date()
       setLastSavedAt(now)
       if (onFlushSuccess) onFlushSuccess(now)
@@ -53,6 +77,17 @@ export function useAnswerAutosave({ attemptId, onFlushSuccess, onFlushError } = 
       }
     }, 5000)
     return () => clearInterval(timer)
+  }, [flushDirtyAnswers])
+
+  // Sync queued answers when network resumes (online event)
+  useEffect(() => {
+    const handleOnline = () => {
+      if (Object.keys(dirtyAnswers.current).length > 0) {
+        flushDirtyAnswers()
+      }
+    }
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
   }, [flushDirtyAnswers])
 
   // Flush on visibilitychange (e.g. background tab or app switch)

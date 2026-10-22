@@ -16,12 +16,12 @@ export function FormField({
     <div className={`space-y-1.5 font-sans ${className}`}>
       {label && (
         <div className="flex items-center justify-between">
-          <Label htmlFor={htmlFor} className="text-xs font-bold text-slate-800 flex items-center">
+          <Label htmlFor={htmlFor} className="text-xs font-[420] text-[#28253b] flex items-center">
             {label}
             {required && <span className="text-rose-500 ml-0.5" aria-hidden="true">*</span>}
           </Label>
           {action && (
-            <div className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+            <div className="text-xs font-[420] text-[#5266eb] hover:text-[#4353c7]">
               {action}
             </div>
           )}

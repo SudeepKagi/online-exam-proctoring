@@ -5,7 +5,7 @@ export async function uploadMediaFile(fileOrBlob, purpose = 'REFERENCE_PHOTO') {
   const contentType = fileOrBlob.type || 'image/jpeg'
   const bytes = fileOrBlob.size || 1024 * 1024
 
-  let key = null
+  let key
   let uploadUrl = null
 
   try {
@@ -125,7 +125,7 @@ export function dataUrlToBlob(dataUrl) {
 }
 
 export async function uploadVerificationImage(fileOrBlob, category = 'FACE') {
-  let base64String = ''
+  let base64String
   if (typeof fileOrBlob === 'string' && fileOrBlob.startsWith('data:image/')) {
     base64String = fileOrBlob
   } else {

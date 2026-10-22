@@ -1,4 +1,5 @@
 const { prisma } = require('../../infra/postgres/client')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 
 function mapExamRecord(exam) {
   if (!exam) return null
@@ -52,7 +53,7 @@ async function listExams(filter = {}) {
     where.createdById = filter.createdById || filter.createdBy
   } else if (filter.status) {
     where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status
-  } else if (filter.role === 'STUDENT') {
+  } else if (normalizeRole(filter.role) === ROLES.STUDENT) {
     where.status = { in: ['PUBLISHED', 'ACTIVE'] }
   }
 
@@ -93,7 +94,7 @@ async function addQuestion({ examId, questionText, options, correctOptionIndex, 
 }
 
 async function getQuestionsByExamId(examId, includeAnswer = true) {
-  let list = null
+  let list
   const cached = questionsCache.get(examId)
   if (cached && Date.now() - cached.ts < 10000) {
     list = cached.val
@@ -105,17 +106,27 @@ async function getQuestionsByExamId(examId, includeAnswer = true) {
     questionsCache.set(examId, { val: list, ts: Date.now() })
   }
 
-  return list.map(q => ({
-    id: q.id,
-    examId: q.examId,
-    questionText: q.questionText,
-    options: q.options,
-    correctOptionIndex: includeAnswer ? q.correctOptionIndex : undefined,
-    marks: q.marks,
-    negativeMarks: q.negativeMarks,
-    order: q.displayOrder,
-    displayOrder: q.displayOrder
-  }))
+  return list.map(q => {
+    let cleanOptions = q.options
+    if (!includeAnswer && cleanOptions && typeof cleanOptions === 'object' && !Array.isArray(cleanOptions)) {
+      const { correctIndices: _ci, ...rest } = cleanOptions
+      cleanOptions = rest
+    }
+    const res = {
+      id: q.id,
+      examId: q.examId,
+      questionText: q.questionText,
+      options: cleanOptions,
+      marks: q.marks,
+      negativeMarks: q.negativeMarks,
+      order: q.displayOrder,
+      displayOrder: q.displayOrder
+    }
+    if (includeAnswer) {
+      res.correctOptionIndex = q.correctOptionIndex
+    }
+    return res
+  })
 }
 
 async function deleteQuestion(questionId) {

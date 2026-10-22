@@ -28,15 +28,24 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.data?.error) {
-      const errObj = error.response.data.error
-      if (typeof errObj === 'object' && errObj !== null) {
-        error.code = errObj.code || error.code
-        error.message = errObj.message || errObj.code || error.message
-      } else if (typeof errObj === 'string') {
-        error.message = errObj
-      }
+    const data = error.response?.data
+    if (data) {
+      error.code = data.code || data.error?.code || error.code
+      error.message = data.message || data.error?.message || data.error || error.message
     }
+
+    if (error.response?.status === 401) {
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        try {
+          localStorage.removeItem('user')
+          localStorage.removeItem('auth')
+        } catch (_) {}
+        window.location.href = '/login'
+      }
+    } else if (!error.response && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('app:network-offline', { detail: { error } }))
+    }
+
     return Promise.reject(error)
   }
 )

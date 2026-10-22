@@ -11,6 +11,7 @@
     "test": "node --test tests/*.test.js",
     "test:boot-smoke": "node ../../scripts/ci/boot-smoke.js",
     "lint": "eslint src/",
+    "typecheck": "tsc -p jsconfig.json --noEmit",
     "seed": "node prisma/seed/admin.js",
     "migrate": "npx prisma migrate dev",
     "migrate:deploy": "npx prisma migrate deploy",

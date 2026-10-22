@@ -38,10 +38,16 @@ async function createOrGetReadinessAttempt(examId, studentId) {
   }
 }
 
-async function startAttempt(attemptId, durationMinutes) {
+async function startAttempt(attemptId, durationMinutes, examEndTime = null) {
   const dur = Math.max(1, Number(durationMinutes) || 60)
   const now = new Date()
-  const expiresAt = new Date(now.getTime() + dur * 60 * 1000)
+  let expiresAt = new Date(now.getTime() + dur * 60 * 1000)
+  if (examEndTime) {
+    const end = new Date(examEndTime)
+    if (!isNaN(end.getTime()) && end < expiresAt) {
+      expiresAt = end
+    }
+  }
 
   return prisma.examAttempt.update({
     where: { id: attemptId },
@@ -56,7 +62,16 @@ async function startAttempt(attemptId, durationMinutes) {
 async function upsertAnswer(attemptId, questionId, selectedOptionIndex, isBookmarked) {
   const data = {}
   if (selectedOptionIndex !== undefined && selectedOptionIndex !== null) {
-    data.selectedOptionIndex = Number(selectedOptionIndex)
+    if (Array.isArray(selectedOptionIndex)) {
+      let mask = 0
+      selectedOptionIndex.forEach(idx => {
+        const n = Number(idx)
+        if (!isNaN(n) && n >= 0 && n <= 10) mask |= (1 << n)
+      })
+      data.selectedOptionIndex = 100 + mask
+    } else {
+      data.selectedOptionIndex = Number(selectedOptionIndex)
+    }
   }
   if (isBookmarked !== undefined) {
     data.isBookmarked = Boolean(isBookmarked)
@@ -111,7 +126,40 @@ async function submitAndGradeAttempt(attemptId) {
   let totalScore = 0
   for (const ans of attempt.answers || []) {
     const q = questionsMap.get(ans.questionId)
-    if (q) {
+    if (!q) continue
+
+    const opts = q.options
+    const isMulti = opts && typeof opts === 'object' && !Array.isArray(opts) && opts.type === 'MULTI_SELECT'
+
+    if (isMulti) {
+      const correctIndices = Array.isArray(opts.correctIndices) ? opts.correctIndices : [q.correctOptionIndex]
+      let selected = []
+      if (ans.selectedOptionIndex !== null && ans.selectedOptionIndex !== undefined) {
+        if (ans.selectedOptionIndex >= 100) {
+          const mask = ans.selectedOptionIndex - 100
+          for (let bit = 0; bit <= 10; bit++) {
+            if ((mask & (1 << bit)) !== 0) selected.push(bit)
+          }
+        } else {
+          selected = [ans.selectedOptionIndex]
+        }
+      }
+
+      if (selected.length === 0) {
+        // Unattempted: 0 marks
+        continue
+      }
+
+      const hasWrong = selected.some(idx => !correctIndices.includes(idx))
+      if (hasWrong) {
+        totalScore -= Math.abs(Number(q.negativeMarks || 0))
+      } else if (selected.length === correctIndices.length && selected.every(idx => correctIndices.includes(idx))) {
+        totalScore += Number(q.marks || 1)
+      } else {
+        const partialPerOpt = Number(opts.partialMark || (Number(q.marks || 1) / correctIndices.length))
+        totalScore += (selected.length * partialPerOpt)
+      }
+    } else {
       if (ans.selectedOptionIndex === q.correctOptionIndex) {
         totalScore += Number(q.marks || 1)
       } else if (ans.selectedOptionIndex !== null && ans.selectedOptionIndex !== undefined) {
@@ -120,7 +168,7 @@ async function submitAndGradeAttempt(attemptId) {
     }
   }
 
-  totalScore = Math.max(0, totalScore)
+  totalScore = Math.round(Math.max(0, totalScore) * 100) / 100
 
   return prisma.examAttempt.update({
     where: { id: attemptId },

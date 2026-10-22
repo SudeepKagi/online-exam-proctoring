@@ -6,12 +6,12 @@ const { extractTokenFromReq } = require('../../utils/cookies')
 function authenticateToken(req, res, next) {
   const token = extractTokenFromReq(req)
   if (!token) {
-    return res.status(401).json({ error: { message: 'Authentication required' } })
+    return res.status(401).json({ code: 'TOKEN_REQUIRED', message: 'Authentication required', error: { message: 'Authentication required' } })
   }
 
   const decoded = authService.verifyToken(token)
   if (!decoded) {
-    return res.status(401).json({ error: { message: 'Invalid or expired token' } })
+    return res.status(401).json({ code: 'TOKEN_INVALID', message: 'Invalid or expired token', error: { message: 'Invalid or expired token' } })
   }
 
   req.user = decoded
@@ -21,12 +21,12 @@ function authenticateToken(req, res, next) {
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({ error: { message: 'Authentication required' } })
+      return res.status(401).json({ code: 'TOKEN_REQUIRED', message: 'Authentication required', error: { message: 'Authentication required' } })
     }
     const userRole = String(req.user.role || '').toUpperCase()
     const allowed = roles.map(r => String(r).toUpperCase())
     if (!allowed.includes(userRole)) {
-      return res.status(403).json({ error: { message: 'Insufficient permissions' } })
+      return res.status(403).json({ code: 'FORBIDDEN', message: 'Insufficient permissions', error: { message: 'Insufficient permissions' } })
     }
     next()
   }

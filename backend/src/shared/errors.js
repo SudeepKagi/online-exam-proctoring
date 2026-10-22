@@ -84,45 +84,26 @@ function toErrorEnvelope(err, requestId = null) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
   const reqId = requestId || err.requestId || crypto.randomUUID()
 
+  let code = err.code || (statusCode === 404 ? 'NOT_FOUND' : statusCode >= 500 ? 'INTERNAL' : 'BAD_REQUEST')
+  let message = err.message || (statusCode >= 500 ? 'Something went wrong' : 'An error occurred')
+  const details = err.details || (err.retryAfter ? { retryAfter: err.retryAfter } : [])
+
   if (statusCode === 503 || err.code === 'SERVICE_UNAVAILABLE') {
-    const envelope = {
-      error: {
-        code: err.code || 'SERVICE_UNAVAILABLE',
-        message: err.message || 'Service temporarily unavailable, please retry'
-      },
-      requestId: reqId
-    }
-    if (err.retryAfter || err.details) {
-      envelope.error.details = err.details || { retryAfter: err.retryAfter }
-    }
-    return envelope
+    code = err.code || 'SERVICE_UNAVAILABLE'
+    message = err.message || 'Service temporarily unavailable, please retry'
   }
 
-  if (statusCode >= 500) {
-    return {
-      error: {
-        code: 'INTERNAL',
-        message: 'Something went wrong'
-      },
-      requestId: reqId
-    }
-  }
-
-  const code = err.code || (statusCode === 404 ? 'NOT_FOUND' : 'BAD_REQUEST')
-  const message = err.message || 'An error occurred'
-  const envelope = {
+  return {
+    code,
+    message,
+    details,
     error: {
       code,
-      message
+      message,
+      details
     },
     requestId: reqId
   }
-
-  if (err.details) {
-    envelope.error.details = err.details
-  }
-
-  return envelope
 }
 
 module.exports = {

@@ -16,24 +16,28 @@ export class ApiReadHelper {
     this.baseUrl = baseUrl
   }
 
-  private async request(method: string, path: string) {
+  private async request(method: string, path: string, options: any = {}) {
     const cookies = await this.actor.context.cookies()
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
 
+    const headers: Record<string, string> = {
+      'Cookie': cookieHeader,
+      'Accept': 'application/json',
+      ...(options.headers || {})
+    }
+
     const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
       method,
-      headers: {
-        'Cookie': cookieHeader,
-        'Accept': 'application/json'
-      }
+      headers,
+      ...options
     })
 
     const body = await res.json().catch(() => null)
     return { status: res.status(), body }
   }
 
-  async getRaw(path: string) {
-    return this.request('GET', path)
+  async getRaw(path: string, options: any = {}) {
+    return this.request('GET', path, options)
   }
 
   async getAdminDepartments() {
@@ -80,18 +84,22 @@ export class ApiReadHelper {
     return this.request('GET', `/api/v1/faculty/exams/${examId}/results`)
   }
 
-  async postRaw(path: string, payload: any = {}) {
+  async postRaw(path: string, payload: any = {}, options: any = {}) {
     const cookies = await this.actor.context.cookies()
     const cookieHeader = cookies.map(c => `${c.name}=${c.value}`).join('; ')
 
+    const headers: Record<string, string> = {
+      'Cookie': cookieHeader,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      ...(options.headers || {})
+    }
+
     const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
-      headers: {
-        'Cookie': cookieHeader,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      data: JSON.stringify(payload)
+      headers,
+      data: JSON.stringify(payload),
+      ...options
     })
 
     const body = await res.json().catch(() => null)

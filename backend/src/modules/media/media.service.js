@@ -138,7 +138,7 @@ class MediaService {
     }
 
     let contentType = 'image/jpeg'
-    let base64Data = imageBase64
+    let base64Data
     if (imageBase64.includes(';base64,')) {
       const parts = imageBase64.split(';base64,')
       contentType = parts[0].replace(/^data:/, '') || 'image/jpeg'

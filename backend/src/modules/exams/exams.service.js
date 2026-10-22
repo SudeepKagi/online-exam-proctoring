@@ -182,21 +182,29 @@ class ExamService {
   }
 
   async addQuestion(examId, data) {
-    const { questionText, options, correctOptionIndex, marks, negativeMarks, order } = data
-    if (!questionText || !options || correctOptionIndex === undefined) {
+    const { questionText, options, marks, negativeMarks, order } = data
+    const isMultiObj = options && typeof options === 'object' && !Array.isArray(options) && Array.isArray(options.choices)
+    const choicesList = isMultiObj ? options.choices : options
+
+    let correctIdx = data.correctOptionIndex
+    if (correctIdx === undefined && isMultiObj && Array.isArray(options.correctIndices)) {
+      correctIdx = options.correctIndices[0] ?? 0
+    }
+
+    if (!questionText || !options || correctIdx === undefined) {
       const err = new Error('questionText, options, and correctOptionIndex are required')
       err.status = 400
       throw err
     }
 
-    if (!Array.isArray(options) || options.length !== 4) {
-      const err = new Error('Strict MCQ requirement: options must be an array of exactly 4 choices')
+    if (!Array.isArray(choicesList) || choicesList.length !== 4) {
+      const err = new Error('Strict MCQ requirement: options must provide exactly 4 choices')
       err.status = 400
       throw err
     }
 
-    const correctIdx = parseInt(correctOptionIndex, 10)
-    if (isNaN(correctIdx) || correctIdx < 0 || correctIdx > 3) {
+    const parsedCorrect = parseInt(correctIdx, 10)
+    if (isNaN(parsedCorrect) || parsedCorrect < 0 || parsedCorrect > 3) {
       const err = new Error('correctOptionIndex must be an integer between 0 and 3')
       err.status = 400
       throw err
@@ -206,7 +214,7 @@ class ExamService {
       examId,
       questionText,
       options,
-      correctOptionIndex: correctIdx,
+      correctOptionIndex: parsedCorrect,
       marks: Number(marks) || 1,
       negativeMarks: Number(negativeMarks) || 0,
       order: Number(order) || 0

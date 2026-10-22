@@ -18,7 +18,7 @@ class ExamWizardService {
       throw err
     }
 
-    let extractedText = ''
+    let extractedText
     try {
       const pdfParse = require('pdf-parse')
       const parsed = await pdfParse(buffer)

@@ -3,6 +3,7 @@ const examsSql = require('../exams/exams.sql')
 const { prisma } = require('../../infra/postgres/client')
 const { socketEmitter } = require('../../infra/websocket/emitter')
 const { ROLES, normalizeRole } = require('../../shared/roles')
+const { logger } = require('../../shared/logging')
 
 class AttemptService {
   async getReadiness(examId, studentId) {
@@ -35,6 +36,20 @@ class AttemptService {
       throw err
     }
 
+    const now = new Date()
+    if (exam.startTime && now < new Date(exam.startTime)) {
+      const err = new Error('Exam is not open yet')
+      err.code = 'EXAM_NOT_OPEN'
+      err.status = 403
+      throw err
+    }
+    if (exam.endTime && now > new Date(exam.endTime)) {
+      const err = new Error('Exam window has ended')
+      err.code = 'EXAM_ENDED'
+      err.status = 403
+      throw err
+    }
+
     let attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
     if (!attempt) {
       attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
@@ -42,12 +57,13 @@ class AttemptService {
 
     if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status)) {
       const err = new Error('Attempt is already finalized')
+      err.code = 'ATTEMPT_ALREADY_FINALIZED'
       err.status = 409
       throw err
     }
 
     if (attempt.status === 'NOT_STARTED') {
-      attempt = await attemptsSql.startAttempt(attempt.id, exam.duration)
+      attempt = await attemptsSql.startAttempt(attempt.id, exam.duration || exam.durationMinutes, exam.endTime)
     }
 
     const questions = await examsSql.getQuestionsByExamId(examId, false)
@@ -62,7 +78,7 @@ class AttemptService {
   }
 
   async getAttemptState(attemptId, userId, role) {
-    const attempt = await attemptsSql.findAttemptById(attemptId)
+    let attempt = await attemptsSql.findAttemptById(attemptId)
     if (!attempt) {
       const err = new Error('Attempt not found')
       err.status = 404
@@ -73,6 +89,15 @@ class AttemptService {
       const err = new Error('Access denied to this attempt')
       err.status = 403
       throw err
+    }
+
+    if (attempt.status === 'IN_PROGRESS' && attempt.expiresAt && new Date() > new Date(attempt.expiresAt)) {
+      await attemptsSql.submitAndGradeAttempt(attemptId)
+      attempt = await prisma.examAttempt.update({
+        where: { id: attemptId },
+        data: { status: 'TIMED_OUT' },
+        include: { exam: true }
+      })
     }
 
     const answers = await attemptsSql.getAttemptAnswers(attemptId)
@@ -186,6 +211,38 @@ class AttemptService {
     } catch (_) {}
     return updated
   }
+
+  async autoSubmitExpiredAttempts() {
+    const expired = await prisma.examAttempt.findMany({
+      where: {
+        status: 'IN_PROGRESS',
+        expiresAt: { lt: new Date() }
+      },
+      select: { id: true, studentId: true, examId: true }
+    })
+
+    const results = []
+    for (const att of expired) {
+      try {
+        const graded = await attemptsSql.submitAndGradeAttempt(att.id)
+        await prisma.examAttempt.update({
+          where: { id: att.id },
+          data: { status: 'TIMED_OUT' }
+        })
+        try {
+          socketEmitter.emitToInvigilators(att.examId, 'student:auto_submitted', {
+            attemptId: att.id,
+            studentId: att.studentId,
+            score: graded.score
+          })
+        } catch (_) {}
+        results.push({ id: att.id, score: graded.score })
+      } catch (e) {
+        logger.error({ attemptId: att.id, err: e.message }, 'Failed to auto-submit expired attempt')
+      }
+    }
+    return results
+  }
 }
 
 const ATTEMPT_STATUS = Object.freeze({
@@ -207,6 +264,13 @@ const ALLOWED_TRANSITIONS = Object.freeze({
 })
 
 const attemptService = new AttemptService()
+
+// Background Expiration Worker: checks every 10s for expired attempts
+const expirationInterval = setInterval(() => {
+  attemptService.autoSubmitExpiredAttempts().catch(() => {})
+}, 10000)
+if (expirationInterval.unref) expirationInterval.unref()
+
 module.exports = {
   attemptService,
   AttemptService,

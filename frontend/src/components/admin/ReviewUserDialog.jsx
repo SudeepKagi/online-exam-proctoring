@@ -107,7 +107,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
             <span className="font-[400] text-[#554e7b]">{meta.department || '—'}</span>
           </div>
           <div>
-            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]{isStudent ? 'Semester' : 'Designation'}</span>
+            <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">{isStudent ? 'Semester' : 'Designation'}</span>
             <span className="font-[400] text-[#554e7b]">{isStudent ? `Sem ${meta.semester || '—'}` : (meta.designation || '—')}</span>
           </div>
         </div>

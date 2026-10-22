@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "lint:error31": "node scripts/lint-react-error31.cjs",
+    "typecheck": "tsc -p jsconfig.json --noEmit",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -126,6 +126,20 @@ app.use('/api', (req, res, next) => {
   return v1Router(req, res, next)
 })
 
+// Production Static Bundle Serving & SPA Fallback
+const path = require('path')
+const fs = require('fs')
+const frontendDist = path.resolve(__dirname, '../../frontend/dist')
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/internal') || req.path.startsWith('/socket.io') || req.path.startsWith('/health')) {
+      return next()
+    }
+    return res.sendFile(path.join(frontendDist, 'index.html'))
+  })
+}
+
 app.use((req, res) => {
   res.status(404).json({
     error: { code: 'NOT_FOUND', message: `Route ${req.method} ${req.path} not found` },

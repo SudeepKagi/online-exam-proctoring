@@ -30,6 +30,7 @@ export default function ExamArenaPage() {
   const [violationCount, setViolationCount] = useState(0)
 
   const handleSubmitExam = async () => {
+    if (submitting) return
     setSubmitting(true)
     try {
       if (flushDirtyAnswers) await flushDirtyAnswers()
@@ -78,6 +79,37 @@ export default function ExamArenaPage() {
       setAttempt(att)
       if (att?.violationCount) setViolationCount(att.violationCount)
       if (att?.status === 'SUSPENDED') setIsSuspended(true)
+
+      const serverAnswers = startRes.data?.answers
+      if (Array.isArray(serverAnswers)) {
+        const restored = {}
+        const restoredBm = {}
+        serverAnswers.forEach(a => {
+          if (a.questionId) {
+            if (a.selectedOptionIndex !== null && a.selectedOptionIndex !== undefined) {
+              restored[a.questionId] = a.selectedOptionIndex
+            }
+            if (a.isBookmarked) {
+              restoredBm[a.questionId] = true
+            }
+          }
+        })
+        try {
+          if (att?.id) {
+            const cached = localStorage.getItem(`pn_offline_answers_${att.id}`)
+            if (cached) {
+              const parsed = JSON.parse(cached)
+              Object.keys(parsed).forEach(qId => {
+                if (parsed[qId]?.selectedOptionIndex !== undefined) {
+                  restored[qId] = parsed[qId].selectedOptionIndex
+                }
+              })
+            }
+          }
+        } catch (_) {}
+        setAnswers(prev => ({ ...restored, ...prev }))
+        setBookmarks(prev => ({ ...restoredBm, ...prev }))
+      }
     }).finally(() => { if (mounted) setLoading(false) })
     return () => { mounted = false }
   }, [id])
@@ -226,12 +258,12 @@ export default function ExamArenaPage() {
       </Dialog>
 
       {isSuspended && (
-        <div className="fixed inset-0 z-50 bg-[#171721]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#ededf3] text-center font-sans">
-          <div className="w-16 h-16 rounded-full bg-red-600/20 text-red-500 flex items-center justify-center mb-4 border border-red-500/30">
+        <div className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans">
+          <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
             <AlertTriangle className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-[480] text-[#ededf3] mb-2">Examination Session Suspended</h2>
-          <p className="text-sm font-[360] text-[#c3c3cc] max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
+          <h2 className="text-xl font-[480] text-[#28253b] mb-2">Examination Session Suspended</h2>
+          <p className="text-sm font-[360] text-[#554e7b] max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
         </div>
       )}
 

@@ -32,8 +32,8 @@ function registerSocketEvents(io, socket, latestScreenFrames) {
     const checkInterval = setInterval(async () => {
       if (!socket.connected) return clearInterval(checkInterval)
       try {
-        const user = await prisma.user.findUnique({ where: { id: socket.user.id }, select: { id: true, isSuspended: true } })
-        if (!user || user.isSuspended) {
+        const user = await prisma.user.findUnique({ where: { id: socket.user.id }, select: { id: true, status: true } })
+        if (!user || user.status === 'SUSPENDED') {
           logger.warn({ userId: socket.user.id }, 'Socket user suspended; disconnecting socket')
           socket.emit('session:revoked', { reason: 'SUSPENDED' })
           socket.disconnect(true)

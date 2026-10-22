@@ -1,5 +1,6 @@
 const bcrypt = require('bcryptjs')
 const { prisma } = require('../../infra/postgres/client')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 const { parseExcelBuffer } = require('./users.excel')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
 
@@ -101,7 +102,8 @@ class UsersService {
     const targetRole = String(role).toUpperCase()
     const rawPassword = password || 'Default#1234'
     const passwordHash = await bcrypt.hash(rawPassword, 10)
-    const initialStatus = status || (targetRole === 'ADMIN' || targetRole === 'INVIGILATOR' ? 'ACTIVE' : 'PENDING_SETUP')
+    const normalized = normalizeRole(targetRole)
+    const initialStatus = status || (normalized === ROLES.ADMIN || normalized === ROLES.INVIGILATOR ? 'ACTIVE' : 'PENDING_SETUP')
 
     const user = await prisma.user.create({
       data: {
@@ -112,7 +114,7 @@ class UsersService {
         institutionId: (institutionId || usn || '').trim() || null,
         referencePhotoKey: referencePhotoKey || null,
         idCardPhotoKey: idCardPhotoKey || null,
-        profileMetadata: profileMetadata || (targetRole === 'INVIGILATOR' ? { generatedPasswordHint: rawPassword } : {}),
+        profileMetadata: profileMetadata || (normalized === ROLES.INVIGILATOR ? { generatedPasswordHint: rawPassword } : {}),
         status: initialStatus
       },
       select: USER_FIELDS
