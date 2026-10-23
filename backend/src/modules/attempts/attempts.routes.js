@@ -25,6 +25,7 @@ router.post('/:attemptId/submit', authenticateToken, attemptsController.submitAt
 // Invigilator Actions
 router.post('/:attemptId/suspend', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.suspendAttempt)
 router.post('/:attemptId/resume', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.resumeAttempt)
+router.post('/:attemptId/terminate', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.terminateAttempt)
 
 // VPN Status Hook
 router.get('/:attemptId/vpn-status', authenticateToken, attemptsController.getVpnStatus)

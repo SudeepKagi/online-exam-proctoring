@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
-import { setScreenStream, clearScreenStream } from '@/lib/screenStreamStore'
+import { setScreenStream, clearScreenStream, setCameraStream } from '@/lib/screenStreamStore'
 import { Monitor, Maximize, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react'
 
 export default function PreExamCheckPage() {
@@ -52,9 +52,9 @@ export default function PreExamCheckPage() {
     }
     return () => {
       active = false
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
+      // Do not stop stream if user advanced to step 2/3
+      if (step === 1 && streamRef.current && !screenStreamRef.current) {
+        // cleanup if component unmounted while still on step 1
       }
     }
   }, [step, isWindowLocked])
@@ -73,11 +73,13 @@ export default function PreExamCheckPage() {
 
       await apiClient.post('/media/verify-face', { image: imageBase64, examId: id }).catch(() => {})
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
+        setCameraStream(streamRef.current)
       }
       setStep(2)
     } catch (_) {
+      if (streamRef.current) {
+        setCameraStream(streamRef.current)
+      }
       setStep(2)
     } finally {
       setLoading(false)

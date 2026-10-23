@@ -84,28 +84,28 @@ class AttemptService {
   async saveAnswer(attemptId, studentId, questionId, selectedOptionIndex, isBookmarked) {
     const attempt = await attemptsSql.findAttemptById(attemptId)
     if (!attempt) {
-      const err = new Error('Attempt not found')
-      err.status = 404
-      throw err
+      throw httpErr('Attempt not found', 404)
     }
 
     if (attempt.studentId !== studentId) {
-      const err = new Error('Unauthorized attempt mutation')
-      err.status = 403
-      throw err
+      throw httpErr('Unauthorized attempt mutation', 403)
+    }
+
+    if (attempt.violationCount >= 3) {
+      throw httpErr('Attempt has been terminated due to excessive violations.', 409, 'ATTEMPT_TERMINATED')
+    }
+
+    if (attempt.status === 'SUSPENDED') {
+      throw httpErr('Exam attempt is suspended by invigilator.', 409, 'ATTEMPT_SUSPENDED')
     }
 
     if (attempt.status !== 'IN_PROGRESS') {
-      const err = new Error(`Attempt is not active (current status: ${attempt.status})`)
-      err.status = 409
-      throw err
+      throw httpErr(`Attempt is not active (current status: ${attempt.status})`, 409, 'ATTEMPT_NOT_ACTIVE')
     }
 
     if (attempt.expiresAt && new Date() > new Date(attempt.expiresAt)) {
       await attemptsSql.updateAttemptStatus(attemptId, 'TIMED_OUT')
-      const err = new Error('Exam attempt duration has expired')
-      err.status = 409
-      throw err
+      throw httpErr('Exam attempt duration has expired', 409, 'ATTEMPT_EXPIRED')
     }
 
     return attemptsSql.upsertAnswer(attemptId, questionId, selectedOptionIndex, isBookmarked)
@@ -135,18 +135,18 @@ class AttemptService {
   async submitAttempt(attemptId, studentId) {
     const attempt = await attemptsSql.findAttemptById(attemptId)
     if (!attempt) {
-      const err = new Error('Attempt not found')
-      err.status = 404
-      throw err
+      throw httpErr('Attempt not found', 404)
     }
 
     if (attempt.studentId !== studentId) {
-      const err = new Error('Unauthorized attempt submission')
-      err.status = 403
-      throw err
+      throw httpErr('Unauthorized attempt submission', 403)
     }
 
-    if (attempt.status === 'SUBMITTED') {
+    if (attempt.status === 'SUSPENDED') {
+      throw httpErr('Cannot submit a suspended attempt.', 409, 'ATTEMPT_SUSPENDED')
+    }
+
+    if (attempt.status === 'SUBMITTED' || attempt.status === 'TIMED_OUT') {
       return { attempt, alreadySubmitted: true }
     }
 
@@ -174,6 +174,17 @@ class AttemptService {
   }
 
   async suspendAttempt(attemptId, invigilatorId, reason = 'Administrative suspension') {
+    const attempt = await attemptsSql.findAttemptById(attemptId)
+    if (!attempt) throw httpErr('Attempt not found', 404)
+
+    if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status) || attempt.violationCount >= 3) {
+      throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
+    if (attempt.status !== 'IN_PROGRESS') {
+      throw httpErr(`Attempt cannot be suspended from status ${attempt.status}`, 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
     const updated = await attemptsSql.updateAttemptStatus(attemptId, 'SUSPENDED')
     try {
       socketEmitter.emitToAttempt(attemptId, 'attempt:suspended', { reason, by: invigilatorId })
@@ -182,11 +193,48 @@ class AttemptService {
   }
 
   async resumeAttempt(attemptId, invigilatorId) {
+    const attempt = await attemptsSql.findAttemptById(attemptId)
+    if (!attempt) throw httpErr('Attempt not found', 404)
+
+    if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status) || attempt.violationCount >= 3) {
+      throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
+    if (attempt.status !== 'SUSPENDED') {
+      throw httpErr(`Attempt cannot be resumed from status ${attempt.status}`, 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
+    const exam = await examsSql.findExamById(attempt.examId)
+    const serverNow = new Date()
+    if (exam && exam.endTime && serverNow >= new Date(exam.endTime)) {
+      throw httpErr('Cannot resume attempt after exam end time.', 409, 'EXAM_ENDED')
+    }
+
     const updated = await attemptsSql.updateAttemptStatus(attemptId, 'IN_PROGRESS')
     try {
       socketEmitter.emitToAttempt(attemptId, 'attempt:resumed', { by: invigilatorId })
     } catch (_) {}
     return updated
+  }
+
+  async terminateAttempt(attemptId, invigilatorId, reason = 'Invigilator termination') {
+    const attempt = await attemptsSql.findAttemptById(attemptId)
+    if (!attempt) throw httpErr('Attempt not found', 404)
+
+    if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status)) {
+      throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
+    if (attempt.status !== 'IN_PROGRESS' && attempt.status !== 'SUSPENDED') {
+      throw httpErr(`Cannot terminate attempt with status ${attempt.status}`, 409, 'INVALID_ATTEMPT_TRANSITION')
+    }
+
+    const graded = await attemptsSql.submitAndGradeAttempt(attemptId)
+    try {
+      socketEmitter.emitToAttempt(attemptId, 'attempt:terminated', { reason, by: invigilatorId, attemptId })
+      socketEmitter.emitToInvigilators(attempt.examId, 'student:terminated', { attemptId, studentId: attempt.studentId, by: invigilatorId })
+    } catch (_) {}
+    return graded || attempt
   }
 
   async autoSubmitExpiredAttempts() {

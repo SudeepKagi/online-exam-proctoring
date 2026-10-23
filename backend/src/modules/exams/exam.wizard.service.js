@@ -70,14 +70,75 @@ class ExamWizardService {
       throw err
     }
 
-    if (!Array.isArray(questions) || questions.length === 0) {
-      const err = new Error('At least one question is required to publish an exam')
+    const start = new Date(startTime)
+    if (isNaN(start.getTime())) {
+      const err = new Error('Valid start time is required')
       err.status = 400
+      err.code = 'INVALID_EXAM_WINDOW'
+      throw err
+    }
+
+    const serverNow = new Date()
+    if (start < serverNow) {
+      const err = new Error('Exam start time cannot be in the past.')
+      err.status = 400
+      err.code = 'START_TIME_IN_PAST'
       throw err
     }
 
     const dur = Number(durationMinutes) || 60
-    const start = new Date(startTime)
+    if (dur <= 0) {
+      const err = new Error('Exam duration must be greater than 0 minutes.')
+      err.status = 400
+      err.code = 'DURATION_EXCEEDS_WINDOW'
+      throw err
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      const err = new Error('At least one question is required to publish an exam')
+      err.status = 400
+      err.code = 'EXAM_INCOMPLETE'
+      throw err
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      const text = q.questionText || q.prompt || ''
+      if (!text.trim()) {
+        const err = new Error(`Question ${i + 1} has empty text prompt.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      const opts = Array.isArray(q.options) ? q.options : []
+      if (opts.length < 2) {
+        const err = new Error(`Question ${i + 1} must have at least 2 options.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      if (opts.some(o => !String(o || '').trim())) {
+        const err = new Error(`Question ${i + 1} contains empty options.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      const marks = Number(q.marks || 1)
+      if (marks <= 0) {
+        const err = new Error(`Question ${i + 1} must have positive marks.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      const cIdx = Number(q.correctOptionIndex)
+      if (isNaN(cIdx) || cIdx < 0 || cIdx >= opts.length) {
+        const err = new Error(`Question ${i + 1} has invalid correct option index.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+    }
+
     const end = new Date(start.getTime() + dur * 60000)
 
     const cleanExamCode = examCode || `EXM-${cCode}-${Math.floor(100 + Math.random() * 900)}`

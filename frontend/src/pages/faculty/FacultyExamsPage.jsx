@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
-import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, KeyRound } from 'lucide-react'
+import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, KeyRound, Eye } from 'lucide-react'
 import ExamWizardModal from '@/components/faculty/ExamWizardModal'
 import ExamCredentialsModal from '@/components/faculty/ExamCredentialsModal'
 
@@ -129,43 +129,61 @@ export default function FacultyExamsPage() {
               ) : exams.length === 0 ? (
                 <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">No exams authored yet. Click "+ 4-Step AI Exam Wizard" to begin.</TableCell></TableRow>
               ) : (
-                exams.map((exam) => (
-                  <TableRow key={exam.id}>
-                    <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
-                    <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
-                    <TableCell className="text-[#554e7b] text-xs">
-                      {new Date(exam.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
-                      {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </TableCell>
-                    <TableCell className="text-[#554e7b] text-xs">{exam.durationMinutes}m</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`text-[10px] font-[420] border-0 ${
-                        exam.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
-                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
-                        'bg-[#fbfbff] text-[#70707d]'
-                      }`}>
-                        {exam.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right space-x-1.5">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setSelectedExamForCreds(exam)}
-                        className="h-8 text-xs gap-1 rounded-[40px] px-2.5 text-[#554e7b] hover:text-[#5266eb]"
-                        title="View Invigilator Access Credentials"
-                      >
-                        <KeyRound className="w-3.5 h-3.5 text-[#5266eb]" />
-                        <span className="hidden sm:inline">Invigilator Key</span>
-                      </Button>
-                      <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420]">
-                        <Link to={`/faculty/exams/${exam.id}`}>
-                          <Settings className="w-3.5 h-3.5 text-[#5266eb]" /> Manage
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
+                exams.map((exam) => {
+                  const now = Date.now()
+                  const start = exam.startTime ? new Date(exam.startTime).getTime() : 0
+                  const end = exam.endTime ? new Date(exam.endTime).getTime() : Infinity
+                  let lifecycle = 'DRAFT'
+                  if (exam.status !== 'DRAFT') {
+                    if (now > end || exam.status === 'COMPLETED') lifecycle = 'ENDED'
+                    else if (now >= start) lifecycle = 'LIVE'
+                    else lifecycle = 'SCHEDULED'
+                  }
+                  const isImmutable = lifecycle === 'LIVE' || lifecycle === 'ENDED' || (exam.attemptCount > 0)
+
+                  return (
+                    <TableRow key={exam.id}>
+                      <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
+                      <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
+                      <TableCell className="text-[#554e7b] text-xs">
+                        {new Date(exam.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}
+                        {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </TableCell>
+                      <TableCell className="text-[#554e7b] text-xs">{exam.durationMinutes}m</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={`text-[10px] font-[420] border-0 ${
+                          lifecycle === 'LIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                          lifecycle === 'SCHEDULED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                          lifecycle === 'ENDED' ? 'bg-[#edecfb] text-[#554e7b]' :
+                          'bg-[#fbfbff] text-[#70707d]'
+                        }`}>
+                          {lifecycle}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right space-x-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setSelectedExamForCreds(exam)}
+                          className="h-8 text-xs gap-1 rounded-[40px] px-2.5 text-[#554e7b] hover:text-[#5266eb]"
+                          title="View Invigilator Access Credentials"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-[#5266eb]" />
+                          <span className="hidden sm:inline">Invigilator Key</span>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420]">
+                          <Link to={`/faculty/exams/${exam.id}`}>
+                            {isImmutable ? (
+                              <><Eye className="w-3.5 h-3.5 text-[#5266eb]" /> View</>
+                            ) : (
+                              <><Settings className="w-3.5 h-3.5 text-[#5266eb]" /> Manage</>
+                            )}
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>

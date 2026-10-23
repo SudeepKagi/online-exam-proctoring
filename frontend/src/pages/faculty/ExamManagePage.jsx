@@ -54,6 +54,17 @@ export default function ExamManagePage() {
     }
   }
 
+  const now = Date.now()
+  const start = exam?.startTime ? new Date(exam.startTime).getTime() : 0
+  const end = exam?.endTime ? new Date(exam.endTime).getTime() : Infinity
+  let lifecycle = 'DRAFT'
+  if (exam?.status !== 'DRAFT') {
+    if (now > end || exam?.status === 'COMPLETED') lifecycle = 'ENDED'
+    else if (now >= start) lifecycle = 'LIVE'
+    else lifecycle = 'SCHEDULED'
+  }
+  const isReadOnly = lifecycle === 'LIVE' || lifecycle === 'ENDED' || attempts.length > 0
+
   return (
     <DashboardShell title={exam?.title || 'Manage Examination'}>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 font-sans">
@@ -61,14 +72,29 @@ export default function ExamManagePage() {
           <Link to="/faculty/exams"><ArrowLeft className="w-3.5 h-3.5" /> Back to My Exams</Link>
         </Button>
         <div className="flex items-center gap-2">
-          {exam && <ExamSettingsModal exam={exam} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}
-          {exam?.status === 'DRAFT' && (
+          {exam && <ExamSettingsModal exam={exam} isReadOnly={isReadOnly} lifecycle={lifecycle} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}
+          {exam?.status === 'DRAFT' && !isReadOnly && (
             <Button size="sm" onClick={handlePublish} className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] h-9 px-4 shadow-xs cursor-pointer">
               <Send className="w-3.5 h-3.5" /> Publish Exam
             </Button>
           )}
         </div>
       </div>
+
+      {isReadOnly && (
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] bg-white text-[#5266eb] border-0 font-[480]">
+              {lifecycle === 'LIVE' ? 'EXAM LIVE' : lifecycle === 'ENDED' ? 'EXAM ENDED' : 'ATTEMPTS EXIST'}
+            </Badge>
+            <span>
+              {attempts.length > 0
+                ? 'Student attempts have already been initiated. Question pool and exam configuration are immutable.'
+                : `Exam window is currently ${lifecycle.toLowerCase()}. Question edits and deletion are disabled for integrity.`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {msg.text && (
         <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
@@ -89,6 +115,7 @@ export default function ExamManagePage() {
           <ExamQuestionsTab
             examId={id}
             questions={questions}
+            isReadOnly={isReadOnly}
             onRefresh={loadExam}
             onNotify={(text, type) => setMsg({ text, type })}
           />

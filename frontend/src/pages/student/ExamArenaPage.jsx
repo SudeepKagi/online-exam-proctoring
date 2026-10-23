@@ -3,12 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { SubmitExamDialog, SuspendedOverlay } from '@/components/exam/SubmitExamDialog'
+import { SubmitExamDialog, SuspendedOverlay, DuplicateTabOverlay } from '@/components/exam/SubmitExamDialog'
 import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
 import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
-import { getScreenStream, clearScreenStream } from '@/lib/screenStreamStore'
+import { getScreenStream, clearScreenStream, clearCameraStream } from '@/lib/screenStreamStore'
 import { getSocket } from '@/lib/socketClient'
 import { Clock, ShieldAlert, MonitorCheck } from 'lucide-react'
 import QuestionPalette from '@/components/exam/QuestionPalette'
@@ -27,7 +27,18 @@ export default function ExamArenaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isSuspended, setIsSuspended] = useState(false)
+  const [isDuplicateTab, setIsDuplicateTab] = useState(false)
   const [violationCount, setViolationCount] = useState(0)
+
+  const handleTerminationExit = useCallback((msg = 'Your examination was terminated because maximum violations (3/3) were exceeded.') => {
+    clearScreenStream()
+    clearCameraStream()
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+    navigate('/student/dashboard', {
+      replace: true,
+      state: { errorMsg: msg }
+    })
+  }, [navigate])
 
   const handleSubmitExam = async () => {
     if (submitting) return
@@ -37,8 +48,17 @@ export default function ExamArenaPage() {
       if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
       clearScreenStream()
+      clearCameraStream()
       navigate('/student/dashboard')
-    } catch (err) { alert(errorMessage(err, 'Submission failed.')) } finally { setSubmitting(false) }
+    } catch (err) {
+      if (err.response?.data?.code === 'ATTEMPT_TERMINATED') {
+        handleTerminationExit()
+        return
+      }
+      alert(errorMessage(err, 'Submission failed.'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const { formatTime } = useExamTimer({
@@ -48,15 +68,60 @@ export default function ExamArenaPage() {
     enabled: !!attempt?.expiresAt,
   })
 
-  const { recordAnswer, flushDirtyAnswers, isDirty } = useAnswerAutosave({ attemptId: attempt?.id })
-  const handleViolationDetected = useCallback(() => setViolationCount(prev => prev + 1), [])
+  const { recordAnswer, flushDirtyAnswers, isDirty } = useAnswerAutosave({
+    attemptId: attempt?.id,
+    onError: (err) => {
+      if (err.response?.data?.code === 'ATTEMPT_TERMINATED') {
+        handleTerminationExit()
+      } else if (err.response?.data?.code === 'ATTEMPT_SUSPENDED') {
+        setIsSuspended(true)
+      }
+    }
+  })
 
-  const { ScreenLostDialog } = useScreenProctoring({
+  const handleViolationDetected = useCallback(() => {
+    setViolationCount(prev => {
+      const next = prev + 1
+      if (next >= 3) {
+        setTimeout(() => {
+          handleTerminationExit('Your examination was terminated because maximum violations (3/3) were exceeded.')
+        }, 500)
+      }
+      return next
+    })
+  }, [handleTerminationExit])
+
+  const { ScreenLostDialog, isProctoringInterrupted } = useScreenProctoring({
     stream: attempt ? getScreenStream() : null,
     attemptId: attempt?.id,
     examId: id,
     onViolation: handleViolationDetected,
   })
+
+  // BroadcastChannel for Multi-Tab / Duplicate Session Protection
+  useEffect(() => {
+    if (!id || typeof window === 'undefined' || !window.BroadcastChannel) return
+    const channel = new BroadcastChannel('proctornet_active_exam')
+    const mySessionId = Math.random().toString(36).substring(2)
+
+    channel.postMessage({ type: 'CHECK_ACTIVE_TAB', examId: id, sessionId: mySessionId })
+
+    const handleMessage = (event) => {
+      const data = event.data
+      if (!data || data.examId !== id) return
+      if (data.type === 'CHECK_ACTIVE_TAB' && data.sessionId !== mySessionId) {
+        channel.postMessage({ type: 'TAB_ACTIVE', examId: id, sessionId: mySessionId })
+      } else if (data.type === 'TAB_ACTIVE' && data.sessionId !== mySessionId) {
+        setIsDuplicateTab(true)
+      }
+    }
+
+    channel.addEventListener('message', handleMessage)
+    return () => {
+      channel.removeEventListener('message', handleMessage)
+      channel.close()
+    }
+  }, [id])
 
   useEffect(() => {
     let mounted = true
@@ -79,7 +144,13 @@ export default function ExamArenaPage() {
         setExam(ex)
         setQuestions(qs)
         setAttempt(att)
-        if (att?.violationCount) setViolationCount(att.violationCount)
+        if (att?.violationCount) {
+          setViolationCount(att.violationCount)
+          if (att.violationCount >= 3) {
+            handleTerminationExit('Your examination was terminated because maximum violations (3/3) were exceeded.')
+            return
+          }
+        }
         if (att?.status === 'SUSPENDED') setIsSuspended(true)
 
         if (Array.isArray(startRes.data?.answers)) {
@@ -105,47 +176,63 @@ export default function ExamArenaPage() {
       } catch (err) {
         if (!mounted) return
         clearScreenStream()
+        clearCameraStream()
         const msg = errorMessage(err, 'Exam is not currently available.')
         navigate('/student/dashboard', { replace: true, state: { errorMsg: msg } })
       }
     }
     initArena()
-    return () => { mounted = false; clearScreenStream() }
-  }, [id, navigate])
+    return () => { mounted = false; clearScreenStream(); clearCameraStream() }
+  }, [id, navigate, handleTerminationExit])
 
   useEffect(() => {
     if (!attempt?.id) return
     const socket = getSocket()
     socket.emit('attempt:join', { attemptId: attempt.id })
-    const onSusp = () => setIsSuspended(true), onRes = () => setIsSuspended(false)
-    socket.on('attempt:suspended', onSusp).on('attempt:resumed', onRes)
-    return () => { socket.off('attempt:suspended', onSusp).off('attempt:resumed', onRes) }
-  }, [attempt?.id])
+    const onSusp = () => setIsSuspended(true)
+    const onRes = () => setIsSuspended(false)
+    const onTerm = (data) => {
+      handleTerminationExit(data?.reason === 'MAX_VIOLATIONS_EXCEEDED'
+        ? 'Your examination was terminated because maximum violations (3/3) were exceeded.'
+        : 'Your examination was terminated by an invigilator.')
+    }
+    socket.on('attempt:suspended', onSusp)
+      .on('attempt:resumed', onRes)
+      .on('attempt:terminated', onTerm)
+    return () => {
+      socket.off('attempt:suspended', onSusp)
+        .off('attempt:resumed', onRes)
+        .off('attempt:terminated', onTerm)
+    }
+  }, [attempt?.id, handleTerminationExit])
+
+  const isArenaInteractionLocked = isSuspended || isDuplicateTab || isProctoringInterrupted
 
   const currentQ = questions[currentIndex] || null
   const currentSelected = currentQ ? answers[currentQ.id] : null
   const isBookmarked = currentQ ? !!bookmarks[currentQ.id] : false
 
   const handleSelectOption = useCallback((optIdx) => {
-    if (!currentQ) return
+    if (!currentQ || isArenaInteractionLocked) return
     setAnswers(prev => ({ ...prev, [currentQ.id]: optIdx }))
     recordAnswer(currentQ.id, optIdx, isBookmarked)
-  }, [currentQ, isBookmarked, recordAnswer])
+  }, [currentQ, isBookmarked, recordAnswer, isArenaInteractionLocked])
 
   const handleToggleBookmark = () => {
-    if (!currentQ) return
+    if (!currentQ || isArenaInteractionLocked) return
     setBookmarks(prev => ({ ...prev, [currentQ.id]: !isBookmarked }))
     recordAnswer(currentQ.id, currentSelected, !isBookmarked)
   }
 
   const handleClearAnswer = () => {
-    if (!currentQ) return
+    if (!currentQ || isArenaInteractionLocked) return
     setAnswers(prev => { const copy = { ...prev }; delete copy[currentQ.id]; return copy })
     recordAnswer(currentQ.id, null, isBookmarked)
   }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      if (isArenaInteractionLocked) return
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return
       const map = { '1': 0, A: 0, '2': 1, B: 1, '3': 2, C: 2, '4': 3, D: 3 }
       const key = e.key.toUpperCase()
@@ -155,7 +242,7 @@ export default function ExamArenaPage() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleSelectOption, questions.length])
+  }, [handleSelectOption, questions.length, isArenaInteractionLocked])
 
   if (loading) {
     return (
@@ -233,6 +320,7 @@ export default function ExamArenaPage() {
       />
 
       {isSuspended && <SuspendedOverlay />}
+      {isDuplicateTab && <DuplicateTabOverlay />}
       <ScreenLostDialog />
     </ExamArenaShell>
   )

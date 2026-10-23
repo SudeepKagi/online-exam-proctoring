@@ -125,9 +125,34 @@ const usersController = {
     }
   },
 
+  async updateUser(req, res, next) {
+    try {
+      const targetUserId = req.params.id
+      if (req.user?.id && req.user.id === targetUserId) {
+        if (req.body.role || req.body.status === 'SUSPENDED') {
+          return res.status(400).json({
+            code: 'CANNOT_MODIFY_OWN_ADMIN_ACCOUNT',
+            message: 'Admins cannot alter the role or suspension status of their own account.'
+          })
+        }
+      }
+      const user = await usersService.updateUser(targetUserId, req.body)
+      res.json({ success: true, user })
+    } catch (err) {
+      next(err)
+    }
+  },
+
   async suspendUser(req, res, next) {
     try {
-      const user = await usersService.setUserStatus(req.params.id, 'SUSPENDED')
+      const targetUserId = req.params.id
+      if (req.user?.id && req.user.id === targetUserId) {
+        return res.status(400).json({
+          code: 'CANNOT_MODIFY_OWN_ADMIN_ACCOUNT',
+          message: 'Admins cannot suspend their own account.'
+        })
+      }
+      const user = await usersService.setUserStatus(targetUserId, 'SUSPENDED')
       res.json({ success: true, message: 'User suspended', user })
     } catch (err) {
       next(err)
@@ -145,7 +170,14 @@ const usersController = {
 
   async deleteUser(req, res, next) {
     try {
-      await usersService.deleteUser(req.params.id)
+      const targetUserId = req.params.id
+      if (req.user?.id && req.user.id === targetUserId) {
+        return res.status(400).json({
+          code: 'CANNOT_MODIFY_OWN_ADMIN_ACCOUNT',
+          message: 'Admins cannot delete their own account.'
+        })
+      }
+      await usersService.deleteUser(targetUserId)
       res.json({ success: true, message: 'User deleted' })
     } catch (err) {
       next(err)

@@ -37,13 +37,22 @@ async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata =
         data: { violationCount: { increment: 1 } },
         include: { student: true }
       })
-      if (updated.violationCount >= 50 && updated.status === 'IN_PROGRESS') {
-        await prisma.examAttempt.update({
-          where: { id: attemptId },
-          data: { status: 'SUSPENDED' }
-        })
+      if (updated.violationCount >= 3 && updated.status === 'IN_PROGRESS') {
+        const attemptsSql = require('../attempts/attempts.sql')
         const { socketEmitter } = require('../../infra/websocket/emitter')
-        socketEmitter.emitToAttempt(attemptId, 'attempt:suspended', { reason: 'Automated threshold suspension', by: 'SYSTEM' })
+        const graded = await attemptsSql.submitAndGradeAttempt(attemptId)
+        if (graded) updated = { ...updated, ...graded }
+        socketEmitter.emitToAttempt(attemptId, 'attempt:terminated', {
+          reason: 'MAX_VIOLATIONS',
+          violationCount: updated.violationCount,
+          attemptId
+        })
+        socketEmitter.emitToInvigilators(updated.examId, 'student:terminated', {
+          attemptId,
+          violationCount: updated.violationCount,
+          studentId: updated.studentId,
+          score: updated.score
+        })
       }
     } catch (_) {}
   }

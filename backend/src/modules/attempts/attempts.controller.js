@@ -82,6 +82,17 @@ async function resumeAttempt(req, res, next) {
   }
 }
 
+async function terminateAttempt(req, res, next) {
+  try {
+    const { attemptId } = req.params
+    const { reason } = req.body || {}
+    const result = await attemptService.terminateAttempt(attemptId, req.user.id, reason)
+    return res.status(200).json({ status: 'success', attempt: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function getVpnStatus(req, res) {
   // WireGuard VPN Hook check
   const clientIp = req.socket.remoteAddress || req.ip || '127.0.0.1'
@@ -102,5 +113,6 @@ module.exports = {
   submitAttempt,
   suspendAttempt,
   resumeAttempt,
+  terminateAttempt,
   getVpnStatus
 }

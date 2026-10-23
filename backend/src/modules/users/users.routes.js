@@ -79,7 +79,10 @@ router.patch('/users/:id/suspend', authenticateToken, requireRole('ADMIN'), user
 router.patch('/:id/unsuspend', authenticateToken, requireRole('ADMIN'), usersController.unsuspendUser)
 router.patch('/users/:id/unsuspend', authenticateToken, requireRole('ADMIN'), usersController.unsuspendUser)
 router.post('/:id/reset-password', authenticateToken, requireRole('ADMIN'), usersController.adminResetPassword)
-router.post('/users/:id/reset-password', authenticateToken, requireRole('ADMIN'), usersController.adminResetPassword)
+router.put('/:id', authenticateToken, requireRole('ADMIN'), usersController.updateUser)
+router.patch('/:id', authenticateToken, requireRole('ADMIN'), usersController.updateUser)
+router.put('/users/:id', authenticateToken, requireRole('ADMIN'), usersController.updateUser)
+router.patch('/users/:id', authenticateToken, requireRole('ADMIN'), usersController.updateUser)
 router.delete('/:id', authenticateToken, requireRole('ADMIN'), usersController.deleteUser)
 router.delete('/users/:id', authenticateToken, requireRole('ADMIN'), usersController.deleteUser)
 

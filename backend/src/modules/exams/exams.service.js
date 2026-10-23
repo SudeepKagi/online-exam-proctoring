@@ -2,6 +2,39 @@ const examsSql = require('./exams.sql')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 
 class ExamService {
+  async checkExamMutability(examId, isQuestionMutation = false) {
+    const exam = await examsSql.findExamById(examId)
+    if (!exam) {
+      const err = new Error('Exam not found')
+      err.status = 404
+      throw err
+    }
+
+    const { prisma } = require('../../infra/postgres/client')
+    const attemptCount = await prisma.examAttempt.count({ where: { examId } })
+    if (attemptCount > 0) {
+      const err = new Error('Exam cannot be modified because student attempts already exist.')
+      err.status = 409
+      err.code = 'EXAM_HAS_ATTEMPTS'
+      throw err
+    }
+
+    const serverNow = new Date()
+    const startTime = exam.startTime ? new Date(exam.startTime) : null
+    const endTime = exam.endTime ? new Date(exam.endTime) : null
+
+    if (exam.status !== 'DRAFT') {
+      if ((startTime && serverNow >= startTime) || (endTime && serverNow > endTime) || exam.status === 'ACTIVE' || exam.status === 'COMPLETED') {
+        const err = new Error('Exam cannot be edited or deleted once it has started or ended.')
+        err.status = 409
+        err.code = 'EXAM_IMMUTABLE_ACTIVE_OR_ENDED'
+        throw err
+      }
+    }
+
+    return exam
+  }
+
   async createExam(data, creatorId) {
     const { title, subject, courseCode, startTime, endTime, duration, durationMinutes, totalMarks, requireVpn, proctoringConfig, description } = data
     const subj = subject || courseCode || 'GENERAL'
@@ -13,9 +46,19 @@ class ExamService {
 
     const start = new Date(startTime)
     const end = new Date(endTime)
-    if (end <= start) {
-      const err = new Error('End time must be after start time')
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      const err = new Error('Exam end time must be after start time.')
       err.status = 400
+      err.code = 'INVALID_EXAM_WINDOW'
+      throw err
+    }
+
+    const dur = Number(duration || durationMinutes || 60)
+    const windowMinutes = Math.floor((end.getTime() - start.getTime()) / 60000)
+    if (dur <= 0 || dur > windowMinutes) {
+      const err = new Error('Exam duration cannot exceed the scheduled window.')
+      err.status = 400
+      err.code = 'DURATION_EXCEEDS_WINDOW'
       throw err
     }
 
@@ -26,7 +69,7 @@ class ExamService {
       description,
       startTime: start.toISOString(),
       endTime: end.toISOString(),
-      duration: duration || durationMinutes || 60,
+      duration: dur,
       totalMarks: totalMarks || 100,
       requireVpn: Boolean(requireVpn),
       proctoringConfig: proctoringConfig || {
@@ -40,23 +83,44 @@ class ExamService {
   }
 
   async updateExam(id, data) {
-    const exam = await examsSql.findExamById(id)
-    if (!exam) {
-      const err = new Error('Exam not found')
-      err.status = 404
+    const exam = await this.checkExamMutability(id)
+
+    const newStart = data.startTime ? new Date(data.startTime) : new Date(exam.startTime)
+    const newEnd = data.endTime ? new Date(data.endTime) : new Date(exam.endTime)
+    const newDur = data.durationMinutes !== undefined ? Number(data.durationMinutes) : (data.duration !== undefined ? Number(data.duration) : exam.durationMinutes)
+
+    if (data.startTime || data.endTime) {
+      if (isNaN(newStart.getTime()) || isNaN(newEnd.getTime()) || newEnd <= newStart) {
+        const err = new Error('Exam end time must be after start time.')
+        err.status = 400
+        err.code = 'INVALID_EXAM_WINDOW'
+        throw err
+      }
+    }
+
+    if (newDur <= 0 || newDur > Math.floor((newEnd.getTime() - newStart.getTime()) / 60000)) {
+      const err = new Error('Exam duration cannot exceed the scheduled window.')
+      err.status = 400
+      err.code = 'DURATION_EXCEEDS_WINDOW'
       throw err
     }
+
     return examsSql.updateExam(id, data)
   }
 
   async deleteExam(id) {
-    const exam = await examsSql.findExamById(id)
-    if (!exam) {
-      const err = new Error('Exam not found')
-      err.status = 404
+    await this.checkExamMutability(id)
+    try {
+      return await examsSql.deleteExam(id)
+    } catch (err) {
+      if (err.code === 'P2003' || err.message?.includes('foreign key')) {
+        const conflictErr = new Error('Cannot delete exam because associated student attempts or assignments exist.')
+        conflictErr.status = 409
+        conflictErr.code = 'ENTITY_IN_USE'
+        throw conflictErr
+      }
       throw err
     }
-    return examsSql.deleteExam(id)
   }
 
   async getExamById(id, userRole = null) {
@@ -68,7 +132,10 @@ class ExamService {
     }
 
     const isStudent = normalizeRole(userRole) === ROLES.STUDENT
-    const includeCorrect = !isStudent || exam.status === 'EVALUATED'
+    const serverNow = new Date()
+    const examEnded = exam.endTime && serverNow > new Date(exam.endTime)
+    // Never leak answers to students while exam window is open
+    const includeCorrect = !isStudent || (exam.status === 'EVALUATED' && examEnded)
     const questions = await examsSql.getQuestionsByExamId(id, includeCorrect)
     return { ...exam, questions }
   }
@@ -78,18 +145,81 @@ class ExamService {
   }
 
   async publishExam(id) {
-    const exam = await examsSql.findExamById(id)
-    if (!exam) {
-      const err = new Error('Exam not found')
-      err.status = 404
+    const exam = await this.checkExamMutability(id)
+
+    const serverNow = new Date()
+    if (exam.startTime && new Date(exam.startTime) < serverNow) {
+      const err = new Error('Exam start time cannot be in the past.')
+      err.status = 400
+      err.code = 'START_TIME_IN_PAST'
       throw err
     }
 
-    const questions = await examsSql.getQuestionsByExamId(id, false)
+    const start = new Date(exam.startTime)
+    const end = new Date(exam.endTime)
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      const err = new Error('Exam end time must be after start time.')
+      err.status = 400
+      err.code = 'INVALID_EXAM_WINDOW'
+      throw err
+    }
+
+    const dur = Number(exam.durationMinutes || exam.duration || 60)
+    const windowMinutes = Math.floor((end.getTime() - start.getTime()) / 60000)
+    if (dur <= 0 || dur > windowMinutes) {
+      const err = new Error('Exam duration cannot exceed the scheduled window.')
+      err.status = 400
+      err.code = 'DURATION_EXCEEDS_WINDOW'
+      throw err
+    }
+
+    const questions = await examsSql.getQuestionsByExamId(id, true)
     if (!questions || questions.length === 0) {
       const err = new Error('Cannot publish exam without questions')
       err.status = 400
+      err.code = 'EXAM_INCOMPLETE'
       throw err
+    }
+
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      const text = q.questionText || q.prompt || ''
+      if (!text.trim()) {
+        const err = new Error(`Question ${i + 1} has empty text prompt.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      let opts = q.options
+      if (opts && typeof opts === 'object' && !Array.isArray(opts) && Array.isArray(opts.choices)) {
+        opts = opts.choices
+      }
+      if (!Array.isArray(opts) || opts.length < 2) {
+        const err = new Error(`Question ${i + 1} must have at least 2 options.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      if (opts.some(o => !String(o || '').trim())) {
+        const err = new Error(`Question ${i + 1} contains empty options.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      const marks = Number(q.marks)
+      if (isNaN(marks) || marks <= 0) {
+        const err = new Error(`Question ${i + 1} must have positive marks.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
+      const cIdx = Number(q.correctOptionIndex)
+      if (isNaN(cIdx) || cIdx < 0 || cIdx >= opts.length) {
+        const err = new Error(`Question ${i + 1} has invalid correct option index.`)
+        err.status = 400
+        err.code = 'EXAM_INCOMPLETE'
+        throw err
+      }
     }
 
     const updated = await examsSql.updateExamStatus(id, 'PUBLISHED')
@@ -101,6 +231,7 @@ class ExamService {
   }
 
   async bulkAddQuestions(examId, questions = []) {
+    await this.checkExamMutability(examId, true)
     const created = []
     for (let i = 0; i < questions.length; i++) {
       const q = questions[i]
@@ -182,6 +313,7 @@ class ExamService {
   }
 
   async addQuestion(examId, data) {
+    await this.checkExamMutability(examId, true)
     const { questionText, options, marks, negativeMarks, order } = data
     const isMultiObj = options && typeof options === 'object' && !Array.isArray(options) && Array.isArray(options.choices)
     const choicesList = isMultiObj ? options.choices : options
@@ -221,7 +353,19 @@ class ExamService {
     })
   }
 
-  async deleteQuestion(questionId) {
+  async deleteQuestion(questionId, examId = null) {
+    let targetExamId = examId
+    if (!targetExamId) {
+      const { prisma } = require('../../infra/postgres/client')
+      const q = await prisma.question.findUnique({ where: { id: questionId }, select: { examId: true } })
+      if (!q) {
+        const err = new Error('Question not found')
+        err.status = 404
+        throw err
+      }
+      targetExamId = q.examId
+    }
+    await this.checkExamMutability(targetExamId, true)
     return examsSql.deleteQuestion(questionId)
   }
 

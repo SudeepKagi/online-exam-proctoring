@@ -138,7 +138,7 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
     return () => clearInterval(interval)
   }, [attemptId, recordViolationEvent])
 
-  // Monitor track ending
+  // Monitor screen track ending
   useEffect(() => {
     const track = streamRef.current?.getVideoTracks?.()[0]
     if (!track) return
@@ -147,8 +147,32 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
       recordViolationEvent('SCREEN_SHARE_ENDED', 'CRITICAL')
     }
     track.addEventListener('ended', onEnded)
-    return () => track.removeEventListener('ended', onEnded)
+    track.onended = onEnded
+    return () => {
+      track.removeEventListener('ended', onEnded)
+      if (track.onended === onEnded) track.onended = null
+    }
   }, [activeStream, recordViolationEvent])
+
+  const [cameraLost, setCameraLost] = useState(false)
+  const cameraStreamRef = useRef(null)
+
+  useEffect(() => {
+    const camStream = typeof window !== 'undefined' ? (window.__proctorCameraStream || null) : null
+    cameraStreamRef.current = camStream
+    const track = camStream?.getVideoTracks?.()[0]
+    if (!track) return
+    const onCamEnded = () => {
+      setCameraLost(true)
+      recordViolationEvent('CAMERA_DISCONNECTED', 'CRITICAL')
+    }
+    track.addEventListener('ended', onCamEnded)
+    track.onended = onCamEnded
+    return () => {
+      track.removeEventListener('ended', onCamEnded)
+      if (track.onended === onCamEnded) track.onended = null
+    }
+  }, [recordViolationEvent])
 
   const reShareScreen = async () => {
     try {
@@ -158,10 +182,12 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
         track.stop()
         return false
       }
-      track.addEventListener('ended', () => {
+      const onEnded = () => {
         setScreenLost(true)
         recordViolationEvent('SCREEN_SHARE_ENDED', 'CRITICAL')
-      })
+      }
+      track.addEventListener('ended', onEnded)
+      track.onended = onEnded
       streamRef.current = newStream
       if (typeof window !== 'undefined') window.__proctorScreenStream = newStream
       if (hiddenVideoRef.current) {
@@ -175,25 +201,78 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
     }
   }
 
-  const ScreenLostDialog = () => !screenLost ? null : (
-    <Dialog open={screenLost}>
-      <DialogContent className="max-w-md [&>button]:hidden font-sans border-0 bg-white shadow-xl rounded-[16px] p-6 text-[#28253b]">
-        <DialogHeader>
-          <DialogTitle className="text-base font-[480] text-[#28253b]">Screen Share Disconnected</DialogTitle>
-          <DialogDescription className="text-xs font-[360] text-[#554e7b] mt-1.5 leading-relaxed">
-            Continuous monitor sharing is mandatory throughout the examination. Re-share your full screen to proceed.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="mt-5">
-          <Button onClick={reShareScreen} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] h-9">
-            Re-Share Entire Screen
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
+  const reEnableCamera = async () => {
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false })
+      const track = newStream.getVideoTracks()[0]
+      const onCamEnded = () => {
+        setCameraLost(true)
+        recordViolationEvent('CAMERA_DISCONNECTED', 'CRITICAL')
+      }
+      track.addEventListener('ended', onCamEnded)
+      track.onended = onCamEnded
+      cameraStreamRef.current = newStream
+      if (typeof window !== 'undefined') window.__proctorCameraStream = newStream
+      setCameraLost(false)
+      return true
+    } catch (_) {
+      return false
+    }
+  }
 
-  return { screenLost, reShareScreen, captureSnapshot, recordViolationEvent, ScreenLostDialog }
+  const isProctoringInterrupted = screenLost || cameraLost
+
+  const ProctoringInterruptedOverlay = () => {
+    if (!isProctoringInterrupted) return null
+    return (
+      <div
+        data-testid="proctoring-interrupted-overlay"
+        className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans"
+      >
+        <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
+          <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-[480] text-[#28253b] mb-2">Proctoring Interrupted</h2>
+        <p className="text-sm font-[360] text-[#554e7b] max-w-md mb-6 leading-relaxed">
+          You stopped screen/camera sharing. Continuous monitoring is strictly mandatory throughout the examination. Re-enable sharing immediately to continue your exam.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {screenLost && (
+            <Button
+              onClick={reShareScreen}
+              className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-6 h-10 shadow-xs cursor-pointer"
+            >
+              Re-Enable Screen Sharing
+            </Button>
+          )}
+          {cameraLost && (
+            <Button
+              onClick={reEnableCamera}
+              className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-6 h-10 shadow-xs cursor-pointer"
+            >
+              Re-Enable Camera
+            </Button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const ScreenLostDialog = () => isProctoringInterrupted ? <ProctoringInterruptedOverlay /> : null
+
+  return {
+    screenLost,
+    cameraLost,
+    isProctoringInterrupted,
+    reShareScreen,
+    reEnableCamera,
+    captureSnapshot,
+    recordViolationEvent,
+    ScreenLostDialog,
+    ProctoringInterruptedOverlay
+  }
 }
 
 export default useScreenProctoring

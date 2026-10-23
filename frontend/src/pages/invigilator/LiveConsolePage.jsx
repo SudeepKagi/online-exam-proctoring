@@ -150,6 +150,24 @@ export default function LiveConsolePage() {
     }
   }
 
+  const handleTerminateCandidate = async (candidate) => {
+    if (!candidate.attemptId) return
+    const confirmed = window.confirm(`Are you sure you want to terminate the exam attempt for ${candidate.studentName || 'this student'}? This action is irreversible.`)
+    if (!confirmed) return
+    setActionLoading(true)
+    try {
+      await api.post(`/attempts/${candidate.attemptId}/terminate`, { reason: 'Invigilator manual termination' })
+      setCandidates(prev => prev.map(c => c.attemptId === candidate.attemptId ? { ...c, attemptStatus: 'SUBMITTED', violationCount: Math.max(c.violationCount, 3) } : c))
+      if (selectedCandidate?.attemptId === candidate.attemptId) {
+        setSelectedCandidate(prev => ({ ...prev, attemptStatus: 'SUBMITTED' }))
+      }
+    } catch (err) {
+      alert(errorMessage(err, 'Failed to terminate candidate attempt'))
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const filtered = candidates.filter(c => {
     if (filter === 'FLAGGED') return c.violationCount > 0
     if (filter === 'SUSPENDED') return c.attemptStatus === 'SUSPENDED'
@@ -235,6 +253,7 @@ export default function LiveConsolePage() {
         candidate={selectedCandidate}
         auditHistory={auditHistory}
         onToggleSuspend={handleToggleSuspend}
+        onTerminate={handleTerminateCandidate}
         actionLoading={actionLoading}
       />
     </DashboardShell>

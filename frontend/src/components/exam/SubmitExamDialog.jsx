@@ -32,17 +32,37 @@ export function SubmitExamDialog({ open, onOpenChange, answeredCount, totalCount
   )
 }
 
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Copy } from 'lucide-react'
 
 export function SuspendedOverlay() {
   return (
-    <div className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans">
+    <div
+      data-testid="suspended-overlay"
+      className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans"
+    >
       <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
         <AlertTriangle className="w-8 h-8" />
       </div>
-      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Examination Session Suspended</h2>
-      <p className="text-sm font-[360] text-[#554e7b] max-w-md">
-        Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.
+      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Paused by Invigilator</h2>
+      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed">
+        Your exam attempt has been paused by the invigilator. Please wait for the invigilator to resume your exam.
+      </p>
+    </div>
+  )
+}
+
+export function DuplicateTabOverlay() {
+  return (
+    <div
+      data-testid="duplicate-tab-overlay"
+      className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans"
+    >
+      <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
+        <Copy className="w-8 h-8" />
+      </div>
+      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Duplicate Session Detected</h2>
+      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed">
+        This exam is already open in another tab. An exam session can only run in a single active window. Please return to your active exam window.
       </p>
     </div>
   )

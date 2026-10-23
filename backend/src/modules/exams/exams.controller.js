@@ -65,7 +65,7 @@ async function addQuestion(req, res, next) {
 
 async function deleteQuestion(req, res, next) {
   try {
-    await examService.deleteQuestion(req.params.questionId)
+    await examService.deleteQuestion(req.params.questionId, req.params.id)
     return res.status(200).json({ status: 'success', message: 'Question deleted' })
   } catch (err) {
     next(err)

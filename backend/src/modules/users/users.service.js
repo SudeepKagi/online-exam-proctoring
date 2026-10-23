@@ -154,13 +154,36 @@ class UsersService {
     } else if (targetStatus === 'ACTIVE') {
       metadata.rejectionReason = null
       metadata.approvedAt = new Date().toISOString()
+    } else if (targetStatus === 'SUSPENDED') {
+      metadata.suspendedAt = new Date().toISOString()
     }
 
-    return prisma.user.update({
+    const updated = await prisma.user.update({
       where: { id },
       data: { status: targetStatus, profileMetadata: metadata },
       select: { id: true, email: true, status: true, profileMetadata: true }
     })
+
+    if (targetStatus === 'SUSPENDED') {
+      try {
+        await prisma.refreshToken.deleteMany({ where: { userId: id } }).catch(() => {})
+      } catch (_) {}
+      try {
+        const { socketEmitter } = require('../../infra/websocket/emitter')
+        socketEmitter.emitToUser(id, 'session:revoked', { reason: 'ACCOUNT_SUSPENDED' })
+      } catch (_) {}
+      try {
+        const { markUserSuspension } = require('../auth/auth.routes')
+        if (typeof markUserSuspension === 'function') markUserSuspension(id, true)
+      } catch (_) {}
+    } else if (targetStatus === 'ACTIVE') {
+      try {
+        const { markUserSuspension } = require('../auth/auth.routes')
+        if (typeof markUserSuspension === 'function') markUserSuspension(id, false)
+      } catch (_) {}
+    }
+
+    return updated
   }
 
   async adminResetPassword(id, newPassword) {
@@ -175,7 +198,17 @@ class UsersService {
   }
 
   async deleteUser(id) {
-    return prisma.user.delete({ where: { id }, select: { id: true, email: true } })
+    try {
+      return await prisma.user.delete({ where: { id }, select: { id: true, email: true } })
+    } catch (err) {
+      if (err.code === 'P2003') {
+        const error = new Error('Cannot delete user because relational records (attempts, audit logs, or enrollments) exist. Deactivate or suspend the user instead.')
+        error.status = 409
+        error.code = 'ENTITY_IN_USE'
+        throw error
+      }
+      throw err
+    }
   }
 
   async parseExcelBuffer(buffer) {

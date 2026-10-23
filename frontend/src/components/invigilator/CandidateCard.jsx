@@ -12,7 +12,8 @@ export default function CandidateCard({
   actionLoading
 }) {
   const isSuspended = candidate.attemptStatus === 'SUSPENDED'
-  const isSubmitted = candidate.attemptStatus === 'SUBMITTED'
+  const isFinalized = ['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(candidate.attemptStatus) || candidate.violationCount >= 3
+  const isSubmitted = isFinalized
   const hasSnapshot = !!candidate.latestScreenSnapshotUrl
 
   return (
