@@ -3,6 +3,7 @@
 const bcrypt = require('bcryptjs')
 const { prisma, withTransaction } = require('../../infra/postgres/client')
 const { generateExamQuestions } = require('./ai.generator')
+const { validateQuestionsList } = require('./exams.guard')
 
 class ExamWizardService {
   async generateFromPdf({ pdfBase64, pdfBuffer, fileName, count = 10, difficulty = 'MEDIUM', topicHint }) {
@@ -48,18 +49,9 @@ class ExamWizardService {
 
   async publishWizard(creatorId, data = {}) {
     const {
-      title,
-      courseCode,
-      subjectCode,
-      description,
-      startTime,
-      durationMinutes = 60,
-      department,
-      semester,
-      examCode,
-      invigilatorId,
-      invigilatorPassword,
-      invigilatorCredentials = {},
+      title, courseCode, subjectCode, description, startTime,
+      durationMinutes = 60, department, semester, examCode,
+      invigilatorId, invigilatorPassword, invigilatorCredentials = {},
       questions = []
     } = data
 
@@ -73,74 +65,24 @@ class ExamWizardService {
     const start = new Date(startTime)
     if (isNaN(start.getTime())) {
       const err = new Error('Valid start time is required')
-      err.status = 400
-      err.code = 'INVALID_EXAM_WINDOW'
-      throw err
+      err.status = 400; err.code = 'INVALID_EXAM_WINDOW'; throw err
     }
 
     const serverNow = new Date()
     if (start < serverNow) {
       const err = new Error('Exam start time cannot be in the past.')
-      err.status = 400
-      err.code = 'START_TIME_IN_PAST'
-      throw err
+      err.status = 400; err.code = 'START_TIME_IN_PAST'; throw err
     }
 
     const dur = Number(durationMinutes) || 60
     if (dur <= 0) {
       const err = new Error('Exam duration must be greater than 0 minutes.')
-      err.status = 400
-      err.code = 'DURATION_EXCEEDS_WINDOW'
-      throw err
+      err.status = 400; err.code = 'DURATION_EXCEEDS_WINDOW'; throw err
     }
 
-    if (!Array.isArray(questions) || questions.length === 0) {
-      const err = new Error('At least one question is required to publish an exam')
-      err.status = 400
-      err.code = 'EXAM_INCOMPLETE'
-      throw err
-    }
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]
-      const text = q.questionText || q.prompt || ''
-      if (!text.trim()) {
-        const err = new Error(`Question ${i + 1} has empty text prompt.`)
-        err.status = 400
-        err.code = 'EXAM_INCOMPLETE'
-        throw err
-      }
-      const opts = Array.isArray(q.options) ? q.options : []
-      if (opts.length < 2) {
-        const err = new Error(`Question ${i + 1} must have at least 2 options.`)
-        err.status = 400
-        err.code = 'EXAM_INCOMPLETE'
-        throw err
-      }
-      if (opts.some(o => !String(o || '').trim())) {
-        const err = new Error(`Question ${i + 1} contains empty options.`)
-        err.status = 400
-        err.code = 'EXAM_INCOMPLETE'
-        throw err
-      }
-      const marks = Number(q.marks || 1)
-      if (marks <= 0) {
-        const err = new Error(`Question ${i + 1} must have positive marks.`)
-        err.status = 400
-        err.code = 'EXAM_INCOMPLETE'
-        throw err
-      }
-      const cIdx = Number(q.correctOptionIndex)
-      if (isNaN(cIdx) || cIdx < 0 || cIdx >= opts.length) {
-        const err = new Error(`Question ${i + 1} has invalid correct option index.`)
-        err.status = 400
-        err.code = 'EXAM_INCOMPLETE'
-        throw err
-      }
-    }
+    validateQuestionsList(questions)
 
     const end = new Date(start.getTime() + dur * 60000)
-
     const cleanExamCode = examCode || `EXM-${cCode}-${Math.floor(100 + Math.random() * 900)}`
     const invId = invigilatorId || invigilatorCredentials.institutionId || invigilatorCredentials.loginId || `INV-${cCode}-${Math.floor(100 + Math.random() * 900)}`
     const invPass = invigilatorPassword || invigilatorCredentials.password || Math.random().toString(36).slice(-8)
@@ -148,33 +90,18 @@ class ExamWizardService {
 
     return withTransaction(async (tx) => {
       const db = tx || prisma
-
       const exam = await db.exam.create({
         data: {
-          title,
-          courseCode: cCode,
-          createdById: creatorId,
-          startTime: start,
-          endTime: end,
-          durationMinutes: dur,
-          status: 'PUBLISHED',
+          title, courseCode: cCode, createdById: creatorId,
+          startTime: start, endTime: end, durationMinutes: dur, status: 'PUBLISHED',
           proctoringConfig: {
-            description: description || null,
-            department: department || null,
-            semester: semester || null,
-            examCode: cleanExamCode,
+            description: description || null, department: department || null,
+            semester: semester || null, examCode: cleanExamCode,
             invigilatorCredentials: {
-              institutionId: invId,
-              loginId: invId,
-              invigilatorId: invId,
-              password: invPass,
-              passwordHint: invPass,
-              room: invRoom
+              institutionId: invId, loginId: invId, invigilatorId: invId,
+              password: invPass, passwordHint: invPass, room: invRoom
             },
-            cameraRequired: true,
-            screenShareRequired: true,
-            fullScreenMode: true,
-            browserLock: true
+            cameraRequired: true, screenShareRequired: true, fullScreenMode: true, browserLock: true
           }
         }
       })
@@ -183,21 +110,14 @@ class ExamWizardService {
         const q = questions[i]
         await db.question.create({
           data: {
-            examId: exam.id,
-            questionText: q.questionText,
-            options: q.options || [],
+            examId: exam.id, questionText: q.questionText, options: q.options || [],
             correctOptionIndex: Number(q.correctOptionIndex) || 0,
-            marks: Number(q.marks) || 1,
-            negativeMarks: Number(q.negativeMarks) || 0,
-            displayOrder: i
+            marks: Number(q.marks) || 1, negativeMarks: Number(q.negativeMarks) || 0, displayOrder: i
           }
         })
       }
 
-      const activeStudents = await db.user.findMany({
-        where: { role: 'STUDENT', status: 'ACTIVE' }
-      })
-
+      const activeStudents = await db.user.findMany({ where: { role: 'STUDENT', status: 'ACTIVE' } })
       const targetSem = semester ? String(semester).replace(/sem\s*/i, '').trim() : null
       let assignedCount = 0
 
@@ -221,6 +141,7 @@ class ExamWizardService {
 
       const invEmail = `${invId.toLowerCase().replace(/[^a-z0-9]/g, '')}@proctornet.local`
       const passwordHash = await bcrypt.hash(invPass, 12)
+      const invProfile = { examId: exam.id, examCode: cleanExamCode, generatedPasswordHint: invPass, room: invRoom }
 
       let invUser = await db.user.findFirst({
         where: { OR: [{ institutionId: invId }, { email: invEmail }] }
@@ -229,33 +150,14 @@ class ExamWizardService {
       if (invUser) {
         invUser = await db.user.update({
           where: { id: invUser.id },
-          data: {
-            passwordHash,
-            status: 'ACTIVE',
-            profileMetadata: {
-              ...(invUser.profileMetadata || {}),
-              examId: exam.id,
-              examCode: cleanExamCode,
-              generatedPasswordHint: invPass,
-              room: invRoom
-            }
-          }
+          data: { passwordHash, status: 'ACTIVE', profileMetadata: { ...(invUser.profileMetadata || {}), ...invProfile } }
         })
       } else {
         invUser = await db.user.create({
           data: {
-            email: invEmail,
-            institutionId: invId,
+            email: invEmail, institutionId: invId,
             fullName: `Invigilator (${courseCode} - ${invRoom})`,
-            role: 'INVIGILATOR',
-            status: 'ACTIVE',
-            passwordHash,
-            profileMetadata: {
-              examId: exam.id,
-              examCode: cleanExamCode,
-              generatedPasswordHint: invPass,
-              room: invRoom
-            }
+            role: 'INVIGILATOR', status: 'ACTIVE', passwordHash, profileMetadata: invProfile
           }
         })
       }
@@ -268,24 +170,13 @@ class ExamWizardService {
 
       try {
         const { redisClient } = require('../../infra/redis/client')
-        const sanitized = questions.map(q => ({
-          questionText: q.questionText,
-          options: q.options,
-          marks: q.marks || 1
-        }))
+        const sanitized = questions.map(q => ({ questionText: q.questionText, options: q.options, marks: q.marks || 1 }))
         await redisClient.set(`exam:${exam.id}:questions`, JSON.stringify(sanitized), 'EX', 86400)
       } catch (_) {}
 
       return {
-        exam,
-        questionsCount: questions.length,
-        assignedCount,
-        invigilator: {
-          id: invUser.id,
-          institutionId: invId,
-          password: invPass,
-          room: invRoom
-        }
+        exam, questionsCount: questions.length, assignedCount,
+        invigilator: { id: invUser.id, institutionId: invId, password: invPass, room: invRoom }
       }
     })
   }

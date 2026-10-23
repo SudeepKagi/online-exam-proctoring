@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import { DashboardShell } from '@/components/common/DashboardShell'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import { getSocket } from '@/lib/socketClient'
 import { useAuth } from '@/context/AuthContext'
@@ -10,6 +8,7 @@ import ViolationStream from '@/components/invigilator/ViolationStream'
 import SnapshotZoomModal from '@/components/invigilator/SnapshotZoomModal'
 import CandidateAuditSheet from '@/components/invigilator/CandidateAuditSheet'
 import ConsoleKpiBar from '@/components/invigilator/ConsoleKpiBar'
+import ConsoleToolbar from '@/components/invigilator/ConsoleToolbar'
 import { Loader2 } from 'lucide-react'
 
 export default function LiveConsolePage() {
@@ -179,35 +178,13 @@ export default function LiveConsolePage() {
     <DashboardShell title="Live Proctoring Console">
       <ConsoleKpiBar candidates={candidates} />
 
-      {/* Exam Selector and Filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-4 font-sans">
-        <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-          <SelectTrigger className="w-72 bg-white border border-[#c3c3cc]/60 rounded-xl text-xs font-medium h-9">
-            <SelectValue placeholder="Select examination cohort" />
-          </SelectTrigger>
-          <SelectContent>
-            {exams.map(e => (
-              <SelectItem key={e.id} value={e.id} className="text-xs">
-                {e.title} ({e.courseCode})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="flex items-center gap-1.5 bg-[#fbfbff] p-1 border border-[#e9eaf2] rounded-[40px]">
-          {['ALL', 'IN_PROGRESS', 'FLAGGED', 'SUSPENDED'].map(f => (
-            <Button
-              key={f}
-              size="sm"
-              variant={filter === f ? 'default' : 'ghost'}
-              onClick={() => setFilter(f)}
-              className={`text-xs h-7 rounded-[40px] px-3 ${filter === f ? 'bg-[#5266eb] text-white shadow-xs' : 'text-[#554e7b]'}`}
-            >
-              {f.replace('_', ' ')}
-            </Button>
-          ))}
-        </div>
-      </div>
+      <ConsoleToolbar
+        exams={exams}
+        selectedExamId={selectedExamId}
+        onSelectExamId={setSelectedExamId}
+        filter={filter}
+        onSelectFilter={setFilter}
+      />
 
       {/* Split View: Left (Feeds Grid) & Right (Violation Stream) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4 font-sans items-start">
