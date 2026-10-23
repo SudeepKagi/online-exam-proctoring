@@ -25,7 +25,7 @@ async function createExam({ title, subject, courseCode, description, startTime, 
       endTime: new Date(endTime),
       durationMinutes: dur,
       status: 'DRAFT',
-      proctoringConfig: proctoringConfig || {}
+      proctoringConfig: { maxViolations: 3, ...(proctoringConfig || {}) }
     }
   })
 

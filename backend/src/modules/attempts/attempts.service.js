@@ -91,7 +91,8 @@ class AttemptService {
       throw httpErr('Unauthorized attempt mutation', 403)
     }
 
-    if (attempt.violationCount >= 3) {
+    const maxViolations = attempt.exam?.proctoringConfig?.maxViolations || 3
+    if (attempt.violationCount >= maxViolations || attempt.status === 'TERMINATED') {
       throw httpErr('Attempt has been terminated due to excessive violations.', 409, 'ATTEMPT_TERMINATED')
     }
 
