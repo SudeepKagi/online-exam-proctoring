@@ -17,6 +17,7 @@
     "migrate:deploy": "npx prisma migrate deploy",
     "generate": "npx prisma generate",
     "studio": "npx prisma studio",
+    "ops:clean-keep-admin": "node scripts/ops/clean-database-keep-admin.js",
     "ops:reset-keep-admin": "node scripts/ops/reset-keep-admin.js",
     "ops:bootstrap-admin": "node scripts/ops/bootstrap-admin.js",
     "ops:dlq-replay": "node scripts/ops/dlq-replay.js",
