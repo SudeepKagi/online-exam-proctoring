@@ -145,7 +145,7 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Badge variant="outline" className="font-mono text-xs">Step {currentStep} of 4</Badge>
-              <DialogTitle className="text-lg font-bold">4-Step AI Exam Creation Wizard</DialogTitle>
+              <DialogTitle className="text-lg font-[480]">4-Step AI Exam Creation Wizard</DialogTitle>
             </div>
             <div className="flex items-center space-x-1.5">
               {[1, 2, 3, 4].map(s => (

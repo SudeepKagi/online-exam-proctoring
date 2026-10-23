@@ -43,7 +43,7 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
       {/* Mercury Light Nav Bar: 72px, crisp white with subtle border */}
       <header className="h-[72px] border-b border-[#e9eaf2] bg-white/90 backdrop-blur-md px-6 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-[0_1px_3px_rgba(40,37,59,0.03)]">
         <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-full bg-[#5266eb] flex items-center justify-center text-white font-bold shadow-xs">
+          <div className="w-9 h-9 rounded-full bg-[#5266eb] flex items-center justify-center text-white font-[480] shadow-xs">
             <Shield className="w-4 h-4" />
           </div>
           <div>

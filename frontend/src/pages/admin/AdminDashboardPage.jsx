@@ -55,23 +55,23 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#fde68a] bg-[#fffbeb]/50 shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#b45309] uppercase tracking-[0.28px]">Pending ID Approvals</CardTitle>
-            <ShieldAlert className="w-4 h-4 text-amber-600" />
+            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Pending ID Approvals</CardTitle>
+            <ShieldAlert className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-[480] text-amber-900">{approvals.length}</div>
+            <div className="text-2xl font-[480] text-[#28253b]">{approvals.length}</div>
             <Link to="/admin/users" className="text-xs font-[420] text-[#5266eb] hover:underline flex items-center gap-1 mt-1">
               Review Queue <ArrowRight className="w-3 h-3" />
             </Link>
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Verified Faculty</CardTitle>
-            <Award className="w-4 h-4 text-emerald-600" />
+            <Award className="w-4 h-4 text-[#5266eb]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-[480] text-[#28253b]">{verifiedFaculty}</div>
@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
+        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Active / Published Exams</CardTitle>
             <BookOpen className="w-4 h-4 text-[#5266eb]" />
@@ -92,13 +92,13 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* System Health Status */}
-      <div className="p-4 bg-[#ecfdf5]/80 border border-[#bbf7d0] rounded-[12px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-sans">
+      <div className="p-4 bg-[#edecfb] rounded-[12px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-sans border-0">
         <div className="flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="font-[480] text-emerald-950">Institutional Examination Pipeline Operational</span>
-          <span className="text-emerald-700 hidden md:inline font-[360]">• Cloud Verification Engine, Encrypted Storage & Realtime Cluster</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-[#5266eb] animate-pulse" />
+          <span className="font-[480] text-[#28253b]">Institutional Examination Pipeline Operational</span>
+          <span className="text-[#554e7b] hidden md:inline font-[360]">• Cloud Verification Engine, Encrypted Storage & Realtime Cluster</span>
         </div>
-        <Badge variant="outline" className="bg-emerald-100 text-emerald-800 border-emerald-300 text-[11px] font-[420]">
+        <Badge variant="outline" className="bg-[rgba(82,102,235,0.08)] text-[#5266eb] border-0 text-[11px] font-[420]">
           100% HEALTHY
         </Badge>
       </div>
@@ -146,11 +146,11 @@ export default function AdminDashboardPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={
-                        u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]' :
-                        u.status === 'PENDING_APPROVAL' ? 'bg-[#fffbeb] text-[#b45309] border-[#fde68a] text-[10px]' :
-                        'bg-[#fbfbff] text-[#70707d] border-[#e9eaf2] text-[10px]'
-                      }>
+                      <Badge variant="outline" className={`border-0 text-[10px] ${
+                        u.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                        u.status === 'PENDING_APPROVAL' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                        'bg-[#fbfbff] text-[#70707d]'
+                      }`}>
                         {u.status}
                       </Badge>
                     </TableCell>

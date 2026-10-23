@@ -77,7 +77,7 @@ export default function ExamAiModal({ examId, onQuestionsAdded }) {
         </DialogHeader>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
+          <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-[12px] font-[420] border-0">
             {error}
           </div>
         )}
@@ -182,7 +182,7 @@ export default function ExamAiModal({ examId, onQuestionsAdded }) {
                         key={i}
                         className={`text-xs px-2.5 py-1.5 rounded-lg border font-[420] ${
                           i === q.correctOptionIndex
-                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-[480]'
+                            ? 'bg-[#edecfb] text-[#5266eb] border-[#5266eb]/30 font-[480]'
                             : 'bg-white text-[#554e7b] border-[#e9eaf2]'
                         }`}
                       >

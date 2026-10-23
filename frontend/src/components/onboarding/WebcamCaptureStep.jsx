@@ -40,14 +40,14 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
 
   return (
     <div className="space-y-4 font-sans">
-      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-start gap-2.5">
-        <Camera className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
+      <div className="bg-[#edecfb] rounded-xl p-3 text-xs text-[#28253b] flex items-start gap-2.5 border-0">
+        <Camera className="w-4 h-4 shrink-0 text-[#5266eb] mt-0.5" />
         <span>Position your face clearly inside the camera frame. This reference photo is used for identity verification during exams.</span>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] flex items-center gap-2 border-0">
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
           <span>{error}</span>
         </div>
       )}
@@ -65,13 +65,13 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
         />
       </div>
 
-      <div className="pt-4 flex items-center justify-between border-t border-slate-200">
+      <div className="pt-4 flex items-center justify-between border-t border-[#e9eaf2]">
         <Button
           type="button"
           onClick={onBack}
           variant="outline"
           disabled={uploading}
-          className="h-10 px-4 text-xs font-semibold rounded-xl border-slate-300 flex items-center gap-1.5 cursor-pointer"
+          className="h-10 px-4 text-xs font-[420] rounded-[40px] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
@@ -80,7 +80,7 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
           type="button"
           onClick={handleContinue}
           disabled={!previewUrl || uploading}
-          className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          className="h-10 px-5 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {uploading ? (
             <>

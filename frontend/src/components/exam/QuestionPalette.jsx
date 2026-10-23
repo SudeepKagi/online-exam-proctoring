@@ -1,6 +1,6 @@
 import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { CheckCircle2, ShieldAlert } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 
 export default function QuestionPalette({
   questions = [],
@@ -19,7 +19,7 @@ export default function QuestionPalette({
         <CardTitle className="text-xs font-[500] uppercase text-[#554e7b] tracking-[0.28px]">
           Question Palette
         </CardTitle>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-[11px] text-[#554e7b]">
           {answeredCount} / {questions.length} Done
         </span>
       </CardHeader>
@@ -32,8 +32,8 @@ export default function QuestionPalette({
             const isCurrent = currentIndex === idx
 
             let bgClass = 'bg-[#fbfbff] border border-[#e9eaf2] text-[#28253b] hover:bg-[#edecfb]/60'
-            if (marked) bgClass = 'bg-amber-500 text-white border-amber-600'
-            else if (answered) bgClass = 'bg-emerald-600 text-white border-emerald-700'
+            if (marked) bgClass = 'bg-[#edecfb] text-[#5266eb] border border-[#5266eb]/30 font-[480]'
+            else if (answered) bgClass = 'bg-[#5266eb] text-white border-0 font-[480]'
 
             return (
               <button
@@ -41,7 +41,7 @@ export default function QuestionPalette({
                 type="button"
                 onClick={() => onSelectIndex(idx)}
                 className={`h-9 rounded-lg text-xs font-[480] transition-all cursor-pointer ${
-                  isCurrent ? 'ring-2 ring-[#5266eb] ring-offset-2 font-bold' : ''
+                  isCurrent ? 'ring-2 ring-[#5266eb] ring-offset-1 font-[500]' : ''
                 } ${bgClass}`}
               >
                 {idx + 1}
@@ -54,32 +54,32 @@ export default function QuestionPalette({
         <div className="pt-2 border-t border-[#e9eaf2] space-y-1.5 text-[11px] text-[#554e7b]">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 inline-block" /> Answered
+              <span className="w-2.5 h-2.5 rounded-full bg-[#5266eb] inline-block" /> Answered
             </span>
-            <span className="font-semibold">{answeredCount}</span>
+            <span className="font-[480]">{answeredCount}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" /> Bookmarked
+              <span className="w-2.5 h-2.5 rounded-full bg-[#edecfb] border border-[#5266eb]/40 inline-block" /> Bookmarked
             </span>
-            <span className="font-semibold">{bookmarkedCount}</span>
+            <span className="font-[480]">{bookmarkedCount}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[#fbfbff] border border-[#e9eaf2] inline-block" /> Unanswered
             </span>
-            <span className="font-semibold">{questions.length - answeredCount}</span>
+            <span className="font-[480]">{questions.length - answeredCount}</span>
           </div>
         </div>
 
         {/* Live Autosave Status */}
         <div className="pt-2 border-t border-[#e9eaf2] flex items-center justify-between text-[11px]">
-          <span className="text-muted-foreground">Autosave:</span>
+          <span className="text-[#554e7b]">Autosave:</span>
           {isDirty ? (
-            <span className="text-amber-500 font-medium animate-pulse">Syncing answers...</span>
+            <span className="text-[#5266eb] font-[420] animate-pulse">Syncing answers...</span>
           ) : (
-            <span className="text-emerald-600 flex items-center gap-1 font-medium">
-              <CheckCircle2 className="w-3 h-3" /> All changes saved
+            <span className="text-[#554e7b] flex items-center gap-1 font-[420]">
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> All changes saved
             </span>
           )}
         </div>

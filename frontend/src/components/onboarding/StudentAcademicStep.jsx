@@ -54,13 +54,13 @@ export default function StudentAcademicStep({ initialData, onNext }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 font-sans">
-      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 text-xs text-blue-800 flex items-start gap-2.5">
-        <GraduationCap className="w-4 h-4 shrink-0 text-blue-600 mt-0.5" />
+      <div className="bg-[#edecfb] rounded-xl p-3 text-xs text-[#28253b] flex items-start gap-2.5 border-0">
+        <GraduationCap className="w-4 h-4 shrink-0 text-[#5266eb] mt-0.5" />
         <span>Configure your permanent account password and verify your institutional student records.</span>
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium">
+        <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">
           {error}
         </div>
       )}
@@ -145,7 +145,7 @@ export default function StudentAcademicStep({ initialData, onNext }) {
       <div className="pt-4 flex justify-end">
         <Button
           type="submit"
-          className="h-11 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-2 cursor-pointer"
+          className="h-10 px-5 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer"
         >
           Proceed to Face Verification <ArrowRight className="w-4 h-4" />
         </Button>

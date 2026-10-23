@@ -25,7 +25,7 @@ export default function ExamWizardStepSchedule({ schedule, setSchedule }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-semibold text-foreground">Subject Details & Schedule</h3>
+        <h3 className="text-base font-[480] text-foreground">Subject Details & Schedule</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Enter subject specifications and session duration. End time is auto-calculated.
         </p>
@@ -109,7 +109,7 @@ export default function ExamWizardStepSchedule({ schedule, setSchedule }) {
           <div className="flex items-center space-x-2.5">
             <Clock className="w-4 h-4 text-primary animate-pulse" />
             <div>
-              <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
+              <span className="text-xs font-[480] text-foreground uppercase tracking-wide">
                 Calculated End Time
               </span>
               <p className="text-sm font-medium text-foreground mt-0.5">

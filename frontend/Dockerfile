@@ -46,7 +46,7 @@ server {
     server_name _;
     root /usr/share/nginx/html;
     index index.html;
-    client_max_body_size 15M;
+    client_max_body_size 35M;
 
     # Serve pre-compressed assets (.gz / .br) automatically
     gzip_static on;

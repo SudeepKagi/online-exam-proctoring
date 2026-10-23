@@ -57,7 +57,7 @@ export default function ExamWizardStepAudience({ audience, setAudience }) {
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-semibold text-foreground">Target Semester & Department</h3>
+        <h3 className="text-base font-[480] text-foreground">Target Semester & Department</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Select the student cohort for this examination. Matching active students will be automatically enrolled.
         </p>
@@ -112,11 +112,11 @@ export default function ExamWizardStepAudience({ audience, setAudience }) {
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-semibold text-foreground">Target Cohort</span>
+                <span className="text-sm font-[480] text-foreground">Target Cohort</span>
                 {loadingCount && <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                <span className="font-semibold text-foreground">
+                <span className="font-[480] text-foreground">
                   {loadingCount ? '...' : studentCount} Active Students
                 </span>{' '}
                 in <span className="font-medium text-foreground">{department}</span> •{' '}
@@ -131,15 +131,15 @@ export default function ExamWizardStepAudience({ audience, setAudience }) {
       </Card>
 
       {fetchError && (
-        <div className="flex items-center space-x-2 text-xs text-amber-500 bg-amber-500/10 p-2.5 rounded-md border border-amber-500/20">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center space-x-2 text-xs text-[#28253b] bg-[#edecfb] p-3 rounded-[12px] border-0">
+          <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
           <span>{fetchError}</span>
         </div>
       )}
 
-      <div className="p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground space-y-1">
-        <div className="flex items-center space-x-1.5 text-foreground font-medium">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+      <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#e9eaf2] text-xs text-[#554e7b] space-y-1">
+        <div className="flex items-center space-x-1.5 text-[#28253b] font-[480]">
+          <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb] shrink-0" />
           <span>Instant Assignment Execution</span>
         </div>
         <p>

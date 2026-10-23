@@ -11,15 +11,15 @@ export function calculatePasswordStrength(pass) {
 
   switch (score) {
     case 1:
-      return { score: 1, label: 'Weak', barColor: 'bg-rose-500', textColor: 'text-rose-600' }
+      return { score: 1, label: 'Weak', barColor: 'bg-[#554e7b]/30', textColor: 'text-[#554e7b]' }
     case 2:
-      return { score: 2, label: 'Fair', barColor: 'bg-amber-500', textColor: 'text-amber-600' }
+      return { score: 2, label: 'Fair', barColor: 'bg-[#5266eb]/50', textColor: 'text-[#554e7b]' }
     case 3:
-      return { score: 3, label: 'Good', barColor: 'bg-blue-600', textColor: 'text-blue-600' }
+      return { score: 3, label: 'Good', barColor: 'bg-[#5266eb]/80', textColor: 'text-[#5266eb]' }
     case 4:
-      return { score: 4, label: 'Strong', barColor: 'bg-emerald-600', textColor: 'text-emerald-600' }
+      return { score: 4, label: 'Strong', barColor: 'bg-[#5266eb]', textColor: 'text-[#5266eb]' }
     default:
-      return { score: 0, label: 'Very Weak', barColor: 'bg-rose-400', textColor: 'text-rose-500' }
+      return { score: 0, label: 'Very Weak', barColor: 'bg-[#554e7b]/20', textColor: 'text-[#554e7b]' }
   }
 }
 
@@ -88,8 +88,8 @@ export function PasswordInput({
             ))}
           </div>
           <div className="flex items-center justify-between text-[11px]">
-            <span className="text-slate-500">Security Strength</span>
-            <span className={`font-bold ${strength.textColor}`}>{strength.label}</span>
+            <span className="text-[#554e7b] font-[360]">Security Strength</span>
+            <span className={`font-[480] ${strength.textColor}`}>{strength.label}</span>
           </div>
         </div>
       )}

@@ -75,45 +75,45 @@ Proctoring Console   : ${window.location.origin}/login
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-base font-semibold text-foreground">Auto-Generated Invigilator Credentials</h3>
+        <h3 className="text-base font-[480] text-foreground">Auto-Generated Invigilator Credentials</h3>
         <p className="text-xs text-muted-foreground mt-0.5">
           Dedicated invigilator credentials have been generated for live session surveillance.
         </p>
       </div>
 
-      {/* High-Contrast Invigilator Credentials Card */}
-      <Card className="border-2 border-primary/40 bg-zinc-950 text-zinc-100 shadow-xl overflow-hidden">
-        <div className="bg-primary/20 px-4 py-2.5 border-b border-primary/30 flex items-center justify-between">
+      {/* Mercury Light Invigilator Credentials Card */}
+      <Card className="border border-[#e9eaf2] bg-[#edecfb] text-[#28253b] shadow-xs rounded-[12px] overflow-hidden font-sans">
+        <div className="bg-[#fbfbff] px-4 py-2.5 border-b border-[#e9eaf2] flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <KeyRound className="w-4 h-4 text-primary animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-primary">
+            <KeyRound className="w-4 h-4 text-[#5266eb] animate-pulse" />
+            <span className="text-xs font-[500] uppercase tracking-wider text-[#28253b]">
               Invigilator Surveillance Access
             </span>
           </div>
-          <Badge className="bg-primary text-primary-foreground font-mono text-[11px]">
+          <Badge className="bg-[#5266eb] text-white font-mono text-[11px] rounded-full border-0">
             Ready to Publish
           </Badge>
         </div>
 
         <CardContent className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-zinc-900/80 p-3 rounded-lg border border-zinc-800">
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Exam Code</span>
-              <p className="text-base font-mono font-bold text-zinc-100 mt-1 select-all">
+            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+              <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Exam Code</span>
+              <p className="text-base font-mono font-[480] text-[#28253b] mt-1 select-all">
                 {publishConfig.examCode || 'EXM-CODE'}
               </p>
             </div>
 
-            <div className="bg-zinc-900/80 p-3 rounded-lg border border-zinc-800">
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Invigilator Login ID</span>
-              <p className="text-base font-mono font-bold text-amber-400 mt-1 select-all">
+            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+              <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Invigilator Login ID</span>
+              <p className="text-base font-mono font-[480] text-[#5266eb] mt-1 select-all">
                 {publishConfig.invigilatorId || 'INV-ID'}
               </p>
             </div>
 
-            <div className="bg-zinc-900/80 p-3 rounded-lg border border-zinc-800">
-              <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">Password</span>
-              <p className="text-base font-mono font-bold text-emerald-400 mt-1 select-all">
+            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+              <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Password</span>
+              <p className="text-base font-mono font-[480] text-[#5266eb] mt-1 select-all">
                 {publishConfig.invigilatorPassword || 'PASSWORD'}
               </p>
             </div>
@@ -125,9 +125,9 @@ Proctoring Console   : ${window.location.origin}/login
               variant="outline"
               size="sm"
               onClick={copyCredentials}
-              className="text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              className="text-xs bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] rounded-[40px] px-3.5 h-8 border-0 font-[420]"
             >
-              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-[#5266eb]" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
               {copied ? 'Copied to Clipboard!' : 'Copy Credentials'}
             </Button>
             <Button
@@ -135,7 +135,7 @@ Proctoring Console   : ${window.location.origin}/login
               variant="outline"
               size="sm"
               onClick={() => downloadSlip('txt')}
-              className="text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              className="text-xs bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] rounded-[40px] px-3.5 h-8 border-0 font-[420]"
             >
               <Download className="w-3.5 h-3.5 mr-1.5" /> Download Slip (.txt)
             </Button>
@@ -144,7 +144,7 @@ Proctoring Console   : ${window.location.origin}/login
               variant="outline"
               size="sm"
               onClick={() => downloadSlip('csv')}
-              className="text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800"
+              className="text-xs bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] rounded-[40px] px-3.5 h-8 border-0 font-[420]"
             >
               <Download className="w-3.5 h-3.5 mr-1.5" /> Download (.csv)
             </Button>
@@ -156,19 +156,19 @@ Proctoring Console   : ${window.location.origin}/login
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-muted/40 p-3.5 rounded-lg border border-border">
         <div>
           <span className="text-muted-foreground">Subject</span>
-          <p className="font-semibold text-foreground truncate">{schedule.title || '-'}</p>
+          <p className="font-[480] text-foreground truncate">{schedule.title || '-'}</p>
         </div>
         <div>
           <span className="text-muted-foreground">Questions</span>
-          <p className="font-semibold text-foreground">{questions.length} Items</p>
+          <p className="font-[480] text-foreground">{questions.length} Items</p>
         </div>
         <div>
           <span className="text-muted-foreground">Duration</span>
-          <p className="font-semibold text-foreground">{schedule.durationMinutes} Minutes</p>
+          <p className="font-[480] text-foreground">{schedule.durationMinutes} Minutes</p>
         </div>
         <div>
           <span className="text-muted-foreground">Audience</span>
-          <p className="font-semibold text-foreground truncate">{audience.department} ({audience.semester})</p>
+          <p className="font-[480] text-foreground truncate">{audience.department} ({audience.semester})</p>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ Proctoring Console   : ${window.location.origin}/login
         <Button
           type="button"
           size="lg"
-          className="w-full sm:w-auto px-8 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-500 font-semibold shadow-md"
+          className="w-full sm:w-auto px-8 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-500 font-[480] shadow-md"
           onClick={onPublish}
           disabled={isPublishing || !questions.length}
         >

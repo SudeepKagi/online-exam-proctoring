@@ -25,11 +25,11 @@ export default function QuestionCard({
           Question {currentIndex + 1} of {totalQuestions}
         </span>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs font-mono font-[420] text-emerald-700 border-emerald-300 bg-emerald-50">
+          <Badge variant="outline" className="text-xs font-mono font-[420] text-[#554e7b] bg-[#edecfb] border-0 rounded-full px-2.5 py-0.5">
             +{Number(currentQ?.marks || 1).toFixed(2)}
           </Badge>
           {Number(currentQ?.negativeMarks) > 0 && (
-            <Badge variant="outline" className="text-xs font-mono font-[420] text-rose-700 border-rose-300 bg-rose-50">
+            <Badge variant="outline" className="text-xs font-mono font-[420] text-[#554e7b] bg-[#edecfb] border-0 rounded-full px-2.5 py-0.5">
               -{Number(currentQ?.negativeMarks).toFixed(2)}
             </Badge>
           )}
@@ -65,7 +65,7 @@ export default function QuestionCard({
                   </span>
                   <span>{opt}</span>
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground uppercase hidden sm:inline">
+                <span className="text-[10px] font-mono text-[#70707d] uppercase hidden sm:inline">
                   [{idx + 1}]
                 </span>
               </button>
@@ -77,29 +77,27 @@ export default function QuestionCard({
       <CardFooter className="py-3 px-6 border-t border-[#e9eaf2] flex items-center justify-between bg-[#fbfbff]">
         <div className="flex gap-2">
           <Button
-            variant="outline"
             size="sm"
             onClick={onPrev}
             disabled={currentIndex === 0}
-            className="gap-1 text-xs font-[420] rounded-[40px] px-3.5 h-8 bg-white border-[#c3c3cc]/60"
+            className="gap-1 text-xs font-[420] rounded-[40px] px-3.5 h-8 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.14)] text-[#28253b] border-0 cursor-pointer disabled:opacity-40"
           >
             <ChevronLeft className="w-4 h-4" /> Previous
           </Button>
           <Button
-            variant="outline"
             size="sm"
             onClick={onToggleBookmark}
-            className={`text-xs gap-1.5 font-[420] rounded-[40px] px-3.5 h-8 ${
-              isBookmarked ? 'bg-amber-50 text-amber-700 border-amber-300' : 'bg-white border-[#c3c3cc]/60 text-[#28253b]'
+            className={`text-xs gap-1.5 font-[420] rounded-[40px] px-3.5 h-8 border-0 cursor-pointer ${
+              isBookmarked ? 'bg-[rgba(82,102,235,0.18)] text-[#28253b]' : 'bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.14)] text-[#28253b]'
             }`}
           >
-            <Bookmark className="w-3.5 h-3.5" /> Bookmark
+            <Bookmark className="w-3.5 h-3.5 text-[#5266eb]" /> Bookmark
           </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClearAnswer}
-            className="text-xs text-[#70707d] font-[420] rounded-[40px] px-3 h-8"
+            className="text-xs text-[#554e7b] font-[420] rounded-[40px] px-3 h-8 hover:bg-[rgba(82,102,235,0.08)] hover:text-[#28253b]"
           >
             Clear Answer
           </Button>
@@ -108,7 +106,7 @@ export default function QuestionCard({
           size="sm"
           onClick={onNext}
           disabled={currentIndex >= totalQuestions - 1}
-          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1 text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer"
+          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1 text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer disabled:opacity-40"
         >
           Save & Next <ChevronRight className="w-4 h-4" />
         </Button>

@@ -153,7 +153,7 @@ export default function AdminUsersPage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
           {msg.text}
         </div>
       )}
@@ -161,10 +161,10 @@ export default function AdminUsersPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full font-sans">
         <TabsList>
           <TabsTrigger value="APPROVALS" className="text-xs flex items-center gap-1.5 cursor-pointer">
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+            <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" />
             Pending Approvals
             {approvalsCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-white rounded-full text-[10px] font-extrabold animate-pulse">
+              <span className="ml-1 px-1.5 py-0.2 bg-[#5266eb] text-white rounded-full text-[10px] font-[500] animate-pulse">
                 {approvalsCount}
               </span>
             )}

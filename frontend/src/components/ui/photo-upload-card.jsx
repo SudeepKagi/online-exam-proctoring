@@ -142,12 +142,12 @@ export function PhotoUploadCard({
       {(label || description) && (
         <div className="p-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
           <div>
-            {label && <h4 className="text-xs font-bold text-slate-900">{label}</h4>}
+            {label && <h4 className="text-xs font-[480] text-slate-900">{label}</h4>}
             {description && <p className="text-[11px] text-slate-500">{description}</p>}
           </div>
           {previewUrl && (
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] gap-1 font-semibold">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Ready
+            <Badge variant="outline" className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] gap-1 font-[420]">
+              <CheckCircle2 className="w-3 h-3 text-[#5266eb]" /> Ready
             </Badge>
           )}
         </div>
@@ -183,14 +183,14 @@ export function PhotoUploadCard({
                 onDrop={handleDrop}
                 onClick={() => !disabled && fileInputRef.current?.click()}
                 className={`w-full aspect-16/9 border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors ${
-                  isDragging ? 'border-blue-600 bg-blue-50/50' : 'border-slate-300 hover:border-blue-500 bg-slate-50/50'
+                  isDragging ? 'border-[#5266eb] bg-[#edecfb]/50' : 'border-[#c3c3cc] hover:border-[#5266eb] bg-[#fbfbff]'
                 } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+                <div className="w-10 h-10 rounded-xl bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-2">
                   <Upload className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-slate-800">Click to upload College ID Card Photo</span>
-                <span className="text-[10px] text-slate-500 mt-0.5">JPG, PNG, or WebP up to 10MB</span>
+                <span className="text-xs font-[480] text-[#28253b]">Click to upload College ID Card Photo</span>
+                <span className="text-[10px] text-[#554e7b] mt-0.5 font-[360]">JPG, PNG, or WebP up to 10MB</span>
               </div>
             )}
           </div>
@@ -198,15 +198,15 @@ export function PhotoUploadCard({
 
         {previewUrl ? (
           <div className="flex items-center justify-between gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={() => setZoomOpen(true)} className="h-9 text-xs gap-1.5 rounded-lg border-slate-200">
+            <Button type="button" variant="outline" size="sm" onClick={() => setZoomOpen(true)} className="h-9 text-xs gap-1.5 rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0 font-[420]">
               <ZoomIn className="w-3.5 h-3.5" /> Inspect Full Size
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={handleRetake} disabled={disabled} className="h-9 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 gap-1.5 rounded-lg">
+            <Button type="button" variant="ghost" size="sm" onClick={handleRetake} disabled={disabled} className="h-9 text-xs text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] gap-1.5 rounded-[40px] px-3.5 border-0 font-[420]">
               <RefreshCw className="w-3.5 h-3.5" /> Retake / Replace
             </Button>
           </div>
         ) : mode === 'webcam' ? (
-          <Button type="button" onClick={capturePhoto} disabled={!streaming || disabled} className="w-full h-10 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg gap-2 cursor-pointer shadow-xs">
+          <Button type="button" onClick={capturePhoto} disabled={!streaming || disabled} className="w-full h-10 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] gap-2 cursor-pointer shadow-xs">
             <Camera className="w-4 h-4" /> Snap Live Photo
           </Button>
         ) : null}
@@ -215,7 +215,7 @@ export function PhotoUploadCard({
       <Dialog open={zoomOpen} onOpenChange={setZoomOpen}>
         <DialogContent className="max-w-2xl font-sans">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold text-slate-900">{label || 'Document Inspection'}</DialogTitle>
+            <DialogTitle className="text-sm font-[480] text-slate-900">{label || 'Document Inspection'}</DialogTitle>
           </DialogHeader>
           <div className="p-2 max-h-[70vh] overflow-auto flex items-center justify-center bg-slate-950 rounded-xl">
             {previewUrl && <img src={previewUrl} alt="Enlarged view" className="max-h-[65vh] w-auto object-contain rounded-lg" />}

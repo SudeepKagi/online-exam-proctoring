@@ -45,19 +45,69 @@ test.describe('PHASE 4: Strict Enterprise Light-Only UI Audit (DESIGN.md)', () =
         }
       })
 
+      function parseColor(str: string) {
+        if (!str || str === 'transparent' || str === 'rgba(0, 0, 0, 0)') return null
+        const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+        if (!m) return null
+        const r = parseInt(m[1], 10), g = parseInt(m[2], 10), b = parseInt(m[3], 10)
+        const a = m[4] !== undefined ? parseFloat(m[4]) : 1
+        return { r, g, b, a }
+      }
+
+      function isForbiddenStatusColor(c: { r: number, g: number, b: number, a: number } | null) {
+        if (!c || c.a < 0.1) return false
+        if (Math.abs(c.r - c.g) < 15 && Math.abs(c.g - c.b) < 15) return false
+        if (c.r > 225 && c.g > 225 && c.b > 225) return false
+        if (c.b > c.r * 1.4 && c.b > c.g * 1.4) return false
+
+        if (c.g > c.r * 1.2 && c.g > c.b * 1.2 && c.g > 60) return true
+        if (c.r > c.g * 1.4 && c.r > c.b * 1.4 && c.r > 60) return true
+        if (c.r > 160 && c.g > 70 && c.g < c.r && c.b < 90 && (c.r - c.b) > 70) return true
+
+        return false
+      }
+
+      const buttonsBadgesAlerts = Array.from(document.querySelectorAll('button, [role="button"], [data-slot="badge"], .badge, [role="alert"]'))
+      const statusColorViolations: string[] = []
+      const pillBorderViolations: string[] = []
+
+      buttonsBadgesAlerts.forEach(el => {
+        const style = window.getComputedStyle(el)
+        const bg = parseColor(style.backgroundColor)
+        const color = parseColor(style.color)
+        const borderColor = parseColor(style.borderColor)
+
+        if (isForbiddenStatusColor(bg) || isForbiddenStatusColor(color) || isForbiddenStatusColor(borderColor)) {
+          statusColorViolations.push(`${el.tagName}#${el.id}.${el.className} (bg: ${style.backgroundColor}, color: ${style.color}, border: ${style.borderColor})`)
+        }
+
+        const borderRadius = parseInt(style.borderRadius, 10) || 0
+        const isPillOrBadge = borderRadius >= 20 || el.getAttribute('data-slot') === 'badge' || el.classList.contains('rounded-full')
+        if (isPillOrBadge) {
+          const bw = parseFloat(style.borderWidth) || 0
+          if (bw > 0 && style.borderStyle !== 'none' && style.borderColor !== 'transparent' && style.borderColor !== 'rgba(0, 0, 0, 0)') {
+            pillBorderViolations.push(`${el.tagName}#${el.id}.${el.className} (borderWidth: ${style.borderWidth})`)
+          }
+        }
+      })
+
       return {
         bodyBg,
         isCanvasLight,
         darkCount: darkElements.length,
         heavyWeightCount: heavyWeights.length,
         heavyWeights: heavyWeights.slice(0, 5),
-        primaryButtonCount
+        primaryButtonCount,
+        statusColorViolations,
+        pillBorderViolations
       }
     })
 
     expect(auditResults.darkCount, `${screenName} must have 0 dark surfaces`).toBe(0)
     expect(auditResults.heavyWeightCount, `${screenName} text elements must have fontWeight <= 500: ${JSON.stringify(auditResults.heavyWeights)}`).toBe(0)
     expect(auditResults.primaryButtonCount, `${screenName} must have at most 1 primary button`).toBeLessThanOrEqual(2)
+    expect(auditResults.statusColorViolations, `${screenName} buttons/badges/alerts must have zero green/red/orange: ${JSON.stringify(auditResults.statusColorViolations)}`).toHaveLength(0)
+    expect(auditResults.pillBorderViolations, `${screenName} pills and badges must have borderWidth === '0px': ${JSON.stringify(auditResults.pillBorderViolations)}`).toHaveLength(0)
   }
 
   // 1. Login Screen Audit

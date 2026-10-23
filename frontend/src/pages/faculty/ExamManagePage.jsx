@@ -71,7 +71,7 @@ export default function ExamManagePage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
           {msg.text}
         </div>
       )}

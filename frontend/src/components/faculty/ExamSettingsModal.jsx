@@ -74,7 +74,7 @@ export default function ExamSettingsModal({ exam, onUpdated }) {
         </DialogHeader>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
+          <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-[12px] font-[420] border-0">
             {error}
           </div>
         )}
@@ -144,7 +144,7 @@ export default function ExamSettingsModal({ exam, onUpdated }) {
                 size="sm"
                 onClick={handleDelete}
                 disabled={deleting || saving}
-                className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50 gap-1 rounded-[40px] px-3 cursor-pointer"
+                className="text-xs text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] gap-1 rounded-[40px] px-3 cursor-pointer border-0"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete Draft
               </Button>

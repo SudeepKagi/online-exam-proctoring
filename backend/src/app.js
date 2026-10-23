@@ -53,14 +53,14 @@ app.use(cookieParser())
 app.use(corsMiddleware)
 
 app.use(express.json({
-  limit: '256kb',
+  limit: '25mb',
   verify: (req, _res, buf) => {
     if (req.path.startsWith('/api/v1/agent') || req.path.startsWith('/internal/livekit')) {
       req.rawBody = buf
     }
   }
 }))
-app.use(express.urlencoded({ extended: true, limit: '256kb' }))
+app.use(express.urlencoded({ extended: true, limit: '25mb' }))
 
 // Internal LiveKit Webhook Endpoint
 app.post('/internal/livekit/webhook', async (req, res, next) => {

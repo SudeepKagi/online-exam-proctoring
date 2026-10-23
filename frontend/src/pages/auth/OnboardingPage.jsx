@@ -131,7 +131,7 @@ export default function OnboardingPage() {
                   <div
                     key={i}
                     className={`h-2 rounded-full transition-all ${
-                      step === i + 1 ? 'w-6 bg-[#5266eb]' : (step > i + 1 ? 'w-2 bg-emerald-500' : 'w-2 bg-[#edecfb]')
+                      step === i + 1 ? 'w-6 bg-[#5266eb]' : (step > i + 1 ? 'w-2 bg-[rgba(82,102,235,0.4)]' : 'w-2 bg-[#edecfb]')
                     }`}
                   />
                 ))}
@@ -139,8 +139,8 @@ export default function OnboardingPage() {
             </div>
 
             {user?.status === 'REJECTED' && (
-              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2.5 text-xs text-red-800 font-[420]">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 mt-0.5" />
+              <div className="mt-3 p-3 bg-[#edecfb] rounded-xl flex items-start gap-2.5 text-xs text-[#28253b] font-[420] border-0">
+                <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb] mt-0.5" />
                 <div>
                   <span className="font-[480]">Previous Submission Rejected: </span>
                   <span>{rejectionReason && rejectionReason !== 'null' && rejectionReason !== 'undefined' ? rejectionReason : 'Please provide clearer photos and verify your details.'}</span>
@@ -151,7 +151,7 @@ export default function OnboardingPage() {
 
           <CardContent className="pt-6">
             {globalError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-medium">
+              <div className="mb-4 p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">
                 {globalError}
               </div>
             )}

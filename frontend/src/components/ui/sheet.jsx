@@ -91,7 +91,7 @@ function SheetFooter({ className, ...props }) {
 }
 
 function SheetTitle({ className, ...props }) {
-  return <h2 className={cn("text-base font-semibold text-slate-900", className)} {...props} />
+  return <h2 className={cn("text-base font-[480] text-slate-900", className)} {...props} />
 }
 
 function SheetDescription({ className, ...props }) {

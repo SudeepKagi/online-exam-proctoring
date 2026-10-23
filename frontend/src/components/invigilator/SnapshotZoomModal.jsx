@@ -23,7 +23,7 @@ export default function SnapshotZoomModal({ isOpen, onClose, snapshot }) {
         <DialogHeader className="p-4 bg-zinc-900 border-b border-zinc-800 flex flex-row items-center justify-between">
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <DialogTitle className="text-sm font-bold text-zinc-100">
+              <DialogTitle className="text-sm font-[480] text-zinc-100">
                 Screen Snapshot Audit — {snapshot.studentName} ({snapshot.institutionId || '—'})
               </DialogTitle>
               <Badge variant="destructive" className="text-[10px] uppercase font-mono">

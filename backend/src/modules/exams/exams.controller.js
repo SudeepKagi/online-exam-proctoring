@@ -146,7 +146,7 @@ async function bulkAddQuestions(req, res, next) {
 }
 
 const multer = require('multer')
-const upload = multer({ limits: { fileSize: 10 * 1024 * 1024 } })
+const upload = multer({ limits: { fileSize: 25 * 1024 * 1024 } })
 const uploadQuestionsMiddleware = upload.single('file')
 
 async function uploadQuestionsExcel(req, res, next) {

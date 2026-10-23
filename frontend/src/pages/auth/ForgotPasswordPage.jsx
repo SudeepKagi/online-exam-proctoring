@@ -109,15 +109,15 @@ export default function ForgotPasswordPage() {
 
           <CardContent className="pt-6">
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-[420] flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+              <div className="mb-4 p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] flex items-center gap-2 border-0">
+                <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
-              <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 rounded-xl font-[420] flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <div className="mb-4 p-3.5 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] flex items-center gap-2 border-0">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-[#5266eb]" />
                 <span>{successMsg}</span>
               </div>
             )}
@@ -167,7 +167,7 @@ export default function ForgotPasswordPage() {
                 {otpHint && (
                   <div className="p-3 bg-[#edecfb] border border-[#5266eb]/20 rounded-xl text-xs text-[#5266eb]">
                     <span className="font-[480]">Evaluation Mode OTP: </span>
-                    <span className="font-mono font-bold tracking-widest text-[#28253b] ml-1">{otpHint}</span>
+                    <span className="font-mono font-[480] tracking-widest text-[#28253b] ml-1">{otpHint}</span>
                   </div>
                 )}
 
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="h-11 text-center font-mono text-base font-bold tracking-widest bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl"
+                    className="h-11 text-center font-mono text-base font-[480] tracking-widest bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl"
                   />
                 </FormField>
 

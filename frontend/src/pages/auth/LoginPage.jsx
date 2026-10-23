@@ -150,7 +150,7 @@ export default function LoginPage() {
               { label: 'Multi-Role Identity Access', desc: 'Dedicated portals for students, faculty & proctors' }
             ].map((b, i) => (
               <div key={i} className="flex items-start gap-3 p-3.5 bg-white border border-[#e9eaf2] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.03)]">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-[#5266eb] shrink-0 mt-0.5" />
                 <div>
                   <h2 className="text-xs font-[480] text-[#28253b]">{b.label}</h2>
                   <p className="text-[11px] text-[#554e7b] mt-0.5 font-[360]">{b.desc}</p>
@@ -185,8 +185,8 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-6">
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl flex items-center gap-2.5 font-[420]">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                  <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl flex items-center gap-2.5 font-[420] border-0">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
                     <span>{error}</span>
                   </div>
                 )}

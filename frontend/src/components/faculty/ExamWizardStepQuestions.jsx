@@ -94,7 +94,7 @@ export default function ExamWizardStepQuestions({ questions, setQuestions }) {
         </Badge>
       </div>
 
-      {error && <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded-xl">{error}</div>}
+      {error && <div className="p-3 text-xs bg-[#edecfb] text-[#28253b] rounded-xl border-0 font-[420]">{error}</div>}
 
       {mode === 'PDF' ? (
         <form onSubmit={handlePdfUpload} className="p-4 bg-[#fbfbff] border border-[#e9eaf2] rounded-xl space-y-3">
@@ -169,7 +169,7 @@ export default function ExamWizardStepQuestions({ questions, setQuestions }) {
                   onChange={() => setManualQ({ ...manualQ, correctOptionIndex: idx })}
                   className="accent-[#5266eb] cursor-pointer"
                 />
-                <span className="text-xs font-mono font-bold text-[#554e7b]">{label}.</span>
+                <span className="text-xs font-mono font-[480] text-[#554e7b]">{label}.</span>
                 <input
                   required
                   placeholder={`Option ${label}`}
@@ -210,13 +210,13 @@ export default function ExamWizardStepQuestions({ questions, setQuestions }) {
                 </div>
                 <div className="grid grid-cols-2 gap-1 text-[11px] text-[#554e7b] pl-5">
                   {(q.options || []).map((opt, oIdx) => (
-                    <span key={oIdx} className={oIdx === q.correctOptionIndex ? 'text-emerald-700 font-semibold' : ''}>
+                    <span key={oIdx} className={oIdx === q.correctOptionIndex ? 'text-[#5266eb] font-[500]' : ''}>
                       {String.fromCharCode(65 + oIdx)}. {opt} {oIdx === q.correctOptionIndex ? '✓' : ''}
                     </span>
                   ))}
                 </div>
               </div>
-              <button type="button" onClick={() => removeQuestion(idx)} className="text-red-500 hover:text-red-700 p-1 cursor-pointer" title="Remove">
+              <button type="button" onClick={() => removeQuestion(idx)} className="text-[#554e7b] hover:text-[#28253b] p-1 cursor-pointer" title="Remove">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>

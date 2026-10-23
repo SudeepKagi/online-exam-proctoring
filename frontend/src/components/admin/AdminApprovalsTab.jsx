@@ -60,7 +60,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-[420]">
+        <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">
           {error}
         </div>
       )}
@@ -89,7 +89,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
               ) : approvals.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-12 text-xs text-[#70707d]">
-                    <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+                    <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-[#5266eb]" />
                     <span className="font-[480] text-[#28253b] block text-sm">All identity profiles verified!</span>
                     No pending student or faculty applications in queue.
                   </TableCell>
@@ -107,7 +107,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
                         {u.institutionId || '—'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={u.role === 'STUDENT' ? 'bg-[#edecfb] text-[#5266eb] border-[#9cb4e8]/30 text-[10px] rounded-full' : 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] rounded-full'}>
+                        <Badge variant="outline" className={u.role === 'STUDENT' ? 'bg-[#edecfb] text-[#5266eb] border-0 text-[10px] rounded-full' : 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0 text-[10px] rounded-full'}>
                           {u.role}
                         </Badge>
                       </TableCell>

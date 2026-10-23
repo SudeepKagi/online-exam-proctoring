@@ -56,18 +56,18 @@ export default function SignedImage({
     return (
       <div className={`flex flex-col items-center justify-center bg-slate-50/80 border border-dashed border-slate-300 rounded-xl text-slate-400 p-4 text-center ${className}`}>
         {hasError ? (
-          <AlertCircle size={28} className="text-amber-500 mb-1" />
+          <AlertCircle size={28} className="text-[#5266eb] mb-1" />
         ) : (
-          <FallbackIcon size={28} className="text-slate-400 mb-1" />
+          <FallbackIcon size={28} className="text-[#554e7b] mb-1" />
         )}
-        <span className="text-xs font-medium text-slate-600">
+        <span className="text-xs font-[420] text-[#28253b]">
           {hasError ? 'Photo not available — upload it again' : fallbackText}
         </span>
         {onReupload && (
           <button
             type="button"
             onClick={onReupload}
-            className="mt-2 text-[11px] font-semibold text-[#2f80ed] hover:text-[#2563eb] underline cursor-pointer"
+            className="mt-2 text-[11px] font-[420] text-[#5266eb] hover:text-[#4353c7] underline cursor-pointer"
           >
             {reuploadText}
           </button>

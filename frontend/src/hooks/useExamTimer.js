@@ -5,14 +5,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
  * Realtime countdown timer immune to background tab throttling via Date.now() delta.
  * Synchronizes against server expiresAt timestamp.
  */
-export function useExamTimer({ expiresAt, durationMinutes = 60, onExpire } = {}) {
+export function useExamTimer({ expiresAt, durationMinutes = 60, onExpire, enabled = true } = {}) {
   const getRemainingSeconds = useCallback(() => {
-    if (expiresAt) {
-      const expiry = new Date(expiresAt).getTime()
-      return Math.max(0, Math.floor((expiry - Date.now()) / 1000))
-    }
-    return Math.max(0, durationMinutes * 60)
-  }, [expiresAt, durationMinutes])
+    if (!enabled || !expiresAt) return 0
+    const expiry = new Date(expiresAt).getTime()
+    return Math.max(0, Math.floor((expiry - Date.now()) / 1000))
+  }, [expiresAt, enabled])
 
   const [remaining, setRemaining] = useState(getRemainingSeconds)
   const onExpireRef = useRef(onExpire)
@@ -20,10 +18,12 @@ export function useExamTimer({ expiresAt, durationMinutes = 60, onExpire } = {})
   const firedRef = useRef(false)
 
   useEffect(() => {
+    if (!enabled || !expiresAt) {
+      setRemaining(0)
+      return
+    }
     firedRef.current = false
-    const targetTimestamp = expiresAt
-      ? new Date(expiresAt).getTime()
-      : Date.now() + durationMinutes * 60 * 1000
+    const targetTimestamp = new Date(expiresAt).getTime()
 
     const updateTimer = () => {
       const now = Date.now()
@@ -41,7 +41,7 @@ export function useExamTimer({ expiresAt, durationMinutes = 60, onExpire } = {})
     updateTimer()
     const interval = setInterval(updateTimer, 1000)
     return () => clearInterval(interval)
-  }, [expiresAt, durationMinutes])
+  }, [expiresAt, durationMinutes, enabled])
 
   const formatTime = () => {
     const hours = Math.floor(remaining / 3600)

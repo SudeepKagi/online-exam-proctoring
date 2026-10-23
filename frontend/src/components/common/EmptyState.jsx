@@ -14,7 +14,7 @@ export default function EmptyState({
       <div className="w-14 h-14 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center mb-3.5 shadow-2xs">
         <Icon size={26} strokeWidth={1.75} />
       </div>
-      <h3 className="text-sm font-semibold text-slate-900 tracking-tight mb-1">
+      <h3 className="text-sm font-[480] text-slate-900 tracking-tight mb-1">
         {title}
       </h3>
       <p className="text-xs text-slate-500 max-w-sm font-normal leading-relaxed mb-5">
@@ -24,7 +24,7 @@ export default function EmptyState({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2f80ed] hover:bg-[#2563eb] text-white text-xs font-[480] rounded-xl shadow-xs transition-all cursor-pointer"
         >
           <Plus size={14} /> {actionText}
         </button>

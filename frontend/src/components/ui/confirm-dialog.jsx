@@ -33,7 +33,7 @@ export default function ConfirmDialog({
             }`}>
               {variant === 'destructive' ? <AlertTriangle size={20} /> : <AlertCircle size={20} />}
             </div>
-            <DialogTitle className="text-base font-bold text-foreground font-sans">{title}</DialogTitle>
+            <DialogTitle className="text-base font-[480] text-foreground font-sans">{title}</DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground leading-relaxed font-sans mt-1">
             {description}
@@ -42,10 +42,10 @@ export default function ConfirmDialog({
         <DialogFooter className="flex gap-2 sm:gap-2 mt-6">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="text-xs font-semibold"
+            className="text-xs font-[420] rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0"
           >
             {cancelText}
           </Button>
@@ -56,11 +56,7 @@ export default function ConfirmDialog({
               onOpenChange(false)
             }}
             disabled={loading}
-            className={`text-xs font-mono font-bold ${
-              variant === 'destructive'
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/20'
-            }`}
+            className="text-xs font-[420] rounded-[32px] px-4 h-9 bg-[#5266eb] hover:bg-[#4353c7] text-white shadow-xs cursor-pointer"
           >
             {loading ? 'Processing...' : confirmText}
           </Button>

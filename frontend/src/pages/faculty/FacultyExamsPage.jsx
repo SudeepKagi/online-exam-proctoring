@@ -105,7 +105,7 @@ export default function FacultyExamsPage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
           {msg.text}
         </div>
       )}
@@ -139,10 +139,10 @@ export default function FacultyExamsPage() {
                     </TableCell>
                     <TableCell className="text-[#554e7b] text-xs">{exam.durationMinutes}m</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-[10px] font-[420] ${
-                        exam.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent' :
-                        'bg-[#fbfbff] text-[#70707d] border-[#e9eaf2]'
+                      <Badge variant="outline" className={`text-[10px] font-[420] border-0 ${
+                        exam.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                        'bg-[#fbfbff] text-[#70707d]'
                       }`}>
                         {exam.status}
                       </Badge>
@@ -155,7 +155,7 @@ export default function FacultyExamsPage() {
                         className="h-8 text-xs gap-1 rounded-[40px] px-2.5 text-[#554e7b] hover:text-[#5266eb]"
                         title="View Invigilator Access Credentials"
                       >
-                        <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                        <KeyRound className="w-3.5 h-3.5 text-[#5266eb]" />
                         <span className="hidden sm:inline">Invigilator Key</span>
                       </Button>
                       <Button size="sm" variant="outline" asChild className="h-8 text-xs gap-1 rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420]">

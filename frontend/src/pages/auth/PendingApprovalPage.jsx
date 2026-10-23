@@ -86,10 +86,10 @@ export default function PendingApprovalPage() {
               </div>
             </div>
 
-            <div className="p-3 bg-[#edecfb]/60 border border-[#9cb4e8]/30 rounded-xl text-xs text-[#554e7b] flex items-start gap-2.5">
+            <div className="p-3 bg-[#edecfb] rounded-xl text-xs text-[#554e7b] flex items-start gap-2.5 border-0">
               <Shield className="w-4 h-4 shrink-0 text-[#5266eb] mt-0.5" />
               <div className="leading-relaxed font-[360]">
-                Once an administrator reviews your ID card photo and reference facial snapshot, your account status will transition to <strong className="text-emerald-700 font-[500]">ACTIVE</strong> and grant full exam access.
+                Once an administrator reviews your ID card photo and reference facial snapshot, your account status will transition to <strong className="text-[#5266eb] font-[500]">ACTIVE</strong> and grant full exam access.
               </div>
             </div>
 

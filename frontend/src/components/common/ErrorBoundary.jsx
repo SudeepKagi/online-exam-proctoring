@@ -52,7 +52,7 @@ export default class ErrorBoundary extends React.Component {
 
             {isDev && this.state.error && (
               <div className="mb-6 p-4 bg-white rounded-lg text-left max-h-36 overflow-y-auto">
-                <p className="text-xs font-mono font-[480] text-rose-700 mb-1">
+                <p className="text-xs font-mono font-[480] text-[#5266eb] mb-1">
                   {this.state.error.toString()}
                 </p>
                 {this.state.errorInfo?.componentStack && (

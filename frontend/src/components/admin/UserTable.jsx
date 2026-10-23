@@ -31,12 +31,12 @@ export default function UserTable({ users, loading, onToggle, onVerify }) {
                   <TableCell className="text-[#554e7b] text-xs font-mono">{u.email}</TableCell>
                   <TableCell className="text-[#5266eb] text-xs font-mono font-[480]">{u.institutionId || '—'}</TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={
-                      u.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] rounded-full' :
-                      u.status === 'PENDING_APPROVAL' ? 'bg-[#edecfb] text-[#5266eb] border-[#9cb4e8]/30 text-[10px] rounded-full' :
-                      u.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200 text-[10px] rounded-full' :
-                      'bg-slate-50 text-slate-700 border-slate-200 text-[10px] rounded-full'
-                    }>
+                    <Badge variant="outline" className={`border-0 text-[10px] rounded-full ${
+                      u.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                      u.status === 'PENDING_APPROVAL' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                      u.status === 'REJECTED' ? 'bg-[#edecfb] text-[#554e7b]' :
+                      'bg-[#fbfbff] text-[#70707d]'
+                    }`}>
                       {u.status}
                     </Badge>
                   </TableCell>
@@ -46,15 +46,15 @@ export default function UserTable({ users, loading, onToggle, onVerify }) {
                         variant="outline"
                         size="sm"
                         onClick={() => onVerify?.(u)}
-                        className="h-7 px-3 text-xs font-[420] rounded-full text-[#5266eb] hover:bg-[#5266eb] hover:text-white border-[#9cb4e8]/40 bg-[#edecfb]/40 gap-1 cursor-pointer transition"
+                        className="h-7 px-3 text-xs font-[420] rounded-full text-[#28253b] hover:bg-[rgba(82,102,235,0.15)] border-0 bg-[rgba(82,102,235,0.08)] gap-1 cursor-pointer transition"
                       >
-                        <ShieldCheck className="w-3.5 h-3.5" /> Verify ID & Photos
+                        <ShieldCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Verify ID & Photos
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onToggle(u)}
-                        className={`h-7 px-2.5 text-xs font-[420] rounded-full cursor-pointer ${u.status === 'ACTIVE' ? 'text-amber-600 hover:text-amber-700 hover:bg-amber-50' : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50'}`}
+                        className="h-7 px-2.5 text-xs font-[420] rounded-full cursor-pointer text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] border-0"
                       >
                         {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
                       </Button>

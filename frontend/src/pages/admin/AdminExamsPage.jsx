@@ -67,7 +67,7 @@ export default function AdminExamsPage() {
       </div>
 
       {msg.text && (
-        <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
           {msg.text}
         </div>
       )}
@@ -100,10 +100,10 @@ export default function AdminExamsPage() {
                     </TableCell>
                     <TableCell className="text-[#554e7b] text-xs">{exam.durationMinutes} mins</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={`text-xs font-[420] ${
-                        exam.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent' :
-                        'bg-[#fbfbff] text-[#70707d] border-[#e9eaf2]'
+                      <Badge variant="outline" className={`text-xs font-[420] border-0 ${
+                        exam.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                        exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                        'bg-[#fbfbff] text-[#70707d]'
                       }`}>
                         {exam.status}
                       </Badge>

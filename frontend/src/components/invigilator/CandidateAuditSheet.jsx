@@ -17,7 +17,7 @@ export default function CandidateAuditSheet({
     <Sheet open={isOpen} onOpenChange={open => !open && onClose()}>
       <SheetContent className="sm:max-w-md overflow-y-auto font-sans bg-white">
         <SheetHeader>
-          <SheetTitle className="text-sm font-bold">{candidate.studentName}</SheetTitle>
+          <SheetTitle className="text-sm font-[480]">{candidate.studentName}</SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground">
             USN: {candidate.institutionId} • Realtime telemetry & security audit history
           </SheetDescription>
@@ -36,7 +36,7 @@ export default function CandidateAuditSheet({
             {candidate.attemptStatus === 'SUSPENDED' ? 'Resume Attempt Access' : 'Suspend Attempt Access'}
           </Button>
           <div className="space-y-2 pt-2">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase">
+            <h4 className="text-xs font-[480] text-muted-foreground uppercase">
               Violation History ({auditHistory.length})
             </h4>
             {auditHistory.length === 0 ? (

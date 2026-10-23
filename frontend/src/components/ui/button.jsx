@@ -10,20 +10,20 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[#5266eb] text-white hover:bg-[#4354d0] active:bg-[#3745b5] shadow-xs rounded-[32px]",
+          "bg-[#5266eb] text-white hover:bg-[#4354d0] active:bg-[#3745b5] shadow-xs rounded-[32px] border-0",
         destructive:
-          "bg-destructive text-white shadow-xs hover:bg-red-600 active:bg-red-700 active:scale-[0.98] focus-visible:ring-destructive rounded-full",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] active:scale-[0.98] rounded-[40px] border-0",
         outline:
-          "border border-[#e9eaf2] bg-white text-[#28253b] hover:bg-[#fbfcfd] hover:text-[#5266eb] active:scale-[0.98] rounded-full",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] active:scale-[0.98] rounded-[40px] border-0",
         secondary:
-          "bg-[rgba(82,102,235,0.08)] text-[#28253b] border border-[rgba(82,102,235,0.15)] hover:bg-[rgba(82,102,235,0.15)] active:scale-[0.98] rounded-full",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0 hover:bg-[rgba(82,102,235,0.16)] active:scale-[0.98] rounded-[40px]",
         ghost:
-          "text-[#28253b] hover:bg-[rgba(82,102,235,0.08)] hover:text-[#5266eb] active:scale-[0.98] rounded-full",
+          "text-[#28253b] hover:bg-[rgba(82,102,235,0.08)] hover:text-[#5266eb] active:scale-[0.98] rounded-[40px] border-0",
         glass:
-          "bg-[rgba(175,178,206,0.2)] text-[#ededf3] hover:bg-[rgba(175,178,206,0.3)] border border-[rgba(175,178,206,0.36)] rounded-full",
+          "bg-[rgba(175,178,206,0.2)] text-[#28253b] hover:bg-[rgba(175,178,206,0.3)] rounded-[40px] border-0",
         tint:
-          "bg-[rgba(82,102,235,0.1)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] rounded-full",
-        link: "text-[#5266eb] underline-offset-4 hover:underline p-0 h-auto font-medium",
+          "bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] rounded-[40px] border-0",
+        link: "text-[#5266eb] underline-offset-4 hover:underline p-0 h-auto font-medium border-0",
       },
       size: {
         default: "h-10 px-5 py-2 has-[>svg]:px-4 text-sm",

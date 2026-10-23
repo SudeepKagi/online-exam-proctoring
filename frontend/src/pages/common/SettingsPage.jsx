@@ -72,7 +72,7 @@ export default function SettingsPage() {
     <DashboardShell title="Account & Identity Settings">
       <div className="max-w-4xl space-y-6 font-sans">
         {msg.text && (
-          <div className={`p-3 rounded-[12px] text-xs font-[420] ${msg.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+          <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
             {msg.text}
           </div>
         )}
@@ -83,14 +83,14 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-[480] text-[#28253b] flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <ShieldCheck className="w-4 h-4 text-[#5266eb]" />
                   Institutional Identity Verification
                 </CardTitle>
                 <CardDescription className="text-xs font-[360] text-[#554e7b]">
                   Government & College ID biometrics verified by administration.
                 </CardDescription>
               </div>
-              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-[420]">
+              <Badge variant="outline" className="bg-[#edecfb] text-[#554e7b] border-0 text-xs font-[420]">
                 {user?.status || 'ACTIVE'}
               </Badge>
             </div>

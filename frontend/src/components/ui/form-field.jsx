@@ -18,7 +18,7 @@ export function FormField({
         <div className="flex items-center justify-between">
           <Label htmlFor={htmlFor} className="text-xs font-[420] text-[#28253b] flex items-center">
             {label}
-            {required && <span className="text-rose-500 ml-0.5" aria-hidden="true">*</span>}
+            {required && <span className="text-[#5266eb] ml-0.5" aria-hidden="true">*</span>}
           </Label>
           {action && (
             <div className="text-xs font-[420] text-[#5266eb] hover:text-[#4353c7]">
@@ -31,14 +31,14 @@ export function FormField({
       {children}
 
       {description && !error && (
-        <p className="text-xs text-slate-500 leading-normal">
+        <p className="text-xs text-[#554e7b] leading-normal font-[360]">
           {description}
         </p>
       )}
 
       {error && (
-        <p role="alert" className="text-xs font-medium text-rose-600 flex items-center gap-1.5">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+        <p role="alert" className="text-xs font-[420] text-[#554e7b] flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-[#5266eb]" />
           <span>{error}</span>
         </p>
       )}

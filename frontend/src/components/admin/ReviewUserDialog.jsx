@@ -87,7 +87,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
         </DialogHeader>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
+          <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-[12px] font-[420] border-0">
             {error}
           </div>
         )}
@@ -151,14 +151,14 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
 
         {/* Rejection Input */}
         {showRejectBox && (
-          <div className="space-y-2 p-3 bg-red-50/60 border border-red-200 rounded-[12px]">
-            <Label className="text-xs font-[480] text-red-900">Rejection Reason (Visible to candidate):</Label>
+          <div className="space-y-2 p-3 bg-[#edecfb] rounded-[12px] border-0">
+            <Label className="text-xs font-[500] text-[#28253b]">Rejection Reason (Visible to candidate):</Label>
             <textarea
               rows={2}
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="e.g. ID card photo is blurry, or face photo does not match..."
-              className="w-full bg-white border border-red-200 rounded-xl p-2.5 text-xs text-[#28253b] focus:outline-none focus:border-red-500 font-sans"
+              className="w-full bg-white border border-[#c3c3cc]/60 rounded-xl p-2.5 text-xs text-[#28253b] focus:outline-none focus:border-[#5266eb] font-sans"
             />
           </div>
         )}
@@ -170,7 +170,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
             size="sm"
             onClick={() => onOpenChange(false)}
             disabled={actionLoading}
-            className="text-xs font-[420] rounded-[40px] px-4 cursor-pointer"
+            className="text-xs font-[420] rounded-[40px] px-4 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0 cursor-pointer"
           >
             Cancel
           </Button>
@@ -182,7 +182,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
                 size="sm"
                 onClick={() => setShowRejectBox(true)}
                 disabled={actionLoading}
-                className="text-xs font-[420] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 rounded-[32px] px-3.5 cursor-pointer"
+                className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] rounded-[40px] px-3.5 cursor-pointer border-0"
               >
                 <XCircle className="w-4 h-4 mr-1.5" /> Reject & Request Re-upload
               </Button>
@@ -191,7 +191,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
                 size="sm"
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs font-[420] rounded-[32px] px-4 cursor-pointer"
+                className="bg-[#554e7b] hover:bg-[#433e64] text-white text-xs font-[420] rounded-[40px] px-4 cursor-pointer border-0"
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
                 Confirm Rejection
@@ -202,7 +202,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
               size="sm"
               onClick={handleApprove}
               disabled={actionLoading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-[32px] px-4 shadow-xs cursor-pointer"
+              className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 shadow-xs cursor-pointer border-0"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
               Approve Account

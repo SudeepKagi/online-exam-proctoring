@@ -125,13 +125,13 @@ export default function ExamQuestionsTab({ examId, questions, onRefresh, onNotif
                   <p className="text-xs font-[480] text-[#28253b]">{q.questionText}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
                     {(Array.isArray(q.options) ? q.options : []).map((opt, i) => (
-                      <div key={i} className={`text-xs px-2.5 py-1.5 rounded-lg border font-[420] ${i === q.correctOptionIndex ? 'border-emerald-400 bg-emerald-50 text-emerald-800 font-[480]' : 'border-[#e9eaf2] bg-white text-[#554e7b]'}`}>
+                      <div key={i} className={`text-xs px-2.5 py-1.5 rounded-lg border font-[420] ${i === q.correctOptionIndex ? 'border-[#5266eb]/30 bg-[#edecfb] text-[#5266eb] font-[480]' : 'border-[#e9eaf2] bg-white text-[#554e7b]'}`}>
                         {String.fromCharCode(65 + i)}. {opt}
                       </div>
                     ))}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => handleDeleteQuestion(q.id)} className="text-[#70707d] hover:text-red-600 h-8 rounded-lg cursor-pointer">
+                <Button variant="ghost" size="sm" onClick={() => handleDeleteQuestion(q.id)} className="text-[#70707d] hover:text-[#28253b] h-8 rounded-[40px] cursor-pointer">
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>

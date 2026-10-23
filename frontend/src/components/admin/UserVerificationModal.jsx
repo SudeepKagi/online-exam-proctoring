@@ -97,12 +97,12 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
             <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#5266eb]" /> Review & Verify Identity Profile — {user.fullName}
             </DialogTitle>
-            <Badge variant="outline" className={user.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 text-xs rounded-full' : 'bg-[#edecfb] text-[#5266eb] border-[#9cb4e8]/30 text-xs rounded-full'}>
+            <Badge variant="outline" className={user.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb] border-0 text-xs rounded-full' : 'bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0 text-xs rounded-full'}>
               {user.role} • {user.status}
             </Badge>
           </DialogHeader>
 
-          {error && <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-xl font-[420]">{error}</div>}
+          {error && <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">{error}</div>}
 
           {/* User Metadata Grid: 3-column, 2-row spacious card */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
@@ -153,19 +153,19 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
 
           {/* Rejection input */}
           {showRejectBox && (
-            <div className="space-y-2 p-3 bg-red-50/60 border border-red-200 rounded-xl">
-              <span className="text-xs font-bold text-red-900 block">Rejection Reason (Visible to candidate):</span>
-              <textarea rows={2} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="e.g. ID card photo is illegible, please upload a clearer scan..." className="w-full bg-white border border-red-200 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:border-red-500 font-sans" />
+            <div className="space-y-2 p-3 bg-[#edecfb] rounded-xl border-0">
+              <span className="text-xs font-[500] text-[#28253b] block">Rejection Reason (Visible to candidate):</span>
+              <textarea rows={2} value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} placeholder="e.g. ID card photo is illegible, please upload a clearer scan..." className="w-full bg-white border border-[#c3c3cc]/60 rounded-lg p-2.5 text-xs text-[#28253b] focus:outline-none focus:border-[#5266eb] font-sans" />
             </div>
           )}
 
           {/* Password Reset Drawer */}
           {adminPasswordReset.open && (
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5"><Key className="w-3.5 h-3.5 text-amber-600" /> Set Temporary Password</span>
+              <span className="text-xs font-[500] text-[#28253b] flex items-center gap-1.5"><Key className="w-3.5 h-3.5 text-[#5266eb]" /> Set Temporary Password</span>
               <div className="flex gap-2">
                 <input type="password" value={adminPasswordReset.password} onChange={(e) => setAdminPasswordReset(p => ({ ...p, password: e.target.value }))} placeholder="New temporary password (min 6 chars)" className="h-9 px-3 text-xs border border-slate-300 rounded-lg flex-1 bg-white" />
-                <Button size="sm" onClick={handleAdminResetPassword} disabled={adminPasswordReset.loading} className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg">{adminPasswordReset.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Set Password'}</Button>
+                <Button size="sm" onClick={handleAdminResetPassword} disabled={adminPasswordReset.loading} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-3">{adminPasswordReset.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Set Password'}</Button>
               </div>
               {adminPasswordReset.msg && <span className="text-[11px] font-medium text-slate-600 block">{adminPasswordReset.msg}</span>}
             </div>
@@ -174,20 +174,20 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           {/* Modal Actions */}
           <div className="pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3">
             <div>
-              <Button variant="outline" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-slate-700 gap-1.5 rounded-full border-slate-200"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
+              <Button variant="outline" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-[#554e7b] gap-1.5 rounded-full border-0 bg-[rgba(82,102,235,0.08)]"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full text-slate-600 hover:text-slate-900">Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full text-[#554e7b] hover:text-[#28253b]">Cancel</Button>
               {!showRejectBox ? (
-                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 rounded-full">
+                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] border-0 rounded-full">
                   <XCircle className="w-4 h-4 mr-1.5" /> Reject &amp; Request Re-upload
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-rose-600 hover:bg-rose-700 text-white text-xs font-[420] rounded-full">
+                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-[#554e7b] hover:bg-[#433e64] text-white text-xs font-[420] rounded-full border-0">
                   {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null} Confirm Rejection
                 </Button>
               )}
-              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-[420] rounded-full px-5 shadow-xs">
+              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-full px-5 shadow-xs border-0">
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />} Approve Account
               </Button>
             </div>
@@ -199,7 +199,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
       {zoomedImage && (
         <Dialog open={Boolean(zoomedImage)} onOpenChange={() => setZoomedImage(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-4 flex flex-col items-center">
-            <DialogHeader className="w-full pb-2 border-b"><DialogTitle className="text-sm font-bold">{zoomedImage.title}</DialogTitle></DialogHeader>
+            <DialogHeader className="w-full pb-2 border-b"><DialogTitle className="text-sm font-[480]">{zoomedImage.title}</DialogTitle></DialogHeader>
             <div className="w-full max-h-[75vh] flex items-center justify-center overflow-auto mt-2 bg-slate-900 rounded-xl p-2">
               <img src={zoomedImage.url} alt={zoomedImage.title} className="max-h-[70vh] object-contain rounded-lg shadow-xl" />
             </div>

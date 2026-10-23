@@ -129,7 +129,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
       </div>
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-xs text-red-700 rounded-[12px] font-[420]">
+        <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-[12px] font-[420] border-0">
           {error}
         </div>
       )}
@@ -188,14 +188,14 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
                             onClick={() => copyCredentials(invig)}
                             className="h-7 px-3 text-xs font-[420] gap-1 rounded-[40px] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer"
                           >
-                            {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 text-[#554e7b]" />}
+                            {isCopied ? <Check className="w-3 h-3 text-[#5266eb]" /> : <Copy className="w-3 h-3 text-[#554e7b]" />}
                             {isCopied ? 'Copied!' : 'Copy Info'}
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleRemove(invig.id)}
-                            className="h-7 px-2 text-[#70707d] hover:text-red-600 rounded-lg cursor-pointer"
+                            className="h-7 px-2 text-[#70707d] hover:text-[#28253b] rounded-[40px] cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
