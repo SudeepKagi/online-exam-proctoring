@@ -4,62 +4,39 @@ const { prisma } = require('../../infra/postgres/client')
 const { socketEmitter } = require('../../infra/websocket/emitter')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
+const { ATTEMPT_STATUS, TERMINAL_STATES, ALLOWED_TRANSITIONS } = require('./attempts.constants')
+
+function httpErr(msg, status = 400, code = null) {
+  const err = new Error(msg)
+  err.status = status
+  if (code) err.code = code
+  return err
+}
 
 class AttemptService {
   async getReadiness(examId, studentId) {
     const exam = await examsSql.findExamById(examId)
-    if (!exam) {
-      const err = new Error('Exam not found')
-      err.status = 404
-      throw err
-    }
-
-    if (['ENDED', 'EVALUATED'].includes(exam.status)) {
-      const err = new Error('Exam session has closed')
-      err.status = 403
-      throw err
-    }
+    if (!exam) throw httpErr('Exam not found', 404)
+    if (['ENDED', 'EVALUATED'].includes(exam.status)) throw httpErr('Exam session has closed', 403)
 
     let attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
-    if (!attempt) {
-      attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
-    }
-
+    if (!attempt) attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
     return attempt
   }
 
   async startAttempt(examId, studentId) {
     const exam = await examsSql.findExamById(examId)
-    if (!exam) {
-      const err = new Error('Exam not found')
-      err.status = 404
-      throw err
-    }
+    if (!exam) throw httpErr('Exam not found', 404)
 
     const now = new Date()
-    if (exam.startTime && now < new Date(exam.startTime)) {
-      const err = new Error('Exam is not open yet')
-      err.code = 'EXAM_NOT_OPEN'
-      err.status = 403
-      throw err
-    }
-    if (exam.endTime && now > new Date(exam.endTime)) {
-      const err = new Error('Exam window has ended')
-      err.code = 'EXAM_ENDED'
-      err.status = 403
-      throw err
-    }
+    if (exam.startTime && now < new Date(exam.startTime)) throw httpErr('Exam is not open yet', 403, 'EXAM_NOT_OPEN')
+    if (exam.endTime && now > new Date(exam.endTime)) throw httpErr('Exam window has ended', 403, 'EXAM_ENDED')
 
     let attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
-    if (!attempt) {
-      attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
-    }
+    if (!attempt) attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
 
     if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status)) {
-      const err = new Error('Attempt is already finalized')
-      err.code = 'ATTEMPT_ALREADY_FINALIZED'
-      err.status = 409
-      throw err
+      throw httpErr('Attempt is already finalized', 409, 'ATTEMPT_ALREADY_FINALIZED')
     }
 
     if (attempt.status === 'NOT_STARTED') {
@@ -244,24 +221,6 @@ class AttemptService {
     return results
   }
 }
-
-const ATTEMPT_STATUS = Object.freeze({
-  NOT_STARTED: 'NOT_STARTED',
-  IN_PROGRESS: 'IN_PROGRESS',
-  SUBMITTED: 'SUBMITTED',
-  SUSPENDED: 'SUSPENDED',
-  TIMED_OUT: 'TIMED_OUT'
-})
-
-const TERMINAL_STATES = Object.freeze(['SUBMITTED', 'TIMED_OUT'])
-
-const ALLOWED_TRANSITIONS = Object.freeze({
-  NOT_STARTED: ['IN_PROGRESS'],
-  IN_PROGRESS: ['SUSPENDED', 'SUBMITTED', 'TIMED_OUT'],
-  SUSPENDED: ['IN_PROGRESS', 'SUBMITTED', 'TIMED_OUT'],
-  SUBMITTED: [],
-  TIMED_OUT: []
-})
 
 const attemptService = new AttemptService()
 

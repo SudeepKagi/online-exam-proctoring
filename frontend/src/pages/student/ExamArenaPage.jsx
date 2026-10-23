@@ -3,14 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { SubmitExamDialog, SuspendedOverlay } from '@/components/exam/SubmitExamDialog'
 import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
 import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
 import { getScreenStream } from '@/lib/screenStreamStore'
 import { getSocket } from '@/lib/socketClient'
-import { Clock, AlertTriangle, ShieldAlert, MonitorCheck } from 'lucide-react'
+import { Clock, ShieldAlert, MonitorCheck } from 'lucide-react'
 import QuestionPalette from '@/components/exam/QuestionPalette'
 import QuestionCard from '@/components/exam/QuestionCard'
 
@@ -85,26 +85,17 @@ export default function ExamArenaPage() {
         const restored = {}
         const restoredBm = {}
         serverAnswers.forEach(a => {
-          if (a.questionId) {
-            if (a.selectedOptionIndex !== null && a.selectedOptionIndex !== undefined) {
-              restored[a.questionId] = a.selectedOptionIndex
-            }
-            if (a.isBookmarked) {
-              restoredBm[a.questionId] = true
-            }
-          }
+          if (!a.questionId) return
+          if (a.selectedOptionIndex !== null && a.selectedOptionIndex !== undefined) restored[a.questionId] = a.selectedOptionIndex
+          if (a.isBookmarked) restoredBm[a.questionId] = true
         })
         try {
-          if (att?.id) {
-            const cached = localStorage.getItem(`pn_offline_answers_${att.id}`)
-            if (cached) {
-              const parsed = JSON.parse(cached)
-              Object.keys(parsed).forEach(qId => {
-                if (parsed[qId]?.selectedOptionIndex !== undefined) {
-                  restored[qId] = parsed[qId].selectedOptionIndex
-                }
-              })
-            }
+          const cached = att?.id && localStorage.getItem(`pn_offline_answers_${att.id}`)
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            Object.keys(parsed).forEach(qId => {
+              if (parsed[qId]?.selectedOptionIndex !== undefined) restored[qId] = parsed[qId].selectedOptionIndex
+            })
           }
         } catch (_) {}
         setAnswers(prev => ({ ...restored, ...prev }))
@@ -120,11 +111,9 @@ export default function ExamArenaPage() {
     socket.emit('attempt:join', { attemptId: attempt.id })
     const onSuspended = () => setIsSuspended(true)
     const onResumed = () => setIsSuspended(false)
-    socket.on('attempt:suspended', onSuspended)
-    socket.on('attempt:resumed', onResumed)
+    socket.on('attempt:suspended', onSuspended).on('attempt:resumed', onResumed)
     return () => {
-      socket.off('attempt:suspended', onSuspended)
-      socket.off('attempt:resumed', onResumed)
+      socket.off('attempt:suspended', onSuspended).off('attempt:resumed', onResumed)
     }
   }, [attempt?.id])
 
@@ -140,29 +129,22 @@ export default function ExamArenaPage() {
 
   const handleToggleBookmark = () => {
     if (!currentQ) return
-    const next = !isBookmarked
-    setBookmarks(prev => ({ ...prev, [currentQ.id]: next }))
-    recordAnswer(currentQ.id, currentSelected, next)
+    setBookmarks(prev => ({ ...prev, [currentQ.id]: !isBookmarked }))
+    recordAnswer(currentQ.id, currentSelected, !isBookmarked)
   }
 
   const handleClearAnswer = () => {
     if (!currentQ) return
-    setAnswers(prev => {
-      const copy = { ...prev }
-      delete copy[currentQ.id]
-      return copy
-    })
+    setAnswers(prev => { const copy = { ...prev }; delete copy[currentQ.id]; return copy })
     recordAnswer(currentQ.id, null, isBookmarked)
   }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return
+      const map = { '1': 0, A: 0, '2': 1, B: 1, '3': 2, C: 2, '4': 3, D: 3 }
       const key = e.key.toUpperCase()
-      if (['1', 'A'].includes(key)) handleSelectOption(0)
-      else if (['2', 'B'].includes(key)) handleSelectOption(1)
-      else if (['3', 'C'].includes(key)) handleSelectOption(2)
-      else if (['4', 'D'].includes(key)) handleSelectOption(3)
+      if (map[key] !== undefined) handleSelectOption(map[key])
       else if (e.key === 'ArrowRight') setCurrentIndex(p => Math.min(questions.length - 1, p + 1))
       else if (e.key === 'ArrowLeft') setCurrentIndex(p => Math.max(0, p - 1))
     }
@@ -238,34 +220,16 @@ export default function ExamArenaPage() {
         </div>
       </div>
 
-      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
-        <DialogContent className="max-w-md font-sans">
-          <DialogHeader>
-            <DialogTitle className="text-base font-[480] text-[#28253b]">Submit Examination?</DialogTitle>
-            <DialogDescription className="text-xs font-[360] text-[#554e7b]">
-              You have answered {Object.keys(answers).length} of {questions.length} questions. You cannot change your answers once submitted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setSubmitDialogOpen(false)} className="rounded-[40px] px-4 font-[420] text-xs h-9">
-              Continue Exam
-            </Button>
-            <Button onClick={handleSubmitExam} disabled={submitting} className="bg-[#5266eb] hover:bg-[#4353c7] text-white rounded-[32px] px-4 font-[420] text-xs h-9">
-              {submitting ? 'Submitting...' : 'Confirm Submission'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SubmitExamDialog
+        open={submitDialogOpen}
+        onOpenChange={setSubmitDialogOpen}
+        answeredCount={Object.keys(answers).length}
+        totalCount={questions.length}
+        onConfirm={handleSubmitExam}
+        submitting={submitting}
+      />
 
-      {isSuspended && (
-        <div className="fixed inset-0 z-50 bg-[#fbfcfd]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-[#28253b] text-center font-sans">
-          <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-[480] text-[#28253b] mb-2">Examination Session Suspended</h2>
-          <p className="text-sm font-[360] text-[#554e7b] max-w-md">Your exam attempt has been temporarily suspended by the proctoring staff. Please await remote review or clearance.</p>
-        </div>
-      )}
+      {isSuspended && <SuspendedOverlay />}
 
       <ScreenLostDialog />
     </ExamArenaShell>
