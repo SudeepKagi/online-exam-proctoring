@@ -58,7 +58,7 @@ graph TB
 
     subgraph CloudLayer ["AWS Cloud Infrastructure"]
         S3[("Amazon S3 Bucket<br/>Encrypted Evidence Storage<br/>Presigned Direct Uploads")]
-        REKOG["Amazon Rekognition<br/>CompareFaces (>=90% Confidence)<br/>Real-Time Photo Verification"]
+        REKOG["Amazon Rekognition<br/>CompareFaces (90%+ Confidence)<br/>Real-Time Photo Verification"]
     end
 
     ClientLayer -->|HTTPS / WSS| EdgeLayer
@@ -67,7 +67,7 @@ graph TB
     BackendLayer -->|ioredis Connection Pool| REDIS
     MEDIA_MOD -->|AWS SDK v3| REKOG
     MEDIA_MOD -->|S3 Client Put/Get| S3
-    UI -.->|Direct Evidence Upload (Presigned)| S3
+    UI -.->|Direct Evidence Upload via Presigned URL| S3
 ```
 
 ---
@@ -190,7 +190,7 @@ sequenceDiagram
     S->>E: POST /api/v1/media/verify-face (Base64 webcam frame)
     E->>B: Proxy verify-face
     B->>AWS: Rekognition CompareFaces(webcam, student_profile_photo)
-    AWS-->>B: Similarity >= 90% (Match Confirmed)
+    AWS-->>B: Similarity 90%+ (Match Confirmed)
     B-->>S: 200 OK { verified: true }
     Note over S: Student stops webcam track (track.stop())<br/>Acquires Full Screen (displaySurface === 'monitor')<br/>Enforces Fullscreen Window Lock
 
@@ -241,7 +241,7 @@ stateDiagram-v2
     SUSPENDED --> IN_PROGRESS: Invigilator Resumes Attempt
     
     IN_PROGRESS --> SUBMITTED: POST /api/v1/attempts/:id/submit (Explicit User Submission)
-    IN_PROGRESS --> TIMED_OUT: Server Clock Expiry Sweeper (> durationMinutes)
+    IN_PROGRESS --> TIMED_OUT: Server Clock Expiry Sweeper (Exceeds durationMinutes)
     SUSPENDED --> SUBMITTED: Emergency Staff Force Submission
 
     SUBMITTED --> [*]: Terminal Immutable State
