@@ -80,10 +80,10 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       expect(delExamRes.body?.code || delExamRes.body?.error?.code).toBe('EXAM_IMMUTABLE_ACTIVE_OR_ENDED')
 
       // 5. Verify Frontend reflects read-only mode
-      await faculty.page.goto(`/faculty/exams/${examId}/manage`)
+      await faculty.page.goto(`/faculty/exams/${examId}`)
       await faculty.page.waitForLoadState('networkidle')
       // Look for read-only banner
-      const banner = faculty.page.locator('text=Exam is Live / In Progress')
+      const banner = faculty.page.getByText('EXAM LIVE')
       await expect(banner).toBeVisible({ timeout: 10000 })
       // Verify "+ Add MCQ" is hidden or absent
       const addMcqBtn = faculty.page.locator('button:has-text("+ Add MCQ")')
@@ -107,17 +107,33 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
       const now = new Date()
-      // Exam ended 5 minutes ago
+      // Create exam with future dates, publish it, then move schedule dates to the past
       const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
         title: `Ended Exam Immutability ${Date.now()}`,
         subject: 'LIFECYCLE-102',
         courseCode: 'LC-102',
-        startTime: new Date(now.getTime() - 3600000).toISOString(),
-        endTime: new Date(now.getTime() - 300000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 2400000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
       expect(examId).toBeTruthy()
+
+      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
+        questionText: 'Past Question?',
+        options: ['A', 'B', 'C', 'D'],
+        correctOptionIndex: 0,
+        marks: 2
+      })
+
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect([200, 204]).toContain(pubRes.status)
+
+      // Move dates to the past (ended 5 minutes ago)
+      await setExamScheduleDates(examId, {
+        startTime: new Date(now.getTime() - 3600000),
+        endTime: new Date(now.getTime() - 300000)
+      })
 
       // Attempt to edit ended exam -> MUST return 409
       const updateRes = await api.for(faculty).putRaw(`/api/v1/exams/${examId}`, {
@@ -127,9 +143,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       expect(updateRes.body?.code || updateRes.body?.error?.code).toBe('EXAM_IMMUTABLE_ACTIVE_OR_ENDED')
 
       // Verify UI shows Exam has Ended
-      await faculty.page.goto(`/faculty/exams/${examId}/manage`)
+      await faculty.page.goto(`/faculty/exams/${examId}`)
       await faculty.page.waitForLoadState('networkidle')
-      const endedBanner = faculty.page.locator('text=Exam has Ended')
+      const endedBanner = faculty.page.getByText('EXAM ENDED')
       await expect(endedBanner).toBeVisible({ timeout: 10000 })
       const addMcqBtn = faculty.page.locator('button:has-text("+ Add MCQ")')
       await expect(addMcqBtn).not.toBeVisible()
@@ -218,8 +234,8 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         title: `Proctoring Interruption Exam ${Date.now()}`,
         subject: 'SEC-101',
         courseCode: 'SEC-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 2400000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -230,7 +246,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         correctOptionIndex: 0,
         marks: 2
       })
-      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect([200, 204]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // 2. Student logs in and navigates to arena
       await student.page.goto('/login?role=student')
@@ -239,42 +257,42 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       await student.page.locator('button[type="submit"]').click()
       await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // Start attempt via API
-      const startRes = await api.for(student).postRaw(`/api/v1/attempts/exams/${examId}/start`, {})
-      expect(startRes.status).toBe(200)
+      // Navigate to pre-check to acquire verified screen stream
+      await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await expect(student.page.getByText(/System & Identity Check/i)).toBeVisible({ timeout: 10000 })
 
-      // Enter arena
-      await student.page.goto(`/student/exam/${examId}/arena`)
-      await student.page.waitForLoadState('networkidle')
+      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
+      await expect(verifyFaceBtn).toBeVisible()
+      await verifyFaceBtn.click()
+
+      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
+      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
+      await shareScreenBtn.click()
+
+      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
+      await expect(launchBtn).toBeVisible({ timeout: 10000 })
+      await launchBtn.click()
+
+      await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
 
       // Verify questions loaded
       await expect(student.page.locator('text=Security Question 1')).toBeVisible({ timeout: 10000 })
 
       // 3. Simulate screen track ending / "Stop sharing" event
       await student.page.evaluate(() => {
-        const stream = window.__proctorScreenStream
+        const stream = (window as any).__proctorScreenStream
         if (stream) {
           const track = stream.getVideoTracks()[0]
           if (track) {
+            track.stop()
             track.dispatchEvent(new Event('ended'))
-            if (typeof track.onended === 'function') track.onended(new Event('ended'))
           }
-        } else {
-          // If mock stream was not attached, create a mock event on window
-          window.dispatchEvent(new CustomEvent('proctor:screen_ended'))
         }
       })
 
-      // If needed, directly dispatch ended event on any hidden video stream
-      await student.page.evaluate(() => {
-        const track = (window as any).__proctorScreenStream?.getVideoTracks?.()[0]
-        if (track && track.onended) track.onended(new Event('ended'))
-      })
-
       // 4. Verify blocking overlay appears
-      // Check for either the proctoring interrupted overlay or dialog
-      const overlay = student.page.locator('[data-testid="proctoring-interrupted-overlay"], text=Proctoring Interrupted, text=Screen Share Disconnected')
-      await expect(overlay.first()).toBeVisible({ timeout: 10000 })
+      const overlay = student.page.getByTestId('proctoring-interrupted-overlay')
+      await expect(overlay).toBeVisible({ timeout: 10000 })
     } finally {
       await faculty.close()
       await student.close()
@@ -300,8 +318,8 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         title: `Max Violations Exam ${Date.now()}`,
         subject: 'VIOL-101',
         courseCode: 'V-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 2400000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -313,7 +331,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         marks: 1
       })
       const questionId = qRes.body?.question?.id || qRes.body?.id
-      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect([200, 204]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // Student starts attempt
       await student.page.goto('/login?role=student')
@@ -381,8 +401,8 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         title: `Invigilator State Machine Exam ${Date.now()}`,
         subject: 'INV-101',
         courseCode: 'I-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 2400000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -393,7 +413,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         correctOptionIndex: 0,
         marks: 1
       })
-      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect([200, 204]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // 2. Student starts and submits attempt
       await student.page.goto('/login?role=student')

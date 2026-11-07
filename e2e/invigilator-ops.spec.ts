@@ -103,7 +103,7 @@ test.describe('E2E: Invigilator Operations Flow', () => {
       await suspendBtn.click()
 
       // 7. Verify Student Screen Immediately Locks
-      await expect(student.page.getByText('Examination Session Suspended').first()).toBeVisible({ timeout: 10000 })
+      await expect(student.page.getByTestId('suspended-overlay')).toBeVisible({ timeout: 10000 })
 
       // 8. Invigilator Resumes Attempt
       const resumeBtn = invigilator.page.getByRole('button', { name: /Resume Attempt/i })
@@ -111,7 +111,7 @@ test.describe('E2E: Invigilator Operations Flow', () => {
       await resumeBtn.click()
 
       // 9. Verify Student Screen Unlocks
-      await expect(student.page.getByText('Examination Session Suspended')).not.toBeVisible({ timeout: 10000 })
+      await expect(student.page.getByTestId('suspended-overlay')).not.toBeVisible({ timeout: 10000 })
 
     } finally {
       await student.close()

@@ -141,6 +141,10 @@ export class ApiReadHelper {
     const body = await res.json().catch(() => null)
     return { status: res.status(), body }
   }
+
+  async deleteRaw(path: string, options: any = {}) {
+    return this.request('DELETE', path, options)
+  }
 }
 
 export const api = {
