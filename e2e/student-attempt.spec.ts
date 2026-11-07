@@ -148,4 +148,91 @@ test.describe('E2E: Student Attempt Flow', () => {
       await student.close()
     }
   })
+
+  test('Camera teardown verification: getUserMedia tracks end after submit, navigating away, and logout', async ({ browser }) => {
+    test.setTimeout(90000)
+
+    const student = await createActor(browser, 'student')
+    try {
+      // 1. Install getUserMedia track recorder before any navigation
+      await student.page.addInitScript(() => {
+        ;(window as any).__mediaTracks = []
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const origGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+          navigator.mediaDevices.getUserMedia = async (constraints) => {
+            const stream = await origGetUserMedia(constraints)
+            stream.getTracks().forEach((track) => {
+              ;(window as any).__mediaTracks.push(track)
+            })
+            return stream
+          }
+        }
+      })
+
+      // 2. Student 2 logs in
+      await student.page.goto('/login')
+      await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[1].email)
+      await student.page.locator('input[type="password"]').fill(SEEDED_STUDENTS[1].password)
+      await student.page.locator('button[type="submit"]').click()
+      await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
+
+      // 3. Pre-check: capture face, share screen, launch
+      await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
+
+      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
+      await expect(verifyFaceBtn).toBeVisible()
+      await verifyFaceBtn.click()
+
+      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
+      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
+      await shareScreenBtn.click()
+
+      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
+      await expect(launchBtn).toBeVisible({ timeout: 10000 })
+      await launchBtn.click()
+
+      // 4. In Arena: submit exam
+      await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
+      await expect(student.page.getByText('Question 1 of 3')).toBeVisible({ timeout: 10000 })
+
+      await student.page.getByRole('button', { name: /Submit Exam/i }).click()
+      await expect(student.page.getByText('Submit Examination?')).toBeVisible()
+      await student.page.getByRole('button', { name: /Confirm Submission/i }).click()
+
+      // 5. Navigate away to dashboard
+      await student.page.waitForURL(url => url.pathname.includes('/student/dashboard'), { timeout: 15000 })
+
+      // 6. Sign out
+      const signOutBtn = student.page.getByRole('button', { name: /Sign Out/i })
+      await expect(signOutBtn).toBeVisible({ timeout: 5000 })
+      await signOutBtn.click()
+      await student.page.waitForURL(url => url.pathname.includes('/login'), { timeout: 10000 })
+
+      // 7. Assert track teardown & no active streams
+      const teardownAudit = await student.page.evaluate(() => {
+        const tracks: MediaStreamTrack[] = (window as any).__mediaTracks || []
+        const mediaElements = Array.from(document.querySelectorAll('video, audio')) as (HTMLVideoElement | HTMLAudioElement)[]
+        const activeMediaElements = mediaElements.filter(el => (el.srcObject as MediaStream)?.active)
+
+        return {
+          totalTracksRecorded: tracks.length,
+          allTracksEnded: tracks.length > 0 && tracks.every(t => t.readyState === 'ended'),
+          unendedTracks: tracks.filter(t => t.readyState !== 'ended').map(t => ({ id: t.id, kind: t.kind, readyState: t.readyState })),
+          activeMediaElementCount: activeMediaElements.length,
+          hasGlobalScreenStream: !!((window as any).__proctorScreenStream?.active),
+          hasGlobalCameraStream: !!((window as any).__proctorCameraStream?.active)
+        }
+      })
+
+      expect(teardownAudit.totalTracksRecorded).toBeGreaterThan(0)
+      expect(teardownAudit.allTracksEnded).toBe(true)
+      expect(teardownAudit.unendedTracks).toHaveLength(0)
+      expect(teardownAudit.activeMediaElementCount).toBe(0)
+      expect(teardownAudit.hasGlobalScreenStream).toBe(false)
+      expect(teardownAudit.hasGlobalCameraStream).toBe(false)
+    } finally {
+      await student.close()
+    }
+  })
 })

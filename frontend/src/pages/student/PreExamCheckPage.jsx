@@ -54,7 +54,8 @@ export default function PreExamCheckPage() {
       active = false
       // Do not stop stream if user advanced to step 2/3
       if (step === 1 && streamRef.current && !screenStreamRef.current) {
-        // cleanup if component unmounted while still on step 1
+        streamRef.current.getTracks().forEach((t) => t.stop())
+        streamRef.current = null
       }
     }
   }, [step, isWindowLocked])

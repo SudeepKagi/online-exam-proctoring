@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api, errorMessage } from '@/lib/apiClient'
+import { clearScreenStream, clearCameraStream } from '@/lib/screenStreamStore'
 
 const AuthContext = createContext(null)
 
@@ -54,6 +55,8 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
+      clearScreenStream()
+      clearCameraStream()
       await api.post('/auth/logout') // terms-ok: backend endpoint
     } catch (_) {}
     localStorage.removeItem('proctornet_logged_in')
