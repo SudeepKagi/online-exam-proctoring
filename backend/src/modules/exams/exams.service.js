@@ -99,7 +99,7 @@ class ExamService {
     const questions = await examsSql.getQuestionsByExamId(id, true)
     validateQuestionsList(questions)
 
-    return examsSql.updateExam(id, { status: 'PUBLISHED' })
+    return examsSql.updateExamStatus(id, 'PUBLISHED')
   }
 
   async bulkAddQuestions(examId, questions) {
