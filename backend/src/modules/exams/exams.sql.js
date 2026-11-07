@@ -166,6 +166,7 @@ async function updateExam(id, data) {
     updateData.durationMinutes = Number(data.durationMinutes || data.duration)
   }
   if (data.proctoringConfig !== undefined) updateData.proctoringConfig = data.proctoringConfig
+  if (data.status !== undefined) updateData.status = String(data.status).toUpperCase()
 
   const exam = await prisma.exam.update({
     where: { id },
