@@ -32,6 +32,10 @@ class AttemptService {
     const exam = await examsSql.findExamById(examId)
     if (!exam) throw httpErr('Exam not found', 404)
 
+    if (!['PUBLISHED', 'ACTIVE'].includes(exam.status)) {
+      throw httpErr('Exam is not published yet', 403, 'EXAM_NOT_PUBLISHED')
+    }
+
     const now = new Date()
     if (exam.startTime && now < new Date(exam.startTime)) throw httpErr('Exam is not open yet', 403, 'EXAM_NOT_OPEN')
     if (exam.endTime && now > new Date(exam.endTime)) throw httpErr('Exam window has ended', 403, 'EXAM_ENDED')

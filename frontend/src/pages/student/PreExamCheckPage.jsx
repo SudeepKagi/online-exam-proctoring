@@ -149,9 +149,9 @@ export default function PreExamCheckPage() {
               System & Identity Check
             </Badge>
           </div>
-          <CardTitle className="text-xl font-[480] text-[#28253b]">{exam?.title || 'Pre-Examination Verification'}</CardTitle>
+          <CardTitle className="text-xl font-[480] text-[#28253b]">Pre-Examination Verification</CardTitle>
           <CardDescription className="text-xs font-[360] text-[#554e7b]">
-            Stage {step} of 3 — Secure integrity verification pipeline
+            {exam?.title ? `${exam.title} — Stage ${step} of 3` : `Stage ${step} of 3 — Secure integrity verification pipeline`}
           </CardDescription>
         </CardHeader>
 

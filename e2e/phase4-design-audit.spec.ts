@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('PHASE 4: Strict Enterprise Light-Only UI Audit (DESIGN.md)', () => {
   test.describe.configure({ mode: 'serial' })
@@ -193,8 +193,8 @@ test.describe('PHASE 4: Strict Enterprise Light-Only UI Audit (DESIGN.md)', () =
         title: `Design Audit Arena Exam ${Date.now()}`,
         subject: 'DES-101',
         courseCode: 'DES-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 7200000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -206,6 +206,7 @@ test.describe('PHASE 4: Strict Enterprise Light-Only UI Audit (DESIGN.md)', () =
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)

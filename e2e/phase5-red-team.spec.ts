@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Break)', () => {
   test.describe.configure({ mode: 'serial' })
@@ -70,8 +70,8 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
         title: 'XSS Sanitization Exam',
         subject: 'SEC-201',
         courseCode: 'SEC-201',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 7200000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -135,7 +135,7 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
         subject: 'SEC-202',
         courseCode: 'SEC-202',
         startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        endTime: new Date(now.getTime() + 7200000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -185,8 +185,8 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
         title: `Post-Submit Mutation Exam ${Date.now()}`,
         subject: 'SEC-203',
         courseCode: 'SEC-203',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -199,6 +199,7 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
       })
       const questionId = qRes.body?.question?.id
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
@@ -241,8 +242,8 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
         title: `Suspension Test Exam ${Date.now()}`,
         subject: 'SEC-204',
         courseCode: 'SEC-204',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -255,6 +256,7 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
       })
       const questionId = qRes.body?.question?.id
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
@@ -336,8 +338,8 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
         title: 'Fuzzing Index Exam',
         subject: 'SEC-205',
         courseCode: 'SEC-205',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -350,6 +352,7 @@ test.describe('PHASE 5: Red-Team Adversarial & Fuzzing Suite (15 Ways It Can Bre
       })
       const questionId = qRes.body?.question?.id
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)

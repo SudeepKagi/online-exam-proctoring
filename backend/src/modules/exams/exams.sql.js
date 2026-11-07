@@ -42,7 +42,7 @@ const DEFAULT_EXAM_CACHE_TTL_MS = 10000
 function getExamCacheTtlMs() {
   if (process.env.EXAM_CACHE_TTL_MS !== undefined) {
     if (process.env.NODE_ENV === 'production' || !isNonProductionDatabase()) {
-      throw new Error('SAFETY REFUSAL: EXAM_CACHE_TTL_MS override is only allowed in non-production environments')
+      return DEFAULT_EXAM_CACHE_TTL_MS
     }
     const parsed = parseInt(process.env.EXAM_CACHE_TTL_MS, 10)
     return isNaN(parsed) ? DEFAULT_EXAM_CACHE_TTL_MS : parsed

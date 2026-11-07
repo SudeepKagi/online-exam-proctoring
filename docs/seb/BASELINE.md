@@ -35,29 +35,31 @@ Prior to running tests, all `.env*` configurations were audited to ensure zero i
 
 ### A. Backend Unit & Integration Suite (`npm test --workspace=backend`)
 - **Status:** **PASS** (100%)
-- **Suites:** 15 passed, 0 failed
-- **Tests:** 75 passed, 0 failed
-- **Duration:** 11.8s
+- **Suites:** 20 passed, 0 failed
+- **Tests:** 87 passed, 0 failed
+- **Duration:** 12.3s
 - **Verified Suites:**
   1. `assertNonProduction Guard` (classification of local vs remote databases)
   2. `Onboarding Password Persistence & Authentication Flow`
-  3. `Clean Architecture — Domain & Primitives Verification`
-  4. `High-Concurrency Load & Security Penetration Test Suite` (100 concurrent starts, 200 batch autosaves, 20 double-submits)
-  5. `Phase G — Complete End-to-End Lifecycle & Failure Matrix`
-  6. `Exam Creation Input & Schedule Window Validation Regression Suite` (6 new regression tests)
-  7. `Live Proctoring Pipeline — State Machine & Terminal Immutability`
-  8. `Live Proctoring Pipeline — Authorization & Scoping Guardrails`
-  9. `P5 Client-Side Compression & EXIF Stripping Verification`
-  10. `P6 Frontend AutosaveManager & ServerClock Unit Tests`
-  11. `R3 — Snapshot Cadence State Machine`
-  12. `R3 — Snapshot Rate Limit`
-  13. `R3 — S3 Live Snapshot Key Construction`
-  14. `R3 — Next-delay scheduling`
-  15. `R3 — PresignService integration`
+  3. `Baseline Review Tasks Verification Suite` (Task 2.1 Mass Assignment, Task 4 Cleanroom Wipe Safety, Task C Cache TTL Configuration, Task B Draft Exam Guard and Cache Invalidation)
+  4. `Clean Architecture — Domain & Primitives Verification`
+  5. `High-Concurrency Load & Security Penetration Test Suite` (100 concurrent starts, 200 batch autosaves, 20 double-submits)
+  6. `Phase G — Complete End-to-End Lifecycle & Failure Matrix`
+  7. `Exam Creation Input & Schedule Window Validation Regression Suite` (6 regression tests)
+  8. `Live Proctoring Pipeline — State Machine & Terminal Immutability`
+  9. `Live Proctoring Pipeline — Authorization & Scoping Guardrails`
+  10. `P5 Client-Side Compression & EXIF Stripping Verification`
+  11. `P6 Frontend AutosaveManager & ServerClock Unit Tests`
+  12. `R3 — Snapshot Cadence State Machine`
+  13. `R3 — Snapshot Rate Limit`
+  14. `R3 — S3 Live Snapshot Key Construction`
+  15. `R3 — Next-delay scheduling`
+  16. `R3 — PresignService integration`
 
-### B. Playwright E2E Suite (`npx playwright test --list`)
+### B. Playwright E2E Suite (`npx playwright test`)
 - **Spec Files:** 10 files
-- **Total Tests:** 50 tests (before Task E camera teardown test; 51 tests with Task E)
+- **Total Tests:** 51 tests
+- **Status:** **PASS** (51 passed, 0 failed)
 - **Verified Spec Files (10/10 verbatim from `npx playwright test --list`):**
   1. `e2e/auth-onboarding.spec.ts` (4 tests)
   2. `e2e/exam-authoring.spec.ts` (1 test)
@@ -68,7 +70,7 @@ Prior to running tests, all `.env*` configurations were audited to ensure zero i
   7. `e2e/phase5-red-team.spec.ts` (15 tests)
   8. `e2e/phase6-lifecycle-edge-cases.spec.ts` (7 tests)
   9. `e2e/production-bugs-regression.spec.ts` (2 tests)
-  10. `e2e/student-attempt.spec.ts` (1 test)
+  10. `e2e/student-attempt.spec.ts` (2 tests)
 
 ### C. Frontend Production Build (`npm run build --workspace=frontend`)
 - **Status:** **PASS** (0 errors)
@@ -118,4 +120,4 @@ During the stabilization of `fix/baseline-01`, two genuine application bugs and 
 ---
 
 ## 5. Summary & Next Steps
-Baseline stabilization is complete. All 75 backend unit/integration tests and all 50 Playwright E2E browser tests pass with 100% reliability. The branch `fix/baseline-01` is stable and ready for user review. No `feat/seb-*` branch has been created.
+Baseline stabilization is complete. All 87 backend unit/integration tests and all 51 Playwright E2E browser tests pass with 100% reliability. The branch `fix/baseline-01` is stable and ready for user review. No `feat/seb-*` branch has been created.

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => {
   test.describe.configure({ mode: 'serial' })
@@ -99,8 +99,8 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
         title: `Screen Share Perf Exam ${Date.now()}`,
         subject: 'PERF-101',
         courseCode: 'PERF-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 7200000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -114,6 +114,7 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
         })
       }
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // 2. Student logs in and navigates to arena
       await student.page.goto('/login?role=student')

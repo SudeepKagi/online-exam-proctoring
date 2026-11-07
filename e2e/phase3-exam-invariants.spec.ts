@@ -26,8 +26,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Timer Authority Exam ${Date.now()}`,
         subject: 'SYS-101',
         courseCode: 'SYS-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 22000).toISOString(), // Ends in 22s on server
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 120 * 60 * 1000).toISOString(),
         durationMinutes: 1
       })
       const examId = examRes.body?.exam?.id
@@ -40,6 +40,10 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, {
+        startTime: new Date(now.getTime() - 60000),
+        endTime: new Date(now.getTime() + 22000)
+      })
 
       // Student logs in
       await student.page.goto('/login?role=student')
@@ -93,8 +97,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Auto-Submit Expiry Exam ${Date.now()}`,
         subject: 'SYS-102',
         courseCode: 'SYS-102',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 25000).toISOString(), // Ends in 25s
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 7200000).toISOString(),
         durationMinutes: 1
       })
       const examId = examRes.body?.exam?.id
@@ -108,6 +112,10 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
       })
       const questionId = qRes.body?.question?.id || qRes.body?.id
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, {
+        startTime: new Date(now.getTime() - 60000),
+        endTime: new Date(now.getTime() + 25000)
+      })
 
       // Student logs in and starts exam
       await student.page.goto('/login?role=student')
@@ -169,8 +177,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Refresh Recovery Exam ${Date.now()}`,
         subject: 'SYS-103',
         courseCode: 'SYS-103',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -183,6 +191,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // Student logs in and enters arena
       await student.page.goto('/login?role=student')
@@ -232,8 +241,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Offline Autosave Exam ${Date.now()}`,
         subject: 'SYS-104',
         courseCode: 'SYS-104',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -246,6 +255,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
@@ -305,8 +315,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Submit Idempotency Exam ${Date.now()}`,
         subject: 'SYS-105',
         courseCode: 'SYS-105',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -319,6 +329,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
@@ -366,8 +377,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Single Attempt Exam ${Date.now()}`,
         subject: 'SYS-106',
         courseCode: 'SYS-106',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -380,6 +391,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       await student.page.goto('/login?role=student')
       await student.page.locator('input[type="text"]').fill(SEEDED_STUDENTS[0].email)
@@ -427,8 +439,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Zero Leakage Exam ${Date.now()}`,
         subject: 'SEC-101',
         courseCode: 'SEC-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -441,6 +453,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // Student 1 starts exam
       await student1.page.goto('/login?role=student')
@@ -528,8 +541,8 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         title: `Math Scoring Exam ${Date.now()}`,
         subject: 'MATH-101',
         courseCode: 'MATH-101',
-        startTime: new Date(now.getTime() - 60000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -589,6 +602,7 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
       })
 
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 60000) })
 
       // Student starts and answers
       await student.page.goto('/login?role=student')

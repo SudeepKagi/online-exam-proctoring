@@ -153,7 +153,7 @@ test.describe('PHASE 2: Real-Human Live E2E Flows', () => {
         title: `Software Architecture Live Arena ${Date.now()}`,
         subject: 'SE-901',
         courseCode: 'SE-901',
-        startTime: new Date(now.getTime() - 2 * 60 * 1000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
         endTime: new Date(now.getTime() + 120 * 60 * 1000).toISOString(),
         durationMinutes: 60
       })
@@ -175,6 +175,7 @@ test.describe('PHASE 2: Real-Human Live E2E Flows', () => {
       })
 
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 2 * 60 * 1000) })
 
       // Step B: Student login and dashboard verification
       await student.page.goto('/login?role=student')

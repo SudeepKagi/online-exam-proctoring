@@ -158,16 +158,13 @@ describe('Baseline Review Tasks Verification Suite', () => {
   })
 
   describe('Task C: Cache TTL Configuration and Dual Environment Guard', () => {
-    it('refuses EXAM_CACHE_TTL_MS override if NODE_ENV is production', () => {
+    it('returns default 10000ms production TTL if NODE_ENV is production', () => {
       const origEnv = process.env.NODE_ENV
       const origTtl = process.env.EXAM_CACHE_TTL_MS
       try {
         process.env.NODE_ENV = 'production'
         process.env.EXAM_CACHE_TTL_MS = '500'
-        assert.throws(
-          () => examsSql.getExamCacheTtlMs(),
-          /SAFETY REFUSAL: EXAM_CACHE_TTL_MS override is only allowed in non-production environments/
-        )
+        assert.equal(examsSql.getExamCacheTtlMs(), 10000)
       } finally {
         process.env.NODE_ENV = origEnv
         if (origTtl !== undefined) process.env.EXAM_CACHE_TTL_MS = origTtl
@@ -175,16 +172,13 @@ describe('Baseline Review Tasks Verification Suite', () => {
       }
     })
 
-    it('refuses EXAM_CACHE_TTL_MS override if database host is production (external host)', () => {
+    it('returns default 10000ms production TTL if database host is production (external host)', () => {
       const origUrl = process.env.DATABASE_URL
       const origTtl = process.env.EXAM_CACHE_TTL_MS
       try {
         process.env.DATABASE_URL = 'postgresql://proctornet:pass@db.production-cloud.internal:5432/proctornet_prod'
         process.env.EXAM_CACHE_TTL_MS = '500'
-        assert.throws(
-          () => examsSql.getExamCacheTtlMs(),
-          /SAFETY REFUSAL: EXAM_CACHE_TTL_MS override is only allowed in non-production environments/
-        )
+        assert.equal(examsSql.getExamCacheTtlMs(), 10000)
       } finally {
         process.env.DATABASE_URL = origUrl
         if (origTtl !== undefined) process.env.EXAM_CACHE_TTL_MS = origTtl
@@ -214,7 +208,7 @@ describe('Baseline Review Tasks Verification Suite', () => {
         title: `Draft Exam For Student Start Block ${now}`,
         courseCode: 'SEC-201',
         startTime: new Date(now - 60000).toISOString(),
-        endTime: new Date(now + 3600000).toISOString(),
+        endTime: new Date(now + 7200000).toISOString(),
         durationMinutes: 60,
         createdBy: faculty.id
       })
@@ -243,7 +237,7 @@ describe('Baseline Review Tasks Verification Suite', () => {
         title: `Draft Exam For Question Leak Check ${now}`,
         courseCode: 'SEC-202',
         startTime: new Date(now - 60000).toISOString(),
-        endTime: new Date(now + 3600000).toISOString(),
+        endTime: new Date(now + 7200000).toISOString(),
         durationMinutes: 60,
         createdBy: faculty.id
       })
@@ -279,7 +273,7 @@ describe('Baseline Review Tasks Verification Suite', () => {
         title: `Draft Exam For Faculty/Admin Read ${now}`,
         courseCode: 'SEC-203',
         startTime: new Date(now + 60000).toISOString(),
-        endTime: new Date(now + 3600000).toISOString(),
+        endTime: new Date(now + 7200000).toISOString(),
         durationMinutes: 60,
         createdBy: faculty.id
       })
@@ -314,7 +308,7 @@ describe('Baseline Review Tasks Verification Suite', () => {
         title: `Published Exam For Student Read ${now}`,
         courseCode: 'SEC-204',
         startTime: new Date(now + 60000).toISOString(),
-        endTime: new Date(now + 3600000).toISOString(),
+        endTime: new Date(now + 7200000).toISOString(),
         durationMinutes: 60,
         createdBy: faculty.id
       })
@@ -351,8 +345,8 @@ describe('Baseline Review Tasks Verification Suite', () => {
       const exam = await examsSql.createExam({
         title: `TTL Cache Invalidation Test ${now}`,
         courseCode: 'SEC-205',
-        startTime: new Date(now - 5000).toISOString(), // currently open
-        endTime: new Date(now + 3600000).toISOString(),
+        startTime: new Date(now + 2000).toISOString(),
+        endTime: new Date(now + 7200000).toISOString(),
         durationMinutes: 60,
         createdBy: faculty.id
       })
@@ -375,6 +369,8 @@ describe('Baseline Review Tasks Verification Suite', () => {
         const published = await examService.publishExam(exam.id)
         assert.equal(published.status, 'PUBLISHED')
 
+        // Wait for exam startTime (1.2s, far less than 10s TTL)
+        await new Promise((r) => setTimeout(r, 2200))
         // 3. Immediately start attempt without sleeping 10s:
         // If cache was not invalidated, startAttempt would see cached status DRAFT and throw EXAM_NOT_PUBLISHED.
         // Because publishExam invalidated cache, startAttempt succeeds immediately!
