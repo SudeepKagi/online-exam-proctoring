@@ -55,19 +55,17 @@ Prior to running tests, all `.env*` configurations were audited to ensure zero i
   14. `R3 — Next-delay scheduling`
   15. `R3 — PresignService integration`
 
-### B. Playwright E2E Suite (`npx playwright test --max-failures=0`)
-- **Status:** **PASS** (100%)
-- **Total Tests:** 50
-- **Passed:** 50 passed, 0 failed
-- **Duration:** 5.0m
-- **Verified Spec Files (10/10):**
+### B. Playwright E2E Suite (`npx playwright test --list`)
+- **Spec Files:** 10 files
+- **Total Tests:** 50 tests (before Task E camera teardown test; 51 tests with Task E)
+- **Verified Spec Files (10/10 verbatim from `npx playwright test --list`):**
   1. `e2e/auth-onboarding.spec.ts` (4 tests)
   2. `e2e/exam-authoring.spec.ts` (1 test)
-  3. `e2e/invigilator-ops.spec.ts` (2 tests)
-  4. `e2e/phase1-resilience.spec.ts` (12 tests)
-  5. `e2e/phase2-human-flows.spec.ts` (8 tests)
-  6. `e2e/phase3-exam-invariants.spec.ts` (8 tests)
-  7. `e2e/phase4-live-proctoring.spec.ts` (5 tests)
+  3. `e2e/invigilator-ops.spec.ts` (1 test)
+  4. `e2e/phase2-human-flows.spec.ts` (3 tests)
+  5. `e2e/phase3-exam-invariants.spec.ts` (10 tests)
+  6. `e2e/phase4-design-audit.spec.ts` (6 tests)
+  7. `e2e/phase5-red-team.spec.ts` (15 tests)
   8. `e2e/phase6-lifecycle-edge-cases.spec.ts` (7 tests)
   9. `e2e/production-bugs-regression.spec.ts` (2 tests)
   10. `e2e/student-attempt.spec.ts` (1 test)

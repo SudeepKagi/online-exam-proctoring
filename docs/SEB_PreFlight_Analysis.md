@@ -139,12 +139,14 @@ Audit of callers across frontend and tests:
 - Severity is never determined by client request headers or body fields.
 
 ### Question 8: Cache Architecture & Secret Hygiene
-- Use the repository's existing cache abstraction (`cacheDriver` via `infra/redis/client.js`), which supports both in-memory BoundedLruCache and Redis.
-- Two-level cache strategy:
-  - **Level 1 (Attempt -> Exam)**: `pn:v1:attempt_seb:<attemptId> = examId` (immutable, TTL: duration + 10m).
-  - **Level 2 (Exam -> SEB Settings)**: `pn:v1:exam_seb:<examId> = { sebRequired, sebConfigKey }` (60s TTL).
-- On exam update (`PUT /exams/:id`), the backend explicitly invalidates `pn:v1:exam_seb:<examId>`.
-- On cache error, fall back to DB lookup. In `enforce` mode, never fail open on persistent failure.
+- **Strict Shared Cache Policy (Zero Secret in Redis)**: The SEB Config Key (`sebConfigKey`) is a shared secret and must **NEVER** be stored in Redis or any external/shared cache. Redis/distributed cache is restricted strictly to non-secret routing and status data:
+  - `pn:v1:attempt_seb:<attemptId> = examId` (immutable, TTL: duration + 10m).
+  - `pn:v1:attempt_seb_verified:<attemptId> = true` (ephemeral attempt status, TTL: duration + 10m).
+  - `pn:v1:exam_seb_required:<examId> = true/false` (boolean toggle, 60s TTL).
+- **In-Process Memory Cache for Config Key**:
+  - The actual `sebConfigKey` string is cached exclusively in an **in-process memory cache** (local Node.js process LRU / Map) with a short TTL (60s), falling back directly to PostgreSQL database lookup.
+  - On exam update (`PUT /exams/:id`), the backend explicitly invalidates the local cache entry and broadcasts an invalidation event.
+  - On cache miss or failure, fall back to DB lookup. In `enforce` mode, never fail open on persistent database failure.
 - **Pino Redaction**: Configure `sebConfigKey` in Pino redaction rules (`backend/src/shared/logging.js`) so that keys are automatically masked in HTTP logs, bodies, and error stacks.
 
 ### Question 9: Real-Time Communication Audit (Socket.io)
@@ -206,6 +208,7 @@ Audit of callers across frontend and tests:
 ### Step 4 — Frontend Screen Share Removal & Camera Retention (`feat/seb-04-remove-screen-share`)
 - Remove screen-share steps, `getDisplayMedia`, and screen capture listeners from `PreExamCheckPage.jsx`, `useScreenProctoring.jsx`, and `ExamArenaPage.jsx`.
 - Retain webcam video stream, face capture, and `CAMERA_DISCONNECTED` proctoring.
+- **E2E Spec Rewrites**: Note that existing tests exercising screen sharing (`phase6-lifecycle-edge-cases.spec.ts` Test 4: *"Screen-share disconnection triggers onended..."* and `production-bugs-regression.spec.ts` BUG 2: *"Screen share proctoring remains responsive..."*) must be rewritten in this step to verify camera-only proctoring and camera disconnect handling.
 
 ### Step 5 — Faculty Dashboard & Exam Settings UI (`feat/seb-05-faculty-ui`)
 - Update `ExamSettingsModal.jsx`:
