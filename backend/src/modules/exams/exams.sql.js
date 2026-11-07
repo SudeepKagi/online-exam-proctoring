@@ -32,8 +32,23 @@ async function createExam({ title, subject, courseCode, description, startTime, 
   return mapExamRecord(exam)
 }
 
+const { isNonProductionDatabase } = require('../../infra/postgres/assertNonProduction')
+
 const examCache = new Map()
 const questionsCache = new Map()
+
+const DEFAULT_EXAM_CACHE_TTL_MS = 10000
+
+function getExamCacheTtlMs() {
+  if (process.env.EXAM_CACHE_TTL_MS !== undefined) {
+    if (process.env.NODE_ENV === 'production' || !isNonProductionDatabase()) {
+      throw new Error('SAFETY REFUSAL: EXAM_CACHE_TTL_MS override is only allowed in non-production environments')
+    }
+    const parsed = parseInt(process.env.EXAM_CACHE_TTL_MS, 10)
+    return isNaN(parsed) ? DEFAULT_EXAM_CACHE_TTL_MS : parsed
+  }
+  return DEFAULT_EXAM_CACHE_TTL_MS
+}
 
 function invalidateExamCache(id) {
   if (id) {
@@ -45,13 +60,14 @@ function invalidateExamCache(id) {
 
 async function findExamById(id) {
   if (!id || typeof id !== 'string' || id.length !== 36) return null
+  const ttl = getExamCacheTtlMs()
   const cached = examCache.get(id)
-  if (cached && Date.now() - cached.ts < 10000) return cached.val
+  if (cached && ttl > 0 && Date.now() - cached.ts < ttl) return cached.val
   const exam = await prisma.exam.findUnique({
     where: { id }
   })
   const mapped = mapExamRecord(exam)
-  if (mapped) examCache.set(id, { val: mapped, ts: Date.now() })
+  if (mapped && ttl > 0) examCache.set(id, { val: mapped, ts: Date.now() })
   return mapped
 }
 
@@ -200,7 +216,6 @@ module.exports = {
   getQuestionsByExamId,
   deleteQuestion,
   assignUserToExam,
-  invalidateExamCache
-}
+  invalidateExamCache,  getExamCacheTtlMs}
 
 
