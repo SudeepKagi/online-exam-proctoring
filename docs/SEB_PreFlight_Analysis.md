@@ -10,7 +10,7 @@ SEB sends:
 ```http
 X-SafeExamBrowser-ConfigKeyHash: <64-character-hex-string>
 ```
-*(Note: `X-SafeExamBrowser-RequestHash` belongs to the Browser Exam Key [BEK], which is platform- and build-dependent. ProctorNet exclusively enforces the Config Key [CK], which is platform- and version-independent).*
+*(Note: `X-SafeExamBrowser-RequestHash` belongs to the Browser Exam Key [BEK], which is platform- and build-dependent. ProctorNet primarily enforces the Config Key [CK], which is platform- and version-independent. See Section 5 for the BEK allowlist roadmap).*
 
 ### The Hash Formula
 SEB generates the Config Key as a 64-character lowercase hex string from canonical settings JSON. The request verification formula is:
@@ -56,36 +56,54 @@ When faculty save or update an exam configuration:
 An exam with `proctoringConfig.sebRequired === true` cannot be published (`POST /exams/:id/publish`) without a valid 64-hex key, checking exam-level `sebConfigKey` first and falling back to the global `SEB_CONFIG_KEY` env var. If neither is available, the publish guard rejects with `400 BAD_REQUEST: "Exam requires Safe Exam Browser but no valid Config Key is configured."`
 
 ### Setup Checklist & Configuration Prerequisites in SEB Config Tool
-1. **Send Config Key Header**: In the Exam tab, check **"Use Browser & Config Keys (send in HTTP header)"** (`sendBrowserExamKey = true`). By default, SEB sets this to `false`.
-2. **Camera / Web Media Access**: In User Interface / Media settings, enable **"Allow video capture"** (`allowVideoCapture = true`). Without this, the browser kiosk blocks getUserMedia and camera proctoring fails.
-3. **Clean Quit Action**: In the Exam tab, set the Quit URL to `VITE_SEB_QUIT_URL` and disable **"Confirm quitting"** (`false`) so submitting an exam exits cleanly without confirmation prompts.
+> [!NOTE]
+> Settings marked `[UNVERIFIED IN CLAIMS_LEDGER]` are derived from documentation and memory; each must be explicitly verified in the real SEB Config Tool GUI during the pilot checkpoint.
+
+1. **Send Config Key Header** `[UNVERIFIED IN CLAIMS_LEDGER]`: In the Exam tab, check **"Use Browser & Config Keys (send in HTTP header)"** (`sendBrowserExamKey = true`). By default, SEB sets this to `false`.
+2. **Camera / Web Media Access** `[UNVERIFIED IN CLAIMS_LEDGER]`: In User Interface / Media settings, enable **"Allow video capture"** (`allowVideoCapture = true`). Without this, the browser kiosk blocks `getUserMedia` and webcam proctoring fails.
+3. **Clean Quit Action & Post-Submit Quit URL**:
+   - In the Exam tab, set the Quit URL to the actual post-submission URL (e.g. `https://proctornet.duckdns.org/student/exams/:id/result` or an exit confirmation page like `https://proctornet.duckdns.org/exam-ended`).
+   - Disable **"Confirm quitting"** (`false`) `[UNVERIFIED IN CLAIMS_LEDGER]` so that clicking the quit link terminates SEB cleanly without trapping the student in confirmation loops.
+   - The Quit URL must be included in the URL filter allowlist.
 4. **URL Filter Allowlist**:
    - ProctorNet web origin: `https://proctornet.duckdns.org` (or `http://localhost:5173`)
    - ProctorNet API origin: `https://proctornet.duckdns.org` (or `http://localhost:5000`)
    - Object Storage / S3 / MinIO: `https://*.s3.ap-south-1.amazonaws.com`, `http://localhost:9000`
+   - Post-submit Quit URL destination
    - Self-hosted static assets: Fonts (`/fonts/Satoshi-Variable.woff2`) and icons.
 
 ---
 
 ## 2. Current State & Route Analysis (Verified from Repo)
 
+### Role-Scoping & Middleware Execution Order
+SEB gating applies **EXCLUSIVELY to the `STUDENT` role**, and only for that student's own active attempt.
+- **Staff Exemption**: Faculty, invigilators, and administrators frequently access student attempt endpoints (e.g., `GET /attempts/:attemptId` for grading/monitoring) from standard desktop browsers. They must NEVER be blocked by SEB middleware.
+- **Mandatory Middleware Order**:
+  1. `authenticateToken`: Validates JWT, extracts `req.user = { id, role, email }`.
+  2. `requireRole(...)` or route authorization guards: Enforces basic RBAC.
+  3. `sebMiddleware`: Inspects `req.user.role`. If `req.user.role !== 'STUDENT'`, bypasses SEB validation immediately (`return next()`). If role is `STUDENT`, verifies attempt ownership and checks `X-SafeExamBrowser-ConfigKeyHash`.
+
 ### Question 4: Route Identifier Resolution Map
-SEB middleware must resolve the target `exam` and its `proctoringConfig` across all gated endpoints. Here is the verified breakdown:
+SEB middleware resolves the target `exam` and its `proctoringConfig` across all gated student endpoints:
 
 | Route Path | Method | Identifier Source | Resolution Mechanism | Gating Requirement |
 |---|---|---|---|---|
-| `/attempts/exams/:examId/start` | POST | `req.params.examId` | Direct `examId` lookup | GATED (returns questions) |
-| `/attempts/:examId/start` | POST | `req.params.examId` | Direct `examId` lookup | GATED (returns questions) |
-| `/attempts/student/exams/:examId/start` | POST/GET | `req.params.examId` | Direct `examId` lookup | GATED (returns questions) |
-| `/attempts/start` | POST | `req.body.examId` | Body `examId` fallback | GATED (returns questions) |
-| `/attempts/:attemptId/answers` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (candidate answers) |
-| `/attempts/:attemptId/answers/batch` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (candidate answers) |
-| `/attempts/:attemptId/answers` | PUT | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (candidate answers) |
-| `/attempts/:attemptId/submit` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (final submission) |
-| `/attempts/:attemptId` | GET | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (returns attempt + answers) |
+| `/attempts/exams/:examId/start` | POST | `req.params.examId` | Direct `examId` lookup | GATED (returns questions to student) |
+| `/attempts/:examId/start` | POST | `req.params.examId` | Direct `examId` lookup | GATED (returns questions to student) |
+| `/attempts/student/exams/:examId/start` | POST/GET | `req.params.examId` | Direct `examId` lookup | GATED (returns questions to student) |
+| `/attempts/start` | POST | `req.body.examId` | Body `examId` fallback | GATED (returns questions to student) |
+| `/attempts/:attemptId/answers` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (student candidate answers) |
+| `/attempts/:attemptId/answers/batch` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (student candidate answers) |
+| `/attempts/:attemptId/answers` | PUT | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (student candidate answers) |
+| `/attempts/:attemptId/submit` | POST | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED (student final submission) |
+| `/attempts/:attemptId` | GET | `req.params.attemptId` | Cache L1/L2 -> DB fallback | GATED for STUDENT only (exposes answers) |
 
 *Resolver Design*:
 ```javascript
+if (req.user?.role !== 'STUDENT') {
+  return next()
+}
 const examId = req.params.examId || req.body?.examId || null
 if (!examId && req.params.attemptId) {
   // Resolve exam from cached attempt mapping
@@ -105,16 +123,20 @@ Audit of callers across frontend and tests:
 - In `ExamArenaPage.jsx`, initialize questions using `startRes.data?.questions || ex?.questions`. Because `/start` is the SEB-gated entry point that always returns `{ questions }`, resume-after-refresh and initial launch will reliably receive questions inside SEB.
 - Non-SEB exams and faculty/admin callers are completely unaffected.
 
-### Question 3: Server-Side Attempt Verification & Violation Severity
-- Violation events are posted by students to `POST /api/v1/proctoring/events`, an endpoint that cannot be strictly SEB-gated because heartbeats and interruptions must be received even if client state degrades.
+### Question 3: Server-Side Attempt Verification & Violation Policy
+- Violation events are posted by students to `POST /api/v1/proctoring/events`. This endpoint cannot be strictly SEB-gated because network disruptions, heartbeats, and client state transitions must be logged even if SEB headers are disrupted.
 - **Server-Side Tracking**:
   - When any SEB-gated route (`/start`, `/answers`, `/submit`) successfully validates the `X-SafeExamBrowser-ConfigKeyHash`, the server sets:
     - In cache: `pn:v1:attempt_seb_verified:<attemptId> = true` (TTL: attempt duration + 10m).
     - Note on PostgreSQL: In accordance with working rules, **no migration will be executed**. We track the verified state in Redis/L1 cache with fallback to attempt metadata JSON if needed.
-  - When `POST /api/v1/proctoring/events` processes an event (`TAB_SWITCH` or `FULLSCREEN_EXIT`), it checks the server-side verified flag:
-    - If `sebVerified === true`: Severity is downgraded to `INFO` and `violationCount` is **not incremented** (preventing termination from OS-level window quirks inside SEB kiosk).
-    - If `sebVerified !== true`: Retains full `HIGH` severity and increments `violationCount`.
-  - Severity is never determined by client request headers or body fields.
+- **Strict Violation Severity Policy (No Automatic Downgrade)**:
+  - Because the SEB Config Key can theoretically be forged by an adversary with access to the key string, a verified header does **not** cryptographically prove an uncompromised physical environment.
+  - Automatic downgrade of `TAB_SWITCH` or `FULLSCREEN_EXIT` to `INFO` is **forbidden**, as a forged client could switch windows freely without penalty.
+  - **Policy**:
+    1. Retain current violation severity (`HIGH`) and normal `violationCount` incrementing.
+    2. Attach `sebVerified: true/false` to the recorded event metadata as informational context for invigilators in the live proctoring console.
+    3. Revisit potential threshold adjustments only after empirical evidence is gathered during the live SEB pilot.
+- Severity is never determined by client request headers or body fields.
 
 ### Question 8: Cache Architecture & Secret Hygiene
 - Use the repository's existing cache abstraction (`cacheDriver` via `infra/redis/client.js`), which supports both in-memory BoundedLruCache and Redis.
@@ -159,13 +181,14 @@ Audit of callers across frontend and tests:
 - Create `scripts/seb/verify-formula.js` CLI tool (evaluates single-hash vs double-hash against real headers).
 - Create `docs/seb/CLAIMS_LEDGER.md` documenting formula verification status and `SEB_MODE=log` default.
 - Create `backend/src/middleware/seb.js`:
-  - Reconstructs canonical URL using `PUBLIC_ORIGIN + req.originalUrl` (no fragment).
+  - Enforce role check: Apply SEB gating strictly to `STUDENT` requests; pass through staff/admin callers immediately.
+  - Reconstruct canonical URL using `PUBLIC_ORIGIN + req.originalUrl` (no fragment).
   - Multi-source resolver for `examId` (params, body, or cached `attemptId`).
   - Cache lookup with 60s TTL and DB fallback.
   - Constant-time compare (`crypto.timingSafeEqual`) on exact 64-char buffers.
   - Sets `req.seb = { verified, mode }`. On success, records server-side verified flag.
-  - Wire to: `POST .../start`, `POST|PUT .../answers`, `POST .../submit`, `GET /attempts/:attemptId`.
-  - In `proctoring.service.js`, check server-side verified flag to downgrade `TAB_SWITCH` / `FULLSCREEN_EXIT` to `INFO`.
+  - Wire to: `POST .../start`, `POST|PUT .../answers`, `POST .../submit`, and `GET /attempts/:attemptId` (student only).
+  - In `proctoring.service.js`, store server-side `sebVerified` boolean on event record as extra invigilator context (no severity downgrade).
   - Update CORS in `security.js` to allow `x-safeexambrowser-configkeyhash`.
 
 ### 🛑 PILOT CHECKPOINT
@@ -202,7 +225,7 @@ Audit of callers across frontend and tests:
   - If `sebRequired === true`: Replace fullscreen toggle with "SEB Security Environment Active" indicator.
   - If `sebRequired === false`: Keep standard fullscreen toggle.
 - **Post-Submit Quit Action**:
-  - Upon submission in `ExamArenaPage.jsx`, display "Exit Safe Exam Browser" button navigating to the configured `VITE_SEB_QUIT_URL`.
+  - Upon submission in `ExamArenaPage.jsx`, display "Exit Safe Exam Browser" button navigating to the actual post-submission Quit URL (e.g. `https://proctornet.duckdns.org/student/exams/:id/result` or `/exam-ended`), which must be configured in SEB settings and included in the URL allowlist.
   - Reminder in checklist: Ensure "Confirm quitting" is disabled in SEB Config Tool so clicking Quit cleanly closes the browser.
 
 ---
@@ -211,3 +234,17 @@ Audit of callers across frontend and tests:
 
 1. **Default for New Exams**: Confirmed: `SEB_DEFAULT_REQUIRED=false` initially, controlled via env var.
 2. **Database Migration Decision**: Confirmed: No migration will be executed. Attempt SEB-verified status is tracked via Redis cache during active exam sessions.
+
+---
+
+## 5. Future Architectural Roadmap: Browser Exam Key (BEK) Allowlist (Design Only)
+
+For high-stakes examinations requiring maximum hardware-level tamper resistance, the platform can optionally support a dual-header verification mode:
+- **Header**: `X-SafeExamBrowser-RequestHash` (generated using the Browser Exam Key).
+- **Mechanism**: The BEK is generated from the specific SEB executable code signature, application bundle, and operating system build.
+- **Allowlist Model**:
+  - An institution administrator configures an approved BEK allowlist in `proctoringConfig.allowedBrowserExamKeys: string[]`.
+  - The backend verifies:
+    1. The Config Key matches the exam's settings file (`X-SafeExamBrowser-ConfigKeyHash`).
+    2. The incoming `X-SafeExamBrowser-RequestHash` matches one of the authorized OS/version BEK combinations.
+- **Trade-off**: Requires faculty to manage multiple BEK strings (one per supported OS version: Windows x64, macOS, iOS). Maintained as an optional high-security tier for future development.
