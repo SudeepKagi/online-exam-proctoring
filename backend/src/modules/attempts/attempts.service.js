@@ -17,6 +17,10 @@ class AttemptService {
   async getReadiness(examId, studentId) {
     const exam = await examsSql.findExamById(examId)
     if (!exam) throw httpErr('Exam not found', 404)
+
+    if (!['PUBLISHED', 'ACTIVE'].includes(exam.status)) {
+      throw httpErr('Exam is not published yet', 403, 'EXAM_NOT_PUBLISHED')
+    }
     if (['ENDED', 'EVALUATED'].includes(exam.status)) throw httpErr('Exam session has closed', 403)
 
     let attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
@@ -198,10 +202,12 @@ class AttemptService {
 const attemptService = new AttemptService()
 
 // Background Expiration Worker: checks every 10s for expired attempts
-const expirationInterval = setInterval(() => {
-  attemptService.autoSubmitExpiredAttempts().catch(() => {})
-}, 10000)
-if (expirationInterval.unref) expirationInterval.unref()
+if (process.env.NODE_ENV !== 'test') {
+  const expirationInterval = setInterval(() => {
+    attemptService.autoSubmitExpiredAttempts().catch(() => {})
+  }, 10000)
+  if (expirationInterval.unref) expirationInterval.unref()
+}
 
 module.exports = {
   attemptService,

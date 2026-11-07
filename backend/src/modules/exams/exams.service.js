@@ -74,6 +74,12 @@ class ExamService {
     }
 
     const isStudent = normalizeRole(userRole) === ROLES.STUDENT
+    if (isStudent && !['PUBLISHED', 'ACTIVE', 'ENDED', 'EVALUATED'].includes(exam.status)) {
+      const notFoundErr = new Error('Exam not found')
+      notFoundErr.status = 404
+      notFoundErr.code = 'EXAM_NOT_FOUND'
+      throw notFoundErr
+    }
     const serverNow = new Date()
     const examEnded = exam.endTime && serverNow > new Date(exam.endTime)
     const includeCorrect = !isStudent || (exam.status === 'EVALUATED' && examEnded)
