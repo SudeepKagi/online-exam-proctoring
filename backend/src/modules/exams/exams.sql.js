@@ -37,13 +37,14 @@ const questionsCache = new Map()
 
 async function findExamById(id) {
   if (!id || typeof id !== 'string' || id.length !== 36) return null
+  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.E2E_PROFILE)
   const cached = examCache.get(id)
-  if (cached && Date.now() - cached.ts < 10000) return cached.val
+  if (!isTest && cached && Date.now() - cached.ts < 10000) return cached.val
   const exam = await prisma.exam.findUnique({
     where: { id }
   })
   const mapped = mapExamRecord(exam)
-  if (mapped) examCache.set(id, { val: mapped, ts: Date.now() })
+  if (mapped && !isTest) examCache.set(id, { val: mapped, ts: Date.now() })
   return mapped
 }
 

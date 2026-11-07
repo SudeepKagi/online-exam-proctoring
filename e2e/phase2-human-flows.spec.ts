@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('PHASE 2: Real-Human Live E2E Flows', () => {
   test.describe.configure({ mode: 'serial' })
@@ -88,8 +88,8 @@ test.describe('PHASE 2: Real-Human Live E2E Flows', () => {
         title: `Algorithms & Systems Midterm ${Date.now()}`,
         subject: 'CS-702',
         courseCode: 'CS-702',
-        startTime: new Date(now.getTime() - 2 * 60 * 1000).toISOString(),
-        endTime: new Date(now.getTime() + 120 * 60 * 1000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 130 * 60 * 1000).toISOString(),
         durationMinutes: 90
       })
       expect(validExamRes.status).toBe(201)
@@ -124,6 +124,7 @@ test.describe('PHASE 2: Real-Human Live E2E Flows', () => {
       // Step D: Publish Exam
       const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
       expect([200, 201]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 2 * 60 * 1000) })
 
       // Step E: Verify Teacher live monitoring endpoint is reachable
       await faculty.page.goto('/faculty/exams')
