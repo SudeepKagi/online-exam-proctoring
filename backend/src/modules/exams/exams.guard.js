@@ -40,6 +40,13 @@ async function checkExamMutability(examId, _isQuestionMutation = false) {
 }
 
 function validateScheduleWindow(startTime, endTime, durationMinutes) {
+  if (!startTime || !endTime) {
+    const err = new Error('Exam start time and end time are required.')
+    err.status = 400
+    err.code = 'INVALID_EXAM_WINDOW'
+    throw err
+  }
+
   const start = new Date(startTime)
   const end = new Date(endTime)
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
@@ -49,9 +56,16 @@ function validateScheduleWindow(startTime, endTime, durationMinutes) {
     throw err
   }
 
-  const dur = Number(durationMinutes || 60)
+  const dur = Number(durationMinutes !== undefined ? durationMinutes : 60)
+  if (isNaN(dur) || dur <= 0) {
+    const err = new Error('Exam duration must be greater than 0.')
+    err.status = 400
+    err.code = 'INVALID_DURATION'
+    throw err
+  }
+
   const windowMinutes = Math.floor((end.getTime() - start.getTime()) / 60000)
-  if (dur <= 0 || dur > windowMinutes) {
+  if (dur > windowMinutes) {
     const err = new Error('Exam duration must be greater than 0 and cannot exceed scheduled window.')
     err.status = 400
     err.code = 'DURATION_EXCEEDS_WINDOW'

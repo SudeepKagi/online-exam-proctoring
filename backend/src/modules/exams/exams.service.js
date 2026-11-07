@@ -11,11 +11,24 @@ class ExamService {
   }
 
   async createExam(data, creatorId = null) {
-    const { startTime, endTime, durationMinutes, duration } = data
-    const dur = durationMinutes || duration || 60
-    if (startTime && endTime) {
-      validateScheduleWindow(startTime, endTime, dur)
+    const { startTime, endTime, durationMinutes, duration, title } = data
+    if (!title || !String(title).trim()) {
+      const err = new Error('Exam title is required.')
+      err.status = 400
+      err.code = 'VALIDATION_ERROR'
+      throw err
     }
+
+    const dur = Number(durationMinutes !== undefined ? durationMinutes : (duration !== undefined ? duration : 60))
+    if (isNaN(dur) || dur <= 0) {
+      const err = new Error('Exam duration must be greater than 0.')
+      err.status = 400
+      err.code = 'INVALID_DURATION'
+      throw err
+    }
+
+    validateScheduleWindow(startTime, endTime, dur)
+
     return examsSql.createExam({
       ...data,
       durationMinutes: dur,
