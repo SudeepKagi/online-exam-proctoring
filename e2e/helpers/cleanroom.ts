@@ -96,13 +96,6 @@ export async function setExamScheduleDates(examId: string, dates: { startTime?: 
     where: { id: examId },
     data
   })
-  try {
-    const examsSql = require(path.resolve(process.cwd(), 'backend/src/modules/exams/exams.sql'))
-    if (examsSql?.invalidateExamCache) examsSql.invalidateExamCache(examId)
-  } catch {}
-  try {
-    await fetch(`http://127.0.0.1:5000/api/v1/exams/${examId}/invalidate-cache`, { method: 'POST' }).catch(() => {})
-  } catch {}
 }
 
 export async function disconnectPrisma(): Promise<void> {
