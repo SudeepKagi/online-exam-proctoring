@@ -26,7 +26,6 @@ export default defineConfig(({ mode }) => ({
         assetFileNames: 'assets/[hash].[ext]',
         manualChunks: (id) => {
           // Opaque chunk names (§4.5.4)
-          if (id.includes('node_modules/xlsx')) return 'v-ds'
           if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) return 'v-doc'
           if (id.includes('node_modules/recharts')) return 'v-ch'
           if (id.includes('node_modules/@tanstack')) return 'v-ts'
