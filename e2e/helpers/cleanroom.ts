@@ -30,6 +30,11 @@ export const SEEDED_STUDENTS = [
 ]
 
 export async function resetCleanRoom(): Promise<void> {
+  const dbUrl = process.env.DATABASE_URL || ''
+  if (!dbUrl.includes('_test')) {
+    throw new Error(`SAFETY REFUSAL: resetCleanRoom() refused to wipe database. Target database name must end in '_test'. Got: ${dbUrl}`)
+  }
+
   // Wipe test transactional records in correct foreign key order
   await prisma.attemptAnswer.deleteMany().catch(() => {})
   await prisma.proctoringLog.deleteMany().catch(() => {})
@@ -66,6 +71,16 @@ export async function resetCleanRoom(): Promise<void> {
       create: { email: s.email, fullName: s.name, passwordHash: passHash, role: 'STUDENT', status: 'ACTIVE', institutionId: s.usn }
     })
   }
+}
+
+export async function setExamScheduleDates(examId: string, dates: { startTime?: Date; endTime?: Date }): Promise<void> {
+  const data: Record<string, Date> = {}
+  if (dates.startTime) data.startTime = dates.startTime
+  if (dates.endTime) data.endTime = dates.endTime
+  await prisma.exam.update({
+    where: { id: examId },
+    data
+  })
 }
 
 export async function disconnectPrisma(): Promise<void> {

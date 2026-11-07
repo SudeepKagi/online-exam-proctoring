@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
   test.describe.configure({ mode: 'serial' })
@@ -644,13 +644,13 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
 
       const now = new Date()
 
-      // 1. Future Exam: starts in 10 minutes
+      // 1. Future Exam: starts in 10 minutes (60 min window, 30 min duration)
       const futureExam = await api.for(faculty).postRaw('/api/v1/exams', {
         title: `Future Window Exam ${Date.now()}`,
         subject: 'WIN-101',
         courseCode: 'WIN-101',
         startTime: new Date(now.getTime() + 600000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        endTime: new Date(now.getTime() + 4200000).toISOString(),
         durationMinutes: 30
       })
       const futureId = futureExam.body?.exam?.id
@@ -662,13 +662,13 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${futureId}/publish`, {})
 
-      // 2. Past Exam: ended 5 minutes ago
+      // 2. Past Exam: created and published with future window, then moved into past via database helper
       const pastExam = await api.for(faculty).postRaw('/api/v1/exams', {
         title: `Past Window Exam ${Date.now()}`,
         subject: 'WIN-102',
         courseCode: 'WIN-102',
-        startTime: new Date(now.getTime() - 1800000).toISOString(),
-        endTime: new Date(now.getTime() - 300000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 4200000).toISOString(),
         durationMinutes: 30
       })
       const pastId = pastExam.body?.exam?.id
@@ -679,6 +679,10 @@ test.describe('PHASE 3: Exam-System Invariants & Chaos Verification', () => {
         marks: 5
       })
       await api.for(faculty).postRaw(`/api/v1/exams/${pastId}/publish`, {})
+      await setExamScheduleDates(pastId, {
+        startTime: new Date(now.getTime() - 1800000),
+        endTime: new Date(now.getTime() - 300000)
+      })
 
       // Student tries to start both
       await student.page.goto('/login?role=student')

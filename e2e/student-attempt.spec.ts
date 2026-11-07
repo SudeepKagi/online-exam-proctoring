@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('E2E: Student Attempt Flow', () => {
   test.describe.configure({ mode: 'serial' })
@@ -29,8 +29,8 @@ test.describe('E2E: Student Attempt Flow', () => {
         title: 'Distributed Systems Certification',
         subject: 'CS-801',
         courseCode: 'CS-801',
-        startTime: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        endTime: new Date(now.getTime() + 180 * 60 * 1000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 190 * 60 * 1000).toISOString(),
         durationMinutes: 90
       })
       expect(examRes.status).toBe(201)
@@ -62,6 +62,7 @@ test.describe('E2E: Student Attempt Flow', () => {
       // Publish Exam
       const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
       expect(pubRes.status).toBe(200)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 5 * 60 * 1000) })
     } finally {
       await faculty.close()
     }

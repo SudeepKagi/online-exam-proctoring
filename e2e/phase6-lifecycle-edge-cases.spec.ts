@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge Cases', () => {
   test.describe.configure({ mode: 'serial' })
@@ -29,8 +29,8 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
         title: `Live Exam Immutability ${Date.now()}`,
         subject: 'LIFECYCLE-101',
         courseCode: 'LC-101',
-        startTime: new Date(now.getTime() - 120000).toISOString(),
-        endTime: new Date(now.getTime() + 1800000).toISOString(),
+        startTime: new Date(now.getTime() + 600000).toISOString(),
+        endTime: new Date(now.getTime() + 2400000).toISOString(),
         durationMinutes: 30
       })
       const examId = examRes.body?.exam?.id
@@ -48,6 +48,7 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       // Publish the exam
       const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
       expect([200, 204]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 120000) })
 
       // 1. Attempt PUT /exams/:id while exam is started -> MUST return 409
       const updateRes = await api.for(faculty).putRaw(`/api/v1/exams/${examId}`, {

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
 test.describe('E2E: Invigilator Operations Flow', () => {
   test.describe.configure({ mode: 'serial' })
@@ -29,8 +29,8 @@ test.describe('E2E: Invigilator Operations Flow', () => {
         title: 'Realtime Integrity Monitored Exam',
         subject: 'INV-701',
         courseCode: 'INV-701',
-        startTime: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
-        endTime: new Date(now.getTime() + 180 * 60 * 1000).toISOString(),
+        startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+        endTime: new Date(now.getTime() + 190 * 60 * 1000).toISOString(),
         durationMinutes: 60
       })
       expect(examRes.status).toBe(201)
@@ -43,7 +43,9 @@ test.describe('E2E: Invigilator Operations Flow', () => {
         marks: 50
       })
 
-      await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      const pubRes = await api.for(faculty).postRaw(`/api/v1/exams/${examId}/publish`, {})
+      expect([200, 204]).toContain(pubRes.status)
+      await setExamScheduleDates(examId, { startTime: new Date(now.getTime() - 5 * 60 * 1000) })
     } finally {
       await faculty.close()
     }
