@@ -81,8 +81,20 @@ function assertNonProduction(caller = 'Unknown Script') {
   process.exit(1)
 }
 
+function assertTestDatabase(dbUrl = process.env.DATABASE_URL) {
+  if (!dbUrl) {
+    throw new Error('SAFETY REFUSAL: DATABASE_URL is not set.')
+  }
+  const { dbName } = parseDatabaseConnection(dbUrl)
+  if (!dbName.endsWith('_test')) {
+    throw new Error(`SAFETY REFUSAL: resetCleanRoom() refused to wipe database. Target database name must end in '_test'. Got: ${dbName}`)
+  }
+  return true
+}
+
 module.exports = {
   assertNonProduction,
   isNonProductionDatabase,
+  assertTestDatabase,
   LOCAL_HOST_ALLOWLIST
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { SubmitExamDialog, SuspendedOverlay, DuplicateTabOverlay } from '@/components/exam/SubmitExamDialog'
@@ -25,6 +25,7 @@ export default function ExamArenaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [violationCount, setViolationCount] = useState(0)
+  const teardownTimerRef = useRef(null)
 
   const handleTerminationExit = useCallback((msg = 'Your examination was terminated because maximum violations (3/3) were exceeded.') => {
     clearScreenStream(); clearCameraStream()
@@ -87,6 +88,12 @@ export default function ExamArenaPage() {
   })
 
   useEffect(() => {
+    // If remounting within StrictMode window, cancel pending stream teardown
+    if (teardownTimerRef.current) {
+      clearTimeout(teardownTimerRef.current)
+      teardownTimerRef.current = null
+    }
+
     let mounted = true
     const initArena = async () => {
       try {
@@ -122,7 +129,23 @@ export default function ExamArenaPage() {
       }
     }
     initArena()
-    return () => { mounted = false }
+
+    const handleBeforeUnload = () => {
+      clearScreenStream()
+      clearCameraStream()
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    return () => {
+      mounted = false
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Defer stream teardown by 100ms so dev StrictMode double-mount
+      // does not prematurely terminate active media tracks.
+      teardownTimerRef.current = setTimeout(() => {
+        clearScreenStream()
+        clearCameraStream()
+      }, 100)
+    }
   }, [id, navigate, handleTerminationExit, setIsSuspended])
 
   const isArenaInteractionLocked = isSuspended || isDuplicateTab || isProctoringInterrupted

@@ -2,7 +2,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import bcrypt from 'bcryptjs'
 
-dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') })
+dotenv.config({ path: path.resolve(process.cwd(), '.env.test'), override: true })
 
 const { prisma } = require(path.resolve(process.cwd(), 'backend/src/infra/postgres/client'))
 
@@ -29,11 +29,26 @@ export const SEEDED_STUDENTS = [
   { email: 'student2@proctornet.com', usn: 'USN-002', password: 'Password@12345', name: 'Bob Smith' }
 ]
 
+export function assertTestDatabase(dbUrl: string): void {
+  if (!dbUrl) {
+    throw new Error('SAFETY REFUSAL: DATABASE_URL is not set.')
+  }
+  let dbName = ''
+  try {
+    const url = new URL(dbUrl)
+    dbName = url.pathname.replace(/^\//, '')
+  } catch {
+    const match = dbUrl.match(/\/([^/?#]+)(\?.*)?$/)
+    dbName = match ? match[1] : ''
+  }
+  if (!dbName.endsWith('_test')) {
+    throw new Error(`SAFETY REFUSAL: resetCleanRoom() refused to wipe database. Target database name must end in '_test'. Got: ${dbName}`)
+  }
+}
+
 export async function resetCleanRoom(): Promise<void> {
   const dbUrl = process.env.DATABASE_URL || ''
-  if (!dbUrl.includes('_test')) {
-    throw new Error(`SAFETY REFUSAL: resetCleanRoom() refused to wipe database. Target database name must end in '_test'. Got: ${dbUrl}`)
-  }
+  assertTestDatabase(dbUrl)
 
   // Wipe test transactional records in correct foreign key order
   await prisma.attemptAnswer.deleteMany().catch(() => {})
@@ -81,8 +96,16 @@ export async function setExamScheduleDates(examId: string, dates: { startTime?: 
     where: { id: examId },
     data
   })
+  try {
+    const examsSql = require(path.resolve(process.cwd(), 'backend/src/modules/exams/exams.sql'))
+    if (examsSql?.invalidateExamCache) examsSql.invalidateExamCache(examId)
+  } catch {}
+  try {
+    await fetch(`http://127.0.0.1:5000/api/v1/exams/${examId}/invalidate-cache`, { method: 'POST' }).catch(() => {})
+  } catch {}
 }
 
 export async function disconnectPrisma(): Promise<void> {
   await prisma.$disconnect().catch(() => {})
 }
+

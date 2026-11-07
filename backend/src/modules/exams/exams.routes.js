@@ -3,6 +3,7 @@ const examsController = require('./exams.controller')
 const { authenticateToken, requireRole } = require('../auth/auth.routes')
 
 const examsOpsController = require('./exams.ops.controller')
+const examsSql = require('./exams.sql')
 
 const router = express.Router()
 
@@ -29,6 +30,7 @@ router.put('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsCont
 router.patch('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.updateExam)
 router.delete('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.deleteExam)
 router.post('/:id/publish', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.publishExam)
+router.post('/:id/invalidate-cache', (req, res) => { examsSql.invalidateExamCache(req.params.id); return res.status(200).json({ status: 'success', invalidated: req.params.id }) })
 
 // 4-Step Exam Wizard Endpoints
 router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
@@ -54,3 +56,4 @@ router.get('/:id/attempts', authenticateToken, requireRole('INVIGILATOR', 'FACUL
 router.get('/:id/results/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.exportResultsCsv)
 
 module.exports = router
+

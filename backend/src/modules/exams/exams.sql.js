@@ -35,16 +35,23 @@ async function createExam({ title, subject, courseCode, description, startTime, 
 const examCache = new Map()
 const questionsCache = new Map()
 
+function invalidateExamCache(id) {
+  if (id) {
+    examCache.delete(id)
+  } else {
+    examCache.clear()
+  }
+}
+
 async function findExamById(id) {
   if (!id || typeof id !== 'string' || id.length !== 36) return null
-  const isTest = process.env.NODE_ENV === 'test' || Boolean(process.env.E2E_PROFILE)
   const cached = examCache.get(id)
-  if (!isTest && cached && Date.now() - cached.ts < 10000) return cached.val
+  if (cached && Date.now() - cached.ts < 10000) return cached.val
   const exam = await prisma.exam.findUnique({
     where: { id }
   })
   const mapped = mapExamRecord(exam)
-  if (mapped && !isTest) examCache.set(id, { val: mapped, ts: Date.now() })
+  if (mapped) examCache.set(id, { val: mapped, ts: Date.now() })
   return mapped
 }
 
@@ -166,7 +173,6 @@ async function updateExam(id, data) {
     updateData.durationMinutes = Number(data.durationMinutes || data.duration)
   }
   if (data.proctoringConfig !== undefined) updateData.proctoringConfig = data.proctoringConfig
-  if (data.status !== undefined) updateData.status = String(data.status).toUpperCase()
 
   const exam = await prisma.exam.update({
     where: { id },
@@ -193,6 +199,8 @@ module.exports = {
   addQuestion,
   getQuestionsByExamId,
   deleteQuestion,
-  assignUserToExam
+  assignUserToExam,
+  invalidateExamCache
 }
+
 
