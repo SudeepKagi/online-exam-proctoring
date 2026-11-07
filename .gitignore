@@ -25,6 +25,8 @@ venv/
 !.env.example
 !**/.env.example
 !ci/ci.env
+!.env.test.example
+!**/.env.test.example
 
 # Antigravity / Agents
 # .agents is tracked for shared skills, design system, and instructions
