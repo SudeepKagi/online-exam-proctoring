@@ -122,7 +122,7 @@ export default function ExamArenaPage() {
       }
     }
     initArena()
-    return () => { mounted = false; clearScreenStream(); clearCameraStream() }
+    return () => { mounted = false }
   }, [id, navigate, handleTerminationExit, setIsSuspended])
 
   const isArenaInteractionLocked = isSuspended || isDuplicateTab || isProctoringInterrupted
