@@ -7,7 +7,7 @@ services:
       - "127.0.0.1:5434:5432"
     environment:
       POSTGRES_USER: proctornet
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it in .env.test}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: proctornet
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -21,11 +21,11 @@ services:
     image: redis:7-alpine
     container_name: proctornet-test-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:?set it in .env.test}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     ports:
       - "127.0.0.1:6380:6379"
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?set it in .env.test}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis_data:/data
     healthcheck:
@@ -48,8 +48,9 @@ services:
       DATABASE_URL: postgresql://proctornet:proctornet_password@postgres:5432/proctornet?schema=public
       DIRECT_URL: postgresql://proctornet:proctornet_password@postgres:5432/proctornet?schema=public
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: supersecret_jwt_proctornet_production_key_32bytes
-      JWT_REFRESH_SECRET: supersecret_jwt_refresh_proctornet_key_32bytes
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      SEB_LINK_SECRET: ${SEB_LINK_SECRET:?SEB_LINK_SECRET is required}
       CORS_ORIGIN: https://proctornet.duckdns.org,http://localhost:5173,http://localhost:80,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:80
       ALLOWED_ORIGINS: https://proctornet.duckdns.org,http://localhost:5173,http://localhost:80,http://localhost:8080,http://127.0.0.1:5173,http://127.0.0.1:80
       S3_BUCKET: proctornet-production-evidence

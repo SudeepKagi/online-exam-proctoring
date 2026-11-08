@@ -55,6 +55,7 @@ const config = {
 
   // Authentication & Security (Phase S2)
   jwtSecret: process.env.JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   jwtExpiresIn: '15m',
   jwtRefreshExpiresIn: '12h',
   cookieName: 'pn_at',

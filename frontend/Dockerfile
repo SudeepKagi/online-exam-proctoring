@@ -52,9 +52,10 @@ server {
     gzip_static on;
 
     # Security headers
-    add_header X-Frame-Options        "DENY"                             always;
-    add_header X-Content-Type-Options "nosniff"                          always;
-    add_header Referrer-Policy        "strict-origin-when-cross-origin"  always;
+    add_header X-Frame-Options            "DENY"                                             always;
+    add_header X-Content-Type-Options     "nosniff"                                          always;
+    add_header Referrer-Policy            "strict-origin-when-cross-origin"                  always;
+    add_header Strict-Transport-Security  "max-age=31536000; includeSubDomains; preload"     always;
 
     # Content-hashed Vite assets: 1-year immutable browser cache
     location ~* \.(?:css|js|woff2?|svg|png|jpe?g|webp|ico|avif)$ {

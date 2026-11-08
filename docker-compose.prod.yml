@@ -1,0 +1,157 @@
+# ==============================================================================
+# ProctorNet Production Infrastructure Stack (docker-compose.prod.yml)
+# Strict production hardening:
+# 1. Zero published host ports for data stores (Postgres, Redis, RabbitMQ)
+# 2. Only the Reverse Proxy publishes ports 80 and 443
+# 3. All secrets enforced via ${VAR:?}
+# 4. Internal bridge network (internal: true) isolates backend & data tiers
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Edge Reverse Proxy (Nginx) — ONLY service publishing external ports
+  # ----------------------------------------------------------------------------
+  reverse-proxy:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: proctornet-reverse-proxy
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+      - "443:8443"
+    networks:
+      - edge
+      - internal
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------------------------------
+  # Backend API Server — Internal network only (no published host ports)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: proctornet-backend
+    restart: unless-stopped
+    networks:
+      - internal
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      DATABASE_URL: postgresql://proctornet:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/proctornet?schema=public
+      DIRECT_URL: postgresql://proctornet:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/proctornet?schema=public
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+      RABBITMQ_URL: amqp://proctornet:${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}@rabbitmq:5672
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      SEB_LINK_SECRET: ${SEB_LINK_SECRET:?SEB_LINK_SECRET is required}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://proctornet.duckdns.org}
+      S3_BUCKET: ${S3_BUCKET:-proctornet-production-evidence}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      CACHE_DRIVER: redis
+      FACE_DRIVER: ${FACE_DRIVER:-off}
+      MEDIA_DRIVER: ${MEDIA_DRIVER:-snapshot}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  # ----------------------------------------------------------------------------
+  # PostgreSQL Database — Internal network only (no published host ports)
+  # ----------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: proctornet-prod-postgres
+    restart: unless-stopped
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: proctornet
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: proctornet
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proctornet -d proctornet"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # Redis L2 Cache & Pub/Sub — Internal network only (no published host ports)
+  # ----------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: proctornet-prod-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    networks:
+      - internal
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ----------------------------------------------------------------------------
+  # RabbitMQ Message Broker — Internal network only (no published host ports)
+  # ----------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: proctornet-prod-rabbitmq
+    restart: unless-stopped
+    networks:
+      - internal
+    environment:
+      RABBITMQ_DEFAULT_USER: proctornet
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?RABBITMQ_DEFAULT_PASS is required}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ==============================================================================
+# Networks
+#   edge     -- Public-facing edge network (reverse proxy only)
+#   internal -- Isolated internal network for backend and data stores
+# ==============================================================================
+networks:
+  edge:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true
+
+# ==============================================================================
+# Persistent Storage Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+

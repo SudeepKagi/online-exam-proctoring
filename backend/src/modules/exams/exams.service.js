@@ -208,6 +208,9 @@ class ExamService {
     if (!exam) return { sebRequired: false, sebConfigKey: null }
     const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
     const sebRequired = Boolean(pConfig.sebRequired)
+    if (!sebRequired) {
+      return { sebRequired: false, sebConfigKey: null }
+    }
     const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim().toLowerCase() : null
     let institutionKey = null
     try {

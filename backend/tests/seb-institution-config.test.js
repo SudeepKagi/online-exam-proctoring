@@ -535,8 +535,18 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
     })
 
     it('rejects student without active SEB exam with 403 NO_ACTIVE_SEB_EXAM', async () => {
-      // Temporarily set exam status to DRAFT
-      await prisma.exam.update({ where: { id: testExam.id }, data: { status: 'DRAFT' } })
+      // Temporarily set all PUBLISHED exams with sebRequired to DRAFT
+      const published = await prisma.exam.findMany({
+        where: { status: 'PUBLISHED' },
+        select: { id: true, proctoringConfig: true }
+      })
+      const sebExams = published.filter(e => e.proctoringConfig && e.proctoringConfig.sebRequired).map(e => e.id)
+      if (sebExams.length > 0) {
+        await prisma.exam.updateMany({
+          where: { id: { in: sebExams } },
+          data: { status: 'DRAFT' }
+        })
+      }
 
       const res = await httpRequest({
         hostname: '127.0.0.1',
@@ -550,7 +560,12 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       })
 
       // Restore status
-      await prisma.exam.update({ where: { id: testExam.id }, data: { status: 'PUBLISHED' } })
+      if (sebExams.length > 0) {
+        await prisma.exam.updateMany({
+          where: { id: { in: sebExams } },
+          data: { status: 'PUBLISHED' }
+        })
+      }
 
       assert.strictEqual(res.statusCode, 403)
       assert.strictEqual(res.json?.code, 'NO_ACTIVE_SEB_EXAM')

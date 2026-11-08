@@ -96,6 +96,11 @@ if (process.env.S3_ENDPOINT) dynamicConnectSrc.push(process.env.S3_ENDPOINT)
 
 const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],

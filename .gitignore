@@ -74,6 +74,7 @@ scratch/
 # Playwright
 test-results/
 playwright-report/
+logs-verification/
 
 # Terraform
 .terraform/
