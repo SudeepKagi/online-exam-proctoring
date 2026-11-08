@@ -215,9 +215,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
   })
 
   // -------------------------------------------------------------------------
-  // 4. Mid-Exam Screen-Share Disconnection & Non-Dismissible Blocking Overlay
+  // 4. Mid-Exam Camera Disconnection & Non-Dismissible Blocking Overlay
   // -------------------------------------------------------------------------
-  test('4. Screen-share disconnection triggers onended, records violation, and displays non-dismissible blocking overlay', async ({ browser }) => {
+  test('4. Camera disconnection triggers onended, records violation, and displays non-dismissible blocking overlay', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const student = await createActor(browser, 'student')
 
@@ -257,17 +257,13 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       await student.page.locator('button[type="submit"]').click()
       await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // Navigate to pre-check to acquire verified screen stream
+      // Navigate to pre-check to acquire verified camera stream
       await student.page.goto(`/student/exams/${examId}/pre-check`)
       await expect(student.page.getByText(/System & Identity Check/i)).toBeVisible({ timeout: 10000 })
 
       const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
       await expect(verifyFaceBtn).toBeVisible()
       await verifyFaceBtn.click()
-
-      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
-      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
-      await shareScreenBtn.click()
 
       const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
       await expect(launchBtn).toBeVisible({ timeout: 10000 })
@@ -278,9 +274,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       // Verify questions loaded
       await expect(student.page.locator('text=Security Question 1')).toBeVisible({ timeout: 10000 })
 
-      // 3. Simulate screen track ending / "Stop sharing" event
+      // 3. Simulate camera track ending / disconnect event
       await student.page.evaluate(() => {
-        const stream = (window as any).__proctorScreenStream
+        const stream = (window as any).__proctorCameraStream
         if (stream) {
           const track = stream.getVideoTracks()[0]
           if (track) {

@@ -10,7 +10,6 @@ const { normalizeRole } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 const { registerSocketEvents } = require('./socketHandlers')
 
-const latestScreenFrames = new Map()
 let globalIO = null
 
 function getIO() {
@@ -149,7 +148,7 @@ function createWebSocketServer(httpServer, options = {}) {
   // Connection Handler
   io.on('connection', (socket) => {
     logger.info({ socketId: socket.id, userId: socket.user?.id, role: socket.user?.role }, 'Socket client connected')
-    registerSocketEvents(io, socket, latestScreenFrames)
+    registerSocketEvents(io, socket)
   })
 
   return io
@@ -157,6 +156,5 @@ function createWebSocketServer(httpServer, options = {}) {
 
 module.exports = {
   createWebSocketServer,
-  getIO,
-  latestScreenFrames
+  getIO
 }

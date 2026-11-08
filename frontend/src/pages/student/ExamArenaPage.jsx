@@ -8,7 +8,7 @@ import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
 import { useArenaSocketAndTab, restoreAnswers } from '@/hooks/useArenaSocketAndTab'
-import { getScreenStream, clearScreenStream, clearCameraStream } from '@/lib/screenStreamStore'
+import { getCameraStream, clearCameraStream } from '@/lib/screenStreamStore'
 import QuestionPalette from '@/components/exam/QuestionPalette'
 import QuestionCard from '@/components/exam/QuestionCard'
 
@@ -28,7 +28,7 @@ export default function ExamArenaPage() {
   const teardownTimerRef = useRef(null)
 
   const handleTerminationExit = useCallback((msg = 'Your examination was terminated because maximum violations (3/3) were exceeded.') => {
-    clearScreenStream(); clearCameraStream()
+    clearCameraStream()
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     navigate('/student/dashboard', { replace: true, state: { errorMsg: msg } })
   }, [navigate])
@@ -44,7 +44,7 @@ export default function ExamArenaPage() {
       if (flushDirtyAnswers) await flushDirtyAnswers()
       if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      clearScreenStream(); clearCameraStream(); navigate('/student/dashboard')
+      clearCameraStream(); navigate('/student/dashboard')
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
       alert(errorMessage(err, 'Submission failed.'))
@@ -80,8 +80,8 @@ export default function ExamArenaPage() {
     })
   }, [handleTerminationExit])
 
-  const { ScreenLostDialog, isProctoringInterrupted } = useScreenProctoring({
-    stream: attempt ? getScreenStream() : null,
+  const { CameraDisconnectedOverlay, isProctoringInterrupted } = useScreenProctoring({
+    stream: attempt ? getCameraStream() : null,
     attemptId: attempt?.id,
     examId: id,
     onViolation: handleViolationDetected,
@@ -124,14 +124,13 @@ export default function ExamArenaPage() {
         setLoading(false)
       } catch (err) {
         if (!mounted) return
-        clearScreenStream(); clearCameraStream()
+        clearCameraStream()
         navigate('/student/dashboard', { replace: true, state: { errorMsg: errorMessage(err, 'Exam is not currently available.') } })
       }
     }
     initArena()
 
     const handleBeforeUnload = () => {
-      clearScreenStream()
       clearCameraStream()
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
@@ -142,7 +141,6 @@ export default function ExamArenaPage() {
       // Defer stream teardown by 100ms so dev StrictMode double-mount
       // does not prematurely terminate active media tracks.
       teardownTimerRef.current = setTimeout(() => {
-        clearScreenStream()
         clearCameraStream()
       }, 100)
     }
@@ -240,7 +238,7 @@ export default function ExamArenaPage() {
 
       {isSuspended && <SuspendedOverlay />}
       {isDuplicateTab && <DuplicateTabOverlay />}
-      <ScreenLostDialog />
+      <CameraDisconnectedOverlay />
     </ExamArenaShell>
   )
 }

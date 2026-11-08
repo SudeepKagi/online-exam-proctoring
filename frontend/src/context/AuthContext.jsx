@@ -1,8 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api, errorMessage } from '@/lib/apiClient'
-import { clearScreenStream, clearCameraStream } from '@/lib/screenStreamStore'
+import { clearCameraStream } from '@/lib/screenStreamStore'
 
-const AuthContext = createContext(null)
+const defaultAuthContext = {
+  user: null,
+  role: null,
+  isAuthenticated: false,
+  isLoading: true,
+  loading: true,
+  login: async () => ({ success: false, error: 'Authentication not ready' }),
+  logout: async () => {},
+  updateUser: () => {},
+  refreshUser: async () => null,
+}
+
+const AuthContext = createContext(defaultAuthContext)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -55,7 +67,6 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      clearScreenStream()
       clearCameraStream()
       await api.post('/auth/logout') // terms-ok: backend endpoint
     } catch (_) {}
@@ -102,6 +113,5 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used within an AuthProvider')
-  return context
+  return context || defaultAuthContext
 }

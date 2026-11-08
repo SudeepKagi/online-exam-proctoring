@@ -88,12 +88,7 @@ test.describe('E2E: Student Attempt Flow', () => {
       await expect(verifyFaceBtn).toBeVisible()
       await verifyFaceBtn.click()
 
-      // Step 2: Share Entire Screen
-      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
-      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
-      await shareScreenBtn.click()
-
-      // Step 3: Fullscreen & Launch Exam
+      // Step 2: Fullscreen & Launch Exam
       const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
       await expect(launchBtn).toBeVisible({ timeout: 10000 })
       await launchBtn.click()
@@ -179,17 +174,13 @@ test.describe('E2E: Student Attempt Flow', () => {
       await student.page.locator('button[type="submit"]').click()
       await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // 3. Pre-check: capture face, share screen, launch
+      // 3. Pre-check: capture face, launch
       await student.page.goto(`/student/exams/${examId}/pre-check`)
       await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
 
       const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
       await expect(verifyFaceBtn).toBeVisible()
       await verifyFaceBtn.click()
-
-      const shareScreenBtn = student.page.getByRole('button', { name: /Grant Entire Screen Access/i })
-      await expect(shareScreenBtn).toBeVisible({ timeout: 10000 })
-      await shareScreenBtn.click()
 
       const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
       await expect(launchBtn).toBeVisible({ timeout: 10000 })
@@ -239,7 +230,6 @@ test.describe('E2E: Student Attempt Flow', () => {
           allTracksEnded: tracks.length > 0 && tracks.every(t => t.readyState === 'ended'),
           unendedTracks: tracks.filter(t => t.readyState !== 'ended').map(t => ({ id: t.id, kind: t.kind, readyState: t.readyState })),
           activeMediaElementCount: activeMediaElements.length,
-          hasGlobalScreenStream: !!((window as any).__proctorScreenStream?.active),
           hasGlobalCameraStream: !!((window as any).__proctorCameraStream?.active)
         }
       })
@@ -248,7 +238,6 @@ test.describe('E2E: Student Attempt Flow', () => {
       expect(teardownAudit.allTracksEnded).toBe(true)
       expect(teardownAudit.unendedTracks).toHaveLength(0)
       expect(teardownAudit.activeMediaElementCount).toBe(0)
-      expect(teardownAudit.hasGlobalScreenStream).toBe(false)
       expect(teardownAudit.hasGlobalCameraStream).toBe(false)
     } finally {
       await student.close()

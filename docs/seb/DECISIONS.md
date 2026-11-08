@@ -36,3 +36,8 @@
 ## Decision 9: Two-Phase Gated Verification for WebSocket Attempt Join
 - **Context:** Socket.IO WebSocket connections do not carry custom HTTP headers like `X-SafeExamBrowser-ConfigKeyHash` on individual socket events.
 - **Decision:** In `enforce` mode, `socket.on('attempt:join')` checks whether the attempt was previously verified by a gated HTTP request (such as `startAttempt` or `getAttempt`). A non-secret boolean flag (`isAttemptSebVerified`) is tracked in-process and in Redis with a 4-hour TTL. If the attempt has not passed HTTP verification, `attempt:join` is refused with `{ success: false, code: "SEB_REQUIRED" }`.
+
+## Decision 10: Removal of WebRTC Screen Sharing in Favor of Camera-Only Proctoring and Safe Exam Browser Lockdown
+- **Context:** WebRTC screen sharing (`getDisplayMedia`) introduced continuous user UX friction (browser permission prompts, accidental cancellation of screen sharing), high client CPU/bandwidth consumption, and redundant security coverage when combined with Safe Exam Browser lockdown.
+- **Decision:** Completely removed WebRTC screen sharing across the frontend and backend. Pre-exam verification is streamlined to 2 stages (1. Face Match, 2. Fullscreen Lock). The active exam relies on continuous camera proctoring (with hardware stream handoff from pre-check to avoid re-prompting) and browser lockdown violation events (`TAB_SWITCH`, `FULLSCREEN_EXIT`, `WINDOW_BLUR`, `CAMERA_DISCONNECTED`).
+- **Data Persistence:** Existing database schemas remain untouched (no disruptive migrations); screen data writes and socket frame broadcasts are eliminated.

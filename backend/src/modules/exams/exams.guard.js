@@ -130,7 +130,6 @@ const ALLOWED_PROCTORING_CONFIG_KEYS = new Set([
   'examCode',
   'invigilatorCredentials',
   'cameraRequired',
-  'screenShareRequired',
   'fullScreenMode',
   'browserLock',
   'allowedBrowserExamKeys'

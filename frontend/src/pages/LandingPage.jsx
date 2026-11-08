@@ -27,7 +27,7 @@ export default function LandingPage() {
     {
       title: 'Live Invigilator Console',
       category: 'Real-Time Oversight',
-      desc: 'Monitor active exam attempts, review screen-share violation events, and manage sessions.',
+      desc: 'Monitor active exam attempts, review live proctoring violation events, and manage sessions.',
       icon: Eye
     }
   ]

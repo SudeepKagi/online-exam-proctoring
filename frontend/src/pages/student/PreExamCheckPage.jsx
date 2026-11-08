@@ -5,8 +5,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
-import { setScreenStream, clearScreenStream, setCameraStream } from '@/lib/screenStreamStore'
-import { Monitor, Maximize, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react'
+import { setCameraStream } from '@/lib/screenStreamStore'
+import { Maximize, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react'
 
 export default function PreExamCheckPage() {
   const { id } = useParams()
@@ -19,7 +19,6 @@ export default function PreExamCheckPage() {
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
-  const screenStreamRef = useRef(null)
 
   useEffect(() => {
     let active = true
@@ -52,8 +51,7 @@ export default function PreExamCheckPage() {
     }
     return () => {
       active = false
-      // Do not stop stream if user advanced to step 2/3
-      if (step === 1 && streamRef.current && !screenStreamRef.current) {
+      if (step === 1 && streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop())
         streamRef.current = null
       }
@@ -89,34 +87,6 @@ export default function PreExamCheckPage() {
     }
   }
 
-  const handleShareScreen = async () => {
-    setError('')
-    setLoading(true)
-    try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: 'monitor', width: { max: 1280 }, height: { max: 720 }, frameRate: { max: 5 } },
-        audio: false,
-      })
-      const videoTrack = screenStream.getVideoTracks()[0]
-      const surface = videoTrack?.getSettings()?.displaySurface
-
-      if (surface && surface !== 'monitor') {
-        videoTrack.stop()
-        setError('Proctoring requires sharing your Entire Screen, not a window or browser tab.')
-        setLoading(false)
-        return
-      }
-
-      screenStreamRef.current = screenStream
-      setScreenStream(screenStream)
-      setStep(3)
-    } catch (_) {
-      setError('Screen share was cancelled or denied. An entire screen share is mandatory.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleLaunchExam = async () => {
     setLoading(true)
     setError('')
@@ -134,7 +104,6 @@ export default function PreExamCheckPage() {
       }
       navigate(`/student/exams/${id}/arena`)
     } catch (err) {
-      clearScreenStream()
       setError(errorMessage(err, 'Examination is not currently open.'))
     } finally {
       setLoading(false)
@@ -153,15 +122,14 @@ export default function PreExamCheckPage() {
           </div>
           <CardTitle className="text-xl font-[480] text-[#28253b]">Pre-Examination Verification</CardTitle>
           <CardDescription className="text-xs font-[360] text-[#554e7b]">
-            {exam?.title ? `${exam.title} — Stage ${step} of 3` : `Stage ${step} of 3 — Secure integrity verification pipeline`}
+            {exam?.title ? `${exam.title} — Stage ${step} of 2` : `Stage ${step} of 2 — Secure integrity verification pipeline`}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
             <span className={step >= 1 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>1. Face Match</span>
-            <span className={step >= 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>2. Entire Screen</span>
-            <span className={step === 3 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>3. Fullscreen Lock</span>
+            <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>2. Fullscreen Lock</span>
           </div>
 
           {error && (
@@ -185,21 +153,6 @@ export default function PreExamCheckPage() {
               <p className="text-xs text-[#70707d] font-[360]">Align your face inside the camera view and click verify.</p>
               <Button onClick={handleVerifyFace} disabled={loading} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
                 {loading ? 'Verifying Identity...' : 'Capture & Verify Face'}
-              </Button>
-            </div>
-          ) : step === 2 ? (
-            <div className="space-y-4 text-center py-4">
-              <div className="w-16 h-16 bg-[#edecfb] text-[#5266eb] rounded-[16px] mx-auto flex items-center justify-center">
-                <Monitor className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className="text-sm font-[480] text-[#28253b]">Entire Screen Broadcasting</h3>
-                <p className="text-xs text-[#70707d] font-[360] mt-1 max-w-sm mx-auto">
-                  Select "Entire Screen" in the browser prompt. Single windows or individual browser tabs will be rejected.
-                </p>
-              </div>
-              <Button onClick={handleShareScreen} disabled={loading} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
-                {loading ? 'Broadcasting...' : 'Grant Entire Screen Access'}
               </Button>
             </div>
           ) : (

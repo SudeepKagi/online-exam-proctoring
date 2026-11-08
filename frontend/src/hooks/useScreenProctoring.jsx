@@ -2,18 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { ProctoringInterruptedOverlay } from '@/components/exam/ProctoringInterruptedOverlay'
 
-const SCREEN_CONSTRAINTS = {
-  video: {
-    displaySurface: 'monitor',
-    width: { max: 1280 },
-    height: { max: 720 },
-    frameRate: { max: 5 }
-  },
-  audio: false
-}
-
 export function useScreenProctoring({ stream, attemptId, examId, onViolation } = {}) {
-  const [screenLost, setScreenLost] = useState(false)
+  const [cameraLost, setCameraLost] = useState(false)
   const streamRef = useRef(null)
   const hiddenVideoRef = useRef(null)
   const canvasRef = useRef(null)
@@ -25,7 +15,7 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
   examIdRef.current = examId
   onViolationRef.current = onViolation
 
-  const activeStream = stream || (typeof window !== 'undefined' ? window.__proctorScreenStream : null)
+  const activeStream = stream || (typeof window !== 'undefined' ? window.__proctorCameraStream : null)
   streamRef.current = activeStream
 
   useEffect(() => {
@@ -46,13 +36,9 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
         video.play().catch(() => {})
       }
     }
-
-    return () => {
-      // Teardown tracks on unmount if requested
-    }
   }, [activeStream])
 
-  // Asynchronous downscaled 640x360 snapshot (non-blocking)
+  // Asynchronous downscaled 640x480 camera snapshot (non-blocking)
   const captureSnapshot = useCallback(async () => {
     const video = hiddenVideoRef.current
     const track = streamRef.current?.getVideoTracks?.()[0]
@@ -62,13 +48,13 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
       if (!canvasRef.current && typeof document !== 'undefined') {
         canvasRef.current = document.createElement('canvas')
         canvasRef.current.width = 640
-        canvasRef.current.height = 360
+        canvasRef.current.height = 480
       }
       const canvas = canvasRef.current
       if (!canvas) return null
       const ctx = canvas.getContext('2d', { alpha: false })
       if (!ctx) return null
-      ctx.drawImage(video, 0, 0, 640, 360)
+      ctx.drawImage(video, 0, 0, 640, 480)
 
       return await new Promise((resolve) => {
         canvas.toBlob((blob) => {
@@ -137,28 +123,9 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
     return () => clearInterval(interval)
   }, [attemptId, recordViolationEvent])
 
-  // Monitor screen track ending
+  // Monitor camera track ending
   useEffect(() => {
-    const track = streamRef.current?.getVideoTracks?.()[0]
-    if (!track) return
-    const onEnded = () => {
-      setScreenLost(true)
-      recordViolationEvent('SCREEN_SHARE_ENDED', 'CRITICAL')
-    }
-    track.addEventListener('ended', onEnded)
-    track.onended = onEnded
-    return () => {
-      track.removeEventListener('ended', onEnded)
-      if (track.onended === onEnded) track.onended = null
-    }
-  }, [activeStream, recordViolationEvent])
-
-  const [cameraLost, setCameraLost] = useState(false)
-  const cameraStreamRef = useRef(null)
-
-  useEffect(() => {
-    const camStream = typeof window !== 'undefined' ? (window.__proctorCameraStream || null) : null
-    cameraStreamRef.current = camStream
+    const camStream = activeStream || (typeof window !== 'undefined' ? (window.__proctorCameraStream || null) : null)
     const track = camStream?.getVideoTracks?.()[0]
     if (!track) return
     const onCamEnded = () => {
@@ -171,34 +138,7 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
       track.removeEventListener('ended', onCamEnded)
       if (track.onended === onCamEnded) track.onended = null
     }
-  }, [recordViolationEvent])
-
-  const reShareScreen = async () => {
-    try {
-      const newStream = await navigator.mediaDevices.getDisplayMedia(SCREEN_CONSTRAINTS)
-      const track = newStream.getVideoTracks()[0]
-      if (track.getSettings()?.displaySurface !== 'monitor') {
-        track.stop()
-        return false
-      }
-      const onEnded = () => {
-        setScreenLost(true)
-        recordViolationEvent('SCREEN_SHARE_ENDED', 'CRITICAL')
-      }
-      track.addEventListener('ended', onEnded)
-      track.onended = onEnded
-      streamRef.current = newStream
-      if (typeof window !== 'undefined') window.__proctorScreenStream = newStream
-      if (hiddenVideoRef.current) {
-        hiddenVideoRef.current.srcObject = newStream
-        hiddenVideoRef.current.play().catch(() => {})
-      }
-      setScreenLost(false)
-      return true
-    } catch (_) {
-      return false
-    }
-  }
+  }, [activeStream, recordViolationEvent])
 
   const reEnableCamera = async () => {
     try {
@@ -210,8 +150,12 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
       }
       track.addEventListener('ended', onCamEnded)
       track.onended = onCamEnded
-      cameraStreamRef.current = newStream
+      streamRef.current = newStream
       if (typeof window !== 'undefined') window.__proctorCameraStream = newStream
+      if (hiddenVideoRef.current) {
+        hiddenVideoRef.current.srcObject = newStream
+        hiddenVideoRef.current.play().catch(() => {})
+      }
       setCameraLost(false)
       return true
     } catch (_) {
@@ -219,29 +163,23 @@ export function useScreenProctoring({ stream, attemptId, examId, onViolation } =
     }
   }
 
-  const isProctoringInterrupted = screenLost || cameraLost
+  const isProctoringInterrupted = cameraLost
 
-  const ProctoringOverlayWrapper = () => (
+  const CameraDisconnectedOverlay = () => (
     <ProctoringInterruptedOverlay
       isOpen={isProctoringInterrupted}
-      screenLost={screenLost}
       cameraLost={cameraLost}
-      onReShareScreen={reShareScreen}
       onReEnableCamera={reEnableCamera}
     />
   )
 
-  const ScreenLostDialog = () => isProctoringInterrupted ? <ProctoringOverlayWrapper /> : null
-
   return {
-    screenLost,
     cameraLost,
     isProctoringInterrupted,
-    reShareScreen,
     reEnableCamera,
     captureSnapshot,
     recordViolationEvent,
-    ScreenLostDialog,
+    CameraDisconnectedOverlay,
     ProctoringInterruptedOverlay
   }
 }
