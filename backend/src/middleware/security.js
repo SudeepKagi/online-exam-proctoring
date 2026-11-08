@@ -123,7 +123,20 @@ const corsMiddleware = cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with', 'cookie', 'x-agent-session', 'x-agent-seq', 'x-agent-ts', 'x-agent-nonce', 'x-agent-signature', 'x-request-id']
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-requested-with',
+    'cookie',
+    'x-agent-session',
+    'x-agent-seq',
+    'x-agent-ts',
+    'x-agent-nonce',
+    'x-agent-signature',
+    'x-request-id',
+    'x-safeexambrowser-configkeyhash',
+    'x-safeexambrowser-requesthash'
+  ]
 })
 
 function csrfProtection(req, res, next) {
