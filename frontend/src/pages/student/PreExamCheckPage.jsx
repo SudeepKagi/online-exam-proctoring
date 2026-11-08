@@ -75,11 +75,13 @@ export default function PreExamCheckPage() {
       await apiClient.post('/media/verify-face', { image: imageBase64, examId: id }).catch(() => {})
       if (streamRef.current) {
         setCameraStream(streamRef.current)
+        streamRef.current = null
       }
       setStep(2)
     } catch (_) {
       if (streamRef.current) {
         setCameraStream(streamRef.current)
+        streamRef.current = null
       }
       setStep(2)
     } finally {
