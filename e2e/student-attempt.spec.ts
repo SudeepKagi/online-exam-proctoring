@@ -192,9 +192,25 @@ test.describe('E2E: Student Attempt Flow', () => {
       await expect(launchBtn).toBeVisible({ timeout: 10000 })
       await launchBtn.click()
 
-      // 4. In Arena: submit exam
+      // 4. In Arena: verify camera track is still 'live' inside arena before submit
       await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
       await expect(student.page.getByText('Question 1 of 3')).toBeVisible({ timeout: 10000 })
+
+      const liveTracksInArena = await student.page.evaluate(() => {
+        const tracks: MediaStreamTrack[] = (window as any).__mediaTracks || []
+        const globalCam = (window as any).__proctorCameraStream
+        const activeTracks = tracks.filter(t => t.readyState === 'live')
+        return {
+          count: tracks.length,
+          activeCount: activeTracks.length,
+          hasGlobalCamera: !!(globalCam && globalCam.active),
+          globalCameraLive: !!(globalCam?.getVideoTracks?.()[0]?.readyState === 'live')
+        }
+      })
+      expect(liveTracksInArena.count).toBeGreaterThan(0)
+      expect(liveTracksInArena.activeCount).toBeGreaterThan(0)
+      expect(liveTracksInArena.hasGlobalCamera).toBe(true)
+      expect(liveTracksInArena.globalCameraLive).toBe(true)
 
       await student.page.getByRole('button', { name: /Submit Exam/i }).click()
       await expect(student.page.getByText('Submit Examination?')).toBeVisible()
