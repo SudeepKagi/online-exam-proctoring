@@ -5,6 +5,7 @@ const config = require('../../shared/config')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { checkExamMutability, validateScheduleWindow, validateQuestionsList, sanitizeProctoringConfigInput } = require('./exams.guard')
 const { parseQuestionsExcel } = require('./exams.excel')
+const { invalidateExamSebCache } = require('../../middleware/seb')
 
 function toExamDto(exam, viewer = null) {
   if (!exam) return null
@@ -124,10 +125,12 @@ class ExamService {
       ? sanitizeProctoringConfigInput(rawPConfig, { isUpdate: true })
       : undefined
 
-    return examsSql.updateExam(id, {
+    const updated = await examsSql.updateExam(id, {
       ...data,
       ...(validatedPConfig !== undefined ? { proctoringConfig: validatedPConfig } : {})
     })
+    invalidateExamSebCache(id)
+    return updated
   }
 
   async deleteExam(id) {
@@ -240,7 +243,9 @@ class ExamService {
     const questions = await examsSql.getQuestionsByExamId(id, true)
     validateQuestionsList(questions)
 
-    return examsSql.updateExamStatus(id, 'PUBLISHED')
+    const updated = await examsSql.updateExamStatus(id, 'PUBLISHED')
+    invalidateExamSebCache(id)
+    return updated
   }
 
   async bulkAddQuestions(examId, questions) {

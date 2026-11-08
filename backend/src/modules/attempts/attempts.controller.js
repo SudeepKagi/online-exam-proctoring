@@ -1,4 +1,5 @@
 const { attemptService } = require('./attempts.service')
+const { markAttemptSebVerified, attemptExamLru } = require('../../middleware/seb')
 
 async function getReadiness(req, res, next) {
   try {
@@ -14,6 +15,13 @@ async function startAttempt(req, res, next) {
   try {
     const examId = req.params.examId || req.params.id || req.body?.examId
     const result = await attemptService.startAttempt(examId, req.user.id)
+    const startedAttemptId = result?.attempt?.id || result?.id
+    if (startedAttemptId) {
+      if (req.seb?.verified) {
+        markAttemptSebVerified(startedAttemptId)
+      }
+      attemptExamLru.set(startedAttemptId, examId)
+    }
     return res.status(200).json({ status: 'success', ...result })
   } catch (err) {
     next(err)
