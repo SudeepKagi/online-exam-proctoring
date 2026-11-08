@@ -14,6 +14,8 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
+    "pilot:backend": "node --env-file=.env.pilot backend/src/app.js",
+    "pilot:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=frontend",
     "db:migrate": "npx prisma migrate dev --schema=backend/prisma/schema.prisma",
     "db:migrate:deploy": "npx prisma migrate deploy --schema=backend/prisma/schema.prisma",
