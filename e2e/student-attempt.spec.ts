@@ -42,21 +42,24 @@ test.describe('E2E: Student Attempt Flow', () => {
         questionText: 'Q1: What ensures safety under network partitions in distributed quorum?',
         options: ['Strict Majority Overlap (R + W > N)', 'Async Unbounded Flush', 'Broadcast UDP', 'No replication'],
         correctOptionIndex: 0,
-        marks: 20
+        marks: 20,
+        order: 1
       })
 
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
         questionText: 'Q2: Which consensus algorithm uses term numbers and leader leases?',
         options: ['Two-Phase Commit', 'Raft Consensus Protocol', 'Gossip Membership', 'MapReduce Shuffling'],
         correctOptionIndex: 1,
-        marks: 20
+        marks: 20,
+        order: 2
       })
 
       await api.for(faculty).postRaw(`/api/v1/exams/${examId}/questions`, {
         questionText: 'Q3: What property guarantees that every read observes the latest write?',
         options: ['Eventual Consistency', 'Read Uncommitted', 'Linearizability (Atomic Consistency)', 'Causal Order'],
         correctOptionIndex: 2,
-        marks: 20
+        marks: 20,
+        order: 3
       })
 
       // Publish Exam
