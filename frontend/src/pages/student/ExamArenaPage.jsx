@@ -107,7 +107,7 @@ export default function ExamArenaPage() {
         if (!mounted) return
         const ex = examRes.data?.exam || examRes.data
         const att = startRes.data?.attempt || startRes.data
-        const qs = ensureArray(ex?.questions)
+        const qs = ensureArray(startRes.data?.questions || ex?.questions)
         if (!att || !qs.length || att.status !== 'IN_PROGRESS') {
           throw new Error('Examination session is not active or questions are unavailable.')
         }

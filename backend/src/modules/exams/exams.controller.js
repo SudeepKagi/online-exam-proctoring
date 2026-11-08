@@ -1,9 +1,9 @@
-const { examService } = require('./exams.service')
+const { examService, toExamDto } = require('./exams.service')
 
 async function createExam(req, res, next) {
   try {
     const exam = await examService.createExam(req.body, req.user?.id)
-    return res.status(201).json({ status: 'success', exam })
+    return res.status(201).json({ status: 'success', exam: toExamDto(exam, req.user) })
   } catch (err) {
     next(err)
   }
@@ -12,7 +12,7 @@ async function createExam(req, res, next) {
 async function updateExam(req, res, next) {
   try {
     const exam = await examService.updateExam(req.params.id, req.body)
-    return res.status(200).json({ status: 'success', exam })
+    return res.status(200).json({ status: 'success', exam: toExamDto(exam, req.user) })
   } catch (err) {
     next(err)
   }
@@ -29,7 +29,7 @@ async function deleteExam(req, res, next) {
 
 async function getExam(req, res, next) {
   try {
-    const exam = await examService.getExamById(req.params.id, req.user?.role)
+    const exam = await examService.getExamById(req.params.id, req.user)
     return res.status(200).json({ status: 'success', exam, serverTime: new Date().toISOString() })
   } catch (err) {
     next(err)
@@ -38,7 +38,7 @@ async function getExam(req, res, next) {
 
 async function listExams(req, res, next) {
   try {
-    const exams = await examService.listExams(req.query)
+    const exams = await examService.listExams(req.query, req.user)
     return res.status(200).json({ status: 'success', exams: exams || [] })
   } catch (err) {
     next(err)
@@ -48,7 +48,7 @@ async function listExams(req, res, next) {
 async function publishExam(req, res, next) {
   try {
     const exam = await examService.publishExam(req.params.id)
-    return res.status(200).json({ status: 'success', exam })
+    return res.status(200).json({ status: 'success', exam: toExamDto(exam, req.user) })
   } catch (err) {
     next(err)
   }
@@ -112,12 +112,12 @@ async function getStudentExams(req, res, next) {
 
     const formatted = filtered.map(e => {
       const att = attemptMap.get(e.id)
-      return {
+      return toExamDto({
         ...e,
         attemptId: att?.id || null,
         attemptStatus: att?.status || null,
         score: att?.score ?? null
-      }
+      }, req.user)
     })
 
     return res.status(200).json({ status: 'success', exams: formatted })
@@ -128,7 +128,7 @@ async function getStudentExams(req, res, next) {
 
 async function getFacultyExams(req, res, next) {
   try {
-    const exams = await examService.listExams({ createdBy: req.user?.id })
+    const exams = await examService.listExams({ createdBy: req.user?.id }, req.user)
     return res.status(200).json({ status: 'success', exams: exams || [] })
   } catch (err) {
     next(err)

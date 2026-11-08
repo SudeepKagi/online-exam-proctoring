@@ -1,9 +1,67 @@
 'use strict'
 
 const examsSql = require('./exams.sql')
+const config = require('../../shared/config')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { checkExamMutability, validateScheduleWindow, validateQuestionsList, sanitizeProctoringConfigInput } = require('./exams.guard')
 const { parseQuestionsExcel } = require('./exams.excel')
+
+function toExamDto(exam, viewer = null) {
+  if (!exam) return null
+
+  // Ensure we work strictly on a deep copy — never mutate cached or database objects
+  const dto = (typeof structuredClone === 'function')
+    ? structuredClone(exam)
+    : JSON.parse(JSON.stringify(exam))
+
+  let role = null
+  let userId = null
+
+  if (viewer) {
+    if (typeof viewer === 'object') {
+      role = viewer.role ? normalizeRole(viewer.role) : null
+      userId = viewer.id || viewer.userId || null
+    } else if (typeof viewer === 'string') {
+      role = normalizeRole(viewer)
+    }
+  }
+
+  const pConfig = (dto.proctoringConfig && typeof dto.proctoringConfig === 'object' && !Array.isArray(dto.proctoringConfig))
+    ? { ...dto.proctoringConfig }
+    : {}
+
+  const sebRequired = Boolean(pConfig.sebRequired)
+  const rawKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim() : null
+  const rawFileKey = pConfig.sebFileKey !== undefined ? pConfig.sebFileKey : null
+
+  const isOwner = Boolean(userId && (dto.createdById === userId || dto.createdBy === userId))
+
+  if (role === ROLES.ADMIN || (role === ROLES.FACULTY && isOwner)) {
+    // FACULTY who owns the exam, and ADMIN: masked "••••••••" plus last 4 characters
+    if (rawKey) {
+      const suffix = rawKey.length > 4 ? rawKey.slice(-4) : rawKey
+      pConfig.sebConfigKey = `••••••••${suffix}`
+    } else {
+      pConfig.sebConfigKey = null
+    }
+    pConfig.sebRequired = sebRequired
+    if (rawFileKey !== null && rawFileKey !== undefined) {
+      pConfig.sebFileKey = rawFileKey
+    }
+  } else {
+    // STUDENT, FACULTY non-owner, INVIGILATOR, unknown/null role:
+    // Remove sebConfigKey and sebFileKey, keep sebRequired boolean
+    delete pConfig.sebConfigKey
+    delete pConfig.sebFileKey
+    pConfig.sebRequired = sebRequired
+  }
+
+  // Remove request-only flag if present
+  delete pConfig.clearSebConfigKey
+
+  dto.proctoringConfig = pConfig
+  return dto
+}
 
 class ExamService {
   async checkExamMutability(examId, isQuestionMutation = false) {
@@ -87,7 +145,14 @@ class ExamService {
     }
   }
 
-  async getExamById(id, userRole = null) {
+  async getExamById(id, userRoleOrViewer = null, userId = null) {
+    let viewer = null
+    if (userRoleOrViewer && typeof userRoleOrViewer === 'object') {
+      viewer = userRoleOrViewer
+    } else if (userRoleOrViewer) {
+      viewer = { role: userRoleOrViewer, id: userId }
+    }
+
     const exam = await examsSql.findExamById(id)
     if (!exam) {
       const err = new Error('Exam not found')
@@ -95,7 +160,8 @@ class ExamService {
       throw err
     }
 
-    const isStudent = normalizeRole(userRole) === ROLES.STUDENT
+    const role = viewer?.role ? normalizeRole(viewer.role) : null
+    const isStudent = role === ROLES.STUDENT
     if (isStudent && !['PUBLISHED', 'ACTIVE', 'ENDED', 'EVALUATED'].includes(exam.status)) {
       const notFoundErr = new Error('Exam not found')
       notFoundErr.status = 404
@@ -106,11 +172,43 @@ class ExamService {
     const examEnded = exam.endTime && serverNow > new Date(exam.endTime)
     const includeCorrect = !isStudent || (exam.status === 'EVALUATED' && examEnded)
     const questions = await examsSql.getQuestionsByExamId(id, includeCorrect)
-    return { ...exam, questions }
+
+    const questionCount = questions ? questions.length : 0
+    const totalMarks = questions ? questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0) : (exam.totalMarks || 0)
+
+    const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
+    const sebRequired = Boolean(pConfig.sebRequired)
+    const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+
+    // 7. Student GET /exams/:id: only when sebRequired && SEB_MODE === 'enforce', omit questions but return questionCount and totalMarks
+    const omitQuestions = isStudent && sebRequired && sebMode === 'enforce'
+
+    const examPayload = {
+      ...exam,
+      questionCount,
+      totalMarks
+    }
+    if (!omitQuestions) {
+      examPayload.questions = questions
+    }
+
+    return toExamDto(examPayload, viewer)
   }
 
-  async listExams(filter = {}) {
-    return examsSql.listExams(filter)
+  async listExams(filter = {}, viewer = null) {
+    const list = await examsSql.listExams(filter)
+    return (list || []).map(e => toExamDto(e, viewer))
+  }
+
+  async getSebSettings(examId) {
+    const exam = await examsSql.findExamById(examId)
+    if (!exam) return { sebRequired: false, sebConfigKey: null }
+    const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
+    const sebRequired = Boolean(pConfig.sebRequired)
+    const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim().toLowerCase() : null
+    const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim().toLowerCase() : null
+    const sebConfigKey = perExamKey || envKey || null
+    return { sebRequired, sebConfigKey }
   }
 
   async publishExam(id) {
@@ -121,6 +219,21 @@ class ExamService {
       err.status = 400
       err.code = 'START_TIME_IN_PAST'
       throw err
+    }
+
+    // 6. Publish guard: if sebRequired is true, require a valid 64-hex key (per-exam or env)
+    const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
+    if (pConfig.sebRequired) {
+      const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim() : null
+      const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim() : null
+      const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(perExamKey)
+      const validEnv = envKey && /^[0-9a-fA-F]{64}$/.test(envKey)
+      if (!validPerExam && !validEnv) {
+        const err = new Error('Exam requires Safe Exam Browser but no valid Config Key is configured.')
+        err.status = 400
+        err.code = 'SEB_KEY_REQUIRED'
+        throw err
+      }
     }
 
     validateScheduleWindow(exam.startTime, exam.endTime, exam.durationMinutes || exam.duration || 60)
@@ -231,4 +344,4 @@ class ExamService {
 }
 
 const examService = new ExamService()
-module.exports = { examService, ExamService }
+module.exports = { examService, ExamService, toExamDto }

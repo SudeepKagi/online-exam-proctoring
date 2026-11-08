@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs')
 const { prisma, withTransaction } = require('../../infra/postgres/client')
 const { generateExamQuestions } = require('./ai.generator')
 const { validateQuestionsList } = require('./exams.guard')
+const { toExamDto } = require('./exams.service')
 
 class ExamWizardService {
   async generateFromPdf({ pdfBase64, pdfBuffer, fileName, count = 10, difficulty = 'MEDIUM', topicHint }) {
@@ -82,6 +83,22 @@ class ExamWizardService {
 
     validateQuestionsList(questions)
 
+    // 6. Publish guard on publish-wizard: if sebRequired is true, require a valid per-exam key or env key
+    const pConfigInput = (data.proctoringConfig && typeof data.proctoringConfig === 'object') ? data.proctoringConfig : {}
+    const sebRequired = Boolean(data.sebRequired !== undefined ? data.sebRequired : pConfigInput.sebRequired)
+    if (sebRequired) {
+      const perExamKey = data.sebConfigKey || pConfigInput.sebConfigKey
+      const envKey = process.env.SEB_CONFIG_KEY
+      const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(String(perExamKey).trim())
+      const validEnv = envKey && /^[0-9a-fA-F]{64}$/.test(String(envKey).trim())
+      if (!validPerExam && !validEnv) {
+        const err = new Error('Exam requires Safe Exam Browser but no valid Config Key is configured.')
+        err.status = 400
+        err.code = 'SEB_KEY_REQUIRED'
+        throw err
+      }
+    }
+
     const end = new Date(start.getTime() + dur * 60000)
     const cleanExamCode = examCode || `EXM-${cCode}-${Math.floor(100 + Math.random() * 900)}`
     const invId = invigilatorId || invigilatorCredentials.institutionId || invigilatorCredentials.loginId || `INV-${cCode}-${Math.floor(100 + Math.random() * 900)}`
@@ -101,7 +118,11 @@ class ExamWizardService {
               institutionId: invId, loginId: invId, invigilatorId: invId,
               password: invPass, passwordHint: invPass, room: invRoom
             },
-            cameraRequired: true, screenShareRequired: true, fullScreenMode: true, browserLock: true
+            cameraRequired: true, screenShareRequired: true, fullScreenMode: true, browserLock: true,
+            sebRequired,
+            ...(data.sebConfigKey || pConfigInput.sebConfigKey
+              ? { sebConfigKey: String(data.sebConfigKey || pConfigInput.sebConfigKey).trim().toLowerCase() }
+              : {})
           }
         }
       })
@@ -175,7 +196,8 @@ class ExamWizardService {
       } catch (_) {}
 
       return {
-        exam, questionsCount: questions.length, assignedCount,
+        exam: toExamDto(exam, { role: 'FACULTY', id: creatorId }),
+        questionsCount: questions.length, assignedCount,
         invigilator: { id: invUser.id, institutionId: invId, password: invPass, room: invRoom }
       }
     })

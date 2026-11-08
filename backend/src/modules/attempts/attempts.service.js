@@ -1,5 +1,6 @@
 const attemptsSql = require('./attempts.sql')
 const examsSql = require('../exams/exams.sql')
+const { toExamDto } = require('../exams/exams.service')
 const { prisma } = require('../../infra/postgres/client')
 const { socketEmitter } = require('../../infra/websocket/emitter')
 const { ROLES, normalizeRole } = require('../../shared/roles')
@@ -56,7 +57,7 @@ class AttemptService {
 
     return {
       attempt,
-      exam,
+      exam: toExamDto(exam, { role: 'STUDENT', id: studentId }),
       questions,
       answers: answers || []
     }
