@@ -188,7 +188,38 @@ async function updateExam(id, data) {
   if (data.durationMinutes !== undefined || data.duration !== undefined) {
     updateData.durationMinutes = Number(data.durationMinutes || data.duration)
   }
-  if (data.proctoringConfig !== undefined) updateData.proctoringConfig = data.proctoringConfig
+  if (data.proctoringConfig !== undefined) {
+    const existing = await prisma.exam.findUnique({
+      where: { id },
+      select: { proctoringConfig: true }
+    })
+    const existingConfig = (existing && typeof existing.proctoringConfig === 'object' && !Array.isArray(existing.proctoringConfig))
+      ? existing.proctoringConfig
+      : {}
+
+    const incoming = { ...data.proctoringConfig }
+    const clearFlag = Boolean(incoming.clearSebConfigKey || data.clearSebConfigKey)
+
+    // Merge incoming into existing
+    const mergedConfig = { ...existingConfig, ...incoming }
+
+    if (clearFlag) {
+      mergedConfig.sebConfigKey = null
+    } else if (incoming.sebConfigKey === undefined || incoming.sebConfigKey === '' || String(incoming.sebConfigKey).startsWith('•')) {
+      // Missing, empty, or masked means unchanged: preserve stored key
+      mergedConfig.sebConfigKey = existingConfig.sebConfigKey ?? null
+    } else {
+      mergedConfig.sebConfigKey = String(incoming.sebConfigKey).trim().toLowerCase()
+    }
+
+    // Never store the mask or the flag
+    delete mergedConfig.clearSebConfigKey
+    if (typeof mergedConfig.sebConfigKey === 'string' && mergedConfig.sebConfigKey.startsWith('•')) {
+      mergedConfig.sebConfigKey = existingConfig.sebConfigKey ?? null
+    }
+
+    updateData.proctoringConfig = mergedConfig
+  }
 
   const exam = await prisma.exam.update({
     where: { id },

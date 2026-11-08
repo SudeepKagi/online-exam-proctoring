@@ -2,7 +2,7 @@
 
 const examsSql = require('./exams.sql')
 const { ROLES, normalizeRole } = require('../../shared/roles')
-const { checkExamMutability, validateScheduleWindow, validateQuestionsList } = require('./exams.guard')
+const { checkExamMutability, validateScheduleWindow, validateQuestionsList, sanitizeProctoringConfigInput } = require('./exams.guard')
 const { parseQuestionsExcel } = require('./exams.excel')
 
 class ExamService {
@@ -29,8 +29,19 @@ class ExamService {
 
     validateScheduleWindow(startTime, endTime, dur)
 
+    const rawPConfig = { ...(data.proctoringConfig || {}) }
+    if (data.clearSebConfigKey !== undefined) {
+      rawPConfig.clearSebConfigKey = data.clearSebConfigKey
+    }
+    const validatedPConfig = sanitizeProctoringConfigInput(rawPConfig, { isUpdate: false })
+    if (validatedPConfig.clearSebConfigKey) {
+      validatedPConfig.sebConfigKey = null
+    }
+    delete validatedPConfig.clearSebConfigKey
+
     return examsSql.createExam({
       ...data,
+      proctoringConfig: validatedPConfig,
       durationMinutes: dur,
       createdBy: creatorId
     })
@@ -47,7 +58,18 @@ class ExamService {
       validateScheduleWindow(startTime, endTime, duration)
     }
 
-    return examsSql.updateExam(id, data)
+    const rawPConfig = { ...(data.proctoringConfig || {}) }
+    if (data.clearSebConfigKey !== undefined) {
+      rawPConfig.clearSebConfigKey = data.clearSebConfigKey
+    }
+    const validatedPConfig = (data.proctoringConfig !== undefined || data.clearSebConfigKey !== undefined)
+      ? sanitizeProctoringConfigInput(rawPConfig, { isUpdate: true })
+      : undefined
+
+    return examsSql.updateExam(id, {
+      ...data,
+      ...(validatedPConfig !== undefined ? { proctoringConfig: validatedPConfig } : {})
+    })
   }
 
   async deleteExam(id) {

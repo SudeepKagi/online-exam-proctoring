@@ -117,8 +117,78 @@ function validateQuestionsList(questions) {
   }
 }
 
+const ALLOWED_PROCTORING_CONFIG_KEYS = new Set([
+  'sebRequired',
+  'sebConfigKey',
+  'sebFileKey',
+  'clearSebConfigKey',
+  'maxViolations',
+  'description',
+  'department',
+  'semester',
+  'examCode',
+  'invigilatorCredentials',
+  'cameraRequired',
+  'screenShareRequired',
+  'fullScreenMode',
+  'browserLock',
+  'allowedBrowserExamKeys'
+])
+
+function sanitizeProctoringConfigInput(input, { isUpdate = false } = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    return {}
+  }
+
+  const sanitized = {}
+  for (const [key, value] of Object.entries(input)) {
+    if (ALLOWED_PROCTORING_CONFIG_KEYS.has(key)) {
+      sanitized[key] = value
+    }
+  }
+
+  if (sanitized.sebRequired !== undefined) {
+    sanitized.sebRequired = Boolean(sanitized.sebRequired)
+  }
+
+  if (sanitized.sebFileKey !== undefined) {
+    sanitized.sebFileKey = sanitized.sebFileKey === null ? null : String(sanitized.sebFileKey)
+  }
+
+  if (sanitized.clearSebConfigKey !== undefined) {
+    sanitized.clearSebConfigKey = Boolean(sanitized.clearSebConfigKey)
+  }
+
+  if (sanitized.sebConfigKey !== undefined && sanitized.sebConfigKey !== null) {
+    const rawVal = String(sanitized.sebConfigKey).trim()
+    if (rawVal === '') {
+      sanitized.sebConfigKey = isUpdate ? undefined : null
+    } else if (rawVal.startsWith('•')) {
+      if (!isUpdate) {
+        const err = new Error('SEB Config Key must be exactly 64 hex characters.')
+        err.status = 400
+        err.code = 'INVALID_SEB_KEY'
+        throw err
+      }
+      sanitized.sebConfigKey = undefined
+    } else {
+      if (!/^[0-9a-fA-F]{64}$/.test(rawVal)) {
+        const err = new Error('SEB Config Key must be exactly 64 hex characters.')
+        err.status = 400
+        err.code = 'INVALID_SEB_KEY'
+        throw err
+      }
+      sanitized.sebConfigKey = rawVal.toLowerCase()
+    }
+  }
+
+  return sanitized
+}
+
 module.exports = {
   checkExamMutability,
   validateScheduleWindow,
-  validateQuestionsList
+  validateQuestionsList,
+  sanitizeProctoringConfigInput,
+  ALLOWED_PROCTORING_CONFIG_KEYS
 }
