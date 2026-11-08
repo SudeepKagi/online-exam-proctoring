@@ -1,11 +1,13 @@
 const express = require('express')
 const attemptsController = require('./attempts.controller')
 const { authenticateToken, requireRole } = require('../auth/auth.routes')
-const { verifySeb } = require('../../middleware/seb')
+const { verifySeb, verifySebNonBlocking } = require('../../middleware/seb')
 
 const router = express.Router()
 
-// Pre-exam Readiness & Attempt Activation
+// Pre-exam Readiness, Attempt Activation & SEB Verification Status
+router.get('/exams/:examId/seb-status', authenticateToken, verifySebNonBlocking, attemptsController.getSebStatus)
+router.get('/:examId/seb-status', authenticateToken, verifySebNonBlocking, attemptsController.getSebStatus)
 router.post('/start', authenticateToken, verifySeb, attemptsController.startAttempt)
 router.post('/exams/:examId/readiness', authenticateToken, attemptsController.getReadiness)
 router.post('/exams/:examId/start', authenticateToken, verifySeb, attemptsController.startAttempt)

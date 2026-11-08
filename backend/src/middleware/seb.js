@@ -126,7 +126,9 @@ async function getCachedSebSettings(examId) {
 // Resolve examId from request
 async function resolveExamId(req) {
   if (req.params?.examId) return req.params.examId
+  if (req.params?.id && (req.baseUrl || '').includes('exams')) return req.params.id
   if (req.body?.examId) return req.body.examId
+  if (req.query?.examId) return req.query.examId
 
   const attemptId = req.params?.attemptId || req.params?.id
   if (attemptId) {
@@ -145,6 +147,113 @@ async function resolveExamId(req) {
   }
 
   return null
+}
+
+async function inspectSebRequest(req) {
+  const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+  let examId = null
+  try {
+    examId = await resolveExamId(req)
+  } catch (_) {}
+
+  if (!examId) {
+    return {
+      examId: null,
+      required: false,
+      mode: sebMode,
+      verified: false,
+      matched: false
+    }
+  }
+
+  let sebSettings = null
+  try {
+    sebSettings = await getCachedSebSettings(examId)
+  } catch (_) {}
+
+  const required = Boolean(sebSettings?.sebRequired)
+  if (!required) {
+    return {
+      examId,
+      required: false,
+      mode: sebMode,
+      verified: false,
+      matched: false
+    }
+  }
+
+  const sebConfigKey = sebSettings?.sebConfigKey
+  if (!sebConfigKey || !/^[0-9a-fA-F]{64}$/.test(sebConfigKey)) {
+    return {
+      examId,
+      required: true,
+      mode: sebMode,
+      verified: false,
+      matched: false,
+      missingConfigKey: true
+    }
+  }
+
+  const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
+  const rawPath = (req.originalUrl || req.url || '').split('#')[0]
+  const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+  const expectedUrl = `${cleanPublicOrigin}${normalizedPath}`
+
+  const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+  const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
+  const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
+
+  const expectedHash = crypto
+    .createHash('sha256')
+    .update(expectedUrl + sebConfigKey.toLowerCase())
+    .digest('hex')
+    .toLowerCase()
+
+  let matched = false
+  if (is64Hex) {
+    const expectedBuf = Buffer.from(expectedHash, 'utf8')
+    const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
+    matched = expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf)
+  }
+
+  return {
+    examId,
+    required: true,
+    mode: sebMode,
+    verified: Boolean(matched),
+    matched,
+    expectedUrl,
+    expectedHash,
+    receivedHeader
+  }
+}
+
+async function verifySebNonBlocking(req, res, next) {
+  try {
+    const inspection = await inspectSebRequest(req)
+    req.seb = {
+      required: inspection.required,
+      mode: inspection.mode,
+      verified: inspection.verified,
+      examId: inspection.examId
+    }
+
+    if (inspection.matched && inspection.examId) {
+      const attemptId = req.params?.attemptId || req.params?.id
+      if (attemptId) {
+        markAttemptSebVerified(attemptId)
+      }
+    }
+  } catch (err) {
+    const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+    req.seb = {
+      required: false,
+      mode: sebMode,
+      verified: false,
+      error: err.message
+    }
+  }
+  return next()
 }
 
 function verifySeb(req, res, next) {
@@ -318,6 +427,8 @@ async function runVerifySeb(req, res, next) {
 
 module.exports = {
   verifySeb,
+  verifySebNonBlocking,
+  inspectSebRequest,
   markAttemptSebVerified,
   isAttemptSebVerified,
   invalidateExamSebCache,

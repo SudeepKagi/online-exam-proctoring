@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
-import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, KeyRound, Eye } from 'lucide-react'
+import { PlusCircle, Settings, BookOpen, CheckCircle2, HelpCircle, Users, KeyRound, Eye, ShieldCheck } from 'lucide-react'
 import ExamWizardModal from '@/components/faculty/ExamWizardModal'
 import ExamCredentialsModal from '@/components/faculty/ExamCredentialsModal'
 
@@ -143,7 +143,16 @@ export default function FacultyExamsPage() {
 
                   return (
                     <TableRow key={exam.id}>
-                      <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
+                      <TableCell className="font-[480] text-[#28253b] text-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{exam.title}</span>
+                          {exam?.proctoringConfig?.sebRequired && (
+                            <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Secure browser
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
                       <TableCell className="text-[#554e7b] text-xs">
                         {new Date(exam.startTime).toLocaleDateString([], { month: 'short', day: 'numeric' })}{' '}

@@ -105,9 +105,16 @@ export default function StudentDashboardPage() {
                   <CardHeader className="pb-3 bg-[#fbfbff] border-b border-[#e9eaf2]">
                     <div className="flex justify-between items-start gap-2">
                       <CardTitle className="text-sm font-[480] text-[#28253b] leading-snug">{exam.title}</CardTitle>
-                      <Badge variant="outline" className="text-[10px] font-[420] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent">
-                        {exam.courseCode}
-                      </Badge>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {exam?.proctoringConfig?.sebRequired && (
+                          <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3" /> Secure browser
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-[10px] font-[420] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent">
+                          {exam.courseCode}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 pt-4">

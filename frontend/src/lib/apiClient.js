@@ -42,6 +42,18 @@ api.interceptors.response.use(
         } catch (_) {}
         window.location.href = '/login'
       }
+    } else if (
+      error.response?.status === 403 &&
+      (data?.code === 'SEB_REQUIRED' || error.code === 'SEB_REQUIRED')
+    ) {
+      if (typeof window !== 'undefined') {
+        const urlMatch = (error.config?.url || '').match(/exams\/([0-9a-fA-F-]+)/)
+        const pathMatch = window.location.pathname.match(/exams\/([0-9a-fA-F-]+)/)
+        const examId = urlMatch ? urlMatch[1] : (pathMatch ? pathMatch[1] : null)
+        if (examId && !window.location.pathname.includes('/seb-required')) {
+          window.location.href = `/student/exams/${examId}/seb-required`
+        }
+      }
     } else if (!error.response && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('app:network-offline', { detail: { error } }))
     }

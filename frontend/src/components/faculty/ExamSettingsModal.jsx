@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api, errorMessage } from '@/lib/apiClient'
-import { Settings, Trash2, Loader2, Save } from 'lucide-react'
+import { Settings, Trash2, Loader2, Save, ShieldCheck } from 'lucide-react'
 
 export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle = 'DRAFT', onUpdated }) {
   const navigate = useNavigate()
@@ -13,6 +13,14 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+
+  const initialSebRequired = Boolean(exam?.proctoringConfig?.sebRequired)
+  const initialSebKey = exam?.proctoringConfig?.sebConfigKey || ''
+
+  const [sebRequired, setSebRequired] = useState(initialSebRequired)
+  const [sebConfigKey, setSebConfigKey] = useState(initialSebKey)
+  const [keyChanged, setKeyChanged] = useState(false)
+  const [keyRemoved, setKeyRemoved] = useState(false)
 
   const [form, setForm] = useState({
     title: exam?.title || '',
@@ -22,19 +30,61 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
     endTime: exam?.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
   })
 
+  useEffect(() => {
+    if (open) {
+      setSebRequired(Boolean(exam?.proctoringConfig?.sebRequired))
+      setSebConfigKey(exam?.proctoringConfig?.sebConfigKey || '')
+      setKeyChanged(false)
+      setKeyRemoved(false)
+      setForm({
+        title: exam?.title || '',
+        courseCode: exam?.courseCode || '',
+        durationMinutes: exam?.durationMinutes || 60,
+        startTime: exam?.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
+        endTime: exam?.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+      })
+    }
+  }, [open, exam])
+
+  const handleKeyChange = (e) => {
+    setSebConfigKey(e.target.value)
+    setKeyChanged(true)
+    setKeyRemoved(false)
+  }
+
+  const handleRemoveKey = () => {
+    setSebConfigKey('')
+    setKeyChanged(false)
+    setKeyRemoved(true)
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     if (isReadOnly) return
     setSaving(true)
     setError('')
     try {
-      await api.put(`/exams/${exam.id}`, {
+      const payload = {
         title: form.title,
         courseCode: form.courseCode,
         durationMinutes: parseInt(form.durationMinutes, 10),
         startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString()
-      })
+        endTime: new Date(form.endTime).toISOString(),
+        proctoringConfig: {
+          ...(exam?.proctoringConfig || {}),
+          sebRequired: Boolean(sebRequired)
+        }
+      }
+
+      if (keyRemoved) {
+        payload.clearSebConfigKey = true
+        payload.proctoringConfig.clearSebConfigKey = true
+        payload.proctoringConfig.sebConfigKey = null
+      } else if (keyChanged && sebConfigKey.trim() && !sebConfigKey.trim().startsWith('•')) {
+        payload.proctoringConfig.sebConfigKey = sebConfigKey.trim()
+      }
+
+      await api.put(`/exams/${exam.id}`, payload)
       setOpen(false)
       onUpdated?.('Exam configuration updated successfully!')
     } catch (err) {
@@ -147,6 +197,80 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
               onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
               className="h-9 text-xs"
             />
+          </div>
+
+          {/* Safe Exam Browser Section */}
+          <div className="pt-3 border-t border-[#e9eaf2] space-y-3 font-sans">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="seb-required-toggle" className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5 cursor-pointer">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Safe Exam Browser
+                </Label>
+                <p className="text-[11px] text-[#70707d] font-[360]">Enforce kiosk lockdown mode using Safe Exam Browser</p>
+              </div>
+              <label htmlFor="seb-required-toggle" data-testid="label-seb-required" className="relative inline-flex items-center cursor-pointer">
+                <input
+                  id="seb-required-toggle"
+                  data-testid="toggle-seb-required"
+                  type="checkbox"
+                  disabled={isReadOnly}
+                  checked={sebRequired}
+                  onChange={(e) => setSebRequired(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-[#c3c3cc] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#5266eb]"></div>
+              </label>
+            </div>
+
+            {sebRequired && (
+              <div className="p-3 bg-[#fbfbff] rounded-[12px] space-y-3 border-0">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="seb-config-key-input" className="text-[11px] font-[420] text-[#554e7b]">Config Key (Optional per-exam override)</Label>
+                    {!isReadOnly && (sebConfigKey || initialSebKey) && (
+                      <button
+                        type="button"
+                        data-testid="btn-remove-seb-key"
+                        onClick={handleRemoveKey}
+                        className="text-[11px] text-[#5266eb] hover:underline font-[420] cursor-pointer bg-transparent border-0 p-0"
+                      >
+                        Remove key
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="seb-config-key-input"
+                    data-testid="input-seb-config-key"
+                    disabled={isReadOnly}
+                    value={sebConfigKey}
+                    onChange={handleKeyChange}
+                    placeholder="Paste 64-hex Config Key or leave empty for default"
+                    className="h-8 text-xs font-mono"
+                  />
+                  <p className="text-[11px] text-[#70707d] font-[360]">
+                    Copy the CONFIG KEY, not the Browser Exam Key
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-[#e9eaf2]/80 space-y-1.5">
+                  <p className="text-[11px] font-[480] text-[#28253b]">Configuration Checklist:</p>
+                  <ul className="text-[11px] text-[#554e7b] font-[360] space-y-1 pl-1">
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb]" />
+                      "Use Browser &amp; Config Keys" ON
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb]" />
+                      Camera allowed
+                    </li>
+                    <li className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb]" />
+                      Quit URL set
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
 
           {!isReadOnly && (

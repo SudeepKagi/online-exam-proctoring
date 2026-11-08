@@ -11,6 +11,8 @@ import { useArenaSocketAndTab, restoreAnswers } from '@/hooks/useArenaSocketAndT
 import { getCameraStream, clearCameraStream } from '@/lib/screenStreamStore'
 import QuestionPalette from '@/components/exam/QuestionPalette'
 import QuestionCard from '@/components/exam/QuestionCard'
+import { Button } from '@/components/ui/button'
+import { CheckCircle2 } from 'lucide-react'
 
 export default function ExamArenaPage() {
   const { id } = useParams()
@@ -24,6 +26,7 @@ export default function ExamArenaPage() {
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [violationCount, setViolationCount] = useState(0)
   const teardownTimerRef = useRef(null)
 
@@ -44,7 +47,12 @@ export default function ExamArenaPage() {
       if (flushDirtyAnswers) await flushDirtyAnswers()
       if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      clearCameraStream(); navigate('/student/dashboard')
+      clearCameraStream()
+      if (exam?.proctoringConfig?.sebRequired) {
+        setIsSubmitted(true)
+      } else {
+        navigate('/student/dashboard')
+      }
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
       alert(errorMessage(err, 'Submission failed.'))
@@ -181,6 +189,43 @@ export default function ExamArenaPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSelectOption, questions.length, isArenaInteractionLocked])
+
+  if (isSubmitted) {
+    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || 'http://localhost:5173/student/login'
+    return (
+      <ExamArenaShell className="items-center justify-center p-6 bg-[#fbfcfd] font-sans">
+        <div className="w-full max-w-md bg-white rounded-[16px] p-8 text-center shadow-md space-y-4">
+          <div className="w-16 h-16 bg-[#edecfb] text-[#5266eb] rounded-full mx-auto flex items-center justify-center">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-[480] text-[#28253b]">Examination Submitted</h2>
+          <p className="text-xs text-[#554e7b] font-[360] leading-relaxed">
+            Your responses have been successfully recorded and finalized on the server.
+          </p>
+
+          <div className="pt-4 flex flex-col gap-2.5">
+            {exam?.proctoringConfig?.sebRequired && (
+              <Button
+                type="button"
+                onClick={() => { window.location.href = sebQuitUrl }}
+                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+              >
+                Exit secure browser
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/student/dashboard')}
+              className="w-full text-xs font-[420] h-10 rounded-[40px] border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer"
+            >
+              Return to Student Dashboard
+            </Button>
+          </div>
+        </div>
+      </ExamArenaShell>
+    )
+  }
 
   if (loading) {
     return (

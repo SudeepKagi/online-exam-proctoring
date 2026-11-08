@@ -12,6 +12,7 @@ export default function PreExamCheckPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [exam, setExam] = useState(null)
+  const [sebStatus, setSebStatus] = useState(null)
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,7 +23,7 @@ export default function PreExamCheckPage() {
 
   useEffect(() => {
     let active = true
-    apiClient.get(`/exams/${id}`).then((res) => {
+    apiClient.get(`/exams/${id}`).then(async (res) => {
       if (!active) return
       const ex = res.data?.exam || res.data
       setExam(ex)
@@ -34,9 +35,21 @@ export default function PreExamCheckPage() {
         setIsWindowLocked(true)
         setError('This examination window has ended.')
       }
+
+      // Query SEB status for the exam
+      try {
+        const sebRes = await apiClient.get(`/attempts/exams/${id}/seb-status`)
+        const status = sebRes.data || {}
+        if (!active) return
+        setSebStatus(status)
+        if (status.mode === 'enforce' && status.required && !status.verified) {
+          navigate(`/student/exams/${id}/seb-required`, { replace: true })
+          return
+        }
+      } catch (_) {}
     }).catch(() => {})
     return () => { active = false }
-  }, [id])
+  }, [id, navigate])
 
   useEffect(() => {
     let active = true
@@ -129,7 +142,9 @@ export default function PreExamCheckPage() {
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
             <span className={step >= 1 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>1. Face Match</span>
-            <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>2. Fullscreen Lock</span>
+            <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>
+              {sebStatus?.required && sebStatus?.verified ? '2. Secure Browser' : '2. Fullscreen Lock'}
+            </span>
           </div>
 
           {error && (
@@ -158,16 +173,28 @@ export default function PreExamCheckPage() {
           ) : (
             <div className="space-y-4 text-center py-4">
               <div className="w-16 h-16 bg-[#edecfb] text-[#5266eb] rounded-[16px] mx-auto flex items-center justify-center">
-                <Maximize className="w-8 h-8" />
+                {sebStatus?.required && sebStatus?.verified ? (
+                  <ShieldCheck className="w-8 h-8" />
+                ) : (
+                  <Maximize className="w-8 h-8" />
+                )}
               </div>
               <div>
-                <h3 className="text-sm font-[480] text-[#28253b]">All Security Checks Completed</h3>
-                <p className="text-xs text-[#70707d] font-[360] mt-1">
-                  Click below to lock viewport in fullscreen mode and open the live exam arena.
+                <h3 className="text-sm font-[480] text-[#28253b]">
+                  {sebStatus?.required && sebStatus?.verified
+                    ? 'Secure browser verified'
+                    : 'All Security Checks Completed'}
+                </h3>
+                <p className="text-xs text-[#70707d] font-[360] mt-1 max-w-sm mx-auto">
+                  {sebStatus?.required && sebStatus?.verified
+                    ? 'Safe Exam Browser integrity has been confirmed. You are ready to launch the exam session.'
+                    : 'Click below to lock viewport in fullscreen mode and open the live exam arena.'}
                 </p>
               </div>
               <Button onClick={handleLaunchExam} disabled={loading} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs gap-1.5 font-[420] h-10 rounded-[32px] cursor-pointer">
-                Enter Fullscreen & Launch Exam <ArrowRight className="w-4 h-4" />
+                {sebStatus?.required && sebStatus?.verified
+                  ? 'Launch Exam'
+                  : 'Enter Fullscreen & Launch Exam'} <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
           )}

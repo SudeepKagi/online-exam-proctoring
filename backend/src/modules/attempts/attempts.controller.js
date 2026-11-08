@@ -101,6 +101,20 @@ async function terminateAttempt(req, res, next) {
   }
 }
 
+async function getSebStatus(req, res, next) {
+  try {
+    const { required = false, mode = 'off', verified = false } = req.seb || {}
+    return res.status(200).json({
+      status: 'success',
+      required: Boolean(required),
+      mode: String(mode),
+      verified: Boolean(verified)
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function getVpnStatus(req, res) {
   // WireGuard VPN Hook check
   const clientIp = req.socket.remoteAddress || req.ip || '127.0.0.1'
@@ -114,6 +128,7 @@ async function getVpnStatus(req, res) {
 
 module.exports = {
   getReadiness,
+  getSebStatus,
   startAttempt,
   getAttempt,
   saveAnswer,

@@ -10,7 +10,7 @@ import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import ExamQuestionsTab from '@/components/faculty/ExamQuestionsTab'
 import ExamInvigilatorsTab from '@/components/faculty/ExamInvigilatorsTab'
 import ExamSettingsModal from '@/components/faculty/ExamSettingsModal'
-import { ArrowLeft, Send, Download, UserCheck } from 'lucide-react'
+import { ArrowLeft, Send, Download, UserCheck, ShieldCheck } from 'lucide-react'
 
 export default function ExamManagePage() {
   const { id } = useParams()
@@ -72,6 +72,11 @@ export default function ExamManagePage() {
           <Link to="/faculty/exams"><ArrowLeft className="w-3.5 h-3.5" /> Back to My Exams</Link>
         </Button>
         <div className="flex items-center gap-2">
+          {exam?.proctoringConfig?.sebRequired && (
+            <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1 h-7 px-2.5">
+              <ShieldCheck className="w-3 h-3" /> Secure browser
+            </Badge>
+          )}
           {exam && <ExamSettingsModal exam={exam} isReadOnly={isReadOnly} lifecycle={lifecycle} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}
           {exam?.status === 'DRAFT' && !isReadOnly && (
             <Button size="sm" onClick={handlePublish} className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] h-9 px-4 shadow-xs cursor-pointer">
