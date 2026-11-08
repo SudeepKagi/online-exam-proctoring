@@ -9,7 +9,8 @@ const { assertTestDatabase } = require('../src/infra/postgres/assertNonProductio
 const { prisma } = require('../src/infra/postgres/client')
 
 async function getOrCreateFaculty() {
-  let user = await prisma.user.findFirst({ where: { role: 'FACULTY' } })
+  let user = await prisma.user.findFirst({ where: { email: 'faculty@proctornet.com' } })
+  if (!user) user = await prisma.user.findFirst({ where: { role: 'FACULTY', email: { not: { contains: 'load' } } } })
   if (!user) {
     user = await prisma.user.create({
       data: {
@@ -25,7 +26,8 @@ async function getOrCreateFaculty() {
 }
 
 async function getOrCreateStudent() {
-  let user = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
+  let user = await prisma.user.findFirst({ where: { email: 'student1@proctornet.com' } })
+  if (!user) user = await prisma.user.findFirst({ where: { role: 'STUDENT', email: { not: { contains: 'load' } } } })
   if (!user) {
     user = await prisma.user.create({
       data: {
@@ -41,7 +43,8 @@ async function getOrCreateStudent() {
 }
 
 async function getOrCreateAdmin() {
-  let user = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
+  let user = await prisma.user.findFirst({ where: { email: 'admin@proctornet.com' } })
+  if (!user) user = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
   if (!user) {
     user = await prisma.user.create({
       data: {
