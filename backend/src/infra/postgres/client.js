@@ -10,7 +10,7 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const { logger } = require('../../shared/logging');
+const { logger, scrubSebString } = require('../../shared/logging');
 
 let prismaInstance = null;
 
@@ -69,11 +69,11 @@ function createPrismaClient(role = 'api') {
   });
 
   client.$on('warn', (e) => {
-    logger.warn({ prisma_warning: e.message, target: e.target }, 'Prisma Client Warning');
+    logger.warn({ prisma_warning: scrubSebString(e.message), target: e.target }, 'Prisma Client Warning');
   });
 
   client.$on('error', (e) => {
-    logger.error({ prisma_error: e.message, target: e.target }, 'Prisma Client Error');
+    logger.error({ prisma_error: scrubSebString(e.message), target: e.target }, 'Prisma Client Error');
   });
 
   // Apply default transaction boundaries: { maxWait: 2000, timeout: 5000 }

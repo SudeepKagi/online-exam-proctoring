@@ -1,6 +1,6 @@
 const crypto = require('crypto')
 const { toErrorEnvelope } = require('../shared/errors')
-const { logger } = require('../shared/logging')
+const { logger, scrubSebString } = require('../shared/logging')
 
 function errorHandler(err, req, res, next) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
@@ -10,19 +10,22 @@ function errorHandler(err, req, res, next) {
     res.set('Retry-After', String(err.retryAfter))
   }
 
+  const safeMessage = scrubSebString(err?.message)
+  const safeStack = scrubSebString(err?.stack)
+
   if (statusCode >= 500) {
     logger.error({
       requestId,
-      error: err.message,
-      stack: err.stack,
+      error: safeMessage,
+      stack: safeStack,
       path: req.path,
       method: req.method
     }, 'Internal Server Error')
   } else {
     logger.warn({
       requestId,
-      code: err.code,
-      error: err.message,
+      code: err?.code,
+      error: safeMessage,
       path: req.path,
       statusCode
     }, 'Handled client request error')
