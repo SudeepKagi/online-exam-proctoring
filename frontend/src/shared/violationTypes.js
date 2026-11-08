@@ -104,6 +104,17 @@ export const FLAG_COOLDOWNS = Object.freeze({
   "DEFAULT": 3000
 })
 
+export const LEGACY_VIOLATION_LABELS = Object.freeze({
+  "SCREEN_SHARE_ENDED": "Screen share ended (legacy)",
+  "SCREEN_SHARE_STOPPED": "Screen share ended (legacy)",
+  "SCREEN_RECORDING": "Screen recording (legacy)"
+})
+
+export function formatViolationType(type) {
+  if (!type || typeof type !== 'string') return ''
+  return LEGACY_VIOLATION_LABELS[type] || type
+}
+
 export function normalizeViolationType(clientType) {
   if (!clientType || typeof clientType !== 'string') return null
   const mapped = CLIENT_VIOLATION_MAP[clientType] || CLIENT_VIOLATION_MAP[clientType.toUpperCase()]

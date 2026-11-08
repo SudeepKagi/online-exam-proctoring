@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Download, X, Maximize2 } from 'lucide-react'
+import { formatViolationType } from '@/shared/violationTypes'
 
 export default function SnapshotZoomModal({ isOpen, onClose, snapshot }) {
   if (!snapshot) return null
@@ -27,7 +28,7 @@ export default function SnapshotZoomModal({ isOpen, onClose, snapshot }) {
                 Screen Snapshot Audit — {snapshot.studentName} ({snapshot.institutionId || '—'})
               </DialogTitle>
               <Badge variant="destructive" className="text-[10px] uppercase font-mono">
-                {snapshot.eventType || 'VIOLATION'}
+                {formatViolationType(snapshot.eventType) || 'VIOLATION'}
               </Badge>
             </div>
             <DialogDescription className="text-xs text-zinc-400">

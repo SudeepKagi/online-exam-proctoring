@@ -2,6 +2,7 @@ import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Clock, ZoomIn, ShieldAlert } from 'lucide-react'
+import { formatViolationType } from '@/shared/violationTypes'
 
 export default function ViolationStream({ violations = [], onZoomSnapshot }) {
   return (
@@ -35,7 +36,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
                   <p className="text-[10px] text-[#554e7b] font-mono">USN: {v.institutionId || '—'}</p>
                 </div>
                 <Badge variant="outline" className="text-[9px] uppercase font-mono shrink-0 bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0">
-                  {v.eventType}
+                  {formatViolationType(v.eventType)}
                 </Badge>
               </div>
 

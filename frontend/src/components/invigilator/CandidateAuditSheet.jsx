@@ -2,6 +2,7 @@ import React from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { formatViolationType } from '@/shared/violationTypes'
 
 export default function CandidateAuditSheet({
   isOpen,
@@ -69,7 +70,7 @@ export default function CandidateAuditSheet({
               auditHistory.map((l, idx) => (
                 <div key={idx} className="p-2.5 rounded-lg border border-border bg-card text-xs space-y-1">
                   <div className="flex justify-between font-medium">
-                    <span>{l.eventType}</span>
+                    <span>{formatViolationType(l.eventType)}</span>
                     <span className="text-destructive font-mono text-[10px]">{l.severity}</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground font-mono">
