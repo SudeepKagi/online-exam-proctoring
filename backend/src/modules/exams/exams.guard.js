@@ -122,6 +122,7 @@ const ALLOWED_PROCTORING_CONFIG_KEYS = new Set([
   'sebConfigKey',
   'sebFileKey',
   'clearSebConfigKey',
+  'allowCalculator',
   'maxViolations',
   'description',
   'department',
@@ -156,7 +157,11 @@ function sanitizeProctoringConfigInput(input, { isUpdate = false } = {}) {
   }
 
   if (sanitized.clearSebConfigKey !== undefined) {
-    sanitized.clearSebConfigKey = Boolean(sanitized.clearSebConfigKey)
+    const shouldClear = Boolean(sanitized.clearSebConfigKey)
+    delete sanitized.clearSebConfigKey
+    if (shouldClear) {
+      sanitized.sebConfigKey = null
+    }
   }
 
   if (sanitized.sebConfigKey !== undefined && sanitized.sebConfigKey !== null) {

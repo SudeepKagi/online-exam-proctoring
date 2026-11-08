@@ -48,7 +48,7 @@ const configSchema = z.object({
   FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off', 'test']).default('off'),
   MEDIA_DRIVER: z.enum(['snapshot', 'livekit', 'livekit-selfhost', 'livekit-cloud']).default('snapshot'),
   CACHE_DRIVER: z.enum(['memory', 'redis']).default('redis'),
-  SEB_MODE: z.enum(['off', 'log', 'enforce']).default('off'),
+  SEB_MODE: z.string().optional().default('off').transform(v => (v || 'off').toLowerCase()).pipe(z.enum(['off', 'log', 'enforce'])),
   SEB_CONFIG_KEY: z
     .string()
     .trim()
