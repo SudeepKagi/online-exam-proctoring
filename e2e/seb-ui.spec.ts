@@ -161,12 +161,27 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     await expect(page.getByText('Secure browser')).toBeVisible()
   })
 
-  test('4. PreExamCheckPage redirects unverified student browser to /seb-required page', async () => {
+  test('4. PreExamCheckPage redirects unverified student browser to /seb-required page in enforce mode', async () => {
     const page = studentActor.page
+
+    // Simulate backend in enforce mode for this exam
+    await page.route(`**/api/v1/attempts/exams/${testExamId}/seb-status`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: 'success',
+          required: true,
+          mode: 'enforce',
+          verified: false
+        })
+      })
+    })
+
     // Navigate directly to pre-exam check for the SEB-required exam
     await page.goto(`/student/exams/${testExamId}/pre-check`)
 
-    // Pre-check should detect required: true, verified: false and redirect to /student/exams/:id/seb-required
+    // Pre-check should detect mode: 'enforce', required: true, verified: false and redirect to /student/exams/:id/seb-required
     await page.waitForURL((url: URL) => url.pathname.includes('/seb-required'), { timeout: 10000 })
     expect(page.url()).toContain(`/student/exams/${testExamId}/seb-required`)
 
