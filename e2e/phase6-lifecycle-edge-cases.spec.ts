@@ -292,7 +292,7 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
 
       // 4. Verify blocking overlay appears
       const overlay = student.page.getByTestId('proctoring-interrupted-overlay')
-      await expect(overlay).toBeVisible({ timeout: 10000 })
+      await expect(overlay.first()).toBeVisible({ timeout: 10000 })
     } finally {
       await faculty.close()
       await student.close()
