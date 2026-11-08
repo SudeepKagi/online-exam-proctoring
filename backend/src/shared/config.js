@@ -19,6 +19,8 @@ if (!['off', 'log', 'enforce'].includes(_rawSebMode)) {
   throw new Error(`[FATAL] Invalid SEB_MODE: "${process.env.SEB_MODE}". Must be one of: off, log, enforce.`)
 }
 
+const { normalizePublicOrigin } = require('./validateConfig')
+
 let _rawSebConfigKey = null
 if (process.env.SEB_CONFIG_KEY) {
   const trimmedKey = process.env.SEB_CONFIG_KEY.trim().toLowerCase()
@@ -28,11 +30,14 @@ if (process.env.SEB_CONFIG_KEY) {
   _rawSebConfigKey = trimmedKey || null
 }
 
+const _normalizedPublicOrigin = normalizePublicOrigin(process.env.PUBLIC_ORIGIN)
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   isProd: process.env.NODE_ENV === 'production',
   isTest: process.env.NODE_ENV === 'test',
   port: parseInt(process.env.PORT || '5000', 10),
+  publicOrigin: _normalizedPublicOrigin,
 
   // Database
   databaseUrl: process.env.DATABASE_URL,
