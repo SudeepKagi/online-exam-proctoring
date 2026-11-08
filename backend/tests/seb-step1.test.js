@@ -30,15 +30,19 @@ describe('Step 1: Safe Exam Browser (SEB) DTO Security & Config Key Suite', () =
 
   before(async () => {
     const timestamp = Date.now()
-    facultyUser = await prisma.user.create({
-      data: {
-        email: `seb-fac-${timestamp}@proctornet.com`,
-        fullName: 'SEB Primary Faculty',
-        passwordHash: 'dummyhash',
-        role: 'FACULTY',
-        status: 'ACTIVE'
-      }
-    })
+
+    facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY' } })
+    if (!facultyUser) {
+      facultyUser = await prisma.user.create({
+        data: {
+          email: `seb-fac-${timestamp}@proctornet.com`,
+          fullName: 'SEB Primary Faculty',
+          passwordHash: 'dummyhash',
+          role: 'FACULTY',
+          status: 'ACTIVE'
+        }
+      })
+    }
 
     secondFacultyUser = await prisma.user.create({
       data: {
@@ -50,34 +54,39 @@ describe('Step 1: Safe Exam Browser (SEB) DTO Security & Config Key Suite', () =
       }
     })
 
-    studentUser = await prisma.user.create({
-      data: {
-        email: `seb-stud-${timestamp}@proctornet.com`,
-        fullName: 'SEB Test Student',
-        passwordHash: 'dummyhash',
-        role: 'STUDENT',
-        status: 'ACTIVE'
-      }
-    })
+    studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
+    if (!studentUser) {
+      studentUser = await prisma.user.create({
+        data: {
+          email: `seb-stud-${timestamp}@proctornet.com`,
+          fullName: 'SEB Test Student',
+          passwordHash: 'dummyhash',
+          role: 'STUDENT',
+          status: 'ACTIVE'
+        }
+      })
+    }
 
-    adminUser = await prisma.user.create({
-      data: {
-        email: `seb-admin-${timestamp}@proctornet.com`,
-        fullName: 'SEB Test Admin',
-        passwordHash: 'dummyhash',
-        role: 'ADMIN',
-        status: 'ACTIVE'
-      }
-    })
+    adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
+    if (!adminUser) {
+      adminUser = await prisma.user.create({
+        data: {
+          email: `seb-admin-${timestamp}@proctornet.com`,
+          fullName: 'SEB Test Admin',
+          passwordHash: 'dummyhash',
+          role: 'ADMIN',
+          status: 'ACTIVE'
+        }
+      })
+    }
   })
 
   after(async () => {
     for (const examId of createdExamIds) {
       await examsSql.deleteExam(examId).catch(() => {})
     }
-    const userIds = [facultyUser?.id, secondFacultyUser?.id, studentUser?.id, adminUser?.id].filter(Boolean)
-    if (userIds.length > 0) {
-      await prisma.user.deleteMany({ where: { id: { in: userIds } } }).catch(() => {})
+    if (secondFacultyUser?.id) {
+      await prisma.user.delete({ where: { id: secondFacultyUser.id } }).catch(() => {})
     }
   })
 
