@@ -49,7 +49,10 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
     })
 
     // 2. Locate or seed faculty and student
-    facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY' } })
+    facultyUser = await prisma.user.findUnique({ where: { email: 'faculty@proctornet.com' } })
+    if (!facultyUser) {
+      facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY', email: { not: { contains: 'load' } } } })
+    }
     if (!facultyUser) {
       facultyUser = await prisma.user.create({
         data: {
@@ -63,9 +66,9 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
     }
     facultyToken = signToken({ id: facultyUser.id, role: 'FACULTY', email: facultyUser.email })
 
-    studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: 'student1@proctornet.com' } })
+    studentUser = await prisma.user.findUnique({ where: { email: 'student1@proctornet.com' } })
     if (!studentUser) {
-      studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
+      studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: { not: { contains: 'load' } } } })
     }
     if (!studentUser) {
       studentUser = await prisma.user.create({
