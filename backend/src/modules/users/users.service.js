@@ -1,8 +1,14 @@
+const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
 const { prisma } = require('../../infra/postgres/client')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { parseExcelBuffer } = require('./users.excel')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+
+function generateSecureOneTimePassword() {
+  const buf = crypto.randomBytes(9).toString('base64').replace(/[/+=]/g, 'x')
+  return `Temp#${buf}1`
+}
 
 const USER_FIELDS = {
   id: true,
@@ -100,10 +106,10 @@ class UsersService {
     }
 
     const targetRole = String(role).toUpperCase()
-    const rawPassword = password || 'Default#1234'
+    const generatedPassword = password ? null : generateSecureOneTimePassword()
+    const rawPassword = password || generatedPassword
     const passwordHash = await bcrypt.hash(rawPassword, 10)
-    const normalized = normalizeRole(targetRole)
-    const initialStatus = status || (normalized === ROLES.ADMIN || normalized === ROLES.INVIGILATOR ? 'ACTIVE' : 'PENDING_SETUP')
+    const initialStatus = status || 'PENDING_SETUP'
 
     const user = await prisma.user.create({
       data: {
@@ -114,13 +120,19 @@ class UsersService {
         institutionId: (institutionId || usn || '').trim() || null,
         referencePhotoKey: referencePhotoKey || null,
         idCardPhotoKey: idCardPhotoKey || null,
-        profileMetadata: profileMetadata || (normalized === ROLES.INVIGILATOR ? { generatedPasswordHint: rawPassword } : {}),
+        profileMetadata: profileMetadata || {},
         status: initialStatus
       },
       select: USER_FIELDS
     })
 
-    return { ...user, name: user.fullName, usn: user.institutionId, isActive: user.status === 'ACTIVE' }
+    return {
+      ...user,
+      name: user.fullName,
+      usn: user.institutionId,
+      isActive: user.status === 'ACTIVE',
+      ...(generatedPassword ? { generatedPassword } : {})
+    }
   }
 
   async updateUser(id, data) {
@@ -224,10 +236,15 @@ class UsersService {
           fullName: acc.name || acc.fullName,
           institutionId: acc.usn || acc.institutionId || acc.departmentCode,
           role: acc.role || 'STUDENT',
-          password: acc.password || 'Default#1234',
+          password: acc.password || undefined,
           status: 'PENDING_SETUP'
         })
-        results.push({ success: true, email: acc.email, user })
+        results.push({
+          success: true,
+          email: acc.email,
+          user,
+          generatedPassword: user.generatedPassword || null
+        })
       } catch (err) {
         results.push({ success: false, email: acc.email, error: err.message })
       }

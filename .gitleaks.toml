@@ -1,34 +1,46 @@
 # ==============================================================================
-# Gitleaks Configuration for ProctorNet (Phase P9 Task 8)
-# Enforces zero secrets in git history going forward
+# ProctorNet Gitleaks Configuration (.gitleaks.toml)
+# Authoritative secret scanning configuration for CI and pre-commit checks.
+# Strictly limits allowlisted entries to known development, test and burned defaults
+# recorded in KNOWN_DEFAULTS (backend/src/shared/validateConfig.js).
 # ==============================================================================
 
-title = "ProctorNet Gitleaks Configuration"
+title = "ProctorNet Gitleaks Secret Scanner Configuration"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Global allowlists for test fixtures and false positives"
-paths = [
-  '''^\.env\.example$''',
-  '''^backend/\.env\.example$''',
-  '''^frontend/\.env\.example$''',
-  '''^python-service/\.env\.example$''',
-  '''^ops/terraform/terraform\.tfvars\.example$''',
-  '''^\.github/workflows/.*''',
-  '''^tests/.*''',
-  '''^backend/tests/.*''',
-  '''^docs/.*'''
-]
+description = "Known dev/test default secrets and burned historical tokens"
+regexes = [
+    # 1. Burned dev fallback JWT secret from initial development
+    '''proctornet_super_secret_jwt_key_local_development_fallback_2026''',
 
-commits = [
-  "e3d62516b4c32373bd0e387ec05d3da09d6e009e"
-]
+    # 2. Burned dev/CI JWT secrets from early commits
+    '''supersecret_jwt_proctornet_production_key_32bytes''',
+    '''supersecret_jwt_refresh_proctornet_key_32bytes''',
 
-stopwords = [
-  "replace_with_",
-  "example",
-  "dummy",
-  "ci_k6_jwt_secret_key_2026"
+    # 3. Burned dev SEB link HMAC secret
+    '''dev_seb_link_secret_at_least_32_characters_long_for_hmac''',
+
+    # 4. Ephemeral CI throwaway secrets used exclusively in isolated service containers
+    '''ci_throwaway_jwt_secret_at_least_32_characters_long_01''',
+    '''ci_throwaway_seb_link_secret_at_least_32_characters''',
+    '''ci_test_postgres_32char_secure_password_01''',
+    '''ci_test_redis_32char_secure_password_01''',
+
+    # 5. Ephemeral unit-test suite signing secrets
+    '''test_suite_jwt_secret_minimum_32_characters_long_for_unit_tests!''',
+    '''test_suite_jwt_refresh_secret_at_least_32_chars!''',
+    '''test_suite_seb_link_secret_at_least_32_characters_long_for_hmac!''',
+
+    # 6. Legacy default strings from initial repository template
+    '''proctornet_super_secret_jwt_key_change_in_production''',
+    '''proctornet-super-secret-key-production-ready''',
+    '''proctornet_default_jwt_signing_secret_key_2026''',
+
+    # 7. Known SEB test fixture 64-hex configuration keys
+    '''a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2''',
+    '''0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef''',
+    '''43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c'''
 ]

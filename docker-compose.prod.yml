@@ -7,6 +7,8 @@
 # 4. Internal bridge network (internal: true) isolates backend & data tiers
 # ==============================================================================
 
+name: proctornet-production
+
 services:
   # ----------------------------------------------------------------------------
   # Edge Reverse Proxy (Nginx) — ONLY service publishing external ports

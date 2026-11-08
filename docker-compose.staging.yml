@@ -1,0 +1,134 @@
+# ==============================================================================
+# ProctorNet Staging Infrastructure Stack (docker-compose.staging.yml)
+# Completely isolated from Production:
+# 1. Distinct COMPOSE_PROJECT_NAME: proctornet-staging
+# 2. Distinct volume names: staging_postgres_data, staging_redis_data, staging_rabbitmq_data
+# 3. Distinct container names prefixed with proctornet-staging-*
+# 4. Zero port collisions with production
+# ==============================================================================
+
+name: proctornet-staging
+
+services:
+  reverse-proxy:
+    image: ghcr.io/${GHCR_REPO:-proctornet/online-exam-proctoring}/frontend:${IMAGE_TAG:-staging}
+    container_name: proctornet-staging-reverse-proxy
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    networks:
+      - staging-edge
+      - staging-internal
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  backend:
+    image: ghcr.io/${GHCR_REPO:-proctornet/online-exam-proctoring}/backend:${IMAGE_TAG:-staging}
+    container_name: proctornet-staging-backend
+    restart: unless-stopped
+    networks:
+      - staging-internal
+    environment:
+      NODE_ENV: staging
+      PORT: 5000
+      PUBLIC_ORIGIN: ${STAGING_PUBLIC_ORIGIN:-https://staging.proctornet.duckdns.org}
+      DATABASE_URL: postgresql://proctornet_staging:${STAGING_POSTGRES_PASSWORD:?STAGING_POSTGRES_PASSWORD is required}@postgres:5432/proctornet_staging?schema=public
+      DIRECT_URL: postgresql://proctornet_staging:${STAGING_POSTGRES_PASSWORD:?STAGING_POSTGRES_PASSWORD is required}@postgres:5432/proctornet_staging?schema=public
+      REDIS_URL: redis://:${STAGING_REDIS_PASSWORD:?STAGING_REDIS_PASSWORD is required}@redis:6379
+      RABBITMQ_URL: amqp://proctornet_staging:${STAGING_RABBITMQ_DEFAULT_PASS:?STAGING_RABBITMQ_DEFAULT_PASS is required}@rabbitmq:5672
+      JWT_SECRET: ${STAGING_JWT_SECRET:?STAGING_JWT_SECRET is required}
+      JWT_REFRESH_SECRET: ${STAGING_JWT_REFRESH_SECRET:?STAGING_JWT_REFRESH_SECRET is required}
+      SEB_LINK_SECRET: ${STAGING_SEB_LINK_SECRET:?STAGING_SEB_LINK_SECRET is required}
+      ALLOWED_ORIGINS: ${STAGING_ALLOWED_ORIGINS:-https://staging.proctornet.duckdns.org}
+      CACHE_DRIVER: redis
+      FACE_DRIVER: ${FACE_DRIVER:-off}
+      MEDIA_DRIVER: ${MEDIA_DRIVER:-snapshot}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: proctornet-staging-postgres
+    restart: unless-stopped
+    networks:
+      - staging-internal
+    environment:
+      POSTGRES_USER: proctornet_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?STAGING_POSTGRES_PASSWORD is required}
+      POSTGRES_DB: proctornet_staging
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proctornet_staging -d proctornet_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: proctornet-staging-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${STAGING_REDIS_PASSWORD:?STAGING_REDIS_PASSWORD is required}
+    networks:
+      - staging-internal
+    environment:
+      REDIS_PASSWORD: ${STAGING_REDIS_PASSWORD:?STAGING_REDIS_PASSWORD is required}
+    volumes:
+      - staging_redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    container_name: proctornet-staging-rabbitmq
+    restart: unless-stopped
+    networks:
+      - staging-internal
+    environment:
+      RABBITMQ_DEFAULT_USER: proctornet_staging
+      RABBITMQ_DEFAULT_PASS: ${STAGING_RABBITMQ_DEFAULT_PASS:?STAGING_RABBITMQ_DEFAULT_PASS is required}
+    volumes:
+      - staging_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  staging-edge:
+    name: proctornet-staging_edge
+    driver: bridge
+  staging-internal:
+    name: proctornet-staging_internal
+    driver: bridge
+    internal: true
+
+volumes:
+  staging_postgres_data:
+    name: proctornet-staging_postgres_data
+  staging_redis_data:
+    name: proctornet-staging_redis_data
+  staging_rabbitmq_data:
+    name: proctornet-staging_rabbitmq_data
+

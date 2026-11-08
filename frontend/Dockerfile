@@ -40,70 +40,7 @@ USER nginx
 COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
 
 # Nginx configuration: gzip_static + brotli_static, 1-year immutable cache, API reverse proxy
-COPY --chown=nginx:nginx <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 8080;
-    server_name _;
-    root /usr/share/nginx/html;
-    index index.html;
-    client_max_body_size 35M;
-
-    # Serve pre-compressed assets (.gz / .br) automatically
-    gzip_static on;
-
-    # Security headers
-    add_header X-Frame-Options            "DENY"                                             always;
-    add_header X-Content-Type-Options     "nosniff"                                          always;
-    add_header Referrer-Policy            "strict-origin-when-cross-origin"                  always;
-    add_header Strict-Transport-Security  "max-age=31536000; includeSubDomains; preload"     always;
-
-    # Content-hashed Vite assets: 1-year immutable browser cache
-    location ~* \.(?:css|js|woff2?|svg|png|jpe?g|webp|ico|avif)$ {
-        expires 1y;
-        add_header Cache-Control "public, max-age=31536000, immutable";
-        access_log off;
-    }
-
-    # Proxy API requests to backend
-    location /api/ {
-        proxy_pass http://backend:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 3600s;
-    }
-
-    # Proxy WebSocket / Socket.io requests to backend
-    location /socket.io/ {
-        proxy_pass http://backend:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 3600s;
-    }
-
-    # SPA routing fallback: index.html never aggressively cached
-    location / {
-        try_files $uri $uri/ /index.html;
-        add_header Cache-Control "no-cache, no-store, must-revalidate";
-    }
-
-    location = /healthz {
-        access_log off;
-        return 200 "OK\n";
-    }
-}
-EOF
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 8080
 

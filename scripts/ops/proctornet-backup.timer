@@ -1,0 +1,13 @@
+[Unit]
+Description=Timer for ProctorNet Nightly PostgreSQL Backup
+RefuseManualStart=no
+RefuseManualStop=no
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
+
