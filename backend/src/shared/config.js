@@ -13,6 +13,21 @@ if (_cacheDriver === 'memory' && _appInstances > 1) {
   process.exit(1)
 }
 
+// ── SEB Mode & Global Configuration (Step 1) ──────────────────────────────────
+const _rawSebMode = (process.env.SEB_MODE || 'off').toLowerCase().trim()
+if (!['off', 'log', 'enforce'].includes(_rawSebMode)) {
+  throw new Error(`[FATAL] Invalid SEB_MODE: "${process.env.SEB_MODE}". Must be one of: off, log, enforce.`)
+}
+
+let _rawSebConfigKey = null
+if (process.env.SEB_CONFIG_KEY) {
+  const trimmedKey = process.env.SEB_CONFIG_KEY.trim().toLowerCase()
+  if (trimmedKey && !/^[0-9a-f]{64}$/.test(trimmedKey)) {
+    throw new Error('[FATAL] Invalid SEB_CONFIG_KEY. Must be a 64-character hex string if set.')
+  }
+  _rawSebConfigKey = trimmedKey || null
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -22,6 +37,10 @@ const config = {
   // Database
   databaseUrl: process.env.DATABASE_URL,
   directUrl: process.env.DIRECT_URL || process.env.DATABASE_URL,
+
+  // Safe Exam Browser (SEB) Settings
+  sebMode: _rawSebMode,
+  sebConfigKey: _rawSebConfigKey,
 
   // Redis
   redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',

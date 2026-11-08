@@ -47,7 +47,14 @@ const configSchema = z.object({
   COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
   FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off', 'test']).default('off'),
   MEDIA_DRIVER: z.enum(['snapshot', 'livekit', 'livekit-selfhost', 'livekit-cloud']).default('snapshot'),
-  CACHE_DRIVER: z.enum(['memory', 'redis']).default('redis')
+  CACHE_DRIVER: z.enum(['memory', 'redis']).default('redis'),
+  SEB_MODE: z.enum(['off', 'log', 'enforce']).default('off'),
+  SEB_CONFIG_KEY: z
+    .string()
+    .trim()
+    .regex(/^[0-9a-fA-F]{64}$/, 'SEB_CONFIG_KEY must be a 64-character hex string')
+    .optional()
+    .or(z.literal(''))
 })
 
 function validateConfig() {
@@ -72,9 +79,15 @@ function validateConfig() {
     })
     console.error('==========================================================\n')
 
-    if (isProd) {
-      console.error('Refusing to start application in production with invalid configuration. Exiting.')
-      process.exit(1)
+    const hasSebError = result.error.issues.some(
+      issue => issue.path.includes('SEB_MODE') || issue.path.includes('SEB_CONFIG_KEY')
+    )
+
+    if (isProd || hasSebError) {
+      console.error('Refusing to start application in production or with invalid SEB configuration. Exiting.')
+      throw new Error(
+        `Boot-Time Configuration Validation Failed: ${result.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ')}`
+      )
     } else {
       console.warn('WARNING: Running with configuration warnings in non-production environment.')
     }
