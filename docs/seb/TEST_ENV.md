@@ -71,6 +71,10 @@ node prisma/seed/admin.js
 ```
 
 ### Step 3: Run the Test Suites
+
+> [!WARNING]
+> **Strict Concurrency Rule:** Backend and Playwright E2E suites share the isolated test database `proctornet_e2e_test`. Playwright uses active database resetting (`resetCleanRoom()`) between test flows. Therefore, **backend tests and Playwright E2E tests must NEVER run concurrently**. Running them at the same time causes transient database foreign key violations (`exam_attempts_student_id_fkey`) and state collisions. Always run them sequentially.
+
 Run backend unit/integration tests:
 ```powershell
 npm test --workspace=backend
