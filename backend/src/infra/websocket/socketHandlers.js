@@ -9,6 +9,8 @@ const { logger } = require('../../shared/logging')
 const { verifyToken } = require('../../utils/jwt')
 const { extractTokenFromSocket } = require('../../utils/cookies')
 const { handleStaffJoin } = require('./staffHandlers')
+const config = require('../../shared/config')
+const { getCachedSebSettings, isAttemptSebVerified } = require('../../middleware/seb')
 
 function registerSocketEvents(io, socket, latestScreenFrames) {
   if (socket.user?.id) {
@@ -80,6 +82,23 @@ function registerSocketEvents(io, socket, latestScreenFrames) {
         socket.authorizedAttempts.add(attemptId)
         socket.activeAttemptId = attemptId
         socket.activeExamId = attempt.examId
+      }
+
+      // Enforce prior SEB verification in enforce mode
+      const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+      if (sebMode === 'enforce' && socket.activeExamId) {
+        const examSettings = await getCachedSebSettings(socket.activeExamId)
+        if (examSettings?.sebRequired) {
+          const verified = await isAttemptSebVerified(attemptId)
+          if (!verified) {
+            logger.warn({ attemptId, studentId: socket.user.id, examId: socket.activeExamId }, 'Socket.IO attempt:join refused: SEB verification required in enforce mode')
+            return typeof ack === 'function' && ack({
+              success: false,
+              code: 'SEB_REQUIRED',
+              error: 'Safe Exam Browser verification required before connecting to exam session'
+            })
+          }
+        }
       }
 
       socket.join(`attempt:${attemptId}`)
