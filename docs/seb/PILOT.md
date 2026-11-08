@@ -75,6 +75,8 @@ When a candidate requests an SEB-gated endpoint, backend logs an event in JSON f
   "matched": false,
   "receivedPrefix8": null,
   "expectedPrefix8": "e0708176",
+  "expectedHash": "e070817698a873c9f28d7ba3cf19530de7eb481b4dc908cb04812b1d02cba32a",
+  "receivedHash": null,
   "urlHashed": "http://localhost:5173/api/v1/attempts/exams/58f57227-cbc4-4278-968b-f8b83384cfee/start"
 }
 ```
