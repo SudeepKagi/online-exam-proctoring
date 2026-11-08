@@ -377,12 +377,12 @@ async function runVerifySeb(req, res, next) {
   }
 
   // 8. Logging
-  const isTestDb = (process.env.DATABASE_URL || '').includes('_test')
-  const allowFullDebugHashes =
-    process.env.SEB_DEBUG_LOG_HASHES === 'true' &&
-    process.env.NODE_ENV !== 'production' &&
-    !config.isProd &&
-    isTestDb
+  const { isNonProductionDatabase } = require('../infra/postgres/assertNonProduction')
+  const dbUrl = process.env.DATABASE_URL || config.databaseUrl || ''
+  const isTestHost = isNonProductionDatabase(dbUrl)
+  const isProd = process.env.NODE_ENV === 'production' || config.nodeEnv === 'production' || Boolean(config.isProd)
+  const isDebugRequested = process.env.SEB_DEBUG_LOG_HASHES === 'true' || Boolean(config.sebDebugLogHashes)
+  const allowFullDebugHashes = isDebugRequested && !isProd && isTestHost
 
   const logPayload = {
     examId,

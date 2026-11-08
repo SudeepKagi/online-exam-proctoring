@@ -17,7 +17,7 @@ const LOCAL_HOST_ALLOWLIST = new Set([
   'host.docker.internal'
 ])
 
-const SAFE_DB_NAME_REGEX = /(_test|_ci|_dev|_local)$/i
+const SAFE_DB_NAME_REGEX = /(_test|_ci|_dev|_local|_pilot)$/i
 
 function parseDatabaseConnection(urlStr) {
   if (!urlStr) return { host: 'unknown', dbName: 'unknown' }
