@@ -136,7 +136,7 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
     }
-    adminToken = signToken(adminUser)
+    adminToken = signToken({ id: adminUser.id, email: adminUser.email, role: adminUser.role, status: adminUser.status })
 
     // Setup Student
     studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: { not: { contains: 'load' } } } })
@@ -151,7 +151,7 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
     }
-    studentToken = signToken(studentUser)
+    studentToken = signToken({ id: studentUser.id, email: studentUser.email, role: studentUser.role, status: studentUser.status })
 
     // Setup Faculty
     facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY', email: { not: { contains: 'load' } } } })
@@ -166,7 +166,7 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
     }
-    facultyToken = signToken(facultyUser)
+    facultyToken = signToken({ id: facultyUser.id, email: facultyUser.email, role: facultyUser.role, status: facultyUser.status })
   })
 
   after(async () => {

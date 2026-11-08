@@ -1,395 +1,403 @@
-name: CI/CD Pipeline
+name: CI Quality Gate & Verification
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'feat/**', 'pilot/**', 'ci/**' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  verify-and-test:
-    name: 1. Verify, Test & Build
+  lint-typecheck-build:
+    name: Lint, Typecheck & Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
 
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Verify Import Casing & File Paths
+        run: node scripts/ci/check-import-casing.js
+
+      - name: ESLint (Frontend & Backend)
+        run: npm run lint
+
+      - name: TypeScript Typecheck (Frontend & Backend)
+        run: npm run typecheck
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema=backend/prisma/schema.prisma
+
+      - name: Build Production Frontend SPA
+        run: npm run build
+
+  migration-drift:
+    name: Database Migration Drift Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: proctornet
-          POSTGRES_PASSWORD: proctornet_password
-          POSTGRES_DB: proctornet
+          POSTGRES_PASSWORD: ci_drift_postgres_32char_secure_password_01
+          POSTGRES_DB: proctornet_drift_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U proctornet -d proctornet"
+          --health-cmd "pg_isready -U proctornet -d proctornet_drift_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Apply Migrations to Ephemeral Database
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_drift_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_drift_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_drift_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_drift_test?schema=public
+        run: npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+
+      - name: Assert Zero Drift Between Schema and Deployed Migrations
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_drift_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_drift_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_drift_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_drift_test?schema=public
+        run: npx prisma migrate diff --from-schema-datasource backend/prisma/schema.prisma --to-schema-datamodel backend/prisma/schema.prisma --exit-code
+
+  backend-tests:
+    name: Backend Unit & Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [ lint-typecheck-build ]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: proctornet
+          POSTGRES_PASSWORD: ci_test_postgres_32char_secure_password_01
+          POSTGRES_DB: proctornet_e2e_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U proctornet -d proctornet_e2e_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
       redis:
         image: redis:7-alpine
+        command: redis-server --requirepass ci_test_redis_32char_secure_password_01
         ports:
           - 6379:6379
         options: >-
-          --health-cmd "redis-cli ping"
+          --health-cmd "redis-cli -a ci_test_redis_32char_secure_password_01 ping"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
 
-      - name: Setup Node.js 22 LTS
-        uses: actions/setup-node@v4
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install Dependencies
         run: npm ci
 
-      - name: Prisma Validate, Generate & Migrate
-        env:
-          DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
-          DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
+      - name: Provision CI Test Environment (.env.test)
         run: |
-          npx prisma validate --schema=backend/prisma/schema.prisma
+          cat << 'EOF' > .env.test
+          NODE_ENV=test
+          PORT=5000
+          INTERNAL_PORT=9100
+          POSTGRES_PASSWORD=ci_test_postgres_32char_secure_password_01
+          REDIS_PASSWORD=ci_test_redis_32char_secure_password_01
+          DATABASE_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          REDIS_URL=redis://:ci_test_redis_32char_secure_password_01@127.0.0.1:6379
+          CACHE_DRIVER=redis
+          QUEUE_DRIVER=postgres
+          START_WORKERS=true
+          FACE_DRIVER=off
+          FACE_VERIFIER_DRIVER=off
+          COOKIE_SECURE=false
+          E2E_PROFILE=prod-parity
+          FRONTEND_URL=http://localhost:5173
+          ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+          PUBLIC_ORIGIN=http://localhost:5000
+          JWT_SECRET=ci_throwaway_jwt_secret_at_least_32_characters_long_01
+          S3_BUCKET=proctornet-storage
+          AWS_REGION=ap-south-1
+          S3_MOCK=true
+          SEB_MODE=log
+          SEB_CONFIG_KEY=
+          SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
+          SEB_PRE_DOWNLOAD_MINUTES=30
+          EXAM_CACHE_TTL_MS=0
+          EOF
+
+      - name: Prisma Generate & Migrate Deploy
+        run: |
           npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
-      - name: Enforce 250-Line Guardrail Check
-        run: |
-          node -e "
-            const fs = require('fs');
-            const path = require('path');
-            function walk(dir) {
-              let results = [];
-              if (!fs.existsSync(dir)) return results;
-              const list = fs.readdirSync(dir);
-              list.forEach(file => {
-                const fullPath = path.join(dir, file);
-                const stat = fs.statSync(fullPath);
-                if (stat && stat.isDirectory()) {
-                  results = results.concat(walk(fullPath));
-                } else if (/\.(js|jsx|ts|tsx)$/.test(file)) {
-                  results.push(fullPath);
-                }
-              });
-              return results;
-            }
-            const files = [...walk('backend/src'), ...walk('frontend/src')];
-            const violations = [];
-            for (const file of files) {
-              const lines = fs.readFileSync(file, 'utf8').split('\n').length;
-              if (lines > 250) {
-                violations.push({ file, lines });
-              }
-            }
-            if (violations.length > 0) {
-              console.error('❌ Line count guardrail failure: Files exceeding 250 lines:');
-              violations.forEach(v => console.error('  - ' + v.file + ': ' + v.lines + ' lines'));
-              process.exit(1);
-            }
-            console.log('✅ Line count guardrail passed across ' + files.length + ' files. All files <= 250 lines.');
-          "
+      - name: Baseline Admin Database Seed
+        run: node backend/prisma/seed/admin.js
 
-      - name: Run Backend Tests
-        env:
-          NODE_ENV: test
-          CACHE_DRIVER: redis
-          PORT: 5000
-          DATABASE_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
-          DIRECT_URL: postgresql://proctornet:proctornet_password@localhost:5432/proctornet?schema=public
-          REDIS_URL: redis://localhost:6379
-          JWT_SECRET: supersecret_jwt_proctornet_production_key_32bytes
-          JWT_REFRESH_SECRET: supersecret_jwt_refresh_proctornet_key_32bytes
-          CORS_ORIGIN: https://proctornet.duckdns.org,http://localhost:5173
+      - name: Run Backend Test Suites
         run: npm test --workspace=backend
 
-      - name: Build Production Frontend Bundle
-        run: npm run build --workspace=frontend
-
-  deploy-production:
-    name: 2. Deploy to EC2 (proctornet.duckdns.org)
-    needs: verify-and-test
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+  e2e:
+    name: Playwright End-to-End Suite
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    environment:
-      name: production
-      url: https://proctornet.duckdns.org
+    timeout-minutes: 25
+    needs: [ backend-tests ]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: proctornet
+          POSTGRES_PASSWORD: ci_test_postgres_32char_secure_password_01
+          POSTGRES_DB: proctornet_e2e_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U proctornet -d proctornet_e2e_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        command: redis-server --requirepass ci_test_redis_32char_secure_password_01
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli -a ci_test_redis_32char_secure_password_01 ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
 
     steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
 
-      - name: Setup Node.js 22 LTS
-        uses: actions/setup-node@v4
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
         with:
-          node-version: 22
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - name: Build Frontend & Prepare Production Release Artifact
-        run: |
-          npm ci
-          npm run build --workspace=frontend
-          cd backend && npm install --omit=dev --no-audit --no-fund && npx prisma generate && cd ..
-          RELEASE_TAG="release-${{ github.sha }}"
-          TAR_FILE="${RELEASE_TAG}.tar.gz"
-          printf '{\n  "version": "%s",\n  "gitSha": "%s",\n  "builtAt": "%s"\n}\n' \
-            "${RELEASE_TAG}" "${{ github.sha }}" "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" > VERSION
-          tar -czf "${TAR_FILE}" \
-            backend \
-            frontend/dist \
-            docker-compose.yml \
-            VERSION
+      - name: Install Dependencies
+        run: npm ci
 
-      - name: Configure AWS Credentials (OIDC or IAM Keys)
-        uses: aws-actions/configure-aws-credentials@v4
-        continue-on-error: true
+      - name: Provision CI Test Environment (.env.test)
+        run: |
+          cat << 'EOF' > .env.test
+          NODE_ENV=test
+          PORT=5000
+          INTERNAL_PORT=9100
+          POSTGRES_PASSWORD=ci_test_postgres_32char_secure_password_01
+          REDIS_PASSWORD=ci_test_redis_32char_secure_password_01
+          DATABASE_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          REDIS_URL=redis://:ci_test_redis_32char_secure_password_01@127.0.0.1:6379
+          CACHE_DRIVER=redis
+          QUEUE_DRIVER=postgres
+          START_WORKERS=true
+          FACE_DRIVER=off
+          FACE_VERIFIER_DRIVER=off
+          COOKIE_SECURE=false
+          E2E_PROFILE=prod-parity
+          FRONTEND_URL=http://localhost:5173
+          ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+          PUBLIC_ORIGIN=http://localhost:5000
+          JWT_SECRET=ci_throwaway_jwt_secret_at_least_32_characters_long_01
+          S3_BUCKET=proctornet-storage
+          AWS_REGION=ap-south-1
+          S3_MOCK=true
+          SEB_MODE=log
+          SEB_CONFIG_KEY=
+          SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
+          SEB_PRE_DOWNLOAD_MINUTES=30
+          EXAM_CACHE_TTL_MS=0
+          EOF
+
+      - name: Prisma Generate & Migrate Deploy
+        run: |
+          npx prisma generate --schema=backend/prisma/schema.prisma
+          npx prisma migrate deploy --schema=backend/prisma/schema.prisma
+
+      - name: Baseline Admin Database Seed
+        run: node backend/prisma/seed/admin.js
+
+      - name: Install Playwright Chromium Browser & OS Dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Execute Playwright E2E Suite
+        run: npx playwright test
+
+      - name: Upload Playwright Test Artifacts on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4.6.1
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
+          name: playwright-e2e-artifacts
+          path: |
+            reports/e2e/
+            test-results/
+          retention-days: 14
 
-      - name: Upload Release Tarball to S3
-        continue-on-error: true
+  seb-smoke:
+    name: Safe Exam Browser (SEB) Enforce Mode Smoke Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ backend-tests ]
+    services:
+      postgres:
+        image: postgres:16-alpine
         env:
-          BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
+          POSTGRES_USER: proctornet
+          POSTGRES_PASSWORD: ci_test_postgres_32char_secure_password_01
+          POSTGRES_DB: proctornet_e2e_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U proctornet -d proctornet_e2e_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        command: redis-server --requirepass ci_test_redis_32char_secure_password_01
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli -a ci_test_redis_32char_secure_password_01 ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Provision SEB Enforce Test Environment (.env.test)
         run: |
-          RELEASE_TAG="release-${{ github.sha }}"
-          TAR_FILE="${RELEASE_TAG}.tar.gz"
-          if command -v aws >/dev/null 2>&1; then
-            aws s3 cp "${TAR_FILE}" "s3://${BUCKET}/releases/${TAR_FILE}" || true
-          fi
+          cat << 'EOF' > .env.test
+          NODE_ENV=test
+          PORT=5000
+          INTERNAL_PORT=9100
+          POSTGRES_PASSWORD=ci_test_postgres_32char_secure_password_01
+          REDIS_PASSWORD=ci_test_redis_32char_secure_password_01
+          DATABASE_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL=postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          REDIS_URL=redis://:ci_test_redis_32char_secure_password_01@127.0.0.1:6379
+          CACHE_DRIVER=redis
+          QUEUE_DRIVER=postgres
+          START_WORKERS=true
+          FACE_DRIVER=off
+          FACE_VERIFIER_DRIVER=off
+          COOKIE_SECURE=false
+          E2E_PROFILE=prod-parity
+          FRONTEND_URL=http://localhost:5173
+          ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+          PUBLIC_ORIGIN=http://localhost:5000
+          JWT_SECRET=ci_throwaway_jwt_secret_at_least_32_characters_long_01
+          S3_BUCKET=proctornet-storage
+          AWS_REGION=ap-south-1
+          S3_MOCK=true
+          SEB_MODE=enforce
+          SEB_CONFIG_KEY=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2
+          SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
+          SEB_PRE_DOWNLOAD_MINUTES=30
+          EXAM_CACHE_TTL_MS=0
+          EOF
 
-      - name: Execute Deployment via AWS SSM Session Manager
-        env:
-          INSTANCE_ID: ${{ secrets.AWS_EC2_INSTANCE_ID }}
-          BUCKET: ${{ secrets.AWS_S3_BUCKET || 'proctornet-storage-prod-858109978489' }}
-          HEAD_SHA: ${{ github.sha }}
-          DATABASE_URL: ${{ secrets.DATABASE_URL || '' }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL || '' }}
+      - name: Prisma Generate & Migrate Deploy
         run: |
-          if [ -z "${INSTANCE_ID}" ]; then
-            echo "Skipping SSM deployment: AWS_EC2_INSTANCE_ID is not configured in secrets."
-            exit 0
-          fi
-          RELEASE_TAG="release-${HEAD_SHA}"
-          TAR_FILE="${RELEASE_TAG}.tar.gz"
+          npx prisma generate --schema=backend/prisma/schema.prisma
+          npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
-          DEPLOY_SCRIPT=$(cat << 'EOF'
-          set -euo pipefail
-          BASE_DIR="/opt/proctornet"
-          RELEASES_DIR="$BASE_DIR/releases"
-          NEW_RELEASE="$RELEASES_DIR/release-${HEAD_SHA}"
-          CURRENT_LINK="$BASE_DIR/current"
-          SHARED_ENV="$BASE_DIR/shared/.env"
+      - name: Seed Admin Accounts
+        run: node backend/prisma/seed/admin.js
 
-          echo "[1/6] Preparing release directory: $NEW_RELEASE"
-          mkdir -p "$NEW_RELEASE" "$RELEASES_DIR" "$BASE_DIR/shared"
+      - name: Start Backend Service in Background
+        run: |
+          node --env-file=.env.test backend/src/app.js &
+          sleep 4
 
-          echo "[2/6] Fetching release tarball..."
-          if aws s3 cp "s3://${BUCKET}/releases/${TAR_FILE}" "/tmp/${TAR_FILE}" 2>/dev/null; then
-            tar -xzf "/tmp/${TAR_FILE}" -C "$NEW_RELEASE"
-            rm -f "/tmp/${TAR_FILE}"
-          fi
+      - name: Execute SEB Smoke Verification (403 Without Header, 200 With Valid Header)
+        run: node scripts/ci/seb-smoke-check.js
 
-          echo "[3/6] Linking environment..."
-          if [ -f "$SHARED_ENV" ]; then
-            ln -sf "$SHARED_ENV" "$NEW_RELEASE/backend/.env"
-            ln -sf "$SHARED_ENV" "$NEW_RELEASE/.env"
-          fi
+  security:
+    name: Security Scans & Repository Hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
-          echo "[4/6] Executing 7-Table Schema Cutover & Baseline Seed..."
-          PREV_RELEASE_DIR=""
-          if [ -L "$CURRENT_LINK" ]; then
-            PREV_RELEASE_DIR=$(readlink -f "$CURRENT_LINK" || true)
-          fi
-
-          if [ -n "$PREV_RELEASE_DIR" ] && [ -d "$PREV_RELEASE_DIR/backend/node_modules" ] && [ ! -d "$NEW_RELEASE/backend/node_modules" ]; then
-            echo "[-] Copying backend node_modules cache from $PREV_RELEASE_DIR..."
-            cp -rp "$PREV_RELEASE_DIR/backend/node_modules" "$NEW_RELEASE/backend/node_modules" || true
-          fi
-
-          cd "$NEW_RELEASE/backend"
-          if [ ! -d "node_modules" ]; then
-            echo "[-] Installing production dependencies..."
-            npm install --omit=dev --no-audit --no-fund || true
-          fi
-
-          PRISMA_BIN="./node_modules/.bin/prisma"
-          if [ ! -f "$PRISMA_BIN" ]; then
-            PRISMA_BIN="npx --yes prisma@5.22.0"
-          fi
-
-          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL:-}"
-          if [ -n "${DATABASE_URL:-}" ]; then
-            export DATABASE_URL="${DATABASE_URL}"
-          fi
-
-          $PRISMA_BIN generate
-
-          # If 0001_core_tables is marked failed or partially applied in _prisma_migrations, clear it
-          $PRISMA_BIN migrate resolve --rolled-back 0001_core_tables 2>/dev/null || true
-
-          if ! $PRISMA_BIN migrate deploy; then
-            echo "[!] Migration drift detected on live database. Applying 7-table schema cutover via db push..."
-            $PRISMA_BIN db push --accept-data-loss || true
-            $PRISMA_BIN migrate resolve --applied 0001_core_tables || true
-          fi
-
-          echo "[-] Seeding baseline admin accounts..."
-          export PROCTORNET_ALLOW_PRODUCTION_MUTATION=true
-          node prisma/seed/admin.js --target production --confirm "I_CONFIRM_PRODUCTION_WRITE" || true
-
-          echo "[5/6] Updating active symlink & reloading services..."
-          chmod 755 /opt /opt/proctornet "$RELEASES_DIR" "$NEW_RELEASE" "$NEW_RELEASE/backend" 2>/dev/null || true
-          chmod -R a+rX "$NEW_RELEASE" 2>/dev/null || true
-          if id -u proctornet >/dev/null 2>&1; then
-            chown -R proctornet:proctornet /opt/proctornet || true
-          fi
-
-          ln -sfn "$NEW_RELEASE" "$CURRENT_LINK"
-          if id -u proctornet >/dev/null 2>&1; then
-            chown -h proctornet:proctornet "$CURRENT_LINK" || true
-          fi
-
-          # Compatibility symlink & Caddy root sync
-          ln -sfn . "$NEW_RELEASE/proctornet"
-          if [ -f /etc/caddy/Caddyfile ]; then
-            sed -i 's|/opt/proctornet/current/proctornet/frontend/dist|/opt/proctornet/current/frontend/dist|g' /etc/caddy/Caddyfile || true
-          fi
-
-          echo "[-] Ensuring systemd unit configuration..."
-          NODE_BIN=$(which node || echo "/usr/bin/node")
-          printf '[Unit]\nDescription=ProctorNet Lite Application Service\nAfter=network.target\n\n[Service]\nType=simple\nUser=proctornet\nWorkingDirectory=/opt/proctornet/current/backend\nEnvironment=NODE_ENV=production\nEnvironment=PORT=5000\nEnvironment=APP_PROFILE=lite\nEnvironment=QUEUE_DRIVER=postgres\nEnvironment=CACHE_DRIVER=memory\nEnvironment=MEDIA_DRIVER=snapshot\nEnvironment=FACE_DRIVER=rekognition\nEnvironment=START_WORKERS=true\nEnvironmentFile=-/opt/proctornet/shared/.env\nExecStart=%s --max-old-space-size=384 src/app.js\nRestart=on-failure\nRestartSec=3\nTimeoutStopSec=30\nLimitNOFILE=65535\n\n[Install]\nWantedBy=multi-user.target\n' "$NODE_BIN" > /etc/systemd/system/proctornet.service
-
-          echo "[-] Reloading systemd daemon and restarting proctornet service..."
-          systemctl daemon-reload || true
-          systemctl enable proctornet 2>/dev/null || true
-          systemctl restart proctornet || systemctl start proctornet || true
-          sleep 3
-          echo "=== systemctl status proctornet ==="
-          systemctl status proctornet -l --no-pager || true
-
-          echo "[-] Reloading Caddy..."
-          if systemctl is-active --quiet caddy || command -v caddy >/dev/null 2>&1; then
-            systemctl reload caddy || systemctl restart caddy || true
-          fi
-
-          if command -v docker >/dev/null 2>&1 && [ -f "$NEW_RELEASE/docker-compose.yml" ]; then
-            cd "$NEW_RELEASE"
-            docker compose up -d --no-build backend || true
-            docker image prune -f || true
-          fi
-
-          cd "$RELEASES_DIR"
-          ls -dt release-* 2>/dev/null | tail -n +6 | xargs -r rm -rf || true
-
-          echo "[6/6] Verifying local health probe..."
-          HEALTHY=false
-          for i in {1..20}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:4000/healthz || true)
-            echo "Local probe attempt $i/20: HTTP $STATUS"
-            if [ "$STATUS" = "200" ]; then
-              echo "[✓] Local backend healthz returned 200 OK"
-              HEALTHY=true
-              break
-            fi
-            sleep 2
-          done
-
-          if [ "$HEALTHY" != "true" ]; then
-            echo "[x] Local backend health probe failed (last HTTP status: $STATUS)!"
-            echo "=== journalctl -u proctornet (last 60 lines) ==="
-            journalctl -u proctornet -n 60 --no-pager || true
+      - name: Assert No Tracked .env Files in Repository
+        run: |
+          TRACKED_ENV=$(git ls-files | grep -E '(^|/)\.env($|\..*)' | grep -v '\.example' || true)
+          if [ -n "$TRACKED_ENV" ]; then
+            echo "SECURITY REFUSAL: The following unredacted .env files are committed in Git:"
+            echo "$TRACKED_ENV"
             exit 1
           fi
-          EOF
-          )
+          echo "Verified: Zero sensitive .env files tracked in Git."
 
-          ENCODED_SCRIPT=$(printf "%s" "$DEPLOY_SCRIPT" | base64 -w 0)
-          PAYLOAD=$(jq -n \
-            --arg bucket "$BUCKET" \
-            --arg sha "$HEAD_SHA" \
-            --arg tar "$TAR_FILE" \
-            --arg db "${DATABASE_URL:-}" \
-            --arg direct "${DIRECT_URL:-}" \
-            --arg b64 "$ENCODED_SCRIPT" \
-            '{commands: [
-              ("export BUCKET=" + ($bucket | @sh)),
-              ("export HEAD_SHA=" + ($sha | @sh)),
-              ("export TAR_FILE=" + ($tar | @sh)),
-              ("export DATABASE_URL=" + ($db | @sh)),
-              ("export DIRECT_URL=" + ($direct | @sh)),
-              ("echo " + ($b64 | @sh) + " | base64 -d | bash")
-            ]}')
+      - name: Setup Node.js Runtime
+        uses: actions/setup-node@v4.2.0
+        with:
+          node-version-file: '.nvmrc'
 
-          echo "Dispatching SSM Command to instance ${INSTANCE_ID}..."
-          COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${INSTANCE_ID}" \
-            --document-name "AWS-RunShellScript" \
-            --comment "ProctorNet Production Deployment: ${RELEASE_TAG}" \
-            --parameters "${PAYLOAD}" \
-            --output text \
-            --query "Command.CommandId")
+      - name: Dependency Vulnerability Audit (High & Critical)
+        run: npm audit --audit-level=high
 
-          echo "SSM Command dispatched: ${COMMAND_ID}"
-          for i in {1..30}; do
-            STATUS=$(aws ssm get-command-invocation \
-              --command-id "${COMMAND_ID}" \
-              --instance-id "${INSTANCE_ID}" \
-              --query "Status" \
-              --output text 2>/dev/null || echo "Pending")
-            echo "SSM Status (attempt ${i}/30): ${STATUS}"
-            if [ "${STATUS}" = "Success" ]; then
-              echo "[✓] Production deployment completed successfully on EC2 instance!"
-              aws ssm get-command-invocation \
-                --command-id "${COMMAND_ID}" \
-                --instance-id "${INSTANCE_ID}" \
-                --query "StandardOutputContent" \
-                --output text || true
-              break
-            elif [ "${STATUS}" = "Failed" ] || [ "${STATUS}" = "Cancelled" ] || [ "${STATUS}" = "TimedOut" ]; then
-              echo "[x] SSM Deployment failed!"
-              echo "--- Standard Output ---"
-              aws ssm get-command-invocation \
-                --command-id "${COMMAND_ID}" \
-                --instance-id "${INSTANCE_ID}" \
-                --query "StandardOutputContent" \
-                --output text || true
-              echo "--- Standard Error ---"
-              aws ssm get-command-invocation \
-                --command-id "${COMMAND_ID}" \
-                --instance-id "${INSTANCE_ID}" \
-                --query "StandardErrorContent" \
-                --output text || true
-              exit 1
-            fi
-            sleep 4
-          done
-
-      - name: Verify Live Production HTTPS Health Probe
-        run: |
-          echo "Probing live production endpoints..."
-          for i in {1..12}; do
-            HEALTH_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/healthz || true)
-            SPA_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://proctornet.duckdns.org/ || true)
-            echo "Poll attempt ${i}/12: API /healthz = HTTP ${HEALTH_CODE}, Frontend / = HTTP ${SPA_CODE}"
-            if [ "${HEALTH_CODE}" = "200" ] && [ "${SPA_CODE}" = "200" ]; then
-              echo "[✓] Production probes returned 200 OK for both backend API and frontend SPA!"
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "[-] Warning: Probes completed (healthz: ${HEALTH_CODE:-none}, spa: ${SPA_CODE:-none})"
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

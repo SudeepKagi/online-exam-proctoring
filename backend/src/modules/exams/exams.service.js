@@ -221,7 +221,7 @@ class ExamService {
       }
     } catch (_) {}
     const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim().toLowerCase() : null
-    const sebConfigKey = perExamKey || institutionKey || envKey || null
+    const sebConfigKey = sebRequired ? (perExamKey || institutionKey || envKey || null) : null
     return { sebRequired, sebConfigKey }
   }
 
