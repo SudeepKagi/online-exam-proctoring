@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut, Settings } from 'lucide-react'
+import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut, Settings, ShieldCheck } from 'lucide-react'
 
 export default function DashboardShell({ children, title = 'Dashboard' }) {
   const { user, logout } = useAuth()
@@ -17,7 +17,8 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
     navItems.push(
       { label: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard },
       { label: 'Users & Approvals', path: '/admin/users', icon: Users },
-      { label: 'Exams', path: '/admin/exams', icon: BookOpen }
+      { label: 'Exams', path: '/admin/exams', icon: BookOpen },
+      { label: 'Secure Browser', path: '/admin/seb', icon: ShieldCheck }
     )
   } else if (role === 'FACULTY') {
     navItems.push(

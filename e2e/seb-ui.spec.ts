@@ -1,13 +1,14 @@
 import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { api } from './helpers/api'
-import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
+import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS, ADMIN_CREDENTIALS } from './helpers/cleanroom'
 
 test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () => {
   test.describe.configure({ mode: 'serial' })
 
   let facultyActor: any
   let studentActor: any
+  let adminActor: any
   let testExamId: string
   const VALID_CONFIG_KEY = '43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c'
 
@@ -62,6 +63,7 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
   test.afterAll(async () => {
     if (facultyActor) await facultyActor.close()
     if (studentActor) await studentActor.close()
+    if (adminActor) await adminActor.close()
   })
 
   test('1. seb-status endpoint returns status without blocking student or non-SEB clients', async () => {
@@ -228,5 +230,91 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     const recheckBtn = page.getByRole('button', { name: /Re-check Browser Status/i })
     await recheckBtn.click()
     await expect(page.getByText('Safe Exam Browser Required')).toBeVisible()
+  })
+
+  test('6. Admin Secure Browser Setup: displays 3 numbered steps, downloads checklist, and uploads configuration', async ({ browser }) => {
+    adminActor = await createActor(browser, 'admin')
+    const page = adminActor.page
+
+    // Admin login
+    await page.goto('/login?role=admin')
+    await page.locator('input[type="text"]').fill(ADMIN_CREDENTIALS.email)
+    await page.locator('input[type="password"]').fill(ADMIN_CREDENTIALS.password)
+    await page.locator('button[type="submit"]').click()
+    await page.waitForURL((url: URL) => url.pathname.includes('/admin'), { timeout: 15000 })
+
+    // Navigate to /admin/seb
+    await page.goto('/admin/seb')
+    await page.waitForLoadState('networkidle')
+
+    // Verify 3 numbered steps
+    await expect(page.getByText('Install Config Tool & settings checklist')).toBeVisible()
+    await expect(page.getByText('Upload configuration file & paste Config Key')).toBeVisible()
+    await expect(page.locator('div[data-slot="card-title"]', { hasText: 'Test my setup' })).toBeVisible()
+
+    // Verify checklist items & helper text
+    await expect(page.getByText(/Copy the CONFIG KEY, not the Browser Exam Key/i)).toBeVisible()
+    await expect(page.getByText(/Use Browser Exam Key and Configuration Key/i)).toBeVisible()
+    await expect(page.getByText(/Allow video capture/i)).toBeVisible()
+
+    // Test file selection and input
+    const fileChooserPromise = page.waitForEvent('filechooser')
+    await page.locator('label[for="seb-file-upload"]').click()
+    const fileChooser = await fileChooserPromise
+    await fileChooser.setFiles({
+      name: 'institution.seb',
+      mimeType: 'application/seb',
+      buffer: Buffer.from('seb\0mock-encrypted-seb-binary-content')
+    })
+
+    await expect(page.getByText('institution.seb')).toBeVisible()
+
+    // Fill valid 64-hex config key
+    const configInput = page.locator('input[placeholder*="43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c"]')
+    await configInput.fill(VALID_CONFIG_KEY)
+
+    // Submit form
+    await page.getByRole('button', { name: /Save institution configuration/i }).click()
+
+    // Verify success notification & status update
+    await expect(page.getByText(/configuration saved successfully/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Configured \(Key: ••••••••1f8c\)/i)).toBeVisible()
+  })
+
+  test('7. Admin Secure Browser Setup: "Test my setup" triggers launch link and displays live Verified indicator', async () => {
+    const page = adminActor.page
+    await page.goto('/admin/seb')
+    await page.waitForLoadState('networkidle')
+
+    // Mock /api/v1/seb/launch-link so browser navigation is intercepted cleanly
+    await page.route('**/api/v1/seb/launch-link', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ url: 'seb://localhost:5000/api/v1/seb/config/mock-token.seb' })
+      })
+    })
+
+    // Mock status polling to return fresh lastVerifiedAt
+    const recentVerifiedTime = new Date().toISOString()
+    await page.route('**/api/v1/admin/seb/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          configured: true,
+          uploadedAt: new Date().toISOString(),
+          keyLast4: '1f8c',
+          lastVerifiedAt: recentVerifiedTime
+        })
+      })
+    })
+
+    // Click "Test my setup"
+    const testBtn = page.getByRole('button', { name: /Test my setup/i })
+    await testBtn.click()
+
+    // Live green badge should appear
+    await expect(page.getByText('Verified ✓ just now').first()).toBeVisible({ timeout: 10000 })
   })
 })

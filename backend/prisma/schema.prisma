@@ -192,3 +192,16 @@ model ProctoringLog {
 
   @@map("proctoring_logs")
 }
+
+// -------------------------------------------------------------
+// 8. SystemSetting (Key-Value configuration store)
+// -------------------------------------------------------------
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("system_settings")
+}
+

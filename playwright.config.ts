@@ -67,6 +67,7 @@ export default defineConfig({
         DATABASE_URL: process.env.DATABASE_URL || `postgresql://proctornet:${process.env.POSTGRES_PASSWORD || 'missing_password'}@127.0.0.1:5434/proctornet_e2e_test?schema=public`,
         DIRECT_URL: process.env.DIRECT_URL || `postgresql://proctornet:${process.env.POSTGRES_PASSWORD || 'missing_password'}@127.0.0.1:5434/proctornet_e2e_test?schema=public`,
         REDIS_URL: process.env.REDIS_URL || (process.env.REDIS_PASSWORD ? `redis://:${process.env.REDIS_PASSWORD}@127.0.0.1:6380` : 'redis://127.0.0.1:6380'),
+        S3_MOCK: process.env.S3_MOCK || 'true',
         EXAM_CACHE_TTL_MS: process.env.EXAM_CACHE_TTL_MS || '0'
       },
       timeout: 30000,

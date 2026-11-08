@@ -93,7 +93,13 @@ const configSchema = z.object({
     .trim()
     .regex(/^[0-9a-fA-F]{64}$/, 'SEB_CONFIG_KEY must be a 64-character hex string')
     .optional()
-    .or(z.literal(''))
+    .or(z.literal('')),
+  SEB_LINK_SECRET: z
+    .string()
+    .min(32, 'SEB_LINK_SECRET must be at least 32 characters long')
+    .refine(val => !KNOWN_DEFAULTS.has(val.trim()), 'SEB_LINK_SECRET matches a known insecure default')
+    .optional(),
+  SEB_PRE_DOWNLOAD_MINUTES: z.coerce.number().default(30)
 })
 
 function validateConfig() {
@@ -106,6 +112,14 @@ function validateConfig() {
       process.env.S3_BUCKET = 'proctornet-test-bucket'
       process.env.AWS_S3_BUCKET = 'proctornet-test-bucket'
     }
+    if (!process.env.SEB_LINK_SECRET) {
+      process.env.SEB_LINK_SECRET = 'test_suite_seb_link_secret_at_least_32_characters_long_for_hmac!'
+    }
+  }
+
+  if (isProd && (!process.env.SEB_LINK_SECRET || process.env.SEB_LINK_SECRET.trim().length < 32 || KNOWN_DEFAULTS.has(process.env.SEB_LINK_SECRET.trim()))) {
+    console.error('Refusing to start application in production: SEB_LINK_SECRET must be set and at least 32 characters long.')
+    throw new Error('Boot-Time Configuration Validation Failed: SEB_LINK_SECRET must be at least 32 characters in production')
   }
 
   const result = configSchema.safeParse(process.env)

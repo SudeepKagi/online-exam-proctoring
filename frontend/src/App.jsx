@@ -1,7 +1,8 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
+import { api } from '@/lib/apiClient'
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -12,6 +13,7 @@ const SettingsPage = lazy(() => import('@/pages/common/SettingsPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/AdminDashboardPage'))
 const AdminUsersPage = lazy(() => import('@/pages/admin/AdminUsersPage'))
 const AdminExamsPage = lazy(() => import('@/pages/admin/AdminExamsPage'))
+const AdminSebConfigPage = lazy(() => import('@/pages/admin/AdminSebConfigPage'))
 const FacultyExamsPage = lazy(() => import('@/pages/faculty/FacultyExamsPage'))
 const ExamManagePage = lazy(() => import('@/pages/faculty/ExamManagePage'))
 const LiveConsolePage = lazy(() => import('@/pages/invigilator/LiveConsolePage')) // terms-ok: internal import
@@ -60,6 +62,11 @@ function OnboardingGuard({ children }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Proof by use: prove SEB setup on app start before any login
+    api.get('/seb/ping').catch(() => {})
+  }, [])
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -98,6 +105,8 @@ export default function App() {
               <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboardPage /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminUsersPage /></ProtectedRoute>} />
               <Route path="/admin/exams" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminExamsPage /></ProtectedRoute>} />
+              <Route path="/admin/seb" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminSebConfigPage /></ProtectedRoute>} />
+              <Route path="/admin/settings/seb" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminSebConfigPage /></ProtectedRoute>} />
 
               {/* Faculty Routes */}
               <Route path="/faculty/dashboard" element={<ProtectedRoute allowedRoles={['FACULTY', 'ADMIN']}><FacultyExamsPage /></ProtectedRoute>} />
