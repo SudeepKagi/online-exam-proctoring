@@ -111,9 +111,9 @@ async function getCachedSebSettings(examId) {
     return { sebRequired: cached.sebRequired, sebConfigKey: cached.sebConfigKey }
   }
 
-  // Cache miss or expired: fetch from DB via examsService
-  const examsService = require('../modules/exams/exams.service')
-  const settings = await examsService.getSebSettings(examId)
+  // Cache miss or expired: fetch from DB via examService
+  const { examService } = require('../modules/exams/exams.service')
+  const settings = await examService.getSebSettings(examId)
   examSettingsCache.set(key, {
     sebRequired: Boolean(settings.sebRequired),
     sebConfigKey: settings.sebConfigKey || null,
