@@ -118,8 +118,16 @@ jobs:
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GH_ACTOR" --password-stdin
 
           # 3. Pull new images
+          echo "Pulling staging images..."
           docker pull "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG"
           docker pull "ghcr.io/$GHCR_REPO/frontend:$IMAGE_TAG"
+
+          # 3.5. Run preflight environment check on live staging .env
+          echo "Running preflight environment validation..."
+          docker run --rm \
+            -v "$STAGING_DIR/.env:/app/.env:ro" \
+            "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG" \
+            node scripts/ops/preflight-env.js /app/.env
 
           # 4. Run database migrations BEFORE starting the new backend version
           echo "Executing Prisma migrate deploy..."

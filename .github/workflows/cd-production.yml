@@ -130,6 +130,13 @@ jobs:
           docker pull "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG"
           docker pull "ghcr.io/$GHCR_REPO/frontend:$IMAGE_TAG"
 
+          # 3.5. Run preflight environment check on live .env
+          echo "Running preflight environment validation..."
+          docker run --rm \
+            -v "$PROD_DIR/shared/.env:/app/.env:ro" \
+            "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG" \
+            node scripts/ops/preflight-env.js /app/.env --prod
+
           # 4. Run database migrations BEFORE starting the new backend version
           echo "Executing Prisma migrate deploy..."
           docker run --rm \
