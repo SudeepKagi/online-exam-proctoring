@@ -115,6 +115,33 @@ export function evaluateOperatingSystem(sebRequired, customUserAgent) {
   }
 }
 
+/**
+ * Categorizes operating system family for telemetry.
+ * Minimization: only broad category string (Windows, macOS, Linux, Android, iOS, Other).
+ */
+export function detectOsFamily(customUserAgent) {
+  const ua = customUserAgent || (typeof navigator !== 'undefined' ? (navigator.userAgent || navigator.platform || '') : '')
+  if (/Windows|Win32|Win64|WOW64/i.test(ua)) return 'Windows'
+  if (/Macintosh|MacIntel|MacPPC|Mac68K/i.test(ua)) return 'macOS'
+  if (/Linux|X11/i.test(ua)) return 'Linux'
+  if (/Android/i.test(ua)) return 'Android'
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'iOS'
+  return 'Other'
+}
+
+/**
+ * Categorizes browser family for telemetry.
+ * Minimization: only broad category string (Chrome, Edge, Firefox, Safari, Other).
+ */
+export function detectBrowserFamily(customUserAgent) {
+  const ua = customUserAgent || (typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '')
+  if (/Edg\//i.test(ua)) return 'Edge'
+  if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) return 'Chrome'
+  if (/Firefox\//i.test(ua)) return 'Firefox'
+  if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) return 'Safari'
+  return 'Other'
+}
+
 const STORAGE_KEY = 'proctornet_readiness_check'
 
 /**

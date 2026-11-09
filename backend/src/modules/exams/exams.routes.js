@@ -52,5 +52,17 @@ router.post('/:id/assign', authenticateToken, requireRole('FACULTY', 'ADMIN'), e
 router.get('/:id/attempts', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.getExamAttempts)
 router.get('/:id/results/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.exportResultsCsv)
 
+// Student Pre-Check Consent (§Task 9)
+router.get('/:id/consent', authenticateToken, examsController.getExamConsent)
+router.post('/:id/consent', authenticateToken, examsController.submitExamConsent)
+
+// Student Readiness Telemetry & Faculty Inspection (§Task 8)
+router.post('/:id/readiness', authenticateToken, examsController.reportReadiness)
+router.get('/:id/readiness', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.getExamReadiness)
+router.get('/:id/readiness/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.exportReadinessCsv)
+
+// Exam Incidents Full Export (§Task 8)
+router.get('/:id/incidents/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), examsController.exportExamIncidentsCsv)
+
 module.exports = router
 

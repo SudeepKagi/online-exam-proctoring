@@ -10,7 +10,9 @@ import {
   evaluateClockSkew,
   evaluateLatency,
   evaluateOperatingSystem,
-  saveReadinessResult
+  saveReadinessResult,
+  detectOsFamily,
+  detectBrowserFamily
 } from '@/lib/systemCheck'
 import { mapStudentError, getSupportUrl } from '@/lib/studentErrors'
 import {
@@ -253,6 +255,15 @@ export default function StudentExamStartPage() {
 
   // 7. Proceed to Pre-Exam Check (or direct exam arena)
   const handleStartExam = () => {
+    // Report telemetry (§Task 8)
+    apiClient.post(`/exams/${id}/readiness`, {
+      osFamily: detectOsFamily(),
+      browserFamily: detectBrowserFamily(),
+      cameraOk: cameraState.status === 'ready',
+      latencyBucket: (internetState.rating || 'good').toLowerCase(),
+      sebVerified: Boolean(sebStatus?.verified)
+    }).catch(() => {})
+
     if (cameraStreamRef.current) {
       setCameraStream(cameraStreamRef.current)
       cameraStreamRef.current = null
