@@ -16,10 +16,32 @@ export default function PreExamCheckPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [cameraError, setCameraError] = useState(false)
   const [isWindowLocked, setIsWindowLocked] = useState(false)
 
   const videoRef = useRef(null)
   const streamRef = useRef(null)
+
+  const isSebActive = Boolean(sebStatus?.required && sebStatus?.verified)
+
+  const startCamera = () => {
+    setCameraError(false)
+    setError('')
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
+    }
+    navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 } })
+      .then((stream) => {
+        streamRef.current = stream
+        if (videoRef.current) videoRef.current.srcObject = stream
+        setCameraError(false)
+      })
+      .catch(() => {
+        setCameraError(true)
+        setError('Camera access is required for proctoring verification.')
+      })
+  }
 
   useEffect(() => {
     let active = true
@@ -59,8 +81,13 @@ export default function PreExamCheckPage() {
           if (!active) return stream.getTracks().forEach((t) => t.stop())
           streamRef.current = stream
           if (videoRef.current) videoRef.current.srcObject = stream
+          setCameraError(false)
         })
-        .catch(() => setError('Webcam access was denied. Please allow camera permissions.'))
+        .catch(() => {
+          if (!active) return
+          setCameraError(true)
+          setError('Camera access is required for proctoring verification.')
+        })
     }
     return () => {
       active = false
@@ -88,13 +115,21 @@ export default function PreExamCheckPage() {
         setCameraStream(streamRef.current)
         streamRef.current = null
       }
-      setStep(2)
+      if (isSebActive) {
+        await handleLaunchExam()
+      } else {
+        setStep(2)
+      }
     } catch (_) {
       if (streamRef.current) {
         setCameraStream(streamRef.current)
         streamRef.current = null
       }
-      setStep(2)
+      if (isSebActive) {
+        await handleLaunchExam()
+      } else {
+        setStep(2)
+      }
     } finally {
       setLoading(false)
     }
@@ -135,17 +170,26 @@ export default function PreExamCheckPage() {
           </div>
           <CardTitle className="text-xl font-[480] text-[#28253b]">Pre-Examination Verification</CardTitle>
           <CardDescription className="text-xs font-[360] text-[#554e7b]">
-            {exam?.title ? `${exam.title} — Stage ${step} of 2` : `Stage ${step} of 2 — Secure integrity verification pipeline`}
+            {isSebActive
+              ? (exam?.title ? `${exam.title} — Identity verification` : 'Identity verification — Confirm your face before starting')
+              : (exam?.title ? `${exam.title} — Stage ${step} of 2` : `Stage ${step} of 2 — Secure integrity verification pipeline`)}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
-            <span className={step >= 1 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>1. Face Match</span>
-            <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>
-              {sebStatus?.required && sebStatus?.verified ? '2. Secure Browser' : '2. Fullscreen Lock'}
-            </span>
-          </div>
+          {isSebActive ? (
+            <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
+              <span className="text-[#5266eb] font-[500]">Identity Verification</span>
+              <span className="text-[#5266eb] font-[480] flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Secure browser verified
+              </span>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
+              <span className={step >= 1 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>1. Face Match</span>
+              <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>2. Fullscreen Lock</span>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-[#edecfb] text-[#28253b] rounded-[12px] text-xs flex items-center gap-2 font-[420]">
@@ -162,12 +206,39 @@ export default function PreExamCheckPage() {
             </div>
           ) : step === 1 ? (
             <div className="space-y-3 text-center">
-              <div className="aspect-video bg-[#171721] rounded-[12px] overflow-hidden relative flex items-center justify-center">
-                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-              </div>
+              {cameraError ? (
+                <div className="p-4 bg-[#fbfbff] rounded-[16px] text-left space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-[480] text-[#28253b]">
+                    <AlertTriangle className="w-4 h-4 text-[#5266eb]" />
+                    <span>Camera access needed</span>
+                  </div>
+                  <ol className="text-xs text-[#554e7b] space-y-1.5 list-decimal pl-4 font-[360] leading-relaxed">
+                    <li>Click the camera or lock icon in your browser's address bar.</li>
+                    <li>Set camera permission to <strong>Allow</strong>.</li>
+                    <li>Make sure no other application (like Zoom, Teams, or Meet) is using your webcam.</li>
+                  </ol>
+                  <Button
+                    type="button"
+                    onClick={startCamera}
+                    className="w-full mt-2 bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] text-xs font-[420] h-9 rounded-[32px] cursor-pointer"
+                  >
+                    Try camera again
+                  </Button>
+                </div>
+              ) : (
+                <div className="aspect-video bg-[#171721] rounded-[12px] overflow-hidden relative flex items-center justify-center">
+                  <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                </div>
+              )}
               <p className="text-xs text-[#70707d] font-[360]">Align your face inside the camera view and click verify.</p>
-              <Button onClick={handleVerifyFace} disabled={loading} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
-                {loading ? 'Verifying Identity...' : 'Capture & Verify Face'}
+              <Button
+                onClick={handleVerifyFace}
+                disabled={loading || cameraError}
+                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+              >
+                {loading
+                  ? (isSebActive ? 'Verifying & Starting Exam...' : 'Verifying Identity...')
+                  : (isSebActive ? 'Capture Face & Start Exam' : 'Capture & Verify Face')}
               </Button>
             </div>
           ) : (
