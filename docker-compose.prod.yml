@@ -52,8 +52,9 @@ services:
       dockerfile: Dockerfile
     image: ghcr.io/${GHCR_REPO:-proctornet/online-exam-proctoring}/frontend:${IMAGE_TAG:-latest}
     container_name: proctornet-frontend-assets
+    user: "root"
     restart: "no"
-    command: ["sh", "-c", "cp -a /usr/share/nginx/html/. /srv/frontend/ && echo 'Frontend assets synced to volume'"]
+    command: ["sh", "-c", "cp -a /usr/share/nginx/html/. /srv/frontend/ && chmod -R 755 /srv/frontend && echo 'Frontend assets synced to volume'"]
     volumes:
       - frontend_assets:/srv/frontend
 

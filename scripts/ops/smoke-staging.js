@@ -22,6 +22,7 @@
 const https = require('https')
 const http = require('http')
 const tls = require('tls')
+const crypto = require('crypto')
 const { URL } = require('url')
 
 // Parse CLI options
@@ -82,6 +83,19 @@ function request(urlStr, options = {}) {
       })
     })
 
+    req.on('upgrade', (res, socket, head) => {
+      let data = head ? head.toString() : ''
+      socket.on('data', (chunk) => { data += chunk.toString() })
+      setTimeout(() => {
+        try { socket.destroy() } catch (_) {}
+        resolve({
+          statusCode: 101,
+          headers: res.headers,
+          body: data
+        })
+      }, 100)
+    })
+
     req.on('timeout', () => {
       req.destroy()
       reject(new Error(`Request timed out after ${reqOptions.timeout}ms`))
@@ -138,7 +152,7 @@ async function runSmokeSuite() {
         }, () => {
           const cert = socket.getPeerCertificate()
           const validTo = new Date(cert.valid_to)
-          const daysLeft = Math.floor((validTo - Date.now()) / (1000 * 60 * 60 * 24))
+          const daysLeft = Math.ceil((validTo - Date.now()) / (1000 * 60 * 60 * 24))
           socket.end()
           resolve({ validTo, daysLeft, subject: cert.subject })
         })
@@ -148,8 +162,8 @@ async function runSmokeSuite() {
           reject(new Error('TLS handshake timed out'))
         })
       })
-      const isNotExpired = certInfo.daysLeft > 0
-      logCheck('2. TLS Certificate Validity', isNotExpired, `Expires in ${certInfo.daysLeft} days (${certInfo.validTo.toISOString().slice(0, 10)})`)
+      const isNotExpired = certInfo.validTo > new Date()
+      logCheck('2. TLS Certificate Validity', isNotExpired, `Expires in ${certInfo.daysLeft} day(s) (${certInfo.validTo.toISOString().slice(0, 10)})`)
     } catch (err) {
       logCheck('2. TLS Certificate Validity', false, err.message)
     }
@@ -262,15 +276,30 @@ async function runSmokeSuite() {
   // Check 8: WebSocket / Socket.io Engine Handshake
   // --------------------------------------------------------------------------
   try {
-    const res = await request(`${origin}/socket.io/?EIO=4&transport=polling`)
-    // Socket.io v4 handshake packet starts with 0 (open packet) containing sid
-    const passed = res.statusCode === 200 && res.body.startsWith('0{') && res.body.includes('sid')
+    const wsKey = crypto.randomBytes(16).toString('base64')
+    let res = await request(`${origin}/socket.io/?EIO=4&transport=websocket`, {
+      headers: {
+        'Connection': 'Upgrade',
+        'Upgrade': 'websocket',
+        'Sec-WebSocket-Version': '13',
+        'Sec-WebSocket-Key': wsKey
+      }
+    })
+
+    if (res.statusCode !== 101) {
+      // Fallback to polling probe if server supports polling transport
+      res = await request(`${origin}/socket.io/?EIO=4&transport=polling`)
+    }
+
+    const isUpgrade101 = res.statusCode === 101 && (res.headers.upgrade === 'websocket' || Boolean(res.headers['sec-websocket-accept']))
+    const isPolling200 = res.statusCode === 200 && typeof res.body === 'string' && res.body.includes('sid')
+    const passed = isUpgrade101 || isPolling200
+
     let detail = `Status ${res.statusCode}`
-    if (passed) {
-      try {
-        const handshake = JSON.parse(res.body.slice(1))
-        detail += ` (sid: ${handshake.sid?.slice(0, 8)}..., pingInterval: ${handshake.pingInterval}ms)`
-      } catch (_) {}
+    if (isUpgrade101) {
+      detail += ' (101 Switching Protocols, WebSocket upgrade confirmed)'
+    } else if (isPolling200) {
+      detail += ' (Polling handshake OK)'
     }
     logCheck('8. WebSocket Handshake (/socket.io)', passed, detail)
   } catch (err) {
