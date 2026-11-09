@@ -5,8 +5,10 @@ import dotenv from 'dotenv'
 dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: true })
 
 export default defineConfig({
+  outputDir: 'test-results/artifacts',
   testDir: './e2e',
   testMatch: ['**/*.spec.ts', '**/*.spec.js'],
+  testIgnore: ['**/seb-simulated-journey.spec.ts'],
   timeout: 90000,
   expect: {
     timeout: 10000

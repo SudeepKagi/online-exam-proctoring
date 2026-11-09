@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createActor } from './helpers/actors'
+import { createActor, passConsentIfPresent } from './helpers/actors'
 import { api } from './helpers/api'
 import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
@@ -299,6 +299,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     // Navigate to pre-check
     await page.goto(`/student/exams/${sebExamId}/pre-check`)
     await page.waitForLoadState('networkidle')
+    await passConsentIfPresent(page)
 
     // Inside SEB, stage indicator is single stage: Identity Verification
     await expect(page.getByText('Identity Verification', { exact: true })).toBeVisible({ timeout: 10000 })
@@ -321,6 +322,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
 
     await errorPage.goto(`/student/exams/${openExamId}/pre-check`)
     await errorPage.waitForLoadState('networkidle')
+    await passConsentIfPresent(errorPage)
 
     // Expect recovery UI to appear
     await expect(errorPage.getByText('Camera access needed')).toBeVisible({ timeout: 10000 })
@@ -336,6 +338,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     // Navigate to open exam pre-check and complete normal pre-check flow
     await page.goto(`/student/exams/${openExamId}/pre-check`)
     await page.waitForLoadState('networkidle')
+    await passConsentIfPresent(page)
 
     // Step 1: Capture Face
     const verifyFaceBtn = page.getByRole('button', { name: /Capture & Verify Face/i })

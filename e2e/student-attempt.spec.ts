@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createActor } from './helpers/actors'
+import { createActor, passConsentIfPresent } from './helpers/actors'
 import { api } from './helpers/api'
 import { resetCleanRoom, setExamScheduleDates, SEEDED_FACULTY, SEEDED_STUDENTS } from './helpers/cleanroom'
 
@@ -81,6 +81,7 @@ test.describe('E2E: Student Attempt Flow', () => {
 
       // Navigate to Pre-Check
       await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await passConsentIfPresent(student.page)
       await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
 
       // Step 1: Verify Face
@@ -176,6 +177,7 @@ test.describe('E2E: Student Attempt Flow', () => {
 
       // 3. Pre-check: capture face, launch
       await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await passConsentIfPresent(student.page)
       await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
 
       const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })

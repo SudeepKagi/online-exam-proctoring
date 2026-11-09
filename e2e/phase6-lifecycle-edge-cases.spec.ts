@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { createActor } from './helpers/actors'
+import { createActor, passConsentIfPresent } from './helpers/actors'
 import { api } from './helpers/api'
 import { resetCleanRoom, setExamScheduleDates, ADMIN_CREDENTIALS, SEEDED_FACULTY, SEEDED_INVIGILATOR, SEEDED_STUDENTS } from './helpers/cleanroom'
 
@@ -259,6 +259,7 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
 
       // Navigate to pre-check to acquire verified camera stream
       await student.page.goto(`/student/exams/${examId}/pre-check`)
+      await passConsentIfPresent(student.page)
       await expect(student.page.getByText(/System & Identity Check/i)).toBeVisible({ timeout: 10000 })
 
       const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })

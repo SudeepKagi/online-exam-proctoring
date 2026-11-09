@@ -27,9 +27,9 @@ export class ApiReadHelper {
     }
 
     const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
+      ...options,
       method,
-      headers,
-      ...options
+      headers
     })
 
     const body = await res.json().catch(() => null)
@@ -96,10 +96,10 @@ export class ApiReadHelper {
     }
 
     const res = await this.actor.page.request.fetch(`${this.baseUrl}${path}`, {
+      ...options,
       method: 'POST',
       headers,
-      data: JSON.stringify(payload),
-      ...options
+      data: JSON.stringify(payload)
     })
 
     const body = await res.json().catch(() => null)
