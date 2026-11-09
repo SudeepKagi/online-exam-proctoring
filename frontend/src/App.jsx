@@ -18,6 +18,7 @@ const FacultyExamsPage = lazy(() => import('@/pages/faculty/FacultyExamsPage'))
 const ExamManagePage = lazy(() => import('@/pages/faculty/ExamManagePage'))
 const LiveConsolePage = lazy(() => import('@/pages/invigilator/LiveConsolePage')) // terms-ok: internal import
 const StudentDashboardPage = lazy(() => import('@/pages/student/StudentDashboardPage'))
+const StudentExamStartPage = lazy(() => import('@/pages/student/StudentExamStartPage'))
 const PreExamCheckPage = lazy(() => import('@/pages/student/PreExamCheckPage'))
 const SebRequiredPage = lazy(() => import('@/pages/student/SebRequiredPage'))
 const ExamArenaPage = lazy(() => import('@/pages/student/ExamArenaPage'))
@@ -120,6 +121,7 @@ export default function App() {
               {/* Student Routes */}
               <Route path="/student/dashboard" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboardPage /></ProtectedRoute>} />
               <Route path="/student/exams" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentDashboardPage /></ProtectedRoute>} />
+              <Route path="/student/exams/:id/start" element={<ProtectedRoute allowedRoles={['STUDENT']}><StudentExamStartPage /></ProtectedRoute>} />
               <Route path="/student/exams/:id/seb-required" element={<ProtectedRoute allowedRoles={['STUDENT']}><SebRequiredPage /></ProtectedRoute>} />
               <Route path="/student/exams/:id/pre-check" element={<ProtectedRoute allowedRoles={['STUDENT']}><PreExamCheckPage /></ProtectedRoute>} />
               <Route path="/student/exams/:id/lobby" element={<ProtectedRoute allowedRoles={['STUDENT']}><PreExamCheckPage /></ProtectedRoute>} />
