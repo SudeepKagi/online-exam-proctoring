@@ -84,7 +84,13 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
         payload.proctoringConfig.sebConfigKey = sebConfigKey.trim()
       }
 
-      await api.put(`/exams/${exam.id}`, payload)
+      const res = await api.put(`/exams/${exam.id}`, payload)
+      const updatedExam = res?.data?.exam || res?.data
+      if (updatedExam?.proctoringConfig?.sebConfigKey) {
+        setSebConfigKey(updatedExam.proctoringConfig.sebConfigKey)
+      } else if (keyRemoved) {
+        setSebConfigKey('')
+      }
       setOpen(false)
       onUpdated?.('Exam configuration updated successfully!')
     } catch (err) {

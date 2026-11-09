@@ -114,15 +114,12 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     await settingsBtn.click()
     await expect(page.getByText('Edit Examination Settings')).toBeVisible({ timeout: 5000 })
     const reloadedKeyInput = page.locator('input[data-testid="input-seb-config-key"]')
-    const reloadedValue = await reloadedKeyInput.inputValue()
-    expect(reloadedValue).toContain('••••••••')
-    expect(reloadedValue).toContain('1f8c')
+    await expect(reloadedKeyInput).toHaveValue(/••••••••.*1f8c/, { timeout: 10000 })
 
     // Click "Remove key"
     const removeKeyBtn = page.locator('button[data-testid="btn-remove-seb-key"]')
     await removeKeyBtn.click()
-    const clearedValue = await reloadedKeyInput.inputValue()
-    expect(clearedValue).toBe('')
+    await expect(reloadedKeyInput).toHaveValue('', { timeout: 5000 })
 
     // Save cleared settings
     await saveBtn.click()
