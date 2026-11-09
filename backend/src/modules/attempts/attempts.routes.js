@@ -30,6 +30,11 @@ router.post('/:attemptId/suspend', authenticateToken, requireRole('INVIGILATOR',
 router.post('/:attemptId/resume', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.resumeAttempt)
 router.post('/:attemptId/terminate', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.terminateAttempt)
 
+// Incident Review & Actions (§Task 8)
+router.get('/:attemptId/incidents', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.getAttemptIncidents)
+router.patch('/:attemptId/review', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.updateAttemptReview)
+router.get('/:attemptId/incidents/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.exportAttemptIncidentsCsv)
+
 // VPN Status Hook
 router.get('/:attemptId/vpn-status', authenticateToken, attemptsController.getVpnStatus)
 
