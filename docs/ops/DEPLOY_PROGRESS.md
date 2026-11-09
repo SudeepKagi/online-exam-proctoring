@@ -11,7 +11,7 @@
 
 | Phase | Description | Status | Verification & Deliverables |
 | :--- | :--- | :--- | :--- |
-| **Phase 0: Baseline Verification** | Fresh test runs, SEB journey, release pipeline, middleware audit, privacy verification, gitleaks | **IN PROGRESS** | `backend-test`, `e2e-test`, `seb-simulated-test`, `release:check`, gitleaks pass |
+| **Phase 0: Baseline Verification** | Fresh test runs, SEB journey, release pipeline, middleware audit, privacy verification, gitleaks | **COMPLETED** | `backend-test` (257/257 pass), `e2e-test` (75/75 pass), `seb-simulated-test` (3/3 pass), `release:check` (7/7 pass), gitleaks pass (0 leaks) |
 | **Phase 1: Variables & Configuration** | Complete process.env/import.meta/compose audit, `VARIABLES.md`, `.env.*.example`, `init-env.js` | PENDING | Comprehensive audit, generator script, missing values check |
 | **Phase 2: Hardening Audit** | Production cookies/CORS/CSP, NAT rate-limits, Docker health/rotation, DB pool, OIDC | PENDING | Security hardening, load readiness, zero high/critical vulnerabilities |
 | **Phase 3: Local Production Rehearsal** | Image build, Caddy local TLS, container migrations, admin creation, full SEB load test (200 students) | PENDING | Rehearsal pass, metrics recorded, backup/restore drill |
@@ -24,8 +24,9 @@
 - [x] SEB middleware audit: `backend/src/middleware/seb.js` verified as active wired middleware; zero dead files in `backend/src/middleware/`.
 - [x] Privacy & Biometrics audit: `faceDescriptor` confirmed 0 matches in code/schema; `docs/privacy/DATA_MAP.md` updated; `utils/crypto.js` confirmed "available, unused".
 - [x] Secrets & Gitignore audit: 0 tracked `.env` files; `.gitleaks.toml` updated with SEB test fixture key; `gitleaks` clean on `main..HEAD` (0 leaks).
-- [ ] Fresh verification runs:
-  - Backend test suite -> `test-results/phase0-backend.txt`
-  - Playwright E2E suite -> `test-results/phase0-e2e.txt`
-  - SEB simulated journey -> `test-results/phase0-seb-e2e.txt`
-  - Release check pipeline -> `test-results/phase0-release-check.txt`
+- [x] Fresh verification runs:
+  - Backend test suite -> `test-results/phase0-backend.txt` (257 passed, 0 failed, 53.1s)
+  - Playwright E2E suite -> `test-results/phase0-e2e.txt` (75 passed, 0 failed, 5.1m)
+  - SEB simulated journey -> `test-results/phase0-seb-e2e.txt` (3 passed, 0 failed, 13.6s)
+  - Release check pipeline -> `test-results/phase0-release-check.txt` (7/7 steps passed, 396.5s)
+
