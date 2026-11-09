@@ -34,6 +34,8 @@ export function AuthProvider({ children }) {
         if (res.data?.user && mounted) {
           setUser(res.data.user)
           setRole(res.data.user.role)
+          localStorage.setItem('user', JSON.stringify(res.data.user))
+          if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
         }
       } catch (_err) {
         localStorage.removeItem('proctornet_logged_in')
@@ -57,6 +59,8 @@ export function AuthProvider({ children }) {
         setRole(loggedUser.role)
         localStorage.setItem('proctornet_logged_in', 'true')
         localStorage.setItem('proctornet_role', loggedUser.role.toLowerCase())
+        localStorage.setItem('user', JSON.stringify(loggedUser))
+        if (loggedUser.email) localStorage.setItem('proctornet_email', loggedUser.email)
         return { success: true, user: loggedUser }
       }
       return { success: false, error: 'Login response did not contain user data.' }

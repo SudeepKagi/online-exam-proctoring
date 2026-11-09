@@ -41,6 +41,7 @@ export default function ExamArenaPage() {
   // Re-authentication state mid-exam
   const [reauthOpen, setReauthOpen] = useState(false)
   const [reauthPassword, setReauthPassword] = useState('')
+  const [reauthEmail, setReauthEmail] = useState('')
   const [reauthError, setReauthError] = useState(null)
   const [reauthSubmitting, setReauthSubmitting] = useState(false)
 
@@ -151,11 +152,16 @@ export default function ExamArenaPage() {
     setReauthError(null)
 
     try {
-      let storedEmail = ''
-      try {
-        const u = JSON.parse(localStorage.getItem('user') || '{}')
-        storedEmail = u.email || ''
-      } catch (_) {}
+      let storedEmail = reauthEmail
+      if (!storedEmail) {
+        try {
+          const u = JSON.parse(localStorage.getItem('user') || '{}')
+          storedEmail = u.email || ''
+        } catch (_) {}
+      }
+      if (!storedEmail) {
+        storedEmail = localStorage.getItem('proctornet_email') || attempt?.student?.email || attempt?.studentEmail || ''
+      }
 
       await apiClient.post('/auth/student/login', {
         email: storedEmail,

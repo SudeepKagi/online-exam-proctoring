@@ -17,6 +17,7 @@ export function useAnswerAutosave({ attemptId, onFlushSuccess, onFlushError, onS
   const isFlushingRef = useRef(false)
   const backoffMsRef = useRef(1000)
   const retryTimerRef = useRef(null)
+  const debounceFlushRef = useRef(null)
   const hadOfflineFailuresRef = useRef(false)
 
   // Restore offline queued answers on mount
@@ -127,8 +128,19 @@ export function useAnswerAutosave({ attemptId, onFlushSuccess, onFlushError, onS
       hadOfflineFailuresRef.current = true
     } else {
       setSyncStatus('SAVING')
+      if (debounceFlushRef.current) clearTimeout(debounceFlushRef.current)
+      debounceFlushRef.current = setTimeout(() => {
+        flushDirtyAnswers()
+      }, 400)
     }
-  }, [attemptId])
+  }, [attemptId, flushDirtyAnswers])
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceFlushRef.current) clearTimeout(debounceFlushRef.current)
+    }
+  }, [])
 
   // Periodic batch flush every 5 seconds if dirty
   useEffect(() => {

@@ -68,7 +68,10 @@ class AuthService {
     try {
       decoded = jwt.verify(refreshToken, refreshSecret)
     } catch (e) {
-      throw err('Invalid or expired refresh token', 401)
+      if (e instanceof jwt.TokenExpiredError) {
+        throw err('Refresh token has expired', 401)
+      }
+      throw err('Invalid refresh token signature', 401)
     }
     const userId = decoded.id || decoded.sub
     if (!userId) throw err('Invalid refresh token payload', 401)
