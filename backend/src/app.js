@@ -177,6 +177,16 @@ if ((require.main === module || process.env.NODE_ENV !== 'test') && !process.env
     } catch (e) {
       console.error('❌ Database connection failed:', e.message)
     }
+
+    if (process.env.START_WORKERS === 'true' || process.env.NODE_ENV === 'production') {
+      try {
+        const { scheduleRetentionJob } = require('./jobs/retentionJob')
+        scheduleRetentionJob()
+        console.log('🧹 Automated evidence retention job scheduled')
+      } catch (err) {
+        console.warn('⚠️ Could not schedule retention job:', err.message)
+      }
+    }
   })
 }
 

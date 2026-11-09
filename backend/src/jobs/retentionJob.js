@@ -81,6 +81,7 @@ async function runRetentionCleanup(options = {}) {
 
   let deletedEvidenceCount = 0
   let deletedLogRowsCount = 0
+  let deletedReadinessCount = 0
 
   if (!dryRun && eligibleAttemptIds.length > 0) {
     // 2. Delete S3 snapshots
@@ -100,9 +101,34 @@ async function runRetentionCleanup(options = {}) {
       }
     })
     deletedLogRowsCount = deleteResult.count
+
+    // 4. Delete expired student_readiness_reports DB rows for completed/expired exams
+    const readinessResult = await prisma.studentReadinessReport.deleteMany({
+      where: {
+        exam: {
+          OR: [
+            { status: 'COMPLETED' },
+            { endTime: { lte: cutoffDate } }
+          ]
+        }
+      }
+    })
+    deletedReadinessCount = readinessResult.count
   } else if (dryRun) {
     deletedEvidenceCount = evidenceKeysToDelete.length
     deletedLogRowsCount = totalEligibleLogs
+
+    const countReadiness = await prisma.studentReadinessReport.count({
+      where: {
+        exam: {
+          OR: [
+            { status: 'COMPLETED' },
+            { endTime: { lte: cutoffDate } }
+          ]
+        }
+      }
+    })
+    deletedReadinessCount = countReadiness
   }
 
   const summary = {
@@ -113,7 +139,8 @@ async function runRetentionCleanup(options = {}) {
     eligibleAttempts: eligibleAttemptIds.length,
     heldUnderReviewCount,
     deletedEvidenceCount,
-    deletedLogRowsCount
+    deletedLogRowsCount,
+    deletedReadinessCount
   }
 
   // Count-only operational logging
