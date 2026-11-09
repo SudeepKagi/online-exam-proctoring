@@ -7,7 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
-import { BookOpen, Clock, Calendar, CheckCircle2, ShieldCheck, AlertCircle } from 'lucide-react'
+import {
+  getSavedReadinessResult,
+  saveReadinessResult,
+  evaluateClockSkew,
+  evaluateLatency,
+  evaluateOperatingSystem
+} from '@/lib/systemCheck'
+import { BookOpen, Clock, Calendar, CheckCircle2, ShieldCheck, AlertCircle, Laptop, Camera, Wifi, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react'
 
 export default function StudentDashboardPage() {
   const { user } = useAuth()
@@ -16,6 +23,64 @@ export default function StudentDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [currentTime, setCurrentTime] = useState(Date.now())
+  const [readiness, setReadiness] = useState(() => getSavedReadinessResult())
+  const [isTestingComputer, setIsTestingComputer] = useState(false)
+  const [computerCheckFeedback, setComputerCheckFeedback] = useState('')
+
+  const runComputerCheck = async () => {
+    setIsTestingComputer(true)
+    setComputerCheckFeedback('')
+    let cameraOk = false
+    let internetOk = false
+    let clockOk = false
+    const issues = []
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      stream.getTracks().forEach((t) => t.stop())
+      cameraOk = true
+    } catch (_) {
+      issues.push('Camera blocked — please allow camera access in your browser settings')
+    }
+
+    try {
+      const start = performance.now()
+      const cfg = await api.get('/config').catch(() => ({ data: { serverTime: new Date().toISOString() } }))
+      const latency = performance.now() - start
+      internetOk = latency < 2500
+      if (!internetOk) issues.push('Internet connection is slow')
+
+      const serverTime = cfg.data?.serverTime || new Date().toISOString()
+      const clockEval = evaluateClockSkew(Date.now(), serverTime)
+      clockOk = clockEval.passed
+      if (clockEval.warning) {
+        issues.push(clockEval.message)
+      }
+    } catch (_) {
+      issues.push('Unable to reach examination server')
+    }
+
+    const osEval = evaluateOperatingSystem(false)
+    const computerOk = osEval.compatible
+
+    const allPassed = cameraOk && internetOk && clockOk && computerOk
+    const result = {
+      passed: allPassed,
+      camera: cameraOk,
+      internet: internetOk,
+      clock: clockOk,
+      computer: computerOk,
+      issues,
+      timestamp: Date.now()
+    }
+
+    saveReadinessResult(result)
+    setReadiness(result)
+    setIsTestingComputer(false)
+    if (allPassed) {
+      setComputerCheckFeedback("You're ready ✓")
+    }
+  }
 
   const meta = (user?.profileMetadata && typeof user?.profileMetadata === 'object') ? user?.profileMetadata : {}
 
@@ -81,6 +146,46 @@ export default function StudentDashboardPage() {
         </div>
       )}
 
+      {/* Check your computer card */}
+      <Card className="mt-4 border-[#e9eaf2] bg-white rounded-[16px] p-5 shadow-[0_1px_3px_rgba(40,37,59,0.04)] font-sans">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Laptop className="w-4 h-4 text-[#5266eb]" />
+              <h3 className="text-sm font-[480] text-[#28253b]">Check your computer</h3>
+              {readiness?.passed || computerCheckFeedback.includes("You're ready") ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-[480] bg-[#edecfb] text-[#5266eb] px-2 py-0.5 rounded-full">
+                  <CheckCircle2 className="w-3 h-3" /> You&apos;re ready ✓
+                </span>
+              ) : readiness?.issues?.length > 0 ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-[480] bg-[#edecfb] text-[#8a6a26] px-2 py-0.5 rounded-full">
+                  <AlertTriangle className="w-3 h-3" /> Check needed
+                </span>
+              ) : null}
+            </div>
+            <p className="text-xs text-[#554e7b] font-[360] leading-relaxed">
+              {readiness?.passed || computerCheckFeedback.includes("You're ready")
+                ? "Your camera, internet connection, and clock are verified for upcoming exams."
+                : readiness?.issues?.length > 0
+                ? "Some items need attention before your exams: " + readiness.issues.join('. ')
+                : "Run a quick check of your camera, internet, and clock to make sure you're ready for exam day."}
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={runComputerCheck}
+            disabled={isTestingComputer}
+            variant={readiness?.passed ? "outline" : "default"}
+            className={readiness?.passed
+              ? "h-9 px-4 text-xs font-[420] rounded-[32px] border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] shrink-0 cursor-pointer"
+              : "h-9 px-4 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white shrink-0 cursor-pointer"}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isTestingComputer ? 'animate-spin' : ''}`} />
+            {isTestingComputer ? 'Checking...' : (readiness?.passed ? 'Check again' : 'Check your computer')}
+          </Button>
+        </div>
+      </Card>
+
       {/* Available & Scheduled Examinations */}
       <div className="mt-6 font-sans">
         <h3 className="text-sm font-[480] text-[#28253b] mb-3 flex items-center gap-2">
@@ -130,8 +235,10 @@ export default function StudentDashboardPage() {
                     </div>
 
                     {isFuture ? (
-                      <Button disabled className="w-full bg-[#edecfb] text-[#554e7b] opacity-80 text-xs font-[420] rounded-[32px] gap-1.5 h-10 border-0 cursor-not-allowed">
-                        <Clock className="w-4 h-4 text-[#5266eb]" /> Opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      <Button asChild variant="outline" className="w-full bg-[#edecfb] hover:bg-[#e0dff9] text-[#554e7b] text-xs font-[420] rounded-[32px] gap-1.5 h-10 border-0 cursor-pointer">
+                        <Link to={`/student/exams/${exam.id}/start`}>
+                          <Clock className="w-4 h-4 text-[#5266eb]" /> Opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Link>
                       </Button>
                     ) : isEnded ? (
                       <Button disabled className="w-full bg-[#edecfb] text-[#554e7b] opacity-70 text-xs font-[420] rounded-[32px] gap-1.5 h-10 border-0 cursor-not-allowed">
@@ -139,8 +246,8 @@ export default function StudentDashboardPage() {
                       </Button>
                     ) : (
                       <Button asChild className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] gap-1.5 shadow-xs h-10 cursor-pointer">
-                        <Link to={`/student/exams/${exam.id}/pre-check`}>
-                          <ShieldCheck className="w-4 h-4" /> Launch Pre-Exam Check
+                        <Link to={`/student/exams/${exam.id}/start`}>
+                          <ShieldCheck className="w-4 h-4" /> Start Exam
                         </Link>
                       </Button>
                     )}

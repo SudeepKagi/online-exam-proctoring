@@ -18,6 +18,7 @@ export default function ExamArenaPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [exam, setExam] = useState(null)
+  const [sebStatus, setSebStatus] = useState(null)
   const [questions, setQuestions] = useState([])
   const [attempt, setAttempt] = useState(null)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -27,6 +28,8 @@ export default function ExamArenaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [exitCountdown, setExitCountdown] = useState(5)
+  const [isAutoExitCancelled, setIsAutoExitCancelled] = useState(false)
   const [violationCount, setViolationCount] = useState(0)
   const teardownTimerRef = useRef(null)
 
@@ -48,11 +51,7 @@ export default function ExamArenaPage() {
       if (attempt?.id) await apiClient.post(`/attempts/${attempt.id}/submit`, {})
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
       clearCameraStream()
-      if (exam?.proctoringConfig?.sebRequired) {
-        setIsSubmitted(true)
-      } else {
-        navigate('/student/dashboard')
-      }
+      setIsSubmitted(true)
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
       alert(errorMessage(err, 'Submission failed.'))
@@ -120,6 +119,9 @@ export default function ExamArenaPage() {
           throw new Error('Examination session is not active or questions are unavailable.')
         }
         setExam(ex); setQuestions(qs); setAttempt(att)
+        apiClient.get(`/attempts/exams/${id}/seb-status`)
+          .then(res => { if (mounted) setSebStatus(res.data) })
+          .catch(() => {})
         if (att?.violationCount) {
           setViolationCount(att.violationCount)
           if (att.violationCount >= 3) return handleTerminationExit()
@@ -190,8 +192,31 @@ export default function ExamArenaPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleSelectOption, questions.length, isArenaInteractionLocked])
 
+  useEffect(() => {
+    if (!isSubmitted || isAutoExitCancelled) return
+
+    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || 'http://localhost:5173/student/login'
+    const isSeb = Boolean(exam?.proctoringConfig?.sebRequired && (sebStatus?.verified || (typeof window !== 'undefined' && window.navigator?.userAgent?.includes('SEB'))))
+
+    if (exitCountdown <= 0) {
+      if (isSeb) {
+        window.location.href = sebQuitUrl
+      } else {
+        navigate('/student/dashboard')
+      }
+      return
+    }
+
+    const timer = setTimeout(() => {
+      setExitCountdown((prev) => prev - 1)
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [isSubmitted, isAutoExitCancelled, exitCountdown, exam, sebStatus, navigate])
+
   if (isSubmitted) {
     const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || 'http://localhost:5173/student/login'
+    const isSeb = Boolean(exam?.proctoringConfig?.sebRequired && (sebStatus?.verified || (typeof window !== 'undefined' && window.navigator?.userAgent?.includes('SEB'))))
     return (
       <ExamArenaShell className="items-center justify-center p-6 bg-[#fbfcfd] font-sans">
         <div className="w-full max-w-md bg-white rounded-[16px] p-8 text-center shadow-md space-y-4">
@@ -203,8 +228,29 @@ export default function ExamArenaPage() {
             Your responses have been successfully recorded and finalized on the server.
           </p>
 
-          <div className="pt-4 flex flex-col gap-2.5">
-            {exam?.proctoringConfig?.sebRequired && (
+          {!isAutoExitCancelled && exitCountdown > 0 ? (
+            <div
+              data-testid="auto-exit-banner"
+              className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-xl text-xs text-[#554e7b] font-[420] flex items-center justify-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-[#5266eb] animate-ping" />
+              <span>
+                {isSeb
+                  ? `Exiting secure browser in ${exitCountdown} second${exitCountdown === 1 ? '' : 's'}...`
+                  : `Returning to dashboard in ${exitCountdown} second${exitCountdown === 1 ? '' : 's'}...`}
+              </span>
+            </div>
+          ) : isAutoExitCancelled ? (
+            <div
+              data-testid="auto-exit-cancelled-banner"
+              className="p-2.5 bg-[#edecfb] text-[#5266eb] rounded-xl text-xs font-[420]"
+            >
+              Auto-exit cancelled. You may close or navigate at your convenience.
+            </div>
+          ) : null}
+
+          <div className="pt-2 flex flex-col gap-2.5">
+            {isSeb ? (
               <Button
                 type="button"
                 onClick={() => { window.location.href = sebQuitUrl }}
@@ -212,15 +258,25 @@ export default function ExamArenaPage() {
               >
                 Exit secure browser
               </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => navigate('/student/dashboard')}
+                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+              >
+                Return to Student Dashboard
+              </Button>
             )}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/student/dashboard')}
-              className="w-full text-xs font-[420] h-10 rounded-[40px] border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer"
-            >
-              Return to Student Dashboard
-            </Button>
+            {!isAutoExitCancelled && exitCountdown > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsAutoExitCancelled(true)}
+                className="w-full text-xs font-[420] h-10 rounded-[40px] border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer"
+              >
+                Cancel auto-exit
+              </Button>
+            )}
           </div>
         </div>
       </ExamArenaShell>
