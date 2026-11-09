@@ -51,7 +51,7 @@ export function SuspendedOverlay() {
   )
 }
 
-export function DuplicateTabOverlay() {
+export function DuplicateTabOverlay({ onReturn }) {
   return (
     <div
       data-testid="duplicate-tab-overlay"
@@ -60,10 +60,20 @@ export function DuplicateTabOverlay() {
       <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
         <Copy className="w-8 h-8" />
       </div>
-      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Duplicate Session Detected</h2>
-      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed">
+      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Exam Open in Another Window</h2>
+      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed mb-6">
         This exam is already open in another tab. An exam session can only run in a single active window. Please return to your active exam window.
       </p>
+      {onReturn && (
+        <Button
+          type="button"
+          data-testid="duplicate-tab-return-btn"
+          onClick={onReturn}
+          className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] px-6 cursor-pointer"
+        >
+          Return to Student Dashboard
+        </Button>
+      )}
     </div>
   )
 }
