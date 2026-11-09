@@ -60,8 +60,8 @@ The following keys are permanently banned by the `validateConfig` boot-time star
 - [ ] **Storage Health:** Validate S3 bucket accessibility and write permissions for proctoring snapshots.
 
 ### T-30 Minutes: Network & Gateway Verification
-- [ ] **Reverse Proxy:** Verify Caddy/Nginx reverse proxy is running on ports 80 and 443 with valid TLS certificate.
-- [ ] **HSTS & Headers:** Ensure `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload` is active.
+- [ ] **Reverse Proxy:** Verify Caddy reverse proxy is running on ports 80 and 443 with valid TLS certificate.
+- [ ] **HSTS & Headers:** Ensure `Strict-Transport-Security: max-age=31536000; includeSubDomains` is active (no preload on shared domains).
 - [ ] **Origin Parity:** Verify `PUBLIC_ORIGIN` matches canonical origin (`https://proctornet.duckdns.org`).
 - [ ] **Proxy Forwarding:** Verify `app.set('trust proxy', 1)` resolves client IP and HTTPS protocol correctly.
 
@@ -81,29 +81,104 @@ The following keys are permanently banned by the `validateConfig` boot-time star
 
 ---
 
-## 3. Rollback Procedures
+## 3. Production Deployment Procedure (Containerized Compose Stack)
 
-### Blue/Green & Container Rollback
-If a critical defect is identified post-deployment:
-1. **Revert to Previous Docker Image:**
+> [!IMPORTANT]
+> **Single Supported Production Topology:** ProctorNet officially supports **only** the containerized Docker Compose stack (`docker-compose.prod.yml`) with Caddy as the edge reverse proxy. Bare-metal PM2 and uncontained processes are formally deprecated to prevent configuration drift and guarantee strict network isolation (zero public host ports for databases).
+
+### Step-by-Step Deployment Walkthrough
+1. **Prepare Release Artifacts:**
+   Ensure image tags are published to GitHub Container Registry (GHCR):
    ```bash
-   docker compose -f docker-compose.prod.yml stop backend
-   docker compose -f docker-compose.prod.yml up -d --no-deps backend
+   export IMAGE_TAG="<git-commit-sha-or-release-tag>"
+   export PROD_DIR="/opt/proctornet"
+   cd "$PROD_DIR"
    ```
-2. **Database Migration Safety:**
-   - All ProctorNet database migrations are strictly **additive** (new tables/columns only; zero drops/destructive alters during exam windows).
-   - Rolling back backend application code does not require rolling back the database schema.
+
+2. **Record Previous Active Tag for Rollback:**
+   ```bash
+   if [ -f "$PROD_DIR/ACTIVE_TAG" ]; then
+     cp "$PROD_DIR/ACTIVE_TAG" "$PROD_DIR/PREV_TAG"
+   fi
+   ```
+
+3. **Pull Production Images:**
+   ```bash
+   docker compose -f docker-compose.prod.yml pull
+   ```
+
+4. **Execute Additive Database Migrations:**
+   Migrations run in an ephemeral container prior to restarting application containers:
+   ```bash
+   docker run --rm \
+     --network proctornet-production_internal \
+     --env-file "$PROD_DIR/shared/.env" \
+     "ghcr.io/proctornet/online-exam-proctoring/backend:$IMAGE_TAG" \
+     npx prisma migrate deploy
+   ```
+
+5. **Rolling Container Launch:**
+   ```bash
+   export IMAGE_TAG
+   docker compose -f docker-compose.prod.yml up -d --remove-orphans
+   ```
+
+6. **Automated Health Probe & Tag Promotion:**
+   ```bash
+   # Probe internal backend health
+   for i in {1..20}; do
+     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || true)
+     if [ "$STATUS" = "200" ]; then
+       echo "[✓] Backend is healthy"
+       echo "$IMAGE_TAG" > "$PROD_DIR/ACTIVE_TAG"
+       break
+     fi
+     sleep 3
+   done
+
+   # Run automated smoke test suite
+   node "$PROD_DIR/scripts/ops/smoke-staging.js" --origin https://proctornet.duckdns.org
+   ```
 
 ---
 
-## 4. Emergency Playbook: "SEB Mismatch Flood"
+## 4. Rollback Procedures
+
+### Instant Container Rollback (Fast-Path)
+If a critical defect or regression is identified post-deployment:
+1. **Revert to Previous Known-Good Tag:**
+   ```bash
+   if [ -f "$PROD_DIR/PREV_TAG" ]; then
+     ROLLBACK_TAG=$(cat "$PROD_DIR/PREV_TAG")
+     echo "Rolling back to tag: $ROLLBACK_TAG"
+     export IMAGE_TAG="$ROLLBACK_TAG"
+     docker compose -f docker-compose.prod.yml up -d --remove-orphans
+     echo "$ROLLBACK_TAG" > "$PROD_DIR/ACTIVE_TAG"
+   else
+     echo "[!] No PREV_TAG recorded. Specify image tag manually."
+   fi
+   ```
+
+2. **Verify Health Post-Rollback:**
+   ```bash
+   curl -f http://127.0.0.1:5000/healthz
+   node "$PROD_DIR/scripts/ops/smoke-staging.js" --origin https://proctornet.duckdns.org
+   ```
+
+3. **Database Migration Rollback Invariant:**
+   - All ProctorNet database migrations are strictly **additive** (new tables/columns only; zero drops or destructive alters during exam windows).
+   - Rolling back backend application container code does not require rolling back the database schema. The previous application version will ignore new additive columns and tables.
+
+---
+
+## 5. Emergency Kill Switch: Safe Exam Browser (`SEB_MODE=log`)
 
 ### Problem Definition
 Students opening Safe Exam Browser receive an unexpected `403 Forbidden` (`code: "SEB_REQUIRED"`) error when attempting to start their exam, despite using the official `.seb` configuration.
 
 ### Immediate Triage Protocol (Sub-60-Second Resolution)
 1. **Switch SEB Mode from `enforce` to `log`:**
-   In the production environment (or `.env` file):
+   In the production environment (or `$PROD_DIR/shared/.env`):
    ```bash
    SEB_MODE=log
    ```
@@ -125,5 +200,5 @@ Students opening Safe Exam Browser receive an unexpected `403 Forbidden` (`code:
    - **Scenario A (Origin Mismatch):** Reverse proxy forwarded `http://` instead of `https://`, or stripped port. Fix proxy `X-Forwarded-Proto`.
    - **Scenario B (Config Key Mismatch):** Faculty updated exam settings with a different key. Update exam settings with the correct Config Key.
 5. **Re-Enable Enforce Mode:**
-   Once the origin/key divergence is resolved and verified via `GET /api/v1/seb/ping`, switch `SEB_MODE=enforce` and restart.
+   Once the origin/key divergence is resolved and verified via `GET /api/v1/seb/ping`, switch `SEB_MODE=enforce` and restart backend.
 

@@ -2,34 +2,41 @@
 # ProctorNet Production Infrastructure Stack (docker-compose.prod.yml)
 # Strict production hardening:
 # 1. Zero published host ports for data stores (Postgres, Redis, RabbitMQ)
-# 2. Only the Reverse Proxy publishes ports 80 and 443
+# 2. Only the Caddy reverse proxy publishes ports 80 and 443
 # 3. All secrets enforced via ${VAR:?}
 # 4. Internal bridge network (internal: true) isolates backend & data tiers
+# 5. Caddy provides automatic HTTPS via Let's Encrypt / ACME
 # ==============================================================================
 
 name: proctornet-production
 
 services:
   # ----------------------------------------------------------------------------
-  # Edge Reverse Proxy (Nginx) — ONLY service publishing external ports
+  # Edge Reverse Proxy (Caddy) — ONLY service publishing external ports
+  # Automatic HTTPS, HSTS, API proxy, WebSocket upgrade, SPA file server
   # ----------------------------------------------------------------------------
-  reverse-proxy:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: proctornet-reverse-proxy
+  caddy:
+    image: caddy:2-alpine
+    container_name: proctornet-caddy
     restart: unless-stopped
     ports:
-      - "80:8080"
-      - "443:8443"
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_ADDRESS: ${PUBLIC_HOST:-proctornet.duckdns.org}
     networks:
       - edge
       - internal
+    volumes:
+      - ./ops/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./frontend/dist:/srv/frontend:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/healthz"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:2019/config/"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -56,12 +63,14 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
       SEB_LINK_SECRET: ${SEB_LINK_SECRET:?SEB_LINK_SECRET is required}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://proctornet.duckdns.org}
-      S3_BUCKET: ${S3_BUCKET:-proctornet-production-evidence}
+      ALLOWED_ORIGINS: ${PUBLIC_ORIGIN:?PUBLIC_ORIGIN is required}
+      S3_BUCKET: ${S3_BUCKET:-proctornet-storage}
       AWS_REGION: ${AWS_REGION:-ap-south-1}
       CACHE_DRIVER: redis
       FACE_DRIVER: ${FACE_DRIVER:-off}
       MEDIA_DRIVER: ${MEDIA_DRIVER:-snapshot}
+      SEB_MODE: ${SEB_MODE:-log}
+      SEB_CONFIG_KEY: ${SEB_CONFIG_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -139,7 +148,7 @@ services:
 
 # ==============================================================================
 # Networks
-#   edge     -- Public-facing edge network (reverse proxy only)
+#   edge     -- Public-facing edge network (Caddy proxy only)
 #   internal -- Isolated internal network for backend and data stores
 # ==============================================================================
 networks:
@@ -156,4 +165,5 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
-
+  caddy_data:
+  caddy_config:

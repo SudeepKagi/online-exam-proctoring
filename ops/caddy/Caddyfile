@@ -1,14 +1,14 @@
 {
-    email admin@proctornet.com
+    email {$ACME_EMAIL:admin@proctornet.com}
 }
 
 # Redirect raw IP and legacy hostnames to canonical domain
-http://43.204.45.86, http://43.204.45.86.sslip.io, https://43.204.45.86.sslip.io {
-    redir https://proctornet.duckdns.org{uri} permanent
+http://43.204.45.86, http://43.204.45.86.sslip.io {
+    redir https://{$SITE_ADDRESS:proctornet.duckdns.org}{uri} permanent
 }
 
 # Canonical site with automatic TLS & HTTP->HTTPS redirection
-proctornet.duckdns.org {
+{$SITE_ADDRESS:proctornet.duckdns.org} {
     encode zstd gzip
 
     # Block internal telemetry endpoints publicly (EDGE-01)
@@ -28,18 +28,18 @@ proctornet.duckdns.org {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "camera=(self), microphone=(self), display-capture=()"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com; img-src 'self' data: blob: https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; connect-src 'self' wss://proctornet.duckdns.org https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdnjs.cloudflare.com; worker-src 'self' blob: https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' data: https://fonts.gstatic.com https://cdn.fontshare.com; img-src 'self' data: blob: https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; connect-src 'self' wss://{$SITE_ADDRESS:proctornet.duckdns.org} https://proctornet-storage-prod-858109978489.s3.ap-south-1.amazonaws.com https://proctornet-storage-prod-858109978489.s3.amazonaws.com https://*.amazonaws.com; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self';"
         ?X-Request-ID "{uuid}"
     }
 
     # Request body limit
     request_body {
-        max_size 10MB
+        max_size 25MB
     }
 
     # Reverse proxy backend API and WebSockets
     handle /api/* {
-        reverse_proxy 127.0.0.1:5000 {
+        reverse_proxy backend:5000 {
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Forwarded-Host {host}
@@ -47,7 +47,7 @@ proctornet.duckdns.org {
     }
 
     handle /socket.io/* {
-        reverse_proxy 127.0.0.1:5000 {
+        reverse_proxy backend:5000 {
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
             header_up X-Forwarded-Host {host}
@@ -55,7 +55,7 @@ proctornet.duckdns.org {
     }
 
     handle /healthz {
-        reverse_proxy 127.0.0.1:5000
+        reverse_proxy backend:5000
     }
 
     # Hashed static assets — Immutable caching
@@ -63,17 +63,16 @@ proctornet.duckdns.org {
         path /assets/*
     }
     handle @assets {
-        root * /opt/proctornet/current/frontend/dist
+        root * /srv/frontend
         header Cache-Control "public, max-age=31536000, immutable"
         file_server
     }
 
     # Single Page Application (SPA) - HTML fallback with no-store
     handle {
-        root * /opt/proctornet/current/frontend/dist
+        root * /srv/frontend
         header Cache-Control "no-store, no-cache, must-revalidate"
         try_files {path} /index.html
         file_server
     }
 }
-
