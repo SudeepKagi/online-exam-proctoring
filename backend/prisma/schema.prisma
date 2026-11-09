@@ -51,6 +51,13 @@ enum Severity {
   CRITICAL
 }
 
+enum ReviewStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  CONFIRMED
+}
+
 // -------------------------------------------------------------
 // 1. User
 // -------------------------------------------------------------
@@ -71,6 +78,9 @@ model User {
   createdExams       Exam[]           @relation("ExamCreator")
   assignments        ExamAssignment[]
   attempts           ExamAttempt[]
+  reviewedAttempts   ExamAttempt[]    @relation("AttemptReviewer")
+  readinessReports   StudentReadinessReport[]
+  consents           StudentConsent[]
 
   @@map("users")
 }
@@ -95,6 +105,8 @@ model Exam {
   questions        Question[]
   assignments      ExamAssignment[]
   attempts         ExamAttempt[]
+  readinessReports StudentReadinessReport[]
+  consents         StudentConsent[]
 
   @@map("exams")
 }
@@ -154,6 +166,12 @@ model ExamAttempt {
 
   answers        AttemptAnswer[]
   proctoringLogs ProctoringLog[]
+  reviewStatus   ReviewStatus     @default(PENDING) @map("review_status")
+  reviewNotes    String?          @map("review_notes") @db.Text
+  reviewedById   String?          @map("reviewed_by_id") @db.Uuid
+  reviewedBy     User?            @relation("AttemptReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt     DateTime?        @map("reviewed_at") @db.Timestamptz(3)
+  isFlagged      Boolean          @default(false) @map("is_flagged")
 
   @@unique([examId, studentId])
   @@map("exam_attempts")
@@ -203,5 +221,54 @@ model SystemSetting {
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("system_settings")
+}
+
+// -------------------------------------------------------------
+// 9. StudentReadinessReport (Telemetry & Pre-flight Status)
+// -------------------------------------------------------------
+
+model StudentReadinessReport {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  examId        String   @map("exam_id") @db.Uuid
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentId     String   @map("student_id") @db.Uuid
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  osFamily      String   @map("os_family")
+  browserFamily String   @map("browser_family")
+  cameraOk      Boolean  @default(false) @map("camera_ok")
+  latencyBucket String   @default("good") @map("latency_bucket")
+  sebVerified   Boolean  @default(false) @map("seb_verified")
+  isReady       Boolean  @default(false) @map("is_ready")
+  reasons       Json     @default("[]")
+  reportedAt    DateTime @default(now()) @map("reported_at") @db.Timestamptz(3)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([examId, studentId])
+  @@index([examId])
+  @@index([studentId])
+  @@map("student_readiness_reports")
+}
+
+// -------------------------------------------------------------
+// 10. StudentConsent (Pre-check Proctoring Agreement)
+// -------------------------------------------------------------
+
+model StudentConsent {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  studentId      String   @map("student_id") @db.Uuid
+  student        User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examId         String   @map("exam_id") @db.Uuid
+  exam           Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  consentVersion String   @map("consent_version")
+  consentText    String   @map("consent_text") @db.Text
+  agreedAt       DateTime @default(now()) @map("agreed_at") @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([studentId, examId])
+  @@index([studentId])
+  @@index([examId])
+  @@map("student_consents")
 }
 
