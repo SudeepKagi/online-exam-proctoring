@@ -24,6 +24,10 @@ ProctorNet follows strict data minimization, purpose limitation, and storage lim
 | **Proctoring Violation Evidence** | Webcam violation snapshots (`evidenceKey`), Event type (e.g. `MULTIPLE_FACES`, `NO_FACE`, `WINDOW_BLUR`), Severity | AWS S3 (`evidence/{attemptId}/*`), PostgreSQL `proctoring_logs` | S3 SSE-KMS at rest, presigned URLs (600s TTL); TLS 1.3 in transit | Faculty exam creator, Assigned Invigilators, Admin | Configurable via `RETENTION_DAYS` (default: 90 days) | Automated nightly retention cron job (`cleanExpiredEvidence`) or admin purge |
 | **Incident Review Notes** | Review Status (`PENDING`, `REVIEWED`, `DISMISSED`, `CONFIRMED`), Invigilator/Faculty Notes, Reviewer ID, Reviewed Timestamp | PostgreSQL `exam_attempts` table (`review_status`, `review_notes`, `reviewed_at`) | PostgreSQL RDS AES-256 encryption at rest | Faculty exam owner, Invigilator, Admin | Same as exam results record | Retained with academic audit trail |
 
+### 2.1 Cryptographic Utilities & Biometrics Storage Verification
+- **Application Envelope Encryption Utility (`backend/src/utils/crypto.js`):** Available, unused in production schema as photos and violation snapshots leverage AWS S3 Server-Side Encryption (SSE-KMS / SSE-S3) with database-level AWS RDS disk encryption at rest. Callers count: 0 (reserved for future field-level PII encryption if mandated by institutional jurisdiction).
+- **Biometric Vector Persistence Audit (`faceDescriptor`):** Zero storage. Grep across `backend/src`, `backend/prisma/schema.prisma`, and all database migrations confirms 0 occurrences of `faceDescriptor`. Biometric embeddings are ephemeral in-memory representations and never saved to persistent storage. Relational tables store only the boolean verification flag (`exam_attempts.face_verified: Boolean`) and the S3 photo pointer (`users.reference_photo_key: String`).
+
 ---
 
 ## 3. Telemetry Exclusions (Data We Explicitly Do NOT Collect)
