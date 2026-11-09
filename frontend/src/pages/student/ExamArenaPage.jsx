@@ -61,7 +61,7 @@ export default function ExamArenaPage() {
     navigate('/student/dashboard', { replace: true, state: { errorMsg: msg } })
   }, [navigate])
 
-  const { isSuspended, setIsSuspended, isDuplicateTab } = useArenaSocketAndTab({
+  const { isSuspended, setIsSuspended, isDuplicateTab, claimActiveSession } = useArenaSocketAndTab({
     examId: id, attemptId: attempt?.id, onTerminated: handleTerminationExit,
   })
 
@@ -615,7 +615,12 @@ export default function ExamArenaPage() {
       )}
 
       {isSuspended && <SuspendedOverlay />}
-      {isDuplicateTab && <DuplicateTabOverlay onReturn={() => navigate('/student/dashboard')} />}
+      {isDuplicateTab && (
+        <DuplicateTabOverlay
+          onReturn={() => navigate('/student/dashboard')}
+          onTakeOver={claimActiveSession}
+        />
+      )}
       <CameraDisconnectedOverlay />
     </ExamArenaShell>
   )

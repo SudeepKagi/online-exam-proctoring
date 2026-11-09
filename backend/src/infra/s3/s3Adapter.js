@@ -30,8 +30,8 @@ class S3Adapter {
   async listObjectVersions(_prefix = '', _keyMarker = null, _versionIdMarker = null, _maxKeys = 1000) { throw new Error('Not implemented') }
   async deleteObjectVersions(_objects = []) { throw new Error('Not implemented') }
   async getPresignedReadUrl(_key, _expiresIn = 600, _signingDate = null) { throw new Error('Not implemented') }
-  async getPresignedPutUrl(_key, _contentType = 'image/webp', _expiresIn = 120) { throw new Error('Not implemented') }
-  async createDirectUploadPolicy({ _key, _contentType, _maxSizeBytes, _expiresIn = 120 } = {}) { throw new Error('Not implemented') }
+  async getPresignedPutUrl(_key, _contentType = 'image/webp', _expiresIn = 300) { throw new Error('Not implemented') }
+  async createDirectUploadPolicy({ _key, _contentType, _maxSizeBytes, _expiresIn = 300 } = {}) { throw new Error('Not implemented') }
   destroy() { }
 }
 
@@ -181,7 +181,7 @@ class AwsS3Adapter extends S3Adapter {
     })
   }
 
-  async getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 120) {
+  async getPresignedPutUrl(key, contentType = 'image/webp', expiresIn = 300) {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -190,7 +190,7 @@ class AwsS3Adapter extends S3Adapter {
     return getSignedUrl(this.client, command, { expiresIn })
   }
 
-  async createDirectUploadPolicy({ key, contentType, maxSizeBytes, expiresIn = 120 }) {
+  async createDirectUploadPolicy({ key, contentType, maxSizeBytes, expiresIn = 300 }) {
     const conditions = [
       ['starts-with', '$Content-Type', 'image/'],
       ['content-length-range', 1, maxSizeBytes],

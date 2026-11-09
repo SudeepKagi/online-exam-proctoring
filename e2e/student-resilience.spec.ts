@@ -193,10 +193,22 @@ test.describe('E2E: Student Resilience, Autosave & Offline Recovery Suite', () =
 
     const returnBtn = tab2.locator('[data-testid="duplicate-tab-return-btn"]')
     await expect(returnBtn).toBeVisible()
+    const takeoverBtn = tab2.locator('[data-testid="duplicate-tab-takeover-btn"]')
+    await expect(takeoverBtn).toBeVisible()
 
-    // Tab 1 remains active and unobstructed
+    // Tab 1 remains active and unobstructed initially
     const overlayTab1 = tab1.locator('[data-testid="duplicate-tab-overlay"]')
     await expect(overlayTab1).not.toBeVisible()
+
+    // Candidate chooses to take over active session in Tab 2
+    await takeoverBtn.click()
+    await expect(overlayTab2).not.toBeVisible({ timeout: 5000 })
+    await expect(overlayTab1).toBeVisible({ timeout: 5000 })
+
+    // Tab 1 reclaims session back
+    const takeoverTab1 = tab1.locator('[data-testid="duplicate-tab-takeover-btn"]')
+    await takeoverTab1.click()
+    await expect(overlayTab1).not.toBeVisible({ timeout: 5000 })
 
     // Tab 1 can still interact with questions
     await tab1.locator('button', { hasText: 'Previous' }).click()
