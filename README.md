@@ -22,16 +22,18 @@
 
 ```mermaid
 graph TB
-    subgraph ClientLayer ["Client Presentation Layer (Browser)"]
-        UI["React 19 + Shadcn UI SPA<br/>(https://proctornet.duckdns.org)"]
-        RT["WebRTC Screen Capture<br/>(displaySurface === 'monitor')"]
-        LD["Browser Lockdown Guard<br/>(Tab-switch, Fullscreen, Blur)"]
-        UI --- RT
-        UI --- LD
+    subgraph ClientLayer ["Client Presentation Layer (Browser / SEB)"]
+        UI["React 19 + Vite SPA<br/>(Light Enterprise Design System)"]
+        SEB["Safe Exam Browser (SEB) / Lockdown Guard<br/>(Kiosk Mode, Fullscreen, Blur, Tab-Switch)"]
+        CAM["Continuous Camera Proctoring & Biometrics<br/>(Face Verification, Hardware Stream Handoff)"]
+        OFFLINE["Offline Resilient Autosave Buffer<br/>(IndexedDB / LocalStorage Queue)"]
+        UI --- SEB
+        UI --- CAM
+        UI --- OFFLINE
     end
 
     subgraph EdgeLayer ["Edge Security & Ingress"]
-        CADDY["Caddy 2 / Nginx Reverse Proxy<br/>(:80, :443 Automatic Let's Encrypt TLS)"]
+        CADDY["Caddy Reverse Proxy<br/>(:80, :443 Automatic Let's Encrypt TLS)"]
         WS_UPGRADE["WebSocket Upgrade & Compression<br/>(/api/*, /socket.io/*)"]
         CADDY --- WS_UPGRADE
     end
@@ -186,13 +188,17 @@ sequenceDiagram
     actor I as Invigilator Console
 
     %% Phase A
-    Note over S,AWS: Phase A: Pre-Exam Verification & Screen Lock
+    Note over S,AWS: Phase A: Privacy Consent, Readiness Check & SEB Verification
+    S->>E: POST /api/v1/exams/:id/consent (Explicit Agree to Captured Data & 90-Day Retention)
+    E->>B: Persist in student_consents table
+    S->>B: POST /api/v1/exams/:id/readiness (Categorical Diagnostics: OS, Browser, Latency, Camera)
+    B->>PG: Record in student_readiness_reports (Faculty Portal Visibility)
     S->>E: POST /api/v1/media/verify-face (Base64 webcam frame)
     E->>B: Proxy verify-face
     B->>AWS: Rekognition CompareFaces(webcam, student_profile_photo)
     AWS-->>B: Similarity 90%+ (Match Confirmed)
     B-->>S: 200 OK { verified: true }
-    Note over S: Student stops webcam track (track.stop())<br/>Acquires Full Screen (displaySurface === 'monitor')<br/>Enforces Fullscreen Window Lock
+    Note over S: Continuous camera stream retained via hardware handoff<br/>SEB verifies ConfigKeyHash (or Enforces Fullscreen Lock in standard browser)
 
     %% Phase B
     Note over S,PG: Phase B: Thundering-Herd Safe Exam Start
