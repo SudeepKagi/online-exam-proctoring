@@ -136,22 +136,19 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
     }
-    adminToken = signToken(adminUser)
+    adminToken = signToken({ id: adminUser.id, role: 'ADMIN', email: adminUser.email })
 
-    // Setup Student
-    studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: { not: { contains: 'load' } } } })
-    if (!studentUser) {
-      studentUser = await prisma.user.create({
-        data: {
-          email: `student-seb5-${Date.now()}@proctornet.com`,
-          fullName: 'SEB Student',
-          role: 'STUDENT',
-          status: 'ACTIVE',
-          passwordHash: '$2a$10$abcdefghijklmnopqrstuu'
-        }
-      })
-    }
-    studentToken = signToken(studentUser)
+    // Setup Student (isolated user with no prior exam assignments)
+    studentUser = await prisma.user.create({
+      data: {
+        email: `student-seb5-iso-${Date.now()}@proctornet.com`,
+        fullName: 'SEB Isolated Student',
+        role: 'STUDENT',
+        status: 'ACTIVE',
+        passwordHash: '$2a$10$abcdefghijklmnopqrstuu'
+      }
+    })
+    studentToken = signToken({ id: studentUser.id, role: 'STUDENT', email: studentUser.email })
 
     // Setup Faculty
     facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY', email: { not: { contains: 'load' } } } })
@@ -166,15 +163,18 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
     }
-    facultyToken = signToken(facultyUser)
+    facultyToken = signToken({ id: facultyUser.id, role: 'FACULTY', email: facultyUser.email })
   })
 
   after(async () => {
     if (runningServer) {
       await new Promise((resolve) => runningServer.close(resolve))
     }
-    // Clean up institution settings
+    // Clean up institution settings and test user
     await settingsService.deleteSebConfig()
+    if (studentUser) {
+      await prisma.user.deleteMany({ where: { id: studentUser.id } })
+    }
   })
 
   // ── 1. Unit Tests: HMAC Token Signing & Validation ───────────────────────
@@ -535,7 +535,12 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
     })
 
     it('rejects student without active SEB exam with 403 NO_ACTIVE_SEB_EXAM', async () => {
-      // Temporarily set exam status to DRAFT
+      // Temporarily set all other SEB exams to DRAFT to guarantee test isolation
+      const allSeb = await prisma.exam.findMany({ where: { status: 'PUBLISHED' } })
+      const otherSebIds = allSeb.filter(e => e.id !== testExam.id && e.proctoringConfig?.sebRequired).map(e => e.id)
+      if (otherSebIds.length > 0) {
+        await prisma.exam.updateMany({ where: { id: { in: otherSebIds } }, data: { status: 'DRAFT' } })
+      }
       await prisma.exam.update({ where: { id: testExam.id }, data: { status: 'DRAFT' } })
 
       const res = await httpRequest({
@@ -549,8 +554,11 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
         }
       })
 
-      // Restore status
+      // Restore statuses
       await prisma.exam.update({ where: { id: testExam.id }, data: { status: 'PUBLISHED' } })
+      if (otherSebIds.length > 0) {
+        await prisma.exam.updateMany({ where: { id: { in: otherSebIds } }, data: { status: 'PUBLISHED' } })
+      }
 
       assert.strictEqual(res.statusCode, 403)
       assert.strictEqual(res.json?.code, 'NO_ACTIVE_SEB_EXAM')

@@ -149,6 +149,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
   test.afterAll(async () => {
     if (facultyActor) await facultyActor.close()
     if (studentActor) await studentActor.close()
+    await resetCleanRoom()
   })
 
   test('1. Dashboard "Check your computer" card runs live checks and remembers result', async () => {
