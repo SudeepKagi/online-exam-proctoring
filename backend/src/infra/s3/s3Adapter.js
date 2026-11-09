@@ -15,7 +15,6 @@ const { createPresignedPost } = require('@aws-sdk/s3-presigned-post')
 const { NodeHttpHandler } = require('@smithy/node-http-handler')
 const https = require('https')
 const http = require('http')
-const crypto = require('crypto')
 const { logger } = require('../../shared/logging')
 
 /**
@@ -103,13 +102,17 @@ class AwsS3Adapter extends S3Adapter {
 
   async putObject(key, buffer, contentType = 'image/webp') {
     const buf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
-    const command = new PutObjectCommand({
+    const putParams = {
       Bucket: this.bucket,
       Key: key,
       Body: buf,
       ContentType: contentType,
-      ServerSideEncryption: 'AES256'
-    })
+      ServerSideEncryption: process.env.S3_KMS_KEY_ID ? 'aws:kms' : 'AES256'
+    }
+    if (process.env.S3_KMS_KEY_ID) {
+      putParams.SSEKMSKeyId = process.env.S3_KMS_KEY_ID
+    }
+    const command = new PutObjectCommand(putParams)
     return this.client.send(command)
   }
 
