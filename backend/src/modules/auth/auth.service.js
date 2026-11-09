@@ -61,6 +61,25 @@ class AuthService {
     }
   }
 
+  async refreshAccessToken(refreshToken) {
+    if (!refreshToken) throw err('Refresh token is required', 400)
+    const refreshSecret = config.jwtRefreshSecret || config.jwtSecret
+    let decoded
+    try {
+      decoded = jwt.verify(refreshToken, refreshSecret)
+    } catch (e) {
+      throw err('Invalid or expired refresh token', 401)
+    }
+    const userId = decoded.id || decoded.sub
+    if (!userId) throw err('Invalid refresh token payload', 401)
+    const user = await authSql.findUserById(userId)
+    if (!user) throw err('User not found', 401)
+    if (user.status === 'SUSPENDED') throw err('Account is suspended. Please contact institutional administrator.', 403)
+    const tokens = this.issueTokens(user)
+    const { password, passwordHash, ...safeUser } = user
+    return { user: safeUser, ...tokens }
+  }
+
   async getUserById(id) {
     const user = await authSql.findUserById(id)
     if (!user) return null
