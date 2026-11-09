@@ -131,15 +131,15 @@ jobs:
 
           # 5. Launch containers
           export IMAGE_TAG
-          docker compose -f docker-compose.staging.yml up -d --remove-orphans
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
           # 6. Verify healthcheck with automatic rollback on failure
           HEALTHY=false
-          echo "Probing staging backend health..."
-          for i in {1..20}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5001/healthz || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "[✓] Staging healthcheck passed (HTTP 200)"
+          echo "Probing staging backend container health..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format '{{.State.Health.Status}}' proctornet-backend 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "[✓] Staging backend container is healthy"
               HEALTHY=true
               echo "$IMAGE_TAG" > "$STAGING_DIR/ACTIVE_TAG"
               break
@@ -147,11 +147,19 @@ jobs:
             sleep 3
           done
 
+          if [ "$HEALTHY" = "true" ]; then
+            echo "Running smoke tests against staging edge..."
+            node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-staging.proctornet.duckdns.org}" || {
+              echo "[!] Smoke test failed against staging origin!"
+              HEALTHY=false
+            }
+          fi
+
           if [ "$HEALTHY" != "true" ]; then
-            echo "[!] Healthcheck failed! Initiating automatic rollback..."
+            echo "[!] Healthcheck or smoke failed! Initiating automatic rollback..."
             if [ -n "$PREV_TAG" ]; then
               export IMAGE_TAG="$PREV_TAG"
-              docker compose -f docker-compose.staging.yml up -d --remove-orphans
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
               echo "[✓] Rolled back staging to previous tag: $PREV_TAG"
             fi
             exit 1

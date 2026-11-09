@@ -144,17 +144,25 @@ jobs:
 
           # 6. Verify healthcheck with automatic rollback on failure
           HEALTHY=false
-          echo "Probing production backend health..."
-          for i in {1..25}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || true)
-            if [ "$STATUS" = "200" ]; then
-              echo "[✓] Production healthcheck passed (HTTP 200)"
+          echo "Probing production backend container health..."
+          for i in {1..30}; do
+            STATUS=$(docker inspect --format '{{.State.Health.Status}}' proctornet-backend 2>/dev/null || true)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "[✓] Production backend container is healthy"
               HEALTHY=true
               echo "$IMAGE_TAG" > "$PROD_DIR/ACTIVE_TAG"
               break
             fi
             sleep 3
           done
+
+          if [ "$HEALTHY" = "true" ]; then
+            echo "Running smoke tests against production edge..."
+            node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-proctornet.duckdns.org}" || {
+              echo "[!] Smoke test failed against production origin!"
+              HEALTHY=false
+            }
+          fi
 
           if [ "$HEALTHY" != "true" ]; then
             echo "[!] Healthcheck failed! Initiating automatic rollback..."

@@ -6,28 +6,20 @@
 
 ---
 
-## 1. Staging Deployment Topologies
+## 1. Staging Deployment Architecture
 
-ProctorNet supports two validated staging deployment models:
+ProctorNet standardizes on a single, unified deployment topology for both Staging and Production:
 
-### Option A: Co-Located Staging on Same Production EC2 (Zero Incremental Cost)
-In this model, staging runs as a parallel Docker Compose project (`docker-compose.staging.yml`) alongside the production stack on the same host.
-- **Cost:** \$0 / month additional infrastructure cost.
-- **Project Isolation:** Compose project name `proctornet-staging`, isolated bridge networks (`proctornet-staging_edge`, `proctornet-staging_internal`), and isolated named volumes (`proctornet-staging_postgres_data`, `proctornet-staging_redis_data`, `proctornet-staging_rabbitmq_data`).
-- **Port Separation:**
-  - Host ports `80` and `443` remain exclusively bound to the edge Caddy reverse proxy.
-  - Staging reverse proxy binds exclusively to `127.0.0.1:8081` on the loopback interface.
-  - Staging PostgreSQL, Redis, and RabbitMQ have **zero** published host ports (`internal: true`).
-- **Memory & Resource Budget:** Minimum 4 GB RAM recommended on the host (e.g. `t3.medium`).
-
-### Option B: Dedicated Independent EC2 Instance (Recommended for High Stakes)
-In this model, staging runs on a completely separate cloud instance, guaranteeing total hardware and noisy-neighbor isolation.
+### Dedicated Staging EC2 Instance (Single Supported Topology)
+Staging runs the exact production Docker Compose stack (`docker-compose.prod.yml`) driven by a staging environment file (`/opt/proctornet-staging/.env`) on a dedicated AWS EC2 instance.
+- **Topology Parity:** 100% architectural parity with production. Uses Caddy (automatic HTTPS via ACME / DuckDNS), backend API, isolated Postgres 16, Redis 7, RabbitMQ, and the containerized frontend asset-sync volume.
 - **Instance Sizing:** AWS EC2 `t3.small` (2 vCPU, 2 GB RAM, 20 GB gp3 storage) in `ap-south-1`.
-- **Estimated Cost:**
+- **Estimated Infrastructure Cost:**
   - `t3.small` on-demand: ~\$0.0208 / hour ≈ **\$15.18 / month**.
   - 20 GB gp3 EBS: ~**\$1.60 / month**.
   - Total Monthly Run Rate: ~**\$16.78 / month** (or ~\$9.80 / month with a 1-year Savings Plan).
-- **Network Isolation:** Own public IP, own Caddy instance binding directly to `80` and `443`.
+- **Network Isolation:** Dedicated elastic IP, dedicated security group (inbound 80, 443; zero public database ports), own Caddy instance binding directly to 80/443 for `staging.proctornet.duckdns.org`.
+- **Zero Drift:** By deploying `docker-compose.prod.yml` to both environments, staging tests the exact container orchestration, networking, and volume lifecycle deployed to production.
 
 ---
 

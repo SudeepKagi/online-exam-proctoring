@@ -54,4 +54,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
   CMD wget -q --spider http://127.0.0.1:5000/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && npx prisma migrate deploy && node prisma/seed/admin.js && node --max-old-space-size=2048 src/app.js"]
+CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && npx prisma migrate deploy && node --max-old-space-size=2048 src/app.js"]

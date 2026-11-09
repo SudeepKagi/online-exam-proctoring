@@ -29,10 +29,12 @@ services:
       - internal
     volumes:
       - ./ops/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./frontend/dist:/srv/frontend:ro
+      - frontend_assets:/srv/frontend:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
+      frontend:
+        condition: service_completed_successfully
       backend:
         condition: service_healthy
     healthcheck:
@@ -40,6 +42,20 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+
+  # ----------------------------------------------------------------------------
+  # Frontend Static Asset Sync (Populates Caddy's /srv/frontend via shared volume)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_REPO:-proctornet/online-exam-proctoring}/frontend:${IMAGE_TAG:-latest}
+    container_name: proctornet-frontend-assets
+    restart: "no"
+    command: ["sh", "-c", "cp -a /usr/share/nginx/html/. /srv/frontend/ && echo 'Frontend assets synced to volume'"]
+    volumes:
+      - frontend_assets:/srv/frontend
 
   # ----------------------------------------------------------------------------
   # Backend API Server — Internal network only (no published host ports)
@@ -162,6 +178,7 @@ networks:
 # Persistent Storage Volumes
 # ==============================================================================
 volumes:
+  frontend_assets:
   postgres_data:
   redis_data:
   rabbitmq_data:

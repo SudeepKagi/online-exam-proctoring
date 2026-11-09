@@ -58,6 +58,10 @@ http://43.204.45.86, http://43.204.45.86.sslip.io {
         reverse_proxy backend:5000
     }
 
+    handle /health {
+        reverse_proxy backend:5000
+    }
+
     # Hashed static assets — Immutable caching
     @assets {
         path /assets/*
