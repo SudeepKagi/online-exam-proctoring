@@ -178,10 +178,12 @@ function csrfProtection(req, res, next) {
   next()
 }
 
-const isLoadTest = !isProd && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
+function isLoadTestActive() {
+  return process.env.NODE_ENV !== 'production' && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
+}
 
 function getApiLimiterMax(req) {
-  if (isLoadTest) return 100000
+  if (isLoadTestActive()) return 100000
   let role = req.user?.role?.toLowerCase()
   if (!role) {
     const token = extractTokenFromReq(req)
@@ -213,7 +215,7 @@ function getApiLimiterKey(req) {
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: getApiLimiterMax,
-  skip: () => isLoadTest,
+  skip: () => isLoadTestActive(),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: getApiLimiterKey,

@@ -14,10 +14,14 @@ function getLoginLimiterKey(req) {
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 15,
+  max: () => {
+    const isTest = process.env.NODE_ENV === 'test'
+    const isLoad = process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
+    return (isTest || isLoad) ? 10000 : 15
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: () => isTest || isLoadTest,
+  skip: () => process.env.NODE_ENV === 'test' || process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1',
   keyGenerator: getLoginLimiterKey,
   message: {
     code: 'RATE_LIMIT_EXCEEDED',

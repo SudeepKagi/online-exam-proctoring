@@ -24,8 +24,12 @@ describe('Phase 2: Campus NAT-Resilient Rate Limiting Invariants', () => {
   })
 
   test('2. apiLimiter allocates 1800 requests/window to STUDENT and 1500 to unauthenticated lab IP', () => {
-    // Temporarily disable loadtest bypass to check production values
+    // Ensure production mode behavior is tested
     const prevEnv = process.env.LOADTEST_ALLOW
+    const prevDisable = process.env.DISABLE_RATE_LIMIT
+    const prevNodeEnv = process.env.NODE_ENV
+
+    process.env.NODE_ENV = 'production'
     delete process.env.LOADTEST_ALLOW
     delete process.env.DISABLE_RATE_LIMIT
 
@@ -35,7 +39,9 @@ describe('Phase 2: Campus NAT-Resilient Rate Limiting Invariants', () => {
     assert.strictEqual(getApiLimiterMax(studentReq), 1800, 'Student role must receive 1800 requests/window')
     assert.strictEqual(getApiLimiterMax(unauthReq), 1500, 'Unauthenticated IP must receive 1500 coarse limit for campus labs')
 
+    process.env.NODE_ENV = prevNodeEnv
     if (prevEnv) process.env.LOADTEST_ALLOW = prevEnv
+    if (prevDisable) process.env.DISABLE_RATE_LIMIT = prevDisable
   })
 
   test('3. loginLimiter keys by email/account to prevent brute force without locking out classroom peers', () => {
