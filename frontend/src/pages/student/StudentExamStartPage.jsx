@@ -5,7 +5,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
-import { setCameraStream } from '@/lib/screenStreamStore'
 import { useCamera } from '@/hooks/useCamera'
 import {
   evaluateClockSkew,

@@ -8,7 +8,7 @@ import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
 import { useArenaSocketAndTab, restoreAnswers } from '@/hooks/useArenaSocketAndTab'
-import { getCameraStream, clearCameraStream } from '@/lib/screenStreamStore'
+import cameraStore from '@/lib/cameraStore'
 import QuestionPalette from '@/components/exam/QuestionPalette'
 import QuestionCard from '@/components/exam/QuestionCard'
 import { Button } from '@/components/ui/button'
@@ -56,7 +56,7 @@ export default function ExamArenaPage() {
   }, [attempt?.id, id])
 
   const handleTerminationExit = useCallback((msg = 'Your examination was terminated because maximum violations (3/3) were exceeded.') => {
-    clearCameraStream()
+    cameraStore.releaseCamera('submit')
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     navigate('/student/dashboard', { replace: true, state: { errorMsg: msg } })
   }, [navigate])
@@ -96,7 +96,7 @@ export default function ExamArenaPage() {
         )
       }
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      clearCameraStream()
+      cameraStore.releaseCamera('submit')
       setIsSubmitted(true)
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
@@ -130,7 +130,7 @@ export default function ExamArenaPage() {
   }, [handleTerminationExit])
 
   const { CameraDisconnectedOverlay, isProctoringInterrupted } = useScreenProctoring({
-    stream: attempt ? getCameraStream() : null,
+    stream: attempt ? cameraStore.getStream() : null,
     attemptId: attempt?.id,
     examId: id,
     onViolation: handleViolationDetected,
@@ -235,14 +235,14 @@ export default function ExamArenaPage() {
         setLoading(false)
       } catch (err) {
         if (!mounted) return
-        clearCameraStream()
+        cameraStore.releaseCamera('submit')
         navigate('/student/dashboard', { replace: true, state: { errorMsg: errorMessage(err, 'Exam is not currently available.') } })
       }
     }
     initArena()
 
     const handleBeforeUnload = () => {
-      clearCameraStream()
+      cameraStore.releaseCamera('submit')
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
@@ -250,7 +250,7 @@ export default function ExamArenaPage() {
       mounted = false
       window.removeEventListener('beforeunload', handleBeforeUnload)
       teardownTimerRef.current = setTimeout(() => {
-        clearCameraStream()
+        cameraStore.releaseCamera('submit')
       }, 100)
     }
   }, [id, navigate, handleTerminationExit, setIsSuspended])
