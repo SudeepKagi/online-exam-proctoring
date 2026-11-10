@@ -4,7 +4,8 @@
 # Retention: 7 days default (customizable via RETENTION_DAYS)
 # Off-box: Sync to AWS S3 (customizable via OFFBOX_S3_BUCKET / AWS CLI)
 # ==============================================================================
-set -euo pipefail
+set -eu
+set -o pipefail 2>/dev/null || true
 
 BACKUP_DIR="${BACKUP_DIR:-/opt/proctornet/backups/postgres}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
@@ -13,13 +14,17 @@ BACKUP_FILE="${BACKUP_DIR}/proctornet_backup_${TIMESTAMP}.sql.gz"
 CONTAINER_NAME="${POSTGRES_CONTAINER:-proctornet-test-postgres}"
 DB_NAME="${POSTGRES_DB:-proctornet}"
 DB_USER="${POSTGRES_USER:-proctornet}"
-OFFBOX_S3_BUCKET="${OFFBOX_S3_BUCKET:-proctornet-production-storage}"
+OFFBOX_S3_BUCKET="${OFFBOX_S3_BUCKET:-proctornet-storage-prod-858109978489}"
 
 mkdir -p "${BACKUP_DIR}"
 
 echo "[INFO] Starting database backup for '${DB_NAME}' at ${TIMESTAMP}..."
 
-if command -v pg_dump >/dev/null 2>&1; then
+if [ -n "${DIRECT_URL:-}" ]; then
+  echo "[INFO] Using DIRECT_URL connection string..."
+  CLEAN_CONN=$(echo "$DIRECT_URL" | sed 's/[?&]schema=.*//; s/[?&]sslmode=.*//')
+  pg_dump -Fc -d "$CLEAN_CONN" -f "${BACKUP_FILE}"
+elif command -v pg_dump >/dev/null 2>&1; then
   pg_dump -U "${DB_USER}" -d "${DB_NAME}" | gzip -9 > "${BACKUP_FILE}"
 elif command -v docker >/dev/null 2>&1; then
   docker exec "${CONTAINER_NAME}" pg_dump -U "${DB_USER}" -d "${DB_NAME}" | gzip -9 > "${BACKUP_FILE}"

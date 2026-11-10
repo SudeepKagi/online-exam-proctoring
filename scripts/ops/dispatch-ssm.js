@@ -51,8 +51,7 @@ const parameterPayload = JSON.stringify({
   commands: [
     `echo "${base64Script}" | base64 -d > /tmp/remote-task.sh`,
     `chmod +x /tmp/remote-task.sh`,
-    `bash /tmp/remote-task.sh`,
-    `rm -f /tmp/remote-task.sh`
+    `trap 'rm -f /tmp/remote-task.sh' EXIT; /tmp/remote-task.sh`
   ]
 });
 

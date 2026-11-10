@@ -131,6 +131,9 @@ function preflightEnv(filePath, options = {}) {
 
   // 1. Check required names
   for (const name of REQUIRED_NAMES) {
+    if (name === 'REDIS_URL' && (envMap.CACHE_DRIVER === 'memory' || envMap.APP_PROFILE === 'lite')) {
+      continue
+    }
     if (!envMap[name] && (name !== 'S3_BUCKET' || !envMap.AWS_S3_BUCKET)) {
       errors.push(`Missing required variable: ${name}`)
     }
