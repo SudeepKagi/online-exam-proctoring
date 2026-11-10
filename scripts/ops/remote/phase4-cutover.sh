@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-HEAD_SHA="e8ea200e040e5b58c3e53af6f9167e0129190148"
+HEAD_SHA="c3fb95349adf6a7d9113bee73305359f1822ade6"
 BASE_DIR="/opt/proctornet"
 NEW_RELEASE="$BASE_DIR/releases/release-${HEAD_SHA}"
 CURRENT_LINK="$BASE_DIR/current"
