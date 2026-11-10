@@ -27,7 +27,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
         ) : (
           violations.map((v, i) => (
             <div
-              key={v.id || i}
+              key={v.id ? `violation-id-${v.id}` : `violation-idx-${i}-${v.createdAt || ''}`}
               className="p-3 rounded-xl bg-[#edecfb]/60 hover:bg-[#edecfb] transition space-y-2 border-0"
             >
               <div className="flex items-start justify-between gap-1">

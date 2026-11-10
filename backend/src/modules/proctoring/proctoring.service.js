@@ -57,6 +57,7 @@ class ProctoringService {
 
       if (!isHeartbeat) {
         socketEmitter.emitToInvigilators(targetExamId, 'proctoring:violation', {
+          id: `live-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           attemptId, studentName, institutionId, eventType, severity,
           snapshotDataUrl, violationCount, attemptStatus: status, createdAt: new Date().toISOString()
         })

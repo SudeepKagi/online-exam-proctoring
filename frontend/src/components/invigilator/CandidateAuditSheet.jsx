@@ -68,7 +68,7 @@ export default function CandidateAuditSheet({
               <p className="text-xs text-muted-foreground text-center py-4">No violations logged.</p>
             ) : (
               auditHistory.map((l, idx) => (
-                <div key={idx} className="p-2.5 rounded-lg border border-border bg-card text-xs space-y-1">
+                <div key={l.id ? `audit-${l.id}` : `audit-idx-${idx}`} className="p-2.5 rounded-lg border border-border bg-card text-xs space-y-1">
                   <div className="flex justify-between font-medium">
                     <span>{formatViolationType(l.eventType)}</span>
                     <span className="text-destructive font-mono text-[10px]">{l.severity}</span>
