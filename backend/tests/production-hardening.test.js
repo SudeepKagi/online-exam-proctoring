@@ -58,4 +58,19 @@ describe('Phase 2: Production Hardening Invariants (Cookies, CORS, Error Envelop
     const { helmetMiddleware } = require('../src/middleware/security')
     assert.ok(typeof helmetMiddleware === 'function')
   })
+
+  test('5. Database: buildDatasourceUrl sets connection_limit=20, statement_timeout=10000ms, and schema=public', () => {
+    const { buildDatasourceUrl } = require('../src/infra/postgres/client')
+    const prevDb = process.env.DATABASE_URL
+    process.env.DATABASE_URL = 'postgresql://proctornet:db_pass@postgres:5432/proctornet'
+
+    const built = buildDatasourceUrl('api')
+    const urlObj = new URL(built)
+
+    assert.strictEqual(urlObj.searchParams.get('connection_limit'), '20')
+    assert.strictEqual(urlObj.searchParams.get('statement_timeout'), '10000')
+    assert.strictEqual(urlObj.searchParams.get('schema'), 'public')
+
+    process.env.DATABASE_URL = prevDb
+  })
 })
