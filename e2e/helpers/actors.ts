@@ -52,13 +52,20 @@ export async function createActor(browser: Browser, role: ActorRole, name?: stri
 export async function passConsentIfPresent(page: Page): Promise<void> {
   try {
     const consentHeader = page.getByText('Examination Privacy & Proctoring Consent')
-    const hasConsentPrompt = await consentHeader.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false)
+    const hasConsentPrompt = await consentHeader.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false)
     if (hasConsentPrompt) {
       const checkbox = page.locator('[data-testid="consent-checkbox"]')
+      await checkbox.waitFor({ state: 'visible', timeout: 5000 })
       await checkbox.check()
       const agreeBtn = page.locator('[data-testid="consent-agree-btn"]')
-      await agreeBtn.click({ timeout: 5000 })
-      await consentHeader.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+      await agreeBtn.waitFor({ state: 'visible', timeout: 5000 })
+      // Wait for React state to enable button
+      await page.waitForFunction(() => {
+        const btn = document.querySelector('[data-testid="consent-agree-btn"]') as HTMLButtonElement | null
+        return btn && !btn.disabled
+      }, { timeout: 5000 }).catch(() => {})
+      await agreeBtn.click({ timeout: 5000 }).catch(() => {})
+      await consentHeader.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {})
     }
   } catch (_) {}
 }

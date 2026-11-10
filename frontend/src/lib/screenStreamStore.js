@@ -1,31 +1,26 @@
+import cameraStore from './cameraStore'
+
 // Shared CameraStream Store for pre-check -> arena handoff
-let activeCameraStream = null
+// Backwards compatible wrapper backed by unified cameraStore
 
 export function setCameraStream(stream) {
-  activeCameraStream = stream
-  if (typeof window !== 'undefined') {
-    window.__proctorCameraStream = stream
+  if (stream && cameraStore.getStream() !== stream) {
+    // If external code sets a stream directly, mirror it in cameraStore
+    cameraStore.state.stream = stream
+    cameraStore.state.status = 'live'
+    if (typeof window !== 'undefined') {
+      window.__proctorCameraStream = stream
+    }
+    cameraStore._notify()
   }
 }
 
 export function getCameraStream() {
-  if (activeCameraStream && activeCameraStream.active) return activeCameraStream
-  if (typeof window !== 'undefined' && window.__proctorCameraStream?.active) {
-    return window.__proctorCameraStream
-  }
-  return activeCameraStream || null
+  return cameraStore.getStream()
 }
 
 export function clearCameraStream() {
-  if (activeCameraStream) {
-    try {
-      activeCameraStream.getTracks().forEach((t) => t.stop())
-    } catch (_) {}
-    activeCameraStream = null
-  }
-  if (typeof window !== 'undefined') {
-    window.__proctorCameraStream = null
-  }
+  cameraStore.releaseCamera('submit')
 }
 
 export default {

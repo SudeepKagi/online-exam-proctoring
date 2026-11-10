@@ -100,3 +100,18 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `da3b79fe-cc7a-45e8-a442-b25681b21b98`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/phase5-hardening.log`
+
+### [2026-11-10T07:58:23.987Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-current-release.sh`
+- **Command ID**: `b97b2eef-623e-4e81-9af1-9bba8b0019ad`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-current-release.log`
+
+## Active Production Release Snapshot (Post-PR #42 Merge)
+- **Active Release Directory**: `/opt/proctornet/releases/release-ace92878effc7d9b335f7877d98d685b7a6fed39`
+- **Current Symlink**: `/opt/proctornet/current -> /opt/proctornet/releases/release-ace92878effc7d9b335f7877d98d685b7a6fed39`
+- **Release Commit SHA**: `ace92878effc7d9b335f7877d98d685b7a6fed39`
+- **Tagged Release Candidate**: `v0.9.0-rc1` (created at commit `5fc3b53`, retained without moving/re-pushing)
+- **Service Status**: `active` (`proctornet.service`)
+- **Main Branch Head**: Merged PR #42 (`0948a98`)
+
