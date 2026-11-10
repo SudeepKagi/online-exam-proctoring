@@ -35,12 +35,66 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
+      const originalRequest = error.config
+      const isMidExam = typeof window !== 'undefined' && 
+        window.location.pathname.includes('/student/exams/') && 
+        !window.location.pathname.includes('/start') && 
+        !window.location.pathname.includes('/seb-required')
+
+      // Attempt silent refresh once if not already retrying and not an auth route
+      if (originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/')) {
+        originalRequest._retry = true
+        return api.post('/auth/refresh', {})
+          .then((refreshRes) => {
+            if (refreshRes.data?.accessToken) {
+              try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}')
+                localStorage.setItem('user', JSON.stringify({ ...user, token: refreshRes.data.accessToken }))
+              } catch (_) {}
+            }
+            return api(originalRequest)
+          })
+          .catch(() => {
+            if (isMidExam) {
+              // Mid-exam: preserve answers in local storage! Do NOT clear localStorage or redirect!
+              window.dispatchEvent(new CustomEvent('pn:session-expired', { detail: { originalRequest } }))
+              return Promise.reject(error)
+            }
+            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+              try {
+                localStorage.removeItem('user')
+                localStorage.removeItem('auth')
+              } catch (_) {}
+              window.location.href = '/login'
+            }
+            return Promise.reject(error)
+          })
+      }
+
+      if (isMidExam) {
+        // Keep offline answers safe and prompt re-auth in-place
+        window.dispatchEvent(new CustomEvent('pn:session-expired', { detail: { originalRequest } }))
+        return Promise.reject(error)
+      }
+
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         try {
           localStorage.removeItem('user')
           localStorage.removeItem('auth')
         } catch (_) {}
         window.location.href = '/login'
+      }
+    } else if (
+      error.response?.status === 403 &&
+      (data?.code === 'SEB_REQUIRED' || error.code === 'SEB_REQUIRED')
+    ) {
+      if (typeof window !== 'undefined') {
+        const urlMatch = (error.config?.url || '').match(/exams\/([0-9a-fA-F-]+)/)
+        const pathMatch = window.location.pathname.match(/exams\/([0-9a-fA-F-]+)/)
+        const examId = urlMatch ? urlMatch[1] : (pathMatch ? pathMatch[1] : null)
+        if (examId && !window.location.pathname.includes('/seb-required')) {
+          window.location.href = `/student/exams/${examId}/seb-required`
+        }
       }
     } else if (!error.response && typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('app:network-offline', { detail: { error } }))

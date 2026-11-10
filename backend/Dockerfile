@@ -42,6 +42,7 @@ COPY --chown=proctornet:nodejs package*.json ./
 COPY --from=builder --chown=proctornet:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=proctornet:nodejs /app/prisma ./prisma
 COPY --chown=proctornet:nodejs src ./src
+COPY --chown=proctornet:nodejs scripts ./scripts
 
 # Create tmp directory with write permissions for tmpfs mounts
 RUN mkdir -p /app/tmp && chown -R proctornet:nodejs /app/tmp
@@ -54,4 +55,4 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
   CMD wget -q --spider http://127.0.0.1:5000/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && (npx prisma migrate deploy || (echo '[!] Schema drift detected, applying 7-table clean cutover...' && npx prisma db push --force-reset --accept-data-loss && npx prisma migrate resolve --applied 0001_core_tables)) && node prisma/seed/admin.js && node --max-old-space-size=2048 src/app.js"]
+CMD ["sh", "-c", "export DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} && npx prisma migrate deploy && node --max-old-space-size=2048 src/app.js"]

@@ -1,0 +1,8 @@
+# /etc/cron.d/proctornet-backup or user crontab
+# Runs nightly at 02:00 UTC under proctornet user
+# Environment variables must be sourced from /opt/proctornet/.env.production
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+
+0 2 * * * proctornet . /opt/proctornet/.env.production && /opt/proctornet/current/scripts/ops/backup-postgres.sh >> /var/log/proctornet/backup.log 2>&1
+

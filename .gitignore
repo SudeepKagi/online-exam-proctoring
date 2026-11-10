@@ -27,6 +27,12 @@ venv/
 !ci/ci.env
 !.env.test.example
 !**/.env.test.example
+!.env.pilot.example
+!**/.env.pilot.example
+!.env.production.example
+!**/.env.production.example
+!.env.staging.example
+!**/.env.staging.example
 
 # Antigravity / Agents
 # .agents is tracked for shared skills, design system, and instructions
@@ -69,9 +75,15 @@ vpn-server/*.conf
 **/scripts/scratch/
 scratch/
 
+# Docker Compose Overrides
+docker-compose.override.yml
+docker-compose.*.override.yml
+
 # Playwright
 test-results/
 playwright-report/
+logs-verification/
+logs-deploy/
 
 # Terraform
 .terraform/

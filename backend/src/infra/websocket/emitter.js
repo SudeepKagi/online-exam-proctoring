@@ -64,13 +64,15 @@ class SocketEmitterManager {
       }
     } catch (_) {}
 
-    try {
-      if (this.emitter) {
-        this.emitter.to(room).emit(event, payload)
-        emitted = true
+    if (!emitted) {
+      try {
+        if (this.emitter) {
+          this.emitter.to(room).emit(event, payload)
+          emitted = true
+        }
+      } catch (err) {
+        logger.warn({ room, event, error: err.message }, 'Failed to emit via Redis emitter')
       }
-    } catch (err) {
-      logger.warn({ room, event, error: err.message }, 'Failed to emit via Redis emitter')
     }
     return emitted
   }

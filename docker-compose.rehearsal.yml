@@ -1,0 +1,18 @@
+# ==============================================================================
+# ProctorNet Local Rehearsal Compose Override (docker-compose.rehearsal.yml)
+# Overrides published host ports to 8080/8443 to avoid clashing with host services.
+# Mounts scripts directory for administrative operations.
+# Gitignored.
+# ==============================================================================
+
+services:
+  caddy:
+    ports:
+      - "8080:80"
+      - "8443:443"
+
+  backend:
+    environment:
+      COOKIE_SECURE: "false"
+    volumes:
+      - ./scripts:/app/scripts:ro

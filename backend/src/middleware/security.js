@@ -35,7 +35,11 @@ if (process.env.FRONTEND_URL) {
   })
 }
 
-;['https://proctornet.duckdns.org', 'http://proctornet.duckdns.org'].forEach((o) => {
+const defaultCanonicalOrigins = isProd
+  ? ['https://proctornet.duckdns.org']
+  : ['https://proctornet.duckdns.org', 'http://proctornet.duckdns.org']
+
+defaultCanonicalOrigins.forEach((o) => {
   if (!allowedOrigins.includes(o)) allowedOrigins.push(o)
 })
 
@@ -71,10 +75,10 @@ const dynamicImgSrc = [
   'data:',
   'blob:',
   'https://*.amazonaws.com',
-  'https://*.s3.ap-south-1.amazonaws.com',
+  `https://*.s3.${awsRegion}.amazonaws.com`,
   'https://*.s3.amazonaws.com',
   'https://proctornet.duckdns.org',
-  'http://proctornet.duckdns.org',
+  ...(isProd ? [] : ['http://proctornet.duckdns.org']),
   ...s3Hosts
 ]
 if (process.env.S3_ENDPOINT) dynamicImgSrc.push(process.env.S3_ENDPOINT)
@@ -84,10 +88,10 @@ const dynamicConnectSrc = [
   'data:',
   'blob:',
   'https://*.amazonaws.com',
-  'https://*.s3.ap-south-1.amazonaws.com',
+  `https://*.s3.${awsRegion}.amazonaws.com`,
   'https://*.s3.amazonaws.com',
   'https://proctornet.duckdns.org',
-  'http://proctornet.duckdns.org',
+  ...(isProd ? [] : ['http://proctornet.duckdns.org']),
   ...derivedWsOrigins,
   ...s3Hosts,
   ...(isProd ? [] : ['ws://localhost:5000', 'ws://127.0.0.1:5000'])
@@ -96,6 +100,11 @@ if (process.env.S3_ENDPOINT) dynamicConnectSrc.push(process.env.S3_ENDPOINT)
 
 const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false,
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: false
+  },
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -169,40 +178,47 @@ function csrfProtection(req, res, next) {
   next()
 }
 
-const isLoadTest = !isProd && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: (req) => {
-    if (isLoadTest) return 100000
-    let role = req.user?.role?.toLowerCase()
-    if (!role) {
-      const token = extractTokenFromReq(req)
-      if (token) {
-        try {
-          const decoded = verifyToken(token)
-          if (decoded?.role) role = decoded.role.toLowerCase()
-        } catch (_) {}
-      }
-    }
-    if (role === ROLES.INVIGILATOR) return 6000
-    if (role === ROLES.ADMIN || role === ROLES.FACULTY) return 3000
-    if (role === ROLES.STUDENT) return 1200
-    return 600
-  },
-  skip: () => isLoadTest,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    if (req.user?.id) return `user_${req.user.id}`
+function isLoadTestActive() {
+  return process.env.NODE_ENV !== 'production' && (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
+}
+
+function getApiLimiterMax(req) {
+  if (isLoadTestActive()) return 100000
+  let role = req.user?.role?.toLowerCase()
+  if (!role) {
     const token = extractTokenFromReq(req)
     if (token) {
       try {
         const decoded = verifyToken(token)
-        if (decoded?.id) return `user_${decoded.id}`
+        if (decoded?.role) role = decoded.role.toLowerCase()
       } catch (_) {}
     }
-    return req.ip
-  },
+  }
+  if (role === ROLES.INVIGILATOR) return 6000
+  if (role === ROLES.ADMIN || role === ROLES.FACULTY) return 3000
+  if (role === ROLES.STUDENT) return 1800
+  return 1500
+}
+
+function getApiLimiterKey(req) {
+  if (req.user?.id) return `user_${req.user.id}`
+  const token = extractTokenFromReq(req)
+  if (token) {
+    try {
+      const decoded = verifyToken(token)
+      if (decoded?.id) return `user_${decoded.id}`
+    } catch (_) {}
+  }
+  return req.ip
+}
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: getApiLimiterMax,
+  skip: () => isLoadTestActive(),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: getApiLimiterKey,
   message: { error: 'Too many requests for this session. Please try again shortly.' }
 })
 
@@ -211,5 +227,7 @@ module.exports = {
   helmetMiddleware,
   corsMiddleware,
   csrfProtection,
-  apiLimiter
+  apiLimiter,
+  getApiLimiterMax,
+  getApiLimiterKey
 }

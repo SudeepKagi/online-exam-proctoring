@@ -40,7 +40,10 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
   const createdExamIds = []
 
   before(async () => {
-    facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY' } })
+    facultyUser = await prisma.user.findUnique({ where: { email: 'faculty@proctornet.com' } })
+    if (!facultyUser) {
+      facultyUser = await prisma.user.findFirst({ where: { role: 'FACULTY', email: { not: { contains: 'load' } } } })
+    }
     if (!facultyUser) {
       facultyUser = await prisma.user.create({
         data: {
@@ -53,9 +56,9 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
       })
     }
 
-    studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: 'student1@proctornet.com' } })
+    studentUser = await prisma.user.findUnique({ where: { email: 'student1@proctornet.com' } })
     if (!studentUser) {
-      studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT' } })
+      studentUser = await prisma.user.findFirst({ where: { role: 'STUDENT', email: { not: { contains: 'load' } } } })
     }
     if (!studentUser) {
       studentUser = await prisma.user.create({
@@ -69,7 +72,10 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
       })
     }
 
-    adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
+    adminUser = await prisma.user.findUnique({ where: { email: 'admin@proctornet.com' } })
+    if (!adminUser) {
+      adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } })
+    }
     if (!adminUser) {
       adminUser = await prisma.user.create({
         data: {

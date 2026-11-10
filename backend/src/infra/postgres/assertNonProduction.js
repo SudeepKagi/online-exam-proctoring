@@ -17,7 +17,7 @@ const LOCAL_HOST_ALLOWLIST = new Set([
   'host.docker.internal'
 ])
 
-const SAFE_DB_NAME_REGEX = /(_test|_ci|_dev|_local)$/i
+const SAFE_DB_NAME_REGEX = /(_test|_ci|_dev|_local|_pilot)$/i
 
 function parseDatabaseConnection(urlStr) {
   if (!urlStr) return { host: 'unknown', dbName: 'unknown' }
@@ -92,8 +92,29 @@ function assertTestDatabase(dbUrl = process.env.DATABASE_URL) {
   return true
 }
 
+function assertSeedAllowed(caller = 'Test Seed Script') {
+  const isProd = process.env.NODE_ENV === 'production'
+  const dbUrl = process.env.DATABASE_URL || process.env.DIRECT_URL
+  const { dbName } = parseDatabaseConnection(dbUrl)
+  const isAllowedDbName = /(_test|_pilot|_dev)$/i.test(dbName)
+
+  if (isProd || !isAllowedDbName) {
+    const reason = isProd
+      ? 'NODE_ENV is set to "production"'
+      : `database name "${dbName}" does not end in _test, _pilot, or _dev`
+    const msg = `[FATAL SAFETY VIOLATION] Seed script "${caller}" refused to run: ${reason}. Test seeds are strictly forbidden in production or against non-development databases.`
+    console.error(msg)
+    if (process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
+      throw new Error(msg)
+    }
+    process.exit(1)
+  }
+  return true
+}
+
 module.exports = {
   assertNonProduction,
+  assertSeedAllowed,
   isNonProductionDatabase,
   assertTestDatabase,
   LOCAL_HOST_ALLOWLIST

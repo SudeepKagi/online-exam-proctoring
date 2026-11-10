@@ -4,7 +4,7 @@ const { prisma } = require('../postgres/client')
 const { ROLES } = require('../../shared/roles')
 const { logger } = require('../../shared/logging')
 
-async function handleStaffJoin(socket, latestScreenFrames, data, ack) {
+async function handleStaffJoin(socket, data, ack) {
   try {
     const { examId } = data || {}
     if (!examId) return typeof ack === 'function' && ack({ success: false, error: 'examId required' })
@@ -31,15 +31,6 @@ async function handleStaffJoin(socket, latestScreenFrames, data, ack) {
     socket.join(`inv:${examId}`)
     logger.info({ userId: socket.user.id, role, examId }, 'Staff joined invigilator room')
 
-    const initialFrames = {}
-    for (const [attId, f] of latestScreenFrames.entries()) {
-      if (f.examId === examId) {
-        initialFrames[attId] = { screenUrl: f.screenUrl, cameraUrl: f.cameraUrl, frameAt: f.frameAt }
-      }
-    }
-    if (Object.keys(initialFrames).length > 0) {
-      socket.emit('screen:initial_frames', { examId, frames: initialFrames })
-    }
     if (typeof ack === 'function') ack({ success: true, examId })
   } catch (err) {
     logger.error({ error: err.message }, 'Error in inv:join')

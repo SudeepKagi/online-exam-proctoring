@@ -1,10 +1,13 @@
 const { authService } = require('./auth.service')
-const { setAuthCookie, clearAuthCookie, setAccessCookie } = require('../../utils/cookies')
+const { setAuthCookie, clearAuthCookie, setAccessCookie, setRefreshCookie, extractRefreshTokenFromReq } = require('../../utils/cookies')
 
 function sendAuthResponse(res, authResult, statusCode = 200) {
   const { user, accessToken, refreshToken } = authResult
   setAuthCookie(res, accessToken)
   setAccessCookie(res, accessToken)
+  if (refreshToken) {
+    setRefreshCookie(res, refreshToken)
+  }
   return res.status(statusCode).json({
     status: 'success',
     user,
@@ -12,6 +15,25 @@ function sendAuthResponse(res, authResult, statusCode = 200) {
     refreshToken,
     token: accessToken
   })
+}
+
+async function refresh(req, res, next) {
+  try {
+    const rawRefreshToken = extractRefreshTokenFromReq(req)
+    if (!rawRefreshToken) {
+      return res.status(401).json({ code: 'REFRESH_TOKEN_REQUIRED', message: 'Refresh token is required' })
+    }
+    const result = await authService.refreshAccessToken(rawRefreshToken)
+    return sendAuthResponse(res, result)
+  } catch (err) {
+    if (err.status === 401 || err.status === 403) {
+      return res.status(err.status).json({
+        code: err.message.toLowerCase().includes('expired') ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
+        message: err.message
+      })
+    }
+    next(err)
+  }
 }
 
 async function login(req, res, next) {
@@ -171,5 +193,6 @@ module.exports = {
   updateSettings,
   forgotPassword,
   resetPassword,
+  refresh,
   logout
 }

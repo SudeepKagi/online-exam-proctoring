@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getSocket } from '@/lib/socketClient'
 
 export function restoreAnswers(serverAnswers, attemptId) {
@@ -25,21 +25,36 @@ export function restoreAnswers(serverAnswers, attemptId) {
 export function useArenaSocketAndTab({ examId, attemptId, onTerminated, initialSuspended = false }) {
   const [isSuspended, setIsSuspended] = useState(initialSuspended)
   const [isDuplicateTab, setIsDuplicateTab] = useState(false)
+  const isDuplicateTabRef = useRef(false)
+  isDuplicateTabRef.current = isDuplicateTab
+  const sessionIdRef = useRef(typeof window !== 'undefined' ? Math.random().toString(36).substring(2) : '')
+  const channelRef = useRef(null)
 
   // BroadcastChannel for Multi-Tab / Duplicate Session Protection
   useEffect(() => {
     if (!examId || typeof window === 'undefined' || !window.BroadcastChannel) return
     const channel = new BroadcastChannel('proctornet_active_exam')
-    const mySessionId = Math.random().toString(36).substring(2)
+    channelRef.current = channel
+    const mySessionId = sessionIdRef.current
 
+    // Announce check for existing active tab
     channel.postMessage({ type: 'CHECK_ACTIVE_TAB', examId, sessionId: mySessionId })
 
     const handleMessage = (event) => {
       const data = event.data
       if (!data || data.examId !== examId) return
+
+      // An incoming tab is querying whether a tab is already active
       if (data.type === 'CHECK_ACTIVE_TAB' && data.sessionId !== mySessionId) {
-        channel.postMessage({ type: 'TAB_ACTIVE', examId, sessionId: mySessionId })
+        // Only reply if this current tab is legitimate and NOT already a blocked duplicate tab
+        if (!isDuplicateTabRef.current) {
+          channel.postMessage({ type: 'TAB_ACTIVE', examId, sessionId: mySessionId })
+        }
       } else if (data.type === 'TAB_ACTIVE' && data.sessionId !== mySessionId) {
+        // An active tab already exists elsewhere! Block this second tab.
+        setIsDuplicateTab(true)
+      } else if (data.type === 'CLAIM_SESSION' && data.sessionId !== mySessionId) {
+        // Another window was deliberately promoted by candidate; demote this tab
         setIsDuplicateTab(true)
       }
     }
@@ -48,7 +63,16 @@ export function useArenaSocketAndTab({ examId, attemptId, onTerminated, initialS
     return () => {
       channel.removeEventListener('message', handleMessage)
       channel.close()
+      channelRef.current = null
     }
+  }, [examId])
+
+  const claimActiveSession = useCallback(() => {
+    if (!examId || typeof window === 'undefined') return
+    if (channelRef.current) {
+      channelRef.current.postMessage({ type: 'CLAIM_SESSION', examId, sessionId: sessionIdRef.current })
+    }
+    setIsDuplicateTab(false)
   }, [examId])
 
   // Socket sync for suspended, resumed, and terminated events
@@ -75,5 +99,5 @@ export function useArenaSocketAndTab({ examId, attemptId, onTerminated, initialS
     }
   }, [attemptId, onTerminated])
 
-  return { isSuspended, setIsSuspended, isDuplicateTab }
+  return { isSuspended, setIsSuspended, isDuplicateTab, claimActiveSession }
 }

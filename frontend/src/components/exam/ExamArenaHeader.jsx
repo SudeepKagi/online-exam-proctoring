@@ -1,13 +1,14 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, ShieldAlert, MonitorCheck } from 'lucide-react'
+import { Clock, ShieldAlert, MonitorCheck, CheckCircle2, CloudOff } from 'lucide-react'
 
 export function ExamArenaHeader({
   exam,
   violationCount,
   formatTime,
-  onSubmitClick
+  onSubmitClick,
+  syncStatus = 'SAVED'
 }) {
   return (
     <header className="h-14 bg-white border-b border-[#e9eaf2] px-6 flex items-center justify-between shadow-xs shrink-0 text-[#28253b]">
@@ -24,6 +25,35 @@ export function ExamArenaHeader({
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Autosave Indicator */}
+        {syncStatus === 'SAVED' && (
+          <div
+            data-testid="autosave-status"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#edecfb] text-[#28253b] text-xs font-[420]"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" />
+            <span>Saved</span>
+          </div>
+        )}
+        {syncStatus === 'SAVING' && (
+          <div
+            data-testid="autosave-status"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#edecfb] text-[#28253b] text-xs font-[420]"
+          >
+            <span className="w-2 h-2 rounded-full bg-[#5266eb] animate-ping inline-block" />
+            <span>Saving...</span>
+          </div>
+        )}
+        {syncStatus === 'OFFLINE' && (
+          <div
+            data-testid="autosave-status"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fff8e6] border border-[#f5e2b3] text-[#73510d] text-xs font-[420]"
+          >
+            <CloudOff className="w-3.5 h-3.5 text-[#73510d]" />
+            <span>Offline, will sync</span>
+          </div>
+        )}
+
         <Badge variant="outline" className="font-mono text-xs px-2.5 py-1 gap-1 bg-[#edecfb] text-[#28253b] border-0 rounded-full">
           <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" />
           <span>Violations: {violationCount} / 3</span>

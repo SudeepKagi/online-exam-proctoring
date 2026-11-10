@@ -12,7 +12,7 @@ const { handleStaffJoin } = require('./staffHandlers')
 const config = require('../../shared/config')
 const { getCachedSebSettings, isAttemptSebVerified } = require('../../middleware/seb')
 
-function registerSocketEvents(io, socket, latestScreenFrames) {
+function registerSocketEvents(io, socket) {
   if (socket.user?.id) {
     socket.join(`user:${socket.user.id}`)
     if (socket.user.role === ROLES.STUDENT) socket.join(`student:${socket.user.id}`)
@@ -116,8 +116,8 @@ function registerSocketEvents(io, socket, latestScreenFrames) {
     }
   })
 
-  socket.on('inv:join', (data, ack) => handleStaffJoin(socket, latestScreenFrames, data, ack))
-  socket.on('invigilator:join', (data, ack) => handleStaffJoin(socket, latestScreenFrames, data, ack))
+  socket.on('inv:join', (data, ack) => handleStaffJoin(socket, data, ack))
+  socket.on('invigilator:join', (data, ack) => handleStaffJoin(socket, data, ack))
 
   socket.on('heartbeat', async (data, ack) => {
     try {
@@ -182,40 +182,9 @@ function registerSocketEvents(io, socket, latestScreenFrames) {
     }
   })
 
-  socket.on('screen:frame', async (data) => {
-    try {
-      if (socket.user?.role !== ROLES.STUDENT) return
-      const { attemptId, frame, cameraFrame, frameAt } = data || {}
-      if (!attemptId || (!frame && !cameraFrame)) return
-
-      if (!socket.authorizedAttempts.has(attemptId)) {
-        const attempt = await prisma.examAttempt.findFirst({
-          where: { id: attemptId, studentId: socket.user.id },
-          select: { id: true, examId: true }
-        })
-        if (!attempt) return
-        socket.authorizedAttempts.add(attemptId)
-        socket.activeAttemptId = attemptId
-        socket.activeExamId = attempt.examId
-      }
-
-      const verifiedExamId = socket.activeExamId
-      if (!verifiedExamId) return
-
-      const now = frameAt || Date.now()
-      const framePayload = { attemptId, screenUrl: frame || null, cameraUrl: cameraFrame || null, frameAt: now, examId: verifiedExamId }
-      latestScreenFrames.set(attemptId, framePayload)
-      io.to(`inv:${verifiedExamId}`).emit('frame:update', framePayload)
-      rosterCoalescer.queueDelta(verifiedExamId, { attemptId, studentId: socket.user.id, frameAt: now })
-    } catch (err) {
-      logger.warn({ error: err.message }, 'screen:frame handling error')
-    }
-  })
-
   socket.on('disconnect', async () => {
     logger.info({ socketId: socket.id, userId: socket.user?.id }, 'Socket client disconnected')
     if (socket.user?.role === ROLES.STUDENT && socket.activeExamId && socket.activeAttemptId) {
-      latestScreenFrames.delete(socket.activeAttemptId)
       await presenceManager.markOffline(socket.activeExamId, socket.user.id)
       rosterCoalescer.queueDelta(socket.activeExamId, {
         attemptId: socket.activeAttemptId, studentId: socket.user.id, online: false, lastHeartbeatAt: new Date().toISOString()

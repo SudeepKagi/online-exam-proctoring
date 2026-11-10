@@ -1,0 +1,14 @@
+[Unit]
+Description=ProctorNet Nightly PostgreSQL Backup and Off-box Sync
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+User=proctornet
+Group=proctornet
+WorkingDirectory=/opt/proctornet/current
+EnvironmentFile=/opt/proctornet/shared/.env
+ExecStart=/bin/bash /opt/proctornet/current/scripts/ops/backup-postgres.sh
+StandardOutput=append:/var/log/proctornet/backup.log
+StandardError=append:/var/log/proctornet/backup.log
+

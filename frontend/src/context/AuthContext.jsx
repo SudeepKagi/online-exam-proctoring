@@ -1,8 +1,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { api, errorMessage } from '@/lib/apiClient'
-import { clearScreenStream, clearCameraStream } from '@/lib/screenStreamStore'
+import { clearCameraStream } from '@/lib/screenStreamStore'
 
-const AuthContext = createContext(null)
+const defaultAuthContext = {
+  user: null,
+  role: null,
+  isAuthenticated: false,
+  isLoading: true,
+  loading: true,
+  login: async () => ({ success: false, error: 'Authentication not ready' }),
+  logout: async () => {},
+  updateUser: () => {},
+  refreshUser: async () => null,
+}
+
+const AuthContext = createContext(defaultAuthContext)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -22,6 +34,8 @@ export function AuthProvider({ children }) {
         if (res.data?.user && mounted) {
           setUser(res.data.user)
           setRole(res.data.user.role)
+          localStorage.setItem('user', JSON.stringify(res.data.user))
+          if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
         }
       } catch (_err) {
         localStorage.removeItem('proctornet_logged_in')
@@ -45,6 +59,8 @@ export function AuthProvider({ children }) {
         setRole(loggedUser.role)
         localStorage.setItem('proctornet_logged_in', 'true')
         localStorage.setItem('proctornet_role', loggedUser.role.toLowerCase())
+        localStorage.setItem('user', JSON.stringify(loggedUser))
+        if (loggedUser.email) localStorage.setItem('proctornet_email', loggedUser.email)
         return { success: true, user: loggedUser }
       }
       return { success: false, error: 'Login response did not contain user data.' }
@@ -55,7 +71,6 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      clearScreenStream()
       clearCameraStream()
       await api.post('/auth/logout') // terms-ok: backend endpoint
     } catch (_) {}
@@ -102,6 +117,5 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) throw new Error('useAuth must be used within an AuthProvider')
-  return context
+  return context || defaultAuthContext
 }

@@ -51,7 +51,7 @@ export function SuspendedOverlay() {
   )
 }
 
-export function DuplicateTabOverlay() {
+export function DuplicateTabOverlay({ onReturn, onTakeOver }) {
   return (
     <div
       data-testid="duplicate-tab-overlay"
@@ -60,10 +60,35 @@ export function DuplicateTabOverlay() {
       <div className="w-16 h-16 rounded-full bg-[#edecfb] text-[#5266eb] flex items-center justify-center mb-4">
         <Copy className="w-8 h-8" />
       </div>
-      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Duplicate Session Detected</h2>
-      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed">
-        This exam is already open in another tab. An exam session can only run in a single active window. Please return to your active exam window.
+      <h2 className="text-xl font-[480] text-[#28253b] mb-2">Exam Open in Another Window</h2>
+      <p className="text-sm font-[360] text-[#554e7b] max-w-md leading-relaxed mb-6">
+        This exam is already open in another window. An exam session can only run in a single active window. You can return to your dashboard or continue in this window.
       </p>
+      <div className="flex items-center gap-3">
+        {onTakeOver && (
+          <Button
+            type="button"
+            data-testid="duplicate-tab-takeover-btn"
+            onClick={onTakeOver}
+            className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] px-6 cursor-pointer"
+          >
+            Continue in this window
+          </Button>
+        )}
+        {onReturn && (
+          <Button
+            type="button"
+            data-testid="duplicate-tab-return-btn"
+            onClick={onReturn}
+            className={onTakeOver
+              ? "bg-[#edecfb] hover:bg-[#e2e0f9] text-[#28253b] text-xs font-[420] h-10 rounded-[40px] px-6 cursor-pointer"
+              : "bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] px-6 cursor-pointer"
+            }
+          >
+            Return to Student Dashboard
+          </Button>
+        )}
+      </div>
     </div>
   )
 }

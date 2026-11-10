@@ -2,8 +2,9 @@
 
 require('dotenv').config()
 const bcrypt = require('bcryptjs')
-const { assertNonProduction } = require('../../src/infra/postgres/assertNonProduction')
+const { assertNonProduction, assertSeedAllowed } = require('../../src/infra/postgres/assertNonProduction')
 assertNonProduction('prisma/seed/admin.js')
+assertSeedAllowed('prisma/seed/admin.js')
 const { prisma } = require('../../src/infra/postgres/client')
 
 async function seed() {

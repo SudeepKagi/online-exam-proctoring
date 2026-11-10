@@ -12,8 +12,8 @@
 ## 2. LOCKED SYSTEM SCOPE
 1. **100% Browser-Based Proctoring (NO Desktop Companion Agent):**
    - There is NO downloadable desktop agent, NO SEA binary, and NO short-code device pairing.
-   - **Pre-Exam Check:** One-time Face Verification using **AWS Rekognition** (`CompareFaces` against student's `reference_photo_s3_key`) + Entire Screen Share permission check + Fullscreen entry.
-   - **During Live Exam:** Webcam is TURNED OFF after Pre-Exam Check. Only **Screen Sharing** (periodic/violation S3 snapshots) and **Browser Lockdown Events** (`visibilitychange`, `fullscreenchange`, `window.blur`, `screenTrack.onended`) are active.
+   - **Pre-Exam Check:** One-time Face Verification using **AWS Rekognition** (`CompareFaces` against student's `reference_photo_s3_key`) + Fullscreen entry.
+   - **During Live Exam:** Continuous camera proctoring (camera stream handoff with periodic snapshots) and **Browser Lockdown Events** (`visibilitychange`, `fullscreenchange`, `window.blur`, `cameraTrack.onended`) are active. Screen sharing is completely removed in favor of camera proctoring and Safe Exam Browser lockdown.
 2. **Future WireGuard VPN Hook:**
    - Do not build VPN clients. Keep a single clean middleware hook (`require_vpn` boolean on exams, default `false`) that validates client subnet IP when enabled.
 3. **MCQ-Only Engine:**
@@ -23,7 +23,7 @@
 
 ## 3. NAMING & FOLDER STANDARDS
 1. **React Components:** `PascalCase.tsx` (e.g., `DashboardShell.tsx`, `PreExamCheckPage.tsx`).
-2. **Frontend Hooks/Utils:** `camelCase.ts` (e.g., `useScreenShare.ts`, `useExamLockdown.ts`, `apiClient.ts`).
+2. **Frontend Hooks/Utils:** `camelCase.ts` (e.g., `useCameraProctoring.ts`, `useExamLockdown.ts`, `apiClient.ts`).
 3. **Backend Modules (`src/modules/<domain>/`):** Strictly 4 files per domain:
    - `<domain>.routes.ts`
    - `<domain>.controller.ts`

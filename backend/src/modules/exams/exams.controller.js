@@ -180,7 +180,11 @@ async function getExamAttempts(req, res, next) {
       status: a.status,
       score: a.score,
       startedAt: a.startedAt,
-      submittedAt: a.submittedAt
+      submittedAt: a.submittedAt,
+      violationCount: a.violationCount || 0,
+      reviewStatus: a.reviewStatus || 'PENDING',
+      reviewNotes: a.reviewNotes || null,
+      isFlagged: Boolean(a.isFlagged)
     }))
     return res.status(200).json({ status: 'success', attempts: formatted })
   } catch (err) {
@@ -198,12 +202,335 @@ async function exportResultsCsv(req, res, next) {
       },
       orderBy: { startedAt: 'desc' }
     })
-    const rows = ['Student Name,Email,USN,Status,Score,Submitted At']
+    const rows = ['Student Name,Email,USN,Status,Score,Violations,Review Status,Flagged,Submitted At']
     for (const a of attempts) {
-      rows.push(`"${a.student?.fullName || ''}","${a.student?.email || ''}","${a.student?.institutionId || ''}","${a.status}","${a.score ?? ''}","${a.submittedAt ? a.submittedAt.toISOString() : ''}"`)
+      rows.push(`"${a.student?.fullName || ''}","${a.student?.email || ''}","${a.student?.institutionId || ''}","${a.status}","${a.score ?? ''}","${a.violationCount || 0}","${a.reviewStatus || 'PENDING'}","${a.isFlagged ? 'Yes' : 'No'}","${a.submittedAt ? a.submittedAt.toISOString() : ''}"`)
     }
     res.setHeader('Content-Type', 'text/csv')
     res.setHeader('Content-Disposition', `attachment; filename="results-${req.params.id}.csv"`)
+    return res.status(200).send(rows.join('\n'))
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function getExamConsent(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const examId = req.params.id || req.params.examId
+    const consent = await prisma.studentConsent.findUnique({
+      where: {
+        studentId_examId: {
+          studentId: req.user.id,
+          examId
+        }
+      }
+    })
+    return res.status(200).json({
+      status: 'success',
+      consented: Boolean(consent),
+      consent: consent || null
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function submitExamConsent(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const examId = req.params.id || req.params.examId
+    const { consentVersion, consentText } = req.body
+
+    if (!consentText || typeof consentText !== 'string' || !consentText.trim()) {
+      return res.status(400).json({ error: { message: 'Consent text is required' } })
+    }
+
+    const consent = await prisma.studentConsent.upsert({
+      where: {
+        studentId_examId: {
+          studentId: req.user.id,
+          examId
+        }
+      },
+      create: {
+        studentId: req.user.id,
+        examId,
+        consentVersion: consentVersion || 'v1.0',
+        consentText: consentText.trim(),
+        agreedAt: new Date()
+      },
+      update: {
+        consentVersion: consentVersion || 'v1.0',
+        consentText: consentText.trim(),
+        agreedAt: new Date()
+      }
+    })
+
+    return res.status(201).json({ status: 'success', consent })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function reportReadiness(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const examId = req.params.id || req.params.examId
+    const { osFamily, browserFamily, cameraOk, latencyBucket, sebVerified } = req.body
+
+    // Privacy Invariant: strictly extract ONLY allowed minimal fields (no IP, MAC, device ID, user agent, or images)
+    const exam = await prisma.exam.findUnique({
+      where: { id: examId }
+    })
+    if (!exam) {
+      return res.status(404).json({ error: { message: 'Exam not found' } })
+    }
+
+    const reasons = []
+    const isCameraOk = Boolean(cameraOk)
+    if (!isCameraOk) {
+      reasons.push('Camera feed or permission not detected')
+    }
+
+    const isSebRequired = Boolean(exam.proctoringConfig?.sebRequired)
+    const isSebVerified = Boolean(sebVerified)
+    const safeOs = String(osFamily || 'Unknown').trim()
+
+    if (isSebRequired) {
+      if (!isSebVerified) {
+        reasons.push('Safe Exam Browser is required but not active')
+      }
+      if (safeOs.toLowerCase() !== 'windows') {
+        reasons.push('Safe Exam Browser currently requires Windows OS')
+      }
+    }
+
+    const safeLatency = ['good', 'acceptable', 'poor'].includes(String(latencyBucket).toLowerCase())
+      ? String(latencyBucket).toLowerCase()
+      : 'good'
+
+    const isReady = reasons.length === 0
+
+    const report = await prisma.studentReadinessReport.upsert({
+      where: {
+        examId_studentId: {
+          examId,
+          studentId: req.user.id
+        }
+      },
+      create: {
+        examId,
+        studentId: req.user.id,
+        osFamily: safeOs,
+        browserFamily: String(browserFamily || 'Unknown').trim(),
+        cameraOk: isCameraOk,
+        latencyBucket: safeLatency,
+        sebVerified: isSebVerified,
+        isReady,
+        reasons,
+        reportedAt: new Date()
+      },
+      update: {
+        osFamily: safeOs,
+        browserFamily: String(browserFamily || 'Unknown').trim(),
+        cameraOk: isCameraOk,
+        latencyBucket: safeLatency,
+        sebVerified: isSebVerified,
+        isReady,
+        reasons,
+        reportedAt: new Date()
+      }
+    })
+
+    return res.status(200).json({ status: 'success', report })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function getExamReadiness(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const examId = req.params.id || req.params.examId
+    const { status, search } = req.query
+
+    // 1. Fetch all assigned students
+    const assignments = await prisma.examAssignment.findMany({
+      where: { examId, assignedRole: 'STUDENT' },
+      include: {
+        user: {
+          select: { id: true, fullName: true, email: true, institutionId: true }
+        }
+      }
+    })
+
+    // 2. Fetch all readiness reports for this exam
+    const reports = await prisma.studentReadinessReport.findMany({
+      where: { examId },
+      include: {
+        student: {
+          select: { id: true, fullName: true, email: true, institutionId: true }
+        }
+      }
+    })
+
+    const reportMap = new Map()
+    for (const r of reports) {
+      reportMap.set(r.studentId, r)
+    }
+
+    // Combine students
+    const studentMap = new Map()
+    for (const a of assignments) {
+      if (a.user) studentMap.set(a.user.id, a.user)
+    }
+    for (const r of reports) {
+      if (r.student && !studentMap.has(r.student.id)) {
+        studentMap.set(r.student.id, r.student)
+      }
+    }
+
+    let items = Array.from(studentMap.values()).map(student => {
+      const rep = reportMap.get(student.id)
+      if (!rep) {
+        return {
+          studentId: student.id,
+          studentName: student.fullName || 'Student',
+          email: student.email || '—',
+          usn: student.institutionId || '—',
+          status: 'NOT_REPORTED',
+          isReady: false,
+          reasons: ['Not yet reported'],
+          osFamily: '—',
+          browserFamily: '—',
+          cameraOk: false,
+          latencyBucket: '—',
+          sebVerified: false,
+          reportedAt: null
+        }
+      }
+      return {
+        studentId: student.id,
+        studentName: student.fullName || 'Student',
+        email: student.email || '—',
+        usn: student.institutionId || '—',
+        status: rep.isReady ? 'READY' : 'NOT_READY',
+        isReady: rep.isReady,
+        reasons: Array.isArray(rep.reasons) ? rep.reasons : [],
+        osFamily: rep.osFamily,
+        browserFamily: rep.browserFamily,
+        cameraOk: rep.cameraOk,
+        latencyBucket: rep.latencyBucket,
+        sebVerified: rep.sebVerified,
+        reportedAt: rep.reportedAt
+      }
+    })
+
+    // Apply search filter
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.trim().toLowerCase()
+      items = items.filter(i =>
+        i.studentName.toLowerCase().includes(q) ||
+        i.email.toLowerCase().includes(q) ||
+        i.usn.toLowerCase().includes(q)
+      )
+    }
+
+    // Apply status filter ('ready', 'not_ready', 'not_reported', 'all')
+    if (status && status.toLowerCase() !== 'all') {
+      const s = status.toUpperCase()
+      items = items.filter(i => i.status === s)
+    }
+
+    const summary = {
+      total: studentMap.size,
+      ready: Array.from(studentMap.keys()).filter(id => reportMap.get(id)?.isReady).length,
+      notReady: Array.from(studentMap.keys()).filter(id => {
+        const r = reportMap.get(id)
+        return r && !r.isReady
+      }).length,
+      notReported: Array.from(studentMap.keys()).filter(id => !reportMap.has(id)).length
+    }
+
+    return res.status(200).json({ status: 'success', readiness: items, summary })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function exportReadinessCsv(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const examId = req.params.id || req.params.examId
+
+    const assignments = await prisma.examAssignment.findMany({
+      where: { examId, assignedRole: 'STUDENT' },
+      include: {
+        user: { select: { id: true, fullName: true, email: true, institutionId: true } }
+      }
+    })
+    const reports = await prisma.studentReadinessReport.findMany({
+      where: { examId },
+      include: {
+        student: { select: { id: true, fullName: true, email: true, institutionId: true } }
+      }
+    })
+
+    const reportMap = new Map()
+    for (const r of reports) reportMap.set(r.studentId, r)
+
+    const studentMap = new Map()
+    for (const a of assignments) if (a.user) studentMap.set(a.user.id, a.user)
+    for (const r of reports) if (r.student && !studentMap.has(r.student.id)) studentMap.set(r.student.id, r.student)
+
+    const rows = ['Student Name,Email,USN,Readiness Status,Reasons,OS Family,Browser Family,Camera OK,Latency,SEB Verified,Reported At']
+
+    for (const student of studentMap.values()) {
+      const rep = reportMap.get(student.id)
+      const status = !rep ? 'NOT_REPORTED' : (rep.isReady ? 'READY' : 'NOT_READY')
+      const reasons = rep && Array.isArray(rep.reasons) ? rep.reasons.join('; ') : (!rep ? 'Not yet reported' : '')
+      const os = rep ? rep.osFamily : '—'
+      const browser = rep ? rep.browserFamily : '—'
+      const camera = rep ? (rep.cameraOk ? 'Yes' : 'No') : '—'
+      const latency = rep ? rep.latencyBucket : '—'
+      const seb = rep ? (rep.sebVerified ? 'Yes' : 'No') : '—'
+      const reportedAt = rep && rep.reportedAt ? rep.reportedAt.toISOString() : '—'
+
+      rows.push(`"${student.fullName || ''}","${student.email || ''}","${student.institutionId || ''}","${status}","${reasons}","${os}","${browser}","${camera}","${latency}","${seb}","${reportedAt}"`)
+    }
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="readiness-${examId}.csv"`)
+    return res.status(200).send(rows.join('\n'))
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function exportExamIncidentsCsv(req, res, next) {
+  try {
+    const { prisma } = require('../../infra/postgres/client')
+    const { formatViolationType } = require('../../shared/violationTypes')
+    const examId = req.params.id || req.params.examId
+
+    const attempts = await prisma.examAttempt.findMany({
+      where: { examId },
+      include: {
+        student: { select: { fullName: true, email: true, institutionId: true } },
+        proctoringLogs: { orderBy: { createdAt: 'asc' } }
+      }
+    })
+
+    const rows = ['Attempt ID,Student Name,Email,USN,Event Type,Formatted Label,Severity,Timestamp,Review Status,Flagged,Has Snapshot,Evidence Key']
+    for (const a of attempts) {
+      for (const log of a.proctoringLogs) {
+        rows.push(`"${a.id}","${a.student?.fullName || ''}","${a.student?.email || ''}","${a.student?.institutionId || ''}","${log.eventType}","${formatViolationType(log.eventType)}","${log.severity}","${log.createdAt.toISOString()}","${a.reviewStatus}","${a.isFlagged ? 'Yes' : 'No'}","${log.evidenceKey ? 'Yes' : 'No'}","${log.evidenceKey || ''}"`)
+      }
+    }
+
+    res.setHeader('Content-Type', 'text/csv')
+    res.setHeader('Content-Disposition', `attachment; filename="incidents-exam-${examId}.csv"`)
     return res.status(200).send(rows.join('\n'))
   } catch (err) {
     next(err)
@@ -226,5 +553,11 @@ module.exports = {
   uploadQuestionsMiddleware,
   uploadQuestionsExcel,
   getExamAttempts,
-  exportResultsCsv
+  exportResultsCsv,
+  getExamConsent,
+  submitExamConsent,
+  reportReadiness,
+  getExamReadiness,
+  exportReadinessCsv,
+  exportExamIncidentsCsv
 }

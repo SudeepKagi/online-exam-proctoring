@@ -5,6 +5,8 @@ const attemptsRoutes = require('./attempts/attempts.routes')
 const mediaRoutes = require('./media/media.routes')
 const proctoringRoutes = require('./proctoring/proctoring.routes')
 const usersRoutes = require('./users/users.routes')
+const sebRoutes = require('./seb/seb.routes')
+const sebAdminRoutes = require('./admin/sebAdmin.routes')
 
 const router = express.Router()
 
@@ -42,6 +44,8 @@ router.use('/attempts', attemptsRoutes)
 router.use('/media', mediaRoutes)
 router.use('/proctoring', proctoringRoutes)
 router.use('/users', usersRoutes)
+router.use('/admin/seb', sebAdminRoutes)
+router.use('/seb', sebRoutes)
 
 // Specific role aliases
 router.use('/student', examsRoutes)

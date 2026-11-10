@@ -9,14 +9,17 @@ import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
 import ExamQuestionsTab from '@/components/faculty/ExamQuestionsTab'
 import ExamInvigilatorsTab from '@/components/faculty/ExamInvigilatorsTab'
+import ExamReadinessTab from '@/components/faculty/ExamReadinessTab'
+import IncidentReviewModal from '@/components/faculty/IncidentReviewModal'
 import ExamSettingsModal from '@/components/faculty/ExamSettingsModal'
-import { ArrowLeft, Send, Download, UserCheck } from 'lucide-react'
+import { ArrowLeft, Send, Download, UserCheck, ShieldCheck, ShieldAlert, AlertTriangle, Eye, Laptop } from 'lucide-react'
 
 export default function ExamManagePage() {
   const { id } = useParams()
   const [exam, setExam] = useState(null)
   const [questions, setQuestions] = useState([])
   const [attempts, setAttempts] = useState([])
+  const [reviewModalAttemptId, setReviewModalAttemptId] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
   const loadExam = async () => {
@@ -72,6 +75,11 @@ export default function ExamManagePage() {
           <Link to="/faculty/exams"><ArrowLeft className="w-3.5 h-3.5" /> Back to My Exams</Link>
         </Button>
         <div className="flex items-center gap-2">
+          {exam?.proctoringConfig?.sebRequired && (
+            <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1 h-7 px-2.5">
+              <ShieldCheck className="w-3 h-3" /> Secure browser
+            </Badge>
+          )}
           {exam && <ExamSettingsModal exam={exam} isReadOnly={isReadOnly} lifecycle={lifecycle} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}
           {exam?.status === 'DRAFT' && !isReadOnly && (
             <Button size="sm" onClick={handlePublish} className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] h-9 px-4 shadow-xs cursor-pointer">
@@ -108,6 +116,9 @@ export default function ExamManagePage() {
           <TabsTrigger value="invigilators" className="flex items-center gap-1.5">
             <UserCheck className="w-3.5 h-3.5" /> Invigilators & Credentials
           </TabsTrigger>
+          <TabsTrigger value="readiness" data-testid="tab-readiness" className="flex items-center gap-1.5">
+            <Laptop className="w-3.5 h-3.5" /> Student Readiness
+          </TabsTrigger>
           <TabsTrigger value="results">Assessment Results ({attempts.length})</TabsTrigger>
         </TabsList>
 
@@ -125,36 +136,96 @@ export default function ExamManagePage() {
           <ExamInvigilatorsTab examId={id} onStatusUpdate={(t) => setMsg({ text: t, type: 'success' })} />
         </TabsContent>
 
+        <TabsContent value="readiness" className="mt-4">
+          <ExamReadinessTab examId={id} exam={exam} />
+        </TabsContent>
+
         <TabsContent value="results" className="mt-4">
           <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 bg-[#fbfbff] border-b border-[#e9eaf2]">
-              <CardTitle className="text-xs font-[480] text-[#28253b]">Student Attempts & Deterministic Grading</CardTitle>
-              <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs font-[420] rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent">
-                <a href={`/api/v1/exams/${id}/results/export`} target="_blank" rel="noreferrer">
-                  <Download className="w-3.5 h-3.5" /> Export CSV
-                </a>
-              </Button>
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 bg-[#fbfbff] border-b border-[#e9eaf2]">
+              <div>
+                <CardTitle className="text-xs font-[480] text-[#28253b]">Student Attempts, Integrity Flags & Grading</CardTitle>
+                <p className="text-[11px] text-[#70707d] font-[360] mt-0.5">
+                  Automated grading with invigilator review flags and incident auditing
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs font-[420] rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent">
+                  <a href={`/api/v1/exams/${id}/incidents/export`} target="_blank" rel="noreferrer">
+                    <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" /> Export All Incidents
+                  </a>
+                </Button>
+                <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs font-[420] rounded-[40px] px-3 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent">
+                  <a href={`/api/v1/exams/${id}/results/export`} target="_blank" rel="noreferrer">
+                    <Download className="w-3.5 h-3.5" /> Export Results CSV
+                  </a>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Student</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Attempt Status</TableHead>
                     <TableHead>Score</TableHead>
+                    <TableHead>Integrity & Review Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {attempts.length === 0 ? (
-                    <TableRow><TableCell colSpan={3} className="text-center py-8 text-xs text-[#70707d] font-[360]">No student attempts recorded for this exam yet.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">No student attempts recorded for this exam yet.</TableCell></TableRow>
                   ) : (
-                    attempts.map((att) => (
-                      <TableRow key={att.id}>
-                        <TableCell className="text-xs font-[480] text-[#28253b]">{att.studentName}</TableCell>
-                        <TableCell><Badge variant="outline" className="text-[10px] font-[420] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent">{att.status}</Badge></TableCell>
-                        <TableCell className="text-xs font-[480] text-[#28253b]">{att.score != null ? `${att.score} pts` : 'In Progress'}</TableCell>
-                      </TableRow>
-                    ))
+                    attempts.map((att) => {
+                      const isFlagged = Boolean(att.isFlagged) || (att.violationCount > 0) || att.reviewStatus === 'CONFIRMED'
+                      return (
+                        <TableRow key={att.id} data-testid={`attempt-row-${att.id}`}>
+                          <TableCell>
+                            <div>
+                              <div className="text-xs font-[480] text-[#28253b]">{att.studentName}</div>
+                              <div className="text-[11px] text-[#70707d] font-[360]">{att.email} • USN: {att.usn || '—'}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] font-[420] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent">
+                              {att.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-[480] text-[#28253b]">
+                            {att.score != null ? `${att.score} pts` : 'In Progress'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {isFlagged ? (
+                                <Badge variant="outline" className="text-[10px] font-[480] bg-[#fff3e0] text-[#e65100] border-0 inline-flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" /> Flagged ({att.violationCount || 0})
+                                </Badge>
+                              ) : (
+                                <span className="text-[11px] text-[#70707d] font-[360]">Clean (0 incidents)</span>
+                              )}
+
+                              {att.reviewStatus && att.reviewStatus !== 'PENDING' && (
+                                <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0">
+                                  {att.reviewStatus}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`review-btn-${att.id}`}
+                              onClick={() => setReviewModalAttemptId(att.id)}
+                              className="text-xs font-[420] text-[#5266eb] hover:bg-[#edecfb] rounded-[32px] h-8 px-3 cursor-pointer"
+                            >
+                              <Eye className="w-3.5 h-3.5 mr-1" /> Review Incidents
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -162,6 +233,14 @@ export default function ExamManagePage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Incident Review Modal (§Task 8) */}
+      <IncidentReviewModal
+        attemptId={reviewModalAttemptId}
+        isOpen={Boolean(reviewModalAttemptId)}
+        onClose={() => setReviewModalAttemptId(null)}
+        onReviewSaved={() => loadExam()}
+      />
     </DashboardShell>
   )
 }

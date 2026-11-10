@@ -33,7 +33,7 @@ function buildDatasourceUrl(role = 'api') {
   const isLite = process.env.APP_PROFILE === 'lite' || process.env.PRISMA_CONNECTION_LIMIT === '5'
   const poolLimit = process.env.PRISMA_CONNECTION_LIMIT
     ? parseInt(process.env.PRISMA_CONNECTION_LIMIT, 10)
-    : (isLite ? 5 : (isTest ? 20 : (role === 'worker' ? 10 : 15)));
+    : (isLite ? 5 : (isTest ? 20 : (role === 'worker' ? 10 : 20)));
   const poolTimeout = isTest ? 30 : 20; // Allow 30s during high concurrency tests
 
   const cleanUrl = (url || '').trim().replace(/^["']|["']$/g, '');
@@ -43,6 +43,9 @@ function buildDatasourceUrl(role = 'api') {
   }
   if (!urlObj.searchParams.has('pool_timeout')) {
     urlObj.searchParams.set('pool_timeout', poolTimeout.toString());
+  }
+  if (!urlObj.searchParams.has('statement_timeout')) {
+    urlObj.searchParams.set('statement_timeout', '10000');
   }
   if (!urlObj.searchParams.has('schema')) {
     urlObj.searchParams.set('schema', 'public');
@@ -111,5 +114,6 @@ async function withTransaction(fn, customOptions = {}) {
 module.exports = {
   prisma,
   getPrismaClient: createPrismaClient,
-  withTransaction
+  withTransaction,
+  buildDatasourceUrl
 };

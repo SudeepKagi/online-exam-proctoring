@@ -2,8 +2,8 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const authSql = require('./auth.sql')
 const { getPresignedReadUrl } = require('../../infra/s3/s3.client')
+const config = require('../../shared/config')
 
-const JWT_SECRET = process.env.JWT_SECRET || 'proctornet_super_secret_jwt_key_local_development_fallback_2026'
 const ACCESS_TOKEN_TTL = '15m'
 const REFRESH_TOKEN_TTL = '12h'
 
@@ -47,17 +47,40 @@ class AuthService {
 
   issueTokens(user) {
     const payload = { sub: user.id, id: user.id, email: user.email, role: user.role, name: user.name }
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_TTL })
-    const refreshToken = jwt.sign({ sub: user.id, id: user.id }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_TTL })
+    const accessToken = jwt.sign(payload, config.jwtSecret, { expiresIn: ACCESS_TOKEN_TTL })
+    const refreshSecret = config.jwtRefreshSecret || config.jwtSecret
+    const refreshToken = jwt.sign({ sub: user.id, id: user.id }, refreshSecret, { expiresIn: REFRESH_TOKEN_TTL })
     return { accessToken, refreshToken, token: accessToken }
   }
 
   verifyToken(token) {
     try {
-      return jwt.verify(token, JWT_SECRET)
+      return jwt.verify(token, config.jwtSecret)
     } catch (err) {
       return null
     }
+  }
+
+  async refreshAccessToken(refreshToken) {
+    if (!refreshToken) throw err('Refresh token is required', 400)
+    const refreshSecret = config.jwtRefreshSecret || config.jwtSecret
+    let decoded
+    try {
+      decoded = jwt.verify(refreshToken, refreshSecret)
+    } catch (e) {
+      if (e instanceof jwt.TokenExpiredError) {
+        throw err('Refresh token has expired', 401)
+      }
+      throw err('Invalid refresh token signature', 401)
+    }
+    const userId = decoded.id || decoded.sub
+    if (!userId) throw err('Invalid refresh token payload', 401)
+    const user = await authSql.findUserById(userId)
+    if (!user) throw err('User not found', 401)
+    if (user.status === 'SUSPENDED') throw err('Account is suspended. Please contact institutional administrator.', 403)
+    const tokens = this.issueTokens(user)
+    const { password, passwordHash, ...safeUser } = user
+    return { user: safeUser, ...tokens }
   }
 
   async getUserById(id) {

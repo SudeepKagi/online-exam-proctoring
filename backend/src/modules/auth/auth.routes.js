@@ -1,7 +1,30 @@
 const express = require('express')
+const rateLimit = require('express-rate-limit')
 const authController = require('./auth.controller')
 const { authService } = require('./auth.service')
 const { extractTokenFromReq } = require('../../utils/cookies')
+
+function getLoginLimiterKey(req) {
+  const identifier = String(req.body?.email || req.body?.username || '').trim().toLowerCase()
+  return identifier ? `auth_login_${identifier}` : `auth_ip_${req.ip}`
+}
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: () => {
+    const isTest = process.env.NODE_ENV === 'test'
+    const isLoad = process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1'
+    return (isTest || isLoad) ? 10000 : 15
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test' || process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1',
+  keyGenerator: getLoginLimiterKey,
+  message: {
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many login attempts for this account. Please wait 15 minutes before trying again.'
+  }
+})
 
 const suspendedUsersCache = new Map() // userId -> { isSuspended: boolean, ts: number }
 
@@ -73,11 +96,12 @@ function requireRole(...roles) {
 
 const router = express.Router()
 
-router.post('/login', authController.login)
-router.post('/admin/login', authController.adminLogin)
-router.post('/faculty/login', authController.facultyLogin)
-router.post('/student/login', authController.studentLogin)
-router.post('/invigilator/login', authController.invigilatorLogin)
+router.post('/login', loginLimiter, authController.login)
+router.post('/refresh', authController.refresh)
+router.post('/admin/login', loginLimiter, authController.adminLogin)
+router.post('/faculty/login', loginLimiter, authController.facultyLogin)
+router.post('/student/login', loginLimiter, authController.studentLogin)
+router.post('/invigilator/login', loginLimiter, authController.invigilatorLogin)
 router.post('/student/register', authController.register)
 router.post('/faculty/register', authController.register)
 router.post('/register', authController.register)
@@ -93,3 +117,5 @@ module.exports.authenticateToken = authenticateToken
 module.exports.requireRole = requireRole
 module.exports.markUserSuspension = markUserSuspension
 module.exports.isUserSuspended = isUserSuspended
+module.exports.loginLimiter = loginLimiter
+module.exports.getLoginLimiterKey = getLoginLimiterKey

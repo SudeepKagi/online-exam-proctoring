@@ -8,14 +8,13 @@ ProctorNet implements a multi-tier media transport pipeline designed for low-lat
                   +-----------------------------------+
                   |          STUDENT BROWSER          |
                   |  - Webcam MediaStream             |
-                  |  - Screen Share MediaStream       |
                   +-----------------+-----------------+
                                     |
                     +---------------+---------------+
                     |                               |
                     v                               v
          [Primary: WebRTC P2P]             [Fallback: Socket.io Frames]
-     - Dual-track RTCPeerConnection     - 2.5s Adaptive JPEG thumbnails
+     - Camera RTCPeerConnection         - 2.5s Adaptive JPEG thumbnails
      - STUN: stun.l.google.com          - Active during negotiation/drop
      - Direct MediaStream rendering     - Throttled to 15s when WebRTC Live
                     |                               |
@@ -31,8 +30,8 @@ ProctorNet implements a multi-tier media transport pipeline designed for low-lat
 ```
 
 ### Stream Channels
-1. **Camera Feed:** Acquired via `navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })`. Track published to peer connection with `streamRef.current`.
-2. **Screen Feed:** Acquired via `navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: 'monitor' } })`. Track published to peer connection with `window.screenShareStream`. Auto-monitored; if candidate cancels screen sharing, an immediate `SCREEN_RECORDING_STOPPED` critical violation is dispatched.
+1. **Camera Feed:** Acquired via `navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 } } })`. Track published to peer connection with `streamRef.current`. Handed off cleanly from Pre-Exam Check to Exam Arena without hardware re-prompting. Monitored for disconnection (`CAMERA_DISCONNECTED` critical event).
+2. **Screen Sharing:** Completely removed in favor of camera proctoring and Safe Exam Browser (SEB) application lockdown.
 
 ---
 
@@ -42,14 +41,14 @@ ProctorNet implements a multi-tier media transport pipeline designed for low-lat
 1. Invigilator joins room `inv:${examId}` via Socket.io.
 2. Invigilator emits `webrtc:request-stream` with `{ studentId, invId, examId }`.
 3. Server validates invigilator's JWT token and exam assignment, then routes to `student:${studentId}`.
-4. Student creates an `RTCPeerConnection`, attaches camera and screen tracks, generates SDP Offer, and emits `webrtc:offer`.
+4. Student creates an `RTCPeerConnection`, attaches camera track, generates SDP Offer, and emits `webrtc:offer`.
 5. Invigilator receives `webrtc:offer`, sets remote description, generates SDP Answer, and emits `webrtc:answer`.
 6. ICE candidates are exchanged bidirectionally (`webrtc:ice-candidate`).
-7. Invigilator receives `pc.ontrack`: assigns camera and screen tracks to active stream registry (`window.activeWebRTCStreams`) and dispatches `student-stream-update`.
-8. `WebcamFeed` and `ScreenFeed` bind streams to genuine `<video autoPlay playsInline muted>` elements with live badges (`LIVE WEBRTC` / `LIVE SCREEN`).
+7. Invigilator receives `pc.ontrack`: assigns camera track to active stream registry (`window.activeWebRTCStreams`) and dispatches `student-stream-update`.
+8. `WebcamFeed` binds stream to genuine `<video autoPlay playsInline muted>` element with live badge (`LIVE WEBRTC`).
 
 ### Fallback Adaptive Frame Pipeline
-- While WebRTC is negotiating or disconnected, student transmits JPEG snapshots every 2.5s (`exam:frame` and `exam:screenFrame`).
+- While WebRTC is negotiating or disconnected, student transmits JPEG snapshots every 2.5s (`exam:frame`).
 - When `pc.connectionState === 'connected'`, frame transmission throttles to a 15s keepalive heartbeat to conserve network bandwidth.
 - If WebRTC connection drops, the 2.5s fallback rate seamlessly resumes.
 
@@ -83,7 +82,7 @@ ProctorNet implements a multi-tier media transport pipeline designed for low-lat
   4. Backend broadcasts `exam:terminated` to `student:${studentId}` and `student:stateChange` to `inv:${examId}`.
   5. Student browser receives `exam:terminated`:
      - Disables exam interaction.
-     - Immediately stops all webcam and screen recording hardware tracks (`track.stop()`).
+     - Immediately stops all camera hardware tracks (`track.stop()`).
      - Closes WebRTC peer connections.
      - Renders immutable red lock screen displaying the official termination reason.
      - Blocks any further answer autosave or re-entry.

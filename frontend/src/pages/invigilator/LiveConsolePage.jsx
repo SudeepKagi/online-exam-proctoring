@@ -56,7 +56,7 @@ export default function LiveConsolePage() {
           institutionId: a.student?.institutionId || '—',
           attemptStatus: a.status || 'IN_PROGRESS',
           violationCount: 0,
-          latestScreenSnapshotUrl: null,
+          latestSnapshotUrl: null,
           lastActiveAt: a.startedAt
         })))
       } catch (_) {}
@@ -76,13 +76,16 @@ export default function LiveConsolePage() {
 
     const handleViolation = (data) => {
       if (!data) return
-      setViolations(prev => [data, ...prev.slice(0, 49)])
+      setViolations(prev => {
+        if (data.id && prev.some(v => v.id === data.id)) return prev
+        return [data, ...prev.slice(0, 49)]
+      })
       setCandidates(prev => prev.map(c => {
         if (c.attemptId === data.attemptId || c.studentId === data.studentId) {
           return {
             ...c,
             violationCount: (c.violationCount || 0) + 1,
-            latestScreenSnapshotUrl: data.snapshotDataUrl || c.latestScreenSnapshotUrl,
+            latestSnapshotUrl: data.snapshotDataUrl || c.latestSnapshotUrl,
             lastActiveAt: data.createdAt || new Date().toISOString()
           }
         }
@@ -98,7 +101,7 @@ export default function LiveConsolePage() {
             ...c,
             attemptStatus: data.attemptStatus || c.attemptStatus,
             violationCount: data.violationCount ?? c.violationCount,
-            latestScreenSnapshotUrl: data.latestScreenSnapshotUrl || c.latestScreenSnapshotUrl,
+            latestSnapshotUrl: data.latestSnapshotUrl || c.latestSnapshotUrl,
             lastActiveAt: data.lastActiveAt || c.lastActiveAt
           }
         }

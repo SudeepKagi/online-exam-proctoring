@@ -3,9 +3,7 @@ import { Button } from '@/components/ui/button'
 
 export function ProctoringInterruptedOverlay({
   isOpen,
-  screenLost,
   cameraLost,
-  onReShareScreen,
   onReEnableCamera
 }) {
   if (!isOpen) return null
@@ -22,17 +20,9 @@ export function ProctoringInterruptedOverlay({
       </div>
       <h2 className="text-xl font-[480] text-[#28253b] mb-2">Proctoring Interrupted</h2>
       <p className="text-sm font-[360] text-[#554e7b] max-w-md mb-6 leading-relaxed">
-        You stopped screen/camera sharing. Continuous monitoring is strictly mandatory throughout the examination. Re-enable sharing immediately to continue your exam.
+        Your camera stream was interrupted. Continuous video monitoring is strictly mandatory throughout the examination. Re-enable camera immediately to continue your exam.
       </p>
       <div className="flex flex-col sm:flex-row gap-3">
-        {screenLost && (
-          <Button
-            onClick={onReShareScreen}
-            className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-6 h-10 shadow-xs cursor-pointer"
-          >
-            Re-Enable Screen Sharing
-          </Button>
-        )}
         {cameraLost && (
           <Button
             onClick={onReEnableCamera}

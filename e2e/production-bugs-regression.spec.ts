@@ -81,8 +81,8 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
     }
   })
 
-  // BUG 2 REGRESSION TEST: Screen Sharing & Main-Thread Stability
-  test('BUG 2: Screen share proctoring remains responsive (rAF delta < 200ms) with zero main-thread lockup', async ({ browser }) => {
+  // BUG 2 REGRESSION TEST: Camera Proctoring & Main-Thread Stability
+  test('BUG 2: Camera proctoring remains responsive (rAF delta < 200ms) with zero main-thread lockup', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const student = await createActor(browser, 'student')
 
@@ -96,7 +96,7 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
 
       const now = new Date()
       const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
-        title: `Screen Share Perf Exam ${Date.now()}`,
+        title: `Camera Proctoring Perf Exam ${Date.now()}`,
         subject: 'PERF-101',
         courseCode: 'PERF-101',
         startTime: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
@@ -123,7 +123,7 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
       await student.page.locator('button[type="submit"]').click()
       await student.page.waitForURL(url => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // Mock mediaDevices in page before navigation to simulate screen capture
+      // Mock mediaDevices in page before navigation to simulate camera capture
       await student.page.addInitScript(() => {
         const dummyCanvas = document.createElement('canvas')
         dummyCanvas.width = 1280
@@ -135,7 +135,7 @@ test.describe('Production Bugs Regression Suite (Bugs 1-4 Verification)', () => 
         }
         const stream = (dummyCanvas as any).captureStream ? (dummyCanvas as any).captureStream(5) : new MediaStream()
         if (navigator.mediaDevices) {
-          navigator.mediaDevices.getDisplayMedia = async () => stream
+          navigator.mediaDevices.getUserMedia = async () => stream
         }
       })
 

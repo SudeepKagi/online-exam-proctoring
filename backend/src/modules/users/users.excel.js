@@ -25,7 +25,7 @@ async function parseExcelBuffer(buffer) {
       const name = getVal('name') || getVal('fullname') || getVal('full name')
       const usn = getVal('usn') || getVal('id') || getVal('institutionid') || getVal('employee id')
       const role = getVal('role') || 'STUDENT'
-      const password = getVal('password') || 'Default#1234'
+      const password = getVal('password') || ''
 
       if (email && name) {
         rows.push({ email, name, fullName: name, usn, institutionId: usn, role, password })

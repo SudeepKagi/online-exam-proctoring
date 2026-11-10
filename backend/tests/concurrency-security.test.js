@@ -3,8 +3,12 @@ const { describe, it, before, after } = require('node:test')
 const assert = require('node:assert/strict')
 const { prisma } = require('../src/infra/postgres/client')
 const { signToken } = require('../src/utils/jwt')
-const { Agent, setGlobalDispatcher } = require('undici')
-setGlobalDispatcher(new Agent({ connections: 150, keepAliveTimeout: 1000, keepAliveMaxTimeout: 1000 }))
+try {
+  const { Agent, setGlobalDispatcher } = require('undici')
+  setGlobalDispatcher(new Agent({ connections: 150, keepAliveTimeout: 1000, keepAliveMaxTimeout: 1000 }))
+} catch (_) {
+  // Graceful fallback when standalone undici cannot bind optional zstd compression in older Node 22 point releases
+}
 
 describe('High-Concurrency Load & Security Penetration Test Suite', () => {
   let BASE_URL = 'http://127.0.0.1:5000'

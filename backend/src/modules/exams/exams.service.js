@@ -208,9 +208,20 @@ class ExamService {
     if (!exam) return { sebRequired: false, sebConfigKey: null }
     const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
     const sebRequired = Boolean(pConfig.sebRequired)
+    if (!sebRequired) {
+      return { sebRequired: false, sebConfigKey: null }
+    }
     const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim().toLowerCase() : null
+    let institutionKey = null
+    try {
+      const { settingsService } = require('../admin/settings.service')
+      const sebConfig = await settingsService.getSebConfig()
+      if (sebConfig && sebConfig.configKey) {
+        institutionKey = String(sebConfig.configKey).trim().toLowerCase()
+      }
+    } catch (_) {}
     const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim().toLowerCase() : null
-    const sebConfigKey = perExamKey || envKey || null
+    const sebConfigKey = sebRequired ? (perExamKey || institutionKey || envKey || null) : null
     return { sebRequired, sebConfigKey }
   }
 
@@ -224,14 +235,23 @@ class ExamService {
       throw err
     }
 
-    // 6. Publish guard: if sebRequired is true, require a valid 64-hex key (per-exam or env)
+    // 6. Publish guard: if sebRequired is true, require a valid 64-hex key (per-exam, institution, or env)
     const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
     if (pConfig.sebRequired) {
       const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim() : null
+      let institutionKey = null
+      try {
+        const { settingsService } = require('../admin/settings.service')
+        const sebConfig = await settingsService.getSebConfig()
+        if (sebConfig && sebConfig.configKey) {
+          institutionKey = String(sebConfig.configKey).trim()
+        }
+      } catch (_) {}
       const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim() : null
       const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(perExamKey)
+      const validInst = institutionKey && /^[0-9a-fA-F]{64}$/.test(institutionKey)
       const validEnv = envKey && /^[0-9a-fA-F]{64}$/.test(envKey)
-      if (!validPerExam && !validEnv) {
+      if (!validPerExam && !validInst && !validEnv) {
         const err = new Error('Exam requires Safe Exam Browser but no valid Config Key is configured.')
         err.status = 400
         err.code = 'SEB_KEY_REQUIRED'

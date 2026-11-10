@@ -7,8 +7,10 @@
 
 const AUTH_COOKIE_NAME = 'proctornet_auth'
 const ACCESS_COOKIE_NAME = 'pn_at'
+const REFRESH_COOKIE_NAME = 'pn_rt'
 const LEGACY_COOKIE_NAME = 'proctornet_auth'
 const DEFAULT_MAX_AGE_MS = 15 * 60 * 1000 // 15 minutes default for access token
+const DEFAULT_REFRESH_MAX_AGE_MS = 12 * 60 * 60 * 1000 // 12 hours for refresh token
 
 /**
  * Compute secure cookie configuration based on deployment environment.
@@ -26,6 +28,8 @@ function getAuthCookieOptions(maxAgeMs, req = null) {
     secure = false
   } else if (isProd && req) {
     secure = Boolean(req.secure || req.headers?.['x-forwarded-proto'] === 'https')
+  } else if (isProd) {
+    secure = true
   }
 
   const options = {
@@ -59,6 +63,12 @@ function setAccessCookie(res, token, maxAgeMs) {
   res.cookie(ACCESS_COOKIE_NAME, token, options)
 }
 
+function setRefreshCookie(res, token, maxAgeMs = DEFAULT_REFRESH_MAX_AGE_MS) {
+  if (!res || typeof res.cookie !== 'function') return
+  const options = getAuthCookieOptions(maxAgeMs, res.req)
+  res.cookie(REFRESH_COOKIE_NAME, token, options)
+}
+
 /**
  * Clear the authentication cookie on the response.
  */
@@ -75,11 +85,14 @@ function clearAuthCookie(res) {
     secure = false
   } else if (isProd && req) {
     secure = Boolean(req.secure || req.headers?.['x-forwarded-proto'] === 'https')
+  } else if (isProd) {
+    secure = true
   }
 
   const clearOptions = { httpOnly: true, secure, sameSite, path: '/' }
   res.clearCookie(AUTH_COOKIE_NAME, clearOptions)
   res.clearCookie(ACCESS_COOKIE_NAME, clearOptions)
+  res.clearCookie(REFRESH_COOKIE_NAME, clearOptions)
   res.clearCookie(LEGACY_COOKIE_NAME, clearOptions)
 }
 
@@ -162,16 +175,36 @@ function extractTokenFromSocket(socket) {
   return null
 }
 
+function extractRefreshTokenFromReq(req) {
+  if (!req) return null
+  if (req.body?.refreshToken && typeof req.body.refreshToken === 'string') {
+    return req.body.refreshToken.trim()
+  }
+  if (req.cookies && req.cookies[REFRESH_COOKIE_NAME]) {
+    return req.cookies[REFRESH_COOKIE_NAME]
+  }
+  const cookieHeader = req.headers?.cookie
+  if (cookieHeader) {
+    const token = parseCookieHeader(cookieHeader, REFRESH_COOKIE_NAME)
+    if (token) return token
+  }
+  return null
+}
+
 module.exports = {
   AUTH_COOKIE_NAME,
   ACCESS_COOKIE_NAME,
+  REFRESH_COOKIE_NAME,
   LEGACY_COOKIE_NAME,
   DEFAULT_MAX_AGE_MS,
+  DEFAULT_REFRESH_MAX_AGE_MS,
   getAuthCookieOptions,
   setAuthCookie,
   setAccessCookie,
+  setRefreshCookie,
   clearAuthCookie,
   extractTokenFromReq,
+  extractRefreshTokenFromReq,
   extractTokenFromSocket,
   parseCookieHeader
 }

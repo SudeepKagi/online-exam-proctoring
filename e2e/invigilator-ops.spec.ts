@@ -118,4 +118,49 @@ test.describe('E2E: Invigilator Operations Flow', () => {
       await invigilator.close()
     }
   })
+
+  test('Legacy violation types (e.g. SCREEN_SHARE_ENDED) render with label "Screen share ended (legacy)" in audit sheet', async ({ browser }) => {
+    test.setTimeout(60000)
+
+    const invigilator = await createActor(browser, 'invigilator')
+    try {
+      await invigilator.page.goto('/login')
+      await invigilator.page.locator('input[type="text"]').fill(SEEDED_INVIGILATOR.email)
+      await invigilator.page.locator('input[type="password"]').fill(SEEDED_INVIGILATOR.password)
+      await invigilator.page.locator('button[type="submit"]').click()
+      await invigilator.page.waitForURL(url => url.pathname.includes('/invigilator'), { timeout: 15000 })
+      await invigilator.page.goto('/invigilator/console')
+      await expect(invigilator.page.getByText('Live Proctoring Console')).toBeVisible({ timeout: 10000 })
+
+      // Intercept attempt logs to include legacy SCREEN_SHARE_ENDED violation
+      await invigilator.page.route('**/api/v1/proctoring/attempts/*/logs', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            logs: [
+              {
+                id: 'legacy-log-1',
+                eventType: 'SCREEN_SHARE_ENDED',
+                severity: 'CRITICAL',
+                createdAt: new Date().toISOString()
+              }
+            ]
+          })
+        })
+      })
+
+      // Click student card to open Sheet
+      const studentCard = invigilator.page.locator('[data-slot="card"], .cursor-pointer').filter({ hasText: /Alice Johnson|Candidate/i }).first()
+      await expect(studentCard).toBeVisible({ timeout: 10000 })
+      await studentCard.click()
+      await expect(invigilator.page.getByText('Realtime telemetry & security audit history')).toBeVisible({ timeout: 10000 })
+
+      // Verify legacy violation renders friendly label "Screen share ended (legacy)"
+      await expect(invigilator.page.getByText('Screen share ended (legacy)')).toBeVisible({ timeout: 10000 })
+    } finally {
+      await invigilator.close()
+    }
+  })
 })

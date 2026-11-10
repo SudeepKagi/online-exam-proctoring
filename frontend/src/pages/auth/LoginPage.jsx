@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2 } from 'lucide-react'
+import { apiClient } from '@/lib/apiClient'
+import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck } from 'lucide-react'
 
 const ROLE_CONFIG = {
   STUDENT: {
@@ -67,6 +68,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isSebVerified, setIsSebVerified] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    apiClient.get('/seb/ping')
+      .then((res) => {
+        if (mounted && res.data?.verified) {
+          setIsSebVerified(true)
+        }
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [])
 
   useEffect(() => {
     const roleParam = searchParams.get('role')?.toUpperCase()
@@ -86,7 +100,7 @@ export default function LoginPage() {
 
     const credentials = { email: identifier.trim(), usn: identifier.trim(), institutionId: identifier.trim(), password }
     let res = await login(credentials, activeRole)
-    if (!res.success && res.error && res.error.includes('Access denied for role')) {
+    if (!res.success && res.error && (res.error.includes('Access denied') || res.error.includes('not registered under'))) {
       const fallbackRes = await login(credentials)
       if (fallbackRes.success) res = fallbackRes
     }
@@ -102,6 +116,12 @@ export default function LoginPage() {
       if (role === 'ADMIN') return navigate('/admin/dashboard')
       if (role === 'FACULTY') return navigate('/faculty/exams')
       if (role === 'INVIGILATOR') return navigate('/invigilator/console') // terms-ok: internal role routing
+
+      const targetExamId = searchParams.get('examId') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pendingExamId') : null)
+      if (targetExamId && (role === 'STUDENT' || !role)) {
+        try { sessionStorage.removeItem('pendingExamId') } catch (_) {}
+        return navigate(`/student/exams/${targetExamId}/start`)
+      }
       return navigate('/student/dashboard')
     } else {
       setError(res.error || 'Authentication failed. Please verify credentials.')
@@ -122,9 +142,20 @@ export default function LoginPage() {
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-base tracking-wide text-[#28253b]">ProctorNet</span>
         </Link>
-        <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-white border border-[#e9eaf2] shadow-[0_1px_2px_rgba(40,37,59,0.03)] transition">
-          <ArrowLeft className="w-3.5 h-3.5" /> Return to Home
-        </Link>
+        <div className="flex items-center gap-3">
+          {isSebVerified && (
+            <div
+              data-testid="seb-verified-badge"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#edecfb] border border-[#5266eb]/30 text-[#5266eb] rounded-full text-xs font-[480]"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              Secure browser ✓
+            </div>
+          )}
+          <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-white border border-[#e9eaf2] shadow-[0_1px_2px_rgba(40,37,59,0.03)] transition">
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to Home
+          </Link>
+        </div>
       </div>
 
       {/* 2-Column Layout */}
@@ -167,6 +198,11 @@ export default function LoginPage() {
               <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
                 <RoleIcon className="w-5 h-5" />
               </div>
+              {isSebVerified && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 bg-[#edecfb] text-[#5266eb] rounded-full text-[11px] font-[480] mx-auto">
+                  <ShieldCheck className="w-3 h-3" /> Secure browser verified
+                </div>
+              )}
               <CardTitle className="text-lg font-[480] text-[#28253b] tracking-tight">{config.title}</CardTitle>
               <CardDescription className="text-[#554e7b] text-xs font-[360]">{config.desc}</CardDescription>
 

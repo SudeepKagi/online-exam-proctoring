@@ -57,6 +57,7 @@ class ProctoringService {
 
       if (!isHeartbeat) {
         socketEmitter.emitToInvigilators(targetExamId, 'proctoring:violation', {
+          id: `live-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           attemptId, studentName, institutionId, eventType, severity,
           snapshotDataUrl, violationCount, attemptStatus: status, createdAt: new Date().toISOString()
         })
@@ -64,7 +65,7 @@ class ProctoringService {
 
       socketEmitter.emitToInvigilators(targetExamId, 'attempt:updated', {
         attemptId, studentName, institutionId, attemptStatus: status,
-        violationCount, latestScreenSnapshotUrl: snapshotDataUrl, lastActiveAt: new Date().toISOString()
+        violationCount, latestSnapshotUrl: snapshotDataUrl, lastActiveAt: new Date().toISOString()
       })
     } catch (_) {}
   }
@@ -154,7 +155,7 @@ class ProctoringService {
         attemptId: att?.id || null,
         attemptStatus: att?.status || 'NOT_STARTED',
         violationCount: att?.violationCount || 0,
-        latestScreenSnapshotUrl: snap?.url || null,
+        latestSnapshotUrl: snap?.url || null,
         lastActiveAt: snap?.at || att?.startedAt || null
       }
     })

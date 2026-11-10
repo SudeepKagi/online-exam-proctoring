@@ -1,11 +1,13 @@
 const express = require('express')
 const attemptsController = require('./attempts.controller')
 const { authenticateToken, requireRole } = require('../auth/auth.routes')
-const { verifySeb } = require('../../middleware/seb')
+const { verifySeb, verifySebNonBlocking } = require('../../middleware/seb')
 
 const router = express.Router()
 
-// Pre-exam Readiness & Attempt Activation
+// Pre-exam Readiness, Attempt Activation & SEB Verification Status
+router.get('/exams/:examId/seb-status', authenticateToken, verifySebNonBlocking, attemptsController.getSebStatus)
+router.get('/:examId/seb-status', authenticateToken, verifySebNonBlocking, attemptsController.getSebStatus)
 router.post('/start', authenticateToken, verifySeb, attemptsController.startAttempt)
 router.post('/exams/:examId/readiness', authenticateToken, attemptsController.getReadiness)
 router.post('/exams/:examId/start', authenticateToken, verifySeb, attemptsController.startAttempt)
@@ -27,6 +29,11 @@ router.post('/:attemptId/submit', authenticateToken, verifySeb, attemptsControll
 router.post('/:attemptId/suspend', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.suspendAttempt)
 router.post('/:attemptId/resume', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.resumeAttempt)
 router.post('/:attemptId/terminate', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.terminateAttempt)
+
+// Incident Review & Actions (§Task 8)
+router.get('/:attemptId/incidents', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.getAttemptIncidents)
+router.patch('/:attemptId/review', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.updateAttemptReview)
+router.get('/:attemptId/incidents/export', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.exportAttemptIncidentsCsv)
 
 // VPN Status Hook
 router.get('/:attemptId/vpn-status', authenticateToken, attemptsController.getVpnStatus)

@@ -118,7 +118,7 @@ class ExamWizardService {
               institutionId: invId, loginId: invId, invigilatorId: invId,
               password: invPass, passwordHint: invPass, room: invRoom
             },
-            cameraRequired: true, screenShareRequired: true, fullScreenMode: true, browserLock: true,
+            cameraRequired: true, fullScreenMode: true, browserLock: true,
             sebRequired,
             ...(data.sebConfigKey || pConfigInput.sebConfigKey
               ? { sebConfigKey: String(data.sebConfigKey || pConfigInput.sebConfigKey).trim().toLowerCase() }

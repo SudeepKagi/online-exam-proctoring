@@ -17,7 +17,7 @@ export const VIOLATION_TYPES = Object.freeze({
   "WINDOW_BLUR": "WINDOW_BLUR",
   "IP_CHANGE": "IP_CHANGE",
   "VM_DETECTED": "VM_DETECTED",
-  "SCREEN_SHARE_STOPPED": "SCREEN_SHARE_STOPPED",
+  "CAMERA_DISCONNECTED": "CAMERA_DISCONNECTED",
   "VPN_DISCONNECT": "VPN_DISCONNECT",
   "VPN_IP_MISMATCH": "VPN_IP_MISMATCH",
   "UNAUTHORIZED_APPLICATION": "UNAUTHORIZED_APPLICATION",
@@ -45,8 +45,7 @@ export const CLIENT_VIOLATION_MAP = Object.freeze({
   "WINDOW_BLUR": "WINDOW_BLUR",
   "IP_CHANGE": "IP_CHANGE",
   "VM_DETECTED": "VM_DETECTED",
-  "SCREEN_SHARE_STOPPED": "SCREEN_SHARE_STOPPED",
-  "SCREEN_RECORDING": "SCREEN_SHARE_STOPPED",
+  "CAMERA_DISCONNECTED": "CAMERA_DISCONNECTED",
   "VPN_DISCONNECT": "VPN_DISCONNECT",
   "VPN_IP_MISMATCH": "VPN_IP_MISMATCH",
   "UNAUTHORIZED_APPLICATION": "UNAUTHORIZED_APPLICATION",
@@ -70,7 +69,7 @@ export const CANONICAL_SEVERITY = Object.freeze({
   "WINDOW_BLUR": "LOW",
   "IP_CHANGE": "CRITICAL",
   "VM_DETECTED": "CRITICAL",
-  "SCREEN_SHARE_STOPPED": "MEDIUM",
+  "CAMERA_DISCONNECTED": "CRITICAL",
   "VPN_DISCONNECT": "CRITICAL",
   "VPN_IP_MISMATCH": "CRITICAL",
   "UNAUTHORIZED_APPLICATION": "HIGH",
@@ -94,7 +93,7 @@ export const FLAG_COOLDOWNS = Object.freeze({
   "WINDOW_BLUR": 2000,
   "IP_CHANGE": 10000,
   "VM_DETECTED": 10000,
-  "SCREEN_SHARE_STOPPED": 5000,
+  "CAMERA_DISCONNECTED": 5000,
   "VPN_DISCONNECT": 10000,
   "VPN_IP_MISMATCH": 10000,
   "UNAUTHORIZED_APPLICATION": 5000,
@@ -104,6 +103,17 @@ export const FLAG_COOLDOWNS = Object.freeze({
   "MULTIPLE_DISPLAYS": 5000,
   "DEFAULT": 3000
 })
+
+export const LEGACY_VIOLATION_LABELS = Object.freeze({
+  "SCREEN_SHARE_ENDED": "Screen share ended (legacy)",
+  "SCREEN_SHARE_STOPPED": "Screen share ended (legacy)",
+  "SCREEN_RECORDING": "Screen recording (legacy)"
+})
+
+export function formatViolationType(type) {
+  if (!type || typeof type !== 'string') return ''
+  return LEGACY_VIOLATION_LABELS[type] || type
+}
 
 export function normalizeViolationType(clientType) {
   if (!clientType || typeof clientType !== 'string') return null

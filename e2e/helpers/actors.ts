@@ -46,3 +46,20 @@ export async function createActor(browser: Browser, role: ActorRole, name?: stri
   }
 }
 
+/**
+ * Automatically agrees to mandatory student proctoring consent if presented on pre-check.
+ */
+export async function passConsentIfPresent(page: Page): Promise<void> {
+  try {
+    const consentHeader = page.getByText('Examination Privacy & Proctoring Consent')
+    const hasConsentPrompt = await consentHeader.waitFor({ state: 'visible', timeout: 4000 }).then(() => true).catch(() => false)
+    if (hasConsentPrompt) {
+      const checkbox = page.locator('[data-testid="consent-checkbox"]')
+      await checkbox.check()
+      const agreeBtn = page.locator('[data-testid="consent-agree-btn"]')
+      await agreeBtn.click({ timeout: 5000 })
+      await consentHeader.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+    }
+  } catch (_) {}
+}
+

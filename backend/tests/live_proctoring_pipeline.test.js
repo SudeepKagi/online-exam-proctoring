@@ -76,16 +76,13 @@ describe('Live Proctoring Pipeline — Authorization & Scoping Guardrails', () =
     assert.equal(canManageB, false, 'Unauthorized cross-exam action must be rejected (403)')
   })
 
-  it('validates WebRTC dual-stream mapping structure', () => {
+  it('validates WebRTC camera stream mapping structure', () => {
     const sampleStreamMap = {
       cameraStreamId: 'cam_str_001',
-      cameraTrackId: 'cam_trk_001',
-      screenStreamId: 'scr_str_001',
-      screenTrackId: 'scr_trk_001'
+      cameraTrackId: 'cam_trk_001'
     }
     assert.ok(sampleStreamMap.cameraTrackId)
-    assert.ok(sampleStreamMap.screenTrackId)
-    assert.notEqual(sampleStreamMap.cameraTrackId, sampleStreamMap.screenTrackId)
+    assert.ok(sampleStreamMap.cameraStreamId)
   })
 
   it('enforces 500KB limit for fallback frame payloads', () => {

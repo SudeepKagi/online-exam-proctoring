@@ -46,6 +46,8 @@ const config = {
   // Safe Exam Browser (SEB) Settings
   sebMode: _rawSebMode,
   sebConfigKey: _rawSebConfigKey,
+  sebLinkSecret: process.env.SEB_LINK_SECRET || (process.env.NODE_ENV === 'production' ? null : 'dev_seb_link_secret_at_least_32_characters_long_for_hmac'),
+  sebPreDownloadMinutes: parseInt(process.env.SEB_PRE_DOWNLOAD_MINUTES || '30', 10),
 
   // Redis
   redisUrl: process.env.REDIS_URL || 'redis://127.0.0.1:6379',
@@ -53,6 +55,7 @@ const config = {
 
   // Authentication & Security (Phase S2)
   jwtSecret: process.env.JWT_SECRET,
+  jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
   jwtExpiresIn: '15m',
   jwtRefreshExpiresIn: '12h',
   cookieName: 'pn_at',

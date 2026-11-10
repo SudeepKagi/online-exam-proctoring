@@ -39,6 +39,12 @@ router.post('/admin/departments', authenticateToken, (req, res) => {
 router.get('/admin/approvals', authenticateToken, requireRole('ADMIN'), usersController.listPendingApprovals)
 router.get('/admin/users/:id/photos', authenticateToken, requireRole('ADMIN'), usersController.getUserPhotos)
 
+// Admin Privacy & Evidence Management Tools (§Task 9)
+router.get('/admin/users/:userId/data-export', authenticateToken, requireRole('ADMIN'), usersController.exportUserData)
+router.get('/admin/users/:id/data-export', authenticateToken, requireRole('ADMIN'), usersController.exportUserData)
+router.delete('/admin/users/:userId/evidence', authenticateToken, requireRole('ADMIN'), usersController.deleteUserEvidence)
+router.delete('/admin/users/:id/evidence', authenticateToken, requireRole('ADMIN'), usersController.deleteUserEvidence)
+
 // Admin Student Management
 router.get('/admin/students', authenticateToken, usersController.listStudents)
 router.get('/admin/students/pending', authenticateToken, usersController.listPendingApprovals)
