@@ -1,13 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
-import { setCameraStream } from '@/lib/screenStreamStore'
+import { useCamera } from '@/hooks/useCamera'
 import { detectOsFamily, detectBrowserFamily } from '@/lib/systemCheck'
-import { Maximize, AlertTriangle, ShieldCheck, ArrowRight, FileText, Lock, Clock, Eye } from 'lucide-react'
+import { Maximize, AlertTriangle, ShieldCheck, ArrowRight, Lock, Clock, Eye } from 'lucide-react'
 
 export default function PreExamCheckPage() {
   const { id } = useParams()
@@ -17,7 +17,6 @@ export default function PreExamCheckPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [cameraError, setCameraError] = useState(false)
   const [isWindowLocked, setIsWindowLocked] = useState(false)
 
   // Student Consent (§Task 9)
@@ -25,29 +24,20 @@ export default function PreExamCheckPage() {
   const [consentChecked, setConsentChecked] = useState(false)
   const [consentAgreed, setConsentAgreed] = useState(false)
 
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
+  const {
+    status: cameraStatus,
+    devices,
+    selectedDeviceId,
+    hasFrames,
+    requestCamera,
+    selectDevice,
+    retryCamera,
+    attachVideoRef,
+    videoRef,
+    checkFrameSample
+  } = useCamera()
 
   const isSebActive = Boolean(sebStatus?.required && sebStatus?.verified)
-
-  const startCamera = () => {
-    setCameraError(false)
-    setError('')
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop())
-      streamRef.current = null
-    }
-    navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 } })
-      .then((stream) => {
-        streamRef.current = stream
-        if (videoRef.current) videoRef.current.srcObject = stream
-        setCameraError(false)
-      })
-      .catch(() => {
-        setCameraError(true)
-        setError('Camera access is required for proctoring verification.')
-      })
-  }
 
   useEffect(() => {
     let active = true
@@ -92,30 +82,14 @@ export default function PreExamCheckPage() {
     return () => { active = false }
   }, [id, navigate])
 
+  // Acquire camera once consent is granted and student is on verification step
   useEffect(() => {
-    let active = true
     if (hasConsented && step === 1 && !isWindowLocked) {
-      navigator.mediaDevices?.getUserMedia({ video: { width: 640, height: 480 } })
-        .then((stream) => {
-          if (!active) return stream.getTracks().forEach((t) => t.stop())
-          streamRef.current = stream
-          if (videoRef.current) videoRef.current.srcObject = stream
-          setCameraError(false)
-        })
-        .catch(() => {
-          if (!active) return
-          setCameraError(true)
-          setError('Camera access is required for proctoring verification.')
-        })
+      requestCamera().catch(() => {
+        // Handled in store via cameraStatus === 'denied' | 'no_device' | 'in_use'
+      })
     }
-    return () => {
-      active = false
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-      }
-    }
-  }, [hasConsented, step, isWindowLocked])
+  }, [hasConsented, step, isWindowLocked, requestCamera])
 
   const handleAgreeConsent = async () => {
     if (!consentAgreed) return
@@ -145,32 +119,40 @@ export default function PreExamCheckPage() {
   }
 
   const handleVerifyFace = async () => {
-    if (!videoRef.current) return
+    // If frames haven't arrived yet, wait up to 3 seconds for camera decoder to warm up
+    let isFrameReady = hasFrames || checkFrameSample()
+    if (!isFrameReady) {
+      for (let i = 0; i < 15; i++) {
+        await new Promise((r) => setTimeout(r, 200))
+        if (checkFrameSample()) {
+          isFrameReady = true
+          break
+        }
+      }
+    }
+
+    if (!videoRef.current || !isFrameReady) {
+      setError("We can't see your camera yet. Please ensure your camera is not covered and wait for the live preview.")
+      return
+    }
     setLoading(true)
     setError('')
     try {
+      const v = videoRef.current
       const canvas = document.createElement('canvas')
-      canvas.width = 640
-      canvas.height = 480
+      canvas.width = v.videoWidth || 640
+      canvas.height = v.videoHeight || 480
       const ctx = canvas.getContext('2d')
-      ctx.drawImage(videoRef.current, 0, 0, 640, 480)
+      ctx.drawImage(v, 0, 0, canvas.width, canvas.height)
       const imageBase64 = canvas.toDataURL('image/jpeg', 0.8)
 
       await apiClient.post('/media/verify-face', { image: imageBase64, examId: id }).catch(() => {})
-      if (streamRef.current) {
-        setCameraStream(streamRef.current)
-        streamRef.current = null
-      }
       if (isSebActive) {
         await handleLaunchExam()
       } else {
         setStep(2)
       }
     } catch (_) {
-      if (streamRef.current) {
-        setCameraStream(streamRef.current)
-        streamRef.current = null
-      }
       if (isSebActive) {
         await handleLaunchExam()
       } else {
@@ -185,10 +167,7 @@ export default function PreExamCheckPage() {
     setLoading(true)
     setError('')
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop())
-        streamRef.current = null
-      }
+      // Retain live camera stream in store for ExamArenaPage (no track teardown)
       await apiClient.post(`/attempts/exams/${id}/start`, {}).catch((err) => {
         if (err.response?.status === 403 || err.response?.status === 404) throw err
         return apiClient.post(`/attempts/${id}/start`, {})
@@ -203,6 +182,8 @@ export default function PreExamCheckPage() {
       setLoading(false)
     }
   }
+
+  const isCameraBlocked = cameraStatus === 'denied' || cameraStatus === 'no_device' || cameraStatus === 'in_use' || cameraStatus === 'lost'
 
   return (
     <ExamArenaShell className="items-center justify-center p-4">
@@ -234,7 +215,12 @@ export default function PreExamCheckPage() {
             </div>
           )}
 
-          {!hasConsented ? (
+          {!consentChecked ? (
+            <div className="py-12 text-center font-sans">
+              <div className="w-8 h-8 border-2 border-[#5266eb] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-[#554e7b] font-[420]">Checking proctoring consent status...</p>
+            </div>
+          ) : !hasConsented ? (
             /* Stage 0: Privacy & Proctoring Consent (§Task 9) */
             <div className="space-y-4 font-sans">
               <div className="p-3.5 bg-[#fbfbff] rounded-[14px] border border-[#e9eaf2]/60 space-y-3">
@@ -324,7 +310,7 @@ export default function PreExamCheckPage() {
                 </div>
               ) : step === 1 ? (
                 <div className="space-y-3 text-center">
-                  {cameraError ? (
+                  {isCameraBlocked ? (
                     <div className="p-4 bg-[#fbfbff] rounded-[16px] text-left space-y-3">
                       <div className="flex items-center gap-2 text-xs font-[480] text-[#28253b]">
                         <AlertTriangle className="w-4 h-4 text-[#5266eb]" />
@@ -337,7 +323,7 @@ export default function PreExamCheckPage() {
                       </ol>
                       <Button
                         type="button"
-                        onClick={startCamera}
+                        onClick={retryCamera}
                         className="w-full mt-2 bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] text-xs font-[420] h-9 rounded-[32px] cursor-pointer"
                       >
                         Try camera again
@@ -345,13 +331,46 @@ export default function PreExamCheckPage() {
                     </div>
                   ) : (
                     <div className="aspect-video bg-[#171721] rounded-[12px] overflow-hidden relative flex items-center justify-center">
-                      <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                      <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
+                      {/* Frames arriving status badge */}
+                      <div className="absolute top-3 right-3 pointer-events-none">
+                        {hasFrames ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[40px] text-[11px] bg-[#edecfb] text-[#5266eb] font-[420] shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb] animate-pulse" />
+                            Frames arriving
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[40px] text-[11px] bg-[#fbfbff] text-[#70707d] font-[420] shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                            Connecting feed...
+                          </span>
+                        )}
+                      </div>
                     </div>
                   )}
+
+                  {/* Camera selector if multiple devices */}
+                  {devices.length > 1 && (
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      <span className="text-[11px] font-[420] text-[#554e7b]">Camera:</span>
+                      <select
+                        value={selectedDeviceId || ''}
+                        onChange={(e) => selectDevice(e.target.value)}
+                        className="text-xs bg-[#fbfbff] text-[#28253b] font-[420] rounded-[8px] px-2 py-1 outline-none cursor-pointer"
+                      >
+                        {devices.map((d, idx) => (
+                          <option key={d.deviceId || idx} value={d.deviceId}>
+                            {d.label || `Camera ${idx + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <p className="text-xs text-[#70707d] font-[360]">Align your face inside the camera view and click verify.</p>
                   <Button
                     onClick={handleVerifyFace}
-                    disabled={loading || cameraError}
+                    disabled={loading || isCameraBlocked}
                     className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
                   >
                     {loading

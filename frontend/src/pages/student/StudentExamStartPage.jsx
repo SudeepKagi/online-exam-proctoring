@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
 import { setCameraStream } from '@/lib/screenStreamStore'
+import { useCamera } from '@/hooks/useCamera'
 import {
   evaluateClockSkew,
   evaluateLatency,
@@ -42,7 +43,24 @@ export default function StudentExamStartPage() {
   const [globalError, setGlobalError] = useState(null)
 
   // System checklist states
-  const [cameraState, setCameraState] = useState({ status: 'checking', message: 'Checking camera access...', stream: null })
+  const {
+    status: cameraStatus,
+    error: cameraErrorMsg,
+    requestCamera,
+    retryCamera,
+    attachVideoRef
+  } = useCamera()
+
+  const cameraState = {
+    status: cameraStatus === 'live' ? 'ready' : (cameraStatus === 'requesting' || cameraStatus === 'idle') ? 'checking' : 'failed',
+    message: cameraStatus === 'live'
+      ? 'Camera ready and preview active'
+      : cameraStatus === 'denied'
+        ? 'Camera access was blocked. Please click the camera icon in your address bar and select "Always allow".'
+        : cameraStatus === 'in_use'
+          ? 'Unable to access webcam. Check if another program (Zoom, Teams) is using it.'
+          : (cameraErrorMsg || 'Requesting camera permissions...')
+  }
   const [internetState, setInternetState] = useState({ status: 'checking', latencyMs: 0, rating: '', message: 'Measuring connection...' })
   const [clockState, setClockState] = useState({ status: 'checking', warning: false, message: 'Checking system clock...' })
   const [computerState, setComputerState] = useState({ status: 'checking', compatible: true, message: 'Checking computer compatibility...' })
@@ -52,9 +70,6 @@ export default function StudentExamStartPage() {
   const [showNothingOpened, setShowNothingOpened] = useState(false)
   const lostFocusRef = useRef(false)
   const fallbackTimerRef = useRef(null)
-
-  const videoPreviewRef = useRef(null)
-  const cameraStreamRef = useRef(null)
 
   const supportUrl = getSupportUrl()
   const sebDownloadUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_DOWNLOAD_URL) || 'https://safeexambrowser.org/download_en.html'
@@ -119,50 +134,16 @@ export default function StudentExamStartPage() {
     loadExamAndConfig()
   }, [loadExamAndConfig])
 
-  // 2. Camera Permission & Live Preview Check
+  // 2. Camera Permission & Live Preview Check via unified store
   const startCameraCheck = useCallback(async () => {
-    setCameraState({ status: 'checking', message: 'Requesting camera permissions...', stream: null })
     try {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((t) => t.stop())
-        cameraStreamRef.current = null
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' }
-      })
-
-      cameraStreamRef.current = stream
-      setCameraState({
-        status: 'ready',
-        message: 'Camera ready and preview active',
-        stream
-      })
-
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = stream
-      }
-    } catch (err) {
-      const isDenied = err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
-      setCameraState({
-        status: 'failed',
-        message: isDenied
-          ? 'Camera access was blocked. Please click the camera icon in your address bar and select "Always allow".'
-          : 'Unable to access webcam. Check if another program (Zoom, Teams) is using it.',
-        errorType: err.name
-      })
-    }
-  }, [])
+      await requestCamera()
+    } catch (_) {}
+  }, [requestCamera])
 
   useEffect(() => {
     if (!loading && !globalError) {
       startCameraCheck()
-    }
-    return () => {
-      if (cameraStreamRef.current) {
-        cameraStreamRef.current.getTracks().forEach((t) => t.stop())
-        cameraStreamRef.current = null
-      }
     }
   }, [loading, globalError, startCameraCheck])
 
@@ -264,10 +245,6 @@ export default function StudentExamStartPage() {
       sebVerified: Boolean(sebStatus?.verified)
     }).catch(() => {})
 
-    if (cameraStreamRef.current) {
-      setCameraStream(cameraStreamRef.current)
-      cameraStreamRef.current = null
-    }
     navigate(`/student/exams/${id}/pre-check`)
   }
 
@@ -363,7 +340,7 @@ export default function StudentExamStartPage() {
 
               {cameraState.status === 'ready' ? (
                 <div className="w-full aspect-video max-h-40 bg-[#171721] rounded-[8px] overflow-hidden relative mx-auto mt-1">
-                  <video ref={videoPreviewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+                  <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="text-[11px] text-[#554e7b] font-[360] flex items-center justify-between pt-1">
@@ -371,7 +348,7 @@ export default function StudentExamStartPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={startCameraCheck}
+                    onClick={retryCamera}
                     className="text-[11px] h-7 px-3 rounded-[32px] border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3 mr-1" /> Retry

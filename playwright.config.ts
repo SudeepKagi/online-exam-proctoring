@@ -78,7 +78,7 @@ export default defineConfig({
       stderr: 'pipe'
     },
     {
-      command: 'npm run dev',
+      command: process.env.VITE_PREVIEW === '1' ? 'npm run preview -- --port 5173' : 'npm run dev',
       cwd: 'frontend',
       url: 'http://localhost:5173',
       timeout: 30000,
