@@ -76,7 +76,10 @@ export default function LiveConsolePage() {
 
     const handleViolation = (data) => {
       if (!data) return
-      setViolations(prev => [data, ...prev.slice(0, 49)])
+      setViolations(prev => {
+        if (data.id && prev.some(v => v.id === data.id)) return prev
+        return [data, ...prev.slice(0, 49)]
+      })
       setCandidates(prev => prev.map(c => {
         if (c.attemptId === data.attemptId || c.studentId === data.studentId) {
           return {
