@@ -53,3 +53,81 @@ Environment-scoped secrets are injected only into jobs executing inside protecte
 | Token Name | Scope | Usage |
 | :--- | :--- | :--- |
 | `GITHUB_TOKEN` | Generated per-run | Authenticates with GitHub Container Registry (`ghcr.io`) for building and pulling container images (`packages: write`), and runs Gitleaks scanner. |
+
+---
+
+## 4. AWS OIDC Federation & EC2 Instance Roles
+
+To avoid storing long-lived static AWS credentials in GitHub Secrets or on the production server:
+
+### A. GitHub Actions AWS OIDC Role (`AWS_ROLE_TO_ASSUME`)
+Allows GitHub Actions runners to dispatch deployment commands via AWS SSM without static access keys.
+
+**Trust Policy (AssumeRoleWithWebIdentity):**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:<GITHUB_ORG_OR_USER>/<REPO_NAME>:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+**Permissions Policy for CD Dispatch (SSM & S3 Read):**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:SendCommand",
+        "ssm:GetCommandInvocation",
+        "ssm:ListCommandInvocations",
+        "ssm:DescribeInstanceInformation"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### B. EC2 Instance Role for S3 (`proctornet-ec2-s3-role`)
+Attached directly to the EC2 instance hosting ProctorNet. The backend container accesses S3 via the instance metadata service (IMDSv2), eliminating AWS keys from `.env.production`.
+
+**Permissions Policy:**
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:AbortMultipartUpload"
+      ],
+      "Resource": [
+        "arn:aws:s3:::<S3_BUCKET>",
+        "arn:aws:s3:::<S3_BUCKET>/*"
+      ]
+    }
+  ]
+}
+```

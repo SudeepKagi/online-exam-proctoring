@@ -77,11 +77,12 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4.2.2
 
-      - name: Configure AWS Credentials (SSM Dispatch)
+      - name: Configure AWS Credentials (OIDC Role Assumption)
         uses: aws-actions/configure-aws-credentials@v4
         continue-on-error: true
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          audience: sts.amazonaws.com
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION || 'ap-south-1' }}
