@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   Automated AWS Staging Provisioning & Host Bootstrapper for ProctorNet.
 .DESCRIPTION
@@ -143,3 +143,4 @@ Write-Host "==========================================================" -Foregro
 Write-Host "`nNext Step: Map DuckDNS to $eip" -ForegroundColor Yellow
 Write-Host "DuckDNS Update URL:" -ForegroundColor Gray
 Write-Host "https://www.duckdns.org/update?domains=$($Domain.Split('.')[0])&token=<YOUR_TOKEN>&ip=$eip" -ForegroundColor White
+

@@ -4,6 +4,7 @@
       "AllowedHeaders": ["*"],
       "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
       "AllowedOrigins": [
+        "https://proctornet-staging.duckdns.org",
         "https://staging.proctornet.duckdns.org"
       ],
       "ExposeHeaders": ["ETag", "x-amz-server-side-encryption"],
