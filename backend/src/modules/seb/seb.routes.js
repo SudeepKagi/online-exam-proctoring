@@ -12,7 +12,7 @@ const isLoadTest = (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RA
 
 const pingLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 120,
+  max: (isTest || isLoadTest) ? 10000 : 1200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many ping requests. Please slow down.' }
@@ -20,18 +20,26 @@ const pingLimiter = rateLimit({
 
 const launchLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 60,
+  max: (isTest || isLoadTest) ? 10000 : 30,
+  keyGenerator: (req) => {
+    if (req.user?.id) return `seb_launch_${req.user.id}`
+    return req.ip
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many launch link requests.' }
+  message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many launch link requests. Please wait a moment.' }
 })
 
 const downloadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 60,
+  max: (isTest || isLoadTest) ? 10000 : 30,
+  keyGenerator: (req) => {
+    if (req.params?.token) return `seb_dl_${req.params.token}`
+    return req.ip
+  },
   standardHeaders: true,
   legacyHeaders: false,
-  message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many configuration download requests.' }
+  message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many configuration download requests. Please wait a moment.' }
 })
 
 // Proof by use: unauthenticated, works in any SEB_MODE
