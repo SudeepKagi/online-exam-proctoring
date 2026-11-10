@@ -14,8 +14,48 @@
 | **Phase 0: Baseline Verification** | Fresh test runs, SEB journey, release pipeline, middleware audit, privacy verification, gitleaks | **COMPLETED** | `backend-test` (257/257 pass), `e2e-test` (75/75 pass), `seb-simulated-test` (3/3 pass), `release:check` (7/7 pass), gitleaks pass (0 leaks) |
 | **Phase 1: Variables & Configuration** | Complete process.env/import.meta/compose audit, `VARIABLES.md`, `.env.*.example`, `init-env.js` | **COMPLETED** | Comprehensive audit, generator script, missing values check, 264/264 backend tests pass |
 | **Phase 2: Hardening Audit** | Production cookies/CORS/CSP, NAT rate-limits, Docker health/rotation, DB pool, OIDC | **COMPLETED** | Security hardening, load readiness, zero high/critical vulnerabilities, 272/272 backend tests pass |
-| **Phase 3: Local Production Rehearsal** | Image build, Caddy local TLS, container migrations, admin creation, full SEB load test (200 students) | PENDING | Rehearsal pass, metrics recorded, backup/restore drill |
+| **Phase 3: Local Production Rehearsal** | Image build, Caddy local TLS, container migrations, admin creation, full SEB load test (200 students) | **COMPLETED** | Rehearsal pass, 8/8 smoke checks pass, backup/restore drill pass, 272/272 backend pass, 75/75 E2E pass, 3/3 SEB pass |
 | **Phase 4: Guided Staging Deployment** | Step-by-step interactive cloud rollout (GitHub, AWS, DNS, SSM, Caddy, SEB pilot) | PENDING | Interactive execution with rollbacks and kill switches verified |
+
+---
+
+## Phase 3 Execution Status
+- [x] Local Rehearsal Environment Setup:
+  - Generated throwaway configuration `.env.rehearsal` via `scripts/ops/generate-rehearsal-env.js` with 256-bit entropy.
+  - Verified `.env.rehearsal` with `scripts/ops/preflight-env.js` (28 variables parsed, 0 errors, `test-results/preflight-rehearsal.txt`).
+  - Created `docker-compose.rehearsal.yml` mapping non-conflicting host ports `8080` (HTTP) and `8443` (HTTPS) to preserve host ports 80/443, mounting `scripts` for administration.
+- [x] Container Image Builds:
+  - Built `proctornet-production-backend:latest` (852 MB) and `ghcr.io/proctornet/online-exam-proctoring/frontend:latest` (84.7 MB) locally (`test-results/rehearsal-build.txt`).
+- [x] Service Lifecycle & Health Verification:
+  - Started production stack with Caddy internal TLS on `https://localhost:8443` (`docker compose ... up -d`).
+  - Verified container health: `proctornet-backend` (healthy), `proctornet-caddy` (healthy), `proctornet-prod-postgres` (healthy), `proctornet-prod-redis` (healthy), `proctornet-prod-rabbitmq` (healthy) (`test-results/rehearsal-ps.txt`).
+- [x] Database Migrations & Administration:
+  - Verified single-execution Prisma migrations inside the container: 5 migrations applied cleanly with zero schema drift (`test-results/rehearsal-migrate.txt`).
+  - Created initial administrator account via `scripts/ops/create-admin.js` (`test-results/rehearsal-create-admin.txt`).
+  - Verified security refusal: script refuses to execute when administrator already exists unless `--force` is supplied (`test-results/rehearsal-create-admin-refusal.txt`).
+  - Verified password regeneration with `--force` displaying temporary credentials once and enforcing `mustChangePassword: true` (`test-results/rehearsal-create-admin-force.txt`).
+- [x] Edge Proxy & Staging Smoke Suite:
+  - Executed `scripts/ops/smoke-staging.js --origin https://localhost:8443 --insecure --seb-mode log`.
+  - All 8 checks passed cleanly through Caddy reverse proxy (`test-results/rehearsal-smoke.txt`):
+    1. Backend Health Check (`/healthz` -> 200 OK)
+    2. TLS Certificate Validity (Caddy internal CA)
+    3. Strict-Transport-Security (HSTS max-age=31536000)
+    4. Frontend SPA Login Page (200 OK, 3106 bytes)
+    5. CORS Preflight with `X-SafeExamBrowser-ConfigKeyHash` (204 No Content)
+    6. SEB Ping Endpoint (`/api/v1/seb/ping` -> 200 OK)
+    7. Exam Start Without SEB Header Log Mode Non-Blocking (401 TOKEN_REQUIRED)
+    8. WebSocket Engine Handshake (`/socket.io` -> 101 Switching Protocols upgrade)
+- [x] Disaster Recovery & Backup Restore Drill:
+  - Executed automated database dump via `scripts/ops/backup-postgres.js` (`test-results/rehearsal-backup.txt`).
+  - Executed full disaster recovery restore test into isolated scratch database via `scripts/ops/restore-postgres-test.js` (`test-results/rehearsal-restore.txt`).
+  - Verified 11 public schema tables and restored user records.
+- [x] Graceful Teardown:
+  - Rehearsal stack cleanly torn down without `-v` or volume prune, leaving existing external project containers completely untouched (`test-results/rehearsal-down.txt`).
+- [x] Test Suite Verification:
+  - Backend test suite: 272 passed, 0 failed, 42.7s (`test-results/phase3-backend.txt`).
+  - SEB simulated journey: 3 passed, 0 failed, 17.3s (`test-results/phase3-seb-e2e.txt`).
+  - Core Playwright E2E suite: 75 passed, 0 failed, 5.0m (`test-results/phase3-e2e.txt`).
+
 
 ---
 
