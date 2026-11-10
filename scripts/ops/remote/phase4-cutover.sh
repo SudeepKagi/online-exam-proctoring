@@ -1,12 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-HEAD_SHA="ace92878effc7d9b335f7877d98d685b7a6fed39"
+HEAD_SHA="e8ea200e040e5b58c3e53af6f9167e0129190148"
 BASE_DIR="/opt/proctornet"
 NEW_RELEASE="$BASE_DIR/releases/release-${HEAD_SHA}"
 CURRENT_LINK="$BASE_DIR/current"
 SHARED_ENV="$BASE_DIR/shared/.env"
-DUMP_FILE="/tmp/proctornet_prod_20261110_044815.dump"
+DUMP_FILE="${DUMP_FILE:-$(ls -t /tmp/proctornet_prod_*.dump 2>/dev/null | head -n 1 || echo "")}"
 
 echo "======================================================================"
 echo " ProctorNet Phase 4: Production Live Cutover"
@@ -106,8 +106,8 @@ echo "Check 7.1: Internal /healthz (port 5000)"
 curl -sSf http://127.0.0.1:5000/healthz | jq . || curl -sSf http://127.0.0.1:5000/healthz
 echo ""
 
-echo "Check 7.2: Proxy /healthz (Caddy port 80/443)"
-curl -sSf -k https://127.0.0.1/healthz | jq . || curl -sSf -k https://127.0.0.1/healthz
+echo "Check 7.2: Proxy /healthz (Caddy via domain resolve)"
+curl -sSf --resolve proctornet.duckdns.org:443:127.0.0.1 https://proctornet.duckdns.org/healthz | jq . || curl -sSf --resolve proctornet.duckdns.org:443:127.0.0.1 https://proctornet.duckdns.org/healthz
 echo ""
 
 echo "Check 7.3: External public domain /healthz"
@@ -119,7 +119,7 @@ curl -sSf http://127.0.0.1:5000/api/v1/seb/ping | jq . || curl -sSf http://127.0
 echo ""
 
 echo "Check 7.5: SPA Root HTML serving"
-curl -sSf -k https://127.0.0.1/ | head -n 15
+curl -sSf --resolve proctornet.duckdns.org:443:127.0.0.1 https://proctornet.duckdns.org/ | head -n 15
 echo ""
 
 echo "Check 7.6: Backend journalctl logs (last 30 lines)"
