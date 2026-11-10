@@ -81,6 +81,7 @@ model User {
   reviewedAttempts   ExamAttempt[]    @relation("AttemptReviewer")
   readinessReports   StudentReadinessReport[]
   consents           StudentConsent[]
+  examDraft          ExamDraft?
 
   @@map("users")
 }
@@ -272,5 +273,21 @@ model StudentConsent {
   @@index([studentId])
   @@index([examId])
   @@map("student_consents")
+}
+
+// -------------------------------------------------------------
+// 11. ExamDraft (Wizard Autosave Persistence)
+// -------------------------------------------------------------
+
+model ExamDraft {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId  String   @unique @map("creator_id") @db.Uuid
+  creator    User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  payload    Json     @default("{}")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([creatorId])
+  @@map("exam_drafts")
 }
 

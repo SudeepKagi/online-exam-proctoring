@@ -5,7 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { api, errorMessage } from '@/lib/apiClient'
-import { Settings, Trash2, Loader2, Save, ShieldCheck } from 'lucide-react'
+import { Settings, Trash2, Loader2, Save, ShieldCheck, Clock } from 'lucide-react'
+import {
+  getClientTimezone,
+  utcIsoToDatetimeLocal,
+  datetimeLocalToUtcIso,
+  formatTimezoneLabel
+} from '@/lib/scheduleUtils'
 
 export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle = 'DRAFT', onUpdated }) {
   const navigate = useNavigate()
@@ -13,6 +19,7 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const userTz = getClientTimezone()
 
   const initialSebRequired = Boolean(exam?.proctoringConfig?.sebRequired)
   const initialSebKey = exam?.proctoringConfig?.sebConfigKey || ''
@@ -26,8 +33,8 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
     title: exam?.title || '',
     courseCode: exam?.courseCode || '',
     durationMinutes: exam?.durationMinutes || 60,
-    startTime: exam?.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
-    endTime: exam?.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+    startTime: exam?.startTime ? utcIsoToDatetimeLocal(exam.startTime, userTz) : '',
+    endTime: exam?.endTime ? utcIsoToDatetimeLocal(exam.endTime, userTz) : '',
   })
 
   useEffect(() => {
@@ -40,11 +47,11 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
         title: exam?.title || '',
         courseCode: exam?.courseCode || '',
         durationMinutes: exam?.durationMinutes || 60,
-        startTime: exam?.startTime ? new Date(exam.startTime).toISOString().slice(0, 16) : '',
-        endTime: exam?.endTime ? new Date(exam.endTime).toISOString().slice(0, 16) : '',
+        startTime: exam?.startTime ? utcIsoToDatetimeLocal(exam.startTime, userTz) : '',
+        endTime: exam?.endTime ? utcIsoToDatetimeLocal(exam.endTime, userTz) : '',
       })
     }
-  }, [open, exam])
+  }, [open, exam, userTz])
 
   const handleKeyChange = (e) => {
     setSebConfigKey(e.target.value)
@@ -64,14 +71,18 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
     setSaving(true)
     setError('')
     try {
+      const startUtcIso = datetimeLocalToUtcIso(form.startTime, userTz)
+      const endUtcIso = datetimeLocalToUtcIso(form.endTime, userTz)
+
       const payload = {
         title: form.title,
         courseCode: form.courseCode,
         durationMinutes: parseInt(form.durationMinutes, 10),
-        startTime: new Date(form.startTime).toISOString(),
-        endTime: new Date(form.endTime).toISOString(),
+        startTime: startUtcIso,
+        endTime: endUtcIso,
         proctoringConfig: {
           ...(exam?.proctoringConfig || {}),
+          timezone: userTz,
           sebRequired: Boolean(sebRequired)
         }
       }
@@ -164,6 +175,12 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
               onChange={(e) => setForm({ ...form, courseCode: e.target.value })}
               className="h-9 text-xs font-mono uppercase"
             />
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[11px] font-[420] text-[#554e7b] flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[#5266eb]" /> Timezone: {formatTimezoneLabel(userTz)}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

@@ -32,6 +32,10 @@ router.post('/:id/publish', authenticateToken, requireRole('FACULTY', 'ADMIN'), 
 // 4-Step Exam Wizard Endpoints
 router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
 router.post('/publish-wizard', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.publishWizard)
+router.get('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.getDraft)
+router.post('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.saveDraft)
+router.delete('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.deleteDraft)
+router.get('/seb-status', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.getInstitutionSebStatus)
 
 // AI Question Generator
 router.post('/:id/generate-questions', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.generateQuestions)
