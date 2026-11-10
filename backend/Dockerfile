@@ -42,6 +42,7 @@ COPY --chown=proctornet:nodejs package*.json ./
 COPY --from=builder --chown=proctornet:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=proctornet:nodejs /app/prisma ./prisma
 COPY --chown=proctornet:nodejs src ./src
+COPY --chown=proctornet:nodejs scripts ./scripts
 
 # Create tmp directory with write permissions for tmpfs mounts
 RUN mkdir -p /app/tmp && chown -R proctornet:nodejs /app/tmp
