@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-and-push:
     name: Build & Publish Container Images to GHCR
-    if: vars.STAGING_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.STAGING_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -66,13 +66,13 @@ jobs:
 
   deploy-staging:
     name: Deploy to Staging Environment
-    if: vars.STAGING_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.STAGING_ENABLED == 'true'
     needs: [ build-and-push ]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
       name: staging
-      url: https://staging.proctornet.duckdns.org
+      url: https://proctornet-staging.duckdns.org
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4.2.2
@@ -156,7 +156,7 @@ jobs:
           if [ "$HEALTHY" = "true" ]; then
             echo "Running smoke tests against staging edge..."
             docker compose -f docker-compose.prod.yml exec -T backend \
-              node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-staging.proctornet.duckdns.org}" || {
+              node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-proctornet-staging.duckdns.org}" || {
               echo "[!] Smoke test failed against staging origin!"
               HEALTHY=false
             }
