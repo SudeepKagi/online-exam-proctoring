@@ -37,51 +37,15 @@ For dynamic DNS setups (DuckDNS) or custom domains:
 
 ---
 
-## 3. Caddy Reverse Proxy Configuration
+## 3. Caddy Reverse Proxy & Edge Routing
 
-When co-located with production on the same EC2 instance, add the following site block to `/etc/caddy/Caddyfile` on the host:
+On the dedicated Staging EC2 instance, Caddy runs as the containerized edge reverse proxy service defined in `docker-compose.prod.yml`, publishing ports `80` and `443` directly to the host.
 
-```caddy
-# Staging Environment Site Block (Co-located with Production)
-staging.proctornet.duckdns.org {
-    encode zstd gzip
-
-    # Block internal telemetry publicly
-    handle /metrics* {
-        respond "Not Found" 404
-    }
-
-    handle /readyz* {
-        respond "Not Found" 404
-    }
-
-    # Security Headers (HSTS without preload for shared domain safety)
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        Permissions-Policy "camera=(self), microphone=(self), display-capture=()"
-        ?X-Request-ID "{uuid}"
-    }
-
-    request_body {
-        max_size 25MB
-    }
-
-    # Route all traffic to staging edge container
-    reverse_proxy 127.0.0.1:8081 {
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-        header_up X-Forwarded-Host {host}
-    }
-}
-```
-
-Reload Caddy without dropping connections:
-```bash
-caddy reload --config /etc/caddy/Caddyfile
-```
+- **Automatic HTTPS:** Caddy provisions and auto-renews TLS certificates via Let's Encrypt for `staging.proctornet.duckdns.org` via ACME HTTP-01 / TLS-ALPN-01 challenges on port 80/443.
+- **Edge Telemetry Shield:** Public requests to `/metrics*` and `/readyz*` return HTTP 404.
+- **Security Headers:** Strict HSTS (`max-age=31536000; includeSubDomains`, without `preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, strict CSP, and `Permissions-Policy: camera=(self), microphone=(self), display-capture=()`.
+- **Backend Reverse Proxy:** Routes `/api/*` and `/socket.io/*` to `backend:5000` with WebSocket connection upgrading and client IP forwarding (`X-Forwarded-For`).
+- **SPA Static File Server:** Serves pre-compressed Vite static assets from shared volume `/srv/frontend` with fallback to `index.html`.
 
 ---
 
@@ -262,17 +226,13 @@ Before applying any migration to staging or production, rehearse on an ephemeral
 cd /opt/proctornet-staging
 
 # 2. Pull container images
-docker compose -f docker-compose.staging.yml pull
+docker compose -f docker-compose.prod.yml pull
 
-# 3. Run database migrations in ephemeral container
-docker run --rm \
-  --network proctornet-staging_internal \
-  --env-file /opt/proctornet-staging/.env \
-  ghcr.io/proctornet/online-exam-proctoring/backend:staging \
-  npx prisma migrate deploy
+# 3. Start staging containers (entrypoint executes prisma migrate deploy automatically)
+docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-# 4. Start staging containers
-docker compose -f docker-compose.staging.yml up -d --remove-orphans
+# 4. Create initial staging administrator (first time only)
+docker compose -f docker-compose.prod.yml exec -T backend node scripts/ops/create-admin.js
 
 # 5. Execute automated smoke verification
 node scripts/ops/smoke-staging.js --origin https://staging.proctornet.duckdns.org
