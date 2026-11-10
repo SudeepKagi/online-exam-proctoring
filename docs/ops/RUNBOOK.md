@@ -202,3 +202,62 @@ Students opening Safe Exam Browser receive an unexpected `403 Forbidden` (`code:
 5. **Re-Enable Enforce Mode:**
    Once the origin/key divergence is resolved and verified via `GET /api/v1/seb/ping`, switch `SEB_MODE=enforce` and restart backend.
 
+---
+
+## 6. Host Time Synchronization (NTP) & Clock Drift Mitigation
+
+ProctorNet relies on an authoritative server clock to calculate candidate attempt start times, end times, and automatic expiration (`expiresAt = Min(startedAt + duration, exam.endTime)`).
+
+### Host Configuration
+1. **Enable systemd-timesyncd or chrony on host EC2 instance:**
+   ```bash
+   sudo timedatectl set-ntp true
+   sudo timedatectl status
+   ```
+   *(Ensure "NTP service: active" and "System clock synchronized: yes")*
+2. **Acceptable Clock Skew:**
+   - ProctorNet's pre-flight system check (`/student/exams/:id/start`) measures client-to-server skew via `Date.now() - serverNow`.
+   - Skew $\le 2$ minutes: Green checkmark (normal).
+   - Skew $> 2$ minutes: Amber warning recommending clock sync, but **NEVER blocks** the student.
+   - All final attempt timers countdown to the server authoritative timestamp.
+
+---
+
+## 7. Monitoring, Uptime Checks & Log Inspection
+
+### Public Uptime Probe URL
+- **Endpoint:** `GET https://proctornet.duckdns.org/healthz`
+- **Expected Status:** HTTP `200 OK`
+- **Expected Payload:**
+  ```json
+  {
+    "status": "ok",
+    "service": "ProctorNet Backend",
+    "timestamp": "2026-11-10T07:00:00.000Z",
+    "uptime": 12345.67
+  }
+  ```
+
+### Critical Alert Conditions
+Configure your external uptime monitor (e.g., BetterStack, UptimeRobot, CloudWatch Synthetic Canary) with the following triggers:
+1. **HTTP Availability:** `GET /healthz` fails or returns non-200 for 2 consecutive 60-second checks.
+2. **HTTP 5xx Spike:** 5xx status codes exceed 1% of total requests over a rolling 5-minute window.
+3. **Host Storage Exhaustion:** Host root filesystem `/` or Docker volume mount exceeds 85% disk usage.
+4. **TLS Expiration:** Let's Encrypt certificate on `proctornet.duckdns.org` expires in $< 14$ days (Caddy renews automatically at 30 days).
+
+### Production Container Log Inspection
+To inspect live production logs without entering containers:
+```bash
+# Backend application & SEB audit logs
+docker compose -f docker-compose.prod.yml logs -f --tail=100 backend
+
+# Caddy edge proxy access & TLS negotiation logs
+docker compose -f docker-compose.prod.yml logs -f --tail=100 caddy
+
+# PostgreSQL transaction & connection logs
+docker compose -f docker-compose.prod.yml logs -f --tail=100 postgres
+
+# Redis cache & pub/sub logs
+docker compose -f docker-compose.prod.yml logs -f --tail=100 redis
+```
+

@@ -135,3 +135,58 @@ Conduct this drill quarterly or prior to high-stakes examination windows.
   ```bash
   rm -rf ./restore-drill/
   ```
+
+---
+
+## 5. AWS S3 Bucket Lifecycle Configuration
+
+ProctorNet recommends three automated AWS S3 lifecycle rules on the production evidence and backup buckets to prevent runaway storage costs and comply with data privacy policies:
+
+### S3 Lifecycle Ruleset (JSON Format for AWS CLI)
+Save as `s3-lifecycle-policy.json` and apply via `aws s3api put-bucket-lifecycle-configuration --bucket <S3_BUCKET> --lifecycle-configuration file://s3-lifecycle-policy.json`:
+
+```json
+{
+  "Rules": [
+    {
+      "ID": "AbortIncompleteMultipartUploads",
+      "Status": "Enabled",
+      "Filter": {},
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 7
+      }
+    },
+    {
+      "ID": "ExpireProctoringEvidence",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "evidence/"
+      },
+      "Expiration": {
+        "Days": 90
+      }
+    },
+    {
+      "ID": "ArchiveDatabaseBackups",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": "backups/"
+      },
+      "Transitions": [
+        {
+          "Days": 30,
+          "StorageClass": "GLACIER"
+        }
+      ],
+      "Expiration": {
+        "Days": 365
+      }
+    }
+  ]
+}
+```
+
+### Purpose of Each Rule:
+1. **AbortIncompleteMultipartUploads:** Deletes incomplete candidate webcam or screen upload chunks that failed mid-stream, freeing up hidden S3 storage after 7 days.
+2. **ExpireProctoringEvidence:** Automatically purges webcam snapshots and violation image evidence from S3 storage once the institutional retention period expires (matches `RETENTION_DAYS=90`).
+3. **ArchiveDatabaseBackups:** Transitions daily PostgreSQL database dumps to Amazon S3 Glacier after 30 days, retaining long-term historical disaster recovery archives for 1 year at 80% lower cost.
