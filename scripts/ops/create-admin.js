@@ -17,10 +17,27 @@
 require('dotenv').config()
 const crypto = require('crypto')
 const bcrypt = require('bcryptjs')
+const fs = require('fs')
 const path = require('path')
 
-// Resolve prisma client relative to script location
-const { prisma: defaultPrisma } = require(path.resolve(__dirname, '../../backend/src/infra/postgres/client'))
+// Resolve prisma client relative to script location (supporting both host and container contexts)
+function resolveBackendModule(subpath) {
+  const candidates = [
+    path.resolve(__dirname, '../../backend', subpath),
+    path.resolve(__dirname, '../..', subpath),
+    path.resolve('/app', subpath)
+  ]
+  for (const candidate of candidates) {
+    try {
+      return require(candidate)
+    } catch (e) {
+      if (e.code !== 'MODULE_NOT_FOUND') throw e
+    }
+  }
+  return require(path.resolve(__dirname, '../../backend', subpath))
+}
+
+const { prisma: defaultPrisma } = resolveBackendModule('src/infra/postgres/client')
 
 function parseArgs(args = process.argv.slice(2)) {
   const flags = {
