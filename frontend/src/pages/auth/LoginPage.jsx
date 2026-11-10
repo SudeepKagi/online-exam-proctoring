@@ -100,7 +100,7 @@ export default function LoginPage() {
 
     const credentials = { email: identifier.trim(), usn: identifier.trim(), institutionId: identifier.trim(), password }
     let res = await login(credentials, activeRole)
-    if (!res.success && res.error && res.error.includes('Access denied for role')) {
+    if (!res.success && res.error && (res.error.includes('Access denied') || res.error.includes('not registered under'))) {
       const fallbackRes = await login(credentials)
       if (fallbackRes.success) res = fallbackRes
     }
