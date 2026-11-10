@@ -38,7 +38,7 @@ if (!fs.existsSync(resolvedScript)) {
   process.exit(1);
 }
 
-const scriptContent = fs.readFileSync(resolvedScript, 'utf8');
+const scriptContent = fs.readFileSync(resolvedScript, 'utf8').replace(/\r\n/g, '\n');
 const base64Script = Buffer.from(scriptContent, 'utf8').toString('base64');
 const baseName = logName || path.basename(scriptPath, path.extname(scriptPath));
 const logFile = path.resolve(repoRoot, 'logs-deploy', `${baseName}.log`);

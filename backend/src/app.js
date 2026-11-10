@@ -52,28 +52,8 @@ app.use(metricsMiddleware)
 app.use(cookieParser())
 app.use(corsMiddleware)
 
-app.use(express.json({
-  limit: '25mb',
-  verify: (req, _res, buf) => {
-    if (req.path.startsWith('/api/v1/agent') || req.path.startsWith('/internal/livekit')) {
-      req.rawBody = buf
-    }
-  }
-}))
+app.use(express.json({ limit: '25mb' }))
 app.use(express.urlencoded({ extended: true, limit: '25mb' }))
-
-// Internal LiveKit Webhook Endpoint
-app.post('/internal/livekit/webhook', async (req, res, next) => {
-  try {
-    const { mediaService } = require('./modules/media/media.service')
-    const authHeader = req.headers.authorization
-    const rawBody = req.rawBody ? req.rawBody.toString('utf-8') : (typeof req.body === 'string' ? req.body : JSON.stringify(req.body))
-    const result = await mediaService.handleWebhook(rawBody, authHeader)
-    return res.status(200).json(result)
-  } catch (err) {
-    next(err)
-  }
-})
 
 app.use('/api', csrfProtection)
 app.use('/api', apiLimiter)

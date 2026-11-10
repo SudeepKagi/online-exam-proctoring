@@ -115,3 +115,51 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Service Status**: `active` (`proctornet.service`)
 - **Main Branch Head**: Merged PR #42 (`0948a98`)
 
+
+### [2026-11-10T09:40:27.089Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-current-release.sh`
+- **Command ID**: `d0a4a896-e6e6-4f3e-abdf-be43049870e8`
+- **Status**: `Failed` (Exit Code: 127)
+- **Log File**: `logs-deploy/check-current-pre-deploy.log`
+
+### [2026-11-10T09:42:02.840Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-current-release.sh`
+- **Command ID**: `ffe1befb-7ccc-418b-b3f2-af18ad7b4be5`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-current-pre-deploy.log`
+
+### [2026-11-10T09:42:49.032Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase0-check-db.sh`
+- **Command ID**: `cdf57ec2-9b31-4f5b-aa6f-00aece7f8497`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-db-pre-deploy.log`
+
+### [2026-11-10T09:44:01.169Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase3-dump-db.sh`
+- **Command ID**: `c7b439af-380e-46d7-ad69-d390ae418346`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase3-backup-camera-hotfix.log`
+
+### [2026-11-10T09:51:04.680Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase2-prepare-release.sh`
+- **Command ID**: `ebdb01b1-618d-4f52-8307-19450d713eb1`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase2-prepare-camera-hotfix.log`
+
+### [2026-11-10T09:51:53.509Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase4-cutover.sh`
+- **Command ID**: `4b7c705c-37b6-4b69-a3c4-5dd1cb785894`
+- **Status**: `Failed` (Exit Code: 35)
+- **Log File**: `logs-deploy/phase4-cutover-camera-hotfix.log`
+
+### [2026-11-10T09:53:25.863Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase4-cutover.sh`
+- **Command ID**: `bf6bf38c-27b7-4a38-a84d-3eb2593bbb43`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase4-cutover-clean.log`
+
+### [2026-11-10T10:03:56.668Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-prod-data.sh`
+- **Command ID**: `51bb77a9-48cb-4f66-9793-05936a90fd07`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-prod-data.log`

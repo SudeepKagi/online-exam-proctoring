@@ -68,6 +68,9 @@ async function serveUserPhoto(req, res, next) {
 }
 
 function localUploadHandler(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Mock upload is forbidden in production' })
+  }
   return res.status(200).json({ status: 'ok', message: 'Local upload endpoint accepted' })
 }
 

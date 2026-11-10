@@ -35,6 +35,10 @@ class MediaService {
         fields: policy.fields || {}
       }
     } catch (err) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error({ error: err.message, key }, 'Failed to generate direct upload policy in production')
+        throw err
+      }
       logger.warn({ error: err.message, key }, 'Failed to generate direct upload policy, returning mock for offline dev')
       return {
         key,
