@@ -47,7 +47,9 @@ test.describe('E2E: Exam Scheduling Timezone Precision Suite', () => {
       await page.locator('input[placeholder="e.g. 22EC71"]').fill('PHY101')
 
       // Verify detected timezone contains Asia/Kolkata or IST
-      await expect(page.getByText(/Asia\/Kolkata|IST/i)).toBeVisible()
+      const tzBadge = page.locator('[data-testid="timezone-label"]')
+      await expect(tzBadge).toBeVisible()
+      await expect(tzBadge).toContainText(/Asia\/Kolkata|IST/i)
 
       // Click "In 10 min" preset
       await page.getByRole('button', { name: /In 10 min/i }).click()
@@ -98,7 +100,9 @@ test.describe('E2E: Exam Scheduling Timezone Precision Suite', () => {
       await page.locator('input[placeholder="e.g. 22EC71"]').fill('CHM101')
 
       // Verify detected timezone contains America/New_York
-      await expect(page.getByText(/America\/New_York|EST|EDT/i)).toBeVisible()
+      const tzBadge2 = page.locator('[data-testid="timezone-label"]')
+      await expect(tzBadge2).toBeVisible()
+      await expect(tzBadge2).toContainText(/America\/New_York|EST|EDT/i)
 
       // Click "Tomorrow 10 AM" preset
       await page.getByRole('button', { name: /Tomorrow 10 AM/i }).click()

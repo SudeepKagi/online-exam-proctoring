@@ -177,7 +177,7 @@ export default function ExamWizardStepSchedule({ schedule, setSchedule, existing
           <div className="flex items-center space-x-1.5 text-xs text-muted-foreground font-[420]">
             <Globe className="w-3.5 h-3.5 text-primary" />
             <span>Timezone:</span>
-            <Badge variant="outline" className="font-mono text-[11px] py-0 px-2 border-primary/30 text-primary">
+            <Badge variant="outline" data-testid="timezone-label" className="font-mono text-[11px] py-0 px-2 border-primary/30 text-primary">
               {formatTimezoneLabel(timezone)}
             </Badge>
           </div>
