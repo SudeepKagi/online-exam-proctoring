@@ -15,7 +15,45 @@
 | **Phase 1: Variables & Configuration** | Complete process.env/import.meta/compose audit, `VARIABLES.md`, `.env.*.example`, `init-env.js` | **COMPLETED** | Comprehensive audit, generator script, missing values check, 264/264 backend tests pass |
 | **Phase 2: Hardening Audit** | Production cookies/CORS/CSP, NAT rate-limits, Docker health/rotation, DB pool, OIDC | **COMPLETED** | Security hardening, load readiness, zero high/critical vulnerabilities, 272/272 backend tests pass |
 | **Phase 3: Local Production Rehearsal** | Image build, Caddy local TLS, container migrations, admin creation, full SEB load test (200 students) | **COMPLETED** | Rehearsal pass, 8/8 smoke checks pass, backup/restore drill pass, 272/272 backend pass, 75/75 E2E pass, 3/3 SEB pass |
-| **Phase 4: Guided Staging Deployment** | Step-by-step interactive cloud rollout (GitHub, AWS, DNS, SSM, Caddy, SEB pilot) | PENDING | Interactive execution with rollbacks and kill switches verified |
+| **Phase 4: Guided Staging Deployment** | Step-by-step cloud rollout (AWS CLI S3/EC2/SSM, DuckDNS, GitHub CD, Smoke) | **IN PROGRESS** | AWS S3, SG, IAM, EC2 & EIP provisioned, SSM online, Docker/Compose installed, `.env` bootstrapped with 0600 mode |
+
+---
+
+## Phase 4 Execution Status (AWS CLI Staging Provisioning)
+- [x] AWS S3 Evidence Bucket (`proctornet-staging-evidence`):
+  - Created in `ap-south-1` (`test-results/aws-s3-create.txt`).
+  - Block Public Access enforced: 100% blocked (Acls, PublicAcls, PublicPolicy, RestrictBuckets).
+  - Bucket Versioning enabled.
+  - S3 Presigned CORS configured for `https://staging.proctornet.duckdns.org` (`scripts/ops/s3-cors-staging.json`).
+- [x] AWS Security Group (`proctornet-staging-sg` / `sg-0a33554b19cd8dd7c`):
+  - Created in default VPC `vpc-04d70ea7a0b049a32`.
+  - Inbound rules: Port 80 (HTTP) and Port 443 (HTTPS) open to `0.0.0.0/0`.
+  - Port 22 (SSH) strictly CLOSED — zero-trust management exclusively via AWS SSM Session Manager.
+- [x] AWS IAM Role & Instance Profile (`ProctorNetStagingInstanceRole` / `ProctorNetStagingInstanceProfile`):
+  - Role created with EC2 trust policy (`scripts/ops/ec2-trust-policy.json`).
+  - Attached AWS managed policy `arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore`.
+  - Injected inline policy `ProctorNetS3EvidenceAccess` granting restricted CRUD on `arn:aws:s3:::proctornet-staging-evidence/*` (`scripts/ops/s3-staging-policy.json`).
+  - Instance profile created and attached to role (`test-results/aws-iam-role.txt`).
+- [x] AWS EC2 Staging Instance (`i-0d7b44f76235917fe`):
+  - Sized to `t3.small` (Free-Tier eligible on account 858109978489; `t3.medium` blocked by account Free-Tier policy).
+  - Official Ubuntu 24.04 LTS AMI (`ami-09d8c1e69d114dbf7`) with 25 GB gp3 storage.
+  - Attached to `ProctorNetStagingInstanceProfile` and `proctornet-staging-sg`.
+  - Cloud-Init and SSM initialized (`test-results/aws-staging-instance.txt`).
+- [x] VPC Elastic IP (`13.205.98.213` / `eipalloc-03b2a8f2da69ce0db`):
+  - Allocated and associated to `i-0d7b44f76235917fe` (`test-results/aws-eip.txt`).
+  - Never touches production IP (`43.204.45.86`).
+- [x] AWS Systems Manager (SSM) Communication:
+  - Verified `PingStatus: Online` for `i-0d7b44f76235917fe` (`test-results/aws-ssm-status.txt`).
+  - Executed automated remote setup installing Docker CE 29.9.3, Docker Compose v5.7.0, and Node.js v18.19.1 (`test-results/aws-ssm-version-check.txt`).
+- [x] Remote Host Configuration Bootstrapping:
+  - Dispatched `scripts/ops/bootstrap-remote-staging.js` via SSM.
+  - Initialized `/opt/proctornet-staging/.env` with mode 0600 and 7 cryptographically secure 256-bit secrets.
+  - Validated by `scripts/ops/preflight-env.js` (35 variables parsed, 0 errors, `test-results/aws-staging-bootstrap.txt`).
+- [ ] User DuckDNS Subdomain Mapping:
+  - Map `staging.proctornet.duckdns.org` -> `13.205.98.213`.
+- [ ] GitHub Actions Environment Secrets Setup:
+  - Configure `AWS_EC2_STAGING_INSTANCE_ID: i-0d7b44f76235917fe` in GitHub staging environment.
+- [ ] Trigger Staging CD (`cd-staging.yml`) & Initial Administrator Creation.
 
 ---
 

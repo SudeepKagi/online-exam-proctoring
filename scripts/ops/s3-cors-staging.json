@@ -1,0 +1,13 @@
+{
+  "CORSRules": [
+    {
+      "AllowedHeaders": ["*"],
+      "AllowedMethods": ["GET", "PUT", "POST", "HEAD"],
+      "AllowedOrigins": [
+        "https://staging.proctornet.duckdns.org"
+      ],
+      "ExposeHeaders": ["ETag", "x-amz-server-side-encryption"],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+}
