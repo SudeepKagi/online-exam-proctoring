@@ -164,6 +164,7 @@ jobs:
           SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
+          DISABLE_RATE_LIMIT=1
           EOF
           cat .env.test >> $GITHUB_ENV
 
@@ -258,6 +259,7 @@ jobs:
           SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
+          DISABLE_RATE_LIMIT=1
           EOF
           cat .env.test >> $GITHUB_ENV
 
@@ -365,6 +367,7 @@ jobs:
           SEB_LINK_SECRET=ci_throwaway_seb_link_secret_at_least_32_characters
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
+          DISABLE_RATE_LIMIT=1
           EOF
           cat .env.test >> $GITHUB_ENV
 

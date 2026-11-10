@@ -60,6 +60,7 @@ export default defineConfig({
         NODE_ENV: 'development',
         COOKIE_SECURE: 'false',
         E2E_PROFILE: 'prod-parity',
+        DISABLE_RATE_LIMIT: '1',
         FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
         ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173',
         JWT_SECRET: process.env.JWT_SECRET || 'supersecret_jwt_proctornet_production_key_32bytes',
