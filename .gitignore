@@ -75,6 +75,10 @@ vpn-server/*.conf
 **/scripts/scratch/
 scratch/
 
+# Docker Compose Overrides
+docker-compose.override.yml
+docker-compose.*.override.yml
+
 # Playwright
 test-results/
 playwright-report/

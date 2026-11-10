@@ -1,13 +1,18 @@
 # ==============================================================================
-# ProctorNet Local Rehearsal Override (docker-compose.rehearsal.yml)
-# Overrides Caddy's published host ports to non-conflicting alternate ports:
-# - HTTP  8088 -> 80
-# - HTTPS 8443 -> 443
-# Prevents clashing with host ports 80/443.
+# ProctorNet Local Rehearsal Compose Override (docker-compose.rehearsal.yml)
+# Overrides published host ports to 8080/8443 to avoid clashing with host services.
+# Mounts scripts directory for administrative operations.
+# Gitignored.
 # ==============================================================================
 
 services:
   caddy:
-    ports: !override
-      - "8088:80"
+    ports:
+      - "8080:80"
       - "8443:443"
+
+  backend:
+    environment:
+      COOKIE_SECURE: "false"
+    volumes:
+      - ./scripts:/app/scripts:ro
