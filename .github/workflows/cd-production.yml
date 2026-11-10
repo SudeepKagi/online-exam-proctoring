@@ -138,16 +138,13 @@ jobs:
             "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG" \
             node scripts/ops/preflight-env.js /app/.env --prod
 
-          # 4. Run database migrations BEFORE starting the new backend version
+          # 4. Start backing datastores and run database migrations
           echo "Executing Prisma migrate deploy..."
-          docker run --rm \
-            --network host \
-            --env-file "$PROD_DIR/shared/.env" \
-            "ghcr.io/$GHCR_REPO/backend:$IMAGE_TAG" \
-            npx prisma migrate deploy
-
-          # 5. Launch containers
           export IMAGE_TAG
+          docker compose up -d postgres redis rabbitmq
+          docker compose run --rm backend npx prisma migrate deploy
+
+          # 5. Launch all services
           docker compose up -d --remove-orphans
 
           # 6. Verify healthcheck with automatic rollback on failure
@@ -166,7 +163,8 @@ jobs:
 
           if [ "$HEALTHY" = "true" ]; then
             echo "Running smoke tests against production edge..."
-            node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-proctornet.duckdns.org}" || {
+            docker compose exec -T backend \
+              node scripts/ops/smoke-staging.js --origin "https://${PUBLIC_HOST:-proctornet.duckdns.org}" || {
               echo "[!] Smoke test failed against production origin!"
               HEALTHY=false
             }
