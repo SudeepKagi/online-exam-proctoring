@@ -96,7 +96,7 @@ const configSchema = z.object({
   S3_BUCKET: z.string().min(3, 'S3_BUCKET is required').default('proctornet-evidence'),
   COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
   FACE_DRIVER: z.enum(['rekognition', 'onnx', 'off', 'test']).default('off'),
-  MEDIA_DRIVER: z.enum(['snapshot', 'livekit', 'livekit-selfhost', 'livekit-cloud']).default('snapshot'),
+  MEDIA_DRIVER: z.enum(['snapshot']).default('snapshot'),
   CACHE_DRIVER: z.enum(['memory', 'redis']).default('redis'),
   SEB_MODE: z.string().optional().default('off').transform(v => (v || 'off').toLowerCase()).pipe(z.enum(['off', 'log', 'enforce'])),
   SEB_CONFIG_KEY: z

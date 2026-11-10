@@ -155,8 +155,6 @@ function csrfProtection(req, res, next) {
     (req.headers.cookie && (req.headers.cookie.includes('pn_at=') || req.headers.cookie.includes('proctornet_auth=')))
   )
   if (!isProd && (req.headers['x-client-type'] === 'test' || req.headers['x-client-type'] === 'cli')) return next()
-  const isAgentRoute = req.originalUrl?.startsWith('/api/v1/agent') || req.path?.startsWith('/api/v1/agent') || req.baseUrl?.startsWith('/api/v1/agent')
-  if (!hasCookieAuth && isAgentRoute && (req.headers['x-agent-signature'] || req.headers['x-agent-session'])) return next()
 
   const origin = req.headers.origin || (req.headers.referer ? new URL(req.headers.referer).origin : null)
   if (origin) {

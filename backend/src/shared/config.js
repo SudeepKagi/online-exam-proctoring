@@ -95,15 +95,9 @@ const config = {
 
   // ── R4: Driver Selection ──────────────────────────────────────────────────
 
-  // Media Driver (R3: snapshot [lite/default] | livekit-selfhost | livekit-cloud)
+  // Media Driver (snapshot proctoring)
   get mediaDriver() {
-    if (process.env.MEDIA_DRIVER) {
-      const d = process.env.MEDIA_DRIVER.toLowerCase().trim()
-      if (d === 'snapshot' || d === 'livekit-selfhost' || d === 'livekit-cloud') return d
-    }
-    const profile = (process.env.APP_PROFILE || 'lite').toLowerCase().trim()
-    if (profile === 'lite') return 'snapshot'
-    return process.env.LIVEKIT_URL ? 'livekit-selfhost' : 'snapshot'
+    return 'snapshot'
   },
 
 

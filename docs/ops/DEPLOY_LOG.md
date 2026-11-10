@@ -157,3 +157,9 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `bf6bf38c-27b7-4a38-a84d-3eb2593bbb43`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/phase4-cutover-clean.log`
+
+### [2026-11-10T10:03:56.668Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-prod-data.sh`
+- **Command ID**: `51bb77a9-48cb-4f66-9793-05936a90fd07`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-prod-data.log`
