@@ -35,7 +35,11 @@ if (process.env.FRONTEND_URL) {
   })
 }
 
-;['https://proctornet.duckdns.org', 'http://proctornet.duckdns.org'].forEach((o) => {
+const defaultCanonicalOrigins = isProd
+  ? ['https://proctornet.duckdns.org']
+  : ['https://proctornet.duckdns.org', 'http://proctornet.duckdns.org']
+
+defaultCanonicalOrigins.forEach((o) => {
   if (!allowedOrigins.includes(o)) allowedOrigins.push(o)
 })
 
@@ -71,10 +75,10 @@ const dynamicImgSrc = [
   'data:',
   'blob:',
   'https://*.amazonaws.com',
-  'https://*.s3.ap-south-1.amazonaws.com',
+  `https://*.s3.${awsRegion}.amazonaws.com`,
   'https://*.s3.amazonaws.com',
   'https://proctornet.duckdns.org',
-  'http://proctornet.duckdns.org',
+  ...(isProd ? [] : ['http://proctornet.duckdns.org']),
   ...s3Hosts
 ]
 if (process.env.S3_ENDPOINT) dynamicImgSrc.push(process.env.S3_ENDPOINT)
@@ -84,10 +88,10 @@ const dynamicConnectSrc = [
   'data:',
   'blob:',
   'https://*.amazonaws.com',
-  'https://*.s3.ap-south-1.amazonaws.com',
+  `https://*.s3.${awsRegion}.amazonaws.com`,
   'https://*.s3.amazonaws.com',
   'https://proctornet.duckdns.org',
-  'http://proctornet.duckdns.org',
+  ...(isProd ? [] : ['http://proctornet.duckdns.org']),
   ...derivedWsOrigins,
   ...s3Hosts,
   ...(isProd ? [] : ['ws://localhost:5000', 'ws://127.0.0.1:5000'])

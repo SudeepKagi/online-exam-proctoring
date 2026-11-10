@@ -28,6 +28,8 @@ function getAuthCookieOptions(maxAgeMs, req = null) {
     secure = false
   } else if (isProd && req) {
     secure = Boolean(req.secure || req.headers?.['x-forwarded-proto'] === 'https')
+  } else if (isProd) {
+    secure = true
   }
 
   const options = {
@@ -83,6 +85,8 @@ function clearAuthCookie(res) {
     secure = false
   } else if (isProd && req) {
     secure = Boolean(req.secure || req.headers?.['x-forwarded-proto'] === 'https')
+  } else if (isProd) {
+    secure = true
   }
 
   const clearOptions = { httpOnly: true, secure, sameSite, path: '/' }
