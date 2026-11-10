@@ -1,8 +1,6 @@
 name: CD — Deploy to Staging
 
 on:
-  push:
-    branches: [ main, 'release/*' ]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +15,7 @@ concurrency:
 jobs:
   build-and-push:
     name: Build & Publish Container Images to GHCR
-    if: startsWith(github.ref, 'refs/heads/release/') || github.event_name == 'workflow_dispatch' || vars.STAGING_ENABLED == 'true'
+    if: vars.STAGING_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
