@@ -165,13 +165,20 @@ jobs:
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
           EOF
+          cat .env.test >> $GITHUB_ENV
 
       - name: Prisma Generate & Migrate Deploy
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: |
           npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
       - name: Baseline Admin Database Seed
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: node backend/prisma/seed/admin.js
 
       - name: Run Backend Test Suites
@@ -252,13 +259,20 @@ jobs:
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
           EOF
+          cat .env.test >> $GITHUB_ENV
 
       - name: Prisma Generate & Migrate Deploy
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: |
           npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
       - name: Baseline Admin Database Seed
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: node backend/prisma/seed/admin.js
 
       - name: Install Playwright Chromium Browser & OS Dependencies
@@ -352,13 +366,20 @@ jobs:
           SEB_PRE_DOWNLOAD_MINUTES=30
           EXAM_CACHE_TTL_MS=0
           EOF
+          cat .env.test >> $GITHUB_ENV
 
       - name: Prisma Generate & Migrate Deploy
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: |
           npx prisma generate --schema=backend/prisma/schema.prisma
           npx prisma migrate deploy --schema=backend/prisma/schema.prisma
 
       - name: Seed Admin Accounts
+        env:
+          DATABASE_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
+          DIRECT_URL: postgresql://proctornet:ci_test_postgres_32char_secure_password_01@127.0.0.1:5432/proctornet_e2e_test?schema=public
         run: node backend/prisma/seed/admin.js
 
       - name: Start Backend Service in Background
