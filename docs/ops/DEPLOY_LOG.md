@@ -163,3 +163,41 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `51bb77a9-48cb-4f66-9793-05936a90fd07`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/check-prod-data.log`
+
+### [2026-11-10T11:26:05.867Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-current-release.sh`
+- **Command ID**: `62c55fbc-fd8b-4304-9e28-d96c208be90e`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-current-release.log`
+
+### [2026-11-10T11:27:55.627Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-prod-data.sh`
+- **Command ID**: `ea1cb43c-76f0-4f98-bf39-c4885992ebcd`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-prod-data.log`
+
+### [2026-11-10T11:35:30.973Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase3-dump-db.sh`
+- **Command ID**: `f27e5fec-2f61-4229-974b-41cfe5c7d05f`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase3-dump-db-cleanup.log`
+
+### [2026-11-10T11:37:56.759Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase2-prepare-release.sh`
+- **Command ID**: `be244030-4ba1-46a8-bd41-53672e3191c6`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase2-prepare-cleanup.log`
+
+### [2026-11-10T11:39:14.878Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase4-cutover.sh`
+- **Command ID**: `a1721788-c3c5-42d0-ba7b-fd4115364d2c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase4-cutover-cleanup.log`
+
+## Active Production Release Snapshot (Post-Cleanup Deploy)
+- **Active Release Directory**: `/opt/proctornet/releases/release-c3fb95349adf6a7d9113bee73305359f1822ade6`
+- **Current Symlink**: `/opt/proctornet/current -> /opt/proctornet/releases/release-c3fb95349adf6a7d9113bee73305359f1822ade6`
+- **Release Commit SHA**: `c3fb95349adf6a7d9113bee73305359f1822ade6`
+- **Service Status**: `active` (`proctornet.service`)
+- **Main Branch Head**: Merged PR #44 (`c3fb953`)
+

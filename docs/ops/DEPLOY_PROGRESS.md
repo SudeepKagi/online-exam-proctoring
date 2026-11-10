@@ -24,8 +24,8 @@
 ## Production Deployment Execution Summary
 
 - **Live Public URL:** [https://proctornet.duckdns.org](https://proctornet.duckdns.org)
-- **Deployed Release:** `release-e8ea200e040e5b58c3e53af6f9167e0129190148` (PR #43 Camera Feed Hotfix)
-- **Previous Release:** `release-ace92878effc7d9b335f7877d98d685b7a6fed39` (Git Tag: `v0.9.0-rc1`)
+- **Deployed Release:** `release-c3fb95349adf6a7d9113bee73305359f1822ade6` (PR #44 Codebase & Infrastructure Cleanup)
+- **Previous Release:** `release-e8ea200e040e5b58c3e53af6f9167e0129190148` (PR #43 Camera Feed Hotfix)
 - **System Service:** `proctornet.service` (Node.js v20 bare-metal systemd)
 - **Reverse Proxy:** Caddy 2.8 with automatic HTTPS & HSTS
 - **Database Migrations Applied:** 5/5 (`0001_core_tables`, `0002_user_status_enums`, `0003_user_onboarding_fields`, `0004_system_settings`, `0005_readiness_and_incident_review`)
