@@ -4,9 +4,6 @@ const authController = require('./auth.controller')
 const { authService } = require('./auth.service')
 const { extractTokenFromReq } = require('../../utils/cookies')
 
-const isTest = process.env.NODE_ENV === 'test'
-const isLoadTest = (process.env.LOADTEST_ALLOW === '1' || process.env.DISABLE_RATE_LIMIT === '1')
-
 function getLoginLimiterKey(req) {
   const identifier = String(req.body?.email || req.body?.username || '').trim().toLowerCase()
   return identifier ? `auth_login_${identifier}` : `auth_ip_${req.ip}`

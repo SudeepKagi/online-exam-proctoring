@@ -13,7 +13,7 @@
 | :--- | :--- | :--- | :--- |
 | **Phase 0: Baseline Verification** | Fresh test runs, SEB journey, release pipeline, middleware audit, privacy verification, gitleaks | **COMPLETED** | `backend-test` (257/257 pass), `e2e-test` (75/75 pass), `seb-simulated-test` (3/3 pass), `release:check` (7/7 pass), gitleaks pass (0 leaks) |
 | **Phase 1: Variables & Configuration** | Complete process.env/import.meta/compose audit, `VARIABLES.md`, `.env.*.example`, `init-env.js` | **COMPLETED** | Comprehensive audit, generator script, missing values check, 264/264 backend tests pass |
-| **Phase 2: Hardening Audit** | Production cookies/CORS/CSP, NAT rate-limits, Docker health/rotation, DB pool, OIDC | PENDING | Security hardening, load readiness, zero high/critical vulnerabilities |
+| **Phase 2: Hardening Audit** | Production cookies/CORS/CSP, NAT rate-limits, Docker health/rotation, DB pool, OIDC | **COMPLETED** | Security hardening, load readiness, zero high/critical vulnerabilities, 272/272 backend tests pass |
 | **Phase 3: Local Production Rehearsal** | Image build, Caddy local TLS, container migrations, admin creation, full SEB load test (200 students) | PENDING | Rehearsal pass, metrics recorded, backup/restore drill |
 | **Phase 4: Guided Staging Deployment** | Step-by-step interactive cloud rollout (GitHub, AWS, DNS, SSM, Caddy, SEB pilot) | PENDING | Interactive execution with rollbacks and kill switches verified |
 
@@ -45,4 +45,38 @@
   - Refuses to overwrite existing files without `--force`.
 - [x] Implemented comprehensive unit tests in `backend/tests/init-env.test.js` verifying all 7 invariants.
 - [x] Full backend test suite executed: 264 passed, 0 failed, 59.2s (`test-results/phase1-backend.txt`).
+
+---
+
+## Phase 2 Execution Status
+- [x] Production runtime hardening:
+  - Cookies enforce `Secure=true`, `HttpOnly=true`, `SameSite=lax`, and `path=/` in production mode (`backend/src/utils/cookies.js`).
+  - CORS and CSP restrict origins to HTTPS canonical origins (`https://proctornet.duckdns.org`, `PUBLIC_ORIGIN`), wildcard S3 hosts (`https://*.s3.${awsRegion}.amazonaws.com`), and camera access restricted to `camera=(self)` (`backend/src/middleware/security.js`, `ops/caddy/Caddyfile`).
+  - Express `trust proxy` configured to exactly 1 hop matching Caddy edge reverse proxy (`backend/src/app.js`).
+  - Error envelope guarantees `stack` is never exposed in API responses (`backend/src/shared/errors.js`).
+- [x] Campus NAT-resilient Rate Limiting:
+  - Keyed by authenticated `req.user.id` for attempts and hot-path student answers (`/api/v1/attempts/*`), so candidates in the same room never exhaust each other's quota (`backend/src/middleware/security.js`).
+  - Login endpoints protected by account-keyed `loginLimiter` (`auth_login_<email>`), preventing brute-force attacks against one account without locking out other candidates in the computer lab (`backend/src/modules/auth/auth.routes.js`).
+  - Unauthenticated coarse IP rate limit increased to 1500 / 15min and SEB ping limit increased to 1200 / min to accommodate 200+ candidate concurrent computer lab arrivals (`backend/src/modules/seb/seb.routes.js`).
+- [x] Container & Infrastructure hardening (`docker-compose.prod.yml`):
+  - Standardized JSON-file log rotation (`max-size: "20m"`, `max-file: "5"`) across all services.
+  - Defined memory limits and reservations for Caddy (512M/64M), Backend (1536M/256M), Postgres (1024M/256M), Redis (512M/64M), and RabbitMQ (768M/128M).
+  - Pinned service image tags to fixed minor/patch versions (`caddy:2.8-alpine`, `postgres:16-alpine`, `redis:7-alpine`, `rabbitmq:3.13-alpine`).
+  - Verified non-root user execution (`USER proctornet` in backend, `USER nginx` in frontend).
+- [x] Database Connection Pool & Query Timeout:
+  - Standardized Prisma pool limit to `connection_limit=20` and connection pool timeout to 20s (`backend/src/infra/postgres/client.js`).
+  - Injected `statement_timeout=10000` (10s) on all database sessions to kill runaway queries during exam start surges.
+  - Verified idempotent single-execution migrations via container entrypoint and CD deployment steps.
+- [x] CI/CD AWS OIDC & EC2 Instance Roles:
+  - Switched CD workflows (`cd-staging.yml`, `cd-production.yml`) to GitHub OIDC federation via `aws-actions/configure-aws-credentials` with `role-to-assume`.
+  - Documented complete AWS IAM OIDC Trust Policy and EC2 Instance Role in `docs/ci/SECRETS.md`.
+- [x] Time, Retention & Monitoring Documentation:
+  - Documented host NTP synchronization via `systemd-timesyncd` in `docs/ops/RUNBOOK.md`.
+  - Documented S3 lifecycle policies (multipart abort after 7 days, evidence expiration after 90 days, backup transition to Glacier) in `docs/ops/BACKUPS.md`.
+  - Documented public health probe `GET https://proctornet.duckdns.org/healthz`, alert thresholds (5xx rate > 1%, disk > 85%, TLS cert < 14 days), and log inspection commands in `docs/ops/RUNBOOK.md`.
+- [x] Security Audit: `npm audit --audit-level=high` verified with 0 high and 0 critical vulnerabilities (`test-results/audit-phase2.txt`).
+- [x] Automated Test Verification:
+  - Added `backend/tests/production-hardening.test.js` (5 tests passing).
+  - Added `backend/tests/campus-nat-ratelimit.test.js` (3 tests passing).
+  - Full backend test suite executed: 272 passed, 0 failed, 46.2s (`test-results/phase2-backend.txt`).
 
