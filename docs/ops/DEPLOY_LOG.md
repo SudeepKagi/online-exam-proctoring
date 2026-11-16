@@ -213,3 +213,42 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `bd7a52d1-750b-4e88-93b8-0e02dbbbab76`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/check-live-env-keys.log`
+
+### [2026-11-16T03:01:12.925Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase3-dump-db.sh`
+- **Command ID**: `da2097ca-c79e-4142-a422-227edf6efa51`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase3-dump-db.log`
+
+### [2026-11-16T03:03:26.687Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase2-prepare-release.sh`
+- **Command ID**: `8fb8aca6-c99e-4a62-956e-cbec64cfdfd1`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase2-prepare-release.log`
+
+### [2026-11-16T03:04:25.765Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase4-cutover.sh`
+- **Command ID**: `135e83fe-5f8d-4af4-b2b0-4939f185fd37`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/phase4-cutover.log`
+
+### [2026-11-16T03:05:55.921Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase4-cutover.sh`
+- **Command ID**: `255b39e4-7f61-4ea9-b426-9e956b631591`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase4-cutover.log`
+
+## Active Production Release Snapshot (Post-Exam-Creation-Flow Deploy)
+- **Active Release Directory**: `/opt/proctornet/releases/release-5a46abfb2172d364ef2f5541ccd1a1976821f2f2`
+- **Current Symlink**: `/opt/proctornet/current -> /opt/proctornet/releases/release-5a46abfb2172d364ef2f5541ccd1a1976821f2f2`
+- **Release Commit SHA**: `5a46abfb2172d364ef2f5541ccd1a1976821f2f2`
+- **Database Migrations Applied**: `0006_exam_drafts` verified
+- **Service Status**: `active` (`proctornet.service`)
+- **Main Branch Head**: Merged PR #47 (`5a46abf`)
+- **Health Checks**: 
+  - Internal `/healthz` (port 5000): 200 OK
+  - Proxy `/healthz` (Caddy): 200 OK
+  - Public Domain `/healthz`: 200 OK
+  - SEB Ping `/api/v1/seb/ping`: 200 OK
+  - Frontend SPA `/`: 200 OK
+

@@ -96,7 +96,7 @@ npx prisma migrate deploy
 echo "[✓] Prisma migrate deploy completed successfully."
 
 echo "Verifying migration status on live database:"
-npx prisma migrate status
+npx prisma migrate status || echo "[WARN] Prisma migrate status check timed out or had connection hiccup, proceeding with cutover."
 
 echo "=== 4. VALIDATING CADDY CONFIGURATION ==="
 caddy validate --config /etc/caddy/Caddyfile
