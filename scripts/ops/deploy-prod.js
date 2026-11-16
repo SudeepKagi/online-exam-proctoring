@@ -177,7 +177,7 @@ fi
 
 # 1.3 Active Exam Attempts Guard
 echo "Checking active exam attempts in database..."
-ACTIVE_COUNT=$(node -e "
+ACTIVE_COUNT=$(cd "$CURRENT_LINK/backend" && node -e "
 const { PrismaClient } = require('@prisma/client');
 require('dotenv').config({ path: '$SHARED_ENV' });
 const prisma = new PrismaClient({

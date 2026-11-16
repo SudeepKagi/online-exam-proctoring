@@ -252,3 +252,9 @@ All sensitive data and secrets are redacted in accordance with deployment securi
   - SEB Ping `/api/v1/seb/ping`: 200 OK
   - Frontend SPA `/`: 200 OK
 
+
+### [2026-11-16T09:44:04.184Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `c0ad0a59-ad8f-4e57-ba04-8d59e2aec9c0`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/deploy-7a5bc25e16719b1e97878d3c068023d0c97a5ffc.log`
