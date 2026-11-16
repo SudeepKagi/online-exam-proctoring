@@ -47,7 +47,7 @@ async function listExams(req, res, next) {
 
 async function publishExam(req, res, next) {
   try {
-    const exam = await examService.publishExam(req.params.id)
+    const exam = await examService.publishExam(req.params.id, req.user?.role)
     return res.status(200).json({ status: 'success', exam: toExamDto(exam, req.user) })
   } catch (err) {
     next(err)

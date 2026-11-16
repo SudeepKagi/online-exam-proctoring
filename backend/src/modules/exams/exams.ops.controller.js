@@ -168,7 +168,7 @@ async function generateFromPdf(req, res, next) {
 async function publishWizard(req, res, next) {
   try {
     const { examWizardService } = require('./exam.wizard.service')
-    const result = await examWizardService.publishWizard(req.user?.id, req.body)
+    const result = await examWizardService.publishWizard(req.user?.id, req.body, req.user?.role)
     return res.status(201).json({ status: 'success', ...result })
   } catch (err) {
     next(err)
@@ -207,8 +207,18 @@ async function deleteDraft(req, res, next) {
 
 async function getInstitutionSebStatus(req, res, next) {
   try {
-    const sebAdminController = require('../admin/sebAdmin.controller')
-    return sebAdminController.getSebStatus(req, res, next)
+    const { getInstitutionSebState } = require('../seb/seb.service')
+    const state = await getInstitutionSebState({ bypassCache: req.query?.refresh === 'true' })
+    return res.status(200).json({
+      configured: state.configured,
+      keyPresent: state.keyPresent,
+      filePresent: state.filePresent,
+      lastVerifiedAt: state.lastVerifiedAt,
+      requestedMode: state.requestedMode,
+      effectiveMode: state.effectiveMode,
+      enforcementReason: state.enforcementReason,
+      publicOrigin: state.publicOrigin
+    })
   } catch (err) {
     next(err)
   }

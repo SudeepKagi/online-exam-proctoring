@@ -205,27 +205,25 @@ class ExamService {
 
   async getSebSettings(examId) {
     const exam = await examsSql.findExamById(examId)
-    if (!exam) return { sebRequired: false, sebConfigKey: null }
+    if (!exam) return { sebRequired: false, sebConfigKey: null, effectiveMode: 'off' }
     const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
     const sebRequired = Boolean(pConfig.sebRequired)
     if (!sebRequired) {
-      return { sebRequired: false, sebConfigKey: null }
+      return { sebRequired: false, sebConfigKey: null, effectiveMode: 'off' }
     }
     const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim().toLowerCase() : null
-    let institutionKey = null
-    try {
-      const { settingsService } = require('../admin/settings.service')
-      const sebConfig = await settingsService.getSebConfig()
-      if (sebConfig && sebConfig.configKey) {
-        institutionKey = String(sebConfig.configKey).trim().toLowerCase()
-      }
-    } catch (_) {}
-    const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim().toLowerCase() : null
-    const sebConfigKey = sebRequired ? (perExamKey || institutionKey || envKey || null) : null
-    return { sebRequired, sebConfigKey }
+    const { getInstitutionSebState } = require('../seb/seb.service')
+    const sebState = await getInstitutionSebState()
+    const sebConfigKey = sebRequired ? (perExamKey || sebState.configKey || null) : null
+    return {
+      sebRequired,
+      sebConfigKey,
+      effectiveMode: sebState.effectiveMode,
+      configured: sebState.configured
+    }
   }
 
-  async publishExam(id) {
+  async publishExam(id, userRole = null) {
     const exam = await this.checkExamMutability(id)
     const serverNow = new Date()
     if (exam.startTime && new Date(exam.startTime) < serverNow) {
@@ -235,26 +233,24 @@ class ExamService {
       throw err
     }
 
-    // 6. Publish guard: if sebRequired is true, require a valid 64-hex key (per-exam, institution, or env)
+    // 6. Publish guard: if sebRequired is true, require a valid 64-hex key (per-exam or institution)
     const pConfig = (exam.proctoringConfig && typeof exam.proctoringConfig === 'object') ? exam.proctoringConfig : {}
     if (pConfig.sebRequired) {
       const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim() : null
-      let institutionKey = null
-      try {
-        const { settingsService } = require('../admin/settings.service')
-        const sebConfig = await settingsService.getSebConfig()
-        if (sebConfig && sebConfig.configKey) {
-          institutionKey = String(sebConfig.configKey).trim()
-        }
-      } catch (_) {}
-      const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim() : null
       const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(perExamKey)
-      const validInst = institutionKey && /^[0-9a-fA-F]{64}$/.test(institutionKey)
-      const validEnv = envKey && /^[0-9a-fA-F]{64}$/.test(envKey)
-      if (!validPerExam && !validInst && !validEnv) {
-        const err = new Error('Exam requires Safe Exam Browser but no valid Config Key is configured.')
+      const { getInstitutionSebState } = require('../seb/seb.service')
+      const sebState = await getInstitutionSebState()
+
+      if (!validPerExam && !sebState.configured) {
+        const normRole = normalizeRole(userRole)
+        const isFaculty = normRole === ROLES.FACULTY || !normRole || normRole !== ROLES.ADMIN
+        const msg = isFaculty
+          ? 'Exam requires Safe Exam Browser but it is not configured yet. Ask your administrator to finish Secure Browser setup.'
+          : 'Exam requires Safe Exam Browser but it is not configured yet. Configure it under Admin → Secure Browser.'
+        const err = new Error(msg)
         err.status = 400
         err.code = 'SEB_KEY_REQUIRED'
+        err.link = '/admin/seb'
         throw err
       }
     }

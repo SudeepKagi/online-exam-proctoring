@@ -108,7 +108,12 @@ async function getCachedSebSettings(examId) {
   const key = String(examId)
   const cached = examSettingsCache.get(key)
   if (cached && cached.expiresAt > now) {
-    return { sebRequired: cached.sebRequired, sebConfigKey: cached.sebConfigKey }
+    return {
+      sebRequired: cached.sebRequired,
+      sebConfigKey: cached.sebConfigKey,
+      effectiveMode: cached.effectiveMode,
+      configured: cached.configured
+    }
   }
 
   // Cache miss or expired: fetch from DB via examService
@@ -117,6 +122,8 @@ async function getCachedSebSettings(examId) {
   examSettingsCache.set(key, {
     sebRequired: Boolean(settings.sebRequired),
     sebConfigKey: settings.sebConfigKey || null,
+    effectiveMode: settings.effectiveMode || 'off',
+    configured: Boolean(settings.configured),
     expiresAt: now + EXAM_SETTINGS_TTL_MS
   })
 
@@ -150,11 +157,19 @@ async function resolveExamId(req) {
 }
 
 async function inspectSebRequest(req) {
-  const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
   let examId = null
   try {
     examId = await resolveExamId(req)
   } catch (_) {}
+
+  let sebSettings = null
+  if (examId) {
+    try {
+      sebSettings = await getCachedSebSettings(examId)
+    } catch (_) {}
+  }
+
+  const sebMode = (sebSettings?.effectiveMode || config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
 
   if (!examId) {
     return {
@@ -165,11 +180,6 @@ async function inspectSebRequest(req) {
       matched: false
     }
   }
-
-  let sebSettings = null
-  try {
-    sebSettings = await getCachedSebSettings(examId)
-  } catch (_) {}
 
   const required = Boolean(sebSettings?.sebRequired)
   if (!required) {
@@ -330,16 +340,24 @@ async function runVerifySeb(req, res, next) {
     return next()
   }
 
+  // Derive effective mode from exam & institution state
+  const effectiveMode = (sebSettings?.effectiveMode || sebMode).toLowerCase().trim()
+
+  if (effectiveMode === 'off') {
+    req.seb = { mode: 'off', verified: false }
+    return next()
+  }
+
   // If sebRequired is false, pass through
   if (!sebSettings.sebRequired) {
-    req.seb = { mode: sebMode, verified: true, sebRequired: false }
+    req.seb = { mode: effectiveMode, verified: true, sebRequired: false }
     return next()
   }
 
   // 5. Config Key is required for SEB verification
   const sebConfigKey = sebSettings.sebConfigKey
   if (!sebConfigKey || !/^[0-9a-fA-F]{64}$/.test(sebConfigKey)) {
-    if (sebMode === 'enforce') {
+    if (effectiveMode === 'enforce') {
       return res.status(403).json({
         code: 'SEB_REQUIRED',
         message: 'Exam requires Safe Exam Browser but no valid Config Key is configured.'
@@ -397,9 +415,9 @@ async function runVerifySeb(req, res, next) {
     logPayload.receivedHash = receivedHeader || null
   }
 
-  if (sebMode === 'log') {
-    logger.info(logPayload, 'SEB request verification check (log mode)')
-    req.seb = { mode: 'log', verified: Boolean(matched) }
+  if (effectiveMode === 'log' || effectiveMode === 'audit') {
+    logger.info(logPayload, 'SEB request verification check (audit/log mode)')
+    req.seb = { mode: effectiveMode, verified: Boolean(matched) }
     const attemptId = req.params?.attemptId || req.params?.id
     if (matched && attemptId) {
       markAttemptSebVerified(attemptId)

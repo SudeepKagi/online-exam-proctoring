@@ -20,6 +20,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { api, errorMessage } from '@/lib/apiClient'
+import { useAuth } from '@/context/AuthContext'
 
 const DEPARTMENTS = [
   'Computer Science and Engineering',
@@ -47,6 +48,8 @@ export default function ExamWizardStepSecurity({
   const [loadingCount, setLoadingCount] = useState(false)
   const [sebStatus, setSebStatus] = useState(null)
   const [loadingSeb, setLoadingSeb] = useState(false)
+  const { role } = useAuth()
+  const isAdmin = String(role || '').toUpperCase() === 'ADMIN'
 
   const department = audience.department || DEPARTMENTS[0]
   const semester = audience.semester || 'Sem 6'
@@ -187,20 +190,41 @@ export default function ExamWizardStepSecurity({
               </label>
               {!sebStatus?.configured && !loadingSeb && (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-[420]">
-                  Secure browser isn't set up yet
-                  <a
-                    href="/admin/seb"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-0.5 text-primary hover:underline font-[480]"
-                  >
-                    Admin → Secure Browser
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
+                  {isAdmin ? (
+                    <>
+                      Secure browser isn't set up yet
+                      <a
+                        href="/admin/seb"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-0.5 text-primary hover:underline font-[480]"
+                      >
+                        Admin → Secure Browser
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </>
+                  ) : (
+                    'Ask your administrator to finish Secure Browser setup'
+                  )}
                 </span>
               )}
             </div>
           </div>
+
+          {/* Honest Enforcement Warning if not in enforce mode */}
+          {securityConfig.sebRequired && sebStatus?.effectiveMode !== 'enforce' && (
+            <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-[12px] flex items-start space-x-2.5 text-xs">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-[480] text-amber-900">
+                  Secure browser: required, NOT enforced yet (students can still use a normal browser)
+                </span>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  {sebStatus?.enforcementReason || 'Safe Exam Browser verification handshake has not been completed within the last 7 days. Students will be advised but not locked out until verification is complete in Admin.'}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Institution SEB Status Indicator */}
           <div className="p-3 bg-muted/20 rounded-[12px] flex items-start space-x-2.5 text-xs">
@@ -216,12 +240,14 @@ export default function ExamWizardStepSecurity({
                 {loadingSeb
                   ? 'Checking institution Safe Exam Browser setup...'
                   : sebStatus?.configured
-                  ? `Institution SEB Profile Active (Key ending â€¢â€¢â€¢${sebStatus.keyLast4 || 'XXXX'})`
+                  ? `Institution SEB Profile Active (Effective Mode: ${sebStatus.effectiveMode || 'off'})`
                   : 'Institution SEB Profile Not Uploaded'}
               </span>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 {sebStatus?.configured
-                  ? 'Your institution has verified a master SEB configuration key. Students will be cryptographically gated through Safe Exam Browser.'
+                  ? (sebStatus.effectiveMode === 'enforce'
+                      ? 'Your institution has verified the Safe Exam Browser setup. Candidates will be strictly gated.'
+                      : 'Institution profile is configured, but full kiosk enforcement requires a verified test ping within the last 7 days.')
                   : 'Institution has not uploaded a master .seb configuration. If enabled, a per-exam 64-hex Config Key or environment key will be required at publish.'}
               </p>
             </div>
