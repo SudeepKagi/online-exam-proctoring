@@ -46,10 +46,10 @@ test.describe('E2E: Exam Scheduling Timezone Precision Suite', () => {
       await page.locator('input[placeholder="e.g. Digital Signal Processing"]').fill(subjectName)
       await page.locator('input[placeholder="e.g. 22EC71"]').fill('PHY101')
 
-      // Verify detected timezone contains Asia/Kolkata or IST
+      // Verify detected timezone contains Asia/Kolkata, Asia/Calcutta, IST, or GMT+5:30
       const tzBadge = page.locator('[data-testid="timezone-label"]')
       await expect(tzBadge).toBeVisible()
-      await expect(tzBadge).toContainText(/Asia\/Kolkata|IST/i)
+      await expect(tzBadge).toContainText(/Asia\/(Kolkata|Calcutta)|IST|GMT\+5:30/i)
 
       // Click "In 10 min" preset
       await page.getByRole('button', { name: /In 10 min/i }).click()
@@ -102,7 +102,7 @@ test.describe('E2E: Exam Scheduling Timezone Precision Suite', () => {
       // Verify detected timezone contains America/New_York
       const tzBadge2 = page.locator('[data-testid="timezone-label"]')
       await expect(tzBadge2).toBeVisible()
-      await expect(tzBadge2).toContainText(/America\/New_York|EST|EDT/i)
+      await expect(tzBadge2).toContainText(/America\/New_York|EST|EDT|GMT-[45]/i)
 
       // Click "Tomorrow 10 AM" preset
       await page.getByRole('button', { name: /Tomorrow 10 AM/i }).click()

@@ -104,3 +104,6 @@ backups/*.dump
 backups/*.sql
 backups/*.json
 backups/**/*.gz
+
+PLACEMENT_TRACKER.md
+
