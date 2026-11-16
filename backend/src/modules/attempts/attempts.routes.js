@@ -29,6 +29,8 @@ router.post('/:attemptId/submit', authenticateToken, verifySeb, attemptsControll
 router.post('/:attemptId/suspend', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.suspendAttempt)
 router.post('/:attemptId/resume', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.resumeAttempt)
 router.post('/:attemptId/terminate', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.terminateAttempt)
+router.post('/:attemptId/approve-identity', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.approveIdentity)
+router.post('/:attemptId/reject-identity', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.rejectIdentity)
 
 // Incident Review & Actions (§Task 8)
 router.get('/:attemptId/incidents', authenticateToken, requireRole('INVIGILATOR', 'FACULTY', 'ADMIN'), attemptsController.getAttemptIncidents)

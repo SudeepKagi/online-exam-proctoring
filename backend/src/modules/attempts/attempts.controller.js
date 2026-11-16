@@ -101,6 +101,26 @@ async function terminateAttempt(req, res, next) {
   }
 }
 
+async function approveIdentity(req, res, next) {
+  try {
+    const { attemptId } = req.params
+    const result = await attemptService.approveIdentity(attemptId, req.user.id)
+    return res.status(200).json({ status: 'success', attempt: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function rejectIdentity(req, res, next) {
+  try {
+    const { attemptId } = req.params
+    const result = await attemptService.rejectIdentity(attemptId, req.user.id)
+    return res.status(200).json({ status: 'success', attempt: result })
+  } catch (err) {
+    next(err)
+  }
+}
+
 async function getSebStatus(req, res, next) {
   try {
     const { required = false, mode = 'off', verified = false } = req.seb || {}
@@ -289,6 +309,8 @@ module.exports = {
   suspendAttempt,
   resumeAttempt,
   terminateAttempt,
+  approveIdentity,
+  rejectIdentity,
   getVpnStatus,
   getAttemptIncidents,
   updateAttemptReview,

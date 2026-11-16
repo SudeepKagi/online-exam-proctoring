@@ -54,10 +54,6 @@ export function ExamArenaHeader({
           </div>
         )}
 
-        <Badge variant="outline" className="font-mono text-xs px-2.5 py-1 gap-1 bg-[#edecfb] text-[#28253b] border-0 rounded-full">
-          <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" />
-          <span>Violations: {violationCount} / 3</span>
-        </Badge>
         <div className="flex items-center gap-1.5 font-mono text-sm font-[480] bg-[#edecfb] px-3 py-1 rounded-[40px] border-0 text-[#28253b]">
           <Clock className="w-4 h-4 text-[#5266eb]" />
           <span>{formatTime()}</span>

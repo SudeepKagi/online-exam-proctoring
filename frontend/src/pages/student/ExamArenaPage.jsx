@@ -8,11 +8,10 @@ import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
 import { useArenaSocketAndTab, restoreAnswers } from '@/hooks/useArenaSocketAndTab'
-import cameraStore from '@/lib/cameraStore'
 import QuestionPalette from '@/components/exam/QuestionPalette'
 import QuestionCard from '@/components/exam/QuestionCard'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Clock, CloudOff, Lock, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Clock, CloudOff, Lock, AlertCircle, AlertTriangle } from 'lucide-react'
 
 export default function ExamArenaPage() {
   const { id } = useParams()
@@ -55,8 +54,7 @@ export default function ExamArenaPage() {
     return stableIdempotencyKeyRef.current
   }, [attempt?.id, id])
 
-  const handleTerminationExit = useCallback((msg = 'Your examination was terminated because maximum violations (3/3) were exceeded.') => {
-    cameraStore.releaseCamera('submit')
+  const handleTerminationExit = useCallback((msg = 'Your examination was terminated by the invigilator or administrator.') => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     navigate('/student/dashboard', { replace: true, state: { errorMsg: msg } })
   }, [navigate])
@@ -96,7 +94,6 @@ export default function ExamArenaPage() {
         )
       }
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => {})
-      cameraStore.releaseCamera('submit')
       setIsSubmitted(true)
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
@@ -117,20 +114,14 @@ export default function ExamArenaPage() {
     enabled: !!attempt?.expiresAt,
   })
 
-  const handleViolationDetected = useCallback(() => {
-    setViolationCount(prev => {
-      const next = prev + 1
-      if (next >= 3) {
-        setTimeout(() => {
-          handleTerminationExit('Your examination was terminated because maximum violations (3/3) were exceeded.')
-        }, 500)
-      }
-      return next
-    })
-  }, [handleTerminationExit])
+  const [integrityWarning, setIntegrityWarning] = useState(null)
 
-  const { CameraDisconnectedOverlay, isProctoringInterrupted } = useScreenProctoring({
-    stream: attempt ? cameraStore.getStream() : null,
+  const handleViolationDetected = useCallback((violation) => {
+    setViolationCount(prev => prev + 1)
+    setIntegrityWarning(violation)
+  }, [])
+
+  const { recordViolationEvent } = useScreenProctoring({
     attemptId: attempt?.id,
     examId: id,
     onViolation: handleViolationDetected,
@@ -225,7 +216,6 @@ export default function ExamArenaPage() {
           .catch(() => {})
         if (att?.violationCount) {
           setViolationCount(att.violationCount)
-          if (att.violationCount >= 3) return handleTerminationExit()
         }
         if (att?.status === 'SUSPENDED') setIsSuspended(true)
 
@@ -235,27 +225,17 @@ export default function ExamArenaPage() {
         setLoading(false)
       } catch (err) {
         if (!mounted) return
-        cameraStore.releaseCamera('submit')
         navigate('/student/dashboard', { replace: true, state: { errorMsg: errorMessage(err, 'Exam is not currently available.') } })
       }
     }
     initArena()
 
-    const handleBeforeUnload = () => {
-      cameraStore.releaseCamera('submit')
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
     return () => {
       mounted = false
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      teardownTimerRef.current = setTimeout(() => {
-        cameraStore.releaseCamera('submit')
-      }, 100)
     }
   }, [id, navigate, handleTerminationExit, setIsSuspended])
 
-  const isArenaInteractionLocked = isSuspended || isDuplicateTab || isProctoringInterrupted || isTimeUpSubmitting || reauthOpen
+  const isArenaInteractionLocked = isSuspended || isDuplicateTab || isTimeUpSubmitting || reauthOpen
   const currentQ = questions[currentIndex] || null
   const currentSelected = currentQ ? answers[currentQ.id] : null
   const isBookmarked = currentQ ? !!bookmarks[currentQ.id] : false
@@ -399,6 +379,26 @@ export default function ExamArenaPage() {
         syncStatus={syncStatus}
         onSubmitClick={() => setSubmitDialogOpen(true)}
       />
+
+      {/* Integrity Event Warning Banner */}
+      {integrityWarning && (
+        <div
+          data-testid="integrity-warning-banner"
+          className="bg-[#fff8e6] border-b border-[#f5e2b3] px-6 py-2.5 flex items-center justify-between text-xs text-[#73510d] font-[420] shrink-0"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-[#73510d] shrink-0" />
+            <span>Integrity event recorded: {integrityWarning.reason || integrityWarning.eventType}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIntegrityWarning(null)}
+            className="text-[11px] text-[#73510d] hover:underline cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Connection Lost Banner */}
       {isOffline && (
@@ -621,7 +621,6 @@ export default function ExamArenaPage() {
           onTakeOver={claimActiveSession}
         />
       )}
-      <CameraDisconnectedOverlay />
     </ExamArenaShell>
   )
 }

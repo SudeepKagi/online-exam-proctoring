@@ -79,6 +79,7 @@ model User {
   assignments        ExamAssignment[]
   attempts           ExamAttempt[]
   reviewedAttempts   ExamAttempt[]    @relation("AttemptReviewer")
+  approvedAttempts   ExamAttempt[]    @relation("AttemptInvigilatorApproval")
   readinessReports   StudentReadinessReport[]
   consents           StudentConsent[]
   examDraft          ExamDraft?
@@ -159,6 +160,14 @@ model ExamAttempt {
   student        User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   status         AttemptStatus @default(NOT_STARTED)
   faceVerified   Boolean       @default(false) @map("face_verified")
+  facePhotoKey   String?       @map("face_photo_key")
+  faceStatus     String        @default("NOT_VERIFIED") @map("face_status")
+  similarityBucket String?     @map("similarity_bucket")
+  faceVerifiedAt DateTime?     @map("face_verified_at") @db.Timestamptz(3)
+  invigilatorApproved Boolean   @default(false) @map("invigilator_approved")
+  invigilatorApprovedById String? @map("invigilator_approved_by_id") @db.Uuid
+  invigilatorApprovedBy User?  @relation("AttemptInvigilatorApproval", fields: [invigilatorApprovedById], references: [id], onDelete: SetNull)
+  invigilatorApprovedAt DateTime? @map("invigilator_approved_at") @db.Timestamptz(3)
   startedAt      DateTime?     @map("started_at") @db.Timestamptz(3)
   expiresAt      DateTime?     @map("expires_at") @db.Timestamptz(3)
   submittedAt    DateTime?     @map("submitted_at") @db.Timestamptz(3)
@@ -177,6 +186,7 @@ model ExamAttempt {
   @@unique([examId, studentId])
   @@index([reviewStatus])
   @@index([isFlagged])
+  @@index([faceStatus])
   @@map("exam_attempts")
 }
 

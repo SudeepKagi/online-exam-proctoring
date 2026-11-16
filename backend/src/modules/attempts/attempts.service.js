@@ -100,9 +100,10 @@ class AttemptService {
       throw httpErr('Unauthorized attempt mutation', 403)
     }
 
-    const maxViolations = attempt.exam?.proctoringConfig?.maxViolations || 3
-    if (attempt.violationCount >= maxViolations || attempt.status === 'TERMINATED') {
-      throw httpErr('Attempt has been terminated due to excessive violations.', 409, 'ATTEMPT_TERMINATED')
+    // Phase 2 C.1: Remove automated termination by violation count.
+    // Only manual invigilator or admin termination can terminate an attempt.
+    if (attempt.status === 'TERMINATED') {
+      throw httpErr('Attempt has been terminated by invigilator.', 409, 'ATTEMPT_TERMINATED')
     }
 
     if (attempt.status === 'SUSPENDED') {
@@ -201,6 +202,32 @@ class AttemptService {
   async autoSubmitExpiredAttempts() {
     const { autoSubmitExpiredAttempts } = require('./attempts.invigilator')
     return autoSubmitExpiredAttempts()
+  }
+
+  async approveIdentity(attemptId, invigilatorId) {
+    const attempt = await attemptsSql.findAttemptById(attemptId)
+    if (!attempt) throw httpErr('Attempt not found', 404)
+    const updated = await attemptsSql.approveAttemptIdentity(attemptId, invigilatorId)
+    socketEmitter.emitToInvigilators(attempt.examId, 'attempt:identity_updated', {
+      attemptId,
+      faceStatus: 'APPROVED',
+      faceVerified: true,
+      invigilatorApproved: true
+    })
+    return updated
+  }
+
+  async rejectIdentity(attemptId, invigilatorId) {
+    const attempt = await attemptsSql.findAttemptById(attemptId)
+    if (!attempt) throw httpErr('Attempt not found', 404)
+    const updated = await attemptsSql.rejectAttemptIdentity(attemptId, invigilatorId)
+    socketEmitter.emitToInvigilators(attempt.examId, 'attempt:identity_updated', {
+      attemptId,
+      faceStatus: 'REJECTED',
+      faceVerified: false,
+      invigilatorApproved: false
+    })
+    return updated
   }
 }
 

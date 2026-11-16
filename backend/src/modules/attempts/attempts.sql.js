@@ -189,6 +189,45 @@ async function updateAttemptStatus(attemptId, status) {
   })
 }
 
+async function updateAttemptIdentity(attemptId, { facePhotoKey, faceStatus, similarityBucket, faceVerified }) {
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      facePhotoKey: facePhotoKey || undefined,
+      faceStatus: faceStatus || undefined,
+      similarityBucket: similarityBucket || undefined,
+      faceVerified: faceVerified !== undefined ? Boolean(faceVerified) : undefined,
+      faceVerifiedAt: faceVerified ? new Date() : undefined
+    }
+  })
+}
+
+async function approveAttemptIdentity(attemptId, invigilatorId) {
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      faceVerified: true,
+      faceStatus: 'APPROVED',
+      invigilatorApproved: true,
+      invigilatorApprovedById: invigilatorId || null,
+      invigilatorApprovedAt: new Date()
+    }
+  })
+}
+
+async function rejectAttemptIdentity(attemptId, invigilatorId) {
+  return prisma.examAttempt.update({
+    where: { id: attemptId },
+    data: {
+      faceVerified: false,
+      faceStatus: 'REJECTED',
+      invigilatorApproved: false,
+      invigilatorApprovedById: invigilatorId || null,
+      invigilatorApprovedAt: new Date()
+    }
+  })
+}
+
 module.exports = {
   findAttemptByExamAndStudent,
   findAttemptById,
@@ -197,5 +236,8 @@ module.exports = {
   upsertAnswer,
   getAttemptAnswers,
   submitAndGradeAttempt,
-  updateAttemptStatus
+  updateAttemptStatus,
+  updateAttemptIdentity,
+  approveAttemptIdentity,
+  rejectAttemptIdentity
 }

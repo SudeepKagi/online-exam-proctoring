@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -6,35 +6,43 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
 import { useCamera } from '@/hooks/useCamera'
+import cameraStore from '@/lib/cameraStore'
 import { detectOsFamily, detectBrowserFamily } from '@/lib/systemCheck'
-import { Maximize, AlertTriangle, ShieldCheck, ArrowRight, Lock, Clock, Eye } from 'lucide-react'
+import { Maximize, AlertTriangle, ShieldCheck, ArrowRight, Lock, Clock, Eye, CheckCircle2, RotateCcw, Camera } from 'lucide-react'
 
 export default function PreExamCheckPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [exam, setExam] = useState(null)
   const [sebStatus, setSebStatus] = useState(null)
-  const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [isWindowLocked, setIsWindowLocked] = useState(false)
 
-  // Student Consent (§Task 9)
+  // Student Consent (§Task 9 / Phase 2 A.5)
   const [hasConsented, setHasConsented] = useState(false)
   const [consentChecked, setConsentChecked] = useState(false)
   const [consentAgreed, setConsentAgreed] = useState(false)
+
+  // Phase 2 A.2 & A.3: Capture UX & Blocking Verification
+  const [capturedPhoto, setCapturedPhoto] = useState(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verifiedSuccess, setVerifiedSuccess] = useState(false)
+  const [verificationError, setVerificationError] = useState(null)
+  const [failedTries, setFailedTries] = useState(0)
+  const [serviceErrors, setServiceErrors] = useState(0)
+  const [awaitingApproval, setAwaitingApproval] = useState(false)
+  const canvasRef = useRef(null)
 
   const {
     status: cameraStatus,
     devices,
     selectedDeviceId,
-    hasFrames,
     requestCamera,
     selectDevice,
     retryCamera,
     attachVideoRef,
-    videoRef,
-    checkFrameSample
+    videoRef
   } = useCamera()
 
   const isSebActive = Boolean(sebStatus?.required && sebStatus?.verified)
@@ -84,12 +92,30 @@ export default function PreExamCheckPage() {
 
   // Acquire camera once consent is granted and student is on verification step
   useEffect(() => {
-    if (hasConsented && step === 1 && !isWindowLocked) {
-      requestCamera().catch(() => {
-        // Handled in store via cameraStatus === 'denied' | 'no_device' | 'in_use'
-      })
+    if (hasConsented && !capturedPhoto && !isWindowLocked) {
+      requestCamera().catch(() => {})
     }
-  }, [hasConsented, step, isWindowLocked, requestCamera])
+  }, [hasConsented, capturedPhoto, isWindowLocked, requestCamera])
+
+  // Polling when awaiting manual invigilator approval
+  useEffect(() => {
+    if (!awaitingApproval) return
+    let active = true
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/attempts/exams/${id}/seb-status`)
+        if (res.data?.faceVerified || res.data?.verified) {
+          clearInterval(interval)
+          if (active) {
+            setVerifiedSuccess(true)
+            setAwaitingApproval(false)
+            setTimeout(() => handleLaunchExam(), 1000)
+          }
+        }
+      } catch (_) {}
+    }, 3000)
+    return () => { active = false; clearInterval(interval) }
+  }, [awaitingApproval, id])
 
   const handleAgreeConsent = async () => {
     if (!consentAgreed) return
@@ -97,8 +123,8 @@ export default function PreExamCheckPage() {
     setError('')
     try {
       await apiClient.post(`/exams/${id}/consent`, {
-        consentVersion: 'v1.0',
-        consentText: 'I understand and consent to identity verification snapshots and proctoring logs being captured and retained for this exam session.'
+        consentVersion: 'v2.0',
+        consentText: 'I understand and consent to a single still photo being taken for identity verification against my enrolled reference photo, and integrity logs being recorded for this exam session. No continuous camera streaming will occur.'
       })
 
       // Send telemetry report to server
@@ -118,48 +144,160 @@ export default function PreExamCheckPage() {
     }
   }
 
-  const handleVerifyFace = async () => {
-    // If frames haven't arrived yet, wait up to 3 seconds for camera decoder to warm up
-    let isFrameReady = hasFrames || checkFrameSample()
-    if (!isFrameReady) {
-      for (let i = 0; i < 15; i++) {
-        await new Promise((r) => setTimeout(r, 200))
-        if (checkFrameSample()) {
-          isFrameReady = true
-          break
-        }
-      }
-    }
-
-    if (!videoRef.current || !isFrameReady) {
-      setError("We can't see your camera yet. Please ensure your camera is not covered and wait for the live preview.")
+  // Phase 2 A.1 & A.2: Capture photo and stop camera tracks immediately (camera light off)
+  const handleCapturePhoto = () => {
+    const video = videoRef.current
+    if (!video || video.readyState < 2) {
+      setError('Please wait for the live camera preview to load before capturing.')
       return
     }
-    setLoading(true)
-    setError('')
-    try {
-      const v = videoRef.current
-      const canvas = document.createElement('canvas')
-      canvas.width = v.videoWidth || 640
-      canvas.height = v.videoHeight || 480
-      const ctx = canvas.getContext('2d')
-      ctx.drawImage(v, 0, 0, canvas.width, canvas.height)
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.8)
 
-      await apiClient.post('/media/verify-face', { image: imageBase64, examId: id }).catch(() => {})
-      if (isSebActive) {
-        await handleLaunchExam()
-      } else {
-        setStep(2)
+    try {
+      if (!canvasRef.current && typeof document !== 'undefined') {
+        canvasRef.current = document.createElement('canvas')
       }
-    } catch (_) {
-      if (isSebActive) {
-        await handleLaunchExam()
+      const canvas = canvasRef.current || document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+      // Phase 2 A.2: Client checks for brightness / lighting quality
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const d = imgData.data
+        let sum = 0
+        for (let i = 0; i < d.length; i += 4) {
+          sum += (d[i] + d[i + 1] + d[i + 2]) / 3
+        }
+        const avgBrightness = sum / (canvas.width * canvas.height)
+        if (avgBrightness < 30) {
+          setError('Lighting is too dark. Please ensure your face is well-lit and retake.')
+          return
+        }
+        if (avgBrightness > 245) {
+          setError('Lighting is overexposed or too bright. Please reduce glare and retake.')
+          return
+        }
+      } catch (_) {}
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+
+      setCapturedPhoto(dataUrl)
+      setError('')
+      setVerificationError(null)
+
+      // Phase 2 A.1: Stop every camera track immediately so the camera LED turns off
+      if (video.srcObject && video.srcObject.getTracks) {
+        video.srcObject.getTracks().forEach((track) => track.stop())
+        video.srcObject = null
+      }
+      cameraStore.releaseCamera('precheck')
+    } catch (err) {
+      setError('Failed to capture photo from webcam. Please try again.')
+    }
+  }
+
+  // Retake photo: reopen camera stream
+  const handleRetakePhoto = () => {
+    setCapturedPhoto(null)
+    setVerificationError(null)
+    setError('')
+    setVerifiedSuccess(false)
+    setAwaitingApproval(false)
+    requestCamera().catch(() => {})
+  }
+
+  // Phase 2 A.3: Blocking identity verification against institutional reference photo
+  const handleConfirmAndVerify = async () => {
+    if (!capturedPhoto) {
+      setError('Please capture a photo first.')
+      return
+    }
+
+    setVerifying(true)
+    setError('')
+    setVerificationError(null)
+
+    try {
+      const res = await apiClient.post('/media/verify-face', {
+        imageBase64: capturedPhoto,
+        examId: id
+      })
+
+      const data = res.data || {}
+
+      if (data.verified || data.status === 'MATCH') {
+        setVerifiedSuccess(true)
+        setAwaitingApproval(false)
+        // Advance automatically after short confirmation
+        setTimeout(async () => {
+          await handleLaunchExam()
+        }, 1200)
+      } else if (data.status === 'NO_REFERENCE') {
+        setVerifiedSuccess(false)
+        setAwaitingApproval(true)
+        setVerificationError({
+          status: 'NO_REFERENCE',
+          reason: 'No institutional reference photo on file. Your photo has been submitted to your invigilator for manual approval.'
+        })
+      } else if (data.status === 'SERVICE_ERROR') {
+        setVerifiedSuccess(false)
+        const nextErrors = serviceErrors + 1
+        setServiceErrors(nextErrors)
+        if (nextErrors >= 2) {
+          setAwaitingApproval(true)
+          setVerificationError({
+            status: 'SERVICE_ERROR',
+            reason: 'Face verification service unavailable after multiple attempts. Submitted to your invigilator for approval.'
+          })
+        } else {
+          setVerificationError({
+            status: 'SERVICE_ERROR',
+            reason: 'Face verification service is currently unavailable. Please retry.'
+          })
+        }
       } else {
-        setStep(2)
+        setVerifiedSuccess(false)
+        const nextFails = failedTries + 1
+        setFailedTries(nextFails)
+        if (nextFails >= 3) {
+          setAwaitingApproval(true)
+          setVerificationError({
+            status: 'MAX_TRIES',
+            reason: 'Ask your invigilator to verify you. Your photo has been submitted to the live console for manual approval.'
+          })
+        } else {
+          const reason = data.reason || (
+            data.status === 'NO_MATCH' ? 'Face did not match institutional reference photo. Please retake.' :
+            data.status === 'NO_FACE' ? 'No face detected in the photo. Please ensure your face is well-lit and clearly visible.' :
+            data.status === 'MULTIPLE_FACES' ? 'Multiple faces detected in the photo. Please ensure only the candidate is visible.' :
+            data.status === 'LOW_QUALITY' ? 'Photo quality is too low or blurry. Please retake in good lighting.' :
+            'Identity verification failed. Please retake your photograph.'
+          )
+          setVerificationError({
+            status: data.status || 'VERIFICATION_FAILED',
+            reason
+          })
+        }
+      }
+    } catch (err) {
+      const errData = err.response?.data
+      const status = errData?.status || 'SERVICE_ERROR'
+      const reason = errData?.reason || errorMessage(err, 'Face verification service unavailable. Please retry.')
+      const nextErrors = serviceErrors + 1
+      setServiceErrors(nextErrors)
+      if (nextErrors >= 2) {
+        setAwaitingApproval(true)
+        setVerificationError({
+          status: 'SERVICE_ERROR',
+          reason: 'Face verification service unavailable after multiple attempts. Submitted to your invigilator for approval.'
+        })
+      } else {
+        setVerificationError({ status, reason })
       }
     } finally {
-      setLoading(false)
+      setVerifying(false)
     }
   }
 
@@ -167,7 +305,6 @@ export default function PreExamCheckPage() {
     setLoading(true)
     setError('')
     try {
-      // Retain live camera stream in store for ExamArenaPage (no track teardown)
       await apiClient.post(`/attempts/exams/${id}/start`, {}).catch((err) => {
         if (err.response?.status === 403 || err.response?.status === 404) throw err
         return apiClient.post(`/attempts/${id}/start`, {})
@@ -196,14 +333,12 @@ export default function PreExamCheckPage() {
             </Badge>
           </div>
           <CardTitle className="text-xl font-[480] text-[#28253b]">
-            {!hasConsented ? 'Examination Privacy & Proctoring Consent' : 'Pre-Examination Verification'}
+            {!hasConsented ? 'Examination Privacy & Proctoring Consent' : 'Pre-Examination Identity Verification'}
           </CardTitle>
           <CardDescription className="text-xs font-[360] text-[#554e7b]">
             {!hasConsented
               ? 'Please review how your data is processed and protected during this assessment'
-              : isSebActive
-                ? (exam?.title ? `${exam.title} — Identity verification` : 'Identity verification — Confirm your face before starting')
-                : (exam?.title ? `${exam.title} — Stage ${step} of 2` : `Stage ${step} of 2 — Secure integrity verification pipeline`)}
+              : (exam?.title ? `${exam.title} — Identity Verification` : 'Confirm your identity before entering the exam')}
           </CardDescription>
         </CardHeader>
 
@@ -221,7 +356,7 @@ export default function PreExamCheckPage() {
               <p className="text-xs text-[#554e7b] font-[420]">Checking proctoring consent status...</p>
             </div>
           ) : !hasConsented ? (
-            /* Stage 0: Privacy & Proctoring Consent (§Task 9) */
+            /* Stage 0: Privacy & Proctoring Consent (Phase 2 A.5) */
             <div className="space-y-4 font-sans">
               <div className="p-3.5 bg-[#fbfbff] rounded-[14px] border border-[#e9eaf2]/60 space-y-3">
                 <div className="flex items-start gap-2.5">
@@ -229,9 +364,9 @@ export default function PreExamCheckPage() {
                     <Eye className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-[480] text-[#28253b]">What is captured</h4>
+                    <h4 className="text-xs font-[480] text-[#28253b]">Single Verification Photo</h4>
                     <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed mt-0.5">
-                      Periodic camera snapshots during testing, 1:1 algorithmic facial verification matching against your enrolled student photo, and automated anomaly logs (e.g., absence of face, window switches).
+                      A single still photograph is captured during pre-check for 1:1 facial identity matching against your enrolled reference photo, alongside browser security event logs (e.g., tab switch or fullscreen exit).
                     </p>
                   </div>
                 </div>
@@ -241,9 +376,9 @@ export default function PreExamCheckPage() {
                     <Lock className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-[480] text-[#28253b]">Who can access this data</h4>
+                    <h4 className="text-xs font-[480] text-[#28253b]">No Video Streaming</h4>
                     <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed mt-0.5">
-                      Strictly authorized course faculty, assigned proctors, and academic administrators. No data is shared with external commercial entities.
+                      There is zero continuous video streaming, webcam surveillance, or audio listening during the exam. The camera turns off immediately once your photo is taken.
                     </p>
                   </div>
                 </div>
@@ -253,9 +388,9 @@ export default function PreExamCheckPage() {
                     <Clock className="w-4 h-4" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-[480] text-[#28253b]">Retention period</h4>
+                    <h4 className="text-xs font-[480] text-[#28253b]">Strict Retention Policy</h4>
                     <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed mt-0.5">
-                      All proctoring snapshots and session telemetry are automatically and permanently purged 90 days after assessment results are released.
+                      Verification photos and security event records are securely retained solely for institutional grade auditing and automatically purged according to institutional policy.
                     </p>
                   </div>
                 </div>
@@ -271,7 +406,7 @@ export default function PreExamCheckPage() {
                   className="mt-0.5 w-4 h-4 rounded cursor-pointer accent-[#5266eb]"
                 />
                 <label htmlFor="consent-check" className="text-xs text-[#28253b] font-[420] leading-relaxed cursor-pointer select-none">
-                  I understand and consent to identity verification snapshots and proctoring logs being captured and retained for this exam session.
+                  I understand and consent to a single photo being taken for identity verification against my enrolled reference photo, and integrity logs being recorded for this exam session. No continuous camera streaming will occur.
                 </label>
               </div>
 
@@ -286,21 +421,18 @@ export default function PreExamCheckPage() {
               </Button>
             </div>
           ) : (
-            /* Stage 1 & 2: Verification Pipeline */
-            <>
-              {isSebActive ? (
-                <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
-                  <span className="text-[#5266eb] font-[500]">Identity Verification</span>
+            /* Stage 1: Capture & Blocking Verification Pipeline (Phase 2 A.2 & A.3) */
+            <div className="space-y-4 font-sans">
+              <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
+                <span className="text-[#5266eb] font-[500]">Identity Verification</span>
+                {isSebActive ? (
                   <span className="text-[#5266eb] font-[480] flex items-center gap-1">
                     <ShieldCheck className="w-3.5 h-3.5" /> Secure browser verified
                   </span>
-                </div>
-              ) : (
-                <div className="flex justify-between items-center px-4 py-2 bg-[#fbfbff] rounded-[40px] text-xs font-[420]">
-                  <span className={step >= 1 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>1. Face Match</span>
-                  <span className={step === 2 ? 'text-[#5266eb] font-[500]' : 'text-[#70707d]'}>2. Fullscreen Lock</span>
-                </div>
-              )}
+                ) : (
+                  <span className="text-[#554e7b] font-[420]">One still photo</span>
+                )}
+              </div>
 
               {isWindowLocked ? (
                 <div className="pt-2 text-center">
@@ -308,7 +440,106 @@ export default function PreExamCheckPage() {
                     Return to Student Dashboard
                   </Button>
                 </div>
-              ) : step === 1 ? (
+              ) : verifiedSuccess ? (
+                /* Success State */
+                <div className="p-6 bg-[#fbfbff] rounded-[16px] text-center space-y-3">
+                  <div className="w-12 h-12 bg-[rgba(82,102,235,0.10)] text-[#5266eb] rounded-full mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-[480] text-[#28253b]">Identity Verified Successfully</h3>
+                    <p className="text-xs text-[#554e7b] font-[360] mt-1">
+                      Your photo matched the institutional reference record. Camera is now turned off.
+                    </p>
+                  </div>
+                  <Badge className="bg-[rgba(82,102,235,0.10)] text-[#5266eb] border-0 rounded-full px-3 py-1 font-[420]">
+                    Launching exam arena...
+                  </Badge>
+                </div>
+              ) : capturedPhoto ? (
+                /* Captured Photo Review & Confirmation */
+                <div className="space-y-3 text-center">
+                  <div className="aspect-video bg-[#fbfbff] rounded-[12px] overflow-hidden relative flex items-center justify-center border border-[#e9eaf2]">
+                    <img src={capturedPhoto} alt="Captured candidate portrait" className="w-full h-full object-cover" />
+                    <div className="absolute top-3 right-3 pointer-events-none">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[40px] text-[11px] bg-[#edecfb] text-[#28253b] font-[420] shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb]" />
+                        Camera turned off
+                      </span>
+                    </div>
+                  </div>
+
+                  {awaitingApproval ? (
+                    <div className="p-4 bg-[#fbfbff] border border-[#e9eaf2] rounded-[16px] text-center space-y-3">
+                      <div className="w-10 h-10 bg-[#edecfb] text-[#5266eb] rounded-full mx-auto flex items-center justify-center animate-pulse">
+                        <Clock className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-[480] text-[#28253b]">Waiting for Invigilator Approval</h4>
+                        <p className="text-[11px] text-[#554e7b] mt-1 leading-relaxed">
+                          {verificationError?.reason || 'Ask your invigilator to verify you. Your photograph has been submitted to the live console for manual approval.'}
+                        </p>
+                      </div>
+                      <Badge className="bg-[#edecfb] text-[#5266eb] border-0 rounded-full px-3 py-1 text-[10px] font-[420]">
+                        Listening for live approval...
+                      </Badge>
+                      <div className="pt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleRetakePhoto}
+                          className="rounded-[40px] h-9 text-xs font-[420] border-0 bg-[rgba(82,102,235,0.08)] text-[#28253b]"
+                        >
+                          <RotateCcw className="w-3 h-3 mr-1" /> Retake & Retry Match
+                        </Button>
+                      </div>
+                    </div>
+                  ) : verificationError ? (
+                    <div className="p-3 bg-[#edecfb] text-[#28253b] rounded-[12px] text-xs text-left space-y-1">
+                      <div className="flex items-center gap-1.5 font-[480]">
+                        <AlertTriangle className="w-4 h-4 text-[#5266eb] shrink-0" />
+                        <span>Verification Failed: {verificationError.status}</span>
+                      </div>
+                      <p className="text-[11px] text-[#554e7b] pl-5">{verificationError.reason}</p>
+                    </div>
+                  ) : null}
+
+                  <p className="text-xs text-[#70707d] font-[360]">
+                    Verify that your face is clearly visible, centered, and well-lit.
+                  </p>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRetakePhoto}
+                      disabled={verifying}
+                      className="flex-1 rounded-[40px] h-10 text-xs font-[420] border-transparent bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-[#5266eb]" /> Retake photo
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmAndVerify}
+                      disabled={verifying || awaitingApproval}
+                      className="flex-1 bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      {verifying ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Verifying Identity...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4" />
+                          <span>Confirm & Verify</span>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Live Preview for Still Photo Capture */
                 <div className="space-y-3 text-center">
                   {isCameraBlocked ? (
                     <div className="p-4 bg-[#fbfbff] rounded-[16px] text-left space-y-3">
@@ -332,24 +563,26 @@ export default function PreExamCheckPage() {
                   ) : (
                     <div className="aspect-video bg-[#28253b] rounded-[12px] overflow-hidden relative flex items-center justify-center">
                       <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
-                      {/* Frames arriving status badge */}
-                      <div className="absolute top-3 right-3 pointer-events-none">
-                        {hasFrames ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[40px] text-[11px] bg-[#edecfb] text-[#5266eb] font-[420] shadow-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb] animate-pulse" />
-                            Frames arriving
+
+                      {/* Oval face guide overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-44 h-56 rounded-full border-2 border-dashed border-white/60 shadow-lg flex items-center justify-center">
+                          <span className="text-[10px] text-white/80 bg-black/40 px-2 py-0.5 rounded-full font-[360]">
+                            Align face here
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[40px] text-[11px] bg-[#fbfbff] text-[#70707d] font-[420] shadow-sm">
-                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                            Connecting feed...
-                          </span>
-                        )}
+                        </div>
+                      </div>
+
+                      {/* Guidance banner */}
+                      <div className="absolute bottom-2 inset-x-2 pointer-events-none text-center">
+                        <span className="inline-block text-[11px] text-white bg-black/60 backdrop-blur-xs px-3 py-1 rounded-full font-[360]">
+                          Position your face inside the frame in a well-lit room
+                        </span>
                       </div>
                     </div>
                   )}
 
-                  {/* Camera selector if multiple devices */}
+                  {/* Device selector */}
                   {devices.length > 1 && (
                     <div className="flex items-center justify-center gap-2 pt-1">
                       <span className="text-[11px] font-[420] text-[#554e7b]">Camera:</span>
@@ -367,46 +600,17 @@ export default function PreExamCheckPage() {
                     </div>
                   )}
 
-                  <p className="text-xs text-[#70707d] font-[360]">Align your face inside the camera view and click verify.</p>
                   <Button
-                    onClick={handleVerifyFace}
-                    disabled={loading || isCameraBlocked}
-                    className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                    type="button"
+                    onClick={handleCapturePhoto}
+                    disabled={isCameraBlocked}
+                    className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    {loading
-                      ? (isSebActive ? 'Verifying & Starting Exam...' : 'Verifying Identity...')
-                      : (isSebActive ? 'Capture Face & Start Exam' : 'Capture & Verify Face')}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4 text-center py-4">
-                  <div className="w-16 h-16 bg-[#edecfb] text-[#5266eb] rounded-[16px] mx-auto flex items-center justify-center">
-                    {sebStatus?.required && sebStatus?.verified ? (
-                      <ShieldCheck className="w-8 h-8" />
-                    ) : (
-                      <Maximize className="w-8 h-8" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-[480] text-[#28253b]">
-                      {sebStatus?.required && sebStatus?.verified
-                        ? 'Secure browser verified'
-                        : 'All Security Checks Completed'}
-                    </h3>
-                    <p className="text-xs text-[#70707d] font-[360] mt-1 max-w-sm mx-auto">
-                      {sebStatus?.required && sebStatus?.verified
-                        ? 'Safe Exam Browser integrity has been confirmed. You are ready to launch the exam session.'
-                        : 'Click below to lock viewport in fullscreen mode and open the live exam arena.'}
-                    </p>
-                  </div>
-                  <Button onClick={handleLaunchExam} disabled={loading} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs gap-1.5 font-[420] h-10 rounded-[32px] cursor-pointer">
-                    {sebStatus?.required && sebStatus?.verified
-                      ? 'Launch Exam'
-                      : 'Enter Fullscreen & Launch Exam'} <ArrowRight className="w-4 h-4" />
+                    <Camera className="w-4 h-4" /> Capture Photo
                   </Button>
                 </div>
               )}
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
