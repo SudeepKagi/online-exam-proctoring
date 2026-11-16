@@ -1,11 +1,13 @@
 import React from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut, Settings, ShieldCheck } from 'lucide-react'
 
 export default function DashboardShell({ children, title = 'Dashboard' }) {
+  usePageTitle(title)
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()

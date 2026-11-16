@@ -264,7 +264,15 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated, existi
       onExamCreated?.(res.data?.exam, publishConfig)
       onClose()
     } catch (err) {
-      setStepError(errorMessage(err, 'Failed to publish exam.'))
+      const code = err?.response?.data?.code
+      const msg = err?.response?.data?.message
+      if (code === 'SEB_KEY_REQUIRED') {
+        setStepError("Exam requires Safe Exam Browser, but no valid Config Key is configured for this institution. Please set up the secure browser under Admin → Secure Browser or turn off SEB enforcement.")
+      } else if (code === 'SCHEDULE_PAST_START' || code === 'INVALID_SCHEDULE' || code === 'EXAM_START_IN_PAST') {
+        setStepError(msg || 'The selected start time must be in the future. Please adjust the schedule on Step 3.')
+      } else {
+        setStepError(errorMessage(err, 'Failed to publish exam.'))
+      }
     } finally {
       setIsPublishing(false)
     }

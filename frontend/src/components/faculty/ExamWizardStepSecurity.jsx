@@ -16,7 +16,8 @@ import {
   Loader2,
   Lock,
   Eye,
-  Info
+  Info,
+  ExternalLink
 } from 'lucide-react'
 import { api, errorMessage } from '@/lib/apiClient'
 
@@ -77,9 +78,17 @@ export default function ExamWizardStepSecurity({
       setLoadingSeb(true)
       try {
         const res = await api.get('/exams/seb-status')
-        if (isMounted) setSebStatus(res.data)
+        if (isMounted) {
+          setSebStatus(res.data)
+          if (!res.data?.configured) {
+            setSecurityConfig(prev => ({ ...prev, sebRequired: false }))
+          }
+        }
       } catch {
-        if (isMounted) setSebStatus({ configured: false })
+        if (isMounted) {
+          setSebStatus({ configured: false })
+          setSecurityConfig(prev => ({ ...prev, sebRequired: false }))
+        }
       } finally {
         if (isMounted) setLoadingSeb(false)
       }
@@ -162,15 +171,35 @@ export default function ExamWizardStepSecurity({
                 Locks down student PCs to prevent opening other applications or tabs during the exam.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={Boolean(securityConfig.sebRequired)}
-                onChange={e => setSecurityConfig(prev => ({ ...prev, sebRequired: e.target.checked }))}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
+            <div className="flex flex-col items-end gap-1">
+              <label className={`relative inline-flex items-center ${!sebStatus?.configured ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                <input
+                  type="checkbox"
+                  disabled={!sebStatus?.configured}
+                  checked={Boolean(securityConfig.sebRequired && sebStatus?.configured)}
+                  onChange={e => {
+                    if (!sebStatus?.configured) return
+                    setSecurityConfig(prev => ({ ...prev, sebRequired: e.target.checked }))
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+              {!sebStatus?.configured && !loadingSeb && (
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1 font-[420]">
+                  Secure browser isn't set up yet
+                  <a
+                    href="/admin/seb"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-0.5 text-primary hover:underline font-[480]"
+                  >
+                    Admin → Secure Browser
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Institution SEB Status Indicator */}

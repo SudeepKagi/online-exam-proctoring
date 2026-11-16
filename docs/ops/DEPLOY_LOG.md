@@ -279,3 +279,51 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-16T10:23:17.019Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\check-current.sh`
+- **Command ID**: `411f3fe8-778b-49ad-b75e-bc7c89ff8668`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-current.log`
+
+### [2026-11-16T10:24:01.908Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\evidence-collection.sh`
+- **Command ID**: `5a8fd420-dbd5-47df-bcd3-25e9d448531a`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/evidence-collection.log`
+
+### [2026-11-16T10:27:15.425Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\check-proc-env.sh`
+- **Command ID**: `73b1bdfc-6a6f-4f57-92a2-49ab9a634ca3`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-proc-env.log`
+
+### [2026-11-16T10:28:45.205Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\find-9000-remote.sh`
+- **Command ID**: `2a5fabf5-8f0e-4c47-930a-bde96520101a`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/find-9000-remote.log`
+
+### [2026-11-16T10:29:26.540Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\find-env-files.sh`
+- **Command ID**: `a381b327-df48-4397-9973-c11b484ce489`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/find-env-files.log`
+
+### [2026-11-16T10:31:52.542Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\test-prefix-access.sh`
+- **Command ID**: `b7fba590-c3d9-4a0c-93a1-6abd274adeab`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/test-prefix-access.log`
+
+### [2026-11-16T10:43:12.454Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\test-prefix-access.sh`
+- **Command ID**: `eb89fc3c-2226-4f2b-ba63-1d43bcf550c9`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/verify-policy-update.log`
+
+### [2026-11-16T10:43:56.033Z] Command on i-0d242d962823f0a89
+- **Script**: `logs-deploy\fix-server-config.sh`
+- **Command ID**: `4c084724-d30d-44f7-b8f6-f49f5f9d5e1f`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/fix-server-config.log`

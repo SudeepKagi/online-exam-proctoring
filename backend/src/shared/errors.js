@@ -83,14 +83,32 @@ const crypto = require('crypto')
 function toErrorEnvelope(err, requestId = null) {
   const statusCode = err.statusCode || (err.status ? err.status : 500)
   const reqId = requestId || err.requestId || crypto.randomUUID()
+  const isProd = process.env.NODE_ENV === 'production'
 
-  let code = err.code || (statusCode === 404 ? 'NOT_FOUND' : statusCode >= 500 ? 'INTERNAL' : 'BAD_REQUEST')
-  let message = err.message || (statusCode >= 500 ? 'Something went wrong' : 'An error occurred')
+  const rawMsg = err.message || ''
+  const isStorageError =
+    err.isStorageError ||
+    err.code === 'STORAGE_UNAVAILABLE' ||
+    err.name === 'NoSuchBucket' ||
+    err.name === 'EndpointConnectionError' ||
+    (err.code === 'ECONNREFUSED' && (rawMsg.includes('9000') || err.port === 9000 || rawMsg.includes('s3') || rawMsg.includes('storage'))) ||
+    err.$metadata?.service === 'S3' ||
+    (err.syscall === 'connect' && (err.address === '127.0.0.1' || err.port === 9000))
+
+  let code = err.code || (statusCode === 404 ? 'NOT_FOUND' : statusCode >= 500 ? 'INTERNAL_SERVER_ERROR' : 'BAD_REQUEST')
+  let message = err.message || (statusCode >= 500 ? 'An unexpected internal error occurred. Please try again.' : 'An error occurred')
   const details = err.details || (err.retryAfter ? { retryAfter: err.retryAfter } : [])
 
-  if (statusCode === 503 || err.code === 'SERVICE_UNAVAILABLE') {
+  if (isStorageError) {
+    code = 'STORAGE_UNAVAILABLE'
+    message = 'Storage service is temporarily unavailable. Please try again.'
+  } else if (isProd && statusCode >= 500) {
+    // In production, 5xx responses are generic and never include internal addresses, ports, or raw stacks
+    code = err.code && !err.code.includes('ECONN') ? err.code : 'INTERNAL_SERVER_ERROR'
+    message = 'An unexpected internal error occurred. Please try again.'
+  } else if (statusCode === 503 || err.code === 'SERVICE_UNAVAILABLE') {
     code = err.code || 'SERVICE_UNAVAILABLE'
-    message = err.message || 'Service temporarily unavailable, please retry'
+    message = isProd ? 'Service temporarily unavailable, please retry' : (err.message || 'Service temporarily unavailable, please retry')
   }
 
   return {

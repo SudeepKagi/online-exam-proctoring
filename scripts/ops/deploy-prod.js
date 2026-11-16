@@ -102,7 +102,7 @@ async function runDeploy() {
   }
   fs.writeFileSync(path.join(repoRoot, 'VERSION'), JSON.stringify(versionData, null, 2), 'utf8')
 
-  const tarCmd = `tar -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json package-lock.json VERSION`
+  const tarCmd = `tar --exclude='backend/.env*' --exclude='backend/node_modules' -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json package-lock.json VERSION`
   execSync(tarCmd, { cwd: repoRoot, stdio: 'inherit' })
   console.log(`-> Release tarball created: ${tarFile}`)
 
@@ -235,8 +235,14 @@ echo "Installing production dependencies & generating Prisma client..."
 npm install --omit=dev --no-audit --no-fund
 npx prisma generate
 npx prisma migrate deploy
+
+# Ensure release uses shared production environment configuration
+rm -f "$NEW_RELEASE/backend/.env" "$NEW_RELEASE/.env"
+ln -sfn "$SHARED_ENV" "$NEW_RELEASE/backend/.env"
+ln -sfn "$SHARED_ENV" "$NEW_RELEASE/.env"
+
 chown -R proctornet:proctornet "$NEW_RELEASE"
-echo "[✓] Prisma migrations deployed cleanly."
+echo "[✓] Prisma migrations deployed cleanly and environment symlinks verified."
 
 echo "=== 4. VALIDATING PROXY CONFIGURATION ==="
 caddy validate --config /etc/caddy/Caddyfile

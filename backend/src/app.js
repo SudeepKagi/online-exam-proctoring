@@ -167,6 +167,17 @@ if ((require.main === module || process.env.NODE_ENV !== 'test') && !process.env
         console.warn('⚠️ Could not schedule retention job:', err.message)
       }
     }
+
+    if (process.env.NODE_ENV === 'production' || process.env.ENABLE_STORAGE_PROBE === 'true') {
+      try {
+        const { initStartupStorageProbe } = require('./infra/s3/storageProbe')
+        initStartupStorageProbe().catch((err) => {
+          logger.error({ err: err.message }, 'Storage probe initialization caught error')
+        })
+      } catch (err) {
+        logger.warn({ err: err.message }, 'Could not run startup storage probe')
+      }
+    }
   })
 }
 

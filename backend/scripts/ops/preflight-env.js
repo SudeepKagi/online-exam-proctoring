@@ -195,6 +195,25 @@ function preflightEnv(filePath, options = {}) {
         break
       }
     }
+
+    // 7. Storage invariants for production
+    if (envMap.S3_ENDPOINT) {
+      const ep = envMap.S3_ENDPOINT.toLowerCase().trim()
+      if (ep.includes('localhost') || ep.includes('127.0.0.1') || ep.includes('::1') || ep.includes('minio')) {
+        errors.push(`Production S3_ENDPOINT must NOT point to local/MinIO services or mock storage address: ${envMap.S3_ENDPOINT}`)
+      }
+    }
+    if (envMap.S3_MOCK === 'true') {
+      errors.push('S3_MOCK is strictly forbidden in production')
+    }
+    const bucket = (envMap.S3_BUCKET || envMap.AWS_S3_BUCKET || envMap.S3_BUCKET_NAME || '').trim()
+    if (!bucket) {
+      errors.push('Missing required variable: S3_BUCKET')
+    }
+    const region = (envMap.AWS_REGION || envMap.S3_REGION || '').trim()
+    if (!region) {
+      errors.push('Missing required variable: AWS_REGION')
+    }
   }
 
   return {

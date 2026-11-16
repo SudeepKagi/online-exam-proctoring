@@ -78,6 +78,8 @@ describe('Secrets Hardening & Production Startup Invariants', () => {
       process.env.JWT_SECRET = validSecret1
       process.env.JWT_REFRESH_SECRET = validSecret2
       process.env.SEB_LINK_SECRET = validSecret3
+      delete process.env.S3_ENDPOINT
+      delete process.env.S3_MOCK
       assert.doesNotThrow(() => validateConfig())
     } finally {
       process.env = backupEnv

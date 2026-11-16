@@ -66,8 +66,9 @@ const derivedWsOrigins = allowedOrigins.map((orig) => {
 
 const s3Bucket = process.env.S3_BUCKET || process.env.S3_BUCKET_NAME || 'proctornet-storage'
 const awsRegion = process.env.AWS_REGION || 'ap-south-1'
+const realBucketHost = `https://${s3Bucket}.s3.${awsRegion}.amazonaws.com`
 const s3Hosts = isProd
-  ? [`https://${s3Bucket}.s3.${awsRegion}.amazonaws.com`, `https://${s3Bucket}.s3.amazonaws.com`, 'https://*.amazonaws.com']
+  ? [realBucketHost, `https://${s3Bucket}.s3.amazonaws.com`, 'https://*.amazonaws.com']
   : ['http://localhost:9000', 'http://127.0.0.1:9000']
 
 const dynamicImgSrc = [
@@ -81,7 +82,7 @@ const dynamicImgSrc = [
   ...(isProd ? [] : ['http://proctornet.duckdns.org']),
   ...s3Hosts
 ]
-if (process.env.S3_ENDPOINT) dynamicImgSrc.push(process.env.S3_ENDPOINT)
+if (!isProd && process.env.S3_ENDPOINT) dynamicImgSrc.push(process.env.S3_ENDPOINT)
 
 const dynamicConnectSrc = [
   "'self'",
@@ -96,7 +97,7 @@ const dynamicConnectSrc = [
   ...s3Hosts,
   ...(isProd ? [] : ['ws://localhost:5000', 'ws://127.0.0.1:5000'])
 ]
-if (process.env.S3_ENDPOINT) dynamicConnectSrc.push(process.env.S3_ENDPOINT)
+if (!isProd && process.env.S3_ENDPOINT) dynamicConnectSrc.push(process.env.S3_ENDPOINT)
 
 const helmetMiddleware = helmet({
   crossOriginEmbedderPolicy: false,

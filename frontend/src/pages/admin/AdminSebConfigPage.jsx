@@ -25,12 +25,16 @@ export default function AdminSebConfigPage() {
     lastVerifiedAt: null
   })
   const [loading, setLoading] = useState(true)
+  const [storageHealth, setStorageHealth] = useState({ ok: true, status: 'OK' })
+  const [checkingStorage, setCheckingStorage] = useState(false)
+  const [publicOrigin, setPublicOrigin] = useState('')
   const [file, setFile] = useState(null)
   const [configKey, setConfigKey] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [testing, setTesting] = useState(false)
   const [pollCountdown, setPollCountdown] = useState(0)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [storageRetryable, setStorageRetryable] = useState(false)
   const [warningMsg, setWarningMsg] = useState('')
   const [verifiedRecently, setVerifiedRecently] = useState(false)
   const fileInputRef = useRef(null)
@@ -51,6 +55,44 @@ export default function AdminSebConfigPage() {
     }
   }
 
+  const fetchStorageHealth = async (refresh = false) => {
+    try {
+      const res = await apiClient.get(`/admin/health/storage${refresh ? '?refresh=true' : ''}`)
+      setStorageHealth(res.data)
+      return res.data
+    } catch (err) {
+      const downState = { ok: false, status: 'Down', error: err.message }
+      setStorageHealth(downState)
+      return downState
+    }
+  }
+
+  const fetchPublicConfig = async () => {
+    try {
+      const res = await apiClient.get('/config')
+      if (res.data?.publicOrigin) {
+        setPublicOrigin(res.data.publicOrigin)
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  const refreshStorage = async () => {
+    setCheckingStorage(true)
+    try {
+      const res = await fetchStorageHealth(true)
+      if (res?.ok) {
+        setMsg({ text: 'Storage status verified: OK', type: 'success' })
+        setStorageRetryable(false)
+      } else {
+        setMsg({ text: 'Storage check failed: ' + (res?.error || 'Down'), type: 'error' })
+      }
+    } finally {
+      setCheckingStorage(false)
+    }
+  }
+
   const checkVerificationFreshness = (lastVerifiedAt) => {
     if (!lastVerifiedAt) {
       setVerifiedRecently(false)
@@ -65,6 +107,8 @@ export default function AdminSebConfigPage() {
 
   useEffect(() => {
     fetchStatus()
+    fetchStorageHealth()
+    fetchPublicConfig()
     return () => {
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     }
@@ -120,9 +164,20 @@ export default function AdminSebConfigPage() {
       setFile(null)
       setConfigKey('')
       if (fileInputRef.current) fileInputRef.current.value = ''
+      setStorageRetryable(false)
       setMsg({ text: 'Safe Exam Browser configuration saved successfully.', type: 'success' })
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to upload configuration'), type: 'error' })
+      const code = err?.response?.data?.code
+      if (code === 'STORAGE_UNAVAILABLE' || err?.response?.status === 503) {
+        setStorageRetryable(true)
+        setMsg({
+          text: 'Object storage is temporarily unavailable. The storage service could not be reached. Please check the cloud storage status and retry.',
+          type: 'error'
+        })
+      } else {
+        setStorageRetryable(false)
+        setMsg({ text: errorMessage(err, 'Failed to upload configuration'), type: 'error' })
+      }
     } finally {
       setSubmitting(false)
     }
@@ -207,7 +262,7 @@ export default function AdminSebConfigPage() {
             </div>
           </div>
 
-          {/* Current Status Pill */}
+          {/* Current Status Pill & Storage Health */}
           <div className="mt-4 pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <span className="text-[#554e7b] font-[420]">Current Status:</span>
@@ -219,6 +274,30 @@ export default function AdminSebConfigPage() {
                 <Badge className="bg-[#edecfb] text-[#554e7b] border-0 rounded-full px-3 py-0.5 font-[420]">
                   Not Configured
                 </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[#554e7b] font-[420]">Storage:</span>
+              <Badge
+                className={`${
+                  storageHealth?.ok
+                    ? 'bg-[rgba(82,102,235,0.10)] text-[#5266eb]'
+                    : 'bg-red-50 text-red-600 border border-red-200'
+                } border-0 rounded-full px-3 py-0.5 font-[420]`}
+              >
+                Storage: {storageHealth?.ok ? 'OK' : 'Down'}
+              </Badge>
+              {!storageHealth?.ok && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={refreshStorage}
+                  disabled={checkingStorage}
+                  className="h-6 px-2 text-[11px] rounded-full text-[#5266eb] hover:bg-[#edecfb]"
+                >
+                  {checkingStorage ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Retry'}
+                </Button>
               )}
             </div>
 
@@ -242,13 +321,26 @@ export default function AdminSebConfigPage() {
         {/* Global Notifications */}
         {msg.text && (
           <div
-            className={`p-3.5 rounded-[12px] text-xs font-[420] ${
+            className={`p-3.5 rounded-[12px] text-xs font-[420] flex items-center justify-between gap-3 ${
               msg.type === 'error'
                 ? 'bg-[#edecfb] text-[#28253b]'
                 : 'bg-[rgba(82,102,235,0.08)] text-[#28253b]'
             }`}
           >
-            {msg.text}
+            <span>{msg.text}</span>
+            {storageRetryable && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleUpload}
+                disabled={submitting}
+                className="h-7 px-3 text-xs rounded-full bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#fbfbff] shrink-0"
+              >
+                {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                Retry
+              </Button>
+            )}
           </div>
         )}
 
@@ -291,37 +383,37 @@ export default function AdminSebConfigPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
               <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Exam Tab
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Exam Tab [UNVERIFIED]
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Check <strong>"Use Browser Exam Key and Configuration Key"</strong> (send in HTTP header) so SEB transmits hash headers.
+                  Check <strong>"Use Browser Exam Key and Configuration Key" [UNVERIFIED]</strong> (send in HTTP header) so SEB transmits hash headers.
                 </p>
               </div>
 
               <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> General Tab
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> General Tab [UNVERIFIED]
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Set Reconfiguring URL to your application login URL (e.g. <code>http://localhost:5173/student/login</code>).
+                  Set <strong>"Start URL" [UNVERIFIED]</strong> to candidate login URL: <code>{publicOrigin ? `${publicOrigin}/login` : 'https://proctornet.duckdns.org/login'}</code>.
                 </p>
               </div>
 
               <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Media / Camera
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Media / Camera [UNVERIFIED]
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Enable <strong>"Allow video capture"</strong> (webcam permission) so continuous facial verification is active.
+                  Enable <strong>"Allow video capture" [UNVERIFIED]</strong> (webcam permission) so continuous facial verification is active.
                 </p>
               </div>
 
               <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Session / Quitting
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Session / Quitting [UNVERIFIED]
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Set Quit URL to candidate result page and uncheck "Ask user to confirm quitting" for clean post-submission exit.
+                  Set <strong>"Quit URL" [UNVERIFIED]</strong> to candidate result page and uncheck <strong>"Ask user to confirm quitting" [UNVERIFIED]</strong> for clean post-submission exit.
                 </p>
               </div>
             </div>

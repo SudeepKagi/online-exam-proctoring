@@ -1,5 +1,7 @@
 const express = require('express')
+const config = require('../shared/config')
 const authRoutes = require('./auth/auth.routes')
+const { authenticateToken, requireRole } = require('./auth/auth.routes')
 const examsRoutes = require('./exams/exams.routes')
 const attemptsRoutes = require('./attempts/attempts.routes')
 const mediaRoutes = require('./media/media.routes')
@@ -7,6 +9,7 @@ const proctoringRoutes = require('./proctoring/proctoring.routes')
 const usersRoutes = require('./users/users.routes')
 const sebRoutes = require('./seb/seb.routes')
 const sebAdminRoutes = require('./admin/sebAdmin.routes')
+const { getStorageHealth, runStorageProbe } = require('../infra/s3/storageProbe')
 
 const router = express.Router()
 
@@ -33,8 +36,24 @@ router.get('/config', (req, res) => {
     isVpnEnforced: false,
     mediaDriver: 'snapshot',
     llmEnabled: false,
+    publicOrigin: config.publicOrigin || 'https://proctornet.duckdns.org',
     serverTime: new Date().toISOString()
   })
+})
+
+router.get('/admin/health/storage', authenticateToken, requireRole('ADMIN'), async (req, res) => {
+  try {
+    const refresh = req.query.refresh === 'true'
+    const health = refresh ? await runStorageProbe() : getStorageHealth()
+    return res.status(200).json(health)
+  } catch (err) {
+    return res.status(200).json({
+      status: 'Down',
+      ok: false,
+      error: err.message,
+      lastCheckedAt: new Date().toISOString()
+    })
+  }
 })
 
 // Domain Subrouters with scoped prefixes

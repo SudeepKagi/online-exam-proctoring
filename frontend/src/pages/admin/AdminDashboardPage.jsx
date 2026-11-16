@@ -12,21 +12,28 @@ export default function AdminDashboardPage() {
   const [exams, setExams] = useState([])
   const [users, setUsers] = useState([])
   const [approvals, setApprovals] = useState([])
+  const [storageHealth, setStorageHealth] = useState({ ok: true, status: 'OK' })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let mounted = true
     const fetchData = async () => {
       try {
-        const [examsRes, usersRes, approvalsRes] = await Promise.allSettled([
+        const [examsRes, usersRes, approvalsRes, storageRes] = await Promise.allSettled([
           api.get('/exams'),
           api.get('/users?limit=100'),
-          api.get('/users/admin/approvals')
+          api.get('/users/admin/approvals'),
+          api.get('/admin/health/storage')
         ])
         if (!mounted) return
         if (examsRes.status === 'fulfilled') setExams(ensureArray(examsRes.value.data?.exams || examsRes.value.data))
         if (usersRes.status === 'fulfilled') setUsers(ensureArray(usersRes.value.data?.users || usersRes.value.data))
         if (approvalsRes.status === 'fulfilled') setApprovals(ensureArray(approvalsRes.value.data?.users || approvalsRes.value.data))
+        if (storageRes.status === 'fulfilled') {
+          setStorageHealth(storageRes.value.data)
+        } else {
+          setStorageHealth({ ok: false, status: 'Down' })
+        }
       } finally {
         if (mounted) setLoading(false)
       }
@@ -98,9 +105,21 @@ export default function AdminDashboardPage() {
           <span className="font-[480] text-[#28253b]">Institutional Examination Pipeline Operational</span>
           <span className="text-[#554e7b] hidden md:inline font-[360]">• Cloud Verification Engine, Encrypted Storage & Realtime Cluster</span>
         </div>
-        <Badge variant="outline" className="bg-[rgba(82,102,235,0.08)] text-[#5266eb] border-0 text-[11px] font-[420]">
-          100% HEALTHY
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="outline"
+            className={`${
+              storageHealth?.ok
+                ? 'bg-[rgba(82,102,235,0.08)] text-[#5266eb]'
+                : 'bg-red-50 text-red-600 border-red-200'
+            } border-0 text-[11px] font-[420] rounded-full px-2.5 py-0.5`}
+          >
+            Storage: {storageHealth?.ok ? 'OK' : 'Down'}
+          </Badge>
+          <Badge variant="outline" className="bg-[rgba(82,102,235,0.08)] text-[#5266eb] border-0 text-[11px] font-[420] rounded-full px-2.5 py-0.5">
+            100% HEALTHY
+          </Badge>
+        </div>
       </div>
 
       {/* Recent Onboarding Activity */}

@@ -36,7 +36,7 @@ if (!process.env.S3_BUCKET && process.env.S3_BUCKET_NAME) {
 if (!process.env.S3_BUCKET && process.env.AWS_S3_BUCKET) {
   process.env.S3_BUCKET = process.env.AWS_S3_BUCKET
 }
-if (!process.env.S3_BUCKET) {
+if (!process.env.S3_BUCKET && process.env.NODE_ENV !== 'production') {
   process.env.S3_BUCKET = 'proctornet-evidence'
 }
 
@@ -113,61 +113,91 @@ const configSchema = z.object({
   SEB_PRE_DOWNLOAD_MINUTES: z.coerce.number().default(30)
 })
 
-function validateConfig() {
-  const isProd = process.env.NODE_ENV === 'production'
-  const isTest = process.env.NODE_ENV === 'test'
+function validateConfig(env = process.env) {
+  const isProd = env.NODE_ENV === 'production'
+  const isTest = env.NODE_ENV === 'test'
 
   if (isTest) {
     // In automated unit tests, provide fallback test secret if unset
-    if (!process.env.JWT_SECRET) {
-      process.env.JWT_SECRET = 'test_suite_jwt_secret_minimum_32_characters_long_for_unit_tests!'
+    if (!env.JWT_SECRET) {
+      env.JWT_SECRET = 'test_suite_jwt_secret_minimum_32_characters_long_for_unit_tests!'
     }
-    if (!process.env.JWT_REFRESH_SECRET) {
-      process.env.JWT_REFRESH_SECRET = 'test_suite_jwt_refresh_secret_at_least_32_chars!'
+    if (!env.JWT_REFRESH_SECRET) {
+      env.JWT_REFRESH_SECRET = 'test_suite_jwt_refresh_secret_at_least_32_chars!'
     }
-    if (!process.env.S3_BUCKET) {
-      process.env.S3_BUCKET = 'proctornet-test-bucket'
-      process.env.AWS_S3_BUCKET = 'proctornet-test-bucket'
+    if (!env.S3_BUCKET) {
+      env.S3_BUCKET = 'proctornet-test-bucket'
+      env.AWS_S3_BUCKET = 'proctornet-test-bucket'
     }
-    if (!process.env.SEB_LINK_SECRET) {
-      process.env.SEB_LINK_SECRET = 'test_suite_seb_link_secret_at_least_32_characters_long_for_hmac!'
+    if (!env.SEB_LINK_SECRET) {
+      env.SEB_LINK_SECRET = 'test_suite_seb_link_secret_at_least_32_characters_long_for_hmac!'
     }
   }
 
   if (isProd) {
     const requiredProdSecrets = [
-      { name: 'JWT_SECRET', val: process.env.JWT_SECRET },
-      { name: 'JWT_REFRESH_SECRET', val: process.env.JWT_REFRESH_SECRET },
-      { name: 'SEB_LINK_SECRET', val: process.env.SEB_LINK_SECRET }
+      { name: 'JWT_SECRET', val: env.JWT_SECRET },
+      { name: 'JWT_REFRESH_SECRET', val: env.JWT_REFRESH_SECRET },
+      { name: 'SEB_LINK_SECRET', val: env.SEB_LINK_SECRET }
     ]
 
     for (const { name, val } of requiredProdSecrets) {
       const trimmed = (val || '').trim()
       if (!trimmed) {
         console.error(`Refusing to start application in production: ${name} must be set.`)
-        if (process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
+        if (env.ALLOW_CONFIG_THROW_FOR_TEST || process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
           throw new Error(`Refusing to start application in production: ${name} must be set.`)
         }
         process.exit(1)
       }
       if (trimmed.length < 32) {
         console.error(`Refusing to start application in production: ${name} must be at least 32 characters long.`)
-        if (process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
+        if (env.ALLOW_CONFIG_THROW_FOR_TEST || process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
           throw new Error(`Refusing to start application in production: ${name} must be at least 32 characters long.`)
         }
         process.exit(1)
       }
       if (KNOWN_DEFAULTS.has(trimmed)) {
         console.error(`Refusing to start application in production: ${name} matches a known default and is forbidden.`)
-        if (process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
+        if (env.ALLOW_CONFIG_THROW_FOR_TEST || process.env.ALLOW_CONFIG_THROW_FOR_TEST) {
           throw new Error(`Refusing to start application in production: ${name} matches a known default and is forbidden.`)
         }
         process.exit(1)
       }
     }
+
+    // Storage production invariants (Task: live-storage-hotfix)
+    if (env.S3_ENDPOINT) {
+      const endpoint = String(env.S3_ENDPOINT).toLowerCase().trim()
+      if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1') || endpoint.includes('::1') || endpoint.includes('minio')) {
+        const msg = `Production S3_ENDPOINT must NOT point to local/MinIO services or mock storage address: "${env.S3_ENDPOINT}".`
+        console.error(msg)
+        throw new Error(msg)
+      }
+    }
+
+    if (env.S3_MOCK === 'true') {
+      const msg = 'S3_MOCK is strictly forbidden in production.'
+      console.error(msg)
+      throw new Error(msg)
+    }
+
+    const bucket = (env.S3_BUCKET || env.AWS_S3_BUCKET || env.S3_BUCKET_NAME || '').trim()
+    if (!bucket) {
+      const msg = 'S3_BUCKET must be configured in production.'
+      console.error(msg)
+      throw new Error(msg)
+    }
+
+    const region = (env.AWS_REGION || env.S3_REGION || '').trim()
+    if (!region) {
+      const msg = 'AWS_REGION must be configured in production.'
+      console.error(msg)
+      throw new Error(msg)
+    }
   }
 
-  const result = configSchema.safeParse(process.env)
+  const result = configSchema.safeParse(env)
   if (!result.success) {
     console.error('\n==========================================================')
     console.error(' FATAL: Boot-Time Configuration Validation Failed')
