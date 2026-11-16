@@ -1,6 +1,7 @@
 'use strict'
 
-const { generateExamQuestions } = require('./ai.generator')
+const { generateExamQuestions, estimateSupportedQuestions } = require('./ai.generator')
+const { aiJobsService } = require('./ai.jobs.service')
 const { invigilatorService } = require('./invigilator.service')
 
 async function generateQuestions(req, res, next) {
@@ -21,6 +22,75 @@ async function generateQuestions(req, res, next) {
       count: result.questions.length,
       questions: result.questions
     })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function estimateAiCapacity(req, res, next) {
+  try {
+    const { text } = req.body || {}
+    const estimation = estimateSupportedQuestions(text || '')
+    return res.status(200).json({
+      status: 'success',
+      ...estimation
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function startAiJob(req, res, next) {
+  try {
+    const { examWizardService } = require('./exam.wizard.service')
+    const { pdfBase64, fileName, settings = {} } = req.body || {}
+    const fileBuffer = req.file?.buffer
+
+    // Extract text from PDF buffer or base64
+    const extracted = await examWizardService.extractPdfText({
+      pdfBase64,
+      pdfBuffer: fileBuffer
+    })
+
+    const job = await aiJobsService.startGenerationJob({
+      creatorId: req.user?.id,
+      extractedText: extracted.text,
+      pageCount: extracted.pageCount || 1,
+      fileName: fileName || req.file?.originalname || 'StudyMaterial.pdf',
+      settings
+    })
+
+    return res.status(202).json({
+      status: 'accepted',
+      ...job
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function getAiJob(req, res, next) {
+  try {
+    const job = aiJobsService.getJob(req.params.jobId, req.user?.id)
+    return res.status(200).json({ status: 'success', job })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function cancelAiJob(req, res, next) {
+  try {
+    const result = aiJobsService.cancelJob(req.params.jobId, req.user?.id)
+    return res.status(200).json({ status: 'success', ...result })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function retryAiJob(req, res, next) {
+  try {
+    const result = aiJobsService.retryJob(req.params.jobId, req.user?.id)
+    return res.status(200).json({ status: 'success', ...result })
   } catch (err) {
     next(err)
   }
@@ -56,7 +126,21 @@ async function removeInvigilator(req, res, next) {
 async function generateFromPdf(req, res, next) {
   try {
     const { examWizardService } = require('./exam.wizard.service')
-    const { pdfBase64, fileName, count, difficulty, topicHint } = req.body || {}
+    const {
+      pdfBase64,
+      fileName,
+      count,
+      difficulty,
+      difficultySplit,
+      focus,
+      optionsPerQuestion,
+      allowMultiple,
+      language,
+      explanations,
+      avoidDuplicates,
+      isExtractMode,
+      topicHint
+    } = req.body || {}
     const fileBuffer = req.file?.buffer
     const result = await examWizardService.generateFromPdf({
       pdfBase64,
@@ -64,6 +148,14 @@ async function generateFromPdf(req, res, next) {
       fileName: fileName || req.file?.originalname,
       count: count || 10,
       difficulty: difficulty || 'MEDIUM',
+      difficultySplit,
+      focus,
+      optionsPerQuestion,
+      allowMultiple,
+      language,
+      explanations,
+      avoidDuplicates,
+      isExtractMode,
       topicHint,
       creatorId: req.user?.id
     })
@@ -124,6 +216,11 @@ async function getInstitutionSebStatus(req, res, next) {
 
 module.exports = {
   generateQuestions,
+  estimateAiCapacity,
+  startAiJob,
+  getAiJob,
+  cancelAiJob,
+  retryAiJob,
   generateInvigilator,
   listInvigilators,
   removeInvigilator,

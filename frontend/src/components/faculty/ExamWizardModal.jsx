@@ -171,9 +171,9 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated, existi
         setStepError('Please add at least 1 question to continue.')
         return false
       }
-      const hasUnreviewed = questions.some(q => q.needsReview)
+      const hasUnreviewed = questions.some(q => q.needsReview || (q.flags && q.flags.length > 0))
       if (hasUnreviewed) {
-        setStepError('Please acknowledge or verify all questions flagged "Needs Review" before continuing.')
+        setStepError('Please acknowledge or verify all questions flagged for review before continuing.')
         return false
       }
     } else if (currentStep === 3) {
@@ -228,6 +228,11 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated, existi
   }
 
   const handlePublish = async () => {
+    const hasUnreviewed = questions.some(q => q.needsReview || (q.flags && q.flags.length > 0))
+    if (hasUnreviewed) {
+      setStepError('Publish is blocked: please review or acknowledge all flagged questions before publishing.')
+      return
+    }
     if (!validateCurrentStep()) return
     setIsPublishing(true)
     setStepError('')
@@ -315,7 +320,7 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated, existi
             </div>
           </div>
           <DialogDescription className="text-xs text-muted-foreground mt-1">
-            Build questions with AI or manual input, configure timezone-aware schedule, assign cohort, and publish securely.
+            Start Your Examination: Build questions with AI or manual input, configure timezone-aware schedule, assign cohort, and publish securely.
           </DialogDescription>
         </DialogHeader>
 

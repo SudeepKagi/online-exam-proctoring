@@ -16,32 +16,7 @@ const { examDraftService } = require('./exam.draft.service')
 const aiRateLimitMap = new Map()
 
 class ExamWizardService {
-  async generateFromPdf({
-    pdfBase64,
-    pdfBuffer,
-    fileName,
-    count = 10,
-    difficulty = 'MEDIUM',
-    topicHint,
-    creatorId
-  }) {
-    // 1. Per-user rate limiting: 5 requests per hour
-    if (creatorId) {
-      const now = Date.now()
-      const oneHourAgo = now - 3600000
-      const history = (aiRateLimitMap.get(creatorId) || []).filter(ts => ts > oneHourAgo)
-      if (history.length >= 5) {
-        const nextAvailableMs = history[0] + 3600000
-        const resetMinutes = Math.ceil((nextAvailableMs - now) / 60000)
-        const err = new Error(`AI generation rate limit reached (5 requests/hour). Try again in ${resetMinutes} minute(s).`)
-        err.status = 429
-        err.code = 'RATE_LIMIT_EXCEEDED'
-        throw err
-      }
-      history.push(now)
-      aiRateLimitMap.set(creatorId, history)
-    }
-
+  async extractPdfText({ pdfBase64, pdfBuffer }) {
     let buffer = pdfBuffer
     if (!buffer && pdfBase64) {
       const cleanBase64 = pdfBase64.replace(/^data:[^;]+;base64,/, '')
@@ -64,29 +39,79 @@ class ExamWizardService {
     }
 
     let extractedText
+    let pageCount = 1
     try {
       const pdfParse = require('pdf-parse')
       const parsed = await pdfParse(buffer)
       extractedText = parsed?.text || ''
+      pageCount = parsed?.numpages || 1
     } catch (_) {
-      // Fallback text extraction if pdf-parse encounters unusual stream encoding
       extractedText = buffer.toString('utf-8').replace(/[^a-zA-Z0-9\s.,?!;:()\-_/]/g, ' ')
     }
 
-    // Sanitize untrusted document text: remove HTML tags, normalize whitespace, cap length
+    // Sanitize untrusted document text: remove HTML tags, normalize whitespace
     extractedText = (extractedText || '')
       .replace(/<[^>]*>?/gm, ' ')
       .replace(/\s+/g, ' ')
       .trim()
 
+    return {
+      text: extractedText,
+      pageCount
+    }
+  }
+
+  async generateFromPdf({
+    pdfBase64,
+    pdfBuffer,
+    fileName,
+    count = 10,
+    difficulty = 'MEDIUM',
+    difficultySplit,
+    focus,
+    optionsPerQuestion,
+    allowMultiple,
+    language,
+    explanations,
+    avoidDuplicates,
+    isExtractMode,
+    topicHint,
+    creatorId
+  }) {
+    // 1. Per-user rate limiting: 5 requests per hour
+    if (creatorId) {
+      const now = Date.now()
+      const oneHourAgo = now - 3600000
+      const history = (aiRateLimitMap.get(creatorId) || []).filter(ts => ts > oneHourAgo)
+      if (history.length >= 5) {
+        const nextAvailableMs = history[0] + 3600000
+        const resetMinutes = Math.ceil((nextAvailableMs - now) / 60000)
+        const err = new Error(`AI generation rate limit reached (5 requests/hour). Try again in ${resetMinutes} minute(s).`)
+        err.status = 429
+        err.code = 'RATE_LIMIT_EXCEEDED'
+        throw err
+      }
+      history.push(now)
+      aiRateLimitMap.set(creatorId, history)
+    }
+
+    const { text: extractedText } = await this.extractPdfText({ pdfBase64, pdfBuffer })
+
     const cleanTopic = topicHint || (fileName ? fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') : null) || 'Engineering Subject'
 
     const genResult = await generateExamQuestions({
       topic: cleanTopic,
-      syllabusText: extractedText.slice(0, 4000),
+      syllabusText: extractedText.slice(0, 15000),
       difficulty,
+      difficultySplit,
       count: parseInt(count, 10) || 10,
-      isPdfExtraction: true
+      focus,
+      optionsPerQuestion: optionsPerQuestion || 4,
+      allowMultiple: Boolean(allowMultiple),
+      language: language || 'same as material',
+      explanations: explanations !== false,
+      avoidDuplicates: avoidDuplicates !== false,
+      isExtractMode: Boolean(isExtractMode)
     })
 
     return {
@@ -103,7 +128,9 @@ class ExamWizardService {
         markingScheme: genResult.markingScheme || { positive: 1, negative: 0 }
       },
       count: genResult.questions ? genResult.questions.length : 0,
-      questions: genResult.questions || []
+      questions: genResult.questions || [],
+      honestyNote: genResult.honestyNote,
+      aiAudit: genResult.aiAudit
     }
   }
 
