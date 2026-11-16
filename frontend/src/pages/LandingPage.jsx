@@ -1,66 +1,22 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, Cpu, ArrowRight, Lock, ChevronRight } from 'lucide-react'
+import AppFooter from '@/components/common/AppFooter'
+import { usePageTitle } from '@/hooks/usePageTitle'
+import COPY from '@/copy'
 
 export default function LandingPage() {
+  usePageTitle('Online Examination & Proctoring Platform')
   const navigate = useNavigate()
 
-  const features = [
-    {
-      title: 'Verified Onboarding',
-      category: 'Identity Assurance',
-      desc: 'Admin account provisioning with student face and institutional verification.',
-      icon: Shield
-    },
-    {
-      title: 'Pre-Exam Identity & Screen Check',
-      category: 'Session Security',
-      desc: 'Facial comparison verification and mandatory full-screen monitor sharing.',
-      icon: Lock
-    },
-    {
-      title: 'Exam Authoring & Instant Grading',
-      category: 'Evaluation Engine',
-      desc: 'Create MCQ assessments, import questions, and evaluate submissions deterministically.',
-      icon: Cpu
-    },
-    {
-      title: 'Live Invigilator Console',
-      category: 'Real-Time Oversight',
-      desc: 'Monitor active exam attempts, review live proctoring violation events, and manage sessions.',
-      icon: Eye
-    }
-  ]
+  const featureIcons = [Shield, Lock, Cpu, Eye]
+  const features = COPY.landing.features.map((f, i) => ({
+    ...f,
+    icon: featureIcons[i] || Shield
+  }))
 
-  const workflowSteps = [
-    {
-      num: '01',
-      title: 'Provision & Verify Accounts',
-      desc: 'Administrators provision accounts; candidates submit face reference photos for verification.'
-    },
-    {
-      num: '02',
-      title: 'Author & Schedule Exams',
-      desc: 'Faculty configure MCQ tests, set start/end windows, and assign proctors to student cohorts.'
-    },
-    {
-      num: '03',
-      title: 'Identity & Screen Verification',
-      desc: 'Before the exam unlocks, students pass facial comparison and activate screen sharing.'
-    },
-    {
-      num: '04',
-      title: 'Monitored Exam & Instant Grading',
-      desc: 'Exam runner autosaves answers with network resilience and computes deterministic final scores.'
-    }
-  ]
-
-  const roles = [
-    { role: 'STUDENT', name: 'Student Portal', desc: 'Secure student identity onboarding, full-screen examination arena, and verified score reports.', route: '/login?role=student' },
-    { role: 'FACULTY', name: 'Faculty Console', desc: 'Design assessments, configure positive/negative marking rules, and inspect student score breakdowns.', route: '/login?role=faculty' },
-    { role: 'INVIGILATOR', name: 'Proctor Station', desc: 'Live candidate monitoring console, violation event feeds, and instant session management.', route: '/login?role=invigilator' },
-    { role: 'ADMIN', name: 'Administrative Suite', desc: 'Manage institutional accounts, assign RBAC permissions, and review tamper-evident audit logs.', route: '/login?role=admin' }
-  ]
+  const workflowSteps = COPY.landing.workflowSteps
+  const roles = COPY.landing.roles
 
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] font-sans antialiased selection:bg-[#5266eb] selection:text-white relative">
@@ -190,24 +146,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-white py-12 px-6 sm:px-8 text-xs text-[#554e7b] z-10 relative">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-xs">P</div>
-            <span className="font-[480] text-[#28253b]">ProctorNet Enterprise</span>
-          </div>
-          <div className="text-[12px] text-[#554e7b]">
-            © {new Date().getFullYear()} ProctorNet Examination Systems. Institutional Assessment Runtime.
-          </div>
-          <div className="flex items-center gap-4 text-xs font-[420]">
-            <a href="#features" className="text-[#554e7b] hover:text-[#28253b] transition">Features</a>
-            <a href="#how-it-works" className="text-[#554e7b] hover:text-[#28253b] transition">How It Works</a>
-            <a href="#roles" className="text-[#554e7b] hover:text-[#28253b] transition">Roles</a>
-            <Link to="/login" className="text-[#5266eb] hover:underline font-[480] transition">Sign In</Link>
-          </div>
-        </div>
-      </footer>
+      {/* Reusable Enterprise Footer */}
+      <AppFooter />
     </div>
   )
 }

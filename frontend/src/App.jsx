@@ -22,6 +22,8 @@ const StudentExamStartPage = lazy(() => import('@/pages/student/StudentExamStart
 const PreExamCheckPage = lazy(() => import('@/pages/student/PreExamCheckPage'))
 const SebRequiredPage = lazy(() => import('@/pages/student/SebRequiredPage'))
 const ExamArenaPage = lazy(() => import('@/pages/student/ExamArenaPage'))
+const PrivacyPage = lazy(() => import('@/pages/common/PrivacyPage'))
+const NotFoundPage = lazy(() => import('@/pages/common/NotFoundPage'))
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading } = useAuth()
@@ -129,7 +131,11 @@ export default function App() {
               <Route path="/student/exams/:id/arena" element={<ProtectedRoute allowedRoles={['STUDENT']}><ExamArenaPage /></ProtectedRoute>} /> {/* // terms-ok: internal route */}
               <Route path="/student/exams/:id/exam" element={<ProtectedRoute allowedRoles={['STUDENT']}><ExamArenaPage /></ProtectedRoute>} />
 
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Public Privacy & Compliance Route */}
+              <Route path="/privacy" element={<PrivacyPage />} />
+
+              {/* Custom Enterprise 404 Route */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>

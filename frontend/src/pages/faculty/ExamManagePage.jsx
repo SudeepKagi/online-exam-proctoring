@@ -12,6 +12,7 @@ import ExamInvigilatorsTab from '@/components/faculty/ExamInvigilatorsTab'
 import ExamReadinessTab from '@/components/faculty/ExamReadinessTab'
 import IncidentReviewModal from '@/components/faculty/IncidentReviewModal'
 import ExamSettingsModal from '@/components/faculty/ExamSettingsModal'
+import EmptyState from '@/components/common/EmptyState'
 import { ArrowLeft, Send, Download, UserCheck, ShieldCheck, ShieldAlert, AlertTriangle, Eye, Laptop } from 'lucide-react'
 
 export default function ExamManagePage() {
@@ -163,20 +164,28 @@ export default function ExamManagePage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Attempt Status</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Integrity & Review Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {attempts.length === 0 ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-xs text-[#70707d] font-[360]">No student attempts recorded for this exam yet.</TableCell></TableRow>
-                  ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Attempt Status</TableHead>
+                      <TableHead>Score</TableHead>
+                      <TableHead>Integrity &amp; Review Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attempts.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-0">
+                          <EmptyState
+                            title="No student attempts recorded"
+                            description="No student attempts have been initiated or submitted for this assessment yet."
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ) : (
                     attempts.map((att) => {
                       const isFlagged = Boolean(att.isFlagged) || (att.violationCount > 0) || att.reviewStatus === 'CONFIRMED'
                       return (
@@ -229,7 +238,8 @@ export default function ExamManagePage() {
                   )}
                 </TableBody>
               </Table>
-            </CardContent>
+            </div>
+          </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

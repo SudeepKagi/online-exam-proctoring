@@ -4,12 +4,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
-import { ShieldAlert, Download, ExternalLink, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react'
+import { ShieldAlert, Download, ExternalLink, ArrowLeft, RefreshCw, AlertCircle, Laptop } from 'lucide-react'
+import { isMobileOrTablet } from '@/lib/systemCheck'
+import COPY from '@/copy'
 
 export default function SebRequiredPage() {
   const { id } = useParams()
   const [exam, setExam] = useState(null)
   const [checking, setChecking] = useState(false)
+  const isMobile = isMobileOrTablet()
 
   const downloadUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_DOWNLOAD_URL) || 'https://safeexambrowser.org/download_en.html'
   const configUrl = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SEB_CONFIG_URL : null
@@ -69,6 +72,18 @@ export default function SebRequiredPage() {
               Standard web browsers are restricted for this exam. Safe Exam Browser locks your computer into a secure kiosk mode, disabling unauthorized applications, secondary monitors, and shortcuts during the session.
             </p>
           </div>
+
+          {isMobile && (
+            <div className="p-3.5 bg-[#fbfbff] rounded-[12px] text-xs text-[#28253b] space-y-1.5 border border-[#e9eaf2]">
+              <div className="flex items-center gap-1.5 font-[480] text-[#5266eb]">
+                <Laptop className="w-4 h-4 shrink-0" />
+                <span>{COPY.student.seb.mobileAlertTitle}</span>
+              </div>
+              <p className="font-[360] text-[#554e7b] leading-relaxed">
+                {COPY.student.seb.mobileWarning}
+              </p>
+            </div>
+          )}
 
           <div className="flex flex-col gap-2.5 pt-1">
             {configUrl && (

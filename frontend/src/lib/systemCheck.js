@@ -87,22 +87,42 @@ export function evaluateLatency(latencyMs) {
 }
 
 /**
+ * Evaluates whether current client is a mobile device or tablet.
+ */
+export function isMobileOrTablet(customUserAgent) {
+  const ua = customUserAgent || (typeof navigator !== 'undefined' ? (navigator.userAgent || navigator.platform || '') : '')
+  return /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(ua)
+}
+
+/**
  * Evaluates client operating system compatibility.
  *
  * @param {boolean} sebRequired - Whether this exam mandates Safe Exam Browser
  * @param {string} [customUserAgent] - Optional override for testing
- * @returns {{ isWindows: boolean, compatible: boolean, message: string, supportContact?: string }}
+ * @returns {{ isWindows: boolean, compatible: boolean, isMobile: boolean, message: string, supportContact?: string }}
  */
 export function evaluateOperatingSystem(sebRequired, customUserAgent) {
   const ua = customUserAgent || (typeof navigator !== 'undefined' ? (navigator.userAgent || navigator.platform || '') : '')
   const isWindows = /Windows|Win32|Win64|WOW64/i.test(ua)
+  const isMobile = isMobileOrTablet(ua)
 
   const supportContact = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPPORT_EMAIL) || 'support@institution.edu'
+
+  if (sebRequired && isMobile) {
+    return {
+      isWindows: false,
+      compatible: false,
+      isMobile: true,
+      message: 'This assessment requires Safe Exam Browser on a Windows PC or laptop. Mobile phones and tablets cannot run this secured examination.',
+      supportContact
+    }
+  }
 
   if (sebRequired && !isWindows) {
     return {
       isWindows: false,
       compatible: false,
+      isMobile: false,
       message: 'This secure exam is configured for Windows. Please use a Windows computer or contact your instructor.',
       supportContact
     }
@@ -111,6 +131,7 @@ export function evaluateOperatingSystem(sebRequired, customUserAgent) {
   return {
     isWindows,
     compatible: true,
+    isMobile,
     message: isWindows ? 'Windows computer detected (Compatible)' : 'Computer operating system compatible'
   }
 }
