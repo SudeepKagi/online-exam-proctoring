@@ -186,6 +186,9 @@ function sanitizeProctoringConfigInput(input, { isUpdate = false } = {}) {
     }
   }
 
+  // Phase 2 C.1: Accept and ignore legacy maxViolations, strip it from sanitized config
+  delete sanitized.maxViolations
+
   return sanitized
 }
 

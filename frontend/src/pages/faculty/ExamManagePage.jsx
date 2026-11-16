@@ -12,6 +12,7 @@ import ExamInvigilatorsTab from '@/components/faculty/ExamInvigilatorsTab'
 import ExamReadinessTab from '@/components/faculty/ExamReadinessTab'
 import IncidentReviewModal from '@/components/faculty/IncidentReviewModal'
 import ExamSettingsModal from '@/components/faculty/ExamSettingsModal'
+import ExamViolationsTab from '@/components/faculty/ExamViolationsTab'
 import EmptyState from '@/components/common/EmptyState'
 import { ArrowLeft, Send, Download, UserCheck, ShieldCheck, ShieldAlert, AlertTriangle, Eye, Laptop } from 'lucide-react'
 
@@ -23,13 +24,15 @@ export default function ExamManagePage() {
   const [reviewModalAttemptId, setReviewModalAttemptId] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [sebStatus, setSebStatus] = useState(null)
+  const [hasInvigilator, setHasInvigilator] = useState(true)
 
   const loadExam = async () => {
     try {
-      const [examRes, attemptsRes, sebRes] = await Promise.allSettled([
+      const [examRes, attemptsRes, sebRes, assignmentsRes] = await Promise.allSettled([
         api.get(`/exams/${id}`),
         api.get(`/exams/${id}/attempts`),
         api.get('/exams/seb-status'),
+        api.get(`/exams/${id}/assignments`)
       ])
       if (examRes.status === 'fulfilled') {
         const data = examRes.value.data?.exam || examRes.value.data
@@ -41,6 +44,11 @@ export default function ExamManagePage() {
       }
       if (sebRes.status === 'fulfilled') {
         setSebStatus(sebRes.value.data)
+      }
+      if (assignmentsRes.status === 'fulfilled') {
+        const assignments = ensureArray(assignmentsRes.value.data?.assignments || assignmentsRes.value.data)
+        const invCount = assignments.filter((a) => a.assignedRole === 'INVIGILATOR').length
+        setHasInvigilator(invCount > 0)
       }
     } catch (err) {
       setMsg({ text: errorMessage(err, 'Failed to load exam'), type: 'error' })
@@ -115,6 +123,13 @@ export default function ExamManagePage() {
         </div>
       )}
 
+      {!hasInvigilator && (
+        <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#554e7b] border-0 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-[#5266eb] shrink-0" />
+          <span>No invigilator assigned, violations are logged but nobody can suspend in real time.</span>
+        </div>
+      )}
+
       {msg.text && (
         <div className="p-3 rounded-[12px] text-xs font-[420] bg-[#edecfb] text-[#28253b] border-0">
           {msg.text}
@@ -129,6 +144,9 @@ export default function ExamManagePage() {
           </TabsTrigger>
           <TabsTrigger value="readiness" data-testid="tab-readiness" className="flex items-center gap-1.5">
             <Laptop className="w-3.5 h-3.5" /> Student Readiness
+          </TabsTrigger>
+          <TabsTrigger value="violations" data-testid="tab-violations" className="flex items-center gap-1.5">
+            <ShieldAlert className="w-3.5 h-3.5" /> Violations
           </TabsTrigger>
           <TabsTrigger value="results">Assessment Results ({attempts.length})</TabsTrigger>
         </TabsList>
@@ -149,6 +167,10 @@ export default function ExamManagePage() {
 
         <TabsContent value="readiness" className="mt-4">
           <ExamReadinessTab examId={id} exam={exam} />
+        </TabsContent>
+
+        <TabsContent value="violations" className="mt-4">
+          <ExamViolationsTab examId={id} />
         </TabsContent>
 
         <TabsContent value="results" className="mt-4">

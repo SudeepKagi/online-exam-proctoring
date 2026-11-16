@@ -2,12 +2,13 @@ const { mediaService } = require('./media.service')
 
 async function presignUpload(req, res, next) {
   try {
-    const { purpose, attemptId, contentType, bytes } = req.body
+    const { purpose, attemptId, contentType, bytes, metadata } = req.body
     const result = await mediaService.generatePresignedUpload({
       purpose,
       attemptId,
       contentType,
-      bytes
+      bytes,
+      metadata: metadata || {}
     })
     return res.status(200).json(result)
   } catch (err) {
@@ -17,11 +18,17 @@ async function presignUpload(req, res, next) {
 
 async function verifyFace(req, res, next) {
   try {
-    const { liveFrameKey, attemptId } = req.body
+    const { image, imageBase64, liveFrameKey, attemptId, examId } = req.body
     const studentId = req.user?.id
     const targetAttemptId = attemptId || req.params.attemptId
 
-    const result = await mediaService.verifyLiveFaceAgainstReference(studentId, liveFrameKey, targetAttemptId)
+    const result = await mediaService.verifyLiveFaceAgainstReference({
+      studentId,
+      imageBase64: imageBase64 || image,
+      liveFrameKey,
+      attemptId: targetAttemptId,
+      examId
+    })
     return res.status(200).json(result)
   } catch (err) {
     next(err)

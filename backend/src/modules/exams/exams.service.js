@@ -57,8 +57,9 @@ function toExamDto(exam, viewer = null) {
     pConfig.sebRequired = sebRequired
   }
 
-  // Remove request-only flag if present
+  // Remove request-only flag and deprecated violation limit if present
   delete pConfig.clearSebConfigKey
+  delete pConfig.maxViolations
 
   dto.proctoringConfig = pConfig
   return dto

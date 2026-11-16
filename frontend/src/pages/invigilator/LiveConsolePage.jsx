@@ -159,7 +159,7 @@ export default function LiveConsolePage() {
     setActionLoading(true)
     try {
       await api.post(`/attempts/${candidate.attemptId}/terminate`, { reason: 'Invigilator manual termination' })
-      setCandidates(prev => prev.map(c => c.attemptId === candidate.attemptId ? { ...c, attemptStatus: 'SUBMITTED', violationCount: Math.max(c.violationCount, 3) } : c))
+      setCandidates(prev => prev.map(c => c.attemptId === candidate.attemptId ? { ...c, attemptStatus: 'SUBMITTED' } : c))
       if (selectedCandidate?.attemptId === candidate.attemptId) {
         setSelectedCandidate(prev => ({ ...prev, attemptStatus: 'SUBMITTED' }))
       }
@@ -170,12 +170,65 @@ export default function LiveConsolePage() {
     }
   }
 
-  const filtered = candidates.filter(c => {
-    if (filter === 'FLAGGED') return c.violationCount > 0
-    if (filter === 'SUSPENDED') return c.attemptStatus === 'SUSPENDED'
-    if (filter === 'IN_PROGRESS') return c.attemptStatus === 'IN_PROGRESS'
-    return true
-  })
+  const handleApproveIdentity = async (candidate) => {
+    if (!candidate.attemptId) return
+    setActionLoading(true)
+    try {
+      await api.post(`/attempts/${candidate.attemptId}/approve-identity`)
+      setCandidates(prev => prev.map(c => c.attemptId === candidate.attemptId ? {
+        ...c,
+        faceVerified: true,
+        faceStatus: 'APPROVED',
+        invigilatorApproved: true
+      } : c))
+      if (selectedCandidate?.attemptId === candidate.attemptId) {
+        setSelectedCandidate(prev => ({
+          ...prev,
+          faceVerified: true,
+          faceStatus: 'APPROVED',
+          invigilatorApproved: true
+        }))
+      }
+    } catch (err) {
+      alert(errorMessage(err, 'Failed to approve candidate identity'))
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleRejectIdentity = async (candidate) => {
+    if (!candidate.attemptId) return
+    setActionLoading(true)
+    try {
+      await api.post(`/attempts/${candidate.attemptId}/reject-identity`)
+      setCandidates(prev => prev.map(c => c.attemptId === candidate.attemptId ? {
+        ...c,
+        faceVerified: false,
+        faceStatus: 'REJECTED'
+      } : c))
+      if (selectedCandidate?.attemptId === candidate.attemptId) {
+        setSelectedCandidate(prev => ({
+          ...prev,
+          faceVerified: false,
+          faceStatus: 'REJECTED'
+        }))
+      }
+    } catch (err) {
+      alert(errorMessage(err, 'Failed to reject candidate identity'))
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const filtered = candidates
+    .filter(c => {
+      if (filter === 'NEEDS_ATTENTION') return (c.violationCount > 0) || c.faceStatus === 'PENDING_APPROVAL' || c.attemptStatus === 'SUSPENDED'
+      if (filter === 'FLAGGED') return c.violationCount > 0
+      if (filter === 'SUSPENDED') return c.attemptStatus === 'SUSPENDED'
+      if (filter === 'IN_PROGRESS') return c.attemptStatus === 'IN_PROGRESS'
+      return true
+    })
+    .sort((a, b) => (b.violationCount || 0) - (a.violationCount || 0))
 
   return (
     <DashboardShell title="Live Proctoring Console">
@@ -234,6 +287,8 @@ export default function LiveConsolePage() {
         auditHistory={auditHistory}
         onToggleSuspend={handleToggleSuspend}
         onTerminate={handleTerminateCandidate}
+        onApproveIdentity={handleApproveIdentity}
+        onRejectIdentity={handleRejectIdentity}
         actionLoading={actionLoading}
       />
     </DashboardShell>

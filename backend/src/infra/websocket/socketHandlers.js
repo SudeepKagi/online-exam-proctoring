@@ -108,7 +108,6 @@ function registerSocketEvents(io, socket) {
           attemptId, studentId: socket.user.id, online: true, lastHeartbeatAt: new Date().toISOString()
         })
       }
-      socket.emit('proctor:cadence', { attemptId, cadenceMs: 3000, jitterMs: 500, reason: 'default', durationMs: null })
       if (typeof ack === 'function') ack({ success: true, attemptId })
     } catch (err) {
       logger.error({ error: err.message }, 'Error in attempt:join')

@@ -85,3 +85,24 @@
   2. **Preflight Environment Validation:** Implemented `scripts/ops/preflight-env.js` and wired it into `.github/workflows/cd-production.yml` and `cd-staging.yml`. Enforces all required variable names, minimum 32-character secret lengths, forbids known template defaults (`replace_with_...`), validates bare `PUBLIC_ORIGIN`, ensures valid `SEB_MODE`, and blocks test/pilot database names in production.
   3. **Sequential Release Verification Pipeline (`npm run release:check`):** Implemented `scripts/ci/release-check.js` running 7 sequential validation steps (lint, typecheck, build, backend test runner, playwright E2E, security audit, and database migration drift status) writing artifact logs to `test-results/`.
   4. **Go-Live Checklist & Artifact Directory Isolation:** Authored `docs/ops/GO_LIVE_CHECKLIST.md` detailing automated CI gates and explicit `[HUMAN REQUIRED]` verification protocols (hardware pilot, database backup restore drill, load test, kill-switch drill). Isolated Playwright test artifacts to `test-results/artifacts` to prevent inadvertent log erasure during sequential suite execution.
+
+## Decision 17: Proctoring Redesign — Single Pre-Check Photo & DOM Violation Screenshot Policy
+- **Context:** Continuous camera streaming and periodic video frame uploads consume extensive client/server resources and raise unnecessary candidate privacy concerns. Similarly, capturing the entire OS screen violates privacy and requires invasive browser permissions.
+- **Decision:**
+  1. **Single Still Pre-Check Photo:** Continuous camera streaming is eliminated across the entire exam arena. The webcam is accessed once strictly during pre-check for a single still JPEG photograph matched 1:1 against the institutional reference portrait. The camera hardware tracks are stopped immediately upon capture (camera indicator LED turns off).
+  2. **DOM Page Capture (Not Screen Sharing):** Page capture is performed strictly on the exam webpage DOM using lazy-loaded `html2canvas`. Plain statement: this captures only the rendered exam webpage DOM canvas, NOT external desktop windows, third-party applications, or personal desktop content.
+  3. **Violation Attachment Policy Table:**
+     | Event Type | Action | Rationale |
+     | :--- | :--- | :--- |
+     | `CLIPBOARD_COPY` | Attach Screenshot | Preserves question/answer text attempted to be extracted |
+     | `CLIPBOARD_PASTE` | Attach Screenshot | Preserves external content pasted into the exam response |
+     | `PRINT_SCREEN` | Attach Screenshot | Captures viewport state at time of key event |
+     | `SCREENSHOT_KEY` | Attach Screenshot | Captures viewport state at time of key event |
+     | `DEVTOOLS_OPEN` | Attach Screenshot | Records DOM tampering or console manipulation attempt |
+     | `CONTEXT_MENU` | Attach Screenshot | Records context menu invocation |
+     | `FULLSCREEN_EXIT`| Attach Screenshot | Captures viewport state upon exiting fullscreen |
+     | `WINDOW_RESIZE`  | Attach Screenshot | Captures resized layout |
+     | `TAB_SWITCH`     | Metadata Only | Capturing the exam page would mislead since candidate is away; records time-away |
+     | `WINDOW_BLUR`    | Metadata Only | Capturing the exam page would mislead since candidate is away; records time-away |
+  4. **Rate Limiting & Asynchronous Attachment:** Screenshots are rate-limited to at most 1 per 10 seconds per attempt. The violation event is recorded FIRST, and the screenshot is uploaded asynchronously to S3. Upload failures are queued for retry and never block candidate navigation or throw errors in the arena.
+  5. **Removal of Automated Threshold Termination:** Candidates are never automatically locked out or terminated by a client-side violation counter (no '3-strikes' auto-kill). Only an authorized invigilator or admin can suspend or terminate an attempt based on logged evidence.

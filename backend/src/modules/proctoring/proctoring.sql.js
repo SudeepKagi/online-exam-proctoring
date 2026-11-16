@@ -32,40 +32,13 @@ async function insertLog({ attemptId, eventType, severity = 'MEDIUM', metadata =
   const isHeartbeat = eventType === 'HEARTBEAT_SNAPSHOT' || eventType === 'SCREEN_SAMPLE'
   if (attemptId && !isHeartbeat) {
     try {
+      // Phase 2: Students are NEVER terminated by client counter threshold.
+      // The violation count is recorded for live invigilator monitoring and faculty review.
       updated = await prisma.examAttempt.update({
         where: { id: attemptId },
         data: { violationCount: { increment: 1 } },
         include: { student: true, exam: true }
       })
-      const maxViolations = updated.exam?.proctoringConfig?.maxViolations !== undefined
-        ? updated.exam.proctoringConfig.maxViolations
-        : null
-
-      if (maxViolations && updated.violationCount >= maxViolations && updated.status === 'IN_PROGRESS') {
-        const attemptsSql = require('../attempts/attempts.sql')
-        const { socketEmitter } = require('../../infra/websocket/emitter')
-        const graded = await attemptsSql.submitAndGradeAttempt(attemptId)
-        if (graded) updated = { ...updated, ...graded }
-        socketEmitter.emitToAttempt(attemptId, 'attempt:terminated', {
-          reason: 'MAX_VIOLATIONS',
-          violationCount: updated.violationCount,
-          attemptId
-        })
-        socketEmitter.emitToInvigilators(updated.examId, 'student:terminated', {
-          attemptId,
-          violationCount: updated.violationCount,
-          studentId: updated.studentId,
-          score: updated.score
-        })
-      } else if (!maxViolations && updated.violationCount >= 50 && updated.status === 'IN_PROGRESS') {
-        await prisma.examAttempt.update({
-          where: { id: attemptId },
-          data: { status: 'SUSPENDED' }
-        })
-        updated.status = 'SUSPENDED'
-        const { socketEmitter } = require('../../infra/websocket/emitter')
-        socketEmitter.emitToAttempt(attemptId, 'attempt:suspended', { reason: 'Automated threshold suspension', by: 'SYSTEM' })
-      }
     } catch (_) {}
   }
   return { ...mapLogRecord(log), updatedAttempt: updated }
