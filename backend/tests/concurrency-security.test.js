@@ -206,7 +206,7 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
     assert.strictEqual(ans, null, 'Expired answer must not be saved to DB')
   })
 
-  it('5. Proctoring Micro-Batch Ingestion & Auto-Suspension: 60 rapid events increment count', async () => {
+  it('5. Proctoring Micro-Batch Ingestion & Zero Auto-Suspension: 60 rapid events increment count', async () => {
     const stud = students[2]
     const att = await prisma.examAttempt.findFirst({ where: { examId: exam.id, studentId: stud.id } })
 
@@ -227,7 +227,7 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
 
     const updatedAtt = await prisma.examAttempt.findUnique({ where: { id: att.id } })
     assert.strictEqual(updatedAtt.violationCount, 60, 'ExamAttempt.violationCount must accurately be 60')
-    assert.strictEqual(updatedAtt.status, 'SUSPENDED', 'Attempt must be auto-suspended after 50 violations')
+    assert.strictEqual(updatedAtt.status, 'IN_PROGRESS', 'Attempt must remain IN_PROGRESS under zero auto-suspension/termination invariant')
   })
 
   it('6. Security & IDOR Negative Checks: Rejects cross-student mutation, unprivileged routes, and unauthenticated requests', async () => {

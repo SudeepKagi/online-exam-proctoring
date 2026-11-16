@@ -343,14 +343,14 @@ async function runVerifySeb(req, res, next) {
   // Derive effective mode from exam & institution state
   const effectiveMode = (sebSettings?.effectiveMode || sebMode).toLowerCase().trim()
 
-  if (effectiveMode === 'off') {
-    req.seb = { mode: 'off', verified: false }
+  // If sebRequired is false, pass through immediately
+  if (!sebSettings.sebRequired) {
+    req.seb = { mode: effectiveMode, verified: true, sebRequired: false }
     return next()
   }
 
-  // If sebRequired is false, pass through
-  if (!sebSettings.sebRequired) {
-    req.seb = { mode: effectiveMode, verified: true, sebRequired: false }
+  if (effectiveMode === 'off') {
+    req.seb = { mode: 'off', verified: false }
     return next()
   }
 

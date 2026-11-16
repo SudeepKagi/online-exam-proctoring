@@ -58,7 +58,7 @@ describe('SEB Debug Log Hashes Behavior', () => {
       examService.getSebSettings = originalGetSebSettings
 
       assert.ok(capturedLog, 'Logger.info must be called in log mode')
-      assert.strictEqual(capturedLog.msg, 'SEB request verification check (log mode)')
+      assert.strictEqual(capturedLog.msg, 'SEB request verification check (audit/log mode)')
       assert.strictEqual(capturedLog.payload.receivedPrefix8, 'b'.repeat(8))
       assert.ok(capturedLog.payload.expectedPrefix8, 'Must have expectedPrefix8')
       assert.strictEqual(capturedLog.payload.receivedHash, 'b'.repeat(64), 'Must include full receivedHash')

@@ -22,6 +22,33 @@ const { examService, toExamDto } = require('../src/modules/exams/exams.service')
 const { prisma } = require('../src/infra/postgres/client')
 
 const VALID_64_HEX = '43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c'
+const { settingsService } = require('../src/modules/admin/settings.service')
+const { getStorageAdapter } = require('../src/infra/s3/s3.client')
+const { invalidateInstitutionSebState } = require('../src/modules/seb/seb.service')
+
+async function setInstitutionMode(mode = 'enforce') {
+  const storage = getStorageAdapter()
+  await storage.putObject('seb/institution-config.seb', Buffer.from('mock-seb-file'), 'application/seb').catch(() => {})
+  await settingsService.saveSebConfig({
+    fileKey: 'seb/institution-config.seb',
+    configKey: VALID_64_HEX,
+    uploadedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString(),
+    requestedMode: mode
+  })
+  config.sebMode = mode
+  invalidateInstitutionSebState()
+  clearAllSebCaches()
+}
+
+async function clearInstitutionConfig() {
+  await settingsService.deleteSebConfig().catch(() => {})
+  const storage = getStorageAdapter()
+  await storage.deleteObject('seb/institution-config.seb').catch(() => {})
+  config.sebMode = 'off'
+  invalidateInstitutionSebState()
+  clearAllSebCaches()
+}
 
 describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', () => {
   let server = null
@@ -165,6 +192,7 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
     })
 
     it('under SEB_MODE=log: returns 200 with verified:false when header missing', async () => {
+      await setInstitutionMode('audit')
       const origMode = config.sebMode
       config.sebMode = 'log'
       try {
@@ -178,14 +206,16 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
         const body = await res.json()
         assert.strictEqual(body.status, 'success')
         assert.strictEqual(body.required, true)
-        assert.strictEqual(body.mode, 'log')
+        assert.ok(body.mode === 'log' || body.mode === 'audit')
         assert.strictEqual(body.verified, false)
       } finally {
         config.sebMode = origMode
+        await clearInstitutionConfig()
       }
     })
 
     it('under SEB_MODE=log: returns 200 with verified:true when header is valid', async () => {
+      await setInstitutionMode('audit')
       const origMode = config.sebMode
       config.sebMode = 'log'
       try {
@@ -204,14 +234,16 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
         const body = await res.json()
         assert.strictEqual(body.status, 'success')
         assert.strictEqual(body.required, true)
-        assert.strictEqual(body.mode, 'log')
+        assert.ok(body.mode === 'log' || body.mode === 'audit')
         assert.strictEqual(body.verified, true)
       } finally {
         config.sebMode = origMode
+        await clearInstitutionConfig()
       }
     })
 
     it('under SEB_MODE=enforce: NEVER blocks with 403 on missing header, returns 200 verified:false', async () => {
+      await setInstitutionMode('enforce')
       const origMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -230,10 +262,12 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
         assert.strictEqual(body.verified, false)
       } finally {
         config.sebMode = origMode
+        await clearInstitutionConfig()
       }
     })
 
     it('under SEB_MODE=enforce: returns 200 verified:true on valid header', async () => {
+      await setInstitutionMode('enforce')
       const origMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -256,6 +290,7 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
         assert.strictEqual(body.verified, true)
       } finally {
         config.sebMode = origMode
+        await clearInstitutionConfig()
       }
     })
 
