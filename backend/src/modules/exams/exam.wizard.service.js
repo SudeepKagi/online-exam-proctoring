@@ -2,6 +2,7 @@
 
 const bcrypt = require('bcryptjs')
 const { prisma, withTransaction } = require('../../infra/postgres/client')
+const { ROLES, normalizeRole } = require('../../shared/roles')
 const { generateExamQuestions } = require('./ai.generator')
 const { validateQuestionsList } = require('./exams.guard')
 const { toExamDto } = require('./exams.service')
@@ -134,7 +135,7 @@ class ExamWizardService {
     }
   }
 
-  async publishWizard(creatorId, data = {}) {
+  async publishWizard(creatorId, data = {}, userRole = null) {
     const {
       title, courseCode, subjectCode, description,
       startTime, startTimeUtc, timezone = 'Asia/Kolkata', lateEntryMinutes = 15,
@@ -189,18 +190,32 @@ class ExamWizardService {
 
     validateQuestionsList(questions)
 
-    // Check SEB requirements
+    // Check SEB requirements using unified institution state
     const pConfigInput = (data.proctoringConfig && typeof data.proctoringConfig === 'object') ? data.proctoringConfig : {}
     const sebRequired = Boolean(data.sebRequired !== undefined ? data.sebRequired : pConfigInput.sebRequired)
     if (sebRequired) {
       const perExamKey = data.sebConfigKey || pConfigInput.sebConfigKey
-      const envKey = process.env.SEB_CONFIG_KEY
       const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(String(perExamKey).trim())
-      const validEnv = envKey && /^[0-9a-fA-F]{64}$/.test(String(envKey).trim())
-      if (!validPerExam && !validEnv) {
-        const err = new Error('Exam requires Safe Exam Browser but no valid Config Key is configured.')
+      const { getInstitutionSebState } = require('../seb/seb.service')
+      const sebState = await getInstitutionSebState()
+
+      if (!validPerExam && !sebState.configured) {
+        let role = userRole
+        if (!role && creatorId) {
+          try {
+            const u = await prisma.user.findUnique({ where: { id: creatorId }, select: { role: true } })
+            role = u?.role
+          } catch (_) {}
+        }
+        const normRole = normalizeRole(role)
+        const isFaculty = normRole === ROLES.FACULTY || !normRole || normRole !== ROLES.ADMIN
+        const msg = isFaculty
+          ? 'Exam requires Safe Exam Browser but it is not configured yet. Ask your administrator to finish Secure Browser setup.'
+          : 'Exam requires Safe Exam Browser but it is not configured yet. Configure it under Admin → Secure Browser.'
+        const err = new Error(msg)
         err.status = 400
         err.code = 'SEB_KEY_REQUIRED'
+        err.link = '/admin/seb'
         throw err
       }
     }

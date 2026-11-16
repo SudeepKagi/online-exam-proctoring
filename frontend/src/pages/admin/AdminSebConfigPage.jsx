@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
+import { usePageTitle } from '@/hooks/usePageTitle'
 import {
   ShieldCheck,
   Upload,
@@ -18,11 +19,16 @@ import {
 } from 'lucide-react'
 
 export default function AdminSebConfigPage() {
+  usePageTitle('Secure Browser — System Administration')
   const [status, setStatus] = useState({
     configured: false,
     uploadedAt: null,
     keyLast4: null,
-    lastVerifiedAt: null
+    lastVerifiedAt: null,
+    requestedMode: 'audit',
+    effectiveMode: 'audit',
+    enforcementReason: null,
+    missingDetails: null
   })
   const [loading, setLoading] = useState(true)
   const [storageHealth, setStorageHealth] = useState({ ok: true, status: 'OK' })
@@ -272,8 +278,20 @@ export default function AdminSebConfigPage() {
                 </Badge>
               ) : (
                 <Badge className="bg-[#edecfb] text-[#554e7b] border-0 rounded-full px-3 py-0.5 font-[420]">
-                  Not Configured
+                  Not Configured ({status.missingDetails || (!status.filePresent && !status.keyPresent ? 'Configuration file and Config Key missing' : !status.filePresent ? 'Configuration file missing in storage' : 'Config Key missing in database')})
                 </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[#554e7b] font-[420]">Enforcement Mode:</span>
+              <Badge className="bg-[#edecfb] text-[#28253b] border-0 rounded-full px-3 py-0.5 font-[420]">
+                Requested: {status.requestedMode || 'audit'} | Effective: {status.effectiveMode || 'audit'}
+              </Badge>
+              {status.requestedMode === 'enforce' && status.effectiveMode !== 'enforce' && (
+                <span className="text-[11px] text-[#554e7b] font-[360]">
+                  ({status.enforcementReason || 'Verified ping within 7 days required'})
+                </span>
               )}
             </div>
 

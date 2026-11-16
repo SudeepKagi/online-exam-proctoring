@@ -60,13 +60,14 @@ class SettingsService {
     return null
   }
 
-  async saveSebConfig({ fileKey, configKey, uploadedAt = new Date().toISOString(), lastVerifiedAt = null }) {
+  async saveSebConfig({ fileKey, configKey, uploadedAt = new Date().toISOString(), lastVerifiedAt = null, requestedMode = null }) {
     const existing = await this.getSebConfig()
     const payload = {
       fileKey: fileKey || existing?.fileKey || null,
       configKey: configKey ? String(configKey).trim().toLowerCase() : (existing?.configKey || null),
       uploadedAt: uploadedAt || existing?.uploadedAt || new Date().toISOString(),
-      lastVerifiedAt: lastVerifiedAt !== undefined ? lastVerifiedAt : (existing?.lastVerifiedAt || null)
+      lastVerifiedAt: lastVerifiedAt !== undefined ? lastVerifiedAt : (existing?.lastVerifiedAt || null),
+      requestedMode: requestedMode !== null ? requestedMode : (existing?.requestedMode || 'off')
     }
 
     const saved = await this.setSetting(SEB_CONFIG_KEY, payload)

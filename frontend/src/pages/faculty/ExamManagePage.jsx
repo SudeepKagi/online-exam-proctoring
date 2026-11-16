@@ -22,12 +22,14 @@ export default function ExamManagePage() {
   const [attempts, setAttempts] = useState([])
   const [reviewModalAttemptId, setReviewModalAttemptId] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [sebStatus, setSebStatus] = useState(null)
 
   const loadExam = async () => {
     try {
-      const [examRes, attemptsRes] = await Promise.allSettled([
+      const [examRes, attemptsRes, sebRes] = await Promise.allSettled([
         api.get(`/exams/${id}`),
         api.get(`/exams/${id}/attempts`),
+        api.get('/exams/seb-status'),
       ])
       if (examRes.status === 'fulfilled') {
         const data = examRes.value.data?.exam || examRes.value.data
@@ -36,6 +38,9 @@ export default function ExamManagePage() {
       }
       if (attemptsRes.status === 'fulfilled') {
         setAttempts(ensureArray(attemptsRes.value.data?.attempts || attemptsRes.value.data))
+      }
+      if (sebRes.status === 'fulfilled') {
+        setSebStatus(sebRes.value.data)
       }
     } catch (err) {
       setMsg({ text: errorMessage(err, 'Failed to load exam'), type: 'error' })
@@ -77,8 +82,13 @@ export default function ExamManagePage() {
         </Button>
         <div className="flex items-center gap-2">
           {exam?.proctoringConfig?.sebRequired && (
-            <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1 h-7 px-2.5">
-              <ShieldCheck className="w-3 h-3" /> Secure browser
+            <Badge variant="outline" className={`text-[10px] font-[420] border-0 inline-flex items-center gap-1 h-7 px-2.5 ${
+              sebStatus?.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-[#edecfb] text-[#554e7b]'
+            }`}>
+              <ShieldCheck className="w-3 h-3" />
+              {sebStatus?.effectiveMode === 'enforce'
+                ? 'Secure browser'
+                : 'Secure browser: required, NOT enforced yet (students can still use a normal browser)'}
             </Badge>
           )}
           {exam && <ExamSettingsModal exam={exam} isReadOnly={isReadOnly} lifecycle={lifecycle} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}

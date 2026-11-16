@@ -4,6 +4,7 @@ const multer = require('multer')
 const { settingsService } = require('./settings.service')
 const { getStorageAdapter } = require('../../infra/s3/s3.client')
 const { logger } = require('../../shared/logging')
+const { getInstitutionSebState, invalidateInstitutionSebState } = require('../seb/seb.service')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -80,28 +81,45 @@ async function uploadSebConfig(req, res, next) {
       return res.status(400).json({ code: 'INVALID_CONFIG_KEY', message: 'Config Key must be a 64-character hexadecimal string.' })
     }
 
-    // Save to S3 (no key stored in metadata)
+    // Save to S3 first (no key stored in metadata)
     const fileKey = 'seb/institution-config.seb'
     const storage = getStorageAdapter()
     await storage.putObject(fileKey, req.file.buffer, 'application/seb')
 
-    // Upsert into system settings
-    const existing = await settingsService.getSebConfig()
-    const saved = await settingsService.saveSebConfig({
-      fileKey,
-      configKey: trimmedKey,
-      uploadedAt: new Date().toISOString(),
-      lastVerifiedAt: existing?.lastVerifiedAt || null
-    })
+    let saved = null
+    try {
+      // Upsert into system settings
+      const existing = await settingsService.getSebConfig()
+      saved = await settingsService.saveSebConfig({
+        fileKey,
+        configKey: trimmedKey,
+        uploadedAt: new Date().toISOString(),
+        lastVerifiedAt: existing?.lastVerifiedAt || null,
+        requestedMode: existing?.requestedMode || 'off'
+      })
+      invalidateInstitutionSebState()
+    } catch (dbErr) {
+      // If DB step fails, delete S3 object to prevent orphaned storage
+      try {
+        await storage.deleteObject(fileKey)
+      } catch (cleanupErr) {
+        logger.warn({ cleanupErr: cleanupErr.message }, 'Failed to delete S3 object after DB failure')
+      }
+      throw dbErr
+    }
 
     return res.status(200).json({
       success: true,
       warning: inspection.warning || null,
       status: {
         configured: true,
+        keyPresent: true,
+        filePresent: true,
         uploadedAt: saved.uploadedAt,
         keyLast4: saved.configKey.slice(-4),
-        lastVerifiedAt: saved.lastVerifiedAt || null
+        lastVerifiedAt: saved.lastVerifiedAt || null,
+        requestedMode: saved.requestedMode || 'off',
+        effectiveMode: 'off'
       }
     })
   } catch (err) {
@@ -113,34 +131,23 @@ async function uploadSebConfig(req, res, next) {
   }
 }
 
-async function getSebStatus(_req, res, next) {
+async function getSebStatus(req, res, next) {
   try {
-    const sebConfig = await settingsService.getSebConfig()
-    if (sebConfig && sebConfig.configKey) {
-      return res.status(200).json({
-        configured: true,
-        uploadedAt: sebConfig.uploadedAt || null,
-        keyLast4: sebConfig.configKey.slice(-4),
-        lastVerifiedAt: sebConfig.lastVerifiedAt || null
-      })
-    }
-
-    // Fallback: check environment variable SEB_CONFIG_KEY
-    const envKey = process.env.SEB_CONFIG_KEY ? process.env.SEB_CONFIG_KEY.trim() : null
-    if (envKey && /^[0-9a-fA-F]{64}$/.test(envKey)) {
-      return res.status(200).json({
-        configured: true,
-        uploadedAt: null,
-        keyLast4: envKey.slice(-4),
-        lastVerifiedAt: null
-      })
-    }
+    const bypassCache = req?.query?.refresh === 'true'
+    const state = await getInstitutionSebState({ bypassCache })
+    const sebConfig = await settingsService.getSebConfig().catch(() => null)
 
     return res.status(200).json({
-      configured: false,
-      uploadedAt: null,
-      keyLast4: null,
-      lastVerifiedAt: null
+      configured: state.configured,
+      keyPresent: state.keyPresent,
+      filePresent: state.filePresent,
+      uploadedAt: sebConfig?.uploadedAt || null,
+      keyLast4: state.keyLast4,
+      lastVerifiedAt: state.lastVerifiedAt,
+      requestedMode: state.requestedMode,
+      effectiveMode: state.effectiveMode,
+      enforcementReason: state.enforcementReason,
+      publicOrigin: state.publicOrigin
     })
   } catch (err) {
     logger.error({ err }, 'Failed to get SEB configuration status')
@@ -161,6 +168,7 @@ async function deleteSebConfig(_req, res, next) {
     }
 
     await settingsService.deleteSebConfig()
+    invalidateInstitutionSebState()
     return res.status(200).json({ success: true })
   } catch (err) {
     logger.error({ err }, 'Failed to delete SEB configuration')

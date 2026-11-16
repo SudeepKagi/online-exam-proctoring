@@ -20,6 +20,16 @@ export default function FacultyExamsPage() {
   const [wizardOpen, setWizardOpen] = useState(false)
   const [selectedExamForCreds, setSelectedExamForCreds] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
+  const [sebStatus, setSebStatus] = useState(null)
+
+  const loadSebStatus = async () => {
+    try {
+      const res = await api.get('/exams/seb-status')
+      setSebStatus(res.data)
+    } catch {
+      // ignore
+    }
+  }
 
   const loadExams = async () => {
     setLoading(true)
@@ -33,7 +43,10 @@ export default function FacultyExamsPage() {
     }
   }
 
-  useEffect(() => { loadExams() }, [])
+  useEffect(() => {
+    loadExams()
+    loadSebStatus()
+  }, [])
 
   const handleExamCreated = (newExam, publishConfig) => {
     setMsg({
@@ -161,8 +174,13 @@ export default function FacultyExamsPage() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span>{exam.title}</span>
                             {exam?.proctoringConfig?.sebRequired && (
-                              <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3" /> Secure browser
+                              <Badge variant="outline" className={`text-[10px] font-[420] border-0 inline-flex items-center gap-1 ${
+                                sebStatus?.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-[#edecfb] text-[#554e7b]'
+                              }`}>
+                                <ShieldCheck className="w-3 h-3" />
+                                {sebStatus?.effectiveMode === 'enforce'
+                                  ? 'Secure browser'
+                                  : 'Secure browser: required, NOT enforced yet (students can still use a normal browser)'}
                               </Badge>
                             )}
                           </div>
@@ -268,8 +286,13 @@ export default function FacultyExamsPage() {
 
                     {exam?.proctoringConfig?.sebRequired && (
                       <div>
-                        <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 inline-flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3" /> Secure browser
+                        <Badge variant="outline" className={`text-[10px] font-[420] border-0 inline-flex items-center gap-1 ${
+                          sebStatus?.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-[#edecfb] text-[#554e7b]'
+                        }`}>
+                          <ShieldCheck className="w-3 h-3" />
+                          {sebStatus?.effectiveMode === 'enforce'
+                            ? 'Secure browser'
+                            : 'Secure browser: required, NOT enforced yet (students can still use a normal browser)'}
                         </Badge>
                       </div>
                     )}
