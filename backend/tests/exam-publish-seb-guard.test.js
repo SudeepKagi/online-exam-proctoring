@@ -37,7 +37,7 @@ describe('Exam Wizard SEB Configuration Guard', () => {
           const status = err.status || err.statusCode
           assert.strictEqual(status, 400)
           assert.strictEqual(err.code, 'SEB_KEY_REQUIRED')
-          assert.ok(err.message.includes('Exam requires Safe Exam Browser but no valid Config Key is configured'))
+          assert.ok(err.message.includes('Exam requires Safe Exam Browser but it is not configured yet'))
           return true
         }
       )

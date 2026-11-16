@@ -362,8 +362,10 @@ describe('Step 1: Safe Exam Browser (SEB) DTO Security & Config Key Suite', () =
     })
 
     it('falls back to environment SEB_CONFIG_KEY when exam has sebRequired but no per-exam key', async () => {
+      const { invalidateInstitutionSebState } = require('../src/modules/seb/seb.service')
       const origKey = process.env.SEB_CONFIG_KEY
       process.env.SEB_CONFIG_KEY = VALID_64_HEX_1
+      invalidateInstitutionSebState()
 
       try {
         const now = Date.now()
@@ -386,6 +388,7 @@ describe('Step 1: Safe Exam Browser (SEB) DTO Security & Config Key Suite', () =
       } finally {
         if (origKey !== undefined) process.env.SEB_CONFIG_KEY = origKey
         else delete process.env.SEB_CONFIG_KEY
+        invalidateInstitutionSebState()
       }
     })
 

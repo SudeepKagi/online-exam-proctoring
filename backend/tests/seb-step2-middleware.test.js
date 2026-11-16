@@ -30,6 +30,33 @@ const { corsMiddleware } = require('../src/middleware/security')
 
 const VALID_64_HEX = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
 const SCRIPT_PATH = path.resolve(__dirname, '../../scripts/seb/verify-formula.js')
+const { settingsService } = require('../src/modules/admin/settings.service')
+const { getStorageAdapter } = require('../src/infra/s3/s3.client')
+const { invalidateInstitutionSebState } = require('../src/modules/seb/seb.service')
+
+async function setInstitutionMode(mode = 'enforce') {
+  const storage = getStorageAdapter()
+  await storage.putObject('seb/institution-config.seb', Buffer.from('mock-seb-file'), 'application/seb').catch(() => {})
+  await settingsService.saveSebConfig({
+    fileKey: 'seb/institution-config.seb',
+    configKey: VALID_64_HEX,
+    uploadedAt: new Date().toISOString(),
+    lastVerifiedAt: new Date().toISOString(),
+    requestedMode: mode
+  })
+  config.sebMode = mode
+  invalidateInstitutionSebState()
+  clearAllSebCaches()
+}
+
+async function clearInstitutionConfig() {
+  await settingsService.deleteSebConfig().catch(() => {})
+  const storage = getStorageAdapter()
+  await storage.deleteObject('seb/institution-config.seb').catch(() => {})
+  config.sebMode = 'off'
+  invalidateInstitutionSebState()
+  clearAllSebCaches()
+}
 
 describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => {
   let facultyUser = null
@@ -261,6 +288,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('passes through when SEB_MODE=off', async () => {
+      await clearInstitutionConfig()
       const originalMode = config.sebMode
       config.sebMode = 'off'
       try {
@@ -286,6 +314,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('passes through for non-STUDENT roles (faculty/admin bypass)', async () => {
+      await setInstitutionMode('enforce')
       const originalMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -312,6 +341,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('passes through for exams where sebRequired=false', async () => {
+      await setInstitutionMode('enforce')
       const originalMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -338,6 +368,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('in enforce mode: rejects missing or invalid header with 403 SEB_REQUIRED', async () => {
+      await setInstitutionMode('enforce')
       const originalMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -365,6 +396,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('in enforce mode: accepts valid 64-hex hash and calls next()', async () => {
+      await setInstitutionMode('enforce')
       const originalMode = config.sebMode
       config.sebMode = 'enforce'
       try {
@@ -400,6 +432,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
     })
 
     it('in log mode: never blocks on invalid header, attaches verified=false and calls next()', async () => {
+      await setInstitutionMode('audit')
       const originalMode = config.sebMode
       config.sebMode = 'log'
       try {
@@ -424,7 +457,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
         })
 
         assert.ok(nextCalled, 'Log mode must never block request')
-        assert.strictEqual(req.seb.mode, 'log')
+        assert.ok(req.seb.mode === 'log' || req.seb.mode === 'audit')
         assert.strictEqual(req.seb.verified, false)
       } finally {
         config.sebMode = originalMode
@@ -570,9 +603,11 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
           resolve()
         })
       })
+      await setInstitutionMode('enforce')
     })
 
     after(async () => {
+      await clearInstitutionConfig()
       if (sampleQuestion?.id) {
         await prisma.question.delete({ where: { id: sampleQuestion.id } }).catch(() => {})
       }

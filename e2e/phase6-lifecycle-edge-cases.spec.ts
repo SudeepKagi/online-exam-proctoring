@@ -215,9 +215,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
   })
 
   // -------------------------------------------------------------------------
-  // 4. Mid-Exam Camera Disconnection & Non-Dismissible Blocking Overlay
+  // 4. Camera Stops After Pre-Check & Arena Privacy Invariant
   // -------------------------------------------------------------------------
-  test('4. Camera disconnection triggers onended, records violation, and displays non-dismissible blocking overlay', async ({ browser }) => {
+  test('4. Camera stops after pre-check capture and arena operates without continuous camera stream', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const student = await createActor(browser, 'student')
 
@@ -231,7 +231,7 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
 
       const now = new Date()
       const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
-        title: `Proctoring Interruption Exam ${Date.now()}`,
+        title: `Proctoring Still Photo Exam ${Date.now()}`,
         subject: 'SEC-101',
         courseCode: 'SEC-101',
         startTime: new Date(now.getTime() + 600000).toISOString(),
@@ -262,34 +262,30 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       await passConsentIfPresent(student.page)
       await expect(student.page.getByText(/System & Identity Check/i)).toBeVisible({ timeout: 10000 })
 
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
-      await expect(verifyFaceBtn).toBeVisible()
-      await verifyFaceBtn.click()
+      const captureBtn = student.page.getByRole('button', { name: /Capture Photo/i })
+      await expect(captureBtn).toBeVisible({ timeout: 10000 })
+      await student.page.waitForFunction(() => {
+        const v = document.querySelector('video') as HTMLVideoElement | null
+        return v && v.readyState >= 2
+      }, { timeout: 10000 }).catch(() => {})
+      await captureBtn.click()
 
-      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
-      await expect(launchBtn).toBeVisible({ timeout: 10000 })
-      await launchBtn.click()
+      const confirmBtn = student.page.getByRole('button', { name: /Confirm & Verify/i })
+      await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+      await confirmBtn.click()
 
       await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
 
       // Verify questions loaded
       await expect(student.page.locator('text=Security Question 1')).toBeVisible({ timeout: 10000 })
 
-      // 3. Simulate camera track ending / disconnect event
-      await student.page.evaluate(() => {
+      // 3. Verify camera tracks are stopped in arena (Phase 2 privacy invariant: no live camera preview in arena)
+      const hasLiveStream = await student.page.evaluate(() => {
         const stream = (window as any).__proctorCameraStream
-        if (stream) {
-          const track = stream.getVideoTracks()[0]
-          if (track) {
-            track.stop()
-            track.dispatchEvent(new Event('ended'))
-          }
-        }
+        if (!stream) return false
+        return stream.getVideoTracks().some((t: any) => t.readyState === 'live')
       })
-
-      // 4. Verify blocking overlay appears
-      const overlay = student.page.getByTestId('proctoring-interrupted-overlay')
-      await expect(overlay.first()).toBeVisible({ timeout: 10000 })
+      expect(hasLiveStream).toBe(false)
     } finally {
       await faculty.close()
       await student.close()
@@ -297,9 +293,9 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
   })
 
   // -------------------------------------------------------------------------
-  // 5. Max Violations Auto-Termination (3 / 3)
+  // 5. Zero Auto-Termination on Violations (Humans, Not Executioners)
   // -------------------------------------------------------------------------
-  test('5. Reaching 3 violations auto-terminates attempt and rejects further answer saves with 409', async ({ browser }) => {
+  test('5. Reaching 3 violations does NOT auto-terminate attempt; student continues and saves answers', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const student = await createActor(browser, 'student')
 
@@ -312,7 +308,7 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
 
       const now = new Date()
       const examRes = await api.for(faculty).postRaw('/api/v1/exams', {
-        title: `Max Violations Exam ${Date.now()}`,
+        title: `Zero Auto-Termination Exam ${Date.now()}`,
         subject: 'VIOL-101',
         courseCode: 'V-101',
         startTime: new Date(now.getTime() + 600000).toISOString(),
@@ -364,13 +360,17 @@ test.describe('PHASE 6: Strict Backend + Frontend State Machine & Lifecycle Edge
       })
       expect([200, 201]).toContain(v3.status)
 
-      // Verify that further attempt to save an answer is rejected with 409 ATTEMPT_TERMINATED
+      // Phase 2 C.1: Zero auto-termination. Further attempt to save an answer SUCCEEDS with 200/201
       const saveRes = await api.for(student).postRaw(`/api/v1/attempts/${attemptId}/answers`, {
         questionId,
         selectedOptionIndex: 0
       })
-      expect(saveRes.status).toBe(409)
-      expect(saveRes.body?.code || saveRes.body?.error?.code).toBe('ATTEMPT_TERMINATED')
+      expect([200, 201]).toContain(saveRes.status)
+
+      // Verify attempt status remains IN_PROGRESS despite 3 violations
+      const getAttemptRes = await api.for(student).getRaw(`/api/v1/attempts/${attemptId}`)
+      expect(getAttemptRes.body?.attempt?.status).toBe('IN_PROGRESS')
+      expect(getAttemptRes.body?.attempt?.violationCount).toBe(3)
     } finally {
       await faculty.close()
       await student.close()

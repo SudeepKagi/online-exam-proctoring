@@ -82,8 +82,8 @@ export async function resetCleanRoom(): Promise<void> {
   for (const s of SEEDED_STUDENTS) {
     await prisma.user.upsert({
       where: { email: s.email },
-      update: { fullName: s.name, passwordHash: passHash, role: 'STUDENT', status: 'ACTIVE', institutionId: s.usn },
-      create: { email: s.email, fullName: s.name, passwordHash: passHash, role: 'STUDENT', status: 'ACTIVE', institutionId: s.usn }
+      update: { fullName: s.name, passwordHash: passHash, role: 'STUDENT', status: 'ACTIVE', institutionId: s.usn, referencePhotoKey: 'reference-photos/seed-student.jpg' },
+      create: { email: s.email, fullName: s.name, passwordHash: passHash, role: 'STUDENT', status: 'ACTIVE', institutionId: s.usn, referencePhotoKey: 'reference-photos/seed-student.jpg' }
     })
   }
 }
