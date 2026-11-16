@@ -330,7 +330,7 @@ export default function PreExamCheckPage() {
                       </Button>
                     </div>
                   ) : (
-                    <div className="aspect-video bg-[#171721] rounded-[12px] overflow-hidden relative flex items-center justify-center">
+                    <div className="aspect-video bg-[#28253b] rounded-[12px] overflow-hidden relative flex items-center justify-center">
                       <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
                       {/* Frames arriving status badge */}
                       <div className="absolute top-3 right-3 pointer-events-none">

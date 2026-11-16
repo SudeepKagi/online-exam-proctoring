@@ -1,263 +1,235 @@
-# ProctorNet Production Operations Runbook (`docs/ops/RUNBOOK.md`)
+# ProctorNet Bare-Metal Operations Runbook (`docs/ops/RUNBOOK.md`)
 
-> **Document Type:** Production Runbook  
-> **Classification:** Authoritative Operations & Incident Response  
-> **Target Environment:** Production High-Stakes Kiosk Examination Infrastructure  
-
----
-
-## 1. Secret Rotation Checklist (Burned Git Secrets)
-
-> [!WARNING]
-> All default secret strings that have ever appeared in git commit history or example configuration files must be considered **compromised/burned**. Under no circumstances may these values be utilized in any staging or production environment.
-
-### Burned Key Inventory
-The following keys are permanently banned by the `validateConfig` boot-time startup invariant:
-- `proctornet_super_secret_jwt_key_local_development_fallback_2026`
-- `supersecret_jwt_proctornet_production_key_32bytes`
-- `supersecret_jwt_refresh_proctornet_key_32bytes`
-- `dev_seb_link_secret_at_least_32_characters_long_for_hmac`
-- `ci_throwaway_jwt_secret_at_least_32_characters_long_01`
-- `ci_test_postgres_32char_secure_password_01`
-- `ci_test_redis_32char_secure_password_01`
-- `test_suite_jwt_secret_minimum_32_characters_long_for_unit_tests!`
-
-### Production Key Rotation Procedure
-1. **Generate High-Entropy Secrets (minimum 64 characters hex/alphanumeric):**
-   ```bash
-   # Generate cryptographic tokens
-   NEW_JWT_SECRET=$(openssl rand -hex 32)
-   NEW_JWT_REFRESH_SECRET=$(openssl rand -hex 32)
-   NEW_SEB_LINK_SECRET=$(openssl rand -hex 32)
-   NEW_POSTGRES_PASS=$(openssl rand -hex 24)
-   NEW_REDIS_PASS=$(openssl rand -hex 24)
-   ```
-2. **Update Environment Store / Secret Manager:**
-   - Inject the new values into AWS Secrets Manager, HashiCorp Vault, or the production `.env` (permissions `chmod 600 .env`).
-3. **Database & Cache Credential Synchronization:**
-   - Update Postgres user password:
-     ```sql
-     ALTER USER proctornet WITH PASSWORD 'NEW_POSTGRES_PASS';
-     ```
-   - Update Redis runtime configuration:
-     ```bash
-     redis-cli -a "$OLD_REDIS_PASS" CONFIG SET requirepass "NEW_REDIS_PASS"
-     ```
-4. **Zero-Downtime Rolling App Restart:**
-   ```bash
-   docker compose -f docker-compose.prod.yml restart backend
-   ```
-5. **Session Invalidation Notice:**
-   - Rotating `JWT_SECRET` immediately invalidates existing access tokens. Active candidates will refresh transparently via the `/refresh` endpoint if `JWT_REFRESH_SECRET` is rotated in a staged rollout, or re-authenticate via the institutional portal.
+> **Document Type:** Production Runbook & Disaster Recovery Protocol  
+> **Classification:** Authoritative Operations  
+> **Target Environment:** AWS EC2 (`i-0d242d962823f0a89` / `43.204.45.86`), Domain: `https://proctornet.duckdns.org`  
 
 ---
 
-## 2. Exam-Day Operational Checklist
+## 1. Production Topology & Architecture
 
-### T-60 Minutes: Pre-Flight Infrastructure Audit
-- [ ] **Data Stores:** Verify PostgreSQL connection pool utilization (`< 40%`) and Redis memory usage (`< 50%` of maxmemory).
-- [ ] **Background Workers:** Verify `QUEUE_DRIVER=postgres` (or RabbitMQ) sweeper and batch dispatchers are active.
-- [ ] **Storage Health:** Validate S3 bucket accessibility and write permissions for proctoring snapshots.
+ProctorNet runs as a bare-metal Node.js service orchestrated under Linux `systemd`, fronted by Caddy reverse proxy with automatic TLS, connected to a cloud PostgreSQL cluster, and backed up off-box to AWS S3.
 
-### T-30 Minutes: Network & Gateway Verification
-- [ ] **Reverse Proxy:** Verify Caddy reverse proxy is running on ports 80 and 443 with valid TLS certificate.
-- [ ] **HSTS & Headers:** Ensure `Strict-Transport-Security: max-age=31536000; includeSubDomains` is active (no preload on shared domains).
-- [ ] **Origin Parity:** Verify `PUBLIC_ORIGIN` matches canonical origin (`https://proctornet.duckdns.org`).
-- [ ] **Proxy Forwarding:** Verify `app.set('trust proxy', 1)` resolves client IP and HTTPS protocol correctly.
+### Directory Layout (`/opt/proctornet`)
+- `/opt/proctornet/releases/release-<gitSha>/` — Versioned deployment releases containing backend, built frontend (`frontend/dist`), and operational scripts.
+- `/opt/proctornet/current` — Atomic symlink pointing to the currently active release directory.
+- `/opt/proctornet/releases/PREVIOUS_RELEASE` — Text record pointing to the previous release for one-click rollback.
+- `/opt/proctornet/shared/.env` — Master production environment variables and cryptographic secrets (`chmod 600`).
+- `/opt/proctornet/backups/postgres/` — Local storage for compressed PostgreSQL database dumps (`pg_dump -Fc`).
+- `/var/log/proctornet/` — Operational logs, including automated nightly backup logs (`backup.log`).
 
-### T-15 Minutes: SEB Configuration & Ping Sanity
-- [ ] **Health Probe:** Execute `GET /api/v1/seb/ping` from a known SEB client and verify `200 OK` with `{ verified: true }`.
-- [ ] **Exam Status:** Verify scheduled exam is in `PUBLISHED` state with `sebRequired: true`.
-- [ ] **Config Key:** Verify the 64-hex Config Key stored on the exam matches the institutional `.seb` client configuration file.
-
-### T-0 to Exam Close: Live Monitoring
-- [ ] **Attempt Ingestion Rate:** Monitor `POST /api/v1/attempts/exams/:id/start` response latency ($p(95) < 500\text{ ms}$).
-- [ ] **Autosave Batches:** Confirm answer autosaves execute without database serialization deadlocks.
-- [ ] **Invigilator WebSockets:** Verify room roster coalescence and real-time violation event streams.
-
-### Post-Exam: Finalization & Cold Backup
-- [ ] **Sweeper Completion:** Verify all expired attempts transitioned to `SUBMITTED` or `TIMED_OUT`.
-- [ ] **Cold Backup:** Execute `scripts/ops/backup-postgres.sh` and verify S3 upload.
+### Service Supervisor & Edge Proxy
+- **Application Service:** `proctornet.service` (systemd unit running `/opt/proctornet/current/backend/src/index.js` as user `proctornet`, listening on `127.0.0.1:5000`).
+- **Edge Reverse Proxy:** `caddy.service` (`/etc/caddy/Caddyfile`, terminating TLS for `proctornet.duckdns.org` on ports 80/443, proxying to `127.0.0.1:5000`).
+- **Backup Automation:** `proctornet-backup.timer` and `proctornet-backup.service` (triggers daily at 02:00 UTC).
 
 ---
 
-## 3. Production Deployment Procedure (Containerized Compose Stack)
+## 2. Repeatable Deployment Procedure
 
-> [!IMPORTANT]
-> **Single Supported Production Topology:** ProctorNet officially supports **only** the containerized Docker Compose stack (`docker-compose.prod.yml`) with Caddy as the edge reverse proxy. Bare-metal PM2 and uncontained processes are formally deprecated to prevent configuration drift and guarantee strict network isolation (zero public host ports for databases).
-
-### Step-by-Step Deployment Walkthrough
-1. **Prepare Release Artifacts:**
-   Ensure image tags are published to GitHub Container Registry (GHCR):
-   ```bash
-   export IMAGE_TAG="<git-commit-sha-or-release-tag>"
-   export PROD_DIR="/opt/proctornet"
-   cd "$PROD_DIR"
-   ```
-
-2. **Record Previous Active Tag for Rollback:**
-   ```bash
-   if [ -f "$PROD_DIR/ACTIVE_TAG" ]; then
-     cp "$PROD_DIR/ACTIVE_TAG" "$PROD_DIR/PREV_TAG"
-   fi
-   ```
-
-3. **Pull Production Images:**
-   ```bash
-   docker compose -f docker-compose.prod.yml pull
-   ```
-
-4. **Execute Additive Database Migrations:**
-   Migrations run in an ephemeral container prior to restarting application containers:
-   ```bash
-   docker run --rm \
-     --network proctornet-production_internal \
-     --env-file "$PROD_DIR/shared/.env" \
-     "ghcr.io/proctornet/online-exam-proctoring/backend:$IMAGE_TAG" \
-     npx prisma migrate deploy
-   ```
-
-5. **Rolling Container Launch:**
-   ```bash
-   export IMAGE_TAG
-   docker compose -f docker-compose.prod.yml up -d --remove-orphans
-   ```
-
-6. **Automated Health Probe & Tag Promotion:**
-   ```bash
-   # Probe internal backend health
-   for i in {1..20}; do
-     STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:5000/healthz || true)
-     if [ "$STATUS" = "200" ]; then
-       echo "[✓] Backend is healthy"
-       echo "$IMAGE_TAG" > "$PROD_DIR/ACTIVE_TAG"
-       break
-     fi
-     sleep 3
-   done
-
-   # Run automated smoke test suite
-   node "$PROD_DIR/scripts/ops/smoke-staging.js" --origin https://proctornet.duckdns.org
-   ```
-
----
-
-## 4. Rollback Procedures
-
-### Instant Container Rollback (Fast-Path)
-If a critical defect or regression is identified post-deployment:
-1. **Revert to Previous Known-Good Tag:**
-   ```bash
-   if [ -f "$PROD_DIR/PREV_TAG" ]; then
-     ROLLBACK_TAG=$(cat "$PROD_DIR/PREV_TAG")
-     echo "Rolling back to tag: $ROLLBACK_TAG"
-     export IMAGE_TAG="$ROLLBACK_TAG"
-     docker compose -f docker-compose.prod.yml up -d --remove-orphans
-     echo "$ROLLBACK_TAG" > "$PROD_DIR/ACTIVE_TAG"
-   else
-     echo "[!] No PREV_TAG recorded. Specify image tag manually."
-   fi
-   ```
-
-2. **Verify Health Post-Rollback:**
-   ```bash
-   curl -f http://127.0.0.1:5000/healthz
-   node "$PROD_DIR/scripts/ops/smoke-staging.js" --origin https://proctornet.duckdns.org
-   ```
-
-3. **Database Migration Rollback Invariant:**
-   - All ProctorNet database migrations are strictly **additive** (new tables/columns only; zero drops or destructive alters during exam windows).
-   - Rolling back backend application container code does not require rolling back the database schema. The previous application version will ignore new additive columns and tables.
-
----
-
-## 5. Emergency Kill Switch: Safe Exam Browser (`SEB_MODE=log`)
-
-### Problem Definition
-Students opening Safe Exam Browser receive an unexpected `403 Forbidden` (`code: "SEB_REQUIRED"`) error when attempting to start their exam, despite using the official `.seb` configuration.
-
-### Immediate Triage Protocol (Sub-60-Second Resolution)
-1. **Switch SEB Mode from `enforce` to `log`:**
-   In the production environment (or `$PROD_DIR/shared/.env`):
-   ```bash
-   SEB_MODE=log
-   ```
-2. **Perform Rolling Backend Restart:**
-   ```bash
-   docker compose -f docker-compose.prod.yml restart backend
-   ```
-3. **Verify Candidate Recovery:**
-   - In `SEB_MODE=log`, the SEB middleware verifies headers and logs discrepancies, but **NEVER blocks requests with 403**.
-   - Students can immediately start their exams and submit answers without interruption.
-4. **Diagnose Root Cause via Hash Logs:**
-   Inspect backend server logs for the SEB verification audit line:
-   ```
-   [WARN] SEB request verification failed (log mode non-blocking)
-   receivedPrefix8: "a1b2c3d4"
-   expectedPrefix8: "e5f60718"
-   urlHashed: "https://exam.institution.edu/api/v1/attempts/exams/.../start"
-   ```
-   - **Scenario A (Origin Mismatch):** Reverse proxy forwarded `http://` instead of `https://`, or stripped port. Fix proxy `X-Forwarded-Proto`.
-   - **Scenario B (Config Key Mismatch):** Faculty updated exam settings with a different key. Update exam settings with the correct Config Key.
-5. **Re-Enable Enforce Mode:**
-   Once the origin/key divergence is resolved and verified via `GET /api/v1/seb/ping`, switch `SEB_MODE=enforce` and restart backend.
-
----
-
-## 6. Host Time Synchronization (NTP) & Clock Drift Mitigation
-
-ProctorNet relies on an authoritative server clock to calculate candidate attempt start times, end times, and automatic expiration (`expiresAt = Min(startedAt + duration, exam.endTime)`).
-
-### Host Configuration
-1. **Enable systemd-timesyncd or chrony on host EC2 instance:**
-   ```bash
-   sudo timedatectl set-ntp true
-   sudo timedatectl status
-   ```
-   *(Ensure "NTP service: active" and "System clock synchronized: yes")*
-2. **Acceptable Clock Skew:**
-   - ProctorNet's pre-flight system check (`/student/exams/:id/start`) measures client-to-server skew via `Date.now() - serverNow`.
-   - Skew $\le 2$ minutes: Green checkmark (normal).
-   - Skew $> 2$ minutes: Amber warning recommending clock sync, but **NEVER blocks** the student.
-   - All final attempt timers countdown to the server authoritative timestamp.
-
----
-
-## 7. Monitoring, Uptime Checks & Log Inspection
-
-### Public Uptime Probe URL
-- **Endpoint:** `GET https://proctornet.duckdns.org/healthz`
-- **Expected Status:** HTTP `200 OK`
-- **Expected Payload:**
-  ```json
-  {
-    "status": "ok",
-    "service": "ProctorNet Backend",
-    "timestamp": "2026-11-10T07:00:00.000Z",
-    "uptime": 12345.67
-  }
-  ```
-
-### Critical Alert Conditions
-Configure your external uptime monitor (e.g., BetterStack, UptimeRobot, CloudWatch Synthetic Canary) with the following triggers:
-1. **HTTP Availability:** `GET /healthz` fails or returns non-200 for 2 consecutive 60-second checks.
-2. **HTTP 5xx Spike:** 5xx status codes exceed 1% of total requests over a rolling 5-minute window.
-3. **Host Storage Exhaustion:** Host root filesystem `/` or Docker volume mount exceeds 85% disk usage.
-4. **TLS Expiration:** Let's Encrypt certificate on `proctornet.duckdns.org` expires in $< 14$ days (Caddy renews automatically at 30 days).
-
-### Production Container Log Inspection
-To inspect live production logs without entering containers:
+All production deployments are executed via the single automated orchestrator:
 ```bash
-# Backend application & SEB audit logs
-docker compose -f docker-compose.prod.yml logs -f --tail=100 backend
-
-# Caddy edge proxy access & TLS negotiation logs
-docker compose -f docker-compose.prod.yml logs -f --tail=100 caddy
-
-# PostgreSQL transaction & connection logs
-docker compose -f docker-compose.prod.yml logs -f --tail=100 postgres
-
-# Redis cache & pub/sub logs
-docker compose -f docker-compose.prod.yml logs -f --tail=100 redis
+node scripts/ops/deploy-prod.js
 ```
 
+### Supported CLI Flags
+- `--instance <id>`: Target AWS EC2 instance ID (defaults to `i-0d242d962823f0a89`).
+- `--bucket <name>`: S3 storage bucket for artifacts and backups (defaults to `proctornet-storage-prod-858109978489`).
+- `--skip-build`: Skips local typecheck, lint, and frontend build (use only for quick hotfixes).
+- `--force`: Bypasses active `IN_PROGRESS` exam attempts check (emergency override).
+- `--skip-smoke`: Skips post-deployment smoke verification.
+
+### Automated Deployment Stages (5 Steps)
+1. **Local Preconditions & Build Gate:**
+   - Runs `npm run typecheck` across workspaces.
+   - Runs `npm run lint` across workspaces.
+   - Compiles frontend assets via `npm run build --workspace=frontend`.
+2. **Artifact Packaging & S3 Upload:**
+   - Generates `VERSION` metadata file with git commit SHA and build timestamp.
+   - Bundles `backend/`, `frontend/dist/`, `scripts/`, `package.json`, and `VERSION` into `release-<gitSha>.tar.gz`.
+   - Uploads release archive to `s3://proctornet-storage-prod-858109978489/releases/`.
+3. **Remote Cutover via AWS SSM:**
+   - **Disk Space Precondition:** Checks free space on `/` is $> 2000\text{ MB}$.
+   - **Automated Pre-Deployment DB Dump:** Executes `pg_dump -Fc`, verifies table-of-contents (`pg_restore --list`), computes SHA256 checksum, and uploads dump to off-box S3.
+   - **Active Exam Attempts Guard:** Queries database for `status = 'IN_PROGRESS'`. Aborts immediately if students are currently taking exams.
+   - **Release Unpacking:** Downloads and unpacks archive to `/opt/proctornet/releases/release-<gitSha>`.
+   - **Additive Migration Check:** Scans migration SQL for destructive patterns (`DROP TABLE`, `DROP COLUMN`, `TRUNCATE`). Aborts if found.
+   - **Dependencies & Schema Generation:** Runs `npm ci --omit=dev`, `npx prisma generate`, and `npx prisma migrate deploy`.
+   - **Proxy Validation:** Runs `caddy validate --config /etc/caddy/Caddyfile`.
+   - **Atomic Symlink Cutover:** Updates `/opt/proctornet/current` symlink.
+   - **Service Reload:** Restarts `proctornet.service` and reloads `caddy.service`.
+   - **Health Probes:** Tests port 5000 `/healthz`, Caddy resolve `/healthz`, external public `/healthz`, SEB ping `/api/v1/seb/ping`, and SPA root HTML.
+   - **Automatic Rollback:** If any health check fails within 30 seconds of cutover, the script immediately reverts the symlink to the previous release and restarts services.
+4. **Post-Deployment Smoke Verification:**
+   - Executes `scripts/ops/smoke-prod.js` against `https://proctornet.duckdns.org` (8-point check).
+5. **Deployment Audit Logging:**
+   - Appends deployment metadata, duration, git SHA, and status to `docs/ops/DEPLOY_LOG.md`.
+
+---
+
+## 3. Rollback Procedures
+
+If an unexpected runtime regression occurs after deployment, rollback is fully automated:
+
+### Fast Automated Rollback
+```bash
+# Reverts to the previously recorded release
+node scripts/ops/rollback-prod.js
+
+# Or roll back to a specific known-good release tag:
+node scripts/ops/rollback-prod.js --target release-5a46abfb2172d364ef2f5541ccd1a1976821f2f2
+```
+
+### Manual Emergency Rollback via SSH/SSM
+If the orchestration script is unavailable:
+```bash
+# 1. Identify previous release
+PREV=$(cat /opt/proctornet/releases/PREVIOUS_RELEASE)
+
+# 2. Atomically point symlink back
+ln -sfn "$PREV" /opt/proctornet/current
+
+# 3. Restart application & proxy
+sudo systemctl restart proctornet.service
+sudo systemctl reload caddy.service
+
+# 4. Verify health
+curl -sSf http://127.0.0.1:5000/healthz
+```
+
+> [!NOTE]
+> Because all ProctorNet database migrations are strictly additive, previous release binaries remain fully compatible with the current database schema without requiring schema rollbacks.
+
+---
+
+## 4. Database Backups, Retention & Disaster Recovery
+
+### Automated Nightly Backups
+- **Timer:** `proctornet-backup.timer` triggers every day at `02:00:00 UTC`.
+- **Script:** `/opt/proctornet/current/scripts/ops/backup-postgres.sh`.
+- **Retention:** Local backups older than 7 days are automatically purged.
+- **Off-Box Sync:** Each dump is synchronized to `s3://proctornet-storage-prod-858109978489/backups/postgres/`.
+
+### Checking Backup Status
+```bash
+systemctl list-timers proctornet-backup.timer
+systemctl status proctornet-backup.service
+tail -n 30 /var/log/proctornet/backup.log
+```
+
+### Manual On-Demand Backup
+```bash
+sudo -u proctornet /opt/proctornet/current/scripts/ops/backup-postgres.sh
+```
+
+### Disaster Recovery: Database Restoration Procedure
+In the event of database corruption or data loss:
+1. **Identify the Target Dump:**
+   ```bash
+   # List local dumps:
+   ls -la /opt/proctornet/backups/postgres/
+
+   # Or list S3 off-box dumps:
+   aws s3 ls s3://proctornet-storage-prod-858109978489/backups/postgres/
+   ```
+2. **Download Dump from S3 (if restoring from off-box):**
+   ```bash
+   aws s3 cp s3://proctornet-storage-prod-858109978489/backups/postgres/<dump-filename> /tmp/restore_target.dump
+   ```
+3. **Verify Archive Integrity:**
+   ```bash
+   pg_restore --list /tmp/restore_target.dump > /dev/null
+   echo "Dump TOC verified valid."
+   ```
+4. **Stop Application Service to Prevent Ingestion During Restore:**
+   ```bash
+   sudo systemctl stop proctornet.service
+   ```
+5. **Restore Schema & Data:**
+   ```bash
+   set -a
+   . /opt/proctornet/shared/.env
+   set +a
+   CLEAN_CONN=$(echo "$DIRECT_URL" | sed 's/[?&]schema=.*//; s/[?&]sslmode=.*//')
+   pg_restore --clean --if-exists --no-owner --no-privileges -d "$CLEAN_CONN" /tmp/restore_target.dump
+   ```
+6. **Restart Application & Run Smoke Verification:**
+   ```bash
+   sudo systemctl start proctornet.service
+   curl -sSf http://127.0.0.1:5000/healthz
+   node scripts/ops/smoke-prod.js
+   ```
+
+---
+
+## 5. Systemd Service Management & Logging
+
+### Service Management Commands
+```bash
+# Check service status
+sudo systemctl status proctornet.service
+sudo systemctl status caddy.service
+
+# Restart application
+sudo systemctl restart proctornet.service
+
+# Reload reverse proxy (zero connection dropping)
+sudo systemctl reload caddy.service
+
+# View live application logs
+journalctl -u proctornet.service -f -n 50
+
+# View Caddy access & TLS logs
+journalctl -u caddy.service -f -n 50
+```
+
+---
+
+## 6. Safe Exam Browser (SEB) Operational Controls
+
+### Emergency Kill Switch (`SEB_MODE=log`)
+If students report widespread configuration hash failures during exam start:
+1. Open `/opt/proctornet/shared/.env`.
+2. Change `SEB_MODE=enforce` to `SEB_MODE=log`.
+3. Restart backend service:
+   ```bash
+   sudo systemctl restart proctornet.service
+   ```
+4. **Effect:** In `log` mode, SEB validation continues to compute and log request hashes and browser keys for auditing, but **never rejects candidates with 403 Forbidden**. Students can immediately continue their examinations.
+
+### Returning to Enforcement (`SEB_MODE=enforce`)
+Once faculty verify the `.seb` client configuration matches the exam's Config Key:
+1. Update `/opt/proctornet/shared/.env` to `SEB_MODE=enforce`.
+2. Restart backend: `sudo systemctl restart proctornet.service`.
+3. Confirm via smoke suite: `node scripts/ops/smoke-prod.js --seb-mode enforce`.
+
+---
+
+## 7. TLS Certificate & HSTS Lifecycle
+
+- **Certificate Authority:** Let's Encrypt / ZeroSSL managed automatically by Caddy.
+- **Auto-Renewal:** Caddy checks and renews certificates automatically at 30 days before expiration.
+- **Verification:**
+  ```bash
+  node scripts/ops/smoke-prod.js
+  ```
+  Check 2 validates TLS expiration days remaining. Check 3 validates the `Strict-Transport-Security` header.
+
+---
+
+## 8. Post-Release Verification Suite
+
+Run the full live production smoke verification suite at any time:
+```bash
+node scripts/ops/smoke-prod.js --origin https://proctornet.duckdns.org
+```
+
+Checks performed:
+1. `GET /healthz` probe returns HTTP 200 with service metadata.
+2. TLS certificate validity ($> 0$ days remaining).
+3. HSTS response header present.
+4. Frontend SPA login page served (HTML with DOCTYPE).
+5. CORS preflight accepts `X-SafeExamBrowser-ConfigKeyHash`.
+6. SEB ping endpoint `/api/v1/seb/ping` reachable.
+7. Unauthenticated exam start request rejected with 401 `TOKEN_REQUIRED`.
+8. WebSocket engine upgrade handshake on `/socket.io` confirmed (HTTP 101).

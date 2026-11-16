@@ -8,7 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
-import { UserCheck, Calendar, Clock } from 'lucide-react'
+import { UserCheck, Calendar, Clock, BookOpen } from 'lucide-react'
+import TableSkeleton from '@/components/common/TableSkeleton'
+import EmptyState from '@/components/common/EmptyState'
 
 export default function AdminExamsPage() {
   const [exams, setExams] = useState([])
@@ -74,23 +76,32 @@ export default function AdminExamsPage() {
 
       <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Exam Title</TableHead>
-                <TableHead>Course</TableHead>
-                <TableHead>Start Time</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Invigilation</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">Loading exams...</TableCell></TableRow>
-              ) : exams.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-xs text-[#70707d] font-[360]">No exams registered.</TableCell></TableRow>
-              ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Exam Title</TableHead>
+                  <TableHead>Course</TableHead>
+                  <TableHead>Start Time</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Invigilation</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableSkeleton rows={4} cols={6} />
+                ) : exams.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="p-0">
+                      <EmptyState
+                        icon={BookOpen}
+                        title="No exams registered"
+                        description="Assessments created by faculty will appear here for invigilator assignment."
+                      />
+                    </TableCell>
+                  </TableRow>
+                ) : (
                 exams.map((exam) => (
                   <TableRow key={exam.id}>
                     <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
@@ -126,7 +137,8 @@ export default function AdminExamsPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
+        </div>
+      </CardContent>
       </Card>
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>

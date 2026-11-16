@@ -15,8 +15,12 @@ import {
   evaluateOperatingSystem
 } from '@/lib/systemCheck'
 import { BookOpen, Clock, Calendar, CheckCircle2, ShieldCheck, AlertCircle, Laptop, Camera, Wifi, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react'
+import { CardListSkeleton, TableSkeleton } from '@/components/common/TableSkeleton'
+import EmptyState from '@/components/common/EmptyState'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 export default function StudentDashboardPage() {
+  usePageTitle('Student Portal')
   const { user } = useAuth()
   const location = useLocation()
   const [exams, setExams] = useState([])
@@ -189,17 +193,21 @@ export default function StudentDashboardPage() {
       {/* Available & Scheduled Examinations */}
       <div className="mt-6 font-sans">
         <h3 className="text-sm font-[480] text-[#28253b] mb-3 flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-[#5266eb]" /> Available & Scheduled Examinations
+          <BookOpen className="w-4 h-4 text-[#5266eb]" /> Available &amp; Scheduled Examinations
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {loading ? (
-            <div className="col-span-full py-12 text-center text-xs text-[#70707d] font-[360]">Loading your assessments...</div>
-          ) : activeOrUpcoming.length === 0 ? (
-            <Card className="col-span-full border-[#e9eaf2] bg-white p-8 text-center rounded-[12px] shadow-xs">
-              <p className="text-xs text-[#70707d] font-[360]">No active examinations currently assigned to your account.</p>
-            </Card>
-          ) : (
-            activeOrUpcoming.map((exam) => {
+        {loading ? (
+          <CardListSkeleton count={3} />
+        ) : activeOrUpcoming.length === 0 ? (
+          <Card className="border-[#e9eaf2] bg-white rounded-[16px] shadow-xs">
+            <EmptyState
+              icon={BookOpen}
+              title="No active examinations"
+              description="No active or scheduled assessments are currently assigned to your account."
+            />
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {activeOrUpcoming.map((exam) => {
               const start = exam.startTime ? new Date(exam.startTime).getTime() : 0
               const end = exam.endTime ? new Date(exam.endTime).getTime() : Infinity
               const isFuture = currentTime < start
@@ -254,9 +262,9 @@ export default function StudentDashboardPage() {
                   </CardContent>
                 </Card>
               )
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
       {/* Completed Evaluations */}
@@ -276,10 +284,16 @@ export default function StudentDashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {completed.length === 0 ? (
+                {loading ? (
+                  <TableSkeleton rows={2} cols={4} />
+                ) : completed.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-xs text-[#70707d] font-[360]">
-                      No completed examination attempts recorded yet.
+                    <TableCell colSpan={4} className="p-0">
+                      <EmptyState
+                        icon={CheckCircle2}
+                        title="No completed assessments"
+                        description="Completed examination attempts and grade breakdowns will appear here."
+                      />
                     </TableCell>
                   </TableRow>
                 ) : (
