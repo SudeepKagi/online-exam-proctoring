@@ -2,14 +2,14 @@ import { test, expect } from '@playwright/test'
 import { createActor } from './helpers/actors'
 import { resetCleanRoom, SEEDED_FACULTY } from './helpers/cleanroom'
 
-test.describe('E2E: 4-Step Faculty Exam Creation Wizard & Invigilator Provisioning', () => {
+test.describe('E2E: 5-Step Faculty Exam Creation Wizard & Invigilator Provisioning', () => {
   test.describe.configure({ mode: 'serial' })
 
   test.beforeAll(async () => {
     await resetCleanRoom()
   })
 
-  test('Faculty completes 4-step wizard with questions, schedule, cohort assignment & invigilator key generation', async ({ browser }) => {
+  test('Faculty completes 5-step wizard with questions, timezone schedule, cohort assignment & invigilator key generation', async ({ browser }) => {
     const faculty = await createActor(browser, 'faculty')
     const subjectName = `Distributed Systems Assessment ${Date.now()}`
     const subjectCode = '22CS72'
@@ -22,48 +22,54 @@ test.describe('E2E: 4-Step Faculty Exam Creation Wizard & Invigilator Provisioni
       await faculty.page.locator('button[type="submit"]').click()
       await faculty.page.waitForURL(url => url.pathname.includes('/faculty'), { timeout: 15000 })
 
-      // 2. Open 4-Step AI Exam Creation Wizard
+      // 2. Open 5-Step AI Exam Creation Wizard
       await faculty.page.goto('/faculty/exams')
       await expect(faculty.page.getByText('Faculty Examination Workspace')).toBeVisible({ timeout: 10000 })
-      await faculty.page.getByRole('button', { name: /4-Step AI Exam Wizard/i }).click()
-      await expect(faculty.page.getByText('4-Step AI Exam Creation Wizard')).toBeVisible()
+      await faculty.page.getByRole('button', { name: /Exam Wizard/i }).click()
+      await expect(faculty.page.getByText('Start Your Examination')).toBeVisible()
 
-      // Step 1: Add MCQ manually
-      await faculty.page.getByRole('button', { name: /Add MCQ Manually/i }).click()
-      await faculty.page.locator('input[placeholder*="Which algorithm is used"]').fill('What is Byzantine Fault Tolerance in distributed systems?')
+      // Step 1: Skip PDF to enter questions manually
+      await faculty.page.getByRole('button', { name: /Skip, I'll type/i }).click()
+
+      // Step 2: Add MCQ manually in Question Review
+      await expect(faculty.page.getByText('Questions & Marking Scheme')).toBeVisible()
+      await faculty.page.getByRole('button', { name: /Add Question/i }).click()
+      await faculty.page.locator('input[placeholder*="Question prompt"]').fill('What is Byzantine Fault Tolerance in distributed systems?')
       const optionInputs = faculty.page.locator('input[placeholder*="Option"]')
       await optionInputs.nth(0).fill('Consensus protocol tolerating arbitrary failures')
       await optionInputs.nth(1).fill('A hardware caching algorithm')
       await optionInputs.nth(2).fill('A relational database constraint')
       await optionInputs.nth(3).fill('An optical network transmission protocol')
 
-      await faculty.page.getByRole('button', { name: /Save Question to Bank/i }).click()
-      await expect(faculty.page.getByText('1 Question in Bank')).toBeVisible()
+      await faculty.page.getByRole('button', { name: /Save Question/i }).click()
+      await expect(faculty.page.getByText('1 Items')).toBeVisible()
 
-      // Continue to Step 2
+      // Continue to Step 3: Schedule
       await faculty.page.getByRole('button', { name: /Continue/i }).click()
 
-      // Step 2: Subject Details & Auto-Calculated Schedule
+      // Step 3: Subject Details & Timezone-Aware Schedule
       await expect(faculty.page.getByText('Subject Details & Schedule')).toBeVisible()
       await faculty.page.locator('input[placeholder="e.g. Digital Signal Processing"]').fill(subjectName)
       await faculty.page.locator('input[placeholder="e.g. 22EC71"]').fill(subjectCode)
-      await expect(faculty.page.getByText('Calculated End Time')).toBeVisible()
+      await expect(faculty.page.getByText('Student Window Preview')).toBeVisible()
+      await expect(faculty.page.getByText(/Students can start any time between/i)).toBeVisible()
 
-      // Continue to Step 3
+      // Continue to Step 4: Cohort & Security
       await faculty.page.getByRole('button', { name: /Continue/i }).click()
 
-      // Step 3: Audience & Cohort Assignment
-      await expect(faculty.page.getByText('Target Semester & Department')).toBeVisible()
-      await expect(faculty.page.getByText('Target Cohort')).toBeVisible()
+      // Step 4: Audience & Security Settings
+      await expect(faculty.page.getByText('Cohort, Invigilators & Security')).toBeVisible()
+      await expect(faculty.page.getByText('Enrolling')).toBeVisible()
 
-      // Continue to Step 4
+      // Continue to Step 5: Review & Publish
       await faculty.page.getByRole('button', { name: /Continue/i }).click()
 
-      // Step 4: Auto-Generate Invigilator Credentials & Publish
-      await expect(faculty.page.getByText('Auto-Generated Invigilator Credentials')).toBeVisible()
-      await expect(faculty.page.getByText('Invigilator Surveillance Access')).toBeVisible()
-      await expect(faculty.page.getByRole('button', { name: /Copy Credentials/i })).toBeVisible()
-      await expect(faculty.page.getByRole('button', { name: /Download Slip/i })).toBeVisible()
+      // Step 5: Finalize & Publish
+      await expect(faculty.page.getByText('Review & Finalize Publication')).toBeVisible()
+      await expect(faculty.page.getByText('Student Portal Preview')).toBeVisible()
+      await expect(faculty.page.getByText('Invigilator Live Surveillance Access')).toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Copy/i }).first()).toBeVisible()
+      await expect(faculty.page.getByRole('button', { name: /Slip \(\.txt\)/i })).toBeVisible()
 
       // Publish Exam
       await faculty.page.getByRole('button', { name: /Publish Exam Now/i }).click()

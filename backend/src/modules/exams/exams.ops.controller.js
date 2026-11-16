@@ -64,7 +64,8 @@ async function generateFromPdf(req, res, next) {
       fileName: fileName || req.file?.originalname,
       count: count || 10,
       difficulty: difficulty || 'MEDIUM',
-      topicHint
+      topicHint,
+      creatorId: req.user?.id
     })
     return res.status(200).json(result)
   } catch (err) {
@@ -82,11 +83,54 @@ async function publishWizard(req, res, next) {
   }
 }
 
+async function getDraft(req, res, next) {
+  try {
+    const { examDraftService } = require('./exam.draft.service')
+    const draft = await examDraftService.getDraft(req.user?.id)
+    return res.status(200).json({ status: 'success', draft })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function saveDraft(req, res, next) {
+  try {
+    const { examDraftService } = require('./exam.draft.service')
+    const draft = await examDraftService.saveDraft(req.user?.id, req.body)
+    return res.status(200).json({ status: 'success', draft })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function deleteDraft(req, res, next) {
+  try {
+    const { examDraftService } = require('./exam.draft.service')
+    await examDraftService.deleteDraft(req.user?.id)
+    return res.status(200).json({ status: 'success', deleted: true })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function getInstitutionSebStatus(req, res, next) {
+  try {
+    const sebAdminController = require('../admin/sebAdmin.controller')
+    return sebAdminController.getSebStatus(req, res, next)
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   generateQuestions,
   generateInvigilator,
   listInvigilators,
   removeInvigilator,
   generateFromPdf,
-  publishWizard
+  publishWizard,
+  getDraft,
+  saveDraft,
+  deleteDraft,
+  getInstitutionSebStatus
 }

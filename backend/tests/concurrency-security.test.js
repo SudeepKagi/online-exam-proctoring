@@ -184,6 +184,9 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
   it('4. Server-Authoritative Timer Expiry Enforcement: Rejects late answers with 409', async () => {
     const stud = students[1]
     const att = await prisma.examAttempt.findFirst({ where: { examId: exam.id, studentId: stud.id } })
+    await prisma.attemptAnswer.deleteMany({
+      where: { attemptId: att.id, questionId: questions[5].id }
+    })
 
     await prisma.examAttempt.update({
       where: { id: att.id },

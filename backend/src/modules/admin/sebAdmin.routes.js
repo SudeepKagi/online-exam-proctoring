@@ -6,13 +6,13 @@ const sebAdminController = require('./sebAdmin.controller')
 
 const router = express.Router()
 
-// All routes require ADMIN role
+// Authenticated routes
 router.use(authenticateToken)
-router.use(requireRole('ADMIN'))
 
-router.post('/config', sebAdminController.upload.single('file'), sebAdminController.uploadSebConfig)
-router.get('/status', sebAdminController.getSebStatus)
-router.delete('/config', sebAdminController.deleteSebConfig)
+// Mutations require ADMIN role; read-only status is available to ADMIN
+router.post('/config', requireRole('ADMIN'), sebAdminController.upload.single('file'), sebAdminController.uploadSebConfig)
+router.get('/status', requireRole('ADMIN'), sebAdminController.getSebStatus)
+router.delete('/config', requireRole('ADMIN'), sebAdminController.deleteSebConfig)
 
 module.exports = router
 

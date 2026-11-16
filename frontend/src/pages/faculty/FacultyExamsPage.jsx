@@ -203,6 +203,7 @@ export default function FacultyExamsPage() {
         isOpen={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onExamCreated={handleExamCreated}
+        existingExams={exams}
       />
 
       <ExamCredentialsModal

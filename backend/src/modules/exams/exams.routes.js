@@ -21,6 +21,14 @@ router.get('/exams', authenticateToken, (req, res, next) => {
   return examsController.listExams(req, res, next)
 })
 
+// 5-Step Exam Wizard Endpoints — MUST be before /:id to avoid shadowing
+router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
+router.post('/publish-wizard', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.publishWizard)
+router.get('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.getDraft)
+router.post('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.saveDraft)
+router.delete('/draft', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.deleteDraft)
+router.get('/seb-status', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.getInstitutionSebStatus)
+
 // Standard /exams CRUD & Question Management
 router.get('/', authenticateToken, examsController.listExams)
 router.post('/', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.createExam)
@@ -29,9 +37,6 @@ router.put('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsCont
 router.patch('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.updateExam)
 router.delete('/:id', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.deleteExam)
 router.post('/:id/publish', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.publishExam)
-// 4-Step Exam Wizard Endpoints
-router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
-router.post('/publish-wizard', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.publishWizard)
 
 // AI Question Generator
 router.post('/:id/generate-questions', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.generateQuestions)

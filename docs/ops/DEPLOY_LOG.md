@@ -201,3 +201,15 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Service Status**: `active` (`proctornet.service`)
 - **Main Branch Head**: Merged PR #44 (`c3fb953`)
 
+
+### [2026-11-10T12:22:22.648Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\clean-demo-accounts.sh`
+- **Command ID**: `e5180e44-3b6a-43ce-9bb6-53e526968159`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/clean-demo-accounts.log`
+
+### [2026-11-10T12:27:31.589Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase0-check-env-keys.sh`
+- **Command ID**: `bd7a52d1-750b-4e88-93b8-0e02dbbbab76`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-live-env-keys.log`
