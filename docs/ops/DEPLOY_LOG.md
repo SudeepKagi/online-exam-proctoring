@@ -258,3 +258,9 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `c0ad0a59-ad8f-4e57-ba04-8d59e2aec9c0`
 - **Status**: `Failed` (Exit Code: 1)
 - **Log File**: `logs-deploy/deploy-7a5bc25e16719b1e97878d3c068023d0c97a5ffc.log`
+
+### [2026-11-16T09:46:07.018Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `c3495953-3ea7-4ebe-9a86-b69e3e2e1787`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/deploy-bb779a8f43b9aef080c6cc7730277b8862b52240.log`

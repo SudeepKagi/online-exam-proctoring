@@ -102,7 +102,7 @@ async function runDeploy() {
   }
   fs.writeFileSync(path.join(repoRoot, 'VERSION'), JSON.stringify(versionData, null, 2), 'utf8')
 
-  const tarCmd = `tar -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json VERSION`
+  const tarCmd = `tar -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json package-lock.json VERSION`
   execSync(tarCmd, { cwd: repoRoot, stdio: 'inherit' })
   console.log(`-> Release tarball created: ${tarFile}`)
 
@@ -225,8 +225,14 @@ if [ "$DESTRUCTIVE_COUNT" -gt 0 ]; then
 fi
 echo "[✓] All migrations verified strictly additive."
 
+PREV_RELEASE=$(readlink -f "$CURRENT_LINK" || echo "")
+if [ -n "$PREV_RELEASE" ] && [ -d "$PREV_RELEASE/backend/node_modules" ] && [ ! -d "$NEW_RELEASE/backend/node_modules" ]; then
+  echo "Copying node_modules cache from $PREV_RELEASE/backend/node_modules..."
+  cp -rp "$PREV_RELEASE/backend/node_modules" "$NEW_RELEASE/backend/node_modules"
+fi
+
 echo "Installing production dependencies & generating Prisma client..."
-npm ci --omit=dev
+npm install --omit=dev --no-audit --no-fund
 npx prisma generate
 npx prisma migrate deploy
 chown -R proctornet:proctornet "$NEW_RELEASE"
