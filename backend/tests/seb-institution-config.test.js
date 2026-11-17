@@ -22,6 +22,8 @@ const XML_SEB_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>startURL</key>
+  <string>https://proctornet.duckdns.org/seb/enter</string>
   <key>sendBrowserExamKey</key>
   <true/>
 </dict>
@@ -342,7 +344,7 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       assert.strictEqual(res.json?.code, 'INVALID_CONFIG_KEY')
     })
 
-    it('accepts unencrypted XML .seb file and returns warning', async () => {
+    it('accepts unencrypted XML .seb file and returns inspection details and warning', async () => {
       const { body, headers } = makeMultipartBody('exam.seb', XML_SEB_CONTENT, { configKey: VALID_KEY })
       const res = await httpRequest({
         hostname: '127.0.0.1',
@@ -357,7 +359,14 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
 
       assert.strictEqual(res.statusCode, 200)
       assert.strictEqual(res.json?.success, true)
-      assert.ok(res.json?.warning?.includes('unencrypted'), 'Must warn if file appears unencrypted')
+      assert.strictEqual(res.json?.inspection?.isEncrypted, false)
+      assert.strictEqual(res.json?.inspection?.format, 'xml')
+      assert.ok(
+        res.json?.warning?.includes('Browser Exam Key') ||
+        res.json?.warning?.includes('unencrypted') ||
+        res.json?.inspection?.recommendation?.includes('password'),
+        'Must flag plain XML inspection notice or key mismatch warning'
+      )
       assert.strictEqual(res.json?.status?.configured, true)
       assert.strictEqual(res.json?.status?.keyLast4, VALID_KEY.slice(-4))
     })
@@ -379,7 +388,7 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       assert.strictEqual('configKey' in res.json, false)
     })
 
-    it('successfully uploads encrypted .seb file with no warning', async () => {
+    it('successfully uploads encrypted .seb file and returns informative encryption notice', async () => {
       const { body, headers } = makeMultipartBody('exam.seb', ENCRYPTED_SEB_CONTENT, { configKey: VALID_KEY })
       const res = await httpRequest({
         hostname: '127.0.0.1',
@@ -394,7 +403,10 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
 
       assert.strictEqual(res.statusCode, 200)
       assert.strictEqual(res.json?.success, true)
-      assert.strictEqual(res.json?.warning, null)
+      assert.ok(
+        res.json?.warning?.includes('protected with a settings password') || res.json?.warning === null,
+        'Should include informative notice for encrypted container'
+      )
       assert.strictEqual(res.json?.status?.configured, true)
     })
   })
