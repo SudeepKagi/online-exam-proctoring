@@ -243,9 +243,12 @@ async function createLaunchLink(req, res, next) {
     const url = `${scheme}//${origin.host}/api/v1/seb/config/${tokenResult.downloadToken}.seb??launch=${tokenResult.launchToken}`
 
     return res.status(200).json({
+      success: true,
       url,
+      launchUrl: url,
       downloadToken: tokenResult.downloadToken,
       exchangeToken: tokenResult.launchToken,
+      launchToken: tokenResult.launchToken,
       token: tokenResult.launchToken, // Backwards compatibility for existing test assertions
       pin: tokenResult.pin,
       expiresAt: tokenResult.expiresAt,
@@ -458,6 +461,33 @@ async function exchange(req, res, next) {
         userAgent
       })
       invalidateInstitutionSebState()
+
+      // If a student ran a check, update their user profileMetadata
+      if (record.purpose === 'check') {
+        try {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { profileMetadata: true }
+          })
+          const meta = (currentUser?.profileMetadata && typeof currentUser.profileMetadata === 'object')
+            ? currentUser.profileMetadata
+            : {}
+          const detectedVersion = userAgent.match(/SEB\/([0-9.]+)/i)?.[1] || (isSebAgent ? 'SEB 3.x' : 'Verified Browser')
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              profileMetadata: {
+                ...meta,
+                sebLastCheckedAt: nowIso,
+                sebVersion: detectedVersion,
+                sebChecked: true
+              }
+            }
+          })
+        } catch (metaErr) {
+          logger.warn({ err: metaErr.message }, 'Failed to update student profileMetadata for SEB check')
+        }
+      }
     }
 
     let destination = '/student/dashboard'
@@ -556,6 +586,41 @@ async function exchangePin(req, res, next) {
       'Safe Exam Browser launch PIN successfully exchanged for user session'
     )
 
+    if (record.purpose === 'check' || normalizeRole(user.role) === ROLES.ADMIN || normalizeRole(user.role) === ROLES.FACULTY) {
+      const nowIso = new Date().toISOString()
+      await settingsService.updateSebLastVerified(nowIso, {
+        method: 'exchange_pin',
+        userAgent
+      })
+      invalidateInstitutionSebState()
+
+      if (record.purpose === 'check') {
+        try {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { profileMetadata: true }
+          })
+          const meta = (currentUser?.profileMetadata && typeof currentUser.profileMetadata === 'object')
+            ? currentUser.profileMetadata
+            : {}
+          const detectedVersion = userAgent.match(/SEB\/([0-9.]+)/i)?.[1] || (isSebAgent ? 'SEB 3.x' : 'Verified Browser')
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              profileMetadata: {
+                ...meta,
+                sebLastCheckedAt: nowIso,
+                sebVersion: detectedVersion,
+                sebChecked: true
+              }
+            }
+          })
+        } catch (metaErr) {
+          logger.warn({ err: metaErr.message }, 'Failed to update student profileMetadata for SEB PIN check')
+        }
+      }
+    }
+
     let destination = '/student/dashboard'
     if (record.purpose === 'check') {
       destination = '/student/secure-browser?verified=1'
@@ -575,11 +640,75 @@ async function exchangePin(req, res, next) {
   }
 }
 
+/**
+ * Returns student-facing SEB setup status (profile check date, version, and institution mode).
+ * GET /api/v1/seb/student-check-status
+ */
+async function getStudentCheckStatus(req, res, next) {
+  try {
+    const user = req.user
+    if (!user) {
+      return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
+    }
+
+    const userData = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { profileMetadata: true }
+    })
+    const meta = (userData?.profileMetadata && typeof userData.profileMetadata === 'object')
+      ? userData.profileMetadata
+      : {}
+
+    const institutionSeb = await getInstitutionSebState()
+
+    return res.status(200).json({
+      checked: Boolean(meta.sebChecked),
+      lastCheckedAt: meta.sebLastCheckedAt || null,
+      sebVersion: meta.sebVersion || null,
+      institutionSeb: {
+        configured: institutionSeb.configured,
+        effectiveMode: institutionSeb.effectiveMode,
+        requestedMode: institutionSeb.requestedMode,
+        lastVerifiedAt: institutionSeb.lastVerifiedAt
+      }
+    })
+  } catch (err) {
+    logger.error({ err }, 'Error fetching student SEB check status')
+    next(err)
+  }
+}
+
+/**
+ * Live status query for launch tokens (used by frontend polling while waiting for SEB).
+ * GET /api/v1/seb/token-status/:token
+ */
+async function getTokenStatus(req, res, next) {
+  try {
+    const { token } = req.params
+    if (!token) {
+      return res.status(400).json({ code: 'INVALID_TOKEN', message: 'Token parameter is required.' })
+    }
+
+    const result = sebTokenService.checkTokenStatus(token)
+    return res.status(200).json({
+      status: result.status,
+      consumed: result.status === 'CONSUMED',
+      consumedAt: result.consumedAt || null,
+      purpose: result.purpose || null
+    })
+  } catch (err) {
+    logger.error({ err }, 'Error checking token status')
+    next(err)
+  }
+}
+
 module.exports = {
   ping,
   createLaunchLink,
   downloadSebConfig,
   exchange,
   exchangePin,
-  verifySebHeaderHash
+  verifySebHeaderHash,
+  getStudentCheckStatus,
+  getTokenStatus
 }

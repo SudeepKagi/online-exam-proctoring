@@ -66,6 +66,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `secrets-hardening.test.js` | 4 | **KEEP** | Verifies secret entropy requirements and rotation safety guards. |
 | `storage-probe.test.js` | 3 | **KEEP** | Verifies startup storage probe (`put`, `get`, `delete` under `probe/`) and admin storage health check (`/api/v1/admin/health/storage`). |
 | `storage-validation.test.js` | 10 | **KEEP** | Verifies S3 environment configuration validation and rejection of mock/localhost in production. |
+| `student-seb-check.test.js` | 7 | **NEW** | Verifies Phase 4 student pre-exam check: authenticated status check (`checked`, `lastCheckedAt`, `sebVersion`), launch token with `purpose=check`, live token status polling, token exchange with profileMetadata persistence, and 6-digit PIN fallback exchange. |
 | `student-system-check.test.js` | 11 | **KEEP** | Verifies pre-exam system check: clock skew detection, latency measurement, OS compatibility, and friendly student error mapping. |
 | `violation-labels.test.js` | 5 | **KEEP** | Verifies legacy violation label formatting (`Screen share ended (legacy)`) and canonical pass-throughs. |
 | `wizard-scheduling-bugs.test.js` | 6 | **KEEP** | Verifies edge cases in scheduling (start too soon, invalid duration, AI rate limits). |
