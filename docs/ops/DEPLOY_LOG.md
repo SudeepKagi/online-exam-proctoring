@@ -519,3 +519,24 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T10:13:51.417Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `ce936fbe-17dc-4ef1-8b94-52c32a54be3d`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-4d5745e0873dec11601afd0255913606f9435cb1.log`
+
+### [2026-11-17T10:13:52.623Z] Production Deploy: `release-4d5745e0873dec11601afd0255913606f9435cb1`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `4d5745e0873dec11601afd0255913606f9435cb1`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-4d5745e0873dec11601afd0255913606f9435cb1.tar.gz`
+- **Duration**: 89 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T10:16:53.742Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\update-env-seb-mode.sh`
+- **Command ID**: `e5d14d82-28b7-4cbe-aab4-00d3c6a213af`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/update-seb-mode-enforce.log`
