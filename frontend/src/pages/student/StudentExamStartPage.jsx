@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -863,6 +863,15 @@ export default function StudentExamStartPage() {
                     Complete photo verification in Step 1 to unlock secure browser launch.
                   </p>
                 )}
+                <div className="text-center pt-1">
+                  <Link
+                    to="/student/secure-browser"
+                    className="text-[11px] text-[#5266eb] hover:underline inline-flex items-center gap-1 font-[420]"
+                  >
+                    <span>Trouble opening SEB? Open Setup & Diagnostics</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </div>
               </div>
             ) : (
               /* Non-SEB Exam: Exactly ONE Primary Button: "Continue to exam" */

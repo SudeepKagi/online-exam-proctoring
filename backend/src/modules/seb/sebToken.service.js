@@ -200,6 +200,27 @@ class SebTokenStore {
   }
 
   /**
+   * Checks the live status of a launch token without consuming it.
+   */
+  checkTokenStatus(rawToken) {
+    if (!rawToken || typeof rawToken !== 'string') {
+      return { status: 'NOT_FOUND' }
+    }
+    const tokenHash = this.hash(rawToken)
+    const record = this.tokens.get(tokenHash)
+    if (!record) {
+      return { status: 'NOT_FOUND' }
+    }
+    if (record.consumedAt) {
+      return { status: 'CONSUMED', consumedAt: record.consumedAt, purpose: record.purpose }
+    }
+    if (Date.now() > record.expiresAt) {
+      return { status: 'EXPIRED' }
+    }
+    return { status: 'PENDING', expiresAt: record.expiresAt, purpose: record.purpose }
+  }
+
+  /**
    * Clears all stored tokens (for testing purposes).
    */
   clear() {

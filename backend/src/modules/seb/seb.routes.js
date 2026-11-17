@@ -71,4 +71,10 @@ router.get('/exchange', exchangeLimiter, sebController.exchange)
 // Fallback 6-digit PIN exchange
 router.post('/exchange-pin', exchangeLimiter, sebController.exchangePin)
 
+// Student setup status query: authenticated
+router.get('/student-check-status', exchangeLimiter, authenticateToken, sebController.getStudentCheckStatus)
+
+// Launch token live polling status
+router.get('/token-status/:token', exchangeLimiter, sebController.getTokenStatus)
+
 module.exports = router

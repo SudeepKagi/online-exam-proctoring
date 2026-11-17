@@ -138,6 +138,16 @@ export default function StudentDashboardPage() {
             Roll Number: <strong className="text-[#28253b] font-mono font-[480]">{user?.institutionId || '—'}</strong> • Department: <strong className="text-[#28253b] font-[480]">{meta.department || 'Computer Science'}</strong> • Semester: <strong className="text-[#28253b] font-[480]">{meta.semester ? `Sem ${meta.semester}` : '6'}</strong>
           </p>
         </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to="/student/secure-browser"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-[420] bg-white hover:bg-[#edecfb] text-[#5266eb] border border-[#5266eb]/20 shadow-xs transition"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Secure Browser Setup</span>
+          </Link>
+        </div>
         <Link to="/settings" className="px-4 py-2 rounded-[40px] bg-white hover:bg-[#fbfbff] border border-[#e9eaf2] text-xs font-[420] text-[#28253b] shadow-xs transition-colors cursor-pointer">
           View Profile & Settings
         </Link>
@@ -220,9 +230,11 @@ export default function StudentDashboardPage() {
                       <CardTitle className="text-sm font-[480] text-[#28253b] leading-snug">{exam.title}</CardTitle>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {exam?.proctoringConfig?.sebRequired && (
-                          <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] text-[#5266eb] border-0 flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3" /> Secure browser
-                          </Badge>
+                          <Link to="/student/secure-browser" title="Test or verify your Safe Exam Browser setup">
+                            <Badge variant="outline" className="text-[10px] font-[420] bg-[#edecfb] hover:bg-[#edecfb]/80 text-[#5266eb] border-0 flex items-center gap-1 cursor-pointer">
+                              <ShieldCheck className="w-3 h-3" /> Secure browser
+                            </Badge>
+                          </Link>
                         )}
                         <Badge variant="outline" className="text-[10px] font-[420] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-transparent">
                           {exam.courseCode}
