@@ -410,7 +410,8 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       })
 
       assert.strictEqual(res.statusCode, 200)
-      assert.deepStrictEqual(res.json, { verified: false })
+      assert.strictEqual(res.json.verified, false)
+      assert.strictEqual(res.json.isSebAgent, false)
     })
 
     it('returns verified:false when header is invalid hex or mismatched', async () => {
@@ -425,7 +426,8 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       })
 
       assert.strictEqual(res.statusCode, 200)
-      assert.deepStrictEqual(res.json, { verified: false })
+      assert.strictEqual(res.json.verified, false)
+      assert.strictEqual(res.json.isSebAgent, false)
     })
 
     it('returns verified:true and records lastVerifiedAt when header matches expected formula', async () => {
@@ -447,7 +449,9 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       })
 
       assert.strictEqual(res.statusCode, 200)
-      assert.deepStrictEqual(res.json, { verified: true })
+      assert.strictEqual(res.json.verified, true)
+      assert.strictEqual(res.json.method, 'header_hash')
+      assert.ok(res.json.timestamp)
 
       // Verify that status endpoint now reflects lastVerifiedAt
       const statusRes = await httpRequest({
@@ -514,7 +518,8 @@ describe('Step 5: Institution-Wide Safe Exam Browser Setup Suite', () => {
       // Custom scheme protocol
       assert.ok(res.json.url.startsWith('seb://') || res.json.url.startsWith('sebs://'))
       assert.ok(res.json.url.includes('/api/v1/seb/config/'))
-      assert.ok(res.json.url.endsWith('.seb'))
+      assert.ok(res.json.url.includes('.seb'))
+      assert.ok(res.json.url.includes('launch='))
     })
 
     it('allows student with active exam to generate launch link', async () => {
