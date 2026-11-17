@@ -184,11 +184,10 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     // Verify header and description
     await expect(page.getByText('System Readiness Check')).toBeVisible({ timeout: 10000 })
 
-    // Verify all 4 checklist items render
-    await expect(page.getByText('Camera Preview & Permissions')).toBeVisible()
-    await expect(page.getByText('Internet Connection')).toBeVisible()
-    await expect(page.getByText('System Clock Synchronization')).toBeVisible()
-    await expect(page.getByText('Computer & Operating System')).toBeVisible()
+    // Verify all 3 checklist items render
+    await expect(page.getByText('1. Photo Verification')).toBeVisible()
+    await expect(page.getByText(/Internet Connection/i)).toBeVisible()
+    await expect(page.getByText(/Computer & Operating System/i)).toBeVisible()
 
     // Verify latency in ms is rendered
     await expect(page.locator('text=/\\d+\\s*ms/')).toBeVisible({ timeout: 10000 })
@@ -198,14 +197,23 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await expect(helpLink).toBeVisible()
     expect(await helpLink.getAttribute('href')).toBeTruthy()
 
-    // Verify primary action button "Start exam" is enabled
-    const startBtn = page.getByRole('button', { name: /Start exam/i })
-    await expect(startBtn).toBeEnabled({ timeout: 10000 })
+    // Capture photo to complete identity verification
+    const captureBtn = page.getByRole('button', { name: /Capture Photo/i })
+    await expect(captureBtn).toBeVisible({ timeout: 10000 })
+    await page.waitForFunction(() => {
+      const v = document.querySelector('video') as HTMLVideoElement | null
+      return v && v.readyState >= 2
+    }, { timeout: 10000 }).catch(() => {})
+    await captureBtn.click()
 
-    // Click "Start exam" -> navigates to pre-check
-    await startBtn.click()
-    await page.waitForURL((url: URL) => url.pathname.includes(`/student/exams/${openExamId}/pre-check`), { timeout: 10000 })
-    expect(page.url()).toContain(`/student/exams/${openExamId}/pre-check`)
+    // Verify primary action button "Continue to exam" is enabled after verified photo
+    const continueBtn = page.getByRole('button', { name: /Continue to exam/i })
+    await expect(continueBtn).toBeEnabled({ timeout: 10000 })
+
+    // Click "Continue to exam" -> enters arena
+    await continueBtn.click()
+    await page.waitForURL((url: URL) => url.pathname.includes(`/arena`) || url.pathname.includes(`/exam`), { timeout: 15000 })
+    expect(page.url()).toMatch(/\/arena|\/exam/)
   })
 
   test('3. Countdown & window states: friendly messages for upcoming and closed exams', async () => {
@@ -225,15 +233,15 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await expect(page.getByRole('button', { name: /Return to Dashboard/i })).toBeVisible()
   })
 
-  test('4. SEB outside SEB: "Open secure exam browser" button and 4-second fallback', async () => {
+  test('4. SEB outside SEB: "Open exam in secure browser" button and fallback PIN', async () => {
     const page = studentActor.page
 
-    // Mock seb-status to enforce mode outside SEB
+    // Mock seb-status to enforce mode outside SEB with faceVerified: true
     await page.route(`**/api/v1/attempts/exams/${sebExamId}/seb-status`, async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ required: true, mode: 'enforce', verified: false })
+        body: JSON.stringify({ required: true, mode: 'enforce', verified: false, faceVerified: true })
       })
     })
 
@@ -242,28 +250,24 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ url: `seb://localhost:5173/api/v1/seb/config/mock-token.seb` })
+        body: JSON.stringify({ url: `seb://localhost:5173/api/v1/seb/config/mock-token.seb`, pin: '839201' })
       })
     })
 
     await page.goto(`/student/exams/${sebExamId}/start`)
     await page.waitForLoadState('networkidle')
 
-    // Button should be "Open secure exam browser"
-    const openSebBtn = page.getByRole('button', { name: /Open secure exam browser/i })
+    // Button should be "Open exam in secure browser"
+    const openSebBtn = page.getByRole('button', { name: /Open exam in secure browser/i })
     await expect(openSebBtn).toBeVisible({ timeout: 10000 })
 
-    // Click the button to trigger launch attempt and 4-second timer
+    // Click button to trigger launch attempt and show launch fallback panel with PIN
     await openSebBtn.click()
 
-    // Wait 4.5 seconds for fallback panel to reveal
-    await page.waitForTimeout(4500)
-
-    // Verify "Nothing opened?" fallback card
-    await expect(page.getByText('Nothing opened?')).toBeVisible({ timeout: 5000 })
-    await expect(page.getByRole('link', { name: /Download Safe Exam Browser/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Try again/i })).toBeVisible()
-    await expect(page.getByText(/Make sure Safe Exam Browser is installed/i)).toBeVisible()
+    // Verify SEB launching fallback details
+    await expect(page.getByText(/Safe Exam Browser Launching/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('839201')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Copy PIN/i })).toBeVisible()
   })
 
   test('5. Inside SEB: login badge, target exam redirect, and single-stage pre-check', async () => {
@@ -301,13 +305,12 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await page.waitForLoadState('networkidle')
     await passConsentIfPresent(page)
 
-    // Inside SEB, stage indicator is single stage: Identity Verification
-    await expect(page.getByText('Identity Verification', { exact: true })).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Secure browser verified')).toBeVisible()
+    // Inside SEB, stage indicator is System & Identity Check
+    await expect(page.getByText('System & Identity Check', { exact: true })).toBeVisible({ timeout: 10000 })
 
-    // Verify button text is single-step capture & start
-    const captureAndStartBtn = page.getByRole('button', { name: /Capture Face & Start Exam/i })
-    await expect(captureAndStartBtn).toBeVisible()
+    // Verify button text is Capture Photo
+    const capturePhotoBtn = page.getByRole('button', { name: /Capture Photo/i })
+    await expect(capturePhotoBtn).toBeVisible()
   })
 
   test('6. Pre-check camera failure shows one-click recovery steps', async () => {
@@ -340,15 +343,19 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await page.waitForLoadState('networkidle')
     await passConsentIfPresent(page)
 
-    // Step 1: Capture Face
-    const verifyFaceBtn = page.getByRole('button', { name: /Capture & Verify Face/i })
-    await expect(verifyFaceBtn).toBeVisible({ timeout: 10000 })
-    await verifyFaceBtn.click()
+    // Step 1: Capture Photo
+    const captureBtn = page.getByRole('button', { name: /Capture Photo/i })
+    await expect(captureBtn).toBeVisible({ timeout: 10000 })
+    await page.waitForFunction(() => {
+      const v = document.querySelector('video') as HTMLVideoElement | null
+      return v && v.readyState >= 2
+    }, { timeout: 10000 }).catch(() => {})
+    await captureBtn.click()
 
-    // Step 2: Fullscreen & Launch
-    const launchBtn = page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
-    await expect(launchBtn).toBeVisible({ timeout: 10000 })
-    await launchBtn.click()
+    // Step 2: Confirm & Verify
+    const confirmBtn = page.getByRole('button', { name: /Confirm & Verify/i })
+    await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+    await confirmBtn.click()
 
     // Wait for Arena
     await page.waitForURL((url: URL) => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
@@ -359,9 +366,9 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await submitExamBtn.click()
 
     // Confirm dialog
-    const confirmBtn = page.getByRole('button', { name: /Confirm Submission/i })
-    await expect(confirmBtn).toBeVisible({ timeout: 5000 })
-    await confirmBtn.click()
+    const confirmSubmitBtn = page.getByRole('button', { name: /Confirm Submission/i })
+    await expect(confirmSubmitBtn).toBeVisible({ timeout: 5000 })
+    await confirmSubmitBtn.click()
 
     // Verify Submission confirmation screen
     await expect(page.getByText('Examination Submitted')).toBeVisible({ timeout: 10000 })

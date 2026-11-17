@@ -95,7 +95,7 @@ test.describe('E2E: Invigilator Operations Flow', () => {
 
       // Click card to open Sheet
       await studentCard.click()
-      await expect(invigilator.page.getByText('Realtime telemetry & security audit history')).toBeVisible({ timeout: 10000 })
+      await expect(invigilator.page.getByText(/Telemetry & Security Audit Sheet/i)).toBeVisible({ timeout: 10000 })
 
       // 6. Click Suspend Attempt button
       const suspendBtn = invigilator.page.getByRole('button', { name: /Suspend Attempt/i })
@@ -155,7 +155,7 @@ test.describe('E2E: Invigilator Operations Flow', () => {
       const studentCard = invigilator.page.locator('[data-slot="card"], .cursor-pointer').filter({ hasText: /Alice Johnson|Candidate/i }).first()
       await expect(studentCard).toBeVisible({ timeout: 10000 })
       await studentCard.click()
-      await expect(invigilator.page.getByText('Realtime telemetry & security audit history')).toBeVisible({ timeout: 10000 })
+      await expect(invigilator.page.getByText(/Telemetry & Security Audit Sheet/i)).toBeVisible({ timeout: 10000 })
 
       // Verify legacy violation renders friendly label "Screen share ended (legacy)"
       await expect(invigilator.page.getByText('Screen share ended (legacy)')).toBeVisible({ timeout: 10000 })

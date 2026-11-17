@@ -123,7 +123,7 @@ test.describe('E2E: Camera Feed & Real-Frame Verification Suite', () => {
     }
   })
 
-  test('Route handoff: StudentExamStartPage -> PreExamCheckPage -> ExamArena preserves the stream without freezing or black frame', async ({ browser }) => {
+  test('Route handoff: pre-check captures verified still photo and releases camera (no continuous arena stream)', async ({ browser }) => {
     const student = await createActor(browser, 'student')
     try {
       await student.page.goto('/login?role=student')
@@ -132,36 +132,36 @@ test.describe('E2E: Camera Feed & Real-Frame Verification Suite', () => {
       await student.page.locator('button[type="submit"]').click()
       await student.page.waitForURL((url: URL) => url.pathname.includes('/student'), { timeout: 15000 })
 
-      // 1. Visit Start Page
+      // 1. Visit Start Page and verify active camera preview for photo capture
       await student.page.goto(`/student/exams/${examId}/start`)
       await assertVideoHasRealFrames(student.page, '[data-testid="camera-preview-video"]')
 
-      // 2. Navigate to Pre-Check via in-app navigation
-      const proceedBtn = student.page.getByRole('button', { name: /Start exam|Proceed to Verification/i })
-      await expect(proceedBtn).toBeVisible({ timeout: 10000 })
-      await expect(proceedBtn).toBeEnabled({ timeout: 10000 })
-      await proceedBtn.click()
-      await student.page.waitForURL((url: URL) => url.pathname.includes('/pre-check'), { timeout: 15000 })
+      // 2. Navigate to Pre-Check to complete identity capture
+      await student.page.goto(`/student/exams/${examId}/pre-check`)
       await passConsentIfPresent(student.page)
       await assertVideoHasRealFrames(student.page, '[data-testid="camera-preview-video"]')
 
-      // 3. Complete face verify and proceed to arena
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face|Capture Face & Start Exam/i })
-      await expect(verifyFaceBtn).toBeVisible()
-      await verifyFaceBtn.click()
+      // 3. Capture still photo and verify identity (camera turns off immediately)
+      const captureBtn = student.page.getByRole('button', { name: /Capture Photo/i })
+      await expect(captureBtn).toBeVisible({ timeout: 10000 })
+      await student.page.waitForFunction(() => {
+        const v = document.querySelector('video') as HTMLVideoElement | null
+        return v && v.readyState >= 2
+      }, { timeout: 10000 }).catch(() => {})
+      await captureBtn.click()
 
-      const enterArenaBtn = student.page.getByRole('button', { name: /Lock Screen & Launch Examination|Launch Exam|Enter Fullscreen & Launch Exam/i })
-      await expect(enterArenaBtn).toBeVisible({ timeout: 15000 })
-      await enterArenaBtn.click()
+      const confirmBtn = student.page.getByRole('button', { name: /Confirm & Verify/i })
+      await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+      await confirmBtn.click()
 
-      await student.page.waitForURL((url: URL) => url.pathname.includes('/arena'), { timeout: 15000 })
+      await student.page.waitForURL((url: URL) => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
 
-      // In Arena, verify camera stream is still active
+      // 4. In Arena, verify Phase 2 privacy invariant: zero continuous camera stream
       const streamActive = await student.page.evaluate(() => {
         const stream = (window as any).__proctorCameraStream
-        return Boolean(stream && stream.active && stream.getVideoTracks()[0]?.readyState === 'live')
+        return Boolean(stream && stream.active && stream.getVideoTracks().some((t: any) => t.readyState === 'live'))
       })
-      expect(streamActive).toBe(true)
+      expect(streamActive).toBe(false)
     } finally {
       await student.close()
     }

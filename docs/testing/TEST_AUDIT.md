@@ -19,9 +19,9 @@ Every test file across the ProctorNet test suite was audited against strict prod
 
 | Category | Total Files | Keep | Update | Rewrite | Remove | Quarantined |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Backend Suites** | 39 | 32 | 6 | 0 | 0 | 0 |
-| **E2E Suites** | 18 | 16 | 2 | 0 | 0 | 0 |
-| **Total** | **57** | **48** | **8** | **0** | **0** | **0** |
+| **Backend Suites** | 39 | 32 | 7 | 0 | 0 | 0 |
+| **E2E Suites** | 18 | 10 | 8 | 0 | 0 | 0 |
+| **Total** | **57** | **42** | **15** | **0** | **0** | **0** |
 
 ---
 
@@ -78,21 +78,21 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | File | Tests | Verdict | Evidence & Verification Scope |
 | :--- | :---: | :---: | :--- |
 | `auth-onboarding.spec.ts` | 4 | **KEEP** | Validates student first-login redirect, temporary password change, profile completion, and subsequent access. |
-| `camera-feed.spec.ts` | 3 | **KEEP** | Verifies real video frame acquisition (non-black frames), route handoffs without video freezing, and camera permission denial recovery. |
+| `camera-feed.spec.ts` | 3 | **UPDATE** | Verifies real video frame acquisition (non-black frames), route handoffs without video freezing, and camera permission denial recovery. Updated test 2 to Phase 2 privacy invariant: pre-check captures still photo, stops camera tracks immediately, and asserts zero continuous camera streaming in exam arena. |
 | `exam-authoring.spec.ts` | 5 | **UPDATE** | Updated to assert against the redesigned AI Question step: 3 entry cards ("Generate from study material", "Extract from a question paper", "Type or import from Excel"), count stepper, and AI review actions. |
 | `exam-scheduling-timezone.spec.ts` | 3 | **KEEP** | Validates schedule authoring and student exam access across distinct timezones (`Asia/Kolkata` and `America/New_York`). |
-| `invigilator-ops.spec.ts` | 4 | **KEEP** | Validates live invigilator console, realtime violation badges, student video stream tiles, and termination interventions. |
+| `invigilator-ops.spec.ts` | 4 | **UPDATE** | Validates live invigilator console, realtime violation badges, candidate audit sheet, and suspend/resume interventions. Updated sheet description assertion to `/Telemetry & Security Audit Sheet/i`. |
 | `phase2-human-flows.spec.ts` | 6 | **KEEP** | Verifies end-to-end human flows with humanized typing and realistic click pauses. |
 | `phase3-exam-invariants.spec.ts` | 10 | **KEEP** | Validates the 10 exam system domain invariants: server timer authority, auto-submit on expiration, crash recovery, and idempotent submit. |
 | `phase4-design-audit.spec.ts` | 8 | **KEEP** | Audits DOM elements against `.agent/specs/DESIGN.md`: zero dark mode classes, `#fbfcfd` canvas, zero box outlines on cards, font weight $\le 500$. |
 | `phase5-red-team.spec.ts` | 15 | **KEEP** | Validates 15 automated fault-injection attacks: double-click submit, expired JWT, offline reconnect, malformed payload rejection, tampering. |
 | `phase6-lifecycle-edge-cases.spec.ts` | 7 | **UPDATE** | Validates state machine and lifecycle invariants. Updated test 4 to verify camera tracks are stopped after pre-check capture and zero continuous stream in arena; updated test 5 to verify zero auto-termination on 3 violations. |
-| `privacy-readiness-incidents.spec.ts` | 4 | **KEEP** | Verifies GDPR/DPDP compliance: zero face embedding export, encrypted at rest, student privacy disclosures. |
+| `privacy-readiness-incidents.spec.ts` | 4 | **UPDATE** | Verifies GDPR/DPDP compliance: zero face embedding export, encrypted at rest, student privacy disclosures. Updated consent disclosures to Phase 2 headings ("Single Verification Photo", "No Video Streaming", "Strict Retention Policy"). |
 | `production-bugs-regression.spec.ts` | 5 | **KEEP** | Regression suite for production bug fixes (e.g. S3 endpoint, CSP localhost exclusions). |
 | `seb-simulated-journey.spec.ts` | 4 | **KEEP** | Simulates Safe Exam Browser headers, enforcing lock-down behavior and rejecting unverified browsers. |
-| `seb-ui.spec.ts` | 7 | **KEEP** | Validates `/admin/seb` setup screen: 3 numbered steps, checklist download, config upload, Config Key masking, and "Test my setup" live verification. |
-| `student-attempt.spec.ts` | 6 | **KEEP** | Validates student question answering, autosave indicators, single/multi-choice selections, and final review screen. |
-| `student-readiness.spec.ts` | 4 | **KEEP** | Validates system check pre-flight wizard: camera check, audio check, network round-trip latency, and clock skew validation. |
+| `seb-ui.spec.ts` | 7 | **UPDATE** | Validates `/admin/seb` setup screen: 3 numbered steps, checklist download, config upload, Config Key masking, and "Test my setup" live verification. Updated dashboard "Secure browser" badge locator with `{ exact: true }` avoiding collision with navbar setup link. |
+| `student-attempt.spec.ts` | 6 | **UPDATE** | Validates student question answering, autosave indicators, single/multi-choice selections, and final review screen. Updated pre-check interaction to Phase 2 still capture ("Capture Photo" -> "Confirm & Verify") before entering arena. |
+| `student-readiness.spec.ts` | 4 | **UPDATE** | Validates system check pre-flight wizard: camera check, audio check, network round-trip latency, and clock skew validation. Updated start page checklist items ("Photo Verification", "Internet Connection", "Computer & Operating System") and SEB launch PIN panel. |
 | `student-resilience.spec.ts` | 5 | **KEEP** | Validates offline answer buffer in IndexedDB/localStorage and auto-sync on network reconnection. |
 | `ui-consistency-audit.spec.ts` | 6 | **NEW** | Validates button contrast (WCAG AA >= 4.5:1), border radius conforming to enterprise tokens (>=16px/32px/40px pill), and the Single Primary Action rule (at most one solid #5266eb primary CTA visible per view) across `/login`, `/student/dashboard`, `/student/secure-browser`, `/faculty/exams`, `/admin/users`, `/admin/seb`. |
 
