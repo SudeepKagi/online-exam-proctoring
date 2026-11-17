@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 import { api } from '@/lib/apiClient'
+import { verifySebSession } from '@/lib/sebClient'
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -66,8 +67,8 @@ function OnboardingGuard({ children }) {
 
 export default function App() {
   useEffect(() => {
-    // Proof by use: prove SEB setup on app start before any login
-    api.get('/seb/ping').catch(() => {})
+    // Proof by use: verify Safe Exam Browser on app start before any login
+    verifySebSession(api).catch(() => {})
   }, [])
 
   return (

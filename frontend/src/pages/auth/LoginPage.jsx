@@ -8,6 +8,7 @@ import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient } from '@/lib/apiClient'
+import { verifySebSession } from '@/lib/sebClient'
 import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck } from 'lucide-react'
 
 const ROLE_CONFIG = {
@@ -72,9 +73,9 @@ export default function LoginPage() {
 
   useEffect(() => {
     let mounted = true
-    apiClient.get('/seb/ping')
+    verifySebSession(apiClient)
       .then((res) => {
-        if (mounted && res.data?.verified) {
+        if (mounted && res.verified) {
           setIsSebVerified(true)
         }
       })

@@ -98,6 +98,8 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     keyPresent,
     filePresent,
     lastVerifiedAt,
+    lastVerifiedMethod: sebConfig?.lastVerifiedMethod || null,
+    lastVerifiedUserAgent: sebConfig?.lastVerifiedUserAgent || null,
     requestedMode,
     effectiveMode,
     enforcementReason,

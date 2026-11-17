@@ -212,18 +212,55 @@ async function inspectSebRequest(req) {
   const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
   const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
   const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
-
-  const expectedHash = crypto
-    .createHash('sha256')
-    .update(expectedUrl + sebConfigKey.toLowerCase())
-    .digest('hex')
-    .toLowerCase()
+  const activeKey = sebConfigKey.toLowerCase()
 
   let matched = false
-  if (is64Hex) {
-    const expectedBuf = Buffer.from(expectedHash, 'utf8')
+
+  // 1. Direct JS API Key Match
+  const clientKey = (req.body?.configKey || req.headers['x-seb-config-key'] || '').toString().trim().toLowerCase()
+  if (/^[0-9a-f]{64}$/.test(clientKey)) {
+    const activeBuf = Buffer.from(activeKey, 'utf8')
+    const clientBuf = Buffer.from(clientKey, 'utf8')
+    if (activeBuf.length === clientBuf.length && crypto.timingSafeEqual(activeBuf, clientBuf)) {
+      matched = true
+    }
+  }
+
+  // 2. Candidate URL Header Hash Match
+  if (!matched && is64Hex) {
+    const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
+    const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
+
+    const candidateUrls = new Set([
+      expectedUrl,
+      expectedUrl.replace(/\/$/, ''),
+      `${cleanPublicOrigin}:443${normalizedPath}`,
+      `${cleanPublicOrigin}/student/login`,
+      `${cleanPublicOrigin}/login`,
+      cleanPublicOrigin
+    ])
+    if (rawReferer) candidateUrls.add(rawReferer)
+    if (clientHref) candidateUrls.add(clientHref)
+
     const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
-    matched = expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf)
+
+    for (const candUrl of candidateUrls) {
+      const hashA = crypto.createHash('sha256').update(candUrl + activeKey).digest('hex').toLowerCase()
+      const bufA = Buffer.from(hashA, 'utf8')
+      if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
+        matched = true
+        break
+      }
+    }
+  }
+
+  // 3. Attempt verification stickiness
+  const attemptId = req.params?.attemptId || req.params?.id
+  if (!matched && attemptId) {
+    const wasVerified = await isAttemptSebVerified(attemptId)
+    if (wasVerified) {
+      matched = true
+    }
   }
 
   return {
@@ -233,7 +270,6 @@ async function inspectSebRequest(req) {
     verified: Boolean(matched),
     matched,
     expectedUrl,
-    expectedHash,
     receivedHeader
   }
 }
@@ -454,5 +490,6 @@ module.exports = {
   getCachedSebSettings,
   resolveExamId,
   attemptExamLru,
-  BoundedLru
+  BoundedLru,
+  examSettingsCache
 }

@@ -95,14 +95,18 @@ class SettingsService {
     } catch (_) {}
   }
 
-  async updateSebLastVerified(timestamp = new Date().toISOString()) {
+  async updateSebLastVerified(timestamp = new Date().toISOString(), meta = {}) {
     const now = Date.now()
+    const isFirstTime = !inMemoryCachedSebConfig?.lastVerifiedAt
+
     if (inMemoryCachedSebConfig) {
       inMemoryCachedSebConfig.lastVerifiedAt = timestamp
+      if (meta.method) inMemoryCachedSebConfig.lastVerifiedMethod = meta.method
+      if (meta.userAgent) inMemoryCachedSebConfig.lastVerifiedUserAgent = meta.userAgent
     }
 
-    // Throttle database write to once per 60 seconds
-    if (now - lastVerifiedWriteTime < 60000) {
+    // Force database write immediately on first verification; otherwise throttle to once per 60 seconds
+    if (!isFirstTime && (now - lastVerifiedWriteTime < 60000)) {
       return
     }
 
@@ -110,6 +114,8 @@ class SettingsService {
       const current = await this.getSebConfig()
       if (current) {
         current.lastVerifiedAt = timestamp
+        if (meta.method) current.lastVerifiedMethod = meta.method
+        if (meta.userAgent) current.lastVerifiedUserAgent = meta.userAgent
         await this.setSetting(SEB_CONFIG_KEY, current)
         lastVerifiedWriteTime = now
         inMemoryCachedSebConfig = current

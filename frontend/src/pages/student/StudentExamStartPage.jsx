@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
+import { verifySebSession } from '@/lib/sebClient'
 import { useCamera } from '@/hooks/useCamera'
 import {
   evaluateClockSkew,
@@ -37,6 +38,7 @@ export default function StudentExamStartPage() {
   const [exam, setExam] = useState(null)
   const [sebStatus, setSebStatus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
   const [serverTimeOffset, setServerTimeOffset] = useState(0)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [globalError, setGlobalError] = useState(null)
@@ -77,10 +79,11 @@ export default function StudentExamStartPage() {
   const loadExamAndConfig = useCallback(async () => {
     try {
       const pingStart = performance.now()
-      const [examRes, configRes, sebRes] = await Promise.all([
+      const [examRes, configRes, sebRes, clientSebCheck] = await Promise.all([
         apiClient.get(`/exams/${id}`).catch((err) => { throw err }),
         apiClient.get('/config').catch(() => ({ data: { serverTime: new Date().toISOString() } })),
-        apiClient.get(`/attempts/exams/${id}/seb-status`).catch(() => ({ data: { required: false, verified: false, mode: 'off' } }))
+        apiClient.get(`/attempts/exams/${id}/seb-status`).catch(() => ({ data: { required: false, verified: false, mode: 'off' } })),
+        verifySebSession(apiClient).catch(() => ({ verified: false }))
       ])
 
       const pingDuration = performance.now() - pingStart
@@ -111,7 +114,9 @@ export default function StudentExamStartPage() {
       })
 
       // SEB Status & Computer Compatibility Check
-      const seb = sebRes.data || { required: false, verified: false, mode: 'off' }
+      const rawSeb = sebRes.data || { required: false, verified: false, mode: 'off' }
+      const isVerified = Boolean(rawSeb.verified || clientSebCheck?.verified)
+      const seb = { ...rawSeb, verified: isVerified }
       setSebStatus(seb)
 
       const osEval = evaluateOperatingSystem(seb.required)
@@ -234,21 +239,29 @@ export default function StudentExamStartPage() {
   }
 
   // 7. Proceed to Pre-Exam Check (or direct exam arena)
-  const handleStartExam = () => {
-    // Report telemetry (§Task 8)
-    apiClient.post(`/exams/${id}/readiness`, {
-      osFamily: detectOsFamily(),
-      browserFamily: detectBrowserFamily(),
-      cameraOk: cameraState.status === 'ready',
-      latencyBucket: (internetState.rating || 'good').toLowerCase(),
-      sebVerified: Boolean(sebStatus?.verified)
-    }).catch(() => {})
+  const handleStartExam = async () => {
+    if (starting) return
+    setStarting(true)
+    try {
+      // Report telemetry (§Task 8)
+      await apiClient.post(`/exams/${id}/readiness`, {
+        osFamily: detectOsFamily(),
+        browserFamily: detectBrowserFamily(),
+        cameraOk: cameraState.status === 'ready',
+        latencyBucket: (internetState.rating || 'good').toLowerCase(),
+        sebVerified: Boolean(sebStatus?.verified)
+      }).catch(() => {})
 
-    navigate(`/student/exams/${id}/pre-check`)
+      navigate(`/student/exams/${id}/pre-check`)
+    } catch (err) {
+      setGlobalError(mapStudentError(err))
+    } finally {
+      setStarting(false)
+    }
   }
 
-  const isSebLockedOut = sebStatus?.required && !sebStatus?.verified
-  const allChecksReady = cameraState.status === 'ready' && computerState.compatible
+  const isSebLockedOut = Boolean(sebStatus?.required && !sebStatus?.verified)
+  const allChecksReady = cameraState.status === 'ready' && computerState.compatible && (!sebStatus?.required || sebStatus?.verified)
 
   if (loading) {
     return (
@@ -404,6 +417,58 @@ export default function StudentExamStartPage() {
                 </p>
               )}
             </div>
+
+            {/* 5. Safe Exam Browser Item */}
+            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1.5" data-testid="seb-readiness-item">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
+                  <ShieldCheck className="w-4 h-4 text-[#5266eb]" />
+                  <span>5. Safe Exam Browser</span>
+                </div>
+                {sebStatus?.required ? (
+                  sebStatus?.verified ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#5266eb]" data-testid="seb-status-verified">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#c04b4b]" data-testid="seb-status-required">
+                      <AlertTriangle className="w-3.5 h-3.5" /> Not Detected (Required)
+                    </span>
+                  )
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-[420] text-[#554e7b]" data-testid="seb-status-optional">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#554e7b]/60" /> Optional
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-[#70707d] font-[360] pl-6">
+                {sebStatus?.required
+                  ? (sebStatus?.verified
+                    ? 'Safe Exam Browser is active, secured, and verified with institution configuration.'
+                    : 'This examination mandates Safe Exam Browser. You must launch the exam using Safe Exam Browser.')
+                  : 'Standard web browser is permitted for this examination.'}
+              </p>
+              {sebStatus?.required && !sebStatus?.verified && (
+                <div className="pl-6 pt-1 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={handleLaunchSeb}
+                    disabled={launchingSeb}
+                    className="text-[11px] h-7 px-3 rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" /> {launchingSeb ? 'Opening...' : 'Launch in Safe Exam Browser'}
+                  </Button>
+                  <a
+                    href={sebDownloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] text-[#5266eb] hover:underline inline-flex items-center gap-1 font-[420]"
+                  >
+                    Download SEB <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Exam Window Notices */}
@@ -470,10 +535,10 @@ export default function StudentExamStartPage() {
             ) : isSebLockedOut ? (
               <Button
                 onClick={handleLaunchSeb}
-                disabled={launchingSeb || !allChecksReady}
+                disabled={launchingSeb}
                 className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-2"
               >
-                {launchingSeb ? 'Opening Secure Browser...' : 'Open secure exam browser'}
+                {launchingSeb ? 'Opening Secure Browser...' : 'Open Safe Exam Browser'}
                 <ExternalLink className="w-4 h-4" />
               </Button>
             ) : isExamNotOpen ? (
@@ -486,10 +551,18 @@ export default function StudentExamStartPage() {
             ) : (
               <Button
                 onClick={handleStartExam}
-                disabled={!allChecksReady}
+                disabled={!allChecksReady || starting}
                 className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Start exam <ArrowRight className="w-4 h-4" />
+                {starting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Starting exam...
+                  </>
+                ) : (
+                  <>
+                    Start exam <ArrowRight className="w-4 h-4 ml-1.5" />
+                  </>
+                )}
               </Button>
             )}
 
