@@ -69,10 +69,9 @@ export default function StudentExamStartPage() {
   const [launchError, setLaunchError] = useState(null)
   const [sebCountdown, setSebCountdown] = useState(300)
   const [showSebHelp, setShowSebHelp] = useState(false)
-  const [sebLaunchDelay, setSebLaunchDelay] = useState(null)
+  const [hasLaunchedSeb, setHasLaunchedSeb] = useState(false)
   const sebTimerRef = useRef(null)
   const sebHelpTimerRef = useRef(null)
-  const launchDelayTimerRef = useRef(null)
 
   const {
     status: cameraStatus,
@@ -336,8 +335,7 @@ export default function StudentExamStartPage() {
   }
 
   const triggerProtocolLaunch = (url) => {
-    if (launchDelayTimerRef.current) clearInterval(launchDelayTimerRef.current)
-    setSebLaunchDelay(0)
+    setHasLaunchedSeb(true)
     if (url) {
       window.location.href = url
     }
@@ -348,6 +346,7 @@ export default function StudentExamStartPage() {
     setLaunchingSeb(true)
     setLaunchError(null)
     setShowSebHelp(false)
+    setHasLaunchedSeb(false)
     try {
       const res = await apiClient.post('/seb/launch-link', { examId: id })
       const launchUrl = res.data?.url
@@ -356,7 +355,6 @@ export default function StudentExamStartPage() {
 
       setSebLaunchData({ url: launchUrl, pin })
       setSebCountdown(300)
-      setSebLaunchDelay(5)
 
       if (sebTimerRef.current) clearInterval(sebTimerRef.current)
       sebTimerRef.current = setInterval(() => {
@@ -369,22 +367,10 @@ export default function StudentExamStartPage() {
         })
       }, 1000)
 
-      if (launchDelayTimerRef.current) clearInterval(launchDelayTimerRef.current)
-      launchDelayTimerRef.current = setInterval(() => {
-        setSebLaunchDelay((prev) => {
-          if (prev === null || prev <= 1) {
-            clearInterval(launchDelayTimerRef.current)
-            window.location.href = launchUrl
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-
       if (sebHelpTimerRef.current) clearTimeout(sebHelpTimerRef.current)
       sebHelpTimerRef.current = setTimeout(() => {
         setShowSebHelp(true)
-      }, 8000)
+      }, 6000)
     } catch (err) {
       setLaunchError(mapStudentError(err)?.message || 'Failed to generate secure browser launch link.')
     } finally {
@@ -832,26 +818,13 @@ export default function StudentExamStartPage() {
                 </div>
               </div>
 
-              {/* 5-Second Read Timer & Countdown */}
-              {sebLaunchDelay !== null && sebLaunchDelay > 0 ? (
-                <div className="p-3 bg-[#edecfb] rounded-[12px] flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-[#28253b] border-l-2 border-[#5266eb]">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#5266eb] shrink-0 animate-pulse" />
-                    <span>
-                      Please note your 6-digit code. Safe Exam Browser opens automatically in <strong>{sebLaunchDelay}s</strong>...
-                    </span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
-                    className="shrink-0 h-7 text-xs px-3"
-                  >
-                    Launch Now
-                  </Button>
-                </div>
-              ) : null}
+              {/* Step instructions */}
+              <div className="p-3 bg-[#edecfb] rounded-[12px] text-xs text-[#28253b] space-y-1 font-[420] border-l-2 border-[#5266eb]">
+                <p className="font-[480]">Ready to Launch:</p>
+                <p className="font-[360] text-[#554e7b]">1. Note down your 6-digit code or copy it below.</p>
+                <p className="font-[360] text-[#554e7b]">2. When you are ready, click <strong>Launch Safe Exam Browser Now</strong>.</p>
+                <p className="font-[360] text-[#554e7b]">3. If Safe Exam Browser asks for a code, type these 6 digits.</p>
+              </div>
 
               {/* 6-digit Launch Code Large Display */}
               {sebLaunchData.pin && (
@@ -876,6 +849,24 @@ export default function StudentExamStartPage() {
                   </Button>
                 </div>
               )}
+
+              {/* Launch Protocol Action */}
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
+                  className="w-full flex items-center justify-center gap-2"
+                >
+                  {hasLaunchedSeb ? 'Relaunch Safe Exam Browser' : 'Launch Safe Exam Browser Now'}
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+                {hasLaunchedSeb && (
+                  <p className="text-[11px] text-[#554e7b] text-center font-[360] mt-1.5">
+                    Safe Exam Browser launched. If prompted by your browser, click &quot;Open Safe Exam Browser&quot;.
+                  </p>
+                )}
+              </div>
 
               <div className="flex items-center justify-between text-[11px] text-[#554e7b] px-1">
                 <span>Single-use code • Valid for 5 minutes</span>
@@ -953,32 +944,34 @@ export default function StudentExamStartPage() {
                 Starts in {formatCountdown(msUntilStart)}
               </Button>
             ) : isSebRequired ? (
-              /* SEB Exam: Exactly ONE Primary Button: "Open exam in secure browser" */
-              <div className="space-y-1">
-                <Button
-                  variant="primary"
-                  onClick={handleLaunchSeb}
-                  disabled={!identityVerified || launchingSeb}
-                  className="w-full flex items-center justify-center gap-2"
-                >
-                  {launchingSeb ? 'Opening Secure Browser...' : 'Open exam in secure browser'}
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-                {!identityVerified && (
-                  <p className="text-[10px] text-[#554e7b] text-center font-[360]">
-                    Complete photo verification in Step 1 to unlock secure browser launch.
-                  </p>
-                )}
-                <div className="text-center pt-1">
-                  <Link
-                    to="/student/secure-browser"
-                    className="text-[11px] text-[#5266eb] hover:underline inline-flex items-center gap-1 font-[420]"
+              /* SEB Exam: If launch code panel is already shown, action button is inside panel; otherwise show primary button */
+              !sebLaunchData ? (
+                <div className="space-y-1">
+                  <Button
+                    variant="primary"
+                    onClick={handleLaunchSeb}
+                    disabled={!identityVerified || launchingSeb}
+                    className="w-full flex items-center justify-center gap-2"
                   >
-                    <span>Trouble opening SEB? Open Setup & Diagnostics</span>
-                    <ExternalLink className="w-3 h-3" />
-                  </Link>
+                    {launchingSeb ? 'Preparing Secure Browser...' : 'Open exam in secure browser'}
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                  {!identityVerified && (
+                    <p className="text-[10px] text-[#554e7b] text-center font-[360]">
+                      Complete photo verification in Step 1 to unlock secure browser launch.
+                    </p>
+                  )}
+                  <div className="text-center pt-1">
+                    <Link
+                      to="/student/secure-browser"
+                      className="text-[11px] text-[#5266eb] hover:underline inline-flex items-center gap-1 font-[420]"
+                    >
+                      <span>Trouble opening SEB? Open Setup & Diagnostics</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              ) : null
             ) : (
               /* Non-SEB Exam: Exactly ONE Primary Button: "Continue to exam" */
               <div className="space-y-1">
