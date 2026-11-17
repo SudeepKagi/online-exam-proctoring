@@ -69,8 +69,10 @@ export default function StudentExamStartPage() {
   const [launchError, setLaunchError] = useState(null)
   const [sebCountdown, setSebCountdown] = useState(300)
   const [showSebHelp, setShowSebHelp] = useState(false)
+  const [sebLaunchDelay, setSebLaunchDelay] = useState(null)
   const sebTimerRef = useRef(null)
   const sebHelpTimerRef = useRef(null)
+  const launchDelayTimerRef = useRef(null)
 
   const {
     status: cameraStatus,
@@ -333,6 +335,14 @@ export default function StudentExamStartPage() {
     requestCamera().catch(() => { })
   }
 
+  const triggerProtocolLaunch = (url) => {
+    if (launchDelayTimerRef.current) clearInterval(launchDelayTimerRef.current)
+    setSebLaunchDelay(0)
+    if (url) {
+      window.location.href = url
+    }
+  }
+
   // Launch Safe Exam Browser handler
   const handleLaunchSeb = async () => {
     setLaunchingSeb(true)
@@ -346,6 +356,7 @@ export default function StudentExamStartPage() {
 
       setSebLaunchData({ url: launchUrl, pin })
       setSebCountdown(300)
+      setSebLaunchDelay(5)
 
       if (sebTimerRef.current) clearInterval(sebTimerRef.current)
       sebTimerRef.current = setInterval(() => {
@@ -358,13 +369,22 @@ export default function StudentExamStartPage() {
         })
       }, 1000)
 
+      if (launchDelayTimerRef.current) clearInterval(launchDelayTimerRef.current)
+      launchDelayTimerRef.current = setInterval(() => {
+        setSebLaunchDelay((prev) => {
+          if (prev === null || prev <= 1) {
+            clearInterval(launchDelayTimerRef.current)
+            window.location.href = launchUrl
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
       if (sebHelpTimerRef.current) clearTimeout(sebHelpTimerRef.current)
       sebHelpTimerRef.current = setTimeout(() => {
         setShowSebHelp(true)
-      }, 4000)
-
-      // Trigger OS protocol
-      window.location.href = launchUrl
+      }, 8000)
     } catch (err) {
       setLaunchError(mapStudentError(err)?.message || 'Failed to generate secure browser launch link.')
     } finally {
@@ -802,7 +822,7 @@ export default function StudentExamStartPage() {
                     <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Launching — Launch Code
                   </h4>
                   <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
-                    Your browser was asked to open Safe Exam Browser. If prompted, click <strong>"Open Safe Exam Browser"</strong>.
+                    Note down your 6-digit code. Safe Exam Browser connects directly to your exam session.
                   </p>
                 </div>
                 <div className="text-right">
@@ -811,6 +831,27 @@ export default function StudentExamStartPage() {
                   </span>
                 </div>
               </div>
+
+              {/* 5-Second Read Timer & Countdown */}
+              {sebLaunchDelay !== null && sebLaunchDelay > 0 ? (
+                <div className="p-3 bg-[#edecfb] rounded-[12px] flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-[#28253b] border-l-2 border-[#5266eb]">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#5266eb] shrink-0 animate-pulse" />
+                    <span>
+                      Please note your 6-digit code. Safe Exam Browser opens automatically in <strong>{sebLaunchDelay}s</strong>...
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
+                    className="shrink-0 h-7 text-xs px-3"
+                  >
+                    Launch Now
+                  </Button>
+                </div>
+              ) : null}
 
               {/* 6-digit Launch Code Large Display */}
               {sebLaunchData.pin && (
@@ -836,6 +877,20 @@ export default function StudentExamStartPage() {
                 </div>
               )}
 
+              <div className="flex items-center justify-between text-[11px] text-[#554e7b] px-1">
+                <span>Single-use code • Valid for 5 minutes</span>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={handleLaunchSeb}
+                  disabled={launchingSeb}
+                  className="text-[11px] text-[#5266eb] hover:underline font-[480] h-auto p-0"
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Generate New Code
+                </Button>
+              </div>
+
               {/* 4-Second Timeout Help Banner */}
               {showSebHelp && (
                 <div className="p-3 bg-[#edecfb]/60 rounded-[10px] space-y-2 border-l-2 border-[#5266eb]">
@@ -858,7 +913,7 @@ export default function StudentExamStartPage() {
                     <Button
                       type="button"
                       variant="link"
-                      onClick={handleLaunchSeb}
+                      onClick={() => sebLaunchData?.url ? triggerProtocolLaunch(sebLaunchData.url) : handleLaunchSeb()}
                       disabled={launchingSeb}
                       className="text-[11px] text-[#5266eb] hover:underline font-[480] cursor-pointer bg-transparent border-0 inline-flex items-center gap-1 h-auto p-0"
                     >

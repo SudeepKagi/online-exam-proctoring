@@ -576,3 +576,60 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `422abce5-c189-42bd-9544-45df109ea697`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/proctornet-journal.log`
+
+### [2026-11-17T15:12:08.824Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `9da6ed56-5fbc-4854-9ba5-a7443be8f9f3`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-220de68dd8d0891da2b653147d2ab99ef0552e0b.log`
+
+### [2026-11-17T15:12:10.249Z] Production Deploy: `release-220de68dd8d0891da2b653147d2ab99ef0552e0b`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `220de68dd8d0891da2b653147d2ab99ef0552e0b`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-220de68dd8d0891da2b653147d2ab99ef0552e0b.tar.gz`
+- **Duration**: 95 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T15:57:08.569Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\inspect-seb-logs.sh`
+- **Command ID**: `21f85264-ff4b-477a-99e9-6b234c2228ce`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/inspect-seb-logs.log`
+
+### [2026-11-17T16:02:24.854Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-db-seb.sh`
+- **Command ID**: `37d78fe8-0d86-4c08-9f3f-9b3d2b282043`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/check-db-seb.log`
+
+### [2026-11-17T16:03:32.231Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-db-seb.sh`
+- **Command ID**: `7db52b5a-a15a-4178-a918-5df602692faf`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-db-seb.log`
+
+### [2026-11-17T16:04:02.878Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-db-seb.sh`
+- **Command ID**: `1e1d73c6-980d-4a9e-be90-33a8befaa3a7`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-db-seb.log`
+
+### [2026-11-17T16:04:31.542Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-db-seb.sh`
+- **Command ID**: `52325960-168e-43dd-a1fc-61b9b0ab92b5`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-db-seb.log`
+
+### [2026-11-17T16:05:01.948Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-caddy-seb.sh`
+- **Command ID**: `20f86460-d9ea-447b-9ca1-576b7eab08ab`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-caddy-seb.log`
+
+### [2026-11-17T16:06:06.614Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-exchange-caddy.sh`
+- **Command ID**: `be01d749-736b-4048-89f4-ddcb1675643e`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-exchange-caddy.log`

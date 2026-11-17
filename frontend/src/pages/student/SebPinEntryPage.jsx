@@ -101,13 +101,15 @@ export default function SebPinEntryPage() {
       const code = err.response?.data?.code || err.response?.data?.error?.code || err.code
       const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
       if (code === 'TOO_MANY_ATTEMPTS') {
-        setError('Too many incorrect attempts for this code. Please generate a fresh code from your browser.')
+        setError('Too many incorrect attempts for this code. Please return to Chrome to generate a fresh code.')
       } else if (code === 'PIN_EXPIRED') {
-        setError('This launch code has expired. Please return to your browser to generate a fresh one.')
+        setError('This launch code expired (codes are valid for 5 minutes). Please return to Chrome and click "Generate New Code".')
       } else if (code === 'PIN_ALREADY_USED') {
-        setError('This launch code has already been used. Please generate a new one.')
+        setError('This launch code has already been used. If you closed or refreshed SEB, please return to Chrome and click "Generate New Code" (or sign in with password below).')
       } else if (code === 'INVALID_PIN') {
         setError('Invalid launch code. Please check the 6 digits displayed on your browser screen.')
+      } else if (code === 'SEB_ENFORCEMENT_FAILED') {
+        setError('Institutional configuration check failed. Contact your exam administrator.')
       } else {
         setError(msg || 'Unable to verify launch code. Please try again.')
       }
@@ -176,7 +178,7 @@ export default function SebPinEntryPage() {
             {loading ? 'Verifying code...' : autoExchanging ? 'Connecting...' : 'Continue to exam'}
           </Button>
 
-          <div className="text-center pt-2">
+          <div className="flex flex-col gap-2 text-center pt-2">
             <Button
               type="button"
               variant="link"
@@ -185,6 +187,15 @@ export default function SebPinEntryPage() {
               className="text-xs text-[#554e7b] hover:text-[#28253b]"
             >
               Sign in with password instead
+            </Button>
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              onClick={() => { window.location.href = '/student/dashboard' }}
+              className="text-xs text-[#554e7b] hover:text-[#28253b]"
+            >
+              Return to Student Dashboard
             </Button>
           </div>
         </form>

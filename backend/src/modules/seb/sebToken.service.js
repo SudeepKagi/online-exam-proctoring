@@ -133,14 +133,9 @@ class SebTokenStore {
   }
 
   /**
-   * Atomically consumes a launch token. Single-use enforcement.
-   * Returns:
-   *   { status: 'SUCCESS', record }
-   *   { status: 'EXPIRED' }
-   *   { status: 'ALREADY_USED' }
-   *   { status: 'NOT_FOUND' }
+   * Validates a launch token without consuming it.
    */
-  consumeLaunchToken(rawToken) {
+  validateLaunchToken(rawToken) {
     if (!rawToken || typeof rawToken !== 'string') {
       return { status: 'NOT_FOUND' }
     }
@@ -160,16 +155,13 @@ class SebTokenStore {
       return { status: 'ALREADY_USED', record }
     }
 
-    // Mark atomically consumed
-    record.consumedAt = Date.now()
-
     return { status: 'SUCCESS', record }
   }
 
   /**
-   * Atomically consumes a 6-digit numeric PIN. Single-use enforcement.
+   * Validates a 6-digit numeric PIN without consuming it.
    */
-  consumePin(rawPin) {
+  validatePin(rawPin) {
     if (!rawPin || typeof rawPin !== 'string') {
       return { status: 'NOT_FOUND' }
     }
@@ -202,11 +194,46 @@ class SebTokenStore {
       return { status: 'ALREADY_USED', record }
     }
 
-    // Mark atomically consumed
-    record.consumedAt = Date.now()
-    this.pinAttempts.delete(pinHash)
-
     return { status: 'SUCCESS', record }
+  }
+
+  /**
+   * Marks a launch token and its linked PIN as consumed upon successful authentication.
+   */
+  markConsumed(record) {
+    if (record) {
+      record.consumedAt = Date.now()
+      if (record.pin) {
+        this.pinAttempts.delete(this.hash(record.pin))
+      }
+    }
+  }
+
+  /**
+   * Atomically consumes a launch token. Single-use enforcement.
+   * Returns:
+   *   { status: 'SUCCESS', record }
+   *   { status: 'EXPIRED' }
+   *   { status: 'ALREADY_USED' }
+   *   { status: 'NOT_FOUND' }
+   */
+  consumeLaunchToken(rawToken) {
+    const res = this.validateLaunchToken(rawToken)
+    if (res.status === 'SUCCESS') {
+      this.markConsumed(res.record)
+    }
+    return res
+  }
+
+  /**
+   * Atomically consumes a 6-digit numeric PIN. Single-use enforcement.
+   */
+  consumePin(rawPin) {
+    const res = this.validatePin(rawPin)
+    if (res.status === 'SUCCESS') {
+      this.markConsumed(res.record)
+    }
+    return res
   }
 
   /**
