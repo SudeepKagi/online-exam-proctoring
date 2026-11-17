@@ -168,13 +168,15 @@ export default function LoginPage() {
       const code = err.response?.data?.code || err.code
       const msg = err.response?.data?.message || err.message
       if (code === 'TOO_MANY_ATTEMPTS') {
-        setSebPinError('Too many incorrect attempts for this code. Please generate a fresh code from your browser.')
+        setSebPinError('Too many incorrect attempts for this code. Please return to Chrome to generate a fresh code.')
       } else if (code === 'PIN_EXPIRED') {
-        setSebPinError('This launch code has expired. Please return to your browser to generate a fresh one.')
+        setSebPinError('This launch code expired (codes are valid for 5 minutes). Please return to Chrome and click "Generate New Code".')
       } else if (code === 'PIN_ALREADY_USED') {
-        setSebPinError('This launch code has already been used. Please generate a new one.')
+        setSebPinError('This launch code has already been used. If you closed or refreshed SEB, please return to Chrome and click "Generate New Code" (or sign in with password below).')
       } else if (code === 'INVALID_PIN') {
         setSebPinError('Invalid launch code. Please check the 6 digits displayed on your browser screen.')
+      } else if (code === 'SEB_ENFORCEMENT_FAILED') {
+        setSebPinError('Institutional configuration check failed. Contact your exam administrator.')
       } else {
         setSebPinError(msg || 'Unable to verify launch code. Please try again.')
       }

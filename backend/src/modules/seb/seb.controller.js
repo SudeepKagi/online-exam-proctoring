@@ -39,6 +39,8 @@ function verifySebHeaderHash(req, activeKey, targetPath = null) {
     `${cleanPublicOrigin}/student/login/`,
     `${cleanPublicOrigin}/login`,
     `${cleanPublicOrigin}/login/`,
+    `${cleanPublicOrigin}/seb/enter`,
+    `${cleanPublicOrigin}/seb/enter/`,
     `${cleanPublicOrigin}/`,
     cleanPublicOrigin
   ])
@@ -52,32 +54,41 @@ function verifySebHeaderHash(req, activeKey, targetPath = null) {
     candidateUrls.add(clientHref.replace(/\/$/, ''))
   }
 
+  const candidateKeys = new Set([activeKey.toLowerCase()])
+  if (process.env.SEB_CONFIG_KEY && /^[0-9a-f]{64}$/i.test(process.env.SEB_CONFIG_KEY)) {
+    candidateKeys.add(process.env.SEB_CONFIG_KEY.trim().toLowerCase())
+  }
+  // Institution starter key calculated by Safe Exam Browser for proctornet-starter.seb
+  candidateKeys.add('4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a')
+
   const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
 
-  for (const candUrl of candidateUrls) {
-    // Variant A: SHA256(url + activeKey)
-    const hashA = crypto.createHash('sha256').update(candUrl + activeKey).digest('hex').toLowerCase()
-    const bufA = Buffer.from(hashA, 'utf8')
-    if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
-      return { matched: true, method: 'header_hash' }
-    }
-
-    // Variant B: SHA256(url + SHA256(activeKey))
-    const hashKey = crypto.createHash('sha256').update(activeKey).digest('hex')
-    const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
-    const bufB = Buffer.from(hashB, 'utf8')
-    if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
-      return { matched: true, method: 'header_hash_hashed_key' }
-    }
-
-    // Variant C: SHA256(url + Buffer.from(activeKey, 'hex'))
-    try {
-      const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(activeKey, 'hex')])).digest('hex').toLowerCase()
-      const bufC = Buffer.from(hashC, 'utf8')
-      if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
-        return { matched: true, method: 'header_hash_binary_key' }
+  for (const candKey of candidateKeys) {
+    for (const candUrl of candidateUrls) {
+      // Variant A: SHA256(url + candKey)
+      const hashA = crypto.createHash('sha256').update(candUrl + candKey).digest('hex').toLowerCase()
+      const bufA = Buffer.from(hashA, 'utf8')
+      if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
+        return { matched: true, method: 'header_hash' }
       }
-    } catch (_) {}
+
+      // Variant B: SHA256(url + SHA256(candKey))
+      const hashKey = crypto.createHash('sha256').update(candKey).digest('hex')
+      const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
+      const bufB = Buffer.from(hashB, 'utf8')
+      if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
+        return { matched: true, method: 'header_hash_hashed_key' }
+      }
+
+      // Variant C: SHA256(url + Buffer.from(candKey, 'hex'))
+      try {
+        const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(candKey, 'hex')])).digest('hex').toLowerCase()
+        const bufC = Buffer.from(hashC, 'utf8')
+        if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
+          return { matched: true, method: 'header_hash_binary_key' }
+        }
+      } catch (_) {}
+    }
   }
 
   return false
@@ -369,7 +380,7 @@ async function exchange(req, res, next) {
       })
     }
 
-    const consumeResult = sebTokenService.consumeLaunchToken(rawToken)
+    const consumeResult = sebTokenService.validateLaunchToken(rawToken)
     if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
       return res.status(429).json({
         code: 'TOO_MANY_ATTEMPTS',
@@ -458,6 +469,12 @@ async function exchange(req, res, next) {
     if (refreshToken) {
       setRefreshCookie(res, refreshToken)
     }
+
+    // Atomically mark PIN and token consumed now that session is successfully issued
+    sebTokenService.markConsumed(record)
+
+    // Atomically mark token and linked PIN consumed now that session is successfully issued
+    sebTokenService.markConsumed(record)
 
     logger.info(
       { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
@@ -548,7 +565,7 @@ async function exchangePin(req, res, next) {
       })
     }
 
-    const consumeResult = sebTokenService.consumePin(rawPin.trim())
+    const consumeResult = sebTokenService.validatePin(rawPin.trim())
     if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
       return res.status(429).json({
         code: 'TOO_MANY_ATTEMPTS',
@@ -608,6 +625,9 @@ async function exchangePin(req, res, next) {
     if (refreshToken) {
       setRefreshCookie(res, refreshToken)
     }
+
+    // Atomically mark PIN and token consumed now that session is successfully issued
+    sebTokenService.markConsumed(record)
 
     logger.info(
       { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
