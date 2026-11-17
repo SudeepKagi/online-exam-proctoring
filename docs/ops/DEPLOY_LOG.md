@@ -633,3 +633,24 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `be01d749-736b-4048-89f4-ddcb1675643e`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/check-exchange-caddy.log`
+
+### [2026-11-17T16:20:50.206Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `12680eae-16fb-412f-b1dc-e27ce71d2e67`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-68428e6128bbe0c1ccd5141de2ab01341bf30a58.log`
+
+### [2026-11-17T16:20:51.969Z] Production Deploy: `release-68428e6128bbe0c1ccd5141de2ab01341bf30a58`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `68428e6128bbe0c1ccd5141de2ab01341bf30a58`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-68428e6128bbe0c1ccd5141de2ab01341bf30a58.tar.gz`
+- **Duration**: 93 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T16:21:45.800Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\check-version.sh`
+- **Command ID**: `ae55aaf5-1af0-46d9-b7fe-efe36c41f780`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-version.log`
