@@ -20,8 +20,8 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | Category | Total Files | Keep | Update | Rewrite | Remove | Quarantined |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Backend Suites** | 39 | 32 | 6 | 0 | 0 | 0 |
-| **E2E Suites** | 17 | 15 | 2 | 0 | 0 | 0 |
-| **Total** | **56** | **47** | **8** | **0** | **0** | **0** |
+| **E2E Suites** | 18 | 16 | 2 | 0 | 0 | 0 |
+| **Total** | **57** | **48** | **8** | **0** | **0** | **0** |
 
 ---
 
@@ -94,6 +94,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `student-attempt.spec.ts` | 6 | **KEEP** | Validates student question answering, autosave indicators, single/multi-choice selections, and final review screen. |
 | `student-readiness.spec.ts` | 4 | **KEEP** | Validates system check pre-flight wizard: camera check, audio check, network round-trip latency, and clock skew validation. |
 | `student-resilience.spec.ts` | 5 | **KEEP** | Validates offline answer buffer in IndexedDB/localStorage and auto-sync on network reconnection. |
+| `ui-consistency-audit.spec.ts` | 6 | **NEW** | Validates button contrast (WCAG AA >= 4.5:1), border radius conforming to enterprise tokens (>=16px/32px/40px pill), and the Single Primary Action rule (at most one solid #5266eb primary CTA visible per view) across `/login`, `/student/dashboard`, `/student/secure-browser`, `/faculty/exams`, `/admin/users`, `/admin/seb`. |
 
 ---
 
@@ -105,7 +106,7 @@ All tests run deterministically with zero flaky retries in CI and local test har
 | :--- | :--- | :---: | :---: | :---: | :---: |
 | **Backend Integration & Unit** | Node.js Test Runner | 378 | ~40.4s | 1 (deterministic) | **100% PASS** |
 | **Frontend Unit & Component** | Vite + React Testing Library | 42 | ~4.8s | Parallel | **100% PASS** |
-| **End-to-End (E2E)** | Playwright (Chromium) | 80 | ~2.5m | 1 worker | **100% PASS** |
+| **End-to-End (E2E)** | Playwright (Chromium) | 86 | ~2.8m | 1 worker | **100% PASS** |
 
 ---
 
