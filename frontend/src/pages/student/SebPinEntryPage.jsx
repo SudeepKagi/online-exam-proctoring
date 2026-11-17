@@ -30,7 +30,7 @@ export default function SebPinEntryPage() {
     setError('')
 
     try {
-      const res = await api.post('/api/v1/seb/exchange-pin', { pin: cleanPin })
+      const res = await api.post('/seb/exchange-pin', { pin: cleanPin })
       if (res.data?.success && res.data?.redirectUrl) {
         // Successful exchange: navigate to arena / lobby / check
         window.location.href = res.data.redirectUrl
@@ -38,8 +38,8 @@ export default function SebPinEntryPage() {
         setError('Exchange failed. Please check your code.')
       }
     } catch (err) {
-      const code = err.response?.data?.code
-      const msg = err.response?.data?.message
+      const code = err.response?.data?.code || err.response?.data?.error?.code || err.code
+      const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
       if (code === 'PIN_EXPIRED') {
         setError('This launch code has expired. Please return to your browser to generate a fresh one.')
       } else if (code === 'PIN_ALREADY_USED') {
@@ -79,7 +79,7 @@ export default function SebPinEntryPage() {
 
         {error && (
           <div className="mb-5 p-3 rounded-[12px] bg-[#fbfbff] text-xs text-[#554e7b] font-[420] border-l-2 border-[#5266eb]">
-            {error}
+            {typeof error === 'string' ? error : (error?.message || String(error))}
           </div>
         )}
 

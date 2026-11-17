@@ -99,6 +99,14 @@ internalApp.get('/readyz', async (_req, res) => {
 })
 internalApp.get('/metrics', metricsHandler)
 
+// Defensive rewrite for double api prefixes
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/v1/api/v1/')) {
+    req.url = req.url.replace('/api/v1/api/v1/', '/api/v1/')
+  }
+  next()
+})
+
 // API Routing
 app.use('/api/v1', v1Router)
 app.use('/api', (req, res, next) => {

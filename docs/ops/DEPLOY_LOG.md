@@ -483,3 +483,24 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `f6ba8e01-b3c5-4232-99aa-0780d2565649`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/live-test-data-deletion.log`
+
+### [2026-11-17T09:15:12.032Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `a44c9e4b-f9c2-418e-9f18-47b7145917ba`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-0dc5e2694c8483d3c534f8ae46c94617edd9767d.log`
+
+### [2026-11-17T09:15:12.947Z] Production Deploy: `release-0dc5e2694c8483d3c534f8ae46c94617edd9767d`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `0dc5e2694c8483d3c534f8ae46c94617edd9767d`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-0dc5e2694c8483d3c534f8ae46c94617edd9767d.tar.gz`
+- **Duration**: 86 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T09:22:31.815Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-pin-error.sh`
+- **Command ID**: `a5661a91-6028-433f-8a0a-af0ab8f6249d`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/pin-error.log`
