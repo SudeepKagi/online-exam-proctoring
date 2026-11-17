@@ -1,5 +1,6 @@
 import React from 'react'
 import { Inbox, Plus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function EmptyState({
   icon: Icon = Inbox,
@@ -23,13 +24,14 @@ export default function EmptyState({
         </p>
       )}
       {actionText && onAction && (
-        <button
+        <Button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-1.5 px-4 h-9 bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] transition-all cursor-pointer shadow-xs"
+          variant="primary"
+          size="sm"
         >
           <Plus size={14} /> {actionText}
-        </button>
+        </Button>
       )}
     </div>
   )

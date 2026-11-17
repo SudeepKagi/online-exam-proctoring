@@ -45,14 +45,15 @@ export default function QuestionCard({
           {options.map((opt, idx) => {
             const isSelected = currentSelected === idx
             return (
-              <button
+              <Button
                 key={idx}
                 type="button"
+                variant="ghost"
                 onClick={() => onSelectOption(idx)}
-                className={`w-full p-3.5 rounded-[12px] border text-left text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                className={`w-full p-3.5 h-auto rounded-[12px] text-left text-sm flex items-center justify-between transition-colors whitespace-normal font-normal ${
                   isSelected
-                    ? 'border-[#5266eb] bg-[rgba(82,102,235,0.08)] text-[#28253b] font-[480]'
-                    : 'border-[#e9eaf2] hover:bg-[#fbfbff] text-[#28253b]'
+                    ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] font-[480]'
+                    : 'hover:bg-[#fbfbff] text-[#28253b]'
                 }`}
               >
                 <div className="flex items-center gap-3">
@@ -68,7 +69,7 @@ export default function QuestionCard({
                 <span className="text-[10px] font-mono text-[#70707d] uppercase hidden sm:inline">
                   [{idx + 1}]
                 </span>
-              </button>
+              </Button>
             )
           })}
         </div>
@@ -106,7 +107,7 @@ export default function QuestionCard({
           size="sm"
           onClick={onNext}
           disabled={currentIndex >= totalQuestions - 1}
-          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1 text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer disabled:opacity-40"
+          className="gap-1 text-xs px-4 h-8 cursor-pointer disabled:opacity-40"
         >
           Save & Next <ChevronRight className="w-4 h-4" />
         </Button>

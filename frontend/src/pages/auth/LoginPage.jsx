@@ -210,10 +210,10 @@ export default function LoginPage() {
               <div className="pt-4">
                 <Tabs value={activeRole} onValueChange={handleRoleChange} className="w-full">
                   <TabsList className="grid grid-cols-4 bg-white border border-[#e9eaf2] p-1 rounded-full shadow-xs">
-                    <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Student</TabsTrigger>
-                    <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Faculty</TabsTrigger>
-                    <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Invigilator</TabsTrigger> {/* // terms-ok: test selector role tab */}
-                    <TabsTrigger value="ADMIN" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#5266eb] data-[state=active]:text-white">Admin</TabsTrigger>
+                    <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Student</TabsTrigger>
+                    <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Faculty</TabsTrigger>
+                    <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Invigilator</TabsTrigger> {/* // terms-ok: test selector role tab */}
+                    <TabsTrigger value="ADMIN" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Admin</TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
@@ -261,7 +261,7 @@ export default function LoginPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-10 bg-[#5266eb] hover:bg-[#4354d0] text-white text-xs font-[420] rounded-[32px] shadow-xs cursor-pointer transition"
+                  className="w-full h-10 cursor-pointer transition"
                 >
                   {loading ? 'Authenticating Credentials...' : `Sign In to ${activeRole.charAt(0) + activeRole.slice(1).toLowerCase()} Portal`}
                 </Button>

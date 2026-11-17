@@ -54,10 +54,10 @@ export default function UserTable({ users, loading, onToggle, onVerify }) {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => onVerify?.(u)}
-                          className="h-7 px-3 text-xs font-[420] rounded-full text-[#28253b] hover:bg-[rgba(82,102,235,0.15)] border-0 bg-[rgba(82,102,235,0.08)] gap-1 cursor-pointer transition"
+                          className="h-7 px-3 text-xs gap-1 cursor-pointer transition"
                         >
                           <ShieldCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Verify ID & Photos
                         </Button>
@@ -65,7 +65,7 @@ export default function UserTable({ users, loading, onToggle, onVerify }) {
                           variant="ghost"
                           size="sm"
                           onClick={() => onToggle(u)}
-                          className="h-7 px-2.5 text-xs font-[420] rounded-full cursor-pointer text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] border-0"
+                          className="h-7 px-2.5 text-xs rounded-full cursor-pointer"
                         >
                           {u.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
                         </Button>

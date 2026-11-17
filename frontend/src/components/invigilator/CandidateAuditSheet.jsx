@@ -93,7 +93,7 @@ export default function CandidateAuditSheet({
                     size="sm"
                     disabled={actionLoading}
                     onClick={() => onApproveIdentity(candidate)}
-                    className="h-8 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white border-0"
+                    className="h-8 text-xs font-[420]"
                   >
                     <CheckCircle className="w-3 h-3 mr-1" /> Approve Identity
                   </Button>
@@ -101,9 +101,9 @@ export default function CandidateAuditSheet({
                     <Button
                       size="sm"
                       disabled={actionLoading}
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => onRejectIdentity(candidate)}
-                      className="h-8 text-xs font-[420] rounded-[32px] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0"
+                      className="h-8 text-xs font-[420]"
                     >
                       <XCircle className="w-3 h-3 mr-1" /> Reject
                     </Button>
@@ -116,14 +116,8 @@ export default function CandidateAuditSheet({
             <Button
               onClick={() => onToggleSuspend(candidate)}
               disabled={actionLoading || !candidate.attemptId || isFinalized}
-              variant="outline"
-              className={`w-full text-xs h-9 rounded-[32px] font-[420] border-0 ${
-                isFinalized
-                  ? 'bg-[#f4f4f7] text-[#70707d] cursor-not-allowed'
-                  : candidate.attemptStatus === 'SUSPENDED'
-                  ? 'bg-[#5266eb] text-white hover:bg-[#4353c7]'
-                  : 'bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.14)]'
-              }`}
+              variant={candidate.attemptStatus === 'SUSPENDED' ? 'primary' : 'secondary'}
+              className="w-full text-xs h-9 font-[420]"
             >
               {isFinalized
                 ? 'Attempt Finalized (Read Only)'
@@ -136,7 +130,8 @@ export default function CandidateAuditSheet({
               <Button
                 onClick={() => onTerminate(candidate)}
                 disabled={actionLoading || !candidate.attemptId}
-                className="w-full text-xs h-9 rounded-[32px] bg-[#28253b] hover:bg-[#1f1d2e] text-white border-0 font-[420] shadow-xs cursor-pointer"
+                variant="destructive"
+                className="w-full text-xs h-9 font-[420] cursor-pointer"
               >
                 Terminate Attempt Access
               </Button>
@@ -173,13 +168,14 @@ export default function CandidateAuditSheet({
                         <div className="flex items-center justify-between text-[10px] text-[#554e7b] font-mono">
                           <span>{new Date(l.createdAt || Date.now()).toLocaleTimeString()}</span>
                           {snapUrl ? (
-                            <button
+                            <Button
                               type="button"
+                              variant="link"
+                              size="xs"
                               onClick={() => setModalImage({ url: snapUrl, title: `${formatViolationType(l.eventType)} Screenshot` })}
-                              className="inline-flex items-center gap-1 text-[#5266eb] hover:underline cursor-pointer"
                             >
                               <ImageIcon className="w-3 h-3" /> View Screenshot
-                            </button>
+                            </Button>
                           ) : s3Key ? (
                             <span className="text-[#554e7b]">Evidence logged</span>
                           ) : (
@@ -214,22 +210,23 @@ export default function CandidateAuditSheet({
           <div className="bg-white rounded-[16px] max-w-2xl w-full overflow-hidden shadow-2xl border-0">
             <div className="flex items-center justify-between p-3.5 bg-[#fbfbff] border-b border-[#e9eaf2]">
               <span className="text-xs font-[480] text-[#28253b]">{modalImage.title}</span>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setModalImage(null)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#edecfb] text-[#28253b] transition"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
             <div className="p-3 bg-[#fbfcfd] flex items-center justify-center max-h-[70vh] overflow-auto">
               <img src={modalImage.url} alt="Full frame" className="max-w-full h-auto rounded-lg shadow-inner" />
             </div>
             <div className="p-3 text-right bg-[#fbfbff] border-t border-[#e9eaf2]">
               <Button
+                variant="primary"
                 size="sm"
                 onClick={() => setModalImage(null)}
-                className="h-8 px-4 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white border-0"
               >
                 Close
               </Button>

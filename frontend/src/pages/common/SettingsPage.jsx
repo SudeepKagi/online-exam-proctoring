@@ -167,7 +167,7 @@ export default function SettingsPage() {
           </Card>
 
           <div className="flex justify-end">
-            <Button type="submit" disabled={saving} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 px-6 rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer">
+            <Button type="submit" disabled={saving} className="h-10 px-6 flex items-center gap-2 cursor-pointer">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               Save Changes
             </Button>

@@ -127,16 +127,18 @@ export default function ForgotPasswordPage() {
                 <FormField label="Institutional Role" required>
                   <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-[#e9eaf2] rounded-full shadow-xs">
                     {['STUDENT', 'FACULTY', 'ADMIN', 'INVIGILATOR'].map((r) => ( // terms-ok: internal role check
-                      <button
+                      <Button
                         key={r}
                         type="button"
+                        variant={role === r ? 'secondary' : 'ghost'}
+                        size="xs"
                         onClick={() => setRole(r)}
-                        className={`py-1.5 text-xs font-[420] rounded-full transition cursor-pointer capitalize ${
-                          role === r ? 'bg-[#5266eb] text-white shadow-xs' : 'text-[#554e7b] hover:text-[#28253b]'
+                        className={`capitalize ${
+                          role === r ? 'font-[480] bg-[rgba(82,102,235,0.14)] text-[#5266eb]' : 'text-[#554e7b]'
                         }`}
                       >
                         {r.toLowerCase()}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </FormField>
@@ -154,8 +156,9 @@ export default function ForgotPasswordPage() {
 
                 <Button
                   type="submit"
+                  variant="primary"
                   disabled={loading}
-                  className="w-full h-10 bg-[#5266eb] hover:bg-[#4354d0] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  className="w-full mt-2"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Request Verification Code <ArrowRight className="w-4 h-4" /></>}
                 </Button>
@@ -207,17 +210,17 @@ export default function ForgotPasswordPage() {
                 <div className="flex gap-2 pt-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => setStep(1)}
                     disabled={loading}
-                    className="h-10 px-4 text-xs font-[420] rounded-full border-[#e9eaf2] bg-white text-[#554e7b] hover:text-[#28253b]"
                   >
                     Back
                   </Button>
                   <Button
                     type="submit"
+                    variant="primary"
                     disabled={loading}
-                    className="flex-1 h-10 bg-[#5266eb] hover:bg-[#4354d0] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                    className="flex-1"
                   >
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <>Reset Password & Sign In <CheckCircle2 className="w-4 h-4" /></>}
                   </Button>

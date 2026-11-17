@@ -165,7 +165,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
               <span className="text-xs font-[500] text-[#28253b] flex items-center gap-1.5"><Key className="w-3.5 h-3.5 text-[#5266eb]" /> Set Temporary Password</span>
               <div className="flex gap-2">
                 <input type="password" value={adminPasswordReset.password} onChange={(e) => setAdminPasswordReset(p => ({ ...p, password: e.target.value }))} placeholder="New temporary password (min 6 chars)" className="h-9 px-3 text-xs border border-slate-300 rounded-lg flex-1 bg-white" />
-                <Button size="sm" onClick={handleAdminResetPassword} disabled={adminPasswordReset.loading} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-3">{adminPasswordReset.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Set Password'}</Button>
+                <Button variant="primary" size="sm" onClick={handleAdminResetPassword} disabled={adminPasswordReset.loading}>{adminPasswordReset.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Set Password'}</Button>
               </div>
               {adminPasswordReset.msg && <span className="text-[11px] font-medium text-slate-600 block">{adminPasswordReset.msg}</span>}
             </div>
@@ -174,20 +174,20 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           {/* Modal Actions */}
           <div className="pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3">
             <div>
-              <Button variant="outline" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))} className="text-xs font-[420] text-[#554e7b] gap-1.5 rounded-full border-0 bg-[rgba(82,102,235,0.08)]"><Key className="w-3.5 h-3.5" /> Reset Password</Button>
+              <Button variant="secondary" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))}><Key className="w-3.5 h-3.5" /> Reset Password</Button>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading} className="text-xs font-[420] rounded-full text-[#554e7b] hover:text-[#28253b]">Cancel</Button>
+              <Button variant="ghost" size="sm" onClick={() => onOpenChange(false)} disabled={actionLoading}>Cancel</Button>
               {!showRejectBox ? (
-                <Button variant="outline" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading} className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] border-0 rounded-full">
+                <Button variant="secondary" size="sm" onClick={() => setShowRejectBox(true)} disabled={actionLoading}>
                   <XCircle className="w-4 h-4 mr-1.5" /> Reject &amp; Request Re-upload
                 </Button>
               ) : (
-                <Button size="sm" onClick={handleReject} disabled={actionLoading} className="bg-[#554e7b] hover:bg-[#433e64] text-white text-xs font-[420] rounded-full border-0">
+                <Button variant="destructive" size="sm" onClick={handleReject} disabled={actionLoading}>
                   {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null} Confirm Rejection
                 </Button>
               )}
-              <Button size="sm" onClick={handleApprove} disabled={actionLoading} className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-full px-5 shadow-xs border-0">
+              <Button variant="primary" size="sm" onClick={handleApprove} disabled={actionLoading}>
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />} Approve Account
               </Button>
             </div>

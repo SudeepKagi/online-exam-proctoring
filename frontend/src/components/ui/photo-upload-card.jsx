@@ -198,15 +198,15 @@ export function PhotoUploadCard({
 
         {previewUrl ? (
           <div className="flex items-center justify-between gap-2 pt-1">
-            <Button type="button" variant="outline" size="sm" onClick={() => setZoomOpen(true)} className="h-9 text-xs gap-1.5 rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0 font-[420]">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setZoomOpen(true)} className="h-9 text-xs gap-1.5 px-3.5">
               <ZoomIn className="w-3.5 h-3.5" /> Inspect Full Size
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={handleRetake} disabled={disabled} className="h-9 text-xs text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] gap-1.5 rounded-[40px] px-3.5 border-0 font-[420]">
+            <Button type="button" variant="ghost" size="sm" onClick={handleRetake} disabled={disabled} className="h-9 text-xs gap-1.5 px-3.5">
               <RefreshCw className="w-3.5 h-3.5" /> Retake / Replace
             </Button>
           </div>
         ) : mode === 'webcam' ? (
-          <Button type="button" onClick={capturePhoto} disabled={!streaming || disabled} className="w-full h-10 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] gap-2 cursor-pointer shadow-xs">
+          <Button type="button" onClick={capturePhoto} disabled={!streaming || disabled} className="w-full h-10 gap-2 cursor-pointer">
             <Camera className="w-4 h-4" /> Snap Live Photo
           </Button>
         ) : null}

@@ -105,20 +105,23 @@ export default function SebPinEntryPage() {
 
           <Button
             type="submit"
+            variant="primary"
             disabled={loading || pin.length !== 6}
-            className="w-full h-11 rounded-[32px] bg-[#5266eb] hover:bg-[#4355d6] text-white font-[420] text-sm shadow-none"
+            className="w-full"
           >
             {loading ? 'Verifying code...' : 'Continue to exam'}
           </Button>
 
           <div className="text-center pt-2">
-            <button
+            <Button
               type="button"
+              variant="link"
+              size="sm"
               onClick={() => navigate('/login')}
-              className="text-xs text-[#554e7b] hover:text-[#28253b] font-[420] transition-colors"
+              className="text-xs text-[#554e7b] hover:text-[#28253b]"
             >
               Sign in with institutional credentials instead
-            </button>
+            </Button>
           </div>
         </form>
       </div>

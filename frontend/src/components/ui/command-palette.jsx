@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, BookOpen, GraduationCap, BarChart2, Shield, Settings, AlertTriangle, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export function CommandPalette({ open, onOpenChange }) {
   const navigate = useNavigate()
@@ -52,9 +53,15 @@ export function CommandPalette({ open, onOpenChange }) {
             className="w-full h-12 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none font-sans"
             aria-label="Command search"
           />
-          <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground cursor-pointer" aria-label="Close dialog">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close dialog"
+          >
             <X size={15} />
-          </button>
+          </Button>
         </div>
 
         <div className="max-h-72 overflow-y-auto p-2 space-y-1">
@@ -64,17 +71,19 @@ export function CommandPalette({ open, onOpenChange }) {
             filtered.map((item, idx) => {
               const Icon = item.icon
               return (
-                <button
+                <Button
                   key={idx}
+                  type="button"
+                  variant="ghost"
                   onClick={() => handleSelect(item.path)}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-[480] rounded-xl text-foreground hover:bg-[#eff6ff] hover:text-primary dark:hover:bg-neutral-800 transition-colors cursor-pointer"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 h-auto text-xs font-[420] rounded-xl text-foreground transition-colors"
                 >
                   <span className="flex items-center gap-2.5">
                     <Icon size={15} className="text-primary shrink-0" />
                     {item.title}
                   </span>
                   <span className="text-[10px] font-[480] text-muted-foreground uppercase">{item.category}</span>
-                </button>
+                </Button>
               )
             })
           )}

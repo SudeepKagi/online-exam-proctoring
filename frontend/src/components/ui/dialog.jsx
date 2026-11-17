@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from './button'
 
 const DialogContext = React.createContext({ open: false, onOpenChange: () => {} })
 
@@ -31,9 +32,9 @@ const DialogTrigger = React.forwardRef(({ asChild, children, onClick, ...props }
   }
 
   return (
-    <button ref={ref} onClick={handleClick} {...props}>
+    <Button variant="ghost" ref={ref} onClick={handleClick} {...props}>
       {children}
-    </button>
+    </Button>
   )
 })
 DialogTrigger.displayName = 'DialogTrigger'
@@ -57,9 +58,9 @@ const DialogClose = React.forwardRef(({ asChild, children, onClick, ...props }, 
   }
 
   return (
-    <button ref={ref} onClick={handleClick} {...props}>
+    <Button variant="ghost" ref={ref} onClick={handleClick} {...props}>
       {children}
-    </button>
+    </Button>
   )
 })
 DialogClose.displayName = 'DialogClose'
@@ -83,17 +84,19 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
         {...props}
       >
         {children}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => {
             if (onClose) onClose()
             if (onOpenChange) onOpenChange(false)
           }}
-          className="absolute right-4 top-4 rounded-full p-1 text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb]/60 transition-colors cursor-pointer"
+          className="absolute right-4 top-4"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
-        </button>
+        </Button>
       </div>
     </div>
   )

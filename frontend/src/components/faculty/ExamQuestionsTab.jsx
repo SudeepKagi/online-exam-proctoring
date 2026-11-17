@@ -77,13 +77,13 @@ export default function ExamQuestionsTab({ examId, questions, isReadOnly = false
           <div className="flex flex-wrap items-center gap-2">
             <ExamAiModal examId={examId} onQuestionsAdded={(t) => { onNotify(t, 'success'); onRefresh() }} />
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleUploadQuestions} />
-            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5 text-xs font-[420] rounded-[40px] px-3.5 h-9 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer">
+            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
               {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
               Upload Excel
             </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
+                <Button variant="primary" size="sm">
                   <PlusCircle className="w-3.5 h-3.5" /> + Add MCQ
                 </Button>
               </DialogTrigger>
@@ -114,7 +114,7 @@ export default function ExamQuestionsTab({ examId, questions, isReadOnly = false
                       <Input required type="number" min={0.5} step={0.5} value={form.marks} onChange={(e) => setForm({ ...form, marks: e.target.value })} className="h-9 text-xs" />
                     </div>
                   </div>
-                  <Button type="submit" className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">Save Question</Button>
+                  <Button type="submit" variant="primary" className="w-full mt-2">Save Question</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -141,7 +141,7 @@ export default function ExamQuestionsTab({ examId, questions, isReadOnly = false
                   </div>
                 </div>
                 {!isReadOnly && (
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteQuestion(q.id)} className="text-[#70707d] hover:text-[#28253b] h-8 rounded-[40px] cursor-pointer">
+                  <Button variant="destructive" size="icon-xs" onClick={() => handleDeleteQuestion(q.id)}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}

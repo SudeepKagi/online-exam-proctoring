@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from './button'
 
 const SheetContext = React.createContext({ open: false, onOpenChange: () => {} })
 
@@ -27,7 +28,7 @@ function SheetTrigger({ asChild, children, onClick, ...props }) {
       ...props
     })
   }
-  return <button onClick={handleClick} {...props}>{children}</button>
+  return <Button variant="ghost" onClick={handleClick} {...props}>{children}</Button>
 }
 
 function SheetClose({ asChild, children, onClick, ...props }) {
@@ -45,7 +46,7 @@ function SheetClose({ asChild, children, onClick, ...props }) {
       ...props
     })
   }
-  return <button onClick={handleClick} {...props}>{children}</button>
+  return <Button variant="ghost" onClick={handleClick} {...props}>{children}</Button>
 }
 
 function SheetContent({ className, children, side = 'right', showCloseButton = true, ...props }) {
@@ -69,13 +70,16 @@ function SheetContent({ className, children, side = 'right', showCloseButton = t
       >
         {children}
         {showCloseButton && (
-          <button
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
             onClick={() => onOpenChange(false)}
-            className="absolute top-4 right-4 rounded-xs p-1 text-slate-400 hover:text-slate-600 focus:outline-hidden"
+            className="absolute top-4 right-4"
           >
             <X className="w-4 h-4" />
             <span className="sr-only">Close</span>
-          </button>
+          </Button>
         )}
       </div>
     </div>

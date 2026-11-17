@@ -130,7 +130,7 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs font-[420] rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer">
+        <Button variant="secondary" size="sm">
           <Settings className="w-3.5 h-3.5 text-[#5266eb]" /> {isReadOnly ? 'View Settings' : 'Exam Settings'}
         </Button>
       </DialogTrigger>
@@ -251,14 +251,16 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
                   <div className="flex items-center justify-between">
                     <Label htmlFor="seb-config-key-input" className="text-[11px] font-[420] text-[#554e7b]">Config Key (Optional per-exam override)</Label>
                     {!isReadOnly && (sebConfigKey || initialSebKey) && (
-                      <button
+                      <Button
                         type="button"
+                        variant="link"
+                        size="sm"
                         data-testid="btn-remove-seb-key"
                         onClick={handleRemoveKey}
-                        className="text-[11px] text-[#5266eb] hover:underline font-[420] cursor-pointer bg-transparent border-0 p-0"
+                        className="text-[11px]"
                       >
                         Remove key
-                      </button>
+                      </Button>
                     )}
                   </div>
                   <Input
@@ -305,7 +307,7 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
                   size="sm"
                   onClick={handleDelete}
                   disabled={deleting || saving}
-                  className="text-xs text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] gap-1 rounded-[40px] px-3 cursor-pointer border-0"
+                  className="gap-1 px-3 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> Delete Draft
                 </Button>
@@ -314,7 +316,7 @@ export default function ExamSettingsModal({ exam, isReadOnly = false, lifecycle 
               <Button
                 type="submit"
                 disabled={saving}
-                className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-9 px-4 rounded-[32px] shadow-xs ml-auto flex items-center gap-1.5 cursor-pointer"
+                className="h-9 px-4 ml-auto flex items-center gap-1.5 cursor-pointer"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 Save Changes

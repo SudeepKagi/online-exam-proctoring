@@ -69,9 +69,9 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
         <Button
           type="button"
           onClick={onBack}
-          variant="outline"
+          variant="secondary"
           disabled={uploading}
-          className="h-10 px-4 text-xs font-[420] rounded-[40px] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0 flex items-center gap-1.5 cursor-pointer"
+          className="h-10 px-4 flex items-center gap-1.5 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </Button>
@@ -80,7 +80,7 @@ export default function WebcamCaptureStep({ onNext, onBack, initialPreview }) {
           type="button"
           onClick={handleContinue}
           disabled={!previewUrl || uploading}
-          className="h-10 px-5 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          className="h-10 px-5 flex items-center gap-2 cursor-pointer disabled:opacity-50"
         >
           {uploading ? (
             <>

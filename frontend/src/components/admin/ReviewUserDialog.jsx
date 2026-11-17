@@ -178,20 +178,19 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
           <div className="flex items-center gap-2">
             {!showRejectBox ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setShowRejectBox(true)}
                 disabled={actionLoading}
-                className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] rounded-[40px] px-3.5 cursor-pointer border-0"
               >
                 <XCircle className="w-4 h-4 mr-1.5" /> Reject & Request Re-upload
               </Button>
             ) : (
               <Button
+                variant="destructive"
                 size="sm"
                 onClick={handleReject}
                 disabled={actionLoading}
-                className="bg-[#554e7b] hover:bg-[#433e64] text-white text-xs font-[420] rounded-[40px] px-4 cursor-pointer border-0"
               >
                 {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : null}
                 Confirm Rejection
@@ -199,10 +198,10 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
             )}
 
             <Button
+              variant="primary"
               size="sm"
               onClick={handleApprove}
               disabled={actionLoading}
-              className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 shadow-xs cursor-pointer border-0"
             >
               {actionLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
               Approve Account

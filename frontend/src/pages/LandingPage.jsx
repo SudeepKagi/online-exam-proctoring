@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, Cpu, ArrowRight, Lock, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import AppFooter from '@/components/common/AppFooter'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import COPY from '@/copy'
@@ -36,12 +37,12 @@ export default function LandingPage() {
             <a href="#roles" className="px-4 py-2 rounded-full hover:bg-[rgba(82,102,235,0.08)] hover:text-[#28253b] transition">Roles</a>
           </nav>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="secondary"
               onClick={() => navigate('/login')}
-              className="px-5 h-10 rounded-[32px] text-sm font-[420] text-white bg-[#5266eb] hover:bg-[#4354d0] transition cursor-pointer"
             >
               Sign In
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -62,12 +63,12 @@ export default function LandingPage() {
         </p>
 
         <div className="mt-10 flex items-center justify-center gap-4">
-          <button
+          <Button
+            variant="primary"
             onClick={() => navigate('/login')}
-            className="px-6 h-10 rounded-[32px] bg-[#5266eb] hover:bg-[#4354d0] text-white text-sm font-[420] transition flex items-center gap-2 cursor-pointer"
           >
             Open Examination Portal <ArrowRight className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -135,12 +136,13 @@ export default function LandingPage() {
                 <h3 className="text-lg font-[480] text-[#28253b] mt-4">{r.name}</h3>
                 <p className="text-sm text-[#554e7b] mt-2 font-[360] leading-relaxed">{r.desc}</p>
               </div>
-              <button
+              <Button
+                variant="secondary"
                 onClick={() => navigate(r.route)}
-                className="mt-8 w-full h-10 rounded-full bg-[rgba(82,102,235,0.10)] hover:bg-[rgba(82,102,235,0.18)] text-[#28253b] text-sm font-[420] flex items-center justify-center gap-1.5 transition cursor-pointer"
+                className="mt-8 w-full"
               >
                 Enter Portal <ChevronRight className="w-4 h-4 text-[#5266eb]" />
-              </button>
+              </Button>
             </div>
           ))}
         </div>

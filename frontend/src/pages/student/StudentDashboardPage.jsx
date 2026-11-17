@@ -189,10 +189,9 @@ export default function StudentDashboardPage() {
             type="button"
             onClick={runComputerCheck}
             disabled={isTestingComputer}
-            variant={readiness?.passed ? "outline" : "default"}
-            className={readiness?.passed
-              ? "h-9 px-4 text-xs font-[420] rounded-[32px] border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] shrink-0 cursor-pointer"
-              : "h-9 px-4 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white shrink-0 cursor-pointer"}
+            variant="secondary"
+            size="sm"
+            className="shrink-0"
           >
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isTestingComputer ? 'animate-spin' : ''}`} />
             {isTestingComputer ? 'Checking...' : (readiness?.passed ? 'Check again' : 'Check your computer')}
@@ -255,17 +254,17 @@ export default function StudentDashboardPage() {
                     </div>
 
                     {isFuture ? (
-                      <Button asChild variant="outline" className="w-full bg-[#edecfb] hover:bg-[#e0dff9] text-[#554e7b] text-xs font-[420] rounded-[32px] gap-1.5 h-10 border-0 cursor-pointer">
+                      <Button asChild variant="secondary" className="w-full">
                         <Link to={`/student/exams/${exam.id}/start`}>
                           <Clock className="w-4 h-4 text-[#5266eb]" /> Opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Link>
                       </Button>
                     ) : isEnded ? (
-                      <Button disabled className="w-full bg-[#edecfb] text-[#554e7b] opacity-70 text-xs font-[420] rounded-[32px] gap-1.5 h-10 border-0 cursor-not-allowed">
+                      <Button disabled variant="secondary" className="w-full opacity-70">
                         Examination Window Closed
                       </Button>
                     ) : (
-                      <Button asChild className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] gap-1.5 shadow-xs h-10 cursor-pointer">
+                      <Button asChild variant="primary" className="w-full">
                         <Link to={`/student/exams/${exam.id}/start`}>
                           <ShieldCheck className="w-4 h-4" /> Start Exam
                         </Link>

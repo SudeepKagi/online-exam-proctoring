@@ -269,7 +269,7 @@ export default function ExamWizardStepUpload({
             variant="outline"
             size="sm"
             onClick={onDraftResume}
-            className="h-7 text-xs rounded-full px-3 bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#edecfb]"
+            className="h-7 text-xs rounded-full px-3"
           >
             Resume Draft
           </Button>
@@ -456,18 +456,16 @@ export default function ExamWizardStepUpload({
                   <label className="font-[420] text-[#28253b]">Target Difficulty</label>
                   <div className="flex items-center gap-1.5">
                     {['MIXED', 'EASY', 'MEDIUM', 'HARD'].map((d) => (
-                      <button
+                      <Button
                         key={d}
                         type="button"
+                        variant={difficulty === d ? 'primary' : 'secondary'}
+                        size="sm"
                         onClick={() => setDifficulty(d)}
-                        className={`flex-1 h-8 rounded-full text-xs font-[420] transition-colors ${
-                          difficulty === d
-                            ? 'bg-[#5266eb] text-white'
-                            : 'bg-white text-[#554e7b] border border-[#e9eaf2] hover:bg-[#edecfb]'
-                        }`}
+                        className="flex-1"
                       >
                         {d === 'MIXED' ? 'Mixed' : d.charAt(0) + d.slice(1).toLowerCase()}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -532,18 +530,16 @@ export default function ExamWizardStepUpload({
                   </div>
                   <div className="flex items-center gap-2">
                     {[3, 4, 5].map((optCount) => (
-                      <button
+                      <Button
                         key={optCount}
                         type="button"
+                        variant={optionsPerQuestion === optCount ? 'primary' : 'secondary'}
+                        size="sm"
                         onClick={() => setOptionsPerQuestion(optCount)}
-                        className={`flex-1 h-8 rounded-full text-xs font-[420] ${
-                          optionsPerQuestion === optCount
-                            ? 'bg-[#5266eb] text-white'
-                            : 'bg-white text-[#554e7b] border border-[#e9eaf2] hover:bg-[#edecfb]'
-                        }`}
+                        className="flex-1"
                       >
                         {optCount} options
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -584,7 +580,7 @@ export default function ExamWizardStepUpload({
                   variant="outline"
                   size="sm"
                   onClick={() => setFile(null)}
-                  className="h-9 px-4 rounded-full text-xs text-[#554e7b] border-[#e9eaf2] hover:bg-[#edecfb]"
+                  className="h-9 px-4 rounded-full text-xs"
                 >
                   Choose Different File
                 </Button>
@@ -593,7 +589,7 @@ export default function ExamWizardStepUpload({
                   type="button"
                   size="sm"
                   onClick={handleStartGeneration}
-                  className="h-9 px-6 rounded-full text-xs font-[420] bg-[#5266eb] text-white hover:bg-[#4353c7]"
+                  className="h-9 px-6 rounded-full text-xs"
                 >
                   <Sparkles className="w-4 h-4 mr-1.5" />
                   {entryMode === 'extract' ? 'Extract Questions from Paper' : 'Generate Questions'}
@@ -628,10 +624,10 @@ export default function ExamWizardStepUpload({
               <div className="flex items-center justify-center gap-3 pt-1">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="destructive"
                   size="sm"
                   onClick={handleCancelJob}
-                  className="h-8 px-4 rounded-full text-xs text-red-600 border-red-200 hover:bg-red-50"
+                  className="h-8 px-4 rounded-full text-xs"
                 >
                   <XCircle className="w-3.5 h-3.5 mr-1" />
                   Cancel (Keep Partial Results)
@@ -653,7 +649,7 @@ export default function ExamWizardStepUpload({
                   size="sm"
                   variant="outline"
                   onClick={handleRetryBatch}
-                  className="h-7 px-3 text-xs rounded-full bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#edecfb]"
+                  className="h-7 px-3 text-xs rounded-full"
                 >
                   <RefreshCw className="w-3 h-3 mr-1" />
                   Retry Failed Batch
@@ -676,7 +672,7 @@ export default function ExamWizardStepUpload({
               type="button"
               variant="ghost"
               onClick={onSkipToManual}
-              className="text-xs text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb]/60 rounded-full h-8 px-4"
+              className="text-xs rounded-full h-8 px-4"
             >
               Skip, I'll type questions manually
             </Button>

@@ -170,7 +170,7 @@ export default function AdminExamsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" disabled={submitting || !selectedInvigilatorId} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
+            <Button type="submit" disabled={submitting || !selectedInvigilatorId} className="w-full h-10 cursor-pointer">
               {submitting ? 'Assigning...' : 'Confirm Assignment'}
             </Button>
           </form>

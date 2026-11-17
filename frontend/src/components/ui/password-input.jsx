@@ -1,5 +1,6 @@
 import React, { useState, useId } from 'react'
 import { Lock, Eye, EyeOff } from 'lucide-react'
+import { Button } from './button'
 
 export function calculatePasswordStrength(pass) {
   if (!pass) return { score: 0, label: '', color: 'bg-slate-200' }
@@ -63,16 +64,18 @@ export function PasswordInput({
           {...props}
         />
 
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={() => setVisible(v => !v)}
           disabled={disabled}
           tabIndex={-1}
           aria-label={visible ? 'Hide password' : 'Show password'}
-          className="absolute right-2.5 p-1 text-[#70707d] hover:text-[#28253b] rounded-lg transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-[#5266eb] cursor-pointer"
+          className="absolute right-2.5"
         >
           {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
+        </Button>
       </div>
 
       {showStrength && value && (

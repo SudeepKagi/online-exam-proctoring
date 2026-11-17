@@ -94,15 +94,13 @@ export default function ExamReadinessTab({ examId, exam }) {
             {['ALL', 'READY', 'NOT_READY', 'NOT_REPORTED'].map((st) => {
               const active = statusFilter === st
               return (
-                <button
+                <Button
                   key={st}
                   type="button"
+                  variant={active ? "secondary" : "ghost"}
+                  size="sm"
                   onClick={() => setStatusFilter(st)}
-                  className={`text-xs font-[420] px-3 py-1.5 rounded-[40px] transition cursor-pointer ${
-                    active
-                      ? 'bg-[#5266eb] text-white shadow-xs'
-                      : 'bg-[#fbfbff] hover:bg-[#edecfb] text-[#28253b] border border-[#e9eaf2]/80'
-                  }`}
+                  className={active ? "font-[480] bg-[rgba(82,102,235,0.14)]" : "text-[#554e7b]"}
                 >
                   {st === 'ALL'
                     ? 'All Students'
@@ -111,7 +109,7 @@ export default function ExamReadinessTab({ examId, exam }) {
                     : st === 'NOT_READY'
                     ? 'Needs Attention'
                     : 'Not Reported'}
-                </button>
+                </Button>
               )
             })}
           </div>

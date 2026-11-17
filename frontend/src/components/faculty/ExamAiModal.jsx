@@ -63,7 +63,7 @@ export default function ExamAiModal({ examId, onQuestionsAdded }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
+        <Button variant="primary" size="sm">
           <Sparkles className="w-3.5 h-3.5" /> ✨ AI Generate Questions
         </Button>
       </DialogTrigger>
@@ -138,7 +138,7 @@ export default function ExamAiModal({ examId, onQuestionsAdded }) {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full h-10 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-10 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -208,7 +208,7 @@ export default function ExamAiModal({ examId, onQuestionsAdded }) {
                 size="sm"
                 disabled={inserting}
                 onClick={handleInsertAll}
-                className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-4 h-9 flex items-center gap-1.5 cursor-pointer"
               >
                 {inserting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Insert All {generated.length} Questions into Exam

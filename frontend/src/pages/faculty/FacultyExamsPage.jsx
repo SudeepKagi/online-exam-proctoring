@@ -115,7 +115,7 @@ export default function FacultyExamsPage() {
         <Button
           size="sm"
           onClick={() => setWizardOpen(true)}
-          className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-5 h-10 shadow-xs cursor-pointer"
+          className="gap-1.5 text-xs px-5 h-10 cursor-pointer"
         >
           <PlusCircle className="w-3.5 h-3.5" /> + Create Assessment (AI Exam Wizard)
         </Button>

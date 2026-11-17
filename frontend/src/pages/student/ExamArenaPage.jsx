@@ -332,16 +332,18 @@ export default function ExamArenaPage() {
             {isSeb ? (
               <Button
                 type="button"
+                variant="primary"
                 onClick={() => { window.location.href = sebQuitUrl }}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                className="w-full"
               >
                 Exit secure browser
               </Button>
             ) : (
               <Button
                 type="button"
+                variant="primary"
                 onClick={() => navigate('/student/dashboard')}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                className="w-full"
               >
                 Return to Student Dashboard
               </Button>
@@ -390,13 +392,14 @@ export default function ExamArenaPage() {
             <AlertTriangle className="w-4 h-4 text-[#73510d] shrink-0" />
             <span>Integrity event recorded: {integrityWarning.reason || integrityWarning.eventType}</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setIntegrityWarning(null)}
-            className="text-[11px] text-[#73510d] hover:underline cursor-pointer"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -412,10 +415,11 @@ export default function ExamArenaPage() {
           </div>
           <Button
             type="button"
-            size="sm"
+            variant="secondary"
+            size="xs"
             data-testid="retry-sync-button"
             onClick={() => flushDirtyAnswers()}
-            className="bg-[#73510d] hover:bg-[#5a3f08] text-white text-[11px] font-[420] h-7 rounded-[32px] px-3 cursor-pointer shrink-0"
+            className="shrink-0"
           >
             Retry sync
           </Button>
@@ -432,13 +436,14 @@ export default function ExamArenaPage() {
             <CheckCircle2 className="w-4 h-4 text-[#5266eb] shrink-0" />
             <span>Connection restored. All local answers have synced with the server.</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setShowSyncSuccess(false)}
-            className="text-xs text-[#554e7b] hover:text-[#28253b] cursor-pointer"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -454,13 +459,14 @@ export default function ExamArenaPage() {
             <Clock className="w-3.5 h-3.5 text-[#5266eb]" />
             <span>5 minutes remaining. Please review your answers.</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setShow5MinWarning(false)}
-            className="text-xs text-[#554e7b] hover:text-[#28253b] cursor-pointer"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -476,13 +482,14 @@ export default function ExamArenaPage() {
             <AlertCircle className="w-3.5 h-3.5 text-[#73510d]" />
             <span>1 minute remaining. Your exam will submit automatically when time expires.</span>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="xs"
             onClick={() => setShow1MinWarning(false)}
-            className="text-xs text-[#73510d] hover:text-[#28253b] cursor-pointer"
           >
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
 
@@ -533,10 +540,11 @@ export default function ExamArenaPage() {
           </div>
           <Button
             type="button"
+            variant="primary"
             size="sm"
             data-testid="retry-submit-btn"
             onClick={() => handleSubmitExam()}
-            className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-8 rounded-[32px] cursor-pointer"
+            className="w-full"
           >
             Retry submission
           </Button>
@@ -603,9 +611,10 @@ export default function ExamArenaPage() {
 
               <Button
                 type="submit"
+                variant="primary"
                 disabled={reauthSubmitting}
                 data-testid="reauth-submit-btn"
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                className="w-full"
               >
                 {reauthSubmitting ? 'Authenticating...' : 'Sign in & resume exam'}
               </Button>

@@ -419,9 +419,10 @@ export default function PreExamCheckPage() {
               <Button
                 type="button"
                 data-testid="consent-agree-btn"
+                variant="primary"
                 disabled={!consentAgreed || loading}
                 onClick={handleAgreeConsent}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                className="w-full"
               >
                 {loading ? 'Recording Consent...' : 'Agree & Continue to Verification'} <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
@@ -442,7 +443,11 @@ export default function PreExamCheckPage() {
 
               {isWindowLocked ? (
                 <div className="pt-2 text-center">
-                  <Button onClick={() => navigate('/student/dashboard')} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
+                  <Button
+                    onClick={() => navigate('/student/dashboard')}
+                    variant="primary"
+                    className="w-full"
+                  >
                     Return to Student Dashboard
                   </Button>
                 </div>
@@ -517,18 +522,19 @@ export default function PreExamCheckPage() {
                   <div className="flex items-center gap-3 pt-1">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       onClick={handleRetakePhoto}
                       disabled={verifying}
-                      className="flex-1 rounded-[40px] h-10 text-xs font-[420] border-transparent bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1"
                     >
                       <RotateCcw className="w-3.5 h-3.5 text-[#5266eb]" /> Retake photo
                     </Button>
                     <Button
                       type="button"
+                      variant="primary"
                       onClick={handleConfirmAndVerify}
                       disabled={verifying || awaitingApproval}
-                      className="flex-1 bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1"
                     >
                       {verifying ? (
                         <>
@@ -560,8 +566,10 @@ export default function PreExamCheckPage() {
                       </ol>
                       <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={retryCamera}
-                        className="w-full mt-2 bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] text-xs font-[420] h-9 rounded-[32px] cursor-pointer"
+                        className="w-full mt-2"
                       >
                         Try camera again
                       </Button>
@@ -608,9 +616,10 @@ export default function PreExamCheckPage() {
 
                   <Button
                     type="button"
+                    variant="primary"
                     onClick={handleCapturePhoto}
                     disabled={isCameraBlocked}
-                    className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full flex items-center justify-center gap-1.5"
                   >
                     <Camera className="w-4 h-4" /> Capture Photo
                   </Button>
