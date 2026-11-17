@@ -37,15 +37,15 @@ function parsePlistDict(xmlStr) {
   const settings = {}
   if (!xmlStr) return settings
 
-  // Match key followed by string, true, false, or integer
-  const keyRegex = /<key>([^<]+)<\/key>\s*(?:<string>([^<]*)<\/string>|<(true|false)\/>|<integer>([^<]*)<\/integer>)/g
+  // Match key followed by string, true, false (allowing optional whitespace before />), or integer
+  const keyRegex = /<key>([^<]+)<\/key>\s*(?:<string>([^<]*)<\/string>|<(true|false)\s*\/?>|<integer>([^<]*)<\/integer>)/gi
   let match
   while ((match = keyRegex.exec(xmlStr)) !== null) {
     const key = match[1]
     if (match[2] !== undefined) {
       settings[key] = match[2]
     } else if (match[3] !== undefined) {
-      settings[key] = match[3] === 'true'
+      settings[key] = match[3].toLowerCase() === 'true'
     } else if (match[4] !== undefined) {
       settings[key] = parseInt(match[4], 10)
     }
