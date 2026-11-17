@@ -13,6 +13,7 @@ const { verifySebLaunchToken } = require('./sebToken')
 const { sebTokenService } = require('./sebToken.service')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('./seb.service')
 const { sebDiagnosticsService } = require('./sebDiagnostics.service')
+const { markUserSebVerified } = require('../../middleware/seb')
 
 /**
  * Validates X-SafeExamBrowser-ConfigKeyHash against candidate URLs for the given activeKey.
@@ -473,8 +474,9 @@ async function exchange(req, res, next) {
     // Atomically mark PIN and token consumed now that session is successfully issued
     sebTokenService.markConsumed(record)
 
-    // Atomically mark token and linked PIN consumed now that session is successfully issued
-    sebTokenService.markConsumed(record)
+    if (user?.id && record.examId) {
+      markUserSebVerified(user.id, record.examId)
+    }
 
     logger.info(
       { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
@@ -628,6 +630,10 @@ async function exchangePin(req, res, next) {
 
     // Atomically mark PIN and token consumed now that session is successfully issued
     sebTokenService.markConsumed(record)
+
+    if (user?.id && record.examId) {
+      markUserSebVerified(user.id, record.examId)
+    }
 
     logger.info(
       { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
