@@ -408,3 +408,9 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T04:13:57.555Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\phase0-check-server.sh`
+- **Command ID**: `66f183f2-c40a-4299-aa1f-b39529ac5f82`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase0-check-server.log`
