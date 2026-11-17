@@ -91,6 +91,17 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     effectiveMode = 'off'
   }
 
+  // Environment ceiling and emergency override (Phase 3 Requirement 5)
+  // If the env explicitly specifies SEB_MODE, it acts as a ceiling and emergency override
+  const rawEnvMode = process.env.SEB_MODE ? process.env.SEB_MODE.toLowerCase().trim() : null
+  if (rawEnvMode === 'off') {
+    effectiveMode = 'off'
+    enforcementReason = 'Safe Exam Browser is disabled by server environment override (SEB_MODE=off).'
+  } else if ((rawEnvMode === 'log' || rawEnvMode === 'audit') && effectiveMode === 'enforce') {
+    effectiveMode = 'audit'
+    enforcementReason = `Strict enforcement is restricted to audit mode by server environment ceiling (SEB_MODE=${rawEnvMode}).`
+  }
+
   const cleanPublicOrigin = config.publicOrigin || process.env.PUBLIC_ORIGIN || 'https://proctornet.duckdns.org'
 
   const state = {
