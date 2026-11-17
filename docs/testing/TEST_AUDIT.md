@@ -19,9 +19,9 @@ Every test file across the ProctorNet test suite was audited against strict prod
 
 | Category | Total Files | Keep | Update | Rewrite | Remove | Quarantined |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Backend Suites** | 38 | 32 | 6 | 0 | 0 | 0 |
+| **Backend Suites** | 39 | 32 | 6 | 0 | 0 | 0 |
 | **E2E Suites** | 17 | 15 | 2 | 0 | 0 | 0 |
-| **Total** | **55** | **47** | **8** | **0** | **0** | **0** |
+| **Total** | **56** | **47** | **8** | **0** | **0** | **0** |
 
 ---
 
@@ -29,6 +29,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 
 | File | Tests | Verdict | Evidence & Verification Scope |
 | :--- | :---: | :---: | :--- |
+| `admin-seb-setup.test.js` | 13 | **NEW** | Verifies Phase 3 Safe Exam Browser administration: plain XML vs encrypted container inspection, Config Key comparison ("looks like Browser Exam Key" warning), starter config generator, 7-day verified ping invariant for enforce mode, diagnostic attempts tracking, and storage health check. |
 | `ai-flow-comprehensive.test.js` | 10 | **KEEP** | Verifies full AI question redesign: honest capacity estimation, difficulty split (Mixed 30/50/20), grounding check, token deduplication, extract mode with AI-suggested badges, and batch job cancellation/partial result persistence. |
 | `ai-generator-fixture.test.js` | 5 | **KEEP** | Verifies Zod schema validation on LLM JSON output, normalization of non-standard options, letter-based indices (A-D), deterministic fallback generation, and low-confidence flags (< 0.7). |
 | `assertNonProduction.test.js` | 3 | **KEEP** | Verifies database wipe guards; strictly forbids cleanroom wipe when connected to external/production database hosts. |

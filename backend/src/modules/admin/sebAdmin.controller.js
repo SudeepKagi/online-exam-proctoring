@@ -5,6 +5,8 @@ const { settingsService } = require('./settings.service')
 const { getStorageAdapter } = require('../../infra/s3/s3.client')
 const { logger } = require('../../shared/logging')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('../seb/seb.service')
+const { inspectSebBuffer, generateStarterSebConfig } = require('../seb/sebConfigChecker')
+const { sebDiagnosticsService } = require('../seb/sebDiagnostics.service')
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -13,52 +15,82 @@ const upload = multer({
   }
 })
 
-function inspectSebBuffer(buffer) {
-  if (!buffer || buffer.length === 0) {
-    return { valid: false, error: 'Empty file' }
-  }
-
-  // 1. Check for XML plist (unencrypted)
-  const prefixStr = buffer.slice(0, 50).toString('utf8').trim()
-  const isXml = prefixStr.startsWith('<?xml') || prefixStr.startsWith('<plist')
-  if (isXml) {
-    return {
-      valid: true,
-      unencrypted: true,
-      warning: 'The uploaded .seb file appears to be unencrypted. For maximum security, protect the configuration with a settings password or encrypt it in the SEB Configuration Tool.'
+/**
+ * Endpoint to inspect an uploaded .seb file without persisting it.
+ * POST /api/v1/admin/seb/inspect
+ */
+async function inspectConfig(req, res, next) {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ code: 'FILE_REQUIRED', message: 'A .seb configuration file is required.' })
     }
-  }
 
-  // 2. Check for SEB magic bytes / encrypted container
-  // Encrypted SEB headers: 'seb\0' (0x73 0x65 0x62 0x00) or gzip (0x1f 0x8b) or binary plist ('bplist00')
-  const isSebMagic = buffer[0] === 0x73 && buffer[1] === 0x65 && buffer[2] === 0x62 && buffer[3] === 0x00
-  const isGzip = buffer[0] === 0x1f && buffer[1] === 0x8b
-  const isBplist = buffer.slice(0, 8).toString('utf8') === 'bplist00'
-
-  if (isSebMagic || isGzip || isBplist) {
-    return {
-      valid: true,
-      unencrypted: false,
-      warning: null
+    const originalName = (req.file.originalname || '').toLowerCase()
+    if (!originalName.endsWith('.seb')) {
+      return res.status(400).json({ code: 'INVALID_FILE_EXTENSION', message: 'File must have a .seb extension.' })
     }
-  }
 
-  // Also check if text content inside looks like an XML plist even without standard header
-  const sample = buffer.slice(0, 500).toString('utf8')
-  if (sample.includes('<plist') || sample.includes('<!DOCTYPE plist')) {
-    return {
-      valid: true,
-      unencrypted: true,
-      warning: 'The uploaded .seb file appears to be unencrypted. For maximum security, protect the configuration with a settings password or encrypt it in the SEB Configuration Tool.'
-    }
-  }
+    const sebState = await getInstitutionSebState()
+    const inspection = inspectSebBuffer(req.file.buffer, {
+      publicOrigin: sebState.publicOrigin,
+      s3Host: process.env.S3_BUCKET ? `${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION || 'ap-south-1'}.amazonaws.com` : '',
+      pastedKey: req.body?.configKey || ''
+    })
 
-  return {
-    valid: false,
-    error: 'The uploaded file does not match a valid Safe Exam Browser configuration format.'
+    return res.status(200).json({
+      success: true,
+      inspection
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to inspect SEB configuration buffer')
+    next(err)
   }
 }
 
+/**
+ * Endpoint to download a pre-configured starter .seb file.
+ * GET /api/v1/admin/seb/starter-config
+ */
+async function getStarterConfig(req, res, next) {
+  try {
+    const sebState = await getInstitutionSebState()
+    const s3Host = process.env.S3_BUCKET ? `${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION || 'ap-south-1'}.amazonaws.com` : ''
+    const xmlConfig = generateStarterSebConfig({
+      publicOrigin: sebState.publicOrigin,
+      s3Host
+    })
+
+    res.setHeader('Content-Type', 'application/seb')
+    res.setHeader('Content-Disposition', 'attachment; filename="proctornet-starter.seb"')
+    return res.status(200).send(xmlConfig)
+  } catch (err) {
+    logger.error({ err }, 'Failed to generate starter SEB configuration')
+    next(err)
+  }
+}
+
+/**
+ * Returns recent diagnostic verification attempts.
+ * GET /api/v1/admin/seb/attempts
+ */
+async function getRecentAttempts(req, res, next) {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 5
+    const attempts = sebDiagnosticsService.getRecentAttempts(limit)
+    return res.status(200).json({
+      success: true,
+      attempts
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch SEB verification attempts')
+    next(err)
+  }
+}
+
+/**
+ * Uploads and activates institution-wide Safe Exam Browser configuration.
+ * POST /api/v1/admin/seb/config
+ */
 async function uploadSebConfig(req, res, next) {
   try {
     if (!req.file) {
@@ -70,21 +102,32 @@ async function uploadSebConfig(req, res, next) {
       return res.status(400).json({ code: 'INVALID_FILE_EXTENSION', message: 'File must have a .seb extension.' })
     }
 
-    const inspection = inspectSebBuffer(req.file.buffer)
-    if (!inspection.valid) {
-      return res.status(400).json({ code: 'INVALID_SEB_FILE', message: inspection.error })
-    }
-
     const rawKey = req.body?.configKey
     const trimmedKey = typeof rawKey === 'string' ? rawKey.trim().toLowerCase() : ''
     if (!trimmedKey || !/^[0-9a-f]{64}$/.test(trimmedKey)) {
       return res.status(400).json({ code: 'INVALID_CONFIG_KEY', message: 'Config Key must be a 64-character hexadecimal string.' })
     }
 
+    const sebState = await getInstitutionSebState()
+    const inspection = inspectSebBuffer(req.file.buffer, {
+      publicOrigin: sebState.publicOrigin,
+      s3Host: process.env.S3_BUCKET ? `${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION || 'ap-south-1'}.amazonaws.com` : '',
+      pastedKey: trimmedKey
+    })
+
+    if (!inspection.valid) {
+      return res.status(400).json({ code: 'INVALID_SEB_FILE', message: inspection.error })
+    }
+
     // Save to S3 first (no key stored in metadata)
     const fileKey = 'seb/institution-config.seb'
     const storage = getStorageAdapter()
-    await storage.putObject(fileKey, req.file.buffer, 'application/seb')
+    try {
+      await storage.putObject(fileKey, req.file.buffer, 'application/seb')
+    } catch (storageErr) {
+      storageErr.isStorageError = true
+      throw storageErr
+    }
 
     let saved = null
     try {
@@ -110,7 +153,8 @@ async function uploadSebConfig(req, res, next) {
 
     return res.status(200).json({
       success: true,
-      warning: inspection.warning || null,
+      warning: inspection.keyWarning || inspection.notice || null,
+      inspection,
       status: {
         configured: true,
         keyPresent: true,
@@ -131,6 +175,10 @@ async function uploadSebConfig(req, res, next) {
   }
 }
 
+/**
+ * Returns current status of institution SEB configuration.
+ * GET /api/v1/admin/seb/status
+ */
 async function getSebStatus(req, res, next) {
   try {
     const bypassCache = req?.query?.refresh === 'true'
@@ -157,6 +205,10 @@ async function getSebStatus(req, res, next) {
   }
 }
 
+/**
+ * Updates requested enforcement mode (off | audit | enforce).
+ * PATCH /api/v1/admin/seb/mode
+ */
 async function updateSebMode(req, res, next) {
   try {
     const rawMode = req.body?.mode
@@ -208,6 +260,10 @@ async function updateSebMode(req, res, next) {
   }
 }
 
+/**
+ * Removes institution SEB configuration.
+ * DELETE /api/v1/admin/seb/config
+ */
 async function deleteSebConfig(_req, res, next) {
   try {
     const existing = await settingsService.getSebConfig()
@@ -235,6 +291,8 @@ module.exports = {
   getSebStatus,
   updateSebMode,
   deleteSebConfig,
-  inspectSebBuffer
+  inspectSebBuffer,
+  inspectConfig,
+  getStarterConfig,
+  getRecentAttempts
 }
-

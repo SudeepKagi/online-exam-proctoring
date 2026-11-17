@@ -12,6 +12,7 @@ const { setAuthCookie, setAccessCookie, setRefreshCookie } = require('../../util
 const { verifySebLaunchToken } = require('./sebToken')
 const { sebTokenService } = require('./sebToken.service')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('./seb.service')
+const { sebDiagnosticsService } = require('./sebDiagnostics.service')
 
 /**
  * Validates X-SafeExamBrowser-ConfigKeyHash against candidate URLs for the given activeKey.
@@ -124,11 +125,27 @@ async function ping(req, res, next) {
         userAgent
       })
       invalidateInstitutionSebState()
+      sebDiagnosticsService.recordAttempt({
+        purpose: 'admin_test',
+        outcome: 'SUCCESS',
+        userAgent,
+        clientIp: req.ip,
+        timestamp: nowIso
+      })
       logger.info({ matchMethod, ip: req.ip }, 'Safe Exam Browser ping successfully verified')
       return res.status(200).json({
         verified: true,
         method: matchMethod,
         timestamp: nowIso
+      })
+    }
+
+    if (isSebAgent) {
+      sebDiagnosticsService.recordAttempt({
+        purpose: 'admin_test',
+        outcome: 'HEADER_MISMATCH',
+        userAgent,
+        clientIp: req.ip
       })
     }
 
@@ -388,6 +405,12 @@ async function exchange(req, res, next) {
         const headerMatch = verifySebHeaderHash(req, sebState.configKey)
         if (!headerMatch) {
           logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on exchange: invalid or missing header hash')
+          sebDiagnosticsService.recordAttempt({
+            purpose: record.purpose || 'exam',
+            outcome: 'HEADER_MISMATCH',
+            userAgent,
+            clientIp: req.ip
+          })
           return res.status(403).json({
             code: 'SEB_ENFORCEMENT_FAILED',
             message: 'Safe Exam Browser configuration check failed. Configuration Key header is invalid.'
@@ -420,6 +443,22 @@ async function exchange(req, res, next) {
       { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
       'Safe Exam Browser launch token successfully exchanged for user session'
     )
+
+    sebDiagnosticsService.recordAttempt({
+      purpose: record.purpose || 'exam',
+      outcome: 'SUCCESS',
+      userAgent,
+      clientIp: req.ip
+    })
+
+    if (record.purpose === 'check' || normalizeRole(user.role) === ROLES.ADMIN || normalizeRole(user.role) === ROLES.FACULTY) {
+      const nowIso = new Date().toISOString()
+      await settingsService.updateSebLastVerified(nowIso, {
+        method: 'exchange_token',
+        userAgent
+      })
+      invalidateInstitutionSebState()
+    }
 
     let destination = '/student/dashboard'
     if (record.purpose === 'check') {
