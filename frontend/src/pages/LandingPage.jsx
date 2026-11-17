@@ -1,14 +1,32 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Shield, Eye, Cpu, ArrowRight, Lock, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import AppFooter from '@/components/common/AppFooter'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { api } from '@/lib/apiClient'
+import { isSebBrowser, detectSebEnvironment } from '@/lib/sebClient'
 import COPY from '@/copy'
 
 export default function LandingPage() {
   usePageTitle('Online Examination & Proctoring Platform')
   const navigate = useNavigate()
+
+  useEffect(() => {
+    let mounted = true
+    if (isSebBrowser()) {
+      navigate('/seb/enter', { replace: true })
+      return
+    }
+    detectSebEnvironment(api)
+      .then((res) => {
+        if (mounted && (res.isSeb || res.headerPresent)) {
+          navigate('/seb/enter', { replace: true })
+        }
+      })
+      .catch(() => {})
+    return () => { mounted = false }
+  }, [navigate])
 
   const featureIcons = [Shield, Lock, Cpu, Eye]
   const features = COPY.landing.features.map((f, i) => ({

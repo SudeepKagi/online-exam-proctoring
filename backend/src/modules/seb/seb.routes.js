@@ -44,7 +44,7 @@ const downloadLimiter = rateLimit({
 
 const exchangeLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 60,
+  max: (isTest || isLoadTest) ? 10000 : 300,
   keyGenerator: (req) => {
     const raw = req.query.launch || req.query.token || req.body?.pin || req.body?.code
     if (raw) return `seb_ex_${String(raw).slice(0, 16)}`

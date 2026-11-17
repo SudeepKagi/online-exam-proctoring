@@ -8,8 +8,8 @@ import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient } from '@/lib/apiClient'
-import { verifySebSession } from '@/lib/sebClient'
-import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { isSebBrowser, detectSebEnvironment, verifySebSession } from '@/lib/sebClient'
+import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react'
 
 const ROLE_CONFIG = {
   STUDENT: {
@@ -70,16 +70,25 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [isSebVerified, setIsSebVerified] = useState(false)
+  const [isSebClient, setIsSebClient] = useState(() => isSebBrowser())
+  const [showPasswordLogin, setShowPasswordLogin] = useState(() => searchParams.get('manual') === '1')
+  const [sebPin, setSebPin] = useState('')
+  const [sebPinLoading, setSebPinLoading] = useState(false)
+  const [sebPinError, setSebPinError] = useState('')
 
   useEffect(() => {
     let mounted = true
-    verifySebSession(apiClient)
+    detectSebEnvironment(apiClient)
       .then((res) => {
-        if (mounted && res.verified) {
+        if (!mounted) return
+        if (res.isSeb || res.headerPresent) {
+          setIsSebClient(true)
+        }
+        if (res.verified) {
           setIsSebVerified(true)
         }
       })
-      .catch(() => {})
+      .catch(() => { })
     return () => { mounted = false }
   }, [])
 
@@ -120,12 +129,57 @@ export default function LoginPage() {
 
       const targetExamId = searchParams.get('examId') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pendingExamId') : null)
       if (targetExamId && (role === 'STUDENT' || !role)) {
-        try { sessionStorage.removeItem('pendingExamId') } catch (_) {}
+        try { sessionStorage.removeItem('pendingExamId') } catch (_) { }
         return navigate(`/student/exams/${targetExamId}/start`)
       }
       return navigate('/student/dashboard')
     } else {
       setError(res.error || 'Authentication failed. Please verify credentials.')
+    }
+  }
+
+  const handleSebPinSubmit = async (e) => {
+    e.preventDefault()
+    const cleanPin = sebPin.trim()
+    if (!/^\d{6}$/.test(cleanPin)) {
+      setSebPinError('Please enter a valid 6-digit numeric launch code.')
+      return
+    }
+
+    setSebPinLoading(true)
+    setSebPinError('')
+
+    try {
+      const res = await apiClient.post('/seb/exchange-pin', { pin: cleanPin })
+      if (res.data?.success && res.data?.redirectUrl) {
+        if (res.data.user) {
+          try {
+            localStorage.setItem('proctornet_logged_in', 'true')
+            localStorage.setItem('user', JSON.stringify(res.data.user))
+            if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
+            if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
+          } catch (_) {}
+        }
+        window.location.href = res.data.redirectUrl
+      } else {
+        setSebPinError('Exchange failed. Please check your code.')
+      }
+    } catch (err) {
+      const code = err.response?.data?.code || err.code
+      const msg = err.response?.data?.message || err.message
+      if (code === 'TOO_MANY_ATTEMPTS') {
+        setSebPinError('Too many incorrect attempts for this code. Please generate a fresh code from your browser.')
+      } else if (code === 'PIN_EXPIRED') {
+        setSebPinError('This launch code has expired. Please return to your browser to generate a fresh one.')
+      } else if (code === 'PIN_ALREADY_USED') {
+        setSebPinError('This launch code has already been used. Please generate a new one.')
+      } else if (code === 'INVALID_PIN') {
+        setSebPinError('Invalid launch code. Please check the 6 digits displayed on your browser screen.')
+      } else {
+        setSebPinError(msg || 'Unable to verify launch code. Please try again.')
+      }
+    } finally {
+      setSebPinLoading(false)
     }
   }
 
@@ -194,30 +248,109 @@ export default function LoginPage() {
 
         {/* Right Column: Mercury Light Form Card */}
         <div className="lg:col-span-7 max-w-lg w-full mx-auto">
-          <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
-            <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#e9eaf2]">
-              <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
-                <RoleIcon className="w-5 h-5" />
-              </div>
-              {isSebVerified && (
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 bg-[#edecfb] text-[#5266eb] rounded-full text-[11px] font-[480] mx-auto">
-                  <ShieldCheck className="w-3 h-3" /> Secure browser verified
+          {isSebClient && !showPasswordLogin ? (
+            <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]" data-testid="seb-launch-code-card">
+              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#e9eaf2]">
+                <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
+                  <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
-              )}
-              <CardTitle className="text-lg font-[480] text-[#28253b] tracking-tight">{config.title}</CardTitle>
-              <CardDescription className="text-[#554e7b] text-xs font-[360]">{config.desc}</CardDescription>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 bg-[#edecfb] text-[#5266eb] rounded-full text-[11px] font-[480] mx-auto">
+                  <ShieldCheck className="w-3 h-3" /> Safe Exam Browser detected
+                </div>
+                <CardTitle className="text-lg font-[480] text-[#28253b] tracking-tight">Enter Launch Code</CardTitle>
+                <CardDescription className="text-[#554e7b] text-xs font-[360] max-w-sm mx-auto">
+                  Enter the 6-digit code shown on your browser to connect this Safe Exam Browser session directly to your exam.
+                </CardDescription>
+              </CardHeader>
 
-              <div className="pt-4">
-                <Tabs value={activeRole} onValueChange={handleRoleChange} className="w-full">
-                  <TabsList className="grid grid-cols-4 bg-white border border-[#e9eaf2] p-1 rounded-full shadow-xs">
-                    <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Student</TabsTrigger>
-                    <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Faculty</TabsTrigger>
-                    <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Invigilator</TabsTrigger> {/* // terms-ok: test selector role tab */}
-                    <TabsTrigger value="ADMIN" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Admin</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
+              <form onSubmit={handleSebPinSubmit}>
+                <CardContent className="space-y-4 pt-6">
+                  {sebPinError && (
+                    <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl flex items-center gap-2.5 font-[420] border-0">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
+                      <span>{sebPinError}</span>
+                    </div>
+                  )}
+
+                  <FormField label="6-Digit Launch Code" required>
+                    <input
+                      id="seb-login-pin"
+                      data-testid="seb-pin-input"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      value={sebPin}
+                      onChange={(e) => setSebPin(e.target.value.replace(/\D/g, ''))}
+                      placeholder="123456"
+                      className="w-full h-12 text-center text-xl tracking-[0.3em] font-mono font-[480] bg-[#fbfbff] rounded-xl outline-none text-[#28253b] border border-[#c3c3cc]/70 focus:border-[#5266eb] transition-all"
+                      autoFocus
+                      disabled={sebPinLoading}
+                    />
+                  </FormField>
+                  <p className="text-[11px] text-[#554e7b] font-[360] text-center">
+                    Single-use code • Valid for 5 minutes
+                  </p>
+                </CardContent>
+
+                <CardFooter className="flex flex-col gap-3 pt-2 pb-6 px-6">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={sebPinLoading || sebPin.length !== 6}
+                    className="w-full h-10 cursor-pointer transition"
+                  >
+                    {sebPinLoading ? 'Verifying code...' : 'Continue to exam'}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={() => setShowPasswordLogin(true)}
+                    className="text-xs text-[#554e7b] hover:text-[#28253b] underline font-[420] transition bg-transparent border-0 cursor-pointer pt-1"
+                  >
+                    Sign in with password instead
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
+          ) : (
+            <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
+              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#e9eaf2]">
+                {isSebClient && (
+                  <div className="mb-2">
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={() => setShowPasswordLogin(false)}
+                      className="text-xs text-[#5266eb] hover:underline font-[420] cursor-pointer inline-flex items-center gap-1 bg-transparent border-0 h-auto p-0"
+                    >
+                      <ArrowLeft className="w-3 h-3" /> Enter launch code instead
+                    </Button>
+                  </div>
+                )}
+                <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
+                  <RoleIcon className="w-5 h-5" />
+                </div>
+                {isSebVerified && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 mb-2 bg-[#edecfb] text-[#5266eb] rounded-full text-[11px] font-[480] mx-auto">
+                    <ShieldCheck className="w-3 h-3" /> Secure browser verified
+                  </div>
+                )}
+                <CardTitle className="text-lg font-[480] text-[#28253b] tracking-tight">{config.title}</CardTitle>
+                <CardDescription className="text-[#554e7b] text-xs font-[360]">{config.desc}</CardDescription>
+
+                <div className="pt-4">
+                  <Tabs value={activeRole} onValueChange={handleRoleChange} className="w-full">
+                    <TabsList className="grid grid-cols-4 bg-white border border-[#e9eaf2] p-1 rounded-full shadow-xs">
+                      <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Student</TabsTrigger>
+                      <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Faculty</TabsTrigger>
+                      <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Invigilator</TabsTrigger>
+                      <TabsTrigger value="ADMIN" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Admin</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardHeader>
 
             <form onSubmit={handleSubmit}>
               <CardContent className="space-y-4 pt-6">
@@ -268,6 +401,7 @@ export default function LoginPage() {
               </CardFooter>
             </form>
           </Card>
+          )}
         </div>
       </div>
 

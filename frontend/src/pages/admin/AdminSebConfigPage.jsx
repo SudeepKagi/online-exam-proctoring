@@ -59,6 +59,7 @@ export default function AdminSebConfigPage() {
   const [pollCountdown, setPollCountdown] = useState(0)
   const [testDiagnostics, setTestDiagnostics] = useState(null)
   const [recentAttempts, setRecentAttempts] = useState([])
+  const [justVerified, setJustVerified] = useState(false)
 
   // Modal & Messages
   const [confirmEnforceOpen, setConfirmEnforceOpen] = useState(false)
@@ -299,6 +300,7 @@ export default function AdminSebConfigPage() {
         if (latest?.lastVerifiedAt && latest.lastVerifiedAt !== initialVerifiedAtRef.current) {
           clearInterval(pollTimerRef.current)
           setTesting(false)
+          setJustVerified(true)
           setPollCountdown(0)
           setTestPin(null)
           setMsg({ text: 'Verification confirmed! Safe Exam Browser communicated successfully.', type: 'success' })
@@ -449,6 +451,19 @@ export default function AdminSebConfigPage() {
             </div>
           </div>
         </div>
+
+        {/* Non-blocking Start URL Recommendation Notice */}
+        {status.configured && status.startUrl && !status.startUrl.includes('/seb/enter') && (
+          <div className="p-3.5 rounded-[12px] bg-[#fbfbff] border-l-2 border-[#5266eb] text-xs font-[420] text-[#28253b] flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-[#5266eb] shrink-0 mt-0.5" />
+            <div>
+              <p className="font-[480]">Configuration Notice</p>
+              <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5 leading-relaxed">
+                Your stored configuration has Start URL set to <code>{status.startUrl}</code>. It works, but update your configuration to the recommended Start URL (<code>{startUrl}</code>) for faster zero-click handoff.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Global Notifications */}
         {msg.text && (
@@ -807,14 +822,19 @@ export default function AdminSebConfigPage() {
                 </div>
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant={isVerifiedRecent || justVerified ? "primary" : "secondary"}
                   onClick={handleTestSetup}
                   disabled={testing || !status.configured}
+                  className={(isVerifiedRecent || justVerified) && !testing ? "bg-[#2e7d32] hover:bg-[#256629] text-white border-0" : ""}
                 >
                   {testing ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
                       Listening for ping ({pollCountdown}s)...
+                    </>
+                  ) : (isVerifiedRecent || justVerified) ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 text-white" /> Verified ✓
                     </>
                   ) : (
                     <>

@@ -31,7 +31,8 @@ import {
   AlertCircle,
   Copy,
   Check,
-  RotateCcw
+  RotateCcw,
+  Download
 } from 'lucide-react'
 
 export default function StudentExamStartPage() {
@@ -66,6 +67,10 @@ export default function StudentExamStartPage() {
   const [sebLaunchData, setSebLaunchData] = useState(null)
   const [copiedPin, setCopiedPin] = useState(false)
   const [launchError, setLaunchError] = useState(null)
+  const [sebCountdown, setSebCountdown] = useState(300)
+  const [showSebHelp, setShowSebHelp] = useState(false)
+  const sebTimerRef = useRef(null)
+  const sebHelpTimerRef = useRef(null)
 
   const {
     status: cameraStatus,
@@ -155,7 +160,7 @@ export default function StudentExamStartPage() {
   // 2. Camera lifecycle: only request camera if in normal browser and not yet verified
   useEffect(() => {
     if (!loading && !globalError && !isSebActive && !identityVerified && !capturedPhoto) {
-      requestCamera().catch(() => {})
+      requestCamera().catch(() => { })
     }
   }, [loading, globalError, isSebActive, identityVerified, capturedPhoto, requestCamera])
 
@@ -180,7 +185,7 @@ export default function StudentExamStartPage() {
             setPhotoError(null)
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     }, 3000)
     return () => {
       active = false
@@ -240,7 +245,7 @@ export default function StudentExamStartPage() {
           setPhotoError('Lighting is overexposed or too bright. Please reduce glare and retake.')
           return
         }
-      } catch (_) {}
+      } catch (_) { }
 
       const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
       setCapturedPhoto(dataUrl)
@@ -297,10 +302,10 @@ export default function StudentExamStartPage() {
         } else {
           const reason = data.reason || (
             data.status === 'NO_MATCH' ? 'Face did not match institutional reference photo. Please retake.' :
-            data.status === 'NO_FACE' ? 'No face detected in the photo. Please ensure face is centered and clearly visible.' :
-            data.status === 'MULTIPLE_FACES' ? 'Multiple faces detected. Please ensure only you are visible.' :
-            data.status === 'LOW_QUALITY' ? 'Photo quality is too low or blurry. Please retake in good lighting.' :
-            'Identity verification failed. Please retake your photograph.'
+              data.status === 'NO_FACE' ? 'No face detected in the photo. Please ensure face is centered and clearly visible.' :
+                data.status === 'MULTIPLE_FACES' ? 'Multiple faces detected. Please ensure only you are visible.' :
+                  data.status === 'LOW_QUALITY' ? 'Photo quality is too low or blurry. Please retake in good lighting.' :
+                    'Identity verification failed. Please retake your photograph.'
           )
           setPhotoError(reason)
         }
@@ -325,13 +330,14 @@ export default function StudentExamStartPage() {
     setIdentityVerified(false)
     setPhotoError(null)
     setAwaitingApproval(false)
-    requestCamera().catch(() => {})
+    requestCamera().catch(() => { })
   }
 
   // Launch Safe Exam Browser handler
   const handleLaunchSeb = async () => {
     setLaunchingSeb(true)
     setLaunchError(null)
+    setShowSebHelp(false)
     try {
       const res = await apiClient.post('/seb/launch-link', { examId: id })
       const launchUrl = res.data?.url
@@ -339,6 +345,23 @@ export default function StudentExamStartPage() {
       if (!launchUrl) throw new Error('No launch link returned by server')
 
       setSebLaunchData({ url: launchUrl, pin })
+      setSebCountdown(300)
+
+      if (sebTimerRef.current) clearInterval(sebTimerRef.current)
+      sebTimerRef.current = setInterval(() => {
+        setSebCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(sebTimerRef.current)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      if (sebHelpTimerRef.current) clearTimeout(sebHelpTimerRef.current)
+      sebHelpTimerRef.current = setTimeout(() => {
+        setShowSebHelp(true)
+      }, 4000)
 
       // Trigger OS protocol
       window.location.href = launchUrl
@@ -368,7 +391,7 @@ export default function StudentExamStartPage() {
         cameraOk: identityVerified,
         latencyBucket: (internetState.rating || 'good').toLowerCase(),
         sebVerified: Boolean(isSebActive)
-      }).catch(() => {})
+      }).catch(() => { })
 
       await apiClient.post(`/attempts/exams/${id}/start`, {}).catch((err) => {
         if (err.response?.status === 403 || err.response?.status === 404) throw err
@@ -376,7 +399,7 @@ export default function StudentExamStartPage() {
       })
 
       if (document.documentElement.requestFullscreen) {
-        await document.documentElement.requestFullscreen().catch(() => {})
+        await document.documentElement.requestFullscreen().catch(() => { })
       }
 
       navigate(`/student/exams/${id}/arena`)
@@ -770,34 +793,33 @@ export default function StudentExamStartPage() {
             </div>
           ) : null}
 
-          {/* SEB Fallback PIN Panel (Shown after clicking launch) */}
+          {/* SEB Launch Code Panel (Shown after clicking launch) */}
           {sebLaunchData && (
-            <div className="p-4 bg-[#fbfbff] rounded-[14px] text-xs text-[#28253b] space-y-3 font-sans">
+            <div className="p-5 bg-white border border-[#edecfb] rounded-[16px] text-xs text-[#28253b] space-y-4 shadow-sm font-sans" data-testid="seb-launch-active-panel">
               <div className="flex items-start justify-between">
                 <div>
-                  <h4 className="font-[480] text-[#28253b] flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Launching
+                  <h4 className="font-[480] text-[#28253b] text-sm flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Launching — Launch Code
                   </h4>
                   <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
-                    Your browser should prompt you to open Safe Exam Browser.
+                    Your browser was asked to open Safe Exam Browser. If prompted, click <strong>"Open Safe Exam Browser"</strong>.
                   </p>
                 </div>
-                <a
-                  href={sebDownloadUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] text-[#5266eb] hover:underline flex items-center gap-1 font-[420]"
-                >
-                  Download SEB <ExternalLink className="w-3 h-3" />
-                </a>
+                <div className="text-right">
+                  <span className="font-mono text-xs font-[480] text-[#5266eb] bg-[#edecfb] px-2.5 py-1 rounded-full">
+                    {formatCountdown(sebCountdown * 1000)} remaining
+                  </span>
+                </div>
               </div>
 
-              {/* 6-digit Fallback PIN Box */}
+              {/* 6-digit Launch Code Large Display */}
               {sebLaunchData.pin && (
-                <div className="p-3 bg-white rounded-[10px] flex items-center justify-between border border-[#edecfb]">
+                <div className="p-4 bg-[#fbfbff] rounded-[12px] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
                   <div>
-                    <span className="text-[10px] text-[#554e7b] font-[360] block">Backup Launch PIN (5-min validity)</span>
-                    <span className="text-base font-mono font-[500] text-[#28253b] tracking-wider">
+                    <span className="text-[10px] uppercase font-[500] tracking-wider text-[#554e7b] block mb-1">
+                      Your 6-Digit Launch Code
+                    </span>
+                    <span className="text-3xl sm:text-4xl font-mono font-[480] text-[#28253b] tracking-[0.25em]">
                       {sebLaunchData.pin}
                     </span>
                   </div>
@@ -806,28 +828,45 @@ export default function StudentExamStartPage() {
                     variant="secondary"
                     size="sm"
                     onClick={handleCopyPin}
+                    className="shrink-0"
                   >
-                    {copiedPin ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copiedPin ? 'Copied' : 'Copy PIN'}
+                    {copiedPin ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                    {copiedPin ? 'Copied' : 'Copy PIN / Code'}
                   </Button>
                 </div>
               )}
 
-              <p className="text-[10px] text-[#554e7b] font-[360] leading-relaxed">
-                If prompted, click <strong>"Open Safe Exam Browser"</strong>. If Safe Exam Browser asks for a launch code, enter the 6-digit PIN above at <code>/seb/enter</code>.
-              </p>
-
-              <div className="flex gap-2 pt-1">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleLaunchSeb}
-                  disabled={launchingSeb}
-                >
-                  <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Relaunch SEB
-                </Button>
-              </div>
+              {/* 4-Second Timeout Help Banner */}
+              {showSebHelp && (
+                <div className="p-3 bg-[#edecfb]/60 rounded-[10px] space-y-2 border-l-2 border-[#5266eb]">
+                  <p className="text-[11px] text-[#28253b] font-[420] flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#5266eb] shrink-0" /> Safe Exam Browser not opening?
+                  </p>
+                  <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed">
+                    Make sure Safe Exam Browser 3.x is installed on your computer. If it didn&apos;t launch automatically, click Relaunch below or type your 6-digit code into Safe Exam Browser.
+                  </p>
+                  <div className="flex items-center gap-3 pt-1">
+                    <a
+                      href={sebDownloadUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[11px] text-[#5266eb] hover:underline font-[480] inline-flex items-center gap-1"
+                    >
+                      <Download className="w-3 h-3" /> Download Safe Exam Browser
+                    </a>
+                    <span className="text-[#c3c3cc]">•</span>
+                    <Button
+                      type="button"
+                      variant="link"
+                      onClick={handleLaunchSeb}
+                      disabled={launchingSeb}
+                      className="text-[11px] text-[#5266eb] hover:underline font-[480] cursor-pointer bg-transparent border-0 inline-flex items-center gap-1 h-auto p-0"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${launchingSeb ? 'animate-spin' : ''}`} /> Relaunch SEB
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

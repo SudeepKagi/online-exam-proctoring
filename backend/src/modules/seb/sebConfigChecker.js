@@ -116,7 +116,7 @@ function inspectSebBuffer(buffer, options = {}) {
   let expectedHost = 'proctornet.duckdns.org'
   try {
     expectedHost = new URL(publicOrigin).host
-  } catch (_) {}
+  } catch (_) { }
 
   // a. Check Start URL
   const startUrl = settings.startURL || ''
@@ -132,10 +132,7 @@ function inspectSebBuffer(buffer, options = {}) {
     try {
       const parsedStart = new URL(startUrl)
       const hostMatch = parsedStart.host.toLowerCase() === expectedHost.toLowerCase()
-      const validPath = parsedStart.pathname.startsWith('/seb/enter') ||
-                        parsedStart.pathname.startsWith('/student/login') ||
-                        parsedStart.pathname.startsWith('/login') ||
-                        parsedStart.pathname === '/'
+      const isRecommendedPath = parsedStart.pathname === '/seb/enter' || parsedStart.pathname.startsWith('/seb/enter')
 
       if (!hostMatch) {
         checks.push({
@@ -144,12 +141,12 @@ function inspectSebBuffer(buffer, options = {}) {
           status: 'warning',
           message: `Start URL host (${parsedStart.host}) does not match your institution public origin (${expectedHost}).`
         })
-      } else if (!validPath) {
+      } else if (!isRecommendedPath) {
         checks.push({
           key: 'startURL',
-          label: 'Start URL Path',
+          label: 'Start URL',
           status: 'warning',
-          message: `Start URL path (${parsedStart.pathname}) is unconventional. Recommended: ${publicOrigin}/seb/enter or ${publicOrigin}/student/login.`
+          message: `Start URL is configured to "${startUrl}" (works, but update your configuration to the recommended Start URL: ${publicOrigin}/seb/enter).`
         })
       } else {
         checks.push({

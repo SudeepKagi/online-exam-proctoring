@@ -540,3 +540,39 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `e5d14d82-28b7-4cbe-aab4-00d3c6a213af`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/update-seb-mode-enforce.log`
+
+### [2026-11-17T10:37:41.777Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-live-seb-config.sh`
+- **Command ID**: `648064c8-a875-4bd3-b1fe-93912ebd3972`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-seb-inspect.log`
+
+### [2026-11-17T10:38:43.941Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-recent-logs.sh`
+- **Command ID**: `55ff30de-8e94-415f-be02-ac971d4caf6c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/recent-backend-logs.log`
+
+### [2026-11-17T10:39:36.891Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-seb-requests.sh`
+- **Command ID**: `5c4bf2d7-7f0d-42a3-9575-5801a23d9c69`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/seb-caddy-requests.log`
+
+### [2026-11-17T10:40:50.541Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-ping-logs.sh`
+- **Command ID**: `40fa4f47-b7bf-4931-b0ba-bf4a85c1f0a3`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/seb-ping-logs.log`
+
+### [2026-11-17T10:41:32.445Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-service.sh`
+- **Command ID**: `2354e6a2-1a5b-4f9c-a9fb-d61ab818d9a5`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/service-def.log`
+
+### [2026-11-17T10:42:14.093Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-proctornet-logs.sh`
+- **Command ID**: `422abce5-c189-42bd-9544-45df109ea697`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/proctornet-journal.log`

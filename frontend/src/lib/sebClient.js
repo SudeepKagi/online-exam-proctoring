@@ -16,13 +16,57 @@ export function isSebBrowser() {
     return true
   }
 
-  // 2. User Agent inspection (SEB appends version to User Agent)
+  // 2. User Agent inspection (real SEB on Windows sends "SEB/3.10.3" or "SafeExamBrowser" or "SEB")
   const ua = (typeof navigator !== 'undefined' ? (navigator.userAgent || '') : '')
   if (/SEB|SafeExamBrowser/i.test(ua)) {
     return true
   }
 
+  // 3. Cached detection from session or header verification
+  try {
+    if (sessionStorage.getItem('proctornet_is_seb') === 'true') {
+      return true
+    }
+  } catch (_) {}
+
   return false
+}
+
+/**
+ * Detects SEB environment by BOTH User Agent and the Config Key header via GET /api/v1/seb/ping.
+ * @param {import('axios').AxiosInstance} client - Axios apiClient instance
+ * @returns {Promise<{ isSeb: boolean, headerPresent: boolean, verified: boolean }>}
+ */
+export async function detectSebEnvironment(client) {
+  if (typeof window === 'undefined') {
+    return { isSeb: false, headerPresent: false, verified: false }
+  }
+
+  let isSeb = isSebBrowser()
+  let headerPresent = false
+  let verified = false
+
+  try {
+    const res = await client.get('/seb/ping')
+    if (res.data?.headerPresent) headerPresent = true
+    if (res.data?.isSebAgent) isSeb = true
+    if (res.data?.verified) verified = true
+
+    if (isSeb || headerPresent) {
+      try {
+        sessionStorage.setItem('proctornet_is_seb', 'true')
+        if (verified) {
+          sessionStorage.setItem('proctornet_seb_verified', 'true')
+        }
+      } catch (_) {}
+    }
+  } catch (_) {}
+
+  return {
+    isSeb: Boolean(isSeb || headerPresent),
+    headerPresent,
+    verified
+  }
 }
 
 /**

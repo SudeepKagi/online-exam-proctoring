@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 import { api } from '@/lib/apiClient'
-import { verifySebSession } from '@/lib/sebClient'
+import { verifySebSession, isSebBrowser } from '@/lib/sebClient'
 
 const LandingPage = lazy(() => import('@/pages/LandingPage'))
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
@@ -33,7 +33,12 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (loading) {
     return <div className="min-h-screen bg-[#fbfcfd] flex items-center justify-center text-xs text-[#554e7b] font-[420]">Loading session...</div>
   }
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    if (isSebBrowser()) {
+      return <Navigate to="/seb/enter" replace />
+    }
+    return <Navigate to="/login" replace />
+  }
 
   const status = user.status
   if (status === 'PENDING_SETUP' || status === 'REJECTED') {
@@ -56,7 +61,12 @@ function ProtectedRoute({ children, allowedRoles }) {
 function OnboardingGuard({ children }) {
   const { user, loading } = useAuth()
   if (loading) return null
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    if (isSebBrowser()) {
+      return <Navigate to="/seb/enter" replace />
+    }
+    return <Navigate to="/login" replace />
+  }
   if (user.status === 'ACTIVE') {
     const role = user.role?.toUpperCase()
     if (role === 'ADMIN') return <Navigate to="/admin/dashboard" replace />

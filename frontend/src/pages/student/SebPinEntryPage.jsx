@@ -1,15 +1,19 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/apiClient'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/button'
 
 export default function SebPinEntryPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const errorParam = searchParams.get('error')
+  const launchParam = searchParams.get('launch') || searchParams.get('token')
 
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
+  const [autoExchanging, setAutoExchanging] = useState(Boolean(launchParam))
   const [error, setError] = useState(() => {
     if (errorParam === 'missing_token') return 'Launch token was missing. Please enter your 6-digit launch code below.'
     if (errorParam === 'invalid_token') return 'Launch token was invalid. Please enter your 6-digit launch code below.'
@@ -17,6 +21,54 @@ export default function SebPinEntryPage() {
     if (errorParam === 'already_used') return 'This launch link was already used. Please enter your 6-digit launch code below.'
     return ''
   })
+
+  // 1. A signed-in user inside SEB goes straight to their exam or lobby
+  useEffect(() => {
+    if (user) {
+      navigate('/student/dashboard', { replace: true })
+    }
+  }, [user, navigate])
+
+  // 2. Auto-exchange when ?launch=TOKEN is forwarded by SEB 3.x
+  useEffect(() => {
+    if (!launchParam || user) return
+    let active = true
+
+    async function attemptAutoExchange() {
+      setAutoExchanging(true)
+      try {
+        const res = await api.get(`/seb/exchange?launch=${encodeURIComponent(launchParam)}`)
+        if (active && res.data?.success && res.data?.redirectUrl) {
+          if (res.data.user) {
+            try {
+              localStorage.setItem('proctornet_logged_in', 'true')
+              localStorage.setItem('user', JSON.stringify(res.data.user))
+              if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
+              if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
+            } catch (_) {}
+          }
+          window.location.href = res.data.redirectUrl
+          return
+        }
+      } catch (err) {
+        if (active) {
+          const code = err.response?.data?.code || err.code
+          if (code === 'TOKEN_EXPIRED') {
+            setError('Launch token has expired. Please enter the 6-digit code shown on your browser.')
+          } else if (code === 'TOKEN_ALREADY_USED') {
+            setError('Launch link was already used. Please enter the 6-digit code shown on your browser.')
+          } else {
+            setError('Could not connect with launch link. Please enter your 6-digit code below.')
+          }
+        }
+      } finally {
+        if (active) setAutoExchanging(false)
+      }
+    }
+
+    attemptAutoExchange()
+    return () => { active = false }
+  }, [launchParam, user])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -48,7 +100,9 @@ export default function SebPinEntryPage() {
     } catch (err) {
       const code = err.response?.data?.code || err.response?.data?.error?.code || err.code
       const msg = err.response?.data?.message || err.response?.data?.error?.message || err.message
-      if (code === 'PIN_EXPIRED') {
+      if (code === 'TOO_MANY_ATTEMPTS') {
+        setError('Too many incorrect attempts for this code. Please generate a fresh code from your browser.')
+      } else if (code === 'PIN_EXPIRED') {
         setError('This launch code has expired. Please return to your browser to generate a fresh one.')
       } else if (code === 'PIN_ALREADY_USED') {
         setError('This launch code has already been used. Please generate a new one.')
@@ -81,7 +135,9 @@ export default function SebPinEntryPage() {
         <div className="mb-6">
           <h2 className="text-lg font-[480] tracking-tight text-[#28253b] mb-1">Enter Launch Code</h2>
           <p className="text-xs text-[#554e7b] font-[360] leading-relaxed">
-            Enter the 6-digit code shown on your browser to connect this Safe Exam Browser session directly to your exam.
+            {autoExchanging
+              ? 'Connecting your session automatically...'
+              : 'Enter the 6-digit code shown on your browser to connect this Safe Exam Browser session directly to your exam.'}
           </p>
         </div>
 
@@ -107,17 +163,17 @@ export default function SebPinEntryPage() {
               placeholder="123456"
               className="w-full h-12 text-center text-xl tracking-[0.3em] font-[480] bg-[#fbfbff] rounded-[16px] outline-none text-[#28253b] focus:ring-2 focus:ring-[#5266eb]/30 transition-all"
               autoFocus
-              disabled={loading}
+              disabled={loading || autoExchanging}
             />
           </div>
 
           <Button
             type="submit"
             variant="primary"
-            disabled={loading || pin.length !== 6}
+            disabled={loading || autoExchanging || pin.length !== 6}
             className="w-full"
           >
-            {loading ? 'Verifying code...' : 'Continue to exam'}
+            {loading ? 'Verifying code...' : autoExchanging ? 'Connecting...' : 'Continue to exam'}
           </Button>
 
           <div className="text-center pt-2">
@@ -125,10 +181,10 @@ export default function SebPinEntryPage() {
               type="button"
               variant="link"
               size="sm"
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/login?manual=1')}
               className="text-xs text-[#554e7b] hover:text-[#28253b]"
             >
-              Sign in with institutional credentials instead
+              Sign in with password instead
             </Button>
           </div>
         </form>
