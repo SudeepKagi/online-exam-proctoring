@@ -48,6 +48,27 @@ class AttemptService {
       throw httpErr('Attempt is already finalized', 409, 'ATTEMPT_ALREADY_FINALIZED')
     }
 
+    // Phase 2: Server-authoritative Identity Gate
+    // Refuse start attempt unless identity is MATCH or invigilator-approved for that exam
+    const isIdentityRequired = Boolean(
+      exam.proctoringConfig?.identityCheck ||
+      exam.proctoringConfig?.cameraRequired ||
+      exam.proctoringConfig?.sebRequired ||
+      process.env.REQUIRE_IDENTITY_VERIFICATION === 'true'
+    )
+
+    if (isIdentityRequired && attempt.status === 'NOT_STARTED') {
+      const isIdentityApproved = Boolean(
+        attempt.faceVerified ||
+        attempt.faceStatus === 'MATCH' ||
+        attempt.faceStatus === 'APPROVED' ||
+        attempt.invigilatorApproved
+      )
+      if (!isIdentityApproved) {
+        throw httpErr('Identity verification required. Complete photo pre-check or request invigilator approval.', 403, 'IDENTITY_NOT_VERIFIED')
+      }
+    }
+
     if (attempt.status === 'NOT_STARTED') {
       attempt = await attemptsSql.startAttempt(attempt.id, exam.duration || exam.durationMinutes, exam.endTime)
     }

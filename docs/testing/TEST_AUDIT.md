@@ -51,7 +51,8 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `p6-frontend-autosave.test.js` | 5 | **KEEP** | Verifies answer persistence and atomic database updates during student question navigation. |
 | `p6-student-resilience.test.js` | 8 | **KEEP** | Verifies mid-exam crash resume, server-authoritative timer countdown, and background auto-submit on expiration. |
 | `p7-privacy-readiness-incidents.test.js` | 5 | **KEEP** | Verifies biometric template redaction, audit trail retention, and non-retention of raw facial frames. |
-| `phase2-proctoring-redesign.test.js` | 7 | **KEEP** | Verifies Phase 2 redesign: pre-check face verification (Rekognition driver with test fallback), zero continuous webcam streaming, page screenshot violation ingest (`html2canvas`), invigilator bypass approval/rejection endpoints, and zero auto-termination. |
+| `phase2-proctoring-redesign.test.js` | 8 | **UPDATE** | Verifies Phase 2 redesign: pre-check face verification (Rekognition driver with test fallback), zero continuous webcam streaming, page screenshot violation ingest (`html2canvas`), invigilator bypass approval/rejection endpoints, zero auto-termination, and server identity gate (403 IDENTITY_NOT_VERIFIED). |
+| `precheck-flow-gate.test.js` | 4 | **NEW** | Verifies server-authoritative identity gate on attempt start (403 IDENTITY_NOT_VERIFIED), photo MATCH transition to IN_PROGRESS, manual invigilator approval bypass, and single-use SEB launch token and PIN generation. |
 | `preflight-env.test.js` | 10 | **KEEP** | Verifies strict preflight checks: refuses `S3_ENDPOINT` pointing to localhost/minio in production, mandates bucket and region. |
 | `production-hardening.test.js` | 6 | **KEEP** | Verifies rate limit configurations, disabled debug endpoints, and helmet security middleware. |
 | `r3-media-cadence.test.js` | 4 | **KEEP** | Verifies webcam and audio capture sampling intervals, throttle bounds, and frame upload rates. |
@@ -59,7 +60,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `seb-debug-logging.test.js` | 2 | **UPDATE** | Verifies cryptographic hashes in debug logs are masked to prefix-only in production; updated audit/log mode description. |
 | `seb-institution-config.test.js` | 4 | **UPDATE** | Verifies SEB config persistence, encrypted storage, and configuration validation. Updated ping test assertions to match enhanced `{ verified, isSebAgent }` and `{ verified, method, timestamp }` response contract. |
 | `seb-step1.test.js` | 4 | **UPDATE** | Verifies Browser Exam Key (BEK) and Config Key computation and header extraction; updated with institution cache invalidation. |
-| `seb-step2-middleware.test.js` | 5 | **UPDATE** | Verifies SEB middleware in `audit` vs `enforce` mode with header validation; updated with DB institution mode configuration and non-SEB pass-through. |
+| `seb-step2-middleware.test.js` | 25 | **UPDATE** | Verifies SEB middleware in `audit` vs `enforce` mode with header validation; updated with DB institution mode configuration, non-SEB pass-through, and verified photo precheck requirement on attempt start. |
 | `seb-step3-status.test.js` | 3 | **UPDATE** | Verifies institution SEB status endpoint returning masked configuration key; updated with DB institution mode configuration. |
 | `secrets-hardening.test.js` | 4 | **KEEP** | Verifies secret entropy requirements and rotation safety guards. |
 | `storage-probe.test.js` | 3 | **KEEP** | Verifies startup storage probe (`put`, `get`, `delete` under `probe/`) and admin storage health check (`/api/v1/admin/health/storage`). |

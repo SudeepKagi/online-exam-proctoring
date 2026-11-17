@@ -129,7 +129,7 @@ export default function PreExamCheckPage() {
     setError('')
     try {
       await apiClient.post(`/exams/${id}/consent`, {
-        consentVersion: 'v2.0',
+        consentVersion: 'v2.1',
         consentText: 'I understand and consent to a single still photo being taken for identity verification against my enrolled reference photo, and integrity logs being recorded for this exam session. No continuous camera streaming will occur.'
       })
 

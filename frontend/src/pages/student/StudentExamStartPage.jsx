@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -7,11 +7,11 @@ import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
 import { verifySebSession } from '@/lib/sebClient'
 import { useCamera } from '@/hooks/useCamera'
+import cameraStore from '@/lib/cameraStore'
 import {
   evaluateClockSkew,
   evaluateLatency,
   evaluateOperatingSystem,
-  saveReadinessResult,
   detectOsFamily,
   detectBrowserFamily
 } from '@/lib/systemCheck'
@@ -19,8 +19,8 @@ import { mapStudentError, getSupportUrl } from '@/lib/studentErrors'
 import {
   Camera,
   Wifi,
-  Clock,
   Laptop,
+  Clock,
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
@@ -28,7 +28,10 @@ import {
   ExternalLink,
   RefreshCw,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check,
+  RotateCcw
 } from 'lucide-react'
 
 export default function StudentExamStartPage() {
@@ -37,40 +40,43 @@ export default function StudentExamStartPage() {
 
   const [exam, setExam] = useState(null)
   const [sebStatus, setSebStatus] = useState(null)
+  const [isSebActive, setIsSebActive] = useState(false)
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [serverTimeOffset, setServerTimeOffset] = useState(0)
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [globalError, setGlobalError] = useState(null)
 
-  // System checklist states
-  const {
-    status: cameraStatus,
-    error: cameraErrorMsg,
-    requestCamera,
-    retryCamera,
-    attachVideoRef
-  } = useCamera()
+  // Step 1: Photo Verification State
+  const [capturedPhoto, setCapturedPhoto] = useState(null)
+  const [verifyingPhoto, setVerifyingPhoto] = useState(false)
+  const [identityVerified, setIdentityVerified] = useState(false)
+  const [photoError, setPhotoError] = useState(null)
+  const [failedTries, setFailedTries] = useState(0)
+  const [serviceErrors, setServiceErrors] = useState(0)
+  const [awaitingApproval, setAwaitingApproval] = useState(false)
 
-  const cameraState = {
-    status: cameraStatus === 'live' ? 'ready' : (cameraStatus === 'requesting' || cameraStatus === 'idle') ? 'checking' : 'failed',
-    message: cameraStatus === 'live'
-      ? 'Camera ready and preview active'
-      : cameraStatus === 'denied'
-        ? 'Camera access was blocked. Please click the camera icon in your address bar and select "Always allow".'
-        : cameraStatus === 'in_use'
-          ? 'Unable to access webcam. Check if another program (Zoom, Teams) is using it.'
-          : (cameraErrorMsg || 'Requesting camera permissions...')
-  }
+  // Step 2 & 3: Internet & Computer States
   const [internetState, setInternetState] = useState({ status: 'checking', latencyMs: 0, rating: '', message: 'Measuring connection...' })
   const [clockState, setClockState] = useState({ status: 'checking', warning: false, message: 'Checking system clock...' })
   const [computerState, setComputerState] = useState({ status: 'checking', compatible: true, message: 'Checking computer compatibility...' })
 
-  // SEB launch link and fallback state
+  // SEB Launch & Fallback PIN State
   const [launchingSeb, setLaunchingSeb] = useState(false)
-  const [showNothingOpened, setShowNothingOpened] = useState(false)
-  const lostFocusRef = useRef(false)
-  const fallbackTimerRef = useRef(null)
+  const [sebLaunchData, setSebLaunchData] = useState(null)
+  const [copiedPin, setCopiedPin] = useState(false)
+  const [launchError, setLaunchError] = useState(null)
+
+  const {
+    status: cameraStatus,
+    devices,
+    selectedDeviceId,
+    selectDevice,
+    requestCamera,
+    retryCamera,
+    attachVideoRef,
+    videoRef
+  } = useCamera()
 
   const supportUrl = getSupportUrl()
   const sebDownloadUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_DOWNLOAD_URL) || 'https://safeexambrowser.org/download_en.html'
@@ -113,12 +119,20 @@ export default function StudentExamStartPage() {
         message: clockEval.message
       })
 
-      // SEB Status & Computer Compatibility Check
+      // SEB Status & Verification Check
       const rawSeb = sebRes.data || { required: false, verified: false, mode: 'off' }
-      const isVerified = Boolean(rawSeb.verified || clientSebCheck?.verified)
-      const seb = { ...rawSeb, verified: isVerified }
+      const sebActive = Boolean(rawSeb.verified || clientSebCheck?.verified)
+      setIsSebActive(sebActive)
+
+      const seb = { ...rawSeb, verified: sebActive }
       setSebStatus(seb)
 
+      // If attempt was already face-verified, reflect it
+      if (rawSeb.faceVerified) {
+        setIdentityVerified(true)
+      }
+
+      // Computer Compatibility Check
       const osEval = evaluateOperatingSystem(seb.required)
       setComputerState({
         status: osEval.compatible ? 'ready' : 'incompatible',
@@ -138,18 +152,12 @@ export default function StudentExamStartPage() {
     loadExamAndConfig()
   }, [loadExamAndConfig])
 
-  // 2. Camera Permission & Live Preview Check via unified store
-  const startCameraCheck = useCallback(async () => {
-    try {
-      await requestCamera()
-    } catch (_) { }
-  }, [requestCamera])
-
+  // 2. Camera lifecycle: only request camera if in normal browser and not yet verified
   useEffect(() => {
-    if (!loading && !globalError) {
-      startCameraCheck()
+    if (!loading && !globalError && !isSebActive && !identityVerified && !capturedPhoto) {
+      requestCamera().catch(() => {})
     }
-  }, [loading, globalError, startCameraCheck])
+  }, [loading, globalError, isSebActive, identityVerified, capturedPhoto, requestCamera])
 
   // 3. Keep current time counting every second
   useEffect(() => {
@@ -157,24 +165,28 @@ export default function StudentExamStartPage() {
     return () => clearInterval(timer)
   }, [])
 
-  // 4. Save readiness state to localStorage whenever checks finish
+  // 4. Polling when awaiting manual invigilator approval
   useEffect(() => {
-    if (cameraState.status === 'ready' && internetState.status !== 'checking' && clockState.status === 'ready') {
-      saveReadinessResult({
-        camera: cameraState.status === 'ready',
-        internet: internetState.status === 'ready' || internetState.status === 'warning',
-        clock: clockState.status === 'ready',
-        computer: computerState.status === 'ready'
-      })
-    }
-  }, [cameraState.status, internetState.status, clockState.status, computerState.status])
-
-  // 5. Cleanup fallback timers on unmount
-  useEffect(() => {
+    if (!awaitingApproval) return
+    let active = true
+    const interval = setInterval(async () => {
+      try {
+        const res = await apiClient.get(`/attempts/exams/${id}/seb-status`)
+        if (res.data?.faceVerified || res.data?.invigilatorApproved) {
+          clearInterval(interval)
+          if (active) {
+            setIdentityVerified(true)
+            setAwaitingApproval(false)
+            setPhotoError(null)
+          }
+        }
+      } catch (_) {}
+    }, 3000)
     return () => {
-      if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current)
+      active = false
+      clearInterval(interval)
     }
-  }, [])
+  }, [awaitingApproval, id])
 
   // Calculate synchronized server time and countdown
   const serverNow = currentTime + serverTimeOffset
@@ -196,63 +208,178 @@ export default function StudentExamStartPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // 6. Launch Safe Exam Browser handler with 4s focus loss detection
-  const handleLaunchSeb = async () => {
-    setLaunchingSeb(true)
-    setShowNothingOpened(false)
-    lostFocusRef.current = false
-
-    const handleWindowBlur = () => {
-      lostFocusRef.current = true
+  // Still photo capture with immediate track release
+  const handleCapturePhoto = async () => {
+    const video = videoRef.current
+    if (!video || video.readyState < 2) {
+      setPhotoError('Please wait for the camera preview to initialize.')
+      return
     }
-    const handleVisibilityChange = () => {
-      if (document.hidden) lostFocusRef.current = true
-    }
-
-    window.addEventListener('blur', handleWindowBlur)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
 
     try {
-      const res = await apiClient.post('/seb/launch-link', { examId: id })
-      const launchUrl = res.data?.url
-      if (!launchUrl) throw new Error('No launch URL returned from server')
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-      // Trigger OS protocol launch
-      window.location.href = launchUrl
-
-      // 4-second visibility detection
-      fallbackTimerRef.current = setTimeout(() => {
-        if (!lostFocusRef.current) {
-          setShowNothingOpened(true)
+      // Lighting brightness check
+      try {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        const d = imgData.data
+        let sum = 0
+        for (let i = 0; i < d.length; i += 4) {
+          sum += (d[i] + d[i + 1] + d[i + 2]) / 3
         }
-        setLaunchingSeb(false)
-        window.removeEventListener('blur', handleWindowBlur)
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
-      }, 4000)
-    } catch (err) {
-      setLaunchingSeb(false)
-      window.removeEventListener('blur', handleWindowBlur)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      const mapped = mapStudentError(err)
-      setGlobalError(mapped)
+        const avg = sum / (canvas.width * canvas.height)
+        if (avg < 30) {
+          setPhotoError('Lighting is too dark. Please ensure your face is well-lit and retake.')
+          return
+        }
+        if (avg > 245) {
+          setPhotoError('Lighting is overexposed or too bright. Please reduce glare and retake.')
+          return
+        }
+      } catch (_) {}
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+      setCapturedPhoto(dataUrl)
+      setPhotoError(null)
+
+      // STOP TRACKS IMMEDIATELY (camera light turns off)
+      if (video.srcObject && video.srcObject.getTracks) {
+        video.srcObject.getTracks().forEach((track) => track.stop())
+        video.srcObject = null
+      }
+      cameraStore.releaseCamera('precheck')
+
+      // Trigger server-side face verification
+      await verifyCapturedPhoto(dataUrl)
+    } catch (_) {
+      setPhotoError('Failed to capture photo from webcam. Please try again.')
     }
   }
 
-  // 7. Proceed to Pre-Exam Check (or direct exam arena)
+  const verifyCapturedPhoto = async (dataUrl) => {
+    setVerifyingPhoto(true)
+    setPhotoError(null)
+    try {
+      const res = await apiClient.post('/media/verify-face', {
+        imageBase64: dataUrl,
+        examId: id
+      })
+      const data = res.data || {}
+      if (data.verified || data.status === 'MATCH') {
+        setIdentityVerified(true)
+        setAwaitingApproval(false)
+        setPhotoError(null)
+      } else if (data.status === 'NO_REFERENCE') {
+        setIdentityVerified(false)
+        setAwaitingApproval(true)
+        setPhotoError('No institutional reference photo on file. Your photo has been submitted to your invigilator for manual approval.')
+      } else if (data.status === 'SERVICE_ERROR') {
+        setIdentityVerified(false)
+        const nextErrors = serviceErrors + 1
+        setServiceErrors(nextErrors)
+        if (nextErrors >= 2) {
+          setAwaitingApproval(true)
+          setPhotoError('Face verification service unavailable after multiple attempts. Submitted to your invigilator for approval.')
+        } else {
+          setPhotoError('Face verification service temporarily unavailable. Please click retake to try again.')
+        }
+      } else {
+        setIdentityVerified(false)
+        const nextFails = failedTries + 1
+        setFailedTries(nextFails)
+        if (nextFails >= 3) {
+          setAwaitingApproval(true)
+          setPhotoError('Ask your invigilator to verify you. Your photo has been submitted to the live console.')
+        } else {
+          const reason = data.reason || (
+            data.status === 'NO_MATCH' ? 'Face did not match institutional reference photo. Please retake.' :
+            data.status === 'NO_FACE' ? 'No face detected in the photo. Please ensure face is centered and clearly visible.' :
+            data.status === 'MULTIPLE_FACES' ? 'Multiple faces detected. Please ensure only you are visible.' :
+            data.status === 'LOW_QUALITY' ? 'Photo quality is too low or blurry. Please retake in good lighting.' :
+            'Identity verification failed. Please retake your photograph.'
+          )
+          setPhotoError(reason)
+        }
+      }
+    } catch (_) {
+      setIdentityVerified(false)
+      const nextErrors = serviceErrors + 1
+      setServiceErrors(nextErrors)
+      if (nextErrors >= 2) {
+        setAwaitingApproval(true)
+        setPhotoError('Verification service unavailable after multiple attempts. Submitted to invigilator for approval.')
+      } else {
+        setPhotoError('Verification service temporarily unavailable. Please retry.')
+      }
+    } finally {
+      setVerifyingPhoto(false)
+    }
+  }
+
+  const handleRetakePhoto = () => {
+    setCapturedPhoto(null)
+    setIdentityVerified(false)
+    setPhotoError(null)
+    setAwaitingApproval(false)
+    requestCamera().catch(() => {})
+  }
+
+  // Launch Safe Exam Browser handler
+  const handleLaunchSeb = async () => {
+    setLaunchingSeb(true)
+    setLaunchError(null)
+    try {
+      const res = await apiClient.post('/seb/launch-link', { examId: id })
+      const launchUrl = res.data?.url
+      const pin = res.data?.pin
+      if (!launchUrl) throw new Error('No launch link returned by server')
+
+      setSebLaunchData({ url: launchUrl, pin })
+
+      // Trigger OS protocol
+      window.location.href = launchUrl
+    } catch (err) {
+      setLaunchError(mapStudentError(err)?.message || 'Failed to generate secure browser launch link.')
+    } finally {
+      setLaunchingSeb(false)
+    }
+  }
+
+  const handleCopyPin = () => {
+    if (!sebLaunchData?.pin) return
+    navigator.clipboard?.writeText(sebLaunchData.pin)
+    setCopiedPin(true)
+    setTimeout(() => setCopiedPin(false), 2000)
+  }
+
+  // Start Exam directly (for standard browsers or when inside verified SEB)
   const handleStartExam = async () => {
     if (starting) return
     setStarting(true)
     try {
-      // Report telemetry (§Task 8)
+      // Telemetry report
       await apiClient.post(`/exams/${id}/readiness`, {
         osFamily: detectOsFamily(),
         browserFamily: detectBrowserFamily(),
-        cameraOk: cameraState.status === 'ready',
+        cameraOk: identityVerified,
         latencyBucket: (internetState.rating || 'good').toLowerCase(),
-        sebVerified: Boolean(sebStatus?.verified)
-      }).catch(() => { })
+        sebVerified: Boolean(isSebActive)
+      }).catch(() => {})
 
-      navigate(`/student/exams/${id}/pre-check`)
+      await apiClient.post(`/attempts/exams/${id}/start`, {}).catch((err) => {
+        if (err.response?.status === 403 || err.response?.status === 404) throw err
+        return apiClient.post(`/attempts/${id}/start`, {})
+      })
+
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen().catch(() => {})
+      }
+
+      navigate(`/student/exams/${id}/arena`)
     } catch (err) {
       setGlobalError(mapStudentError(err))
     } finally {
@@ -260,8 +387,7 @@ export default function StudentExamStartPage() {
     }
   }
 
-  const isSebLockedOut = Boolean(sebStatus?.required && !sebStatus?.verified)
-  const allChecksReady = cameraState.status === 'ready' && computerState.compatible && (!sebStatus?.required || sebStatus?.verified)
+  const isCameraBlocked = cameraStatus === 'denied' || cameraStatus === 'no_device' || cameraStatus === 'in_use' || cameraStatus === 'lost'
 
   if (loading) {
     return (
@@ -277,7 +403,7 @@ export default function StudentExamStartPage() {
   if (globalError) {
     return (
       <ExamArenaShell className="items-center justify-center p-4">
-        <Card className="w-full max-w-lg border-0 bg-white shadow-md rounded-[16px] font-sans p-6 text-center space-y-4">
+        <Card className="w-full max-w-lg border-0 bg-white shadow-xs rounded-[16px] font-sans p-6 text-center space-y-4">
           <div className="w-12 h-12 bg-[#edecfb] text-[#5266eb] rounded-full mx-auto flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
@@ -286,20 +412,13 @@ export default function StudentExamStartPage() {
             {globalError.message}
           </CardDescription>
           <div className="pt-2 flex flex-col gap-2">
-            {globalError.actionType === 'dashboard' ? (
-              <Button onClick={() => navigate('/student/dashboard')} className="w-full bg-[#5266eb] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
-                Return to Dashboard
-              </Button>
-            ) : globalError.actionType === 'seb' ? (
-              <Button onClick={handleLaunchSeb} className="w-full bg-[#5266eb] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
-                Open Secure Exam Browser
-              </Button>
-            ) : (
-              <Button onClick={() => { setGlobalError(null); loadExamAndConfig() }} className="w-full bg-[#5266eb] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer">
-                Try Again
-              </Button>
-            )}
-            <a href={supportUrl} className="inline-flex items-center justify-center gap-1.5 text-xs text-[#554e7b] hover:text-[#5266eb] pt-1">
+            <Button
+              onClick={() => navigate('/student/dashboard')}
+              className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+            >
+              Return to Dashboard
+            </Button>
+            <a href={supportUrl} className="inline-flex items-center justify-center gap-1.5 text-xs text-[#554e7b] hover:text-[#5266eb] pt-1 font-[420]">
               <HelpCircle className="w-3.5 h-3.5" /> Need help? Contact technical support
             </a>
           </div>
@@ -308,70 +427,295 @@ export default function StudentExamStartPage() {
     )
   }
 
+  // =========================================================================
+  // VIEW A: INSIDE SAFE EXAM BROWSER (Secure Browser Mode)
+  // =========================================================================
+  if (isSebActive) {
+    return (
+      <ExamArenaShell className="items-center justify-center p-4">
+        <Card className="w-full max-w-lg border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
+          <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#edecfb]">
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              <ShieldCheck className="w-5 h-5 text-[#5266eb]" />
+              <Badge variant="outline" className="border-0 bg-[#edecfb] text-[#5266eb] text-xs font-[420]">
+                Safe Exam Browser Active
+              </Badge>
+            </div>
+            <CardTitle className="text-lg font-[480] text-[#28253b]">
+              {exam?.title || 'Examination Ready'}
+            </CardTitle>
+            <CardDescription className="text-xs font-[360] text-[#554e7b]">
+              {exam?.courseCode ? `${exam.courseCode} • Duration: ${exam.durationMinutes} minutes` : 'Session verified by institutional configuration'}
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-4 pt-5">
+            {!identityVerified ? (
+              <div className="p-4 bg-[#fbfbff] rounded-[14px] text-center space-y-3">
+                <AlertTriangle className="w-8 h-8 text-[#5266eb] mx-auto" />
+                <h4 className="text-xs font-[480] text-[#28253b]">Photo Check Required in Normal Browser</h4>
+                <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed">
+                  Your identity photograph must be verified in Chrome or Edge before beginning in Safe Exam Browser.
+                  Please quit Safe Exam Browser, complete the photo verification on this exam page in your regular browser, and click "Open exam in secure browser".
+                </p>
+                <div className="pt-2">
+                  <Button
+                    type="button"
+                    onClick={() => { window.location.href = '/seb/done' }}
+                    className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                  >
+                    Quit Safe Exam Browser
+                  </Button>
+                </div>
+              </div>
+            ) : isExamEnded ? (
+              <div className="p-4 bg-[#fbfbff] rounded-[14px] text-center space-y-2">
+                <AlertTriangle className="w-6 h-6 text-[#5266eb] mx-auto" />
+                <p className="text-xs text-[#28253b] font-[420]">This examination window closed at {new Date(exam.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</p>
+                <Button
+                  onClick={() => { window.location.href = '/seb/done' }}
+                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer mt-2"
+                >
+                  Quit Safe Exam Browser
+                </Button>
+              </div>
+            ) : isExamNotOpen ? (
+              <div className="p-4 bg-[#fbfbff] rounded-[14px] text-center space-y-3">
+                <p className="text-xs text-[#28253b] font-[420]">Exam opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                <Button
+                  disabled
+                  className="w-full bg-[#edecfb] text-[#554e7b] text-xs font-[420] h-10 rounded-[32px] cursor-not-allowed opacity-80"
+                >
+                  Starts in {formatCountdown(msUntilStart)}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 bg-[#fbfbff] rounded-[12px] text-xs text-[#554e7b] font-[360] leading-relaxed">
+                  Your identity has been verified and your Safe Exam Browser session is locked to institutional parameters. Click below to enter the exam arena.
+                </div>
+                {/* Single Primary Action Button */}
+                <Button
+                  onClick={handleStartExam}
+                  disabled={starting}
+                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {starting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Entering arena...
+                    </>
+                  ) : (
+                    <>
+                      Start exam <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </ExamArenaShell>
+    )
+  }
+
+  // =========================================================================
+  // VIEW B: IN NORMAL BROWSER (Chrome, Edge, etc.)
+  // 1 Photo -> 2 Internet -> 3 Computer -> Exactly ONE primary button
+  // =========================================================================
+  const isSebRequired = Boolean(sebStatus?.required)
+  const canProceed = identityVerified && !isExamNotOpen && !isExamEnded
+
   return (
     <ExamArenaShell className="items-center justify-center p-4">
-      <Card className="w-full max-w-xl border-0 bg-white shadow-md rounded-[16px] font-sans overflow-hidden">
+      <Card className="w-full max-w-xl border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
         {/* Header */}
-        <CardHeader className="text-center pb-3 pt-6 bg-gradient-to-b from-[#fbfbff] to-white border-b border-[#edecfb]">
+        <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#edecfb]">
           <div className="flex items-center justify-center gap-2 mb-1.5">
             <ShieldCheck className="w-5 h-5 text-[#5266eb]" />
             <Badge variant="outline" className="border-0 bg-[#edecfb] text-[#5266eb] text-xs font-[420]">
-              {sebStatus?.required && sebStatus?.verified ? 'Secure Browser Active' : 'System Readiness Check'}
+              System Readiness Check
             </Badge>
           </div>
           <CardTitle className="text-lg font-[480] text-[#28253b]">
             {exam?.title || 'Exam Readiness Check'}
           </CardTitle>
           <CardDescription className="text-xs font-[360] text-[#554e7b]">
-            {exam?.courseCode ? `${exam.courseCode} • Duration: ${exam.durationMinutes} minutes` : 'Verify your camera, internet, and computer before beginning'}
+            {exam?.courseCode ? `${exam.courseCode} • Duration: ${exam.durationMinutes} minutes` : 'Complete photo verification and system checks before beginning'}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4 pt-4">
-          {/* Live System Checklist Grid */}
-          <div className="space-y-2.5" role="region" aria-label="System Readiness Checklist">
-            {/* 1. Camera Item */}
-            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-2">
+          {/* Checklist: 1. Photo, 2. Internet, 3. Computer */}
+          <div className="space-y-3" role="region" aria-label="Readiness Checklist">
+
+            {/* ITEM 1: Photo Verification (One still photo, camera turned off after capture) */}
+            <div className="p-3.5 bg-[#fbfbff] rounded-[14px] flex flex-col gap-2.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
+                <div className="flex items-center gap-2 text-xs font-[480] text-[#28253b]">
                   <Camera className="w-4 h-4 text-[#5266eb]" />
-                  <span>1. Camera Preview & Permissions</span>
+                  <span>1. Photo Verification</span>
                 </div>
-                {cameraState.status === 'ready' ? (
+                {identityVerified ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#5266eb]">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Ready
                   </span>
-                ) : cameraState.status === 'checking' ? (
-                  <span className="text-[11px] text-[#70707d] font-[360] animate-pulse">Checking...</span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#c04b4b]">
-                    <AlertTriangle className="w-3.5 h-3.5" /> Blocked
+                ) : verifyingPhoto ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-[420] text-[#554e7b]">
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#5266eb]" /> Verifying...
                   </span>
+                ) : awaitingApproval ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#8a6a26]">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Pending approval
+                  </span>
+                ) : capturedPhoto ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#c04b4b]">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Needs retake
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-[#554e7b] font-[420]">Photo required</span>
                 )}
               </div>
 
-              {cameraState.status === 'ready' ? (
-                <div className="w-full aspect-video max-h-40 bg-[#171721] rounded-[8px] overflow-hidden relative mx-auto mt-1">
-                  <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
+              {/* State A: Photo is verified */}
+              {identityVerified ? (
+                <div className="flex items-center gap-3 pt-1">
+                  {capturedPhoto && (
+                    <img
+                      src={capturedPhoto}
+                      alt="Verified identity portrait"
+                      className="w-16 h-12 object-cover rounded-[8px] border border-[#edecfb]"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <p className="text-xs text-[#28253b] font-[420] flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Identity verified
+                    </p>
+                    <p className="text-[10px] text-[#554e7b] font-[360] mt-0.5">
+                      Camera released and turned off. Zero video streaming during assessment.
+                    </p>
+                  </div>
+                  <span className="text-[10px] bg-[#edecfb] text-[#5266eb] px-2.5 py-1 rounded-[40px] font-[420]">
+                    Camera off
+                  </span>
+                </div>
+              ) : capturedPhoto ? (
+                /* State B: Photo captured, either verifying or error */
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={capturedPhoto}
+                      alt="Captured portrait"
+                      className="w-20 h-16 object-cover rounded-[8px] border border-[#edecfb]"
+                    />
+                    <div className="flex-1 space-y-1">
+                      {verifyingPhoto ? (
+                        <p className="text-xs text-[#5266eb] font-[420] flex items-center gap-1.5">
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Matching against reference photo...
+                        </p>
+                      ) : photoError ? (
+                        <div className="space-y-1">
+                          <p className="text-xs text-[#c04b4b] font-[480] flex items-center gap-1">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Verification notice
+                          </p>
+                          <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed">
+                            {photoError}
+                          </p>
+                        </div>
+                      ) : null}
+                      <p className="text-[10px] text-[#554e7b] font-[360]">
+                        Camera is turned off.
+                      </p>
+                    </div>
+                  </div>
+                  {/* Secondary Retake Button (translucent capsule pill) */}
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRetakePhoto}
+                      disabled={verifyingPhoto}
+                      className="h-8 px-3.5 text-xs font-[420] rounded-[40px] border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3 h-3 text-[#5266eb]" /> Retake photo
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-[11px] text-[#554e7b] font-[360] flex items-center justify-between pt-1">
-                  <span>{cameraState.message}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={retryCamera}
-                    className="text-[11px] h-7 px-3 rounded-[32px] border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] cursor-pointer"
-                  >
-                    <RefreshCw className="w-3 h-3 mr-1" /> Retry
-                  </Button>
+                /* State C: Live preview for capturing still photo */
+                <div className="space-y-2 pt-1">
+                  {isCameraBlocked ? (
+                    <div className="p-3 bg-white rounded-[10px] space-y-2 text-left">
+                      <p className="text-xs font-[480] text-[#c04b4b] flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4" /> Camera access needed
+                      </p>
+                      <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed">
+                        Please click the camera/lock icon in your address bar, set Camera to <strong>Allow</strong>, and ensure no other application (Zoom, Teams) is using your webcam.
+                      </p>
+                      <Button
+                        type="button"
+                        onClick={retryCamera}
+                        className="h-8 px-3 text-xs font-[420] rounded-[40px] border-0 bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] cursor-pointer"
+                      >
+                        Try camera again
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="w-full aspect-video max-h-48 bg-[#28253b] rounded-[10px] overflow-hidden relative mx-auto flex items-center justify-center">
+                        <video ref={attachVideoRef} data-testid="camera-preview-video" autoPlay playsInline muted className="w-full h-full object-cover" />
+                        {/* Oval face guide */}
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-36 h-44 rounded-full border-2 border-dashed border-white/70 shadow-sm flex items-center justify-center">
+                            <span className="text-[9px] text-white/90 bg-black/40 px-2 py-0.5 rounded-full font-[360]">
+                              Align face here
+                            </span>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-1.5 inset-x-2 pointer-events-none text-center">
+                          <span className="inline-block text-[10px] text-white bg-black/60 backdrop-blur-xs px-2.5 py-0.5 rounded-full font-[360]">
+                            Single still photo • Camera turns off right after capture
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Device selector if multiple */}
+                      {devices.length > 1 && (
+                        <div className="flex items-center justify-center gap-2 pt-0.5">
+                          <span className="text-[11px] font-[420] text-[#554e7b]">Camera:</span>
+                          <select
+                            value={selectedDeviceId || ''}
+                            onChange={(e) => selectDevice(e.target.value)}
+                            className="text-xs bg-white text-[#28253b] font-[420] rounded-[8px] px-2 py-1 outline-none cursor-pointer border-0"
+                          >
+                            {devices.map((d, idx) => (
+                              <option key={d.deviceId || idx} value={d.deviceId}>
+                                {d.label || `Camera ${idx + 1}`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Capture Photo Button (Secondary translucent capsule) */}
+                      <div className="pt-1">
+                        <Button
+                          type="button"
+                          onClick={handleCapturePhoto}
+                          disabled={cameraStatus !== 'live'}
+                          className="w-full h-9 rounded-[40px] border-0 bg-[rgba(82,102,235,0.10)] hover:bg-[rgba(82,102,235,0.18)] text-[#28253b] text-xs font-[420] cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Camera className="w-3.5 h-3.5 text-[#5266eb]" /> Capture Photo
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* 2. Internet Item */}
-            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
+            {/* ITEM 2: Internet Connection */}
+            <div className="p-3 bg-[#fbfbff] rounded-[14px] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-[480] text-[#28253b]">
                 <Wifi className="w-4 h-4 text-[#5266eb]" />
                 <span>2. Internet Connection</span>
               </div>
@@ -379,99 +723,28 @@ export default function StudentExamStartPage() {
                 <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#5266eb]">
                   <CheckCircle2 className="w-3.5 h-3.5" /> {internetState.rating || 'Verified'}
                 </span>
-                <p className="text-[10px] text-[#70707d] font-[360]">{internetState.message}</p>
+                <p className="text-[10px] text-[#554e7b] font-[360]">{internetState.message}</p>
               </div>
             </div>
 
-            {/* 3. System Clock Item */}
-            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
-                <Clock className="w-4 h-4 text-[#5266eb]" />
-                <span>3. System Clock Synchronization</span>
+            {/* ITEM 3: Computer & Operating System */}
+            <div className="p-3 bg-[#fbfbff] rounded-[14px] flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-[480] text-[#28253b]">
+                <Laptop className="w-4 h-4 text-[#5266eb]" />
+                <span>3. Computer & Operating System</span>
               </div>
               <div className="text-right">
-                <span className={`inline-flex items-center gap-1 text-[11px] font-[480] ${clockState.warning ? 'text-[#8a6a26]' : 'text-[#5266eb]'}`}>
-                  {clockState.warning ? <AlertTriangle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  {clockState.warning ? 'Notice' : 'In Sync'}
-                </span>
-                <p className="text-[10px] text-[#70707d] font-[360]">{clockState.message}</p>
-              </div>
-            </div>
-
-            {/* 4. Computer & Operating System Item */}
-            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
-                  <Laptop className="w-4 h-4 text-[#5266eb]" />
-                  <span>4. Computer & Operating System</span>
-                </div>
                 <span className={`inline-flex items-center gap-1 text-[11px] font-[480] ${computerState.compatible ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
                   {computerState.compatible ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
                   {computerState.compatible ? 'Compatible' : 'Incompatible'}
                 </span>
+                <p className="text-[10px] text-[#554e7b] font-[360]">{computerState.message}</p>
               </div>
-              <p className="text-[10px] text-[#70707d] font-[360] pl-6">{computerState.message}</p>
-              {!computerState.compatible && computerState.supportContact && (
-                <p className="text-[10px] text-[#554e7b] pl-6 font-[420]">
-                  Support: <a href={`mailto:${computerState.supportContact}`} className="underline text-[#5266eb]">{computerState.supportContact}</a>
-                </p>
-              )}
             </div>
 
-            {/* 5. Safe Exam Browser Item */}
-            <div className="p-3 bg-[#fbfbff] rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1.5" data-testid="seb-readiness-item">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-[420] text-[#28253b]">
-                  <ShieldCheck className="w-4 h-4 text-[#5266eb]" />
-                  <span>5. Safe Exam Browser</span>
-                </div>
-                {sebStatus?.required ? (
-                  sebStatus?.verified ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#5266eb]" data-testid="seb-status-verified">
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Verified
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-[480] text-[#c04b4b]" data-testid="seb-status-required">
-                      <AlertTriangle className="w-3.5 h-3.5" /> Not Detected (Required)
-                    </span>
-                  )
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-[420] text-[#554e7b]" data-testid="seb-status-optional">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-[#554e7b]/60" /> Optional
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] text-[#70707d] font-[360] pl-6">
-                {sebStatus?.required
-                  ? (sebStatus?.verified
-                    ? 'Safe Exam Browser is active, secured, and verified with institution configuration.'
-                    : 'This examination mandates Safe Exam Browser. You must launch the exam using Safe Exam Browser.')
-                  : 'Standard web browser is permitted for this examination.'}
-              </p>
-              {sebStatus?.required && !sebStatus?.verified && (
-                <div className="pl-6 pt-1 flex items-center gap-2">
-                  <Button
-                    type="button"
-                    onClick={handleLaunchSeb}
-                    disabled={launchingSeb}
-                    className="text-[11px] h-7 px-3 rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <ExternalLink className="w-3 h-3" /> {launchingSeb ? 'Opening...' : 'Launch in Safe Exam Browser'}
-                  </Button>
-                  <a
-                    href={sebDownloadUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#5266eb] hover:underline inline-flex items-center gap-1 font-[420]"
-                  >
-                    Download SEB <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )}
-            </div>
           </div>
 
-          {/* Exam Window Notices */}
+          {/* Exam Schedule Banners */}
           {isExamEnded ? (
             <div className="p-3 bg-[#edecfb] text-[#28253b] rounded-[12px] text-xs font-[420] flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-[#5266eb] shrink-0" />
@@ -483,47 +756,82 @@ export default function StudentExamStartPage() {
                 <Clock className="w-4 h-4 text-[#5266eb] shrink-0" />
                 <span>Exam opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
-              <span className="font-mono font-[480] text-[#5266eb] bg-white px-2 py-0.5 rounded-full text-[11px] shadow-xs">
+              <span className="font-mono font-[480] text-[#5266eb] bg-white px-2.5 py-0.5 rounded-full text-[11px]">
                 Starts in {formatCountdown(msUntilStart)}
               </span>
             </div>
           ) : null}
 
-          {/* SEB "Nothing opened?" Fallback Help Panel */}
-          {showNothingOpened && (
-            <div className="p-4 bg-[#fbfbff] border border-[#edecfb] rounded-[12px] text-xs text-[#28253b] space-y-3 font-sans">
+          {/* SEB Fallback PIN Panel (Shown after clicking launch) */}
+          {sebLaunchData && (
+            <div className="p-4 bg-[#fbfbff] rounded-[14px] text-xs text-[#28253b] space-y-3 font-sans">
               <div className="flex items-start justify-between">
-                <h4 className="font-[480] text-[#28253b] flex items-center gap-1.5">
-                  <HelpCircle className="w-4 h-4 text-[#5266eb]" /> Nothing opened?
-                </h4>
+                <div>
+                  <h4 className="font-[480] text-[#28253b] flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Launching
+                  </h4>
+                  <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
+                    Your browser should prompt you to open Safe Exam Browser.
+                  </p>
+                </div>
                 <a
                   href={sebDownloadUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-[11px] text-[#5266eb] hover:underline flex items-center gap-1"
+                  className="text-[11px] text-[#5266eb] hover:underline flex items-center gap-1 font-[420]"
                 >
-                  Download Safe Exam Browser <ExternalLink className="w-3 h-3" />
+                  Download SEB <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-[#554e7b] text-[11px] font-[360] pl-1">
-                <li>Make sure Safe Exam Browser is installed on your Windows computer.</li>
-                <li>If prompted by your browser, click <strong>"Open Safe Exam Browser"</strong>.</li>
-                <li>If the prompt didn't show, click <strong>Try again</strong> below.</li>
-              </ol>
-              <div className="pt-1 flex gap-2">
+
+              {/* 6-digit Fallback PIN Box */}
+              {sebLaunchData.pin && (
+                <div className="p-3 bg-white rounded-[10px] flex items-center justify-between border border-[#edecfb]">
+                  <div>
+                    <span className="text-[10px] text-[#554e7b] font-[360] block">Backup Launch PIN (5-min validity)</span>
+                    <span className="text-base font-mono font-[500] text-[#28253b] tracking-wider">
+                      {sebLaunchData.pin}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCopyPin}
+                    className="h-8 px-3 text-xs font-[420] rounded-[32px] border-0 bg-[#edecfb] text-[#5266eb] hover:bg-[#dfe1fa] cursor-pointer flex items-center gap-1"
+                  >
+                    {copiedPin ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedPin ? 'Copied' : 'Copy PIN'}
+                  </Button>
+                </div>
+              )}
+
+              <p className="text-[10px] text-[#554e7b] font-[360] leading-relaxed">
+                If prompted, click <strong>"Open Safe Exam Browser"</strong>. If Safe Exam Browser asks for a launch code, enter the 6-digit PIN above at <code>/seb/enter</code>.
+              </p>
+
+              <div className="flex gap-2 pt-1">
                 <Button
                   type="button"
                   onClick={handleLaunchSeb}
                   disabled={launchingSeb}
-                  className="h-8 px-4 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white cursor-pointer"
+                  className="h-8 px-4 text-xs font-[420] rounded-[32px] bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] border-0 cursor-pointer"
                 >
-                  <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Try again
+                  <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Relaunch SEB
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Action Buttons */}
+          {launchError && (
+            <div className="p-3 bg-[#edecfb] text-[#28253b] rounded-[12px] text-xs font-[420] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#5266eb] shrink-0" />
+              <span>{launchError}</span>
+            </div>
+          )}
+
+          {/* ================================================================= */}
+          {/* EXACTLY ONE SOLID PRIMARY ACTION BUTTON PER SPEC (§Phase 2) */}
+          {/* ================================================================= */}
           <div className="pt-2 space-y-2">
             {isExamEnded ? (
               <Button
@@ -532,15 +840,6 @@ export default function StudentExamStartPage() {
               >
                 Return to Dashboard
               </Button>
-            ) : isSebLockedOut ? (
-              <Button
-                onClick={handleLaunchSeb}
-                disabled={launchingSeb}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-2"
-              >
-                {launchingSeb ? 'Opening Secure Browser...' : 'Open Safe Exam Browser'}
-                <ExternalLink className="w-4 h-4" />
-              </Button>
             ) : isExamNotOpen ? (
               <Button
                 disabled
@@ -548,29 +847,54 @@ export default function StudentExamStartPage() {
               >
                 Starts in {formatCountdown(msUntilStart)}
               </Button>
-            ) : (
-              <Button
-                onClick={handleStartExam}
-                disabled={!allChecksReady || starting}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                {starting ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Starting exam...
-                  </>
-                ) : (
-                  <>
-                    Start exam <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </>
+            ) : isSebRequired ? (
+              /* SEB Exam: Exactly ONE Primary Button: "Open exam in secure browser" */
+              <div className="space-y-1">
+                <Button
+                  onClick={handleLaunchSeb}
+                  disabled={!identityVerified || launchingSeb}
+                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {launchingSeb ? 'Opening Secure Browser...' : 'Open exam in secure browser'}
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+                {!identityVerified && (
+                  <p className="text-[10px] text-[#554e7b] text-center font-[360]">
+                    Complete photo verification in Step 1 to unlock secure browser launch.
+                  </p>
                 )}
-              </Button>
+              </div>
+            ) : (
+              /* Non-SEB Exam: Exactly ONE Primary Button: "Continue to exam" */
+              <div className="space-y-1">
+                <Button
+                  onClick={handleStartExam}
+                  disabled={!canProceed || starting}
+                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {starting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-1.5 animate-spin" /> Entering arena...
+                    </>
+                  ) : (
+                    <>
+                      Continue to exam <ArrowRight className="w-4 h-4 ml-1.5" />
+                    </>
+                  )}
+                </Button>
+                {!identityVerified && (
+                  <p className="text-[10px] text-[#554e7b] text-center font-[360]">
+                    Complete photo verification in Step 1 to continue to your exam.
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Persistent Need Help Link */}
             <div className="text-center pt-2">
               <a
                 href={supportUrl}
-                className="inline-flex items-center gap-1.5 text-xs text-[#554e7b] hover:text-[#5266eb] transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs text-[#554e7b] hover:text-[#5266eb] transition-colors font-[420]"
               >
                 <HelpCircle className="w-3.5 h-3.5" /> Need help? Contact technical support
               </a>
@@ -581,4 +905,3 @@ export default function StudentExamStartPage() {
     </ExamArenaShell>
   )
 }
-
