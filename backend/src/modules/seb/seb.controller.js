@@ -19,7 +19,7 @@ const { sebDiagnosticsService } = require('./sebDiagnostics.service')
  */
 function verifySebHeaderHash(req, activeKey, targetPath = null) {
   if (!activeKey || !/^[0-9a-f]{64}$/.test(activeKey)) return false
-  const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+  const rawHeader = req.headers['x-safeexambrowser-configkeyhash'] || req.headers['x-safeexambrowser-requesthash']
   const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
   if (!/^[0-9a-fA-F]{64}$/.test(receivedHeader)) return false
 
@@ -91,8 +91,15 @@ async function ping(req, res, next) {
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
+    const rawConfigHeader = req.headers['x-safeexambrowser-configkeyhash']
+    const rawBekHeader = req.headers['x-safeexambrowser-browserexamkeyhash'] || req.headers['x-safeexambrowser-requesthash']
+    const headerPresent = Boolean(
+      (typeof rawConfigHeader === 'string' && rawConfigHeader.trim().length > 0) ||
+      (typeof rawBekHeader === 'string' && rawBekHeader.trim().length > 0)
+    )
+
     if (!activeKey || !/^[0-9a-f]{64}$/.test(activeKey)) {
-      return res.status(200).json({ verified: false, isSebAgent })
+      return res.status(200).json({ verified: false, isSebAgent, headerPresent })
     }
 
     let matched = false
@@ -135,12 +142,14 @@ async function ping(req, res, next) {
       logger.info({ matchMethod, ip: req.ip }, 'Safe Exam Browser ping successfully verified')
       return res.status(200).json({
         verified: true,
+        headerPresent,
+        isSebAgent,
         method: matchMethod,
         timestamp: nowIso
       })
     }
 
-    if (isSebAgent) {
+    if (isSebAgent || headerPresent) {
       sebDiagnosticsService.recordAttempt({
         purpose: 'admin_test',
         outcome: 'HEADER_MISMATCH',
@@ -151,11 +160,12 @@ async function ping(req, res, next) {
 
     return res.status(200).json({
       verified: false,
+      headerPresent,
       isSebAgent
     })
   } catch (err) {
     logger.error({ err }, 'Error handling SEB ping')
-    return res.status(200).json({ verified: false })
+    return res.status(200).json({ verified: false, headerPresent: false, isSebAgent: false })
   }
 }
 
@@ -360,6 +370,13 @@ async function exchange(req, res, next) {
     }
 
     const consumeResult = sebTokenService.consumeLaunchToken(rawToken)
+    if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
+      return res.status(429).json({
+        code: 'TOO_MANY_ATTEMPTS',
+        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.'
+      })
+    }
+
     if (consumeResult.status === 'NOT_FOUND') {
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=invalid_token')
@@ -532,6 +549,13 @@ async function exchangePin(req, res, next) {
     }
 
     const consumeResult = sebTokenService.consumePin(rawPin.trim())
+    if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
+      return res.status(429).json({
+        code: 'TOO_MANY_ATTEMPTS',
+        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.'
+      })
+    }
+
     if (consumeResult.status === 'NOT_FOUND') {
       return res.status(401).json({
         code: 'INVALID_PIN',

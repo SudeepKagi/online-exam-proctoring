@@ -17,6 +17,8 @@ class SebTokenStore {
     this.pins = new Map()
     // Map of `${userId}:${examId || 'check'}` -> tokenHash (for invalidating older tokens)
     this.userActiveTokens = new Map()
+    // Map of pinHash -> failed attempt count
+    this.pinAttempts = new Map()
 
     // Periodic cleanup of expired tokens every 60 seconds
     this.cleanupInterval = setInterval(() => {
@@ -35,6 +37,7 @@ class SebTokenStore {
         this.tokens.delete(hash)
         if (record.pinHash) {
           this.pins.delete(record.pinHash)
+          this.pinAttempts.delete(record.pinHash)
         }
         const userKey = `${record.userId}:${record.examId || 'check'}`
         if (this.userActiveTokens.get(userKey) === hash) {
@@ -172,9 +175,15 @@ class SebTokenStore {
     }
 
     const pinHash = this.hash(rawPin)
+    const attempts = this.pinAttempts.get(pinHash) || 0
+    if (attempts >= 5) {
+      return { status: 'TOO_MANY_ATTEMPTS' }
+    }
+
     const tokenHash = this.pins.get(pinHash)
 
     if (!tokenHash) {
+      this.pinAttempts.set(pinHash, attempts + 1)
       return { status: 'NOT_FOUND' }
     }
 
@@ -195,6 +204,7 @@ class SebTokenStore {
 
     // Mark atomically consumed
     record.consumedAt = Date.now()
+    this.pinAttempts.delete(pinHash)
 
     return { status: 'SUCCESS', record }
   }
@@ -227,6 +237,7 @@ class SebTokenStore {
     this.tokens.clear()
     this.pins.clear()
     this.userActiveTokens.clear()
+    this.pinAttempts.clear()
   }
 }
 

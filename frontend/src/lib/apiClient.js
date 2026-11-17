@@ -36,10 +36,29 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       const originalRequest = error.config
+      const isAuthProbe = Boolean(originalRequest?.url?.includes('/auth/me') || originalRequest?.url?.includes('/auth/refresh'))
+      const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+      const isPublicRoute = (
+        pathname === '/' ||
+        pathname.startsWith('/login') ||
+        pathname.startsWith('/seb/enter') ||
+        pathname.startsWith('/forgot-password') ||
+        pathname.startsWith('/privacy')
+      )
+      const isSeb = typeof window !== 'undefined' && (
+        /SEB|SafeExamBrowser/i.test(navigator?.userAgent || '') ||
+        Boolean(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('proctornet_is_seb') === 'true') ||
+        pathname.startsWith('/seb/enter')
+      )
       const isMidExam = typeof window !== 'undefined' && 
-        window.location.pathname.includes('/student/exams/') && 
-        !window.location.pathname.includes('/start') && 
-        !window.location.pathname.includes('/seb-required')
+        pathname.includes('/student/exams/') && 
+        !pathname.includes('/start') && 
+        !pathname.includes('/seb-required')
+
+      // Session probe or public routes or SEB must never redirect to /login
+      if (isAuthProbe || isPublicRoute || isSeb) {
+        return Promise.reject(error)
+      }
 
       // Attempt silent refresh once if not already retrying and not an auth route
       if (originalRequest && !originalRequest._retry && !originalRequest.url?.includes('/auth/')) {
@@ -60,7 +79,7 @@ api.interceptors.response.use(
               window.dispatchEvent(new CustomEvent('pn:session-expired', { detail: { originalRequest } }))
               return Promise.reject(error)
             }
-            if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            if (typeof window !== 'undefined' && !isPublicRoute && !isSeb) {
               try {
                 localStorage.removeItem('user')
                 localStorage.removeItem('auth')
@@ -77,7 +96,7 @@ api.interceptors.response.use(
         return Promise.reject(error)
       }
 
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (typeof window !== 'undefined' && !isPublicRoute && !isSeb) {
         try {
           localStorage.removeItem('user')
           localStorage.removeItem('auth')

@@ -136,6 +136,7 @@ async function uploadSebConfig(req, res, next) {
       saved = await settingsService.saveSebConfig({
         fileKey,
         configKey: trimmedKey,
+        startUrl: inspection.settingsSummary?.startURL || null,
         uploadedAt: new Date().toISOString(),
         lastVerifiedAt: existing?.lastVerifiedAt || null,
         requestedMode: existing?.requestedMode || 'off'
@@ -191,6 +192,7 @@ async function getSebStatus(req, res, next) {
       filePresent: state.filePresent,
       uploadedAt: sebConfig?.uploadedAt || null,
       keyLast4: state.keyLast4,
+      startUrl: sebConfig?.startUrl || null,
       lastVerifiedAt: state.lastVerifiedAt,
       lastVerifiedMethod: state.lastVerifiedMethod || sebConfig?.lastVerifiedMethod || null,
       lastVerifiedUserAgent: state.lastVerifiedUserAgent || sebConfig?.lastVerifiedUserAgent || null,
