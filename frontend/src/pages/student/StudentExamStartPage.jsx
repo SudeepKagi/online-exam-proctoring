@@ -142,7 +142,7 @@ export default function StudentExamStartPage() {
   const startCameraCheck = useCallback(async () => {
     try {
       await requestCamera()
-    } catch (_) {}
+    } catch (_) { }
   }, [requestCamera])
 
   useEffect(() => {
@@ -250,7 +250,7 @@ export default function StudentExamStartPage() {
         cameraOk: cameraState.status === 'ready',
         latencyBucket: (internetState.rating || 'good').toLowerCase(),
         sebVerified: Boolean(sebStatus?.verified)
-      }).catch(() => {})
+      }).catch(() => { })
 
       navigate(`/student/exams/${id}/pre-check`)
     } catch (err) {

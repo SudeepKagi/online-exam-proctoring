@@ -12,6 +12,7 @@ router.use(authenticateToken)
 // Mutations require ADMIN role; read-only status is available to ADMIN
 router.post('/config', requireRole('ADMIN'), sebAdminController.upload.single('file'), sebAdminController.uploadSebConfig)
 router.get('/status', requireRole('ADMIN'), sebAdminController.getSebStatus)
+router.patch('/mode', requireRole('ADMIN'), sebAdminController.updateSebMode)
 router.delete('/config', requireRole('ADMIN'), sebAdminController.deleteSebConfig)
 
 module.exports = router

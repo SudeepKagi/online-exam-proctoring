@@ -8,6 +8,9 @@ import { apiClient, errorMessage } from '@/lib/apiClient'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import {
   ShieldCheck,
+  ShieldAlert,
+  Lock,
+  Unlock,
   Upload,
   ExternalLink,
   CheckCircle2,
@@ -47,6 +50,7 @@ export default function AdminSebConfigPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [storageRetryable, setStorageRetryable] = useState(false)
   const [warningMsg, setWarningMsg] = useState('')
+  const [updatingMode, setUpdatingMode] = useState(false)
   const [copiedField, setCopiedField] = useState(null)
   const fileInputRef = useRef(null)
   const pollTimerRef = useRef(null)
@@ -255,6 +259,36 @@ export default function AdminSebConfigPage() {
     }
   }
 
+  const handleUpdateMode = async (targetMode) => {
+    setUpdatingMode(true)
+    setMsg({ text: '', type: '' })
+    try {
+      const res = await apiClient.patch('/admin/seb/mode', { mode: targetMode })
+      if (res?.data) {
+        setStatus(prev => ({
+          ...prev,
+          requestedMode: res.data.requestedMode,
+          effectiveMode: res.data.effectiveMode,
+          enforcementReason: res.data.enforcementReason
+        }))
+        const isNowEnforce = res.data.effectiveMode === 'enforce'
+        setMsg({
+          text: isNowEnforce
+            ? 'Strict enforcement enabled! Candidates must use Safe Exam Browser for secure exams.'
+            : 'Switched to Audit mode. Students may use regular browsers while configuration is being tested.',
+          type: 'success'
+        })
+      }
+    } catch (err) {
+      setMsg({
+        text: errorMessage(err, 'Failed to update enforcement mode'),
+        type: 'error'
+      })
+    } finally {
+      setUpdatingMode(false)
+    }
+  }
+
   const startUrl = `${publicOrigin || 'https://proctornet.duckdns.org'}/student/login`
   const reconfigUrl = `${publicOrigin || 'https://proctornet.duckdns.org'}/*`
   const cleanedKeyInput = configKey.trim().toLowerCase()
@@ -383,6 +417,68 @@ export default function AdminSebConfigPage() {
               <p className="font-[420]">Security Notice</p>
               <p className="mt-0.5">{warningMsg}</p>
             </div>
+          </div>
+        )}
+
+        {/* Institution Enforcement Mode Control */}
+        {status.configured && (
+          <div className="bg-white rounded-[16px] p-5 shadow-sm border border-[#edecfb]/60 space-y-3" data-testid="seb-enforcement-card">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                  status.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-[#fbfbff] text-[#554e7b] border border-[#edecfb]'
+                }`}>
+                  {status.effectiveMode === 'enforce' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-[480] text-[#28253b]">Enforcement Mode</h3>
+                    <Badge variant={status.effectiveMode === 'enforce' ? 'default' : 'secondary'} className="text-[10px] font-[480] rounded-full px-2 py-0.5">
+                      {status.effectiveMode === 'enforce' ? 'Strict Enforcement Active' : 'Audit Mode (Standard Browsers Allowed)'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-[#554e7b] font-[360] mt-1 leading-relaxed max-w-xl">
+                    {status.effectiveMode === 'enforce'
+                      ? 'Safe Exam Browser is strictly enforced. Students attempting to start secure exams via Chrome, Edge, or Firefox will be blocked.'
+                      : 'Students can take secure exams using regular browsers without being blocked. Enable strict enforcement once desktop verification is confirmed.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="sm:self-center shrink-0">
+                {status.effectiveMode === 'enforce' ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={updatingMode}
+                    onClick={() => handleUpdateMode('audit')}
+                    className="h-8 px-3 text-xs rounded-full border border-[#edecfb] text-[#554e7b] hover:bg-[#fbfbff] font-[420]"
+                  >
+                    {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Unlock className="w-3.5 h-3.5 mr-1.5 text-[#554e7b]" />}
+                    Switch to Audit Mode
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={updatingMode || !status.lastVerifiedAt}
+                    onClick={() => handleUpdateMode('enforce')}
+                    className="h-8 px-4 text-xs rounded-full bg-[#5266eb] hover:bg-[#4355d6] text-white font-[420] shadow-sm disabled:opacity-50"
+                  >
+                    {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
+                    Enable Strict Enforcement
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {status.effectiveMode !== 'enforce' && !status.lastVerifiedAt && (
+              <div className="text-[11px] text-[#8a6a26] bg-[#fbfbff] p-2.5 rounded-[10px] border border-[#edecfb]/60 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>To enable strict enforcement, perform a verified test launch first using Step 3 below.</span>
+              </div>
+            )}
           </div>
         )}
 
