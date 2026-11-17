@@ -1,5 +1,6 @@
 const { attemptService } = require('./attempts.service')
 const { markAttemptSebVerified, attemptExamLru } = require('../../middleware/seb')
+const { prisma } = require('../../infra/postgres/client')
 
 async function getReadiness(req, res, next) {
   try {
@@ -124,11 +125,23 @@ async function rejectIdentity(req, res, next) {
 async function getSebStatus(req, res, next) {
   try {
     const { required = false, mode = 'off', verified = false } = req.seb || {}
+    const examId = req.params.examId || req.params.id
+    let attempt = null
+    if (req.user?.id && examId) {
+      attempt = await prisma.examAttempt.findUnique({
+        where: { examId_studentId: { examId, studentId: req.user.id } },
+        select: { faceVerified: true, faceStatus: true, invigilatorApproved: true }
+      }).catch(() => null)
+    }
+    const faceVerified = Boolean(attempt?.faceVerified || attempt?.invigilatorApproved || attempt?.faceStatus === 'MATCH' || attempt?.faceStatus === 'APPROVED')
     return res.status(200).json({
       status: 'success',
       required: Boolean(required),
       mode: String(mode),
-      verified: Boolean(verified)
+      verified: Boolean(verified),
+      faceVerified,
+      faceStatus: attempt?.faceStatus || 'NOT_VERIFIED',
+      invigilatorApproved: Boolean(attempt?.invigilatorApproved)
     })
   } catch (err) {
     next(err)

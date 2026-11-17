@@ -297,4 +297,68 @@ describe('Phase 2: Proctoring Redesign — Pre-Check, Screenshots, & No Auto-Ter
     const dto = toExamDto(testExam, { role: 'STUDENT', id: studentUser.id })
     assert.equal(dto.proctoringConfig.maxViolations, undefined)
   })
+
+  it('8. Server Identity Gate: startAttempt is refused with 403 IDENTITY_NOT_VERIFIED unless identity is MATCH or invigilator-approved', async () => {
+    // Create a new exam with cameraRequired: true
+    const now = new Date()
+    const proctoredExam = await prisma.exam.create({
+      data: {
+        title: 'Identity Gate Test Exam',
+        courseCode: 'GATE-101',
+        createdById: facultyUser.id,
+        startTime: new Date(now.getTime() - 60000),
+        endTime: new Date(now.getTime() + 7200000),
+        durationMinutes: 60,
+        status: 'PUBLISHED',
+        proctoringConfig: {
+          cameraRequired: true,
+          sebRequired: false
+        }
+      }
+    })
+
+    // Create an unverified attempt
+    const unverifiedStudent = await prisma.user.create({
+      data: {
+        email: `unverified-${Date.now()}@test.local`,
+        fullName: 'Unverified Student',
+        passwordHash: 'hashed_pw',
+        role: 'STUDENT'
+      }
+    })
+
+    const attempt = await prisma.examAttempt.create({
+      data: {
+        examId: proctoredExam.id,
+        studentId: unverifiedStudent.id,
+        status: 'NOT_STARTED',
+        faceVerified: false,
+        faceStatus: 'NOT_VERIFIED'
+      }
+    })
+
+    // 1. Attempt start must be REJECTED with 403 IDENTITY_NOT_VERIFIED
+    await assert.rejects(
+      async () => {
+        await attemptService.startAttempt(proctoredExam.id, unverifiedStudent.id)
+      },
+      (err) => {
+        assert.equal(err.status, 403)
+        assert.equal(err.code, 'IDENTITY_NOT_VERIFIED')
+        return true
+      }
+    )
+
+    // 2. Invigilator approves identity -> startAttempt succeeds
+    await attemptService.approveIdentity(attempt.id, invigilatorUser.id)
+    const started = await attemptService.startAttempt(proctoredExam.id, unverifiedStudent.id)
+    assert.ok(started.attempt)
+    assert.equal(started.attempt.status, 'IN_PROGRESS')
+
+    // Cleanup
+    await prisma.attemptAnswer.deleteMany({ where: { attemptId: attempt.id } })
+    await prisma.examAttempt.deleteMany({ where: { id: attempt.id } })
+    await prisma.user.deleteMany({ where: { id: unverifiedStudent.id } })
+    await prisma.exam.deleteMany({ where: { id: proctoredExam.id } })
+  })
 })

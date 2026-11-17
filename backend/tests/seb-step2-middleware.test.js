@@ -650,7 +650,12 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
         const rejectBody = await rejectedRes.json()
         assert.strictEqual(rejectBody.code, 'SEB_REQUIRED')
 
-        // 2. With valid SEB header -> 200 success
+        // 2. With valid SEB header -> 200 success (student must be photo-verified per Phase 2 server gate)
+        await prisma.examAttempt.upsert({
+          where: { examId_studentId: { examId: publishedSebExam.id, studentId: studentUser.id } },
+          create: { examId: publishedSebExam.id, studentId: studentUser.id, faceVerified: true, faceStatus: 'MATCH', status: 'NOT_STARTED' },
+          update: { faceVerified: true, faceStatus: 'MATCH' }
+        })
         const expectedUrl = `${config.publicOrigin}${startPath}`
         const validHash = crypto.createHash('sha256').update(expectedUrl + VALID_64_HEX).digest('hex').toLowerCase()
 
