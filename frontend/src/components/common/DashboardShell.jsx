@@ -65,7 +65,7 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb]/60 gap-1.5 h-8 rounded-full cursor-pointer transition-colors"
+            className="gap-1.5 h-8 rounded-full cursor-pointer transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Sign Out</span>

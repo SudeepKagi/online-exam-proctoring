@@ -1,5 +1,6 @@
 import React from 'react'
 import { AlertTriangle, WifiOff, RefreshCw, Lock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 const ICONS = {
   network: WifiOff,
@@ -28,13 +29,14 @@ export default function ErrorState({
         {message}
       </p>
       {onRetry && (
-        <button
+        <Button
           type="button"
           onClick={onRetry}
-          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] shadow-xs transition-all cursor-pointer"
+          variant="primary"
+          size="sm"
         >
           <RefreshCw size={13} /> Try Again
-        </button>
+        </Button>
       )}
     </div>
   )

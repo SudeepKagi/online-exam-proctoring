@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { User, Upload, AlertCircle, RefreshCw } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 /**
  * SignedImage (Prompt 12 / S-1)
@@ -64,13 +65,15 @@ export default function SignedImage({
           {hasError ? 'Photo not available — upload it again' : fallbackText}
         </span>
         {onReupload && (
-          <button
+          <Button
             type="button"
+            variant="link"
+            size="sm"
             onClick={onReupload}
-            className="mt-2 text-[11px] font-[420] text-[#5266eb] hover:text-[#4353c7] underline cursor-pointer"
+            className="mt-2 text-[11px]"
           >
             {reuploadText}
-          </button>
+          </Button>
         )}
       </div>
     )

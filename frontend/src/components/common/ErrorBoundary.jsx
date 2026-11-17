@@ -1,5 +1,6 @@
 import React from 'react'
 import { ShieldAlert, RefreshCw, Home, Copy, Check } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import COPY from '@/copy'
 
 export default class ErrorBoundary extends React.Component {
@@ -90,10 +91,11 @@ export default class ErrorBoundary extends React.Component {
                     {this.state.errorRefId}
                   </span>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   onClick={this.handleCopyRefId}
-                  className="px-2.5 py-1 text-[11px] font-[420] text-[#5266eb] hover:bg-[#edecfb] rounded-[20px] transition-colors flex items-center gap-1 cursor-pointer"
                   title="Copy Reference ID"
                 >
                   {this.state.copied ? (
@@ -105,7 +107,7 @@ export default class ErrorBoundary extends React.Component {
                       <Copy size={12} /> Copy
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             )}
 
@@ -123,20 +125,20 @@ export default class ErrorBoundary extends React.Component {
             )}
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
+              <Button
                 type="button"
+                variant="primary"
                 onClick={this.handleReload}
-                className="h-10 px-5 text-xs font-[420] bg-[#5266eb] hover:bg-[#4354d0] text-white rounded-[32px] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
               >
                 <RefreshCw size={14} /> {COPY.errors.reloadButton}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={this.handleGoDashboard}
-                className="h-10 px-5 text-xs font-[420] bg-[rgba(82,102,235,0.10)] hover:bg-[rgba(82,102,235,0.18)] text-[#28253b] rounded-[40px] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Home size={14} /> {COPY.errors.dashboardButton}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

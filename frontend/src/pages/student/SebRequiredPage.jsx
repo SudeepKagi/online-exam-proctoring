@@ -89,7 +89,7 @@ export default function SebRequiredPage() {
             {configUrl && (
               <Button
                 asChild
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] gap-2 shadow-xs cursor-pointer"
+                className="w-full h-10 gap-2 cursor-pointer"
               >
                 <a href={configUrl}>
                   <ExternalLink className="w-4 h-4" /> Open in SEB
@@ -99,10 +99,8 @@ export default function SebRequiredPage() {
 
             <Button
               asChild
-              variant="outline"
-              className={`w-full text-xs font-[420] h-10 rounded-[40px] gap-2 border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer ${
-                !configUrl ? 'bg-[#5266eb] hover:bg-[#4353c7] text-white' : ''
-              }`}
+              variant={configUrl ? "secondary" : "primary"}
+              className="w-full h-10 gap-2 cursor-pointer"
             >
               <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
                 <Download className="w-4 h-4" /> Download Safe Exam Browser
@@ -114,7 +112,7 @@ export default function SebRequiredPage() {
               variant="ghost"
               onClick={handleRecheck}
               disabled={checking}
-              className="w-full text-xs font-[420] h-9 rounded-[40px] gap-1.5 text-[#554e7b] hover:text-[#28253b] hover:bg-[#edecfb] cursor-pointer border-0"
+              className="w-full h-9 gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
               {checking ? 'Checking Connection...' : 'Re-check Browser Status'}

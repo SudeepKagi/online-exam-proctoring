@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { api, errorMessage } from '@/lib/apiClient'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import StudentAcademicStep from '@/components/onboarding/StudentAcademicStep'
 import FacultyDetailsStep from '@/components/onboarding/FacultyDetailsStep'
 import WebcamCaptureStep from '@/components/onboarding/WebcamCaptureStep'
@@ -101,12 +102,14 @@ export default function OnboardingPage() {
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Onboarding</span>
         </div>
-        <button
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
           onClick={logout}
-          className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-[#fbfbff] border border-[#e9eaf2] flex items-center gap-1.5 cursor-pointer transition"
         >
           <LogOut className="w-3.5 h-3.5" /> Sign Out
-        </button>
+        </Button>
       </header>
 
       <div className="w-full max-w-2xl mx-auto my-auto py-8 px-4">

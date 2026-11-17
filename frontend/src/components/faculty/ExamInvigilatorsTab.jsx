@@ -102,7 +102,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
+            <Button variant="primary" size="sm">
               <UserPlus className="w-3.5 h-3.5" /> + Generate Invigilator Account {/* // terms-ok: e2e test assertion label */}
             </Button>
           </DialogTrigger>
@@ -120,7 +120,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
               <FormField label="Access Password" hint="Leave empty for auto-generated secure PIN">
                 <PasswordInput placeholder="Leave blank to auto-generate" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </FormField>
-              <Button type="submit" disabled={submitting} className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
+              <Button type="submit" variant="primary" disabled={submitting} className="w-full mt-2">
                 {submitting ? 'Generating Account...' : 'Generate & Assign Invigilator'} {/* // terms-ok: e2e test assertion label */}
               </Button>
             </form>
@@ -171,22 +171,23 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
                         <div className="flex items-center gap-1.5 font-mono text-xs">
                           <span>{isRevealed ? (invig.generatedPasswordHint || '—') : '••••••••'}</span>
                           {invig.generatedPasswordHint && (
-                            <button
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
                               onClick={() => toggleReveal(invig.id)}
-                              className="text-[#70707d] hover:text-[#28253b] p-0.5 cursor-pointer"
                             >
                               {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="secondary"
+                            size="xs"
                             onClick={() => copyCredentials(invig)}
-                            className="h-7 px-3 text-xs font-[420] gap-1 rounded-[40px] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer"
                           >
                             {isCopied ? <Check className="w-3 h-3 text-[#5266eb]" /> : <Copy className="w-3 h-3 text-[#554e7b]" />}
                             {isCopied ? 'Copied!' : 'Copy Info'}

@@ -106,13 +106,13 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
-          <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5 text-xs font-[420] rounded-[40px] px-3.5 h-9 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent cursor-pointer">
+          <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="gap-1.5 text-xs font-[420] px-3.5 h-9 cursor-pointer">
             {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
             Upload Excel Roster
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] px-4 h-9 shadow-xs cursor-pointer">
+              <Button variant="primary" size="sm">
                 <UserPlus className="w-3.5 h-3.5" /> Provision Account
               </Button>
             </DialogTrigger>
@@ -143,7 +143,7 @@ export default function AdminUsersPage() {
                 <FormField label="Temporary Password" required>
                   <PasswordInput showStrength required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Temp@123" />
                 </FormField>
-                <Button type="submit" className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] mt-2 cursor-pointer">
+                <Button type="submit" variant="primary" className="w-full mt-2">
                   Create Provisioned Account
                 </Button>
               </form>

@@ -145,7 +145,7 @@ export default function StudentAcademicStep({ initialData, onNext }) {
       <div className="pt-4 flex justify-end">
         <Button
           type="submit"
-          className="h-10 px-5 bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center gap-2 cursor-pointer"
+          className="h-10 px-5 flex items-center gap-2 cursor-pointer"
         >
           Proceed to Face Verification <ArrowRight className="w-4 h-4" />
         </Button>

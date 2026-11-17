@@ -257,7 +257,7 @@ export default function ExamWizardStepAIReview({
               size="sm"
               variant="outline"
               onClick={handleBulkApprove}
-              className="h-7 px-3 text-[11px] rounded-full bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#fbfbff]"
+              className="h-7 px-3 text-[11px] rounded-full"
             >
               Bulk-Approve High Confidence
             </Button>
@@ -278,7 +278,7 @@ export default function ExamWizardStepAIReview({
             variant="outline"
             size="sm"
             onClick={() => handleAddMoreQuestions(5)}
-            className="h-8 px-3.5 rounded-full bg-[#fbfbff] text-[#28253b] border-[#e9eaf2] hover:bg-[#edecfb]"
+            className="h-8 px-3.5 rounded-full"
           >
             <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#5266eb]" />
             Add 5 More (Same Settings)
@@ -289,7 +289,7 @@ export default function ExamWizardStepAIReview({
             variant="outline"
             size="sm"
             onClick={() => setManualMode(!manualMode)}
-            className="h-8 px-3.5 rounded-full bg-[#fbfbff] text-[#28253b] border-[#e9eaf2] hover:bg-[#edecfb]"
+            className="h-8 px-3.5 rounded-full"
           >
             <PlusCircle className="w-3.5 h-3.5 mr-1 text-[#5266eb]" />
             Add Question
@@ -358,7 +358,7 @@ export default function ExamWizardStepAIReview({
               type="button"
               size="sm"
               onClick={handleAddManualQuestion}
-              className="h-7 text-xs rounded-full bg-[#5266eb] text-white hover:bg-[#4353c7]"
+              className="h-7 text-xs rounded-full"
             >
               Save Question
             </Button>
@@ -426,72 +426,79 @@ export default function ExamWizardStepAIReview({
                 {/* Question Actions */}
                 <div className="flex items-center gap-1">
                   {/* Reorder Buttons */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     disabled={qIdx === 0}
                     onClick={() => handleMoveQuestion(qIdx, -1)}
-                    className="p-1 text-[#70707d] hover:text-[#28253b] disabled:opacity-30 rounded-full hover:bg-[#edecfb]"
                     title="Move question up"
                   >
                     <ArrowUp className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     disabled={qIdx === questions.length - 1}
                     onClick={() => handleMoveQuestion(qIdx, 1)}
-                    className="p-1 text-[#70707d] hover:text-[#28253b] disabled:opacity-30 rounded-full hover:bg-[#edecfb]"
                     title="Move question down"
                   >
                     <ArrowDown className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
 
                   {/* Make Easier / Harder */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'HARD' ? 'MEDIUM' : 'EASY')}
-                    className="p-1 text-[#70707d] hover:text-[#5266eb] rounded-full hover:bg-[#edecfb]"
                     title="Make easier"
                   >
                     <TrendingDown className="w-3.5 h-3.5" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'EASY' ? 'MEDIUM' : 'HARD')}
-                    className="p-1 text-[#70707d] hover:text-[#5266eb] rounded-full hover:bg-[#edecfb]"
                     title="Make harder"
                   >
                     <TrendingUp className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
 
                   {/* Regenerate */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => handleRegenerateQuestion(qIdx)}
-                    className="p-1 text-[#70707d] hover:text-[#5266eb] rounded-full hover:bg-[#edecfb]"
                     title="Regenerate question"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
 
                   {/* Inline Edit Toggle */}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon-xs"
                     onClick={() => setEditingIdx(isEditing ? null : qIdx)}
-                    className="p-1 text-[#70707d] hover:text-[#5266eb] rounded-full hover:bg-[#edecfb]"
                     title="Edit question text"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
 
                   {/* Delete */}
-                  <button
+                  <Button
                     type="button"
+                    variant="destructive"
+                    size="icon-xs"
                     onClick={() => handleDeleteQuestion(qIdx)}
-                    className="p-1 text-[#70707d] hover:text-red-600 rounded-full hover:bg-red-50"
                     title="Delete question"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  </Button>
                 </div>
               </div>
 
@@ -579,7 +586,7 @@ export default function ExamWizardStepAIReview({
                     size="sm"
                     variant="outline"
                     onClick={() => handleAcknowledgeQuestion(qIdx)}
-                    className="h-6 text-[11px] px-3 rounded-full bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#fbfbff]"
+                    className="h-6 text-[11px] px-3 rounded-full"
                   >
                     Acknowledge & Clear Flag
                   </Button>

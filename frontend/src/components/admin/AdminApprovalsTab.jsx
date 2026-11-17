@@ -49,11 +49,11 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
           <p className="text-xs text-[#554e7b] font-[360]">Review submitted student reference face photos and institutional ID cards.</p>
         </div>
         <Button
-          variant="outline"
+          variant="secondary"
           size="sm"
           onClick={loadApprovals}
           disabled={loading}
-          className="text-xs font-[420] gap-1.5 rounded-full border-[#e9eaf2] text-[#28253b] cursor-pointer"
+          className="text-xs font-[420] gap-1.5 cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Queue
         </Button>
@@ -121,7 +121,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
                         <Button
                           size="sm"
                           onClick={() => handleReview(u)}
-                          className="h-8 px-4 text-xs bg-[#5266eb] hover:bg-[#4354d0] text-white font-[420] rounded-[32px] shadow-xs flex items-center gap-1.5 ml-auto cursor-pointer"
+                          className="h-8 px-4 text-xs flex items-center gap-1.5 ml-auto cursor-pointer"
                         >
                           <ShieldCheck className="w-3.5 h-3.5" /> Review & Verify
                         </Button>

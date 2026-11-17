@@ -61,7 +61,7 @@ export function ExamArenaHeader({
         <Button
           size="sm"
           onClick={onSubmitClick}
-          className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-4 h-8 cursor-pointer"
+          className="px-4 h-8 cursor-pointer"
         >
           Submit Exam
         </Button>

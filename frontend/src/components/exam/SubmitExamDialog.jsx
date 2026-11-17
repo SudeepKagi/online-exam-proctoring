@@ -20,10 +20,10 @@ export function SubmitExamDialog({ open, onOpenChange, answeredCount, totalCount
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-[40px] px-4 font-[420] text-xs h-9">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Continue Exam
           </Button>
-          <Button onClick={onConfirm} disabled={submitting} className="bg-[#5266eb] hover:bg-[#4353c7] text-white rounded-[32px] px-4 font-[420] text-xs h-9">
+          <Button variant="primary" onClick={onConfirm} disabled={submitting}>
             {submitting ? 'Submitting...' : 'Confirm Submission'}
           </Button>
         </DialogFooter>
@@ -70,7 +70,7 @@ export function DuplicateTabOverlay({ onReturn, onTakeOver }) {
             type="button"
             data-testid="duplicate-tab-takeover-btn"
             onClick={onTakeOver}
-            className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] px-6 cursor-pointer"
+            className="h-10 px-6 cursor-pointer"
           >
             Continue in this window
           </Button>
@@ -80,10 +80,8 @@ export function DuplicateTabOverlay({ onReturn, onTakeOver }) {
             type="button"
             data-testid="duplicate-tab-return-btn"
             onClick={onReturn}
-            className={onTakeOver
-              ? "bg-[#edecfb] hover:bg-[#e2e0f9] text-[#28253b] text-xs font-[420] h-10 rounded-[40px] px-6 cursor-pointer"
-              : "bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] px-6 cursor-pointer"
-            }
+            variant={onTakeOver ? "secondary" : "primary"}
+            className="h-10 px-6 cursor-pointer"
           >
             Return to Student Dashboard
           </Button>

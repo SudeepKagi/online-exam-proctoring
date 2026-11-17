@@ -430,14 +430,16 @@ export default function AdminSebConfigPage() {
               <div className="flex items-center justify-between">
                 <span className="text-[#554e7b] font-[420] text-[11px]">Object Storage</span>
                 {!storageHealth?.ok && (
-                  <button
+                  <Button
                     type="button"
+                    variant="link"
+                    size="xs"
                     onClick={refreshStorage}
                     disabled={checkingStorage}
-                    className="text-[10px] text-[#5266eb] hover:underline cursor-pointer"
+                    className="text-[10px] p-0 h-auto"
                   >
                     {checkingStorage ? 'Checking...' : 'Retry'}
-                  </button>
+                  </Button>
                 )}
               </div>
               <span className={`inline-flex items-center gap-1.5 font-[480] ${storageHealth?.ok ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
@@ -466,10 +468,10 @@ export default function AdminSebConfigPage() {
             {storageRetryable && (
               <Button
                 type="button"
-                size="sm"
+                variant="secondary"
+                size="xs"
                 onClick={handleUpload}
                 disabled={submitting}
-                className="h-7 px-3 text-xs rounded-full bg-white text-[#5266eb] hover:bg-[#fbfbff] shrink-0 border-0"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
                 Retry
@@ -520,9 +522,9 @@ export default function AdminSebConfigPage() {
                   </code>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => copyToClipboard(startUrl, 'startUrl')}
-                    className="h-7 px-2.5 text-[11px] rounded-full text-[#5266eb] hover:bg-[#edecfb] cursor-pointer shrink-0 border-0"
+                    className="h-7 px-2.5 text-[11px] rounded-full cursor-pointer shrink-0"
                   >
                     {copiedField === 'startUrl' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                     {copiedField === 'startUrl' ? 'Copied' : 'Copy'}
@@ -570,9 +572,9 @@ export default function AdminSebConfigPage() {
                   </code>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => copyToClipboard(quitUrl, 'quitUrl')}
-                    className="h-7 px-2.5 text-[11px] rounded-full text-[#5266eb] hover:bg-[#edecfb] cursor-pointer shrink-0 border-0"
+                    className="h-7 px-2.5 text-[11px] rounded-full cursor-pointer shrink-0"
                   >
                     {copiedField === 'quitUrl' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                     {copiedField === 'quitUrl' ? 'Copied' : 'Copy'}
@@ -593,8 +595,9 @@ export default function AdminSebConfigPage() {
               </div>
               <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={handleDownloadStarter}
-                className="h-8 px-4 text-xs rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-white font-[420] shrink-0 border-0 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 mr-1.5" /> Download starter configuration
               </Button>
@@ -741,8 +744,8 @@ export default function AdminSebConfigPage() {
               <div className="flex items-center gap-3 pt-2">
                 <Button
                   type="submit"
+                  variant="primary"
                   disabled={submitting || !file || !isKeyValidHex}
-                  className="rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-9 px-5 border-0 cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
@@ -756,12 +759,11 @@ export default function AdminSebConfigPage() {
                 {status.configured && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="destructive"
                     onClick={handleRemove}
                     disabled={submitting}
-                    className="rounded-full bg-[#edecfb] text-[#28253b] hover:bg-[#e0dff9] text-xs font-[420] h-9 px-4 border-0 cursor-pointer"
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-[#554e7b] mr-1.5" /> Remove configuration
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Remove configuration
                   </Button>
                 )}
               </div>
@@ -805,9 +807,9 @@ export default function AdminSebConfigPage() {
                 </div>
                 <Button
                   type="button"
+                  variant="secondary"
                   onClick={handleTestSetup}
                   disabled={testing || !status.configured}
-                  className="rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-9 px-5 border-0 cursor-pointer shrink-0 disabled:opacity-50"
                 >
                   {testing ? (
                     <>
@@ -831,9 +833,9 @@ export default function AdminSebConfigPage() {
                   </div>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => copyToClipboard(testPin, 'testPin')}
-                    className="h-7 px-2.5 text-[11px] rounded-full text-[#5266eb] hover:bg-[#edecfb] border-0 cursor-pointer shrink-0"
+                    className="h-7 px-2.5 text-[11px] rounded-full cursor-pointer shrink-0"
                   >
                     {copiedField === 'testPin' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                     {copiedField === 'testPin' ? 'Copied' : 'Copy PIN'}
@@ -981,11 +983,10 @@ export default function AdminSebConfigPage() {
                 {status.effectiveMode === 'enforce' ? (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     disabled={updatingMode}
                     onClick={() => handleUpdateMode('audit')}
-                    className="h-9 px-4 text-xs rounded-full bg-[#edecfb] text-[#28253b] hover:bg-[#e0dff9] font-[420] border-0 cursor-pointer"
                   >
                     {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Unlock className="w-3.5 h-3.5 mr-1.5 text-[#554e7b]" />}
                     Return to Audit Mode
@@ -993,10 +994,10 @@ export default function AdminSebConfigPage() {
                 ) : (
                   <Button
                     type="button"
+                    variant="secondary"
                     size="sm"
                     disabled={updatingMode || !status.configured || !isVerifiedRecent}
                     onClick={() => setConfirmEnforceOpen(true)}
-                    className="h-9 px-4 text-xs rounded-full bg-[#5266eb] hover:bg-[#4355d6] text-white font-[420] shadow-sm disabled:opacity-50 border-0 cursor-pointer"
                   >
                     {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
                     Enable Strict Enforcement
@@ -1037,18 +1038,19 @@ export default function AdminSebConfigPage() {
             <div className="flex items-center justify-end gap-3 pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
+                size="sm"
                 onClick={() => setConfirmEnforceOpen(false)}
                 disabled={updatingMode}
-                className="h-8 px-4 text-xs rounded-full bg-[#edecfb] text-[#28253b] hover:bg-[#e0dff9] border-0 cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={() => handleUpdateMode('enforce')}
                 disabled={updatingMode}
-                className="h-8 px-4 text-xs rounded-full bg-[#5266eb] hover:bg-[#4355d6] text-white font-[420] border-0 cursor-pointer"
               >
                 {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
                 Confirm Strict Enforcement

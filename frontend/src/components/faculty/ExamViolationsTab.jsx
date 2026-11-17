@@ -202,7 +202,7 @@ export default function ExamViolationsTab({ examId }) {
               <Button
                 size="sm"
                 onClick={loadLogs}
-                className="h-8 px-4 rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] border-0"
+                className="h-8 px-4"
               >
                 Retry loading
               </Button>
@@ -262,16 +262,17 @@ export default function ExamViolationsTab({ examId }) {
                         </TableCell>
                         <TableCell>
                           {snapUrl ? (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
                               onClick={() => setPreviewImage({ url: snapUrl, title: `${log.studentName} — ${formatViolationType(log.eventType)}` })}
-                              className="group relative w-16 h-10 rounded overflow-hidden border border-[#e9eaf2] bg-[#fbfbff] hover:opacity-90 transition cursor-pointer"
+                              className="group relative w-16 h-10 p-0 rounded overflow-hidden hover:opacity-90 transition"
                             >
                               <img src={snapUrl} alt="Screenshot" className="w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
                                 <Maximize2 className="w-3.5 h-3.5" />
                               </div>
-                            </button>
+                            </Button>
                           ) : s3Key && !s3Key.startsWith('data:') ? (
                             <Badge variant="outline" className="text-[10px] font-mono border-0 bg-[#edecfb] text-[#5266eb] flex items-center gap-1 w-fit">
                               <FileImage className="w-3 h-3" /> S3 Stored
@@ -296,22 +297,23 @@ export default function ExamViolationsTab({ examId }) {
           <div className="bg-white rounded-[16px] max-w-3xl w-full overflow-hidden shadow-2xl border-0 animate-in fade-in-50">
             <div className="flex items-center justify-between p-3.5 bg-[#fbfbff] border-b border-[#e9eaf2]">
               <span className="text-xs font-[480] text-[#28253b]">{previewImage.title}</span>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="icon-xs"
                 onClick={() => setPreviewImage(null)}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#edecfb] text-[#28253b] transition"
               >
                 <X className="w-4 h-4" />
-              </button>
+              </Button>
             </div>
             <div className="p-3 bg-[#fbfcfd] flex items-center justify-center max-h-[75vh] overflow-auto">
               <img src={previewImage.url} alt="Full screenshot" className="max-w-full h-auto rounded-lg shadow-inner" />
             </div>
             <div className="p-3 text-right bg-[#fbfbff] border-t border-[#e9eaf2]">
               <Button
+                variant="primary"
                 size="sm"
                 onClick={() => setPreviewImage(null)}
-                className="h-8 px-4 text-xs font-[420] rounded-[32px] bg-[#5266eb] hover:bg-[#4353c7] text-white border-0"
               >
                 Close preview
               </Button>

@@ -60,17 +60,17 @@ URL: ${window.location.origin}/login`
 
         <div className="flex justify-end space-x-2 pt-2">
           <Button
-            variant="ghost"
+            variant="secondary"
             size="sm"
             onClick={onClose}
-            className="text-xs font-[420] rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-0"
+            className="text-xs px-3.5"
           >
             Close
           </Button>
           <Button
             size="sm"
             onClick={handleCopy}
-            className="text-xs font-[420] rounded-[32px] px-4 h-9 bg-[#5266eb] hover:bg-[#4353c7] text-white shadow-xs cursor-pointer gap-1.5"
+            className="px-4 h-9 cursor-pointer gap-1.5"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? 'Copied' : 'Copy Credentials'}

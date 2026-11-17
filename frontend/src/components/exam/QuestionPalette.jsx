@@ -1,5 +1,6 @@
 import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { CheckCircle2 } from 'lucide-react'
 
 export default function QuestionPalette({
@@ -31,21 +32,21 @@ export default function QuestionPalette({
             const marked = !!bookmarks[q.id]
             const isCurrent = currentIndex === idx
 
-            let bgClass = 'bg-[#fbfbff] border border-[#e9eaf2] text-[#28253b] hover:bg-[#edecfb]/60'
-            if (marked) bgClass = 'bg-[#edecfb] text-[#5266eb] border border-[#5266eb]/30 font-[480]'
-            else if (answered) bgClass = 'bg-[#5266eb] text-white border-0 font-[480]'
+            const variant = answered ? 'primary' : marked ? 'secondary' : 'ghost'
 
             return (
-              <button
+              <Button
                 key={q.id || idx}
                 type="button"
+                variant={variant}
+                size="sm"
                 onClick={() => onSelectIndex(idx)}
-                className={`h-9 rounded-lg text-xs font-[480] transition-all cursor-pointer ${
+                className={`h-9 w-full p-0 text-xs font-[480] transition-all rounded-lg ${
                   isCurrent ? 'ring-2 ring-[#5266eb] ring-offset-1 font-[500]' : ''
-                } ${bgClass}`}
+                } ${!answered && !marked ? 'border border-[#e9eaf2]' : ''}`}
               >
                 {idx + 1}
-              </button>
+              </Button>
             )
           })}
         </div>

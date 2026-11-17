@@ -63,7 +63,7 @@ export default function NotFoundPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
               asChild
-              className="w-full sm:w-auto h-10 px-6 bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] shadow-xs cursor-pointer"
+              className="w-full sm:w-auto h-10 px-6 cursor-pointer"
             >
               <Link to="/">
                 <Home className="w-3.5 h-3.5 mr-1.5" /> Return to Home

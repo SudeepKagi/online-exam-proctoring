@@ -120,13 +120,14 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                 <Download className="w-3.5 h-3.5" /> Export Incidents CSV
               </a>
             </Button>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={onClose}
               data-testid="close-review-modal"
-              className="w-8 h-8 rounded-full hover:bg-[#edecfb] text-[#70707d] flex items-center justify-center transition cursor-pointer"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -184,7 +185,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                 <Button
                   onClick={handleSaveReview}
                   disabled={saving}
-                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-9 rounded-[32px] cursor-pointer"
+                  className="w-full h-9 cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5 mr-1.5" />
                   {saving ? 'Saving Review...' : 'Save Adjudication'}
@@ -215,17 +216,16 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
               {['ALL', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((sev) => {
                 const active = severityFilter === sev
                 return (
-                  <button
+                  <Button
                     key={sev}
+                    type="button"
+                    variant={active ? 'secondary' : 'ghost'}
+                    size="xs"
                     onClick={() => setSeverityFilter(sev)}
-                    className={`text-[11px] font-[420] px-2.5 py-1 rounded-[40px] transition cursor-pointer ${
-                      active
-                        ? 'bg-[#5266eb] text-white shadow-xs'
-                        : 'bg-[#fbfbff] hover:bg-[#edecfb] text-[#28253b] border border-[#e9eaf2]/70'
-                    }`}
+                    className={active ? 'font-[480] bg-[rgba(82,102,235,0.14)]' : 'text-[#554e7b]'}
                   >
                     {sev}
-                  </button>
+                  </Button>
                 )
               })}
             </div>
@@ -333,7 +333,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                             variant="ghost"
                             size="sm"
                             onClick={() => setZoomedSnapshot(inc.snapshotUrl)}
-                            className="text-[11px] font-[420] text-[#5266eb] hover:bg-[#edecfb] rounded-[20px] h-7 px-2"
+                            className="text-[11px] h-7 px-2"
                           >
                             View
                           </Button>
@@ -358,13 +358,16 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
           onClick={() => setZoomedSnapshot(null)}
           className="fixed inset-0 z-60 bg-black/75 flex items-center justify-center p-4 cursor-pointer"
         >
-          <div className="relative max-w-2xl max-h-[85vh] bg-[#171721] rounded-[16px] overflow-hidden shadow-2xl">
-            <button
+          <div className="relative max-w-2xl max-h-[85vh] bg-white rounded-[16px] overflow-hidden shadow-2xl">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon-sm"
               onClick={() => setZoomedSnapshot(null)}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/80 transition"
+              className="absolute top-3 right-3"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
             <img src={zoomedSnapshot} alt="Enlarged violation snapshot" className="w-full h-auto object-contain" />
           </div>
         </div>

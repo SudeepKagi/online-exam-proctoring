@@ -414,7 +414,8 @@ export default function StudentExamStartPage() {
           <div className="pt-2 flex flex-col gap-2">
             <Button
               onClick={() => navigate('/student/dashboard')}
-              className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+              variant="primary"
+              className="w-full"
             >
               Return to Dashboard
             </Button>
@@ -461,8 +462,9 @@ export default function StudentExamStartPage() {
                 <div className="pt-2">
                   <Button
                     type="button"
+                    variant="primary"
                     onClick={() => { window.location.href = '/seb/done' }}
-                    className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                    className="w-full"
                   >
                     Quit Safe Exam Browser
                   </Button>
@@ -473,8 +475,9 @@ export default function StudentExamStartPage() {
                 <AlertTriangle className="w-6 h-6 text-[#5266eb] mx-auto" />
                 <p className="text-xs text-[#28253b] font-[420]">This examination window closed at {new Date(exam.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.</p>
                 <Button
+                  variant="primary"
                   onClick={() => { window.location.href = '/seb/done' }}
-                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer mt-2"
+                  className="w-full mt-2"
                 >
                   Quit Safe Exam Browser
                 </Button>
@@ -484,7 +487,8 @@ export default function StudentExamStartPage() {
                 <p className="text-xs text-[#28253b] font-[420]">Exam opens at {new Date(exam.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                 <Button
                   disabled
-                  className="w-full bg-[#edecfb] text-[#554e7b] text-xs font-[420] h-10 rounded-[32px] cursor-not-allowed opacity-80"
+                  variant="secondary"
+                  className="w-full opacity-80"
                 >
                   Starts in {formatCountdown(msUntilStart)}
                 </Button>
@@ -498,7 +502,8 @@ export default function StudentExamStartPage() {
                 <Button
                   onClick={handleStartExam}
                   disabled={starting}
-                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5"
+                  variant="primary"
+                  className="w-full flex items-center justify-center gap-1.5"
                 >
                   {starting ? (
                     <>
@@ -631,10 +636,11 @@ export default function StudentExamStartPage() {
                   <div className="flex justify-end pt-1">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
+                      size="sm"
                       onClick={handleRetakePhoto}
                       disabled={verifyingPhoto}
-                      className="h-8 px-3.5 text-xs font-[420] rounded-[40px] border-0 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] cursor-pointer inline-flex items-center gap-1.5"
+                      className="inline-flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-3 h-3 text-[#5266eb]" /> Retake photo
                     </Button>
@@ -653,8 +659,9 @@ export default function StudentExamStartPage() {
                       </p>
                       <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={retryCamera}
-                        className="h-8 px-3 text-xs font-[420] rounded-[40px] border-0 bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] cursor-pointer"
                       >
                         Try camera again
                       </Button>
@@ -700,9 +707,10 @@ export default function StudentExamStartPage() {
                       <div className="pt-1">
                         <Button
                           type="button"
+                          variant="secondary"
                           onClick={handleCapturePhoto}
                           disabled={cameraStatus !== 'live'}
-                          className="w-full h-9 rounded-[40px] border-0 bg-[rgba(82,102,235,0.10)] hover:bg-[rgba(82,102,235,0.18)] text-[#28253b] text-xs font-[420] cursor-pointer flex items-center justify-center gap-1.5"
+                          className="w-full flex items-center justify-center gap-1.5"
                         >
                           <Camera className="w-3.5 h-3.5 text-[#5266eb]" /> Capture Photo
                         </Button>
@@ -795,9 +803,9 @@ export default function StudentExamStartPage() {
                   </div>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
+                    size="sm"
                     onClick={handleCopyPin}
-                    className="h-8 px-3 text-xs font-[420] rounded-[32px] border-0 bg-[#edecfb] text-[#5266eb] hover:bg-[#dfe1fa] cursor-pointer flex items-center gap-1"
                   >
                     {copiedPin ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                     {copiedPin ? 'Copied' : 'Copy PIN'}
@@ -812,9 +820,10 @@ export default function StudentExamStartPage() {
               <div className="flex gap-2 pt-1">
                 <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={handleLaunchSeb}
                   disabled={launchingSeb}
-                  className="h-8 px-4 text-xs font-[420] rounded-[32px] bg-[#edecfb] hover:bg-[#dfe1fa] text-[#5266eb] border-0 cursor-pointer"
                 >
                   <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Relaunch SEB
                 </Button>
@@ -835,15 +844,17 @@ export default function StudentExamStartPage() {
           <div className="pt-2 space-y-2">
             {isExamEnded ? (
               <Button
+                variant="primary"
                 onClick={() => navigate('/student/dashboard')}
-                className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer"
+                className="w-full"
               >
                 Return to Dashboard
               </Button>
             ) : isExamNotOpen ? (
               <Button
                 disabled
-                className="w-full bg-[#edecfb] text-[#554e7b] text-xs font-[420] h-10 rounded-[32px] cursor-not-allowed opacity-80"
+                variant="secondary"
+                className="w-full opacity-80"
               >
                 Starts in {formatCountdown(msUntilStart)}
               </Button>
@@ -851,9 +862,10 @@ export default function StudentExamStartPage() {
               /* SEB Exam: Exactly ONE Primary Button: "Open exam in secure browser" */
               <div className="space-y-1">
                 <Button
+                  variant="primary"
                   onClick={handleLaunchSeb}
                   disabled={!identityVerified || launchingSeb}
-                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2"
                 >
                   {launchingSeb ? 'Opening Secure Browser...' : 'Open exam in secure browser'}
                   <ExternalLink className="w-4 h-4" />
@@ -877,9 +889,10 @@ export default function StudentExamStartPage() {
               /* Non-SEB Exam: Exactly ONE Primary Button: "Continue to exam" */
               <div className="space-y-1">
                 <Button
+                  variant="primary"
                   onClick={handleStartExam}
                   disabled={!canProceed || starting}
-                  className="w-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-10 rounded-[32px] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-1.5"
                 >
                   {starting ? (
                     <>

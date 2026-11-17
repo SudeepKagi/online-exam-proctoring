@@ -26,7 +26,7 @@ export function ProctoringInterruptedOverlay({
         {cameraLost && (
           <Button
             onClick={onReEnableCamera}
-            className="bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] rounded-[32px] px-6 h-10 shadow-xs cursor-pointer"
+            className="px-6 h-10 cursor-pointer"
           >
             Re-Enable Camera
           </Button>

@@ -101,7 +101,7 @@ export default function ExamManagePage() {
           )}
           {exam && <ExamSettingsModal exam={exam} isReadOnly={isReadOnly} lifecycle={lifecycle} onUpdated={(t) => { setMsg({ text: t, type: 'success' }); loadExam() }} />}
           {exam?.status === 'DRAFT' && !isReadOnly && (
-            <Button size="sm" onClick={handlePublish} className="bg-[#5266eb] hover:bg-[#4353c7] text-white gap-1.5 text-xs font-[420] rounded-[32px] h-9 px-4 shadow-xs cursor-pointer">
+            <Button size="sm" onClick={handlePublish} className="gap-1.5 h-9 px-4 cursor-pointer">
               <Send className="w-3.5 h-3.5" /> Publish Exam
             </Button>
           )}
@@ -259,7 +259,7 @@ export default function ExamManagePage() {
                               size="sm"
                               data-testid={`review-btn-${att.id}`}
                               onClick={() => setReviewModalAttemptId(att.id)}
-                              className="text-xs font-[420] text-[#5266eb] hover:bg-[#edecfb] rounded-[32px] h-8 px-3 cursor-pointer"
+                              className="text-xs h-8 px-3 cursor-pointer"
                             >
                               <Eye className="w-3.5 h-3.5 mr-1" /> Review Incidents
                             </Button>

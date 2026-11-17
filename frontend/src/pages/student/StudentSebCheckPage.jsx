@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
 import {
   ShieldCheck,
   Download,
@@ -14,7 +15,7 @@ import {
   HelpCircle,
   ArrowLeft
 } from 'lucide-react'
-import { apiClient } from '@/lib/api'
+import { apiClient } from '@/lib/apiClient'
 
 export default function StudentSebCheckPage() {
   const [searchParams] = useSearchParams()
@@ -191,11 +192,12 @@ export default function StudentSebCheckPage() {
             </div>
 
             <div className="flex items-center gap-2 self-start md:self-auto">
-              <button
+              <Button
                 type="button"
+                variant="secondary"
                 onClick={handleStartTest}
                 disabled={launching}
-                className="h-10 px-5 rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-[#ffffff] text-xs font-normal tracking-wide transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                className="gap-2"
               >
                 {launching ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -203,7 +205,7 @@ export default function StudentSebCheckPage() {
                   <Laptop className="w-3.5 h-3.5" />
                 )}
                 <span>{isVerified ? 'Retest Setup' : 'Test My Setup'}</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -349,10 +351,11 @@ export default function StudentSebCheckPage() {
           <div className="space-y-2 pt-2">
             {/* Item 1 */}
             <div className="border-b border-[#c3c3cc]/20 pb-3">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => toggleFaq('smartscreen')}
-                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb]"
+                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb] h-auto rounded-lg"
               >
                 <span>What if Windows Defender SmartScreen shows &quot;Windows protected your PC&quot;?</span>
                 {openFaq === 'smartscreen' ? (
@@ -360,7 +363,7 @@ export default function StudentSebCheckPage() {
                 ) : (
                   <ChevronDown className="w-4 h-4 text-[#554e7b]" />
                 )}
-              </button>
+              </Button>
               {openFaq === 'smartscreen' && (
                 <p className="text-xs text-[#554e7b] font-normal mt-2 leading-relaxed pl-2 border-l border-[#5266eb]/30">
                   Click <strong className="font-medium text-[#28253b]">More info</strong> and then click <strong className="font-medium text-[#28253b]">Run anyway</strong>. Safe Exam Browser is official open-source software built by ETH Zurich and used by universities globally.
@@ -370,10 +373,11 @@ export default function StudentSebCheckPage() {
 
             {/* Item 2 */}
             <div className="border-b border-[#c3c3cc]/20 pb-3">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => toggleFaq('runtime')}
-                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb]"
+                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb] h-auto rounded-lg"
               >
                 <span>Do I need .NET Desktop Runtime or Microsoft Edge WebView2?</span>
                 {openFaq === 'runtime' ? (
@@ -381,7 +385,7 @@ export default function StudentSebCheckPage() {
                 ) : (
                   <ChevronDown className="w-4 h-4 text-[#554e7b]" />
                 )}
-              </button>
+              </Button>
               {openFaq === 'runtime' && (
                 <p className="text-xs text-[#554e7b] font-normal mt-2 leading-relaxed pl-2 border-l border-[#5266eb]/30">
                   The standard SEB installer automatically installs any missing dependencies. Most modern Windows 10 and 11 systems already have WebView2 preinstalled.
@@ -391,10 +395,11 @@ export default function StudentSebCheckPage() {
 
             {/* Item 3 */}
             <div className="pb-1">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => toggleFaq('running')}
-                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb]"
+                className="w-full flex items-center justify-between text-left py-1 text-xs text-[#28253b] font-normal hover:text-[#5266eb] h-auto rounded-lg"
               >
                 <span>SEB shows &quot;Another instance of Safe Exam Browser is already running&quot;</span>
                 {openFaq === 'running' ? (
@@ -402,7 +407,7 @@ export default function StudentSebCheckPage() {
                 ) : (
                   <ChevronDown className="w-4 h-4 text-[#554e7b]" />
                 )}
-              </button>
+              </Button>
               {openFaq === 'running' && (
                 <p className="text-xs text-[#554e7b] font-normal mt-2 leading-relaxed pl-2 border-l border-[#5266eb]/30">
                   Open Task Manager (Ctrl + Shift + Esc), find <strong className="font-medium text-[#28253b]">SafeExamBrowser</strong> under Background processes, click <strong className="font-medium text-[#28253b]">End task</strong>, and retry your test.
@@ -433,11 +438,13 @@ export default function StudentSebCheckPage() {
               <span className="text-[#28253b] font-medium block">Verification Guarantee</span>
               <p>Testing your setup takes less than 60 seconds and ensures exam-day smoothness.</p>
             </div>
-            <button
+            <Button
               type="button"
+              variant="primary"
+              size="default"
               onClick={handleStartTest}
               disabled={launching}
-              className="h-10 px-5 rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-[#ffffff] text-xs font-normal tracking-wide transition-all shadow-sm flex items-center gap-2 shrink-0 disabled:opacity-50"
+              className="gap-2 shrink-0"
             >
               {launching ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -445,7 +452,7 @@ export default function StudentSebCheckPage() {
                 <ShieldCheck className="w-3.5 h-3.5" />
               )}
               <span>{isVerified ? 'Retest Setup' : 'Launch Diagnostic Check'}</span>
-            </button>
+            </Button>
           </div>
         </section>
       </main>

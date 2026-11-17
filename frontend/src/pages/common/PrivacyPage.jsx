@@ -1,6 +1,7 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ShieldCheck, ArrowLeft, Lock, Database, Clock, EyeOff, FileText, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import AppFooter from '@/components/common/AppFooter'
 import { usePageTitle } from '@/hooks/usePageTitle'
 
@@ -115,12 +116,14 @@ export default function PrivacyPage() {
               </span>
             </div>
           </div>
-          <button
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-[32px] text-xs font-[420] text-[#28253b] bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] transition flex items-center gap-1.5 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-[#5266eb]" /> Back
-          </button>
+          </Button>
         </div>
       </header>
 

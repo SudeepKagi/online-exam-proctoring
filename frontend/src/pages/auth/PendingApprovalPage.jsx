@@ -44,12 +44,14 @@ export default function PendingApprovalPage() {
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Verification</span>
         </div>
-        <button
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
           onClick={logout}
-          className="text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-[#fbfbff] border border-[#e9eaf2] flex items-center gap-1.5 cursor-pointer transition"
         >
           <LogOut className="w-3.5 h-3.5" /> Sign Out
-        </button>
+        </Button>
       </header>
 
       <div className="w-full max-w-lg mx-auto my-auto py-8 px-4">
@@ -102,9 +104,10 @@ export default function PendingApprovalPage() {
 
           <CardFooter className="pt-2 pb-6 px-6 flex flex-col gap-2">
             <Button
+              variant="primary"
               onClick={handleCheckStatus}
               disabled={checking}
-              className="w-full h-10 bg-[#5266eb] hover:bg-[#4354d0] text-white font-[420] text-xs rounded-[32px] shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full"
             >
               <RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />
               {checking ? 'Checking Status...' : 'Check Approval Status'}

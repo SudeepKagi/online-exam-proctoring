@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       {u.status === 'PENDING_APPROVAL' ? (
-                        <Button size="sm" asChild className="h-7 text-xs bg-[#5266eb] hover:bg-[#4353c7] text-white rounded-[32px] px-3 font-[420]">
+                        <Button size="sm" asChild className="h-7 text-xs px-3">
                           <Link to="/admin/users">Verify</Link>
                         </Button>
                       ) : (
