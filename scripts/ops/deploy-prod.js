@@ -102,7 +102,7 @@ async function runDeploy() {
   }
   fs.writeFileSync(path.join(repoRoot, 'VERSION'), JSON.stringify(versionData, null, 2), 'utf8')
 
-  const tarCmd = `tar --exclude='backend/.env*' --exclude='backend/node_modules' -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json package-lock.json VERSION`
+  const tarCmd = `tar --exclude="backend/.env*" --exclude="backend/node_modules" -czf ${tarFile} backend frontend/dist scripts docker-compose.yml package.json package-lock.json VERSION`
   execSync(tarCmd, { cwd: repoRoot, stdio: 'inherit' })
   console.log(`-> Release tarball created: ${tarFile}`)
 
