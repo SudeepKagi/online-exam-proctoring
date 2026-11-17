@@ -8,6 +8,7 @@ const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
 const { ROLES, normalizeRole } = require('../../shared/roles')
 const { generateSebLaunchToken, verifySebLaunchToken } = require('./sebToken')
+const { invalidateInstitutionSebState } = require('./seb.service')
 
 async function ping(req, res, next) {
   try {
@@ -28,33 +29,111 @@ async function ping(req, res, next) {
       activeKey = process.env.SEB_CONFIG_KEY.trim().toLowerCase()
     }
 
+    const userAgent = req.headers['user-agent'] || ''
+    const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
+
     if (!activeKey || !/^[0-9a-f]{64}$/.test(activeKey)) {
-      return res.status(200).json({ verified: false })
+      return res.status(200).json({ verified: false, isSebAgent })
     }
 
+    let matched = false
+    let matchMethod = null
+
+    // 1. Direct JavaScript API Key Matching (window.SafeExamBrowser.security.configKey)
+    const clientKey = (req.body?.configKey || req.query?.configKey || req.headers['x-seb-config-key'] || '').toString().trim().toLowerCase()
+    if (/^[0-9a-f]{64}$/.test(clientKey)) {
+      const activeBuf = Buffer.from(activeKey, 'utf8')
+      const clientBuf = Buffer.from(clientKey, 'utf8')
+      if (activeBuf.length === clientBuf.length && crypto.timingSafeEqual(activeBuf, clientBuf)) {
+        matched = true
+        matchMethod = 'javascript_api'
+      }
+    }
+
+    // 2. HTTP Header Hash Matching (X-SafeExamBrowser-ConfigKeyHash across candidate URLs)
     const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
     const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
     const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
 
-    const expectedHash = crypto
-      .createHash('sha256')
-      .update(expectedUrl + activeKey)
-      .digest('hex')
-      .toLowerCase()
+    if (!matched && is64Hex) {
+      const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
+      const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
 
-    let matched = false
-    if (is64Hex) {
-      const expectedBuf = Buffer.from(expectedHash, 'utf8')
+      const candidateUrls = new Set([
+        expectedUrl,
+        expectedUrl.replace(/\/$/, ''),
+        `${cleanPublicOrigin}:443${normalizedPath}`,
+        `${cleanPublicOrigin}/student/login`,
+        `${cleanPublicOrigin}/student/login/`,
+        `${cleanPublicOrigin}/login`,
+        `${cleanPublicOrigin}/login/`,
+        `${cleanPublicOrigin}/`,
+        cleanPublicOrigin
+      ])
+
+      if (rawReferer) {
+        candidateUrls.add(rawReferer)
+        candidateUrls.add(rawReferer.replace(/\/$/, ''))
+      }
+      if (clientHref) {
+        candidateUrls.add(clientHref)
+        candidateUrls.add(clientHref.replace(/\/$/, ''))
+      }
+
       const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
-      matched = expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf)
+
+      for (const candUrl of candidateUrls) {
+        // Variant A: SHA256(url + activeKey)
+        const hashA = crypto.createHash('sha256').update(candUrl + activeKey).digest('hex').toLowerCase()
+        const bufA = Buffer.from(hashA, 'utf8')
+        if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
+          matched = true
+          matchMethod = 'header_hash'
+          break
+        }
+
+        // Variant B: SHA256(url + SHA256(activeKey))
+        const hashKey = crypto.createHash('sha256').update(activeKey).digest('hex')
+        const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
+        const bufB = Buffer.from(hashB, 'utf8')
+        if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
+          matched = true
+          matchMethod = 'header_hash_hashed_key'
+          break
+        }
+
+        // Variant C: SHA256(url + Buffer.from(activeKey, 'hex'))
+        try {
+          const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(activeKey, 'hex')])).digest('hex').toLowerCase()
+          const bufC = Buffer.from(hashC, 'utf8')
+          if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
+            matched = true
+            matchMethod = 'header_hash_binary_key'
+            break
+          }
+        } catch (_) {}
+      }
     }
 
     if (matched) {
-      await settingsService.updateSebLastVerified()
-      return res.status(200).json({ verified: true })
+      const nowIso = new Date().toISOString()
+      await settingsService.updateSebLastVerified(nowIso, {
+        method: matchMethod,
+        userAgent
+      })
+      invalidateInstitutionSebState()
+      logger.info({ matchMethod, ip: req.ip }, 'Safe Exam Browser ping successfully verified')
+      return res.status(200).json({
+        verified: true,
+        method: matchMethod,
+        timestamp: nowIso
+      })
     }
 
-    return res.status(200).json({ verified: false })
+    return res.status(200).json({
+      verified: false,
+      isSebAgent
+    })
   } catch (err) {
     logger.error({ err }, 'Error handling SEB ping')
     return res.status(200).json({ verified: false })

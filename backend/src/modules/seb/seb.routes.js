@@ -42,8 +42,9 @@ const downloadLimiter = rateLimit({
   message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many configuration download requests. Please wait a moment.' }
 })
 
-// Proof by use: unauthenticated, works in any SEB_MODE
+// Proof by use: unauthenticated, works in any SEB_MODE (supports both GET and POST)
 router.get('/ping', pingLimiter, sebController.ping)
+router.post('/ping', pingLimiter, sebController.ping)
 
 // One-click launch link: authenticated
 router.post('/launch-link', launchLimiter, authenticateToken, sebController.createLaunchLink)

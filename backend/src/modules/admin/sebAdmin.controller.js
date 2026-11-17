@@ -144,6 +144,8 @@ async function getSebStatus(req, res, next) {
       uploadedAt: sebConfig?.uploadedAt || null,
       keyLast4: state.keyLast4,
       lastVerifiedAt: state.lastVerifiedAt,
+      lastVerifiedMethod: state.lastVerifiedMethod || sebConfig?.lastVerifiedMethod || null,
+      lastVerifiedUserAgent: state.lastVerifiedUserAgent || sebConfig?.lastVerifiedUserAgent || null,
       requestedMode: state.requestedMode,
       effectiveMode: state.effectiveMode,
       enforcementReason: state.enforcementReason,

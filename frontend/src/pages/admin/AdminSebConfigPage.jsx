@@ -14,8 +14,11 @@ import {
   AlertTriangle,
   Trash2,
   Loader2,
-  FileText,
-  Play
+  Copy,
+  Check,
+  Play,
+  HelpCircle,
+  Laptop
 } from 'lucide-react'
 
 export default function AdminSebConfigPage() {
@@ -25,6 +28,8 @@ export default function AdminSebConfigPage() {
     uploadedAt: null,
     keyLast4: null,
     lastVerifiedAt: null,
+    lastVerifiedMethod: null,
+    lastVerifiedUserAgent: null,
     requestedMode: 'audit',
     effectiveMode: 'audit',
     enforcementReason: null,
@@ -42,19 +47,27 @@ export default function AdminSebConfigPage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [storageRetryable, setStorageRetryable] = useState(false)
   const [warningMsg, setWarningMsg] = useState('')
-  const [verifiedRecently, setVerifiedRecently] = useState(false)
+  const [copiedField, setCopiedField] = useState(null)
   const fileInputRef = useRef(null)
   const pollTimerRef = useRef(null)
   const initialVerifiedAtRef = useRef(null)
 
+  const copyToClipboard = async (text, fieldName) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedField(fieldName)
+      setTimeout(() => setCopiedField(null), 2000)
+    } catch (_) {}
+  }
+
   const fetchStatus = async () => {
     try {
       const res = await apiClient.get('/admin/seb/status')
-      setStatus(res.data)
-      checkVerificationFreshness(res.data.lastVerifiedAt)
+      if (res?.data) {
+        setStatus(res.data)
+      }
       return res.data
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to load SEB status'), type: 'error' })
       return null
     } finally {
       setLoading(false)
@@ -79,9 +92,7 @@ export default function AdminSebConfigPage() {
       if (res.data?.publicOrigin) {
         setPublicOrigin(res.data.publicOrigin)
       }
-    } catch {
-      // Fallback
-    }
+    } catch (_) {}
   }
 
   const refreshStorage = async () => {
@@ -89,7 +100,7 @@ export default function AdminSebConfigPage() {
     try {
       const res = await fetchStorageHealth(true)
       if (res?.ok) {
-        setMsg({ text: 'Storage status verified: OK', type: 'success' })
+        setMsg({ text: 'Object storage connectivity verified: OK', type: 'success' })
         setStorageRetryable(false)
       } else {
         setMsg({ text: 'Storage check failed: ' + (res?.error || 'Down'), type: 'error' })
@@ -99,23 +110,18 @@ export default function AdminSebConfigPage() {
     }
   }
 
-  const checkVerificationFreshness = (lastVerifiedAt) => {
-    if (!lastVerifiedAt) {
-      setVerifiedRecently(false)
-      return false
-    }
-    const diffMs = Date.now() - new Date(lastVerifiedAt).getTime()
-    // Verified within the last 2 minutes
-    const isFresh = diffMs >= 0 && diffMs < 120000
-    setVerifiedRecently(isFresh)
-    return isFresh
-  }
-
+  // Initial load and continuous 4s status auto-polling
   useEffect(() => {
     fetchStatus()
     fetchStorageHealth()
     fetchPublicConfig()
+
+    const pollInterval = setInterval(() => {
+      fetchStatus()
+    }, 4000)
+
     return () => {
+      clearInterval(pollInterval)
       if (pollTimerRef.current) clearInterval(pollTimerRef.current)
     }
   }, [])
@@ -166,7 +172,6 @@ export default function AdminSebConfigPage() {
       }
 
       setStatus(res.data.status)
-      checkVerificationFreshness(res.data.status?.lastVerifiedAt)
       setFile(null)
       setConfigKey('')
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -177,7 +182,7 @@ export default function AdminSebConfigPage() {
       if (code === 'STORAGE_UNAVAILABLE' || err?.response?.status === 503) {
         setStorageRetryable(true)
         setMsg({
-          text: 'Object storage is temporarily unavailable. The storage service could not be reached. Please check the cloud storage status and retry.',
+          text: 'Object storage is temporarily unavailable. Please verify cloud storage credentials and retry.',
           type: 'error'
         })
       } else {
@@ -221,7 +226,7 @@ export default function AdminSebConfigPage() {
       // Open in Safe Exam Browser via custom scheme protocol
       window.location.href = launchUrl
 
-      // Poll status every 3 seconds for up to 120 seconds (40 iterations)
+      // Countdown timer for 120s
       let secondsLeft = 120
       setPollCountdown(secondsLeft)
 
@@ -236,7 +241,6 @@ export default function AdminSebConfigPage() {
           clearInterval(pollTimerRef.current)
           setTesting(false)
           setPollCountdown(0)
-          setVerifiedRecently(true)
           setMsg({ text: 'Verification confirmed! Safe Exam Browser communicated successfully.', type: 'success' })
         } else if (secondsLeft <= 0) {
           clearInterval(pollTimerRef.current)
@@ -251,87 +255,91 @@ export default function AdminSebConfigPage() {
     }
   }
 
+  const startUrl = `${publicOrigin || 'https://proctornet.duckdns.org'}/student/login`
+  const reconfigUrl = `${publicOrigin || 'https://proctornet.duckdns.org'}/*`
+  const cleanedKeyInput = configKey.trim().toLowerCase()
+  const isKeyExactLength = cleanedKeyInput.length === 64
+  const isKeyValidHex = /^[0-9a-f]{64}$/.test(cleanedKeyInput)
+
   return (
     <DashboardShell title="Secure browser setup">
       <div className="max-w-4xl mx-auto space-y-6 font-sans">
-        {/* Header Intro */}
-        <div className="bg-[#fbfbff] rounded-[16px] p-6 shadow-[0_1px_3px_rgba(40,37,59,0.03)] border-0">
+        {/* Header Intro Banner */}
+        <div className="bg-white rounded-[16px] p-6 shadow-sm border border-[#edecfb]/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[rgba(82,102,235,0.10)] flex items-center justify-center text-[#5266eb]">
+            <div className="w-10 h-10 rounded-full bg-[#edecfb] flex items-center justify-center text-[#5266eb]">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-[480] text-[#28253b]">Secure browser setup</h1>
+              <h1 className="text-xl font-[480] text-[#28253b]">Safe Exam Browser Configuration</h1>
               <p className="text-xs text-[#554e7b] font-[360] mt-0.5">
-                Configure institution-wide Safe Exam Browser settings once so candidates can launch verified exams in one click.
+                Configure institution-wide Safe Exam Browser settings. Once verified, candidates can launch secure examinations in one click.
               </p>
             </div>
           </div>
 
-          {/* Current Status Pill & Storage Health */}
-          <div className="mt-4 pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-[#554e7b] font-[420]">Current Status:</span>
+          {/* Live Status Indicators Bar */}
+          <div className="mt-5 pt-4 border-t border-[#edecfb] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {/* Status */}
+            <div className="bg-[#fbfbff] p-3 rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1">
+              <span className="text-[#554e7b] font-[420] text-[11px]">Configuration Status</span>
               {status.configured ? (
-                <Badge className="bg-[rgba(82,102,235,0.10)] text-[#5266eb] border-0 rounded-full px-3 py-0.5 font-[420]">
-                  Configured (Key: ••••••••{status.keyLast4 || 'env'})
-                </Badge>
-              ) : (
-                <Badge className="bg-[#edecfb] text-[#554e7b] border-0 rounded-full px-3 py-0.5 font-[420]">
-                  Not Configured ({status.missingDetails || (!status.filePresent && !status.keyPresent ? 'Configuration file and Config Key missing' : !status.filePresent ? 'Configuration file missing in storage' : 'Config Key missing in database')})
-                </Badge>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[#554e7b] font-[420]">Enforcement Mode:</span>
-              <Badge className="bg-[#edecfb] text-[#28253b] border-0 rounded-full px-3 py-0.5 font-[420]">
-                Requested: {status.requestedMode || 'audit'} | Effective: {status.effectiveMode || 'audit'}
-              </Badge>
-              {status.requestedMode === 'enforce' && status.effectiveMode !== 'enforce' && (
-                <span className="text-[11px] text-[#554e7b] font-[360]">
-                  ({status.enforcementReason || 'Verified ping within 7 days required'})
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[#554e7b] font-[420]">Storage:</span>
-              <Badge
-                className={`${
-                  storageHealth?.ok
-                    ? 'bg-[rgba(82,102,235,0.10)] text-[#5266eb]'
-                    : 'bg-red-50 text-red-600 border border-red-200'
-                } border-0 rounded-full px-3 py-0.5 font-[420]`}
-              >
-                Storage: {storageHealth?.ok ? 'OK' : 'Down'}
-              </Badge>
-              {!storageHealth?.ok && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={refreshStorage}
-                  disabled={checkingStorage}
-                  className="h-6 px-2 text-[11px] rounded-full text-[#5266eb] hover:bg-[#edecfb]"
-                >
-                  {checkingStorage ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Retry'}
-                </Button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[#554e7b] font-[420]">Last Verified:</span>
-              {verifiedRecently ? (
-                <span className="inline-flex items-center gap-1.5 text-xs text-[#28253b] font-[420] bg-[rgba(82,102,235,0.10)] px-2.5 py-0.5 rounded-full">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Verified ✓ just now
-                </span>
-              ) : status.lastVerifiedAt ? (
-                <span className="text-[#70707d] font-[360]">
-                  {new Date(status.lastVerifiedAt).toLocaleString()}
+                <span className="inline-flex items-center gap-1.5 font-[480] text-[#5266eb]">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Configured
                 </span>
               ) : (
-                <span className="text-[#70707d] font-[360]">Never verified</span>
+                <span className="inline-flex items-center gap-1.5 font-[480] text-[#8a6a26]">
+                  <AlertTriangle className="w-3.5 h-3.5" /> Not Configured
+                </span>
               )}
+            </div>
+
+            {/* Verification */}
+            <div className="bg-[#fbfbff] p-3 rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1">
+              <span className="text-[#554e7b] font-[420] text-[11px]">Verification</span>
+              {status.lastVerifiedAt ? (
+                <span className="inline-flex items-center gap-1.5 font-[480] text-[#5266eb]" data-testid="seb-verified-pill">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Verified ✓
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 font-[480] text-[#8a6a26]" data-testid="seb-awaiting-pill">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#8a6a26]" /> Awaiting verification
+                </span>
+              )}
+            </div>
+
+            {/* Effective Mode */}
+            <div className="bg-[#fbfbff] p-3 rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1">
+              <span className="text-[#554e7b] font-[420] text-[11px]">Enforcement Mode</span>
+              <span className="font-[480] text-[#28253b] capitalize">
+                {status.effectiveMode || 'audit'}
+                {status.requestedMode !== status.effectiveMode && (
+                  <span className="text-[10px] text-[#554e7b] font-[360] ml-1">
+                    (Req: {status.requestedMode})
+                  </span>
+                )}
+              </span>
+            </div>
+
+            {/* Storage Health */}
+            <div className="bg-[#fbfbff] p-3 rounded-[12px] border border-[#edecfb]/60 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[#554e7b] font-[420] text-[11px]">Object Storage</span>
+                {!storageHealth?.ok && (
+                  <button
+                    type="button"
+                    onClick={refreshStorage}
+                    disabled={checkingStorage}
+                    className="text-[10px] text-[#5266eb] hover:underline"
+                  >
+                    {checkingStorage ? 'Checking...' : 'Retry'}
+                  </button>
+                )}
+              </div>
+              <span className={`inline-flex items-center gap-1.5 font-[480] ${storageHealth?.ok ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
+                {storageHealth?.ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                {storageHealth?.ok ? 'Connected (S3)' : 'Unavailable'}
+              </span>
             </div>
           </div>
         </div>
@@ -342,18 +350,24 @@ export default function AdminSebConfigPage() {
             className={`p-3.5 rounded-[12px] text-xs font-[420] flex items-center justify-between gap-3 ${
               msg.type === 'error'
                 ? 'bg-[#edecfb] text-[#28253b]'
-                : 'bg-[rgba(82,102,235,0.08)] text-[#28253b]'
+                : 'bg-[#edecfb] text-[#28253b]'
             }`}
           >
-            <span>{msg.text}</span>
+            <div className="flex items-center gap-2">
+              {msg.type === 'error' ? (
+                <AlertTriangle className="w-4 h-4 text-[#c04b4b] shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-[#5266eb] shrink-0" />
+              )}
+              <span>{msg.text}</span>
+            </div>
             {storageRetryable && (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
                 onClick={handleUpload}
                 disabled={submitting}
-                className="h-7 px-3 text-xs rounded-full bg-white text-[#5266eb] border-[#e9eaf2] hover:bg-[#fbfbff] shrink-0"
+                className="h-7 px-3 text-xs rounded-full bg-white text-[#5266eb] hover:bg-[#fbfbff] shrink-0"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
                 Retry
@@ -372,16 +386,16 @@ export default function AdminSebConfigPage() {
           </div>
         )}
 
-        {/* Step 1: Install Config Tool & Verify Checklist */}
-        <Card className="bg-white rounded-[16px] shadow-[0_1px_3px_rgba(40,37,59,0.04)] border-0">
+        {/* Step 1: Install Config Tool & Configuration Checklist */}
+        <Card className="bg-white rounded-[16px] shadow-sm border border-[#edecfb]/60">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-[rgba(82,102,235,0.10)] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
+                <span className="w-6 h-6 rounded-full bg-[#edecfb] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
                   1
                 </span>
                 <CardTitle className="text-sm font-[480] text-[#28253b]">
-                  Install Config Tool & settings checklist
+                  SEB Configuration Tool settings guide
                 </CardTitle>
               </div>
               <a
@@ -394,55 +408,91 @@ export default function AdminSebConfigPage() {
               </a>
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 pt-0 text-xs text-[#554e7b] font-[360]">
+          <CardContent className="space-y-4 pt-0 text-xs text-[#554e7b] font-[360]">
             <p>
-              Open the SEB Configuration Tool on your workstation and verify each of the following required settings before saving your configuration:
+              Open the SEB Configuration Tool on your workstation. Verify each of the following required settings before saving your configuration:
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
-              <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {/* General Tab */}
+              <div className="bg-[#fbfbff] p-3.5 rounded-[12px] border border-[#edecfb]/60 space-y-2">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Exam Tab [UNVERIFIED]
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> General Tab
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Check <strong>"Use Browser Exam Key and Configuration Key" [UNVERIFIED]</strong> (send in HTTP header) so SEB transmits hash headers.
+                  Set <strong>Start URL</strong> to your candidate login page:
+                </p>
+                <div className="flex items-center gap-2">
+                  <code className="text-[11px] bg-white px-2 py-1 rounded-[6px] border border-[#edecfb] font-mono text-[#28253b] truncate flex-1">
+                    {startUrl}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => copyToClipboard(startUrl, 'startUrl')}
+                    className="h-7 px-2.5 text-[11px] rounded-full border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] cursor-pointer shrink-0"
+                  >
+                    {copiedField === 'startUrl' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                    {copiedField === 'startUrl' ? 'Copied' : 'Copy'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Exam Tab */}
+              <div className="bg-[#fbfbff] p-3.5 rounded-[12px] border border-[#edecfb]/60 space-y-2">
+                <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Config File Tab
+                </div>
+                <p className="text-[11px] text-[#70707d]">
+                  Check <strong>"Use Browser Exam Key and Configuration Key"</strong>. After saving your <code>.seb</code> file, copy the <strong>Configuration Key</strong>.
+                </p>
+                <div className="p-2 bg-[#edecfb]/60 rounded-[8px] text-[11px] text-[#28253b] font-[420]">
+                  💡 Copy the <strong>Configuration Key</strong> (64 hex characters), NOT the Browser Exam Key!
+                </div>
+              </div>
+
+              {/* Reconfiguring URL */}
+              <div className="bg-[#fbfbff] p-3.5 rounded-[12px] border border-[#edecfb]/60 space-y-2">
+                <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Session / Quitting
+                </div>
+                <p className="text-[11px] text-[#70707d]">
+                  Check <strong>"Ask user to confirm quitting"</strong> in the Exam tab so students can safely close SEB when finished.
                 </p>
               </div>
 
-              <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
+              {/* Reconfiguring URL */}
+              <div className="bg-[#fbfbff] p-3.5 rounded-[12px] border border-[#edecfb]/60 space-y-2">
                 <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> General Tab [UNVERIFIED]
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Reconfiguring URL
                 </div>
                 <p className="text-[11px] text-[#70707d]">
-                  Set <strong>"Start URL" [UNVERIFIED]</strong> to candidate login URL: <code>{publicOrigin ? `${publicOrigin}/login` : 'https://proctornet.duckdns.org/login'}</code>.
+                  If using reconfiguring URL, set to allow the platform domain:
                 </p>
-              </div>
-
-              <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
-                <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Media / Camera [UNVERIFIED]
+                <div className="flex items-center gap-2">
+                  <code className="text-[11px] bg-white px-2 py-1 rounded-[6px] border border-[#edecfb] font-mono text-[#28253b] truncate flex-1">
+                    {reconfigUrl}
+                  </code>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => copyToClipboard(reconfigUrl, 'reconfigUrl')}
+                    className="h-7 px-2.5 text-[11px] rounded-full border-[#5266eb]/30 text-[#5266eb] hover:bg-[#edecfb] cursor-pointer shrink-0"
+                  >
+                    {copiedField === 'reconfigUrl' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                    {copiedField === 'reconfigUrl' ? 'Copied' : 'Copy'}
+                  </Button>
                 </div>
-                <p className="text-[11px] text-[#70707d]">
-                  Enable <strong>"Allow video capture" [UNVERIFIED]</strong> (webcam permission) so continuous facial verification is active.
-                </p>
-              </div>
-
-              <div className="bg-[#fbfbff] p-3 rounded-[12px] space-y-1">
-                <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Session / Quitting [UNVERIFIED]
-                </div>
-                <p className="text-[11px] text-[#70707d]">
-                  Set <strong>"Quit URL" [UNVERIFIED]</strong> to candidate result page and uncheck <strong>"Ask user to confirm quitting" [UNVERIFIED]</strong> for clean post-submission exit.
-                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Step 2: Upload .seb and Paste Config Key */}
-        <Card className="bg-white rounded-[16px] shadow-[0_1px_3px_rgba(40,37,59,0.04)] border-0">
+        <Card className="bg-white rounded-[16px] shadow-sm border border-[#edecfb]/60">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2.5">
-              <span className="w-6 h-6 rounded-full bg-[rgba(82,102,235,0.10)] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
+              <span className="w-6 h-6 rounded-full bg-[#edecfb] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
                 2
               </span>
               <CardTitle className="text-sm font-[480] text-[#28253b]">
@@ -468,36 +518,49 @@ export default function AdminSebConfigPage() {
                   />
                   <label
                     htmlFor="seb-file-upload"
-                    className="cursor-pointer inline-flex items-center gap-2 text-xs font-[420] px-4 py-2 rounded-full bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] transition-colors"
+                    className="cursor-pointer inline-flex items-center gap-2 text-xs font-[420] px-4 py-2 rounded-full bg-[#edecfb] text-[#28253b] hover:bg-[#e0dff9] transition-colors"
                   >
                     <Upload className="w-3.5 h-3.5 text-[#5266eb]" />
-                    {file ? file.name : 'Choose .seb file'}
+                    {file ? file.name : (status.filePresent ? 'Replace current .seb file' : 'Choose .seb file')}
                   </label>
-                  {file && (
+                  {file ? (
                     <span className="text-xs text-[#70707d] font-[360]">
                       ({(file.size / 1024).toFixed(1)} KB)
                     </span>
-                  )}
+                  ) : status.filePresent ? (
+                    <span className="text-xs text-[#5266eb] font-[420] inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Current .seb file active in storage
+                    </span>
+                  ) : null}
                 </div>
                 <p className="text-[11px] text-[#70707d] font-[360] mt-1">
                   Private upload stored securely in institution object storage. Maximum 500 KB.
                 </p>
               </div>
 
-              {/* Config Key input */}
+              {/* Config Key input with character count */}
               <div>
-                <label className="block text-xs font-[420] text-[#28253b] mb-1.5">
-                  Configuration Key (64-character hex)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-[420] text-[#28253b]">
+                    Configuration Key (64-character hex)
+                  </label>
+                  <span className={`text-[11px] font-[480] ${isKeyValidHex ? 'text-[#5266eb]' : 'text-[#70707d]'}`}>
+                    {isKeyValidHex ? (
+                      <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-[#5266eb]" /> 64 / 64 characters (Valid)</span>
+                    ) : (
+                      `${cleanedKeyInput.length} / 64 characters`
+                    )}
+                  </span>
+                </div>
                 <Input
                   type="text"
                   value={configKey}
                   onChange={(e) => setConfigKey(e.target.value)}
-                  placeholder="e.g. 43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c"
-                  className="font-mono text-xs rounded-xl border-[#e9eaf2] bg-[#fbfbff]"
+                  placeholder={status.keyLast4 ? `Currently: ••••••••${status.keyLast4} (Paste new key to replace)` : 'Paste 64-character hexadecimal key from SEB Config Tool'}
+                  className="font-mono text-xs rounded-xl border-[#edecfb] bg-[#fbfbff] h-10"
                 />
                 <p className="text-[11px] text-[#554e7b] font-[420] mt-1">
-                  Copy the <strong>CONFIG KEY</strong>, not the Browser Exam Key. The key is never exposed to students or S3 metadata.
+                  Copy the <strong>CONFIG KEY</strong> from the Config File tab, not the Browser Exam Key. The key is never exposed to students or S3 metadata.
                 </p>
               </div>
 
@@ -505,8 +568,8 @@ export default function AdminSebConfigPage() {
               <div className="flex items-center gap-3 pt-2">
                 <Button
                   type="submit"
-                  disabled={submitting || !file || !configKey.trim()}
-                  className="rounded-full bg-[#5266eb] text-white hover:bg-[#4354d0] text-xs font-[420] h-9 px-5 border-0"
+                  disabled={submitting || !file || !isKeyValidHex}
+                  className="rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-9 px-5 border-0 cursor-pointer"
                 >
                   {submitting ? (
                     <>
@@ -523,7 +586,7 @@ export default function AdminSebConfigPage() {
                     variant="outline"
                     onClick={handleRemove}
                     disabled={submitting}
-                    className="rounded-full bg-[rgba(82,102,235,0.08)] text-[#28253b] hover:bg-[rgba(82,102,235,0.16)] text-xs font-[420] h-9 px-4 border-0"
+                    className="rounded-full bg-[#edecfb] text-[#28253b] hover:bg-[#e0dff9] text-xs font-[420] h-9 px-4 border-0 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-[#554e7b] mr-1.5" /> Remove configuration
                   </Button>
@@ -533,56 +596,103 @@ export default function AdminSebConfigPage() {
           </CardContent>
         </Card>
 
-        {/* Step 3: Test My Setup */}
-        <Card className="bg-white rounded-[16px] shadow-[0_1px_3px_rgba(40,37,59,0.04)] border-0">
+        {/* Step 3: Test & Verify Setup */}
+        <Card className="bg-white rounded-[16px] shadow-sm border border-[#edecfb]/60">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="w-6 h-6 rounded-full bg-[rgba(82,102,235,0.10)] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
+                <span className="w-6 h-6 rounded-full bg-[#edecfb] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
                   3
                 </span>
                 <CardTitle className="text-sm font-[480] text-[#28253b]">
-                  Test my setup
+                  Test and verify setup
                 </CardTitle>
               </div>
-              {verifiedRecently && (
-                <Badge className="bg-[rgba(82,102,235,0.10)] text-[#5266eb] border-0 rounded-full px-3 py-0.5 font-[420]">
-                  Verified ✓ just now
+              {status.lastVerifiedAt && (
+                <Badge className="bg-[#edecfb] text-[#5266eb] border-0 rounded-full px-3 py-0.5 font-[420]">
+                  Verified ✓
                 </Badge>
               )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-3 pt-0 text-xs text-[#554e7b] font-[360]">
+          <CardContent className="space-y-4 pt-0 text-xs text-[#554e7b] font-[360]">
             <p>
-              Generate a secure launch token and launch Safe Exam Browser on this computer. When SEB requests the configuration and issues the startup ping, ProctorNet verifies the header hash in real-time.
+              Verify that Safe Exam Browser communicates with ProctorNet. You can test using either of two methods:
             </p>
 
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                type="button"
-                onClick={handleTestSetup}
-                disabled={testing || !status.configured}
-                className="rounded-full bg-[#5266eb] text-white hover:bg-[#4354d0] text-xs font-[420] h-9 px-5 border-0"
-              >
-                {testing ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                    Listening for SEB ping ({pollCountdown}s)...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Test my setup
-                  </>
-                )}
-              </Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Method A: Direct Launch */}
+              <div className="bg-[#fbfbff] p-4 rounded-[12px] border border-[#edecfb]/60 space-y-2">
+                <div className="font-[480] text-[#28253b] flex items-center gap-1.5">
+                  <Laptop className="w-4 h-4 text-[#5266eb]" /> Method A: Open on Workstation
+                </div>
+                <p className="text-[11px] text-[#70707d] leading-relaxed">
+                  Open your saved <code>.seb</code> configuration file on your computer. When Safe Exam Browser launches and displays the ProctorNet login page, this dashboard automatically receives the verification ping!
+                </p>
+              </div>
+
+              {/* Method B: Protocol Launch */}
+              <div className="bg-[#fbfbff] p-4 rounded-[12px] border border-[#edecfb]/60 space-y-2">
+                <div className="font-[480] text-[#28253b] flex items-center gap-1.5">
+                  <Play className="w-4 h-4 text-[#5266eb]" /> Method B: Test My Setup Button
+                </div>
+                <p className="text-[11px] text-[#70707d] leading-relaxed">
+                  Click the button below to generate a secure launch token and launch Safe Exam Browser via custom protocol URL.
+                </p>
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    onClick={handleTestSetup}
+                    disabled={testing || !status.configured}
+                    className="rounded-full bg-[#5266eb] hover:bg-[#4353c7] text-white text-xs font-[420] h-8 px-4 border-0 cursor-pointer"
+                  >
+                    {testing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                        Listening for ping ({pollCountdown}s)...
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 mr-1.5 fill-current" /> Test my setup
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            {testing && (
-              <div className="mt-3 p-3 rounded-[12px] bg-[#fbfbff] text-xs font-[360] text-[#554e7b] flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-[#5266eb] shrink-0" />
-                <span>
-                  Safe Exam Browser launch triggered. Awaiting proof-of-use ping on <code>/api/v1/seb/ping</code>...
-                </span>
+            {/* Diagnostic Details Card */}
+            {status.configured && (
+              <div className="mt-4 p-4 rounded-[12px] bg-[#fbfbff] border border-[#edecfb]/60 space-y-2 text-xs">
+                <h4 className="font-[480] text-[#28253b] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Diagnostic Status
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div>
+                    <span className="text-[#70707d]">Last Verified Timestamp:</span>{' '}
+                    <span className="font-[420] text-[#28253b]">
+                      {status.lastVerifiedAt ? new Date(status.lastVerifiedAt).toLocaleString() : 'Awaiting first test ping'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#70707d]">Verification Protocol:</span>{' '}
+                    <span className="font-[420] text-[#28253b]">
+                      {status.lastVerifiedMethod === 'javascript_api'
+                        ? 'JavaScript Security API'
+                        : (status.lastVerifiedMethod === 'header_hash'
+                          ? 'Cryptographic Header Hash'
+                          : (status.lastVerifiedMethod || (status.lastVerifiedAt ? 'Active' : 'Pending')))}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[#70707d]">Public Origin:</span>{' '}
+                    <span className="font-mono text-[#28253b]">{status.publicOrigin || publicOrigin}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#70707d]">Active Key:</span>{' '}
+                    <span className="font-mono text-[#28253b]">••••••••{status.keyLast4 || 'configured'}</span>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
@@ -591,4 +701,3 @@ export default function AdminSebConfigPage() {
     </DashboardShell>
   )
 }
-

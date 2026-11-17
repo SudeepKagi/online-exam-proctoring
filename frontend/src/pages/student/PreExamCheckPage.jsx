@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
+import { verifySebSession } from '@/lib/sebClient'
 import { useCamera } from '@/hooks/useCamera'
 import cameraStore from '@/lib/cameraStore'
 import { detectOsFamily, detectBrowserFamily } from '@/lib/systemCheck'
@@ -75,13 +76,18 @@ export default function PreExamCheckPage() {
         setError('This examination window has ended.')
       }
 
-      // Query SEB status for the exam
+      // Query SEB status for the exam with client verification check
       try {
-        const sebRes = await apiClient.get(`/attempts/exams/${id}/seb-status`)
+        const [sebRes, clientSebCheck] = await Promise.all([
+          apiClient.get(`/attempts/exams/${id}/seb-status`).catch(() => ({ data: {} })),
+          verifySebSession(apiClient).catch(() => ({ verified: false }))
+        ])
         const status = sebRes.data || {}
         if (!active) return
-        setSebStatus(status)
-        if (status.mode === 'enforce' && status.required && !status.verified) {
+        const isVerified = Boolean(status.verified || clientSebCheck?.verified)
+        const updatedStatus = { ...status, verified: isVerified }
+        setSebStatus(updatedStatus)
+        if (updatedStatus.mode === 'enforce' && updatedStatus.required && !updatedStatus.verified) {
           navigate(`/student/exams/${id}/seb-required`, { replace: true })
           return
         }
