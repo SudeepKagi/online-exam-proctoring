@@ -378,3 +378,18 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T03:29:20.232Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `a3804b6b-248b-4ac8-9433-69161b68ca07`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-10056d184edbefc392d15d854896fe949b930fb6.log`
+
+### [2026-11-17T03:29:21.465Z] Production Deploy: `release-10056d184edbefc392d15d854896fe949b930fb6`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `10056d184edbefc392d15d854896fe949b930fb6`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-10056d184edbefc392d15d854896fe949b930fb6.tar.gz`
+- **Duration**: 106 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
