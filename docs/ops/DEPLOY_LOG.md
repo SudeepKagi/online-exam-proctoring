@@ -414,3 +414,72 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `66f183f2-c40a-4299-aa1f-b39529ac5f82`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/phase0-check-server.log`
+
+### [2026-11-17T08:05:44.891Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-preflight-live.sh`
+- **Command ID**: `da455fe4-bb0a-4e97-b7a0-79d157882eb6`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/preflight-live.log`
+
+### [2026-11-17T08:07:41.459Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `ea2d8a55-bbd3-4dd4-bd6e-c938caa970a0`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-backup.log`
+
+### [2026-11-17T08:10:06.515Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `317b257e-ecba-44ed-a2da-97913ac7dcf0`
+- **Status**: `Failed` (Exit Code: 141)
+- **Log File**: `logs-deploy/live-backup-toc.log`
+
+### [2026-11-17T08:10:58.147Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `05267e7b-29dc-4654-92db-f607694238d0`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-backup-toc.log`
+
+### [2026-11-17T08:14:08.715Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-caddyfile-live.sh`
+- **Command ID**: `17156ba1-1883-4471-b9db-260a028eb84c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/caddy-live-check.log`
+
+### [2026-11-17T08:15:08.379Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\update-caddyfile-live.sh`
+- **Command ID**: `c365700c-2383-4cfd-8b1e-2978947afcd6`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/caddy-update-live.log`
+
+### [2026-11-17T08:18:48.512Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `6650208b-e7f5-4076-bd68-a40fdbbf8a5c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-6ddcf96907f8e1cc5da0f4042e4421e5a07e7b3b.log`
+
+### [2026-11-17T08:18:49.711Z] Production Deploy: `release-6ddcf96907f8e1cc5da0f4042e4421e5a07e7b3b`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `6ddcf96907f8e1cc5da0f4042e4421e5a07e7b3b`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-6ddcf96907f8e1cc5da0f4042e4421e5a07e7b3b.tar.gz`
+- **Duration**: 96 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-17T08:19:50.975Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-cleanup-targets.sh`
+- **Command ID**: `202375a6-d14e-4c0f-9df0-59c6cee4d456`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/cleanup-targets-live.log`
+
+### [2026-11-17T08:20:24.967Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-automatic-cleanup.sh`
+- **Command ID**: `d85dc2b3-120c-4f8f-be13-5f583098dde5`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/automatic-cleanup.log`
+
+### [2026-11-17T08:49:25.531Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\delete-test-data.sh`
+- **Command ID**: `f6ba8e01-b3c5-4232-99aa-0780d2565649`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-test-data-deletion.log`
