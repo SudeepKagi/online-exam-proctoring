@@ -24,22 +24,20 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
     const checkSession = async () => {
-      const loggedIn = localStorage.getItem('proctornet_logged_in')
-      if (!loggedIn) {
-        if (mounted) setIsLoading(false)
-        return
-      }
       try {
         const res = await api.get('/auth/me')
         if (res.data?.user && mounted) {
           setUser(res.data.user)
           setRole(res.data.user.role)
+          localStorage.setItem('proctornet_logged_in', 'true')
           localStorage.setItem('user', JSON.stringify(res.data.user))
+          if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
           if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
         }
       } catch (_err) {
         localStorage.removeItem('proctornet_logged_in')
         localStorage.removeItem('proctornet_role')
+        localStorage.removeItem('user')
       } finally {
         if (mounted) setIsLoading(false)
       }

@@ -32,6 +32,14 @@ export default function SebPinEntryPage() {
     try {
       const res = await api.post('/seb/exchange-pin', { pin: cleanPin })
       if (res.data?.success && res.data?.redirectUrl) {
+        if (res.data.user) {
+          try {
+            localStorage.setItem('proctornet_logged_in', 'true')
+            localStorage.setItem('user', JSON.stringify(res.data.user))
+            if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
+            if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
+          } catch (_) {}
+        }
         // Successful exchange: navigate to arena / lobby / check
         window.location.href = res.data.redirectUrl
       } else {
