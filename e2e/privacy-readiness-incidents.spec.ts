@@ -71,9 +71,9 @@ test.describe('E2E: Privacy Consent, Student Readiness & Incident Review Suite (
 
     // Verify Privacy & Consent screen appears before any camera starts
     await expect(studentActor.page.getByText('Examination Privacy & Proctoring Consent')).toBeVisible({ timeout: 10000 })
-    await expect(studentActor.page.getByText('What is captured')).toBeVisible()
-    await expect(studentActor.page.getByText('Who can access this data')).toBeVisible()
-    await expect(studentActor.page.getByText('Retention period')).toBeVisible()
+    await expect(studentActor.page.getByText('Single Verification Photo')).toBeVisible()
+    await expect(studentActor.page.getByText('No Video Streaming')).toBeVisible()
+    await expect(studentActor.page.getByText('Strict Retention Policy')).toBeVisible()
 
     const checkbox = studentActor.page.locator('[data-testid="consent-checkbox"]')
     const agreeBtn = studentActor.page.locator('[data-testid="consent-agree-btn"]')
@@ -88,8 +88,8 @@ test.describe('E2E: Privacy Consent, Student Readiness & Incident Review Suite (
     // Click agree
     await agreeBtn.click()
 
-    // Transition to Stage 1 of verification pipeline (Pre-Examination Verification)
-    await expect(studentActor.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
+    // Transition to Stage 1 of verification pipeline (Pre-Examination Identity Verification)
+    await expect(studentActor.page.getByText(/Pre-Examination.*Verification/i)).toBeVisible({ timeout: 10000 })
   })
 
   test('2. Student telemetry is reported and visible in Faculty Readiness tab', async () => {

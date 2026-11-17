@@ -82,17 +82,21 @@ test.describe('E2E: Student Attempt Flow', () => {
       // Navigate to Pre-Check
       await student.page.goto(`/student/exams/${examId}/pre-check`)
       await passConsentIfPresent(student.page)
-      await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
+      await expect(student.page.getByText('System & Identity Check', { exact: true })).toBeVisible({ timeout: 10000 })
 
-      // Step 1: Verify Face
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
-      await expect(verifyFaceBtn).toBeVisible()
-      await verifyFaceBtn.click()
+      // Step 1: Capture Photo
+      const captureBtn = student.page.getByRole('button', { name: /Capture Photo/i })
+      await expect(captureBtn).toBeVisible({ timeout: 10000 })
+      await student.page.waitForFunction(() => {
+        const v = document.querySelector('video') as HTMLVideoElement | null
+        return v && v.readyState >= 2
+      }, { timeout: 10000 }).catch(() => {})
+      await captureBtn.click()
 
-      // Step 2: Fullscreen & Launch Exam
-      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
-      await expect(launchBtn).toBeVisible({ timeout: 10000 })
-      await launchBtn.click()
+      // Step 2: Confirm & Verify
+      const confirmBtn = student.page.getByRole('button', { name: /Confirm & Verify/i })
+      await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+      await confirmBtn.click()
 
       // 3. Exam Arena Verifications
       await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
@@ -178,17 +182,21 @@ test.describe('E2E: Student Attempt Flow', () => {
       // 3. Pre-check: capture face, launch
       await student.page.goto(`/student/exams/${examId}/pre-check`)
       await passConsentIfPresent(student.page)
-      await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
+      await expect(student.page.getByText('System & Identity Check', { exact: true })).toBeVisible({ timeout: 10000 })
 
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
-      await expect(verifyFaceBtn).toBeVisible()
-      await verifyFaceBtn.click()
+      const captureBtn = student.page.getByRole('button', { name: /Capture Photo/i })
+      await expect(captureBtn).toBeVisible({ timeout: 10000 })
+      await student.page.waitForFunction(() => {
+        const v = document.querySelector('video') as HTMLVideoElement | null
+        return v && v.readyState >= 2
+      }, { timeout: 10000 }).catch(() => {})
+      await captureBtn.click()
 
-      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
-      await expect(launchBtn).toBeVisible({ timeout: 10000 })
-      await launchBtn.click()
+      const confirmBtn = student.page.getByRole('button', { name: /Confirm & Verify/i })
+      await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+      await confirmBtn.click()
 
-      // 4. In Arena: verify camera track is still 'live' inside arena before submit
+      // 4. In Arena: verify Phase 2 privacy invariant: camera tracks were already released upon capture
       await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
       await expect(student.page.getByText('Question 1 of 3')).toBeVisible({ timeout: 10000 })
 
@@ -204,9 +212,10 @@ test.describe('E2E: Student Attempt Flow', () => {
         }
       })
       expect(liveTracksInArena.count).toBeGreaterThan(0)
-      expect(liveTracksInArena.activeCount).toBeGreaterThan(0)
-      expect(liveTracksInArena.hasGlobalCamera).toBe(true)
-      expect(liveTracksInArena.globalCameraLive).toBe(true)
+      // Camera is already stopped in arena (Phase 2 invariant)
+      expect(liveTracksInArena.activeCount).toBe(0)
+      expect(liveTracksInArena.hasGlobalCamera).toBe(false)
+      expect(liveTracksInArena.globalCameraLive).toBe(false)
 
       await student.page.getByRole('button', { name: /Submit Exam/i }).click()
       await expect(student.page.getByText('Submit Examination?')).toBeVisible()
