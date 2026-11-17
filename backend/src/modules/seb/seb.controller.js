@@ -492,7 +492,11 @@ async function exchange(req, res, next) {
 
     let destination = '/student/dashboard'
     if (record.purpose === 'check') {
-      destination = '/student/secure-browser?verified=1'
+      destination = (normalizeRole(user.role) === ROLES.ADMIN)
+        ? '/admin/seb?verified=1'
+        : (normalizeRole(user.role) === ROLES.FACULTY)
+          ? '/faculty/exams?verified=1'
+          : '/student/secure-browser?verified=1'
     } else if (record.examId) {
       destination = `/student/exams/${record.examId}/start`
     }
@@ -623,7 +627,11 @@ async function exchangePin(req, res, next) {
 
     let destination = '/student/dashboard'
     if (record.purpose === 'check') {
-      destination = '/student/secure-browser?verified=1'
+      destination = (normalizeRole(user.role) === ROLES.ADMIN)
+        ? '/admin/seb?verified=1'
+        : (normalizeRole(user.role) === ROLES.FACULTY)
+          ? '/faculty/exams?verified=1'
+          : '/student/secure-browser?verified=1'
     } else if (record.examId) {
       destination = `/student/exams/${record.examId}/start`
     }
