@@ -268,4 +268,72 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
     assert.equal(inspection.verified, true)
     assert.equal(inspection.matched, true)
   })
+
+  it('7. PATCH /api/v1/admin/seb/mode toggles mode between audit and enforce when verified', async () => {
+    mockSebSettings = {
+      fileKey: 'seb/institution-config.seb',
+      configKey: VALID_KEY,
+      uploadedAt: new Date().toISOString(),
+      lastVerifiedAt: new Date().toISOString(),
+      requestedMode: 'audit'
+    }
+    invalidateInstitutionSebState()
+
+    const patchRes = await httpRequest({
+      hostname: '127.0.0.1',
+      port,
+      path: '/api/v1/admin/seb/mode',
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
+    }, { mode: 'enforce' })
+
+    assert.equal(patchRes.statusCode, 200)
+    assert.equal(patchRes.json?.requestedMode, 'enforce')
+    assert.equal(patchRes.json?.effectiveMode, 'enforce')
+
+    // Switch back to audit
+    const patchAuditRes = await httpRequest({
+      hostname: '127.0.0.1',
+      port,
+      path: '/api/v1/admin/seb/mode',
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
+    }, { mode: 'audit' })
+
+    assert.equal(patchAuditRes.statusCode, 200)
+    assert.equal(patchAuditRes.json?.requestedMode, 'audit')
+    assert.equal(patchAuditRes.json?.effectiveMode, 'audit')
+  })
+
+  it('8. PATCH /api/v1/admin/seb/mode rejects enforce mode if not verified within 7 days', async () => {
+    // Unverified settings
+    mockSebSettings = {
+      fileKey: 'seb/institution-config.seb',
+      configKey: VALID_KEY,
+      uploadedAt: new Date().toISOString(),
+      lastVerifiedAt: null,
+      requestedMode: 'audit'
+    }
+    invalidateInstitutionSebState()
+
+    const patchRes = await httpRequest({
+      hostname: '127.0.0.1',
+      port,
+      path: '/api/v1/admin/seb/mode',
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${adminToken}`
+      }
+    }, { mode: 'enforce' })
+
+    assert.equal(patchRes.statusCode, 400)
+    assert.equal(patchRes.json?.code, 'SEB_NOT_VERIFIED')
+  })
 })

@@ -68,7 +68,7 @@ function OnboardingGuard({ children }) {
 export default function App() {
   useEffect(() => {
     // Proof by use: verify Safe Exam Browser on app start before any login
-    verifySebSession(api).catch(() => {})
+    verifySebSession(api).catch(() => { })
   }, [])
 
   return (

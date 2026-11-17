@@ -64,9 +64,9 @@ function markAttemptSebVerified(attemptId) {
   try {
     const { redisClient } = require('../infra/redis/client')
     if (redisClient?.client && redisClient.client.status === 'ready') {
-      redisClient.client.set(`seb:verified:${attemptId}`, '1', 'EX', 14400).catch(() => {})
+      redisClient.client.set(`seb:verified:${attemptId}`, '1', 'EX', 14400).catch(() => { })
     }
-  } catch (_) {}
+  } catch (_) { }
 }
 
 async function isAttemptSebVerified(attemptId) {
@@ -85,7 +85,7 @@ async function isAttemptSebVerified(attemptId) {
         return true
       }
     }
-  } catch (_) {}
+  } catch (_) { }
 
   return false
 }
@@ -160,13 +160,13 @@ async function inspectSebRequest(req) {
   let examId = null
   try {
     examId = await resolveExamId(req)
-  } catch (_) {}
+  } catch (_) { }
 
   let sebSettings = null
   if (examId) {
     try {
       sebSettings = await getCachedSebSettings(examId)
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const sebMode = (sebSettings?.effectiveMode || config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()

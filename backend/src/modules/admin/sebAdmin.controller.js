@@ -157,6 +157,57 @@ async function getSebStatus(req, res, next) {
   }
 }
 
+async function updateSebMode(req, res, next) {
+  try {
+    const rawMode = req.body?.mode
+    const targetMode = typeof rawMode === 'string' ? rawMode.toLowerCase().trim() : ''
+
+    if (!['off', 'audit', 'enforce'].includes(targetMode)) {
+      return res.status(400).json({
+        code: 'INVALID_MODE',
+        message: 'Mode must be one of: "off", "audit", or "enforce".'
+      })
+    }
+
+    const sebConfig = await settingsService.getSebConfig()
+    if (!sebConfig || !sebConfig.configKey) {
+      return res.status(400).json({
+        code: 'SEB_NOT_CONFIGURED',
+        message: 'Safe Exam Browser configuration must be uploaded before changing mode.'
+      })
+    }
+
+    if (targetMode === 'enforce') {
+      const lastVerifiedAt = sebConfig.lastVerifiedAt
+      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
+      const isVerifiedRecent = lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo
+      if (!isVerifiedRecent) {
+        return res.status(400).json({
+          code: 'SEB_NOT_VERIFIED',
+          message: 'Cannot enable enforcement: Safe Exam Browser setup has not been verified within the last 7 days. Complete "Test my setup" first.'
+        })
+      }
+    }
+
+    await settingsService.saveSebConfig({
+      ...sebConfig,
+      requestedMode: targetMode
+    })
+    invalidateInstitutionSebState()
+
+    const state = await getInstitutionSebState({ bypassCache: true })
+    return res.status(200).json({
+      success: true,
+      requestedMode: state.requestedMode,
+      effectiveMode: state.effectiveMode,
+      enforcementReason: state.enforcementReason
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to update SEB mode')
+    next(err)
+  }
+}
+
 async function deleteSebConfig(_req, res, next) {
   try {
     const existing = await settingsService.getSebConfig()
@@ -182,6 +233,7 @@ module.exports = {
   upload,
   uploadSebConfig,
   getSebStatus,
+  updateSebMode,
   deleteSebConfig,
   inspectSebBuffer
 }
