@@ -32,7 +32,7 @@ const launchLimiter = rateLimit({
 
 const downloadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (isTest || isLoadTest) ? 10000 : 30,
+  max: (isTest || isLoadTest) ? 10000 : 60,
   keyGenerator: (req) => {
     if (req.params?.token) return `seb_dl_${req.params.token}`
     return req.ip
@@ -40,6 +40,19 @@ const downloadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many configuration download requests. Please wait a moment.' }
+})
+
+const exchangeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: (isTest || isLoadTest) ? 10000 : 60,
+  keyGenerator: (req) => {
+    const raw = req.query.launch || req.query.token || req.body?.pin || req.body?.code
+    if (raw) return `seb_ex_${String(raw).slice(0, 16)}`
+    return req.ip
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many token exchange requests. Please wait a moment.' }
 })
 
 // Proof by use: unauthenticated, works in any SEB_MODE (supports both GET and POST)
@@ -52,5 +65,10 @@ router.post('/launch-link', launchLimiter, authenticateToken, sebController.crea
 // Config file download: token check only (no cookies)
 router.get('/config/:token', downloadLimiter, sebController.downloadSebConfig)
 
-module.exports = router
+// Single-use token exchange: query param ?launch=TOKEN
+router.get('/exchange', exchangeLimiter, sebController.exchange)
 
+// Fallback 6-digit PIN exchange
+router.post('/exchange-pin', exchangeLimiter, sebController.exchangePin)
+
+module.exports = router

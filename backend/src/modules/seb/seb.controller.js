@@ -7,27 +7,85 @@ const { getStorageAdapter } = require('../../infra/s3/s3.client')
 const { prisma } = require('../../infra/postgres/client')
 const { logger } = require('../../shared/logging')
 const { ROLES, normalizeRole } = require('../../shared/roles')
-const { generateSebLaunchToken, verifySebLaunchToken } = require('./sebToken')
-const { invalidateInstitutionSebState } = require('./seb.service')
+const { authService } = require('../auth/auth.service')
+const { setAuthCookie, setAccessCookie, setRefreshCookie } = require('../../utils/cookies')
+const { verifySebLaunchToken } = require('./sebToken')
+const { sebTokenService } = require('./sebToken.service')
+const { getInstitutionSebState, invalidateInstitutionSebState } = require('./seb.service')
+
+/**
+ * Validates X-SafeExamBrowser-ConfigKeyHash against candidate URLs for the given activeKey.
+ */
+function verifySebHeaderHash(req, activeKey, targetPath = null) {
+  if (!activeKey || !/^[0-9a-f]{64}$/.test(activeKey)) return false
+  const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+  const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
+  if (!/^[0-9a-fA-F]{64}$/.test(receivedHeader)) return false
+
+  const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
+  const rawPath = targetPath || (req.originalUrl || req.url || '').split('#')[0]
+  const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+  const expectedUrl = `${cleanPublicOrigin}${normalizedPath}`
+
+  const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
+  const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
+
+  const candidateUrls = new Set([
+    expectedUrl,
+    expectedUrl.replace(/\/$/, ''),
+    `${cleanPublicOrigin}:443${normalizedPath}`,
+    `${cleanPublicOrigin}/student/login`,
+    `${cleanPublicOrigin}/student/login/`,
+    `${cleanPublicOrigin}/login`,
+    `${cleanPublicOrigin}/login/`,
+    `${cleanPublicOrigin}/`,
+    cleanPublicOrigin
+  ])
+
+  if (rawReferer) {
+    candidateUrls.add(rawReferer)
+    candidateUrls.add(rawReferer.replace(/\/$/, ''))
+  }
+  if (clientHref) {
+    candidateUrls.add(clientHref)
+    candidateUrls.add(clientHref.replace(/\/$/, ''))
+  }
+
+  const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
+
+  for (const candUrl of candidateUrls) {
+    // Variant A: SHA256(url + activeKey)
+    const hashA = crypto.createHash('sha256').update(candUrl + activeKey).digest('hex').toLowerCase()
+    const bufA = Buffer.from(hashA, 'utf8')
+    if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
+      return { matched: true, method: 'header_hash' }
+    }
+
+    // Variant B: SHA256(url + SHA256(activeKey))
+    const hashKey = crypto.createHash('sha256').update(activeKey).digest('hex')
+    const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
+    const bufB = Buffer.from(hashB, 'utf8')
+    if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
+      return { matched: true, method: 'header_hash_hashed_key' }
+    }
+
+    // Variant C: SHA256(url + Buffer.from(activeKey, 'hex'))
+    try {
+      const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(activeKey, 'hex')])).digest('hex').toLowerCase()
+      const bufC = Buffer.from(hashC, 'utf8')
+      if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
+        return { matched: true, method: 'header_hash_binary_key' }
+      }
+    } catch (_) {}
+  }
+
+  return false
+}
 
 async function ping(req, res, next) {
   try {
-    const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
-    const rawPath = (req.originalUrl || req.url || '').split('#')[0]
-    const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
-    const expectedUrl = `${cleanPublicOrigin}${normalizedPath}`
-
-    let activeKey = null
-    try {
-      const sebConfig = await settingsService.getSebConfig()
-      if (sebConfig && sebConfig.configKey) {
-        activeKey = sebConfig.configKey.trim().toLowerCase()
-      }
-    } catch (_) {}
-
-    if (!activeKey && process.env.SEB_CONFIG_KEY) {
-      activeKey = process.env.SEB_CONFIG_KEY.trim().toLowerCase()
-    }
+    const sebState = await getInstitutionSebState()
+    const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
 
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
@@ -51,67 +109,11 @@ async function ping(req, res, next) {
     }
 
     // 2. HTTP Header Hash Matching (X-SafeExamBrowser-ConfigKeyHash across candidate URLs)
-    const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
-    const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
-    const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
-
-    if (!matched && is64Hex) {
-      const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
-      const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
-
-      const candidateUrls = new Set([
-        expectedUrl,
-        expectedUrl.replace(/\/$/, ''),
-        `${cleanPublicOrigin}:443${normalizedPath}`,
-        `${cleanPublicOrigin}/student/login`,
-        `${cleanPublicOrigin}/student/login/`,
-        `${cleanPublicOrigin}/login`,
-        `${cleanPublicOrigin}/login/`,
-        `${cleanPublicOrigin}/`,
-        cleanPublicOrigin
-      ])
-
-      if (rawReferer) {
-        candidateUrls.add(rawReferer)
-        candidateUrls.add(rawReferer.replace(/\/$/, ''))
-      }
-      if (clientHref) {
-        candidateUrls.add(clientHref)
-        candidateUrls.add(clientHref.replace(/\/$/, ''))
-      }
-
-      const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
-
-      for (const candUrl of candidateUrls) {
-        // Variant A: SHA256(url + activeKey)
-        const hashA = crypto.createHash('sha256').update(candUrl + activeKey).digest('hex').toLowerCase()
-        const bufA = Buffer.from(hashA, 'utf8')
-        if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
-          matched = true
-          matchMethod = 'header_hash'
-          break
-        }
-
-        // Variant B: SHA256(url + SHA256(activeKey))
-        const hashKey = crypto.createHash('sha256').update(activeKey).digest('hex')
-        const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
-        const bufB = Buffer.from(hashB, 'utf8')
-        if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
-          matched = true
-          matchMethod = 'header_hash_hashed_key'
-          break
-        }
-
-        // Variant C: SHA256(url + Buffer.from(activeKey, 'hex'))
-        try {
-          const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(activeKey, 'hex')])).digest('hex').toLowerCase()
-          const bufC = Buffer.from(hashC, 'utf8')
-          if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
-            matched = true
-            matchMethod = 'header_hash_binary_key'
-            break
-          }
-        } catch (_) {}
+    if (!matched) {
+      const headerResult = verifySebHeaderHash(req, activeKey)
+      if (headerResult) {
+        matched = true
+        matchMethod = headerResult.method
       }
     }
 
@@ -147,23 +149,30 @@ async function createLaunchLink(req, res, next) {
       return res.status(401).json({ code: 'UNAUTHORIZED', message: 'Authentication required' })
     }
 
+    const purpose = (req.body?.purpose === 'check' || req.query?.purpose === 'check') ? 'check' : 'exam'
     let qualifyingExamId = null
     const userRole = normalizeRole(user.role)
 
-    if (userRole === ROLES.ADMIN) {
-      // Admins can generate launch links anytime for testing
-      qualifyingExamId = null
+    if (purpose === 'check' || userRole === ROLES.ADMIN || userRole === ROLES.FACULTY) {
+      // Diagnostic check / Admin / Faculty test launches do not require an active exam
+      qualifyingExamId = req.body?.examId || null
     } else if (userRole === ROLES.STUDENT) {
+      const targetExamId = req.body?.examId || req.query?.examId
       const serverNow = new Date()
       const preDownloadMinutes = config.sebPreDownloadMinutes || 30
       const windowStart = new Date(serverNow.getTime() + preDownloadMinutes * 60 * 1000)
 
+      const whereClause = {
+        status: { in: ['PUBLISHED', 'ACTIVE'] },
+        startTime: { lte: windowStart },
+        endTime: { gte: serverNow }
+      }
+      if (targetExamId) {
+        whereClause.id = targetExamId
+      }
+
       const candidateExams = await prisma.exam.findMany({
-        where: {
-          status: { in: ['PUBLISHED', 'ACTIVE'] },
-          startTime: { lte: windowStart },
-          endTime: { gte: serverNow }
-        },
+        where: whereClause,
         include: {
           assignments: {
             where: { userId: user.id }
@@ -198,23 +207,34 @@ async function createLaunchLink(req, res, next) {
       }
 
       qualifyingExamId = eligibleExams[0].id
-    } else {
-      // Faculty/Invigilator can also test launch links
-      qualifyingExamId = null
     }
 
-    const token = generateSebLaunchToken({
+    // Generate stateful, single-use launch token, download token, and fallback PIN
+    const tokenResult = sebTokenService.createLaunchToken({
       userId: user.id,
-      role: user.role,
+      userRole: user.role,
       examId: qualifyingExamId,
-      expMinutes: 10
+      purpose
     })
 
-    const origin = new URL(config.publicOrigin || 'http://localhost:5000')
+    const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
+    const origin = new URL(cleanPublicOrigin)
     const scheme = origin.protocol === 'https:' ? 'sebs:' : 'seb:'
-    const url = `${scheme}//${origin.host}/api/v1/seb/config/${token}.seb`
 
-    return res.status(200).json({ url })
+    // Safe Exam Browser 3.x query forwarding syntax:
+    // sebs://host/api/v1/seb/config/<downloadToken>.seb??launch=<exchangeToken>
+    const url = `${scheme}//${origin.host}/api/v1/seb/config/${tokenResult.downloadToken}.seb??launch=${tokenResult.launchToken}`
+
+    return res.status(200).json({
+      url,
+      downloadToken: tokenResult.downloadToken,
+      exchangeToken: tokenResult.launchToken,
+      token: tokenResult.launchToken, // Backwards compatibility for existing test assertions
+      pin: tokenResult.pin,
+      expiresAt: tokenResult.expiresAt,
+      purpose: tokenResult.purpose,
+      examId: tokenResult.examId
+    })
   } catch (err) {
     logger.error({ err }, 'Error creating SEB launch link')
     next(err)
@@ -226,18 +246,30 @@ async function downloadSebConfig(req, res, next) {
     const rawToken = req.params.token || req.params[0] || ''
     const cleanToken = rawToken.replace(/\.seb$/i, '')
 
-    const verification = verifySebLaunchToken(cleanToken)
-    if (!verification.valid) {
-      if (verification.error === 'TOKEN_EXPIRED') {
-        return res.status(401).json({ code: 'TOKEN_EXPIRED', message: 'Launch token has expired' })
+    // 1. Check stateful sebTokenService first (does NOT consume the exchange token)
+    const tokenRecord = sebTokenService.getTokenRecord(cleanToken)
+    let payload = null
+
+    if (tokenRecord) {
+      payload = {
+        role: tokenRecord.userRole,
+        examId: tokenRecord.examId,
+        purpose: tokenRecord.purpose
       }
-      return res.status(401).json({ code: 'INVALID_TOKEN', message: 'Invalid or tampered token' })
+    } else {
+      // 2. Fallback to legacy HMAC verification
+      const verification = verifySebLaunchToken(cleanToken)
+      if (!verification.valid) {
+        if (verification.error === 'TOKEN_EXPIRED') {
+          return res.status(401).json({ code: 'TOKEN_EXPIRED', message: 'Launch token has expired' })
+        }
+        return res.status(401).json({ code: 'INVALID_TOKEN', message: 'Invalid or tampered token' })
+      }
+      payload = verification.payload
     }
 
-    const { payload } = verification
-
     // Window check for students
-    if (normalizeRole(payload.role) === ROLES.STUDENT && payload.examId) {
+    if (payload && normalizeRole(payload.role) === ROLES.STUDENT && payload.examId) {
       const serverNow = new Date()
       const preDownloadMinutes = config.sebPreDownloadMinutes || 30
       const exam = await prisma.exam.findUnique({
@@ -290,8 +322,225 @@ async function downloadSebConfig(req, res, next) {
   }
 }
 
+/**
+ * Single-use Exchange Endpoint: exchanges launch token for authenticated student session.
+ * GET /api/v1/seb/exchange?launch=TOKEN
+ */
+async function exchange(req, res, next) {
+  try {
+    const rawToken = req.query.launch || req.query.token
+    if (!rawToken) {
+      if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+        return res.redirect(302, '/seb/enter?error=missing_token')
+      }
+      return res.status(400).json({
+        code: 'MISSING_LAUNCH_TOKEN',
+        message: 'Launch token is required in query parameter ?launch=TOKEN'
+      })
+    }
+
+    const consumeResult = sebTokenService.consumeLaunchToken(rawToken)
+    if (consumeResult.status === 'NOT_FOUND') {
+      if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+        return res.redirect(302, '/seb/enter?error=invalid_token')
+      }
+      return res.status(401).json({
+        code: 'INVALID_LAUNCH_TOKEN',
+        message: 'Invalid or unrecognized launch token.'
+      })
+    }
+
+    if (consumeResult.status === 'EXPIRED') {
+      if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+        return res.redirect(302, '/seb/enter?error=expired')
+      }
+      return res.status(401).json({
+        code: 'TOKEN_EXPIRED',
+        message: 'Launch token has expired. Please return to your browser and request a new launch link.'
+      })
+    }
+
+    if (consumeResult.status === 'ALREADY_USED') {
+      if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+        return res.redirect(302, '/seb/enter?error=already_used')
+      }
+      return res.status(409).json({
+        code: 'TOKEN_ALREADY_USED',
+        message: 'This launch token has already been used. Please return to your browser and request a new launch link.'
+      })
+    }
+
+    const { record } = consumeResult
+    const sebState = await getInstitutionSebState()
+    const userAgent = req.headers['user-agent'] || ''
+    const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
+
+    // Enforcement mode security gating
+    if (sebState.effectiveMode === 'enforce') {
+      if (!isSebAgent) {
+        return res.status(403).json({
+          code: 'SEB_ENFORCEMENT_FAILED',
+          message: 'Access restricted to verified Safe Exam Browser sessions. Standard browsers are blocked.'
+        })
+      }
+
+      if (sebState.keyPresent && sebState.configKey) {
+        const headerMatch = verifySebHeaderHash(req, sebState.configKey)
+        if (!headerMatch) {
+          logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on exchange: invalid or missing header hash')
+          return res.status(403).json({
+            code: 'SEB_ENFORCEMENT_FAILED',
+            message: 'Safe Exam Browser configuration check failed. Configuration Key header is invalid.'
+          })
+        }
+      }
+    }
+
+    // Lookup user by id
+    const user = await prisma.user.findUnique({
+      where: { id: record.userId }
+    })
+
+    if (!user || user.status === 'SUSPENDED') {
+      return res.status(403).json({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Your account is invalid or suspended. Please contact your administrator.'
+      })
+    }
+
+    // Issue authentication tokens and set HttpOnly cookies
+    const { accessToken, refreshToken } = authService.issueTokens(user)
+    setAuthCookie(res, accessToken)
+    setAccessCookie(res, accessToken)
+    if (refreshToken) {
+      setRefreshCookie(res, refreshToken)
+    }
+
+    logger.info(
+      { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
+      'Safe Exam Browser launch token successfully exchanged for user session'
+    )
+
+    let destination = '/student/dashboard'
+    if (record.purpose === 'check') {
+      destination = '/student/secure-browser?verified=1'
+    } else if (record.examId) {
+      destination = `/student/exams/${record.examId}/start`
+    }
+
+    if (req.xhr || req.headers.accept?.includes('application/json')) {
+      return res.status(200).json({
+        success: true,
+        redirectUrl: destination,
+        user: { id: user.id, email: user.email, name: user.name, role: user.role },
+        token: accessToken
+      })
+    }
+
+    return res.redirect(302, destination)
+  } catch (err) {
+    logger.error({ err }, 'Error during SEB launch token exchange')
+    next(err)
+  }
+}
+
+/**
+ * Fallback 6-digit PIN Exchange Endpoint
+ * POST /api/v1/seb/exchange-pin
+ */
+async function exchangePin(req, res, next) {
+  try {
+    const rawPin = req.body?.pin || req.body?.code
+    if (!rawPin || typeof rawPin !== 'string') {
+      return res.status(400).json({
+        code: 'MISSING_PIN',
+        message: 'A 6-digit launch code is required.'
+      })
+    }
+
+    const consumeResult = sebTokenService.consumePin(rawPin.trim())
+    if (consumeResult.status === 'NOT_FOUND') {
+      return res.status(401).json({
+        code: 'INVALID_PIN',
+        message: 'Invalid 6-digit launch code. Please check the code and try again.'
+      })
+    }
+
+    if (consumeResult.status === 'EXPIRED') {
+      return res.status(401).json({
+        code: 'PIN_EXPIRED',
+        message: 'This launch code has expired. Please return to your browser to generate a fresh code.'
+      })
+    }
+
+    if (consumeResult.status === 'ALREADY_USED') {
+      return res.status(409).json({
+        code: 'PIN_ALREADY_USED',
+        message: 'This launch code has already been used. Please generate a fresh code.'
+      })
+    }
+
+    const { record } = consumeResult
+    const sebState = await getInstitutionSebState()
+    const userAgent = req.headers['user-agent'] || ''
+    const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
+
+    if (sebState.effectiveMode === 'enforce') {
+      if (!isSebAgent) {
+        return res.status(403).json({
+          code: 'SEB_ENFORCEMENT_FAILED',
+          message: 'Access is restricted to verified Safe Exam Browser sessions.'
+        })
+      }
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: record.userId }
+    })
+
+    if (!user || user.status === 'SUSPENDED') {
+      return res.status(403).json({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Your account is invalid or suspended.'
+      })
+    }
+
+    const { accessToken, refreshToken } = authService.issueTokens(user)
+    setAuthCookie(res, accessToken)
+    setAccessCookie(res, accessToken)
+    if (refreshToken) {
+      setRefreshCookie(res, refreshToken)
+    }
+
+    logger.info(
+      { userId: user.id, examId: record.examId, purpose: record.purpose, isSebAgent },
+      'Safe Exam Browser launch PIN successfully exchanged for user session'
+    )
+
+    let destination = '/student/dashboard'
+    if (record.purpose === 'check') {
+      destination = '/student/secure-browser?verified=1'
+    } else if (record.examId) {
+      destination = `/student/exams/${record.examId}/start`
+    }
+
+    return res.status(200).json({
+      success: true,
+      redirectUrl: destination,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      token: accessToken
+    })
+  } catch (err) {
+    logger.error({ err }, 'Error during SEB launch PIN exchange')
+    next(err)
+  }
+}
+
 module.exports = {
   ping,
   createLaunchLink,
-  downloadSebConfig
+  downloadSebConfig,
+  exchange,
+  exchangePin,
+  verifySebHeaderHash
 }

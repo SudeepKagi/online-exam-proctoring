@@ -57,7 +57,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `r3-media-cadence.test.js` | 4 | **KEEP** | Verifies webcam and audio capture sampling intervals, throttle bounds, and frame upload rates. |
 | `schedule-module.test.js` | 8 | **KEEP** | Verifies timezone handling, UTC conversion, start-window constraints, and schedule duration validation. |
 | `seb-debug-logging.test.js` | 2 | **UPDATE** | Verifies cryptographic hashes in debug logs are masked to prefix-only in production; updated audit/log mode description. |
-| `seb-institution-config.test.js` | 4 | **KEEP** | Verifies SEB config persistence, encrypted storage, and configuration validation. |
+| `seb-institution-config.test.js` | 4 | **UPDATE** | Verifies SEB config persistence, encrypted storage, and configuration validation. Updated ping test assertions to match enhanced `{ verified, isSebAgent }` and `{ verified, method, timestamp }` response contract. |
 | `seb-step1.test.js` | 4 | **UPDATE** | Verifies Browser Exam Key (BEK) and Config Key computation and header extraction; updated with institution cache invalidation. |
 | `seb-step2-middleware.test.js` | 5 | **UPDATE** | Verifies SEB middleware in `audit` vs `enforce` mode with header validation; updated with DB institution mode configuration and non-SEB pass-through. |
 | `seb-step3-status.test.js` | 3 | **UPDATE** | Verifies institution SEB status endpoint returning masked configuration key; updated with DB institution mode configuration. |

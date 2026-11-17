@@ -22,6 +22,7 @@ const StudentDashboardPage = lazy(() => import('@/pages/student/StudentDashboard
 const StudentExamStartPage = lazy(() => import('@/pages/student/StudentExamStartPage'))
 const PreExamCheckPage = lazy(() => import('@/pages/student/PreExamCheckPage'))
 const SebRequiredPage = lazy(() => import('@/pages/student/SebRequiredPage'))
+const SebPinEntryPage = lazy(() => import('@/pages/student/SebPinEntryPage'))
 const ExamArenaPage = lazy(() => import('@/pages/student/ExamArenaPage'))
 const PrivacyPage = lazy(() => import('@/pages/common/PrivacyPage'))
 const NotFoundPage = lazy(() => import('@/pages/common/NotFoundPage'))
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="/invigilator-login" element={<LoginPage />} /> {/* // terms-ok: internal route */}
               <Route path="/student/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/seb/enter" element={<SebPinEntryPage />} />
 
               {/* Onboarding & Approval Queue */}
               <Route path="/onboarding" element={<OnboardingGuard><OnboardingPage /></OnboardingGuard>} />
