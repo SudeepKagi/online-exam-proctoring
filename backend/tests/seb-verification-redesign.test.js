@@ -90,9 +90,11 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
     // Mock admin JWT token
     adminToken = signToken({ id: 'mock-admin-uuid', role: 'ADMIN', email: 'admin@test.edu' })
 
+    const config = require('../src/shared/config')
     await new Promise((resolve) => {
       testServer = app.listen(0, '127.0.0.1', () => {
         port = testServer.address().port
+        config.publicOrigin = `http://127.0.0.1:${port}`
         resolve()
       })
     })
@@ -147,11 +149,12 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
     assert.equal(saved.lastVerifiedMethod, 'javascript_api')
   })
 
-  it('2. POST /api/v1/seb/ping verifies via X-SafeExamBrowser-ConfigKeyHash matching document Referer URL', async () => {
-    const refererUrl = 'https://proctornet.duckdns.org/student/login'
+  it('2. POST /api/v1/seb/ping verifies via X-SafeExamBrowser-ConfigKeyHash matching canonical URL', async () => {
+    const config = require('../src/shared/config')
+    const pingUrl = `${config.publicOrigin}/api/v1/seb/ping`
     const expectedHash = crypto
       .createHash('sha256')
-      .update(refererUrl + VALID_KEY)
+      .update(pingUrl + VALID_KEY)
       .digest('hex')
 
     const res = await httpRequest({
@@ -161,12 +164,9 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Referer': refererUrl,
         'X-SafeExamBrowser-ConfigKeyHash': expectedHash,
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SEB/3.10.3'
       }
-    }, {
-      href: refererUrl
     })
 
     assert.equal(res.statusCode, 200)
@@ -174,11 +174,12 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
     assert.equal(res.json?.method, 'header_hash')
   })
 
-  it('3. GET /api/v1/seb/ping retains backwards compatibility for header hashes', async () => {
-    const refererUrl = 'https://proctornet.duckdns.org/login'
+  it('3. GET /api/v1/seb/ping verifies via canonical X-SafeExamBrowser-ConfigKeyHash', async () => {
+    const config = require('../src/shared/config')
+    const pingUrl = `${config.publicOrigin}/api/v1/seb/ping`
     const expectedHash = crypto
       .createHash('sha256')
-      .update(refererUrl + VALID_KEY)
+      .update(pingUrl + VALID_KEY)
       .digest('hex')
 
     const res = await httpRequest({
@@ -187,8 +188,8 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
       path: '/api/v1/seb/ping',
       method: 'GET',
       headers: {
-        'Referer': refererUrl,
-        'X-SafeExamBrowser-ConfigKeyHash': expectedHash
+        'X-SafeExamBrowser-ConfigKeyHash': expectedHash,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) SEB/3.10.3'
       }
     })
 
@@ -246,27 +247,40 @@ describe('SEB Verification Redesign Suite: Multi-Protocol & Client Key Verificat
     assert.equal(statusRes.json?.lastVerifiedUserAgent, 'Mozilla/5.0 SEB/3.10.3 Windows')
   })
 
-  it('6. inspectSebRequest middleware validates client configKey in request body', async () => {
+  it('6. inspectSebRequest middleware requires valid cryptographic header and rejects direct body key bypass', async () => {
+    const config = require('../src/shared/config')
     const testExamId = 'mock-exam-uuid-for-seb-test'
     // Pre-populate examSettingsCache
     examSettingsCache.set(testExamId, {
       sebRequired: true,
       sebConfigKey: VALID_KEY,
-      effectiveMode: 'audit',
+      effectiveMode: 'enforce',
       configured: true,
       expiresAt: Date.now() + 60000
     })
 
-    const mockReq = {
+    // Passing without header should be rejected (no direct key bypass)
+    const unverifiedReq = {
+      originalUrl: `/api/v1/attempts/exams/${testExamId}/start`,
       params: { examId: testExamId },
       headers: {},
       body: { configKey: VALID_KEY }
     }
+    const unverifiedInspection = await inspectSebRequest(unverifiedReq)
+    assert.equal(unverifiedInspection.verified, false)
 
-    const inspection = await inspectSebRequest(mockReq)
-    assert.equal(inspection.required, true)
-    assert.equal(inspection.verified, true)
-    assert.equal(inspection.matched, true)
+    // Passing with valid canonical header passes
+    const canonicalUrl = `${config.publicOrigin}/api/v1/attempts/exams/${testExamId}/start`
+    const validHash = crypto.createHash('sha256').update(canonicalUrl + VALID_KEY.toLowerCase()).digest('hex')
+    const verifiedReq = {
+      originalUrl: `/api/v1/attempts/exams/${testExamId}/start`,
+      params: { examId: testExamId },
+      headers: { 'x-safeexambrowser-configkeyhash': validHash },
+      body: {}
+    }
+    const verifiedInspection = await inspectSebRequest(verifiedReq)
+    assert.equal(verifiedInspection.verified, true)
+    assert.equal(verifiedInspection.matched, true)
   })
 
   it('7. PATCH /api/v1/admin/seb/mode toggles mode between audit and enforce when verified', async () => {

@@ -60,9 +60,12 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `schedule-module.test.js` | 8 | **KEEP** | Verifies timezone handling, UTC conversion, start-window constraints, and schedule duration validation. |
 | `seb-debug-logging.test.js` | 2 | **UPDATE** | Verifies cryptographic hashes in debug logs are masked to prefix-only in production; updated audit/log mode description. |
 | `seb-institution-config.test.js` | 24 | **UPDATE** | Verifies SEB config persistence, encrypted storage, and configuration validation. Updated XML test fixture with mandatory `startURL` required by Phase 3 static inspector; updated encrypted upload test to assert informative settings password notice (`res.json.warning`); updated ping assertions to match enhanced `{ verified, isSebAgent }` and `{ verified, method, timestamp }` contract. |
-| `seb-step1.test.js` | 4 | **UPDATE** | Verifies Browser Exam Key (BEK) and Config Key computation and header extraction; updated with institution cache invalidation. |
+| `seb-launch-handoff.test.js` | 10 | **UPDATE** | Verifies SEB launch handoff, token lifecycle, and enforcement mode JSON error contracts with `Accept: application/json`. |
+| `seb-security-hardening.test.js` | 5 | **NEW** | Verifies Phase 1 strict cryptographic security hardening: rejection of forged starter keys, refusal of unverified launch tokens/PINs in enforce mode, exact canonical URL rule (no candidate-URL loops), rejection of direct body key bypass, and valid canonical URL + active institution key verification. |
+| `seb-step1.test.js` | 4 | **UPDATE** | Verifies Browser Exam Key (BEK) and Config Key computation and header extraction; updated with isolated database setting clearance for environment fallback test. |
 | `seb-step2-middleware.test.js` | 25 | **UPDATE** | Verifies SEB middleware in `audit` vs `enforce` mode with header validation; updated with DB institution mode configuration, non-SEB pass-through, and verified photo precheck requirement on attempt start. |
 | `seb-step3-status.test.js` | 3 | **UPDATE** | Verifies institution SEB status endpoint returning masked configuration key; updated with DB institution mode configuration. |
+| `seb-verification-redesign.test.js` | 8 | **UPDATE** | Verifies SEB ping and inspection; updated to canonical URL matching for ping and strict header requirement for `inspectSebRequest` (direct client body key bypass removed). |
 | `secrets-hardening.test.js` | 4 | **KEEP** | Verifies secret entropy requirements and rotation safety guards. |
 | `storage-probe.test.js` | 3 | **KEEP** | Verifies startup storage probe (`put`, `get`, `delete` under `probe/`) and admin storage health check (`/api/v1/admin/health/storage`). |
 | `storage-validation.test.js` | 10 | **KEEP** | Verifies S3 environment configuration validation and rejection of mock/localhost in production. |
@@ -95,6 +98,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `student-readiness.spec.ts` | 4 | **UPDATE** | Validates system check pre-flight wizard: camera check, audio check, network round-trip latency, and clock skew validation. Updated start page checklist items ("Photo Verification", "Internet Connection", "Computer & Operating System") and SEB launch PIN panel. |
 | `student-resilience.spec.ts` | 5 | **KEEP** | Validates offline answer buffer in IndexedDB/localStorage and auto-sync on network reconnection. |
 | `ui-consistency-audit.spec.ts` | 6 | **NEW** | Validates button contrast (WCAG AA >= 4.5:1), border radius conforming to enterprise tokens (>=16px/32px/40px pill), and the Single Primary Action rule (at most one solid #5266eb primary CTA visible per view) across `/login`, `/student/dashboard`, `/student/secure-browser`, `/faculty/exams`, `/admin/users`, `/admin/seb`. |
+| `helpers/guard.ts` | — | **UPDATE** | Added `ERR_SOCKET_NOT_CONNECTED` to ignored transient browser network teardown console errors alongside `ERR_CONNECTION_REFUSED` and `ERR_INTERNET_DISCONNECTED`. |
 
 ---
 
