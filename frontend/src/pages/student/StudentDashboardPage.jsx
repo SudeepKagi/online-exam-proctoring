@@ -30,6 +30,13 @@ export default function StudentDashboardPage() {
   const [readiness, setReadiness] = useState(() => getSavedReadinessResult())
   const [isTestingComputer, setIsTestingComputer] = useState(false)
   const [computerCheckFeedback, setComputerCheckFeedback] = useState('')
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const runComputerCheck = async () => {
     setIsTestingComputer(true)
@@ -286,94 +293,98 @@ export default function StudentDashboardPage() {
         <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
           <CardContent className="p-0">
             {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Exam Title</TableHead>
-                    <TableHead>Course Code</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Result Score</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableSkeleton rows={2} cols={5} />
-                  ) : completed.length === 0 ? (
+            {!isMobile && (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={5} className="p-0">
-                        <EmptyState
-                          icon={CheckCircle2}
-                          title="No completed assessments"
-                          description="Completed examination attempts and grade breakdowns will appear here."
-                        />
-                      </TableCell>
+                      <TableHead>Exam Title</TableHead>
+                      <TableHead>Course Code</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Result Score</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
-                  ) : (
-                    completed.map((exam) => (
-                      <TableRow key={exam.id}>
-                        <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
-                        <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] font-[420]">
-                            SUBMITTED
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-[480] text-[#28253b] text-xs">
-                          {exam.score != null ? `${exam.score} pts` : 'Evaluated'}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs font-[420]">
-                            <Link to={exam.attemptId ? `/student/results/${exam.attemptId}` : `/student/exams/${exam.id}/results`}>
-                              View Results <ArrowRight className="w-3 h-3 ml-1" />
-                            </Link>
-                          </Button>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableSkeleton rows={2} cols={5} />
+                    ) : completed.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="p-0">
+                          <EmptyState
+                            icon={CheckCircle2}
+                            title="No completed assessments"
+                            description="Completed examination attempts and grade breakdowns will appear here."
+                          />
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                    ) : (
+                      completed.map((exam) => (
+                        <TableRow key={exam.id}>
+                          <TableCell className="font-[480] text-[#28253b] text-xs">{exam.title}</TableCell>
+                          <TableCell className="text-[#554e7b] text-xs font-mono">{exam.courseCode}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] font-[420]">
+                              SUBMITTED
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-[480] text-[#28253b] text-xs">
+                            {exam.score != null ? `${exam.score} pts` : 'Evaluated'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs font-[420]">
+                              <Link to={exam.attemptId ? `/student/results/${exam.attemptId}` : `/student/exams/${exam.id}/results`}>
+                                View Results <ArrowRight className="w-3 h-3 ml-1" />
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
 
             {/* Mobile Stacked Cards View (md:hidden) */}
-            <div className="block md:hidden divide-y divide-[#c3c3cc]/20">
-              {loading ? (
-                <div className="p-4 space-y-3">
-                  <div className="h-4 bg-[#edecfb] rounded-full w-3/4 animate-pulse" />
-                  <div className="h-3 bg-[#fbfbff] rounded-full w-1/2 animate-pulse" />
-                </div>
-              ) : completed.length === 0 ? (
-                <EmptyState
-                  icon={CheckCircle2}
-                  title="No completed assessments"
-                  description="Completed examination attempts and grade breakdowns will appear here."
-                />
-              ) : (
-                completed.map((exam) => (
-                  <div key={exam.id} className="p-4 space-y-2.5">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="text-sm font-[480] text-[#28253b]">{exam.title}</h4>
-                        <span className="text-[11px] font-mono text-[#554e7b]">{exam.courseCode}</span>
-                      </div>
-                      <Badge variant="outline" className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] font-[420]">
-                        SUBMITTED
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-xs pt-1">
-                      <span className="text-[#554e7b]">Score: <strong className="text-[#28253b] font-[480]">{exam.score != null ? `${exam.score} pts` : 'Evaluated'}</strong></span>
-                      <Button asChild variant="secondary" size="sm" className="h-9 px-3 text-xs font-[420]">
-                        <Link to={exam.attemptId ? `/student/results/${exam.attemptId}` : `/student/exams/${exam.id}/results`}>
-                          View Results <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                        </Link>
-                      </Button>
-                    </div>
+            {isMobile && (
+              <div className="divide-y divide-[#c3c3cc]/20">
+                {loading ? (
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-[#edecfb] rounded-full w-3/4 animate-pulse" />
+                    <div className="h-3 bg-[#fbfbff] rounded-full w-1/2 animate-pulse" />
                   </div>
-                ))
-              )}
-            </div>
+                ) : completed.length === 0 ? (
+                  <EmptyState
+                    icon={CheckCircle2}
+                    title="No completed assessments"
+                    description="Completed examination attempts and grade breakdowns will appear here."
+                  />
+                ) : (
+                  completed.map((exam) => (
+                    <div key={exam.id} className="p-4 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h4 className="text-sm font-[480] text-[#28253b]">{exam.title}</h4>
+                          <span className="text-[11px] font-mono text-[#554e7b]">{exam.courseCode}</span>
+                        </div>
+                        <Badge variant="outline" className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] font-[420]">
+                          SUBMITTED
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-xs pt-1">
+                        <span className="text-[#554e7b]">Score: <strong className="text-[#28253b] font-[480]">{exam.score != null ? `${exam.score} pts` : 'Evaluated'}</strong></span>
+                        <Button asChild variant="secondary" size="sm" className="h-9 px-3 text-xs font-[420]">
+                          <Link to={exam.attemptId ? `/student/results/${exam.attemptId}` : `/student/exams/${exam.id}/results`}>
+                            View Results <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

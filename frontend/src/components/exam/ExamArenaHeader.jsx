@@ -52,7 +52,7 @@ export function ExamArenaHeader({
             className="flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-[#fff8e6] border border-[#f5e2b3] text-[#73510d] text-[11px] sm:text-xs font-[420]"
           >
             <CloudOff className="w-3.5 h-3.5 text-[#73510d]" />
-            <span className="hidden sm:inline">Offline</span>
+            <span>Offline, will sync</span>
           </div>
         )}
 
@@ -65,7 +65,7 @@ export function ExamArenaHeader({
           onClick={onSubmitClick}
           className="px-2.5 sm:px-4 h-8 sm:h-9 text-xs cursor-pointer shrink-0"
         >
-          Submit
+          Submit Exam
         </Button>
       </div>
     </header>
