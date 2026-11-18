@@ -569,7 +569,7 @@ export default function AdminSebConfigPage() {
                   Check <strong>"Use Browser Exam Key and Configuration Key"</strong> (<code>sendBrowserExamKey: true</code>).
                 </p>
                 <div className="p-2 bg-[#edecfb]/60 rounded-[8px] text-[11px] text-[#28253b] font-[420]">
-                  💡 Copy the <strong>Configuration Key</strong> (64 hex characters), NOT the Browser Exam Key!
+                  💡 The starter file is a template only. The server never trusts a default key. In the SEB Configuration Tool, go to the <strong>Exam</strong> tab after saving and copy the 64-character <strong>Configuration Key</strong> (NOT the Browser Exam Key)!
                 </div>
               </div>
 
@@ -751,7 +751,7 @@ export default function AdminSebConfigPage() {
                   className="font-mono text-xs rounded-xl bg-[#fbfbff] h-10 border-0"
                 />
                 <p className="text-[11px] text-[#554e7b] font-[420] mt-1">
-                  Copy the <strong>CONFIG KEY</strong> from the Config File tab, not the Browser Exam Key. The key is never exposed to students or in S3 metadata.
+                  Copy the <strong>Configuration Key</strong> from the <strong>Exam</strong> tab in the SEB Configuration Tool after saving (not the Browser Exam Key). The server never trusts a default key and validates candidate sessions against this key.
                 </p>
               </div>
 

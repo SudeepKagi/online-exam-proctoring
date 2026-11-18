@@ -13,83 +13,27 @@ const { verifySebLaunchToken } = require('./sebToken')
 const { sebTokenService } = require('./sebToken.service')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('./seb.service')
 const { sebDiagnosticsService } = require('./sebDiagnostics.service')
-const { markUserSebVerified } = require('../../middleware/seb')
 
 /**
  * Validates X-SafeExamBrowser-ConfigKeyHash against candidate URLs for the given activeKey.
  */
 function verifySebHeaderHash(req, activeKey, targetPath = null) {
-  if (!activeKey || !/^[0-9a-f]{64}$/.test(activeKey)) return false
+  if (!activeKey || !/^[0-9a-f]{64}$/i.test(activeKey)) return false
   const rawHeader = req.headers['x-safeexambrowser-configkeyhash'] || req.headers['x-safeexambrowser-requesthash']
-  const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
-  if (!/^[0-9a-fA-F]{64}$/.test(receivedHeader)) return false
+  const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim().toLowerCase() : ''
+  if (!/^[0-9a-f]{64}$/.test(receivedHeader)) return false
 
   const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
   const rawPath = targetPath || (req.originalUrl || req.url || '').split('#')[0]
   const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
-  const expectedUrl = `${cleanPublicOrigin}${normalizedPath}`
+  const canonicalUrl = `${cleanPublicOrigin}${normalizedPath}`
 
-  const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
-  const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
+  const expectedHash = crypto.createHash('sha256').update(canonicalUrl + activeKey.toLowerCase()).digest('hex').toLowerCase()
+  const receivedBuf = Buffer.from(receivedHeader, 'utf8')
+  const expectedBuf = Buffer.from(expectedHash, 'utf8')
 
-  const candidateUrls = new Set([
-    expectedUrl,
-    expectedUrl.replace(/\/$/, ''),
-    `${cleanPublicOrigin}:443${normalizedPath}`,
-    `${cleanPublicOrigin}/student/login`,
-    `${cleanPublicOrigin}/student/login/`,
-    `${cleanPublicOrigin}/login`,
-    `${cleanPublicOrigin}/login/`,
-    `${cleanPublicOrigin}/seb/enter`,
-    `${cleanPublicOrigin}/seb/enter/`,
-    `${cleanPublicOrigin}/`,
-    cleanPublicOrigin
-  ])
-
-  if (rawReferer) {
-    candidateUrls.add(rawReferer)
-    candidateUrls.add(rawReferer.replace(/\/$/, ''))
-  }
-  if (clientHref) {
-    candidateUrls.add(clientHref)
-    candidateUrls.add(clientHref.replace(/\/$/, ''))
-  }
-
-  const candidateKeys = new Set([activeKey.toLowerCase()])
-  if (process.env.SEB_CONFIG_KEY && /^[0-9a-f]{64}$/i.test(process.env.SEB_CONFIG_KEY)) {
-    candidateKeys.add(process.env.SEB_CONFIG_KEY.trim().toLowerCase())
-  }
-  // Institution starter key calculated by Safe Exam Browser for proctornet-starter.seb
-  candidateKeys.add('4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a')
-
-  const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
-
-  for (const candKey of candidateKeys) {
-    for (const candUrl of candidateUrls) {
-      // Variant A: SHA256(url + candKey)
-      const hashA = crypto.createHash('sha256').update(candUrl + candKey).digest('hex').toLowerCase()
-      const bufA = Buffer.from(hashA, 'utf8')
-      if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
-        return { matched: true, method: 'header_hash' }
-      }
-
-      // Variant B: SHA256(url + SHA256(candKey))
-      const hashKey = crypto.createHash('sha256').update(candKey).digest('hex')
-      const hashB = crypto.createHash('sha256').update(candUrl + hashKey).digest('hex').toLowerCase()
-      const bufB = Buffer.from(hashB, 'utf8')
-      if (bufB.length === receivedBuf.length && crypto.timingSafeEqual(bufB, receivedBuf)) {
-        return { matched: true, method: 'header_hash_hashed_key' }
-      }
-
-      // Variant C: SHA256(url + Buffer.from(candKey, 'hex'))
-      try {
-        const hashC = crypto.createHash('sha256').update(Buffer.concat([Buffer.from(candUrl, 'utf8'), Buffer.from(candKey, 'hex')])).digest('hex').toLowerCase()
-        const bufC = Buffer.from(hashC, 'utf8')
-        if (bufC.length === receivedBuf.length && crypto.timingSafeEqual(bufC, receivedBuf)) {
-          return { matched: true, method: 'header_hash_binary_key' }
-        }
-      } catch (_) {}
-    }
+  if (receivedBuf.length === expectedBuf.length && crypto.timingSafeEqual(receivedBuf, expectedBuf)) {
+    return { matched: true, method: 'header_hash' }
   }
 
   return false
@@ -425,30 +369,44 @@ async function exchange(req, res, next) {
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
     // Enforcement mode security gating
+    const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
+    const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
+
     if (sebState.effectiveMode === 'enforce') {
       if (!isSebAgent) {
+        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+          return res.redirect(302, '/seb/enter?error=seb_required')
+        }
         return res.status(403).json({
           code: 'SEB_ENFORCEMENT_FAILED',
           message: 'Access restricted to verified Safe Exam Browser sessions. Standard browsers are blocked.'
         })
       }
 
-      if (sebState.keyPresent && sebState.configKey) {
-        const headerMatch = verifySebHeaderHash(req, sebState.configKey)
-        if (!headerMatch) {
-          logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on exchange: invalid or missing header hash')
-          sebDiagnosticsService.recordAttempt({
-            purpose: record.purpose || 'exam',
-            outcome: 'HEADER_MISMATCH',
-            userAgent,
-            clientIp: req.ip
-          })
-          return res.status(403).json({
-            code: 'SEB_ENFORCEMENT_FAILED',
-            message: 'Safe Exam Browser configuration check failed. Configuration Key header is invalid.'
-          })
+      if (!headerMatch) {
+        logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on exchange: invalid or missing header hash')
+        sebDiagnosticsService.recordAttempt({
+          purpose: record.purpose || 'exam',
+          outcome: 'HEADER_MISMATCH',
+          userAgent,
+          clientIp: req.ip
+        })
+        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+          return res.redirect(302, '/seb/enter?error=seb_header_invalid')
         }
+        return res.status(403).json({
+          code: 'SEB_ENFORCEMENT_FAILED',
+          message: 'Safe Exam Browser configuration check failed. Configuration Key header is missing or invalid.'
+        })
       }
+    } else {
+      // In audit / log mode, record header check result without blocking
+      sebDiagnosticsService.recordAttempt({
+        purpose: record.purpose || 'exam',
+        outcome: headerMatch ? 'SUCCESS' : 'HEADER_MISMATCH',
+        userAgent,
+        clientIp: req.ip
+      })
     }
 
     // Lookup user by id
@@ -474,8 +432,17 @@ async function exchange(req, res, next) {
     // Atomically mark PIN and token consumed now that session is successfully issued
     sebTokenService.markConsumed(record)
 
-    if (user?.id && record.examId) {
-      markUserSebVerified(user.id, record.examId)
+    if (headerMatch && record.examId) {
+      try {
+        const attempt = await prisma.examAttempt.findUnique({
+          where: { examId_studentId: { examId: record.examId, studentId: user.id } },
+          select: { id: true }
+        })
+        if (attempt?.id) {
+          const { markAttemptSebVerified } = require('../../middleware/seb')
+          markAttemptSebVerified(attempt.id)
+        }
+      } catch (_) {}
     }
 
     logger.info(
@@ -601,6 +568,9 @@ async function exchangePin(req, res, next) {
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
+    const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
+    const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
+
     if (sebState.effectiveMode === 'enforce') {
       if (!isSebAgent) {
         return res.status(403).json({
@@ -608,6 +578,28 @@ async function exchangePin(req, res, next) {
           message: 'Access is restricted to verified Safe Exam Browser sessions.'
         })
       }
+
+      if (!headerMatch) {
+        logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on PIN exchange: invalid or missing header hash')
+        sebDiagnosticsService.recordAttempt({
+          purpose: record.purpose || 'exam',
+          outcome: 'HEADER_MISMATCH',
+          userAgent,
+          clientIp: req.ip
+        })
+        return res.status(403).json({
+          code: 'SEB_ENFORCEMENT_FAILED',
+          message: 'Safe Exam Browser configuration check failed. Configuration Key header is missing or invalid.'
+        })
+      }
+    } else {
+      // In audit / log mode, record header check result without blocking
+      sebDiagnosticsService.recordAttempt({
+        purpose: record.purpose || 'exam',
+        outcome: headerMatch ? 'SUCCESS' : 'HEADER_MISMATCH',
+        userAgent,
+        clientIp: req.ip
+      })
     }
 
     const user = await prisma.user.findUnique({
@@ -631,8 +623,17 @@ async function exchangePin(req, res, next) {
     // Atomically mark PIN and token consumed now that session is successfully issued
     sebTokenService.markConsumed(record)
 
-    if (user?.id && record.examId) {
-      markUserSebVerified(user.id, record.examId)
+    if (headerMatch && record.examId) {
+      try {
+        const attempt = await prisma.examAttempt.findUnique({
+          where: { examId_studentId: { examId: record.examId, studentId: user.id } },
+          select: { id: true }
+        })
+        if (attempt?.id) {
+          const { markAttemptSebVerified } = require('../../middleware/seb')
+          markAttemptSebVerified(attempt.id)
+        }
+      } catch (_) {}
     }
 
     logger.info(

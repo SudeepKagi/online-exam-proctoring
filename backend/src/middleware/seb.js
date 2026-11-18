@@ -13,9 +13,6 @@ const MAX_ATTEMPT_LRU_SIZE = 5000
 // Map: examId -> { sebRequired: boolean, sebConfigKey: string | null, expiresAt: number }
 const examSettingsCache = new Map()
 
-// Safe Exam Browser institution starter configuration key (proctornet-starter.seb)
-const STARTER_CONFIG_KEY = '4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a'
-
 // Bounded LRU Map: attemptId -> examId
 class BoundedLru {
   constructor(maxSize = MAX_ATTEMPT_LRU_SIZE) {
@@ -93,43 +90,9 @@ async function isAttemptSebVerified(attemptId) {
   return false
 }
 
-// ── In-Process & Redis Verified User Session Flag ───────────────────────────
-// Tracks users whose session was verified via Safe Exam Browser launch/PIN exchange
-const verifiedUsersInMemory = new Map() // `${userId}:${examId}` -> expiresAt
-
-function markUserSebVerified(userId, examId) {
-  if (!userId || !examId) return
-  const idStr = `${String(userId)}:${String(examId)}`
-  const expiresAt = Date.now() + 4 * 60 * 60 * 1000 // 4 hours
-  verifiedUsersInMemory.set(idStr, expiresAt)
-
-  try {
-    const { redisClient } = require('../infra/redis/client')
-    if (redisClient?.client && redisClient.client.status === 'ready') {
-      redisClient.client.set(`seb:user_verified:${idStr}`, '1', 'EX', 14400).catch(() => { })
-    }
-  } catch (_) { }
-}
-
-async function isUserSebVerified(userId, examId) {
-  if (!userId || !examId) return false
-  const idStr = `${String(userId)}:${String(examId)}`
-  const exp = verifiedUsersInMemory.get(idStr)
-  if (exp && exp > Date.now()) return true
-
-  try {
-    const { redisClient } = require('../infra/redis/client')
-    if (redisClient?.client && redisClient.client.status === 'ready') {
-      const val = await redisClient.client.get(`seb:user_verified:${idStr}`)
-      if (val === '1') {
-        verifiedUsersInMemory.set(idStr, Date.now() + 4 * 60 * 60 * 1000)
-        return true
-      }
-    }
-  } catch (_) { }
-
-  return false
-}
+// Deprecated session bypass functions: HTTP route gating strictly requires valid header on that very request
+function markUserSebVerified() {}
+async function isUserSebVerified() { return false }
 
 // Invalidation Helper
 function invalidateExamSebCache(examId) {
@@ -141,7 +104,6 @@ function clearAllSebCaches() {
   examSettingsCache.clear()
   attemptExamLru.clear()
   verifiedAttemptsInMemory.clear()
-  verifiedUsersInMemory.clear()
 }
 
 // Fetch exam SEB settings with 60s in-process TTL and DB fallback
@@ -249,103 +211,31 @@ async function inspectSebRequest(req) {
   const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
   const rawPath = (req.originalUrl || req.url || '').split('#')[0]
   const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
-  const expectedUrl = `${cleanPublicOrigin}${normalizedPath}`
+  const canonicalUrl = `${cleanPublicOrigin}${normalizedPath}`
 
   const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
   const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
   const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
 
-  const candidateKeys = new Set()
-  if (sebConfigKey && /^[0-9a-fA-F]{64}$/.test(sebConfigKey)) {
-    candidateKeys.add(sebConfigKey.toLowerCase())
-  }
-  if (process.env.SEB_CONFIG_KEY && /^[0-9a-fA-F]{64}$/.test(process.env.SEB_CONFIG_KEY)) {
-    candidateKeys.add(process.env.SEB_CONFIG_KEY.trim().toLowerCase())
-  }
-  // Institution starter key calculated by Safe Exam Browser for proctornet-starter.seb
-  candidateKeys.add(STARTER_CONFIG_KEY.toLowerCase())
+  const activeKey = sebConfigKey.toLowerCase()
+  const expectedHash = crypto.createHash('sha256').update(canonicalUrl + activeKey).digest('hex').toLowerCase()
 
-  const primaryKey = (sebConfigKey && /^[0-9a-fA-F]{64}$/.test(sebConfigKey)) ? sebConfigKey.toLowerCase() : STARTER_CONFIG_KEY.toLowerCase()
-  const expectedHash = crypto.createHash('sha256').update(expectedUrl + primaryKey).digest('hex').toLowerCase()
-
-  let directKeyMatched = false
-
-  // 1. Direct JS API Key Match
-  const clientKey = (req.body?.configKey || req.headers['x-seb-config-key'] || '').toString().trim().toLowerCase()
-  if (/^[0-9a-f]{64}$/.test(clientKey)) {
-    const clientBuf = Buffer.from(clientKey, 'utf8')
-    for (const candKey of candidateKeys) {
-      const activeBuf = Buffer.from(candKey, 'utf8')
-      if (activeBuf.length === clientBuf.length && crypto.timingSafeEqual(activeBuf, clientBuf)) {
-        directKeyMatched = true
-        break
-      }
-    }
-  }
-
-  // 2. Candidate URL Header Hash Match
-  let headerMatched = directKeyMatched
-  if (!headerMatched && is64Hex) {
-    const rawReferer = (req.headers.referer || req.headers.referrer || '').split('#')[0]
-    const clientHref = (req.body?.href || req.query?.href || '').split('#')[0]
-
-    const candidateUrls = new Set([
-      expectedUrl,
-      expectedUrl.replace(/\/$/, ''),
-      `${cleanPublicOrigin}:443${normalizedPath}`,
-      `${cleanPublicOrigin}/student/login`,
-      `${cleanPublicOrigin}/student/login/`,
-      `${cleanPublicOrigin}/login`,
-      `${cleanPublicOrigin}/login/`,
-      `${cleanPublicOrigin}/seb/enter`,
-      `${cleanPublicOrigin}/seb/enter/`,
-      `${cleanPublicOrigin}/student/exams/${examId}/start`,
-      `${cleanPublicOrigin}/student/exams/${examId}/pre-check`,
-      `${cleanPublicOrigin}/student/exams/${examId}`,
-      `${cleanPublicOrigin}/`,
-      cleanPublicOrigin
-    ])
-    if (rawReferer) {
-      candidateUrls.add(rawReferer)
-      candidateUrls.add(rawReferer.replace(/\/$/, ''))
-    }
-    if (clientHref) {
-      candidateUrls.add(clientHref)
-      candidateUrls.add(clientHref.replace(/\/$/, ''))
-    }
-
+  let headerMatched = false
+  if (is64Hex) {
     const receivedBuf = Buffer.from(receivedHeader.toLowerCase(), 'utf8')
-
-    for (const candKey of candidateKeys) {
-      for (const candUrl of candidateUrls) {
-        const hashA = crypto.createHash('sha256').update(candUrl + candKey).digest('hex').toLowerCase()
-        const bufA = Buffer.from(hashA, 'utf8')
-        if (bufA.length === receivedBuf.length && crypto.timingSafeEqual(bufA, receivedBuf)) {
-          headerMatched = true
-          break
-        }
-      }
-      if (headerMatched) break
+    const expectedBuf = Buffer.from(expectedHash, 'utf8')
+    if (receivedBuf.length === expectedBuf.length && crypto.timingSafeEqual(receivedBuf, expectedBuf)) {
+      headerMatched = true
     }
   }
 
-  // 3. Attempt & User verification stickiness
+  // Passing the gate on HTTP routes strictly requires a valid header on that very request
+  const isVerified = headerMatched
+
+  // Only if header verification passed, track attempt for Socket.IO join
   const attemptId = req.params?.attemptId || req.params?.id
-  const userId = req.user?.id
-  let sessionMatched = false
-  if (!headerMatched) {
-    if (attemptId && (await isAttemptSebVerified(attemptId))) {
-      sessionMatched = true
-    } else if (userId && examId && (await isUserSebVerified(userId, examId))) {
-      sessionMatched = true
-    }
-  }
-
-  const isVerified = Boolean(headerMatched || sessionMatched)
-
-  if (headerMatched) {
-    if (attemptId) markAttemptSebVerified(attemptId)
-    if (userId && examId) markUserSebVerified(userId, examId)
+  if (headerMatched && attemptId) {
+    markAttemptSebVerified(attemptId)
   }
 
   return {
@@ -356,7 +246,7 @@ async function inspectSebRequest(req) {
     verified: isVerified,
     matched: isVerified,
     headerMatched,
-    expectedUrl,
+    expectedUrl: canonicalUrl,
     expectedHash,
     receivedHeader
   }
@@ -496,7 +386,6 @@ module.exports = {
   isAttemptSebVerified,
   markUserSebVerified,
   isUserSebVerified,
-  STARTER_CONFIG_KEY,
   invalidateExamSebCache,
   clearAllSebCaches,
   getCachedSebSettings,
