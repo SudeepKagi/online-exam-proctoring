@@ -55,11 +55,6 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     filePresent = false
   }
 
-  // In test / mock environments without active AWS S3 storage, treat mock file as present if key is configured
-  if (!filePresent && (process.env.NODE_ENV === 'test' || process.env.S3_MOCK === 'true') && keyPresent) {
-    filePresent = true
-  }
-
   // 3. Configured requires both key and file
   const configured = Boolean(keyPresent && filePresent)
 
@@ -80,10 +75,8 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
       enforcementReason = 'Safe Exam Browser 64-hex Config Key is not configured.'
     }
   } else if (requestedMode === 'enforce') {
-    const isTest = process.env.NODE_ENV === 'test'
     const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
-    const isVerifiedRecent = (isTest && (process.env.SEB_MODE || '').toLowerCase().trim() === 'enforce') ||
-      (lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo)
+    const isVerifiedRecent = lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo
     if (isVerifiedRecent) {
       effectiveMode = 'enforce'
     } else {
