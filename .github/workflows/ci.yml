@@ -2,7 +2,7 @@ name: CI Quality Gate & Verification
 
 on:
   push:
-    branches: [ main, 'feat/**', 'pilot/**', 'ci/**' ]
+    branches: [ main, 'feat/**', 'pilot/**', 'ci/**', 'hotfix/**' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
