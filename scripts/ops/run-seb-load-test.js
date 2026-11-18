@@ -92,7 +92,6 @@ async function main() {
         proctoringConfig: {
           sebRequired: true,
           sebConfigKey: CONFIG_KEY,
-          maxViolations: 3,
           tag: 'loadtest',
         },
       },
