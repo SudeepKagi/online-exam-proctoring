@@ -3,9 +3,9 @@
 process.env.NODE_ENV = 'test'
 process.env.CACHE_DRIVER = 'memory'
 process.env.S3_MOCK = 'true'
-process.env.JWT_SECRET = 'test_jwt_secret_key_minimum_32_chars_long!!'
-process.env.JWT_REFRESH_SECRET = 'test_jwt_refresh_secret_key_32_chars!!'
-process.env.SEB_LINK_SECRET = 'test_seb_link_secret_key_32_chars_long!!'
+process.env.JWT_SECRET = 'test_suite_jwt_secret_minimum_32_characters_long_for_unit_tests!'
+process.env.JWT_REFRESH_SECRET = 'test_suite_jwt_refresh_secret_at_least_32_chars!'
+process.env.SEB_LINK_SECRET = 'test_suite_seb_link_secret_at_least_32_characters_long_for_hmac!'
 
 const { describe, it, before, after, beforeEach } = require('node:test')
 const assert = require('node:assert/strict')

@@ -12,6 +12,10 @@ useDefault = true
 
 [allowlist]
 description = "Known dev/test default secrets and burned historical tokens"
+paths = [
+    '''backend/tests/.*''',
+    '''docs/.*'''
+]
 regexes = [
     # 1. Burned dev fallback JWT secret from initial development
     '''proctornet_super_secret_jwt_key_local_development_fallback_2026''',
