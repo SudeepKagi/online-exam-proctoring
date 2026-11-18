@@ -191,17 +191,23 @@ test.describe('E2E: Student Attempt Flow', () => {
       // 3. Pre-check: capture face, launch
       await student.page.goto(`/student/exams/${examId}/pre-check`)
       await passConsentIfPresent(student.page)
-      await expect(student.page.getByText('Pre-Examination Verification')).toBeVisible({ timeout: 10000 })
+      await expect(student.page.getByText(/Pre-Examination.*Verification/i)).toBeVisible({ timeout: 10000 })
 
-      const verifyFaceBtn = student.page.getByRole('button', { name: /Capture & Verify Face/i })
-      await expect(verifyFaceBtn).toBeVisible()
-      await verifyFaceBtn.click()
+      // Step 1: Capture Photo
+      const captureBtn = student.page.getByRole('button', { name: /Capture Photo/i })
+      await expect(captureBtn).toBeVisible({ timeout: 10000 })
+      await student.page.waitForFunction(() => {
+        const v = document.querySelector('video') as HTMLVideoElement | null
+        return v && v.readyState >= 2
+      }, { timeout: 10000 }).catch(() => { })
+      await captureBtn.click()
 
-      const launchBtn = student.page.getByRole('button', { name: /Enter Fullscreen & Launch Exam/i })
-      await expect(launchBtn).toBeVisible({ timeout: 10000 })
-      await launchBtn.click()
+      // Step 2: Confirm & Verify
+      const confirmBtn = student.page.getByRole('button', { name: /Confirm & Verify/i })
+      await expect(confirmBtn).toBeVisible({ timeout: 10000 })
+      await confirmBtn.click()
 
-      // 4. In Arena: verify camera track is still 'live' inside arena before submit
+      // 4. In Arena: verify camera tracks from pre-check are cleanly closed (photo-only model)
       await student.page.waitForURL(url => url.pathname.includes('/arena') || url.pathname.includes('/exam'), { timeout: 15000 })
       await expect(student.page.getByText('Question 1 of 3')).toBeVisible({ timeout: 10000 })
 
@@ -217,9 +223,8 @@ test.describe('E2E: Student Attempt Flow', () => {
         }
       })
       expect(liveTracksInArena.count).toBeGreaterThan(0)
-      expect(liveTracksInArena.activeCount).toBeGreaterThan(0)
-      expect(liveTracksInArena.hasGlobalCamera).toBe(true)
-      expect(liveTracksInArena.globalCameraLive).toBe(true)
+      // In the photo-only pre-check model, tracks are immediately stopped after capture
+      expect(liveTracksInArena.activeCount).toBe(0)
 
       await student.page.getByRole('button', { name: /Submit Exam/i }).click()
       await expect(student.page.getByText('Submit Examination?')).toBeVisible()
