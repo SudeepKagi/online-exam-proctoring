@@ -37,25 +37,25 @@ export default function CandidateAuditSheet({
 
           <div className="py-4 space-y-4">
             {/* Attempt Status Banner */}
-            <div className="p-3 bg-[#edecfb]/60 rounded-xl flex justify-between items-center text-xs">
+            <div className="p-3.5 bg-[#edecfb]/70 rounded-[14px] flex justify-between items-center text-xs">
               <span className="font-[420] text-[#28253b]">Attempt Status:</span>
-              <Badge variant="outline" className="border-0 bg-white text-[#5266eb] font-mono text-[11px]">
+              <Badge variant="outline" className="border-0 bg-white text-[#5266eb] font-mono text-[11px] px-2.5 py-0.5 rounded-[20px]">
                 {candidate.attemptStatus}
               </Badge>
             </div>
 
-            {/* Phase 2 A.4: Identity Check Section (Separated from violation stream) */}
-            <div className="p-3 bg-[#fbfbff] rounded-xl border border-[#e9eaf2]/70 space-y-2">
+            {/* Identity Check Section */}
+            <div className="p-3.5 bg-[#fbfbff] rounded-[14px] space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-[480] text-[#28253b] flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Identity Check
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Identity Verification
                 </span>
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-mono border-0 ${
+                  className={`text-[10px] font-mono border-0 rounded-[20px] px-2 py-0.5 ${
                     faceStatus === 'MATCH' || candidate.faceVerified || candidate.invigilatorApproved
                       ? 'bg-[#edecfb] text-[#5266eb]'
-                      : faceStatus === 'PENDING_APPROVAL'
+                      : faceStatus === 'PENDING_APPROVAL' || faceStatus === 'NO_REFERENCE'
                       ? 'bg-[#edecfb] text-[#28253b]'
                       : 'bg-[#edecfb]/80 text-[#554e7b]'
                   }`}
@@ -71,18 +71,28 @@ export default function CandidateAuditSheet({
               )}
 
               {/* Photo preview if available */}
-              {candidate.facePhotoKey && (
-                <div className="pt-1 flex items-center gap-2">
+              {(candidate.facePhotoKey || candidate.photoUrl || candidate.latestSnapshotUrl) && (
+                <div className="pt-1 flex items-center gap-3">
                   <div
-                    onClick={() => setModalImage({ url: candidate.facePhotoKey, title: `${candidate.studentName} — Identity Photo` })}
-                    className="w-14 h-14 rounded-lg overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] cursor-pointer hover:opacity-90 relative group"
+                    onClick={() => setModalImage({
+                      url: candidate.facePhotoKey || candidate.photoUrl || candidate.latestSnapshotUrl,
+                      title: `${candidate.studentName} — Verification Still Photo`
+                    })}
+                    className="w-16 h-16 rounded-[12px] overflow-hidden bg-[#fbfcfd] cursor-pointer hover:opacity-90 relative group shadow-xs"
                   >
-                    <img src={candidate.facePhotoKey} alt="Pre-check identity" className="w-full h-full object-cover" />
+                    <img
+                      src={candidate.facePhotoKey || candidate.photoUrl || candidate.latestSnapshotUrl}
+                      alt="Pre-check identity"
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition">
-                      <Maximize2 className="w-3 h-3" />
+                      <Maximize2 className="w-3.5 h-3.5" />
                     </div>
                   </div>
-                  <span className="text-[10px] text-[#554e7b]">Pre-check still photograph</span>
+                  <div className="space-y-0.5">
+                    <span className="text-[11px] font-[420] text-[#28253b] block">Pre-check photograph</span>
+                    <span className="text-[10px] text-[#554e7b] font-[360] block">Captured at session verification</span>
+                  </div>
                 </div>
               )}
 
@@ -91,21 +101,22 @@ export default function CandidateAuditSheet({
                 <div className="pt-2 grid grid-cols-2 gap-2">
                   <Button
                     size="sm"
+                    variant="primary"
                     disabled={actionLoading}
                     onClick={() => onApproveIdentity(candidate)}
-                    className="h-8 text-xs font-[420]"
+                    className="h-8 text-xs font-[420] rounded-[40px]"
                   >
-                    <CheckCircle className="w-3 h-3 mr-1" /> Approve Identity
+                    <CheckCircle className="w-3.5 h-3.5 mr-1" /> Approve Identity
                   </Button>
                   {onRejectIdentity && (
                     <Button
                       size="sm"
                       disabled={actionLoading}
-                      variant="secondary"
+                      variant="outline"
                       onClick={() => onRejectIdentity(candidate)}
-                      className="h-8 text-xs font-[420]"
+                      className="h-8 text-xs font-[420] rounded-[40px]"
                     >
-                      <XCircle className="w-3 h-3 mr-1" /> Reject
+                      <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
                     </Button>
                   )}
                 </div>
@@ -117,7 +128,7 @@ export default function CandidateAuditSheet({
               onClick={() => onToggleSuspend(candidate)}
               disabled={actionLoading || !candidate.attemptId || isFinalized}
               variant={candidate.attemptStatus === 'SUSPENDED' ? 'primary' : 'secondary'}
-              className="w-full text-xs h-9 font-[420]"
+              className="w-full text-xs h-9 font-[420] rounded-[40px]"
             >
               {isFinalized
                 ? 'Attempt Finalized (Read Only)'
@@ -131,19 +142,19 @@ export default function CandidateAuditSheet({
                 onClick={() => onTerminate(candidate)}
                 disabled={actionLoading || !candidate.attemptId}
                 variant="destructive"
-                className="w-full text-xs h-9 font-[420] cursor-pointer"
+                className="w-full text-xs h-9 font-[420] rounded-[40px] cursor-pointer"
               >
                 Terminate Attempt Access
               </Button>
             )}
 
-            {/* Phase 2 B.4: Violation Timeline with Screenshots */}
+            {/* Violation Timeline with Screenshots */}
             <div className="space-y-2 pt-2">
               <h4 className="text-xs font-[480] text-[#554e7b] uppercase tracking-wider">
                 Violation Timeline ({auditHistory.length})
               </h4>
               {auditHistory.length === 0 ? (
-                <p className="text-xs text-[#554e7b] text-center py-4">No violations logged.</p>
+                <p className="text-xs text-[#554e7b] text-center py-4 font-[360]">No violations logged.</p>
               ) : (
                 <div className="space-y-2">
                   {auditHistory.map((l, idx) => {
@@ -153,13 +164,13 @@ export default function CandidateAuditSheet({
                     return (
                       <div
                         key={l.id ? `audit-${l.id}` : `audit-idx-${idx}`}
-                        className="p-2.5 rounded-lg border border-[#e9eaf2]/70 bg-[#fbfbff] text-xs space-y-1.5"
+                        className="p-3 rounded-[12px] bg-[#fbfbff] text-xs space-y-1.5"
                       >
                         <div className="flex justify-between items-center font-[420]">
                           <span className="text-[#28253b]">{formatViolationType(l.eventType)}</span>
                           <Badge
                             variant="outline"
-                            className="border-0 bg-[#edecfb] text-[#554e7b] font-mono text-[10px]"
+                            className="border-0 bg-[#edecfb] text-[#554e7b] font-mono text-[10px] rounded-[20px]"
                           >
                             {l.severity}
                           </Badge>
@@ -186,10 +197,10 @@ export default function CandidateAuditSheet({
                         {snapUrl && (
                           <div
                             onClick={() => setModalImage({ url: snapUrl, title: `${formatViolationType(l.eventType)} Screenshot` })}
-                            className="aspect-video w-full rounded overflow-hidden border border-[#e9eaf2] bg-[#fbfcfd] cursor-pointer hover:opacity-90 relative group mt-1"
+                            className="aspect-video w-full rounded-[10px] overflow-hidden bg-black/5 cursor-pointer hover:opacity-90 relative group mt-1"
                           >
                             <img src={snapUrl} alt="Violation frame" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition text-[11px]">
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition text-[11px] font-[420]">
                               <Maximize2 className="w-3.5 h-3.5 mr-1" /> Expand
                             </div>
                           </div>

@@ -6,10 +6,10 @@ import { formatViolationType } from '@/shared/violationTypes'
 
 export default function ViolationStream({ violations = [], onZoomSnapshot }) {
   return (
-    <Card className="flex flex-col h-full border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
-      <CardHeader className="py-3 px-4 border-b border-[#e9eaf2] bg-[#fbfbff] flex flex-row items-center justify-between shrink-0">
+    <Card className="flex flex-col h-full border-0 bg-white shadow-xs rounded-[16px] overflow-hidden font-sans">
+      <CardHeader className="py-3.5 px-4 border-0 bg-[#fbfbff] flex flex-row items-center justify-between shrink-0 rounded-t-[16px]">
         <div className="flex items-center space-x-1.5">
-          <ShieldAlert className="w-4 h-4 text-[#5266eb] animate-pulse" />
+          <ShieldAlert className="w-4 h-4 text-[#5266eb]" />
           <CardTitle className="text-xs font-[500] uppercase text-[#554e7b] tracking-[0.28px]">
             Live Violation Stream
           </CardTitle>
@@ -19,7 +19,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
         </Badge>
       </CardHeader>
 
-      <CardContent className="flex-1 p-3 overflow-y-auto space-y-3 min-h-0">
+      <CardContent className="flex-1 p-3.5 overflow-y-auto space-y-2.5 min-h-0">
         {violations.length === 0 ? (
           <div className="py-16 text-center text-xs text-[#70707d] font-[360]">
             No live violation alerts recorded. Examination running with clean integrity.
@@ -28,7 +28,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
           violations.map((v, i) => (
             <div
               key={`stream-v-${v.id || 'no-id'}-${i}`}
-              className="p-3 rounded-xl bg-[#edecfb]/60 hover:bg-[#edecfb] transition space-y-2 border-0"
+              className="p-3 rounded-[14px] bg-[#edecfb]/60 hover:bg-[#edecfb] transition space-y-2 border-0"
             >
               <div className="flex items-start justify-between gap-1">
                 <div>
@@ -44,7 +44,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
               {v.snapshotDataUrl && (
                 <div
                   onClick={() => onZoomSnapshot(v)}
-                  className="aspect-video w-full rounded-lg overflow-hidden border border-[#c3c3cc]/40 bg-black relative group cursor-pointer shadow-xs"
+                  className="aspect-video w-full rounded-[10px] overflow-hidden bg-black/5 relative group cursor-pointer shadow-xs"
                 >
                   <img
                     src={v.snapshotDataUrl}
@@ -62,7 +62,7 @@ export default function ViolationStream({ violations = [], onZoomSnapshot }) {
 
               <div className="flex items-center justify-between text-[10px] text-[#554e7b] pt-0.5 font-[360]">
                 <span className="flex items-center gap-1 font-mono">
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-3 h-3 text-[#554e7b]" />
                   {new Date(v.createdAt || Date.now()).toLocaleTimeString()}
                 </span>
                 <span className="text-[10px] font-[500] text-[#554e7b] uppercase tracking-wider">

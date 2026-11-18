@@ -90,11 +90,11 @@ test.describe('E2E: Invigilator Operations Flow', () => {
 
       // 5. Invigilator sees student card and clicks to open Sheet
       await invigilator.page.reload()
-      const studentCard = invigilator.page.locator('[data-slot="card"], .cursor-pointer').filter({ hasText: /Alice Johnson|Candidate/i }).first()
+      const studentCard = invigilator.page.locator('[data-testid="candidate-card"], [data-slot="card"]').filter({ hasText: /Alice Johnson|Candidate/i }).first()
       await expect(studentCard).toBeVisible({ timeout: 10000 })
 
-      // Click card to open Sheet
-      await studentCard.click()
+      // Click Audit History button on card to open Sheet
+      await studentCard.getByRole('button', { name: /Audit History/i }).click()
       await expect(invigilator.page.getByText(/Telemetry & Security Audit Sheet/i)).toBeVisible({ timeout: 10000 })
 
       // 6. Click Suspend Attempt button
@@ -151,14 +151,105 @@ test.describe('E2E: Invigilator Operations Flow', () => {
         })
       })
 
-      // Click student card to open Sheet
-      const studentCard = invigilator.page.locator('[data-slot="card"], .cursor-pointer').filter({ hasText: /Alice Johnson|Candidate/i }).first()
+      // Click student card Audit History to open Sheet
+      const studentCard = invigilator.page.locator('[data-testid="candidate-card"], [data-slot="card"]').filter({ hasText: /Alice Johnson|Candidate/i }).first()
       await expect(studentCard).toBeVisible({ timeout: 10000 })
-      await studentCard.click()
+      await studentCard.getByRole('button', { name: /Audit History/i }).click()
       await expect(invigilator.page.getByText(/Telemetry & Security Audit Sheet/i)).toBeVisible({ timeout: 10000 })
 
       // Verify legacy violation renders friendly label "Screen share ended (legacy)"
       await expect(invigilator.page.getByText('Screen share ended (legacy)')).toBeVisible({ timeout: 10000 })
+    } finally {
+      await invigilator.close()
+    }
+  })
+
+  test('Identity verification queue: filter by Identity Queue -> review photo -> approve candidate identity', async ({ browser }) => {
+    test.setTimeout(60000)
+
+    const invigilator = await createActor(browser, 'invigilator')
+    try {
+      await invigilator.page.goto('/login')
+      await invigilator.page.locator('input[type="text"]').fill(SEEDED_INVIGILATOR.email)
+      await invigilator.page.locator('input[type="password"]').fill(SEEDED_INVIGILATOR.password)
+      await invigilator.page.locator('button[type="submit"]').click()
+      await invigilator.page.waitForURL(url => url.pathname.includes('/invigilator'), { timeout: 15000 })
+      await invigilator.page.goto('/invigilator/console')
+      await expect(invigilator.page.getByText('Live Proctoring Console')).toBeVisible({ timeout: 10000 })
+
+      // Mock live feed candidates with one pending identity review
+      const fakeAttemptId = 'a0000000-0000-4000-8000-000000000001'
+      const fakeStudentId = 'b0000000-0000-4000-8000-000000000002'
+
+      await invigilator.page.route('**/api/v1/proctoring/exams/*/live', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            status: 'success',
+            candidates: [
+              {
+                studentId: fakeStudentId,
+                attemptId: fakeAttemptId,
+                studentName: 'Bob ReviewCandidate',
+                institutionId: 'USN-099',
+                attemptStatus: 'IN_PROGRESS',
+                violationCount: 0,
+                faceStatus: 'PENDING_APPROVAL',
+                faceVerified: false,
+                latestSnapshotUrl: null,
+                lastActiveAt: new Date().toISOString()
+              }
+            ],
+            violations: []
+          })
+        })
+      })
+
+      // Route mock attempt logs to return empty clean logs
+      await invigilator.page.route('**/api/v1/proctoring/attempts/*/logs', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 'success', logs: [] })
+        })
+      })
+
+      // Reload to ingest route mock
+      await invigilator.page.reload()
+
+      // 1. Verify "Identity Queue (1)" button is present
+      const idQueueBtn = invigilator.page.locator('button').filter({ hasText: /Identity Queue/i })
+      await expect(idQueueBtn).toBeVisible({ timeout: 10000 })
+      await idQueueBtn.click()
+
+      // 2. Candidate card is visible with "ID Review" badge
+      const candidateCard = invigilator.page.locator('[data-testid="candidate-card"], [data-slot="card"]').filter({ hasText: /Bob ReviewCandidate/i }).first()
+      await expect(candidateCard).toBeVisible({ timeout: 10000 })
+      await expect(candidateCard.getByText('ID Review')).toBeVisible()
+
+      // 3. Open Audit Sheet
+      await candidateCard.getByRole('button', { name: /Audit History/i }).click()
+      await expect(invigilator.page.getByText(/Telemetry & Security Audit Sheet/i)).toBeVisible({ timeout: 10000 })
+
+      // 4. Verify Identity Verification Section with Approve Identity button
+      const approveBtn = invigilator.page.getByRole('button', { name: /Approve Identity/i })
+      await expect(approveBtn).toBeVisible({ timeout: 10000 })
+
+      // 5. Mock Approve Identity Endpoint
+      await invigilator.page.route('**/api/v1/attempts/*/approve-identity', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 'success', faceStatus: 'APPROVED', faceVerified: true })
+        })
+      })
+
+      // Click Approve Identity
+      await approveBtn.click()
+
+      // 6. Verify badge switches to Approved
+      await expect(invigilator.page.getByText('Approved')).toBeVisible({ timeout: 10000 })
     } finally {
       await invigilator.close()
     }

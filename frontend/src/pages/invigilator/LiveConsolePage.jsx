@@ -102,7 +102,25 @@ export default function LiveConsolePage() {
             attemptStatus: data.attemptStatus || c.attemptStatus,
             violationCount: data.violationCount ?? c.violationCount,
             latestSnapshotUrl: data.latestSnapshotUrl || c.latestSnapshotUrl,
-            lastActiveAt: data.lastActiveAt || c.lastActiveAt
+            lastActiveAt: data.lastActiveAt || c.lastActiveAt,
+            faceStatus: data.faceStatus || c.faceStatus,
+            faceVerified: data.faceVerified ?? c.faceVerified,
+            invigilatorApproved: data.invigilatorApproved ?? c.invigilatorApproved
+          }
+        }
+        return c
+      }))
+    }
+
+    const handleIdentityUpdated = (data) => {
+      if (!data) return
+      setCandidates(prev => prev.map(c => {
+        if (c.attemptId === data.attemptId || c.studentId === data.studentId) {
+          return {
+            ...c,
+            faceStatus: data.faceStatus || (data.status === 'APPROVED' ? 'APPROVED' : 'REJECTED'),
+            faceVerified: data.status === 'APPROVED' || Boolean(data.faceVerified),
+            invigilatorApproved: data.status === 'APPROVED' || Boolean(data.invigilatorApproved)
           }
         }
         return c
@@ -112,11 +130,17 @@ export default function LiveConsolePage() {
     socket.on('proctoring:violation', handleViolation)
     socket.on('student:violation', handleViolation)
     socket.on('attempt:updated', handleAttemptUpdated)
+    socket.on('student:identity_pending', handleAttemptUpdated)
+    socket.on('identity:approved', handleIdentityUpdated)
+    socket.on('identity:rejected', handleIdentityUpdated)
 
     return () => {
       socket.off('proctoring:violation', handleViolation)
       socket.off('student:violation', handleViolation)
       socket.off('attempt:updated', handleAttemptUpdated)
+      socket.off('student:identity_pending', handleAttemptUpdated)
+      socket.off('identity:approved', handleIdentityUpdated)
+      socket.off('identity:rejected', handleIdentityUpdated)
     }
   }, [selectedExamId])
 
@@ -220,8 +244,15 @@ export default function LiveConsolePage() {
     }
   }
 
+  const pendingIdentityCount = candidates.filter(c =>
+    c.faceStatus === 'PENDING_APPROVAL' || c.faceStatus === 'NO_REFERENCE' || (!c.faceVerified && c.faceStatus && c.faceStatus !== 'MATCH' && c.faceStatus !== 'APPROVED')
+  ).length
+
   const filtered = candidates
     .filter(c => {
+      if (filter === 'IDENTITY_QUEUE') {
+        return c.faceStatus === 'PENDING_APPROVAL' || c.faceStatus === 'NO_REFERENCE' || (!c.faceVerified && c.faceStatus && c.faceStatus !== 'MATCH' && c.faceStatus !== 'APPROVED')
+      }
       if (filter === 'NEEDS_ATTENTION') return (c.violationCount > 0) || c.faceStatus === 'PENDING_APPROVAL' || c.attemptStatus === 'SUSPENDED'
       if (filter === 'FLAGGED') return c.violationCount > 0
       if (filter === 'SUSPENDED') return c.attemptStatus === 'SUSPENDED'
@@ -240,17 +271,18 @@ export default function LiveConsolePage() {
         onSelectExamId={setSelectedExamId}
         filter={filter}
         onSelectFilter={setFilter}
+        pendingIdentityCount={pendingIdentityCount}
       />
 
       {/* Split View: Left (Feeds Grid) & Right (Violation Stream) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-4 font-sans items-start">
         <div className="lg:col-span-8 xl:col-span-9">
           {loading ? (
-            <div className="py-20 text-center text-xs text-muted-foreground bg-white rounded-xl border border-border flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" /> Loading live candidate telemetry...
+            <div className="py-20 text-center text-xs text-[#554e7b] bg-white rounded-[16px] border-0 shadow-xs flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-[#5266eb]" /> Loading live candidate telemetry...
             </div>
           ) : filtered.length === 0 ? (
-            <div className="py-20 text-center text-xs text-muted-foreground bg-white rounded-xl border border-border">
+            <div className="py-20 text-center text-xs text-[#554e7b] bg-white rounded-[16px] border-0 shadow-xs">
               No active candidates match this filter.
             </div>
           ) : (
