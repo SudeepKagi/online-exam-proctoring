@@ -66,6 +66,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `seb-step2-middleware.test.js` | 25 | **UPDATE** | Verifies SEB middleware in `audit` vs `enforce` mode with header validation; updated with DB institution mode configuration, non-SEB pass-through, and verified photo precheck requirement on attempt start. |
 | `seb-step3-status.test.js` | 3 | **UPDATE** | Verifies institution SEB status endpoint returning masked configuration key; updated with DB institution mode configuration. |
 | `seb-verification-redesign.test.js` | 8 | **UPDATE** | Verifies SEB ping and inspection; updated to canonical URL matching for ping and strict header requirement for `inspectSebRequest` (direct client body key bypass removed). |
+| `student-attempt.spec.ts` | 2 | **UPDATE** | Updated Pre-Check face verification sequence to two-step "Capture Photo" -> "Confirm & Verify". Aligned camera teardown assertion with photo-only identity model where camera tracks are immediately stopped after photo capture rather than continuously streaming during the arena. |
 | `secrets-hardening.test.js` | 4 | **KEEP** | Verifies secret entropy requirements and rotation safety guards. |
 | `storage-probe.test.js` | 3 | **KEEP** | Verifies startup storage probe (`put`, `get`, `delete` under `probe/`) and admin storage health check (`/api/v1/admin/health/storage`). |
 | `storage-validation.test.js` | 10 | **KEEP** | Verifies S3 environment configuration validation and rejection of mock/localhost in production. |

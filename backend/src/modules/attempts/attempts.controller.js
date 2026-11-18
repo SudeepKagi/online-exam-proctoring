@@ -311,6 +311,26 @@ async function exportAttemptIncidentsCsv(req, res, next) {
   }
 }
 
+async function getAttemptResults(req, res, next) {
+  try {
+    const { attemptId } = req.params
+    const results = await attemptService.getAttemptResults(attemptId, req.user.id, req.user.role)
+    return res.status(200).json({ status: 'success', ...results })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function getExamResult(req, res, next) {
+  try {
+    const { examId } = req.params
+    const results = await attemptService.getStudentExamResult(examId, req.user.id)
+    return res.status(200).json({ status: 'success', ...results })
+  } catch (err) {
+    next(err)
+  }
+}
+
 module.exports = {
   getReadiness,
   getSebStatus,
@@ -319,6 +339,8 @@ module.exports = {
   saveAnswer,
   batchSaveAnswers,
   submitAttempt,
+  getAttemptResults,
+  getExamResult,
   suspendAttempt,
   resumeAttempt,
   terminateAttempt,

@@ -250,6 +250,159 @@ class AttemptService {
     })
     return updated
   }
+
+  async getAttemptResults(attemptId, userId, role) {
+    const attempt = await prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      include: {
+        exam: {
+          include: {
+            questions: {
+              orderBy: { displayOrder: 'asc' }
+            }
+          }
+        },
+        student: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            institutionId: true
+          }
+        },
+        answers: true
+      }
+    })
+
+    if (!attempt) {
+      throw httpErr('Attempt not found', 404)
+    }
+
+    const normRole = normalizeRole(role)
+    if (normRole === ROLES.STUDENT && attempt.studentId !== userId) {
+      throw httpErr('Access denied to this attempt', 403)
+    }
+
+    if (normRole === ROLES.FACULTY && attempt.exam.createdById !== userId) {
+      const assignment = await prisma.examAssignment.findFirst({
+        where: { examId: attempt.examId, userId }
+      })
+      if (!assignment) {
+        throw httpErr('Access denied to this attempt', 403)
+      }
+    }
+
+    if (!['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(attempt.status)) {
+      throw httpErr('Attempt results are not finalized yet', 400, 'ATTEMPT_NOT_FINALIZED')
+    }
+
+    const exam = attempt.exam
+    const questions = exam.questions || []
+    const totalMarks = questions.reduce((sum, q) => sum + (Number(q.marks) || 1), 0)
+    const passingMarks = exam.passingMarks || Math.round(totalMarks * 0.4)
+    const score = Number(attempt.score) || 0
+    const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : 0
+    const isPassed = score >= passingMarks
+
+    const pConfig = exam.proctoringConfig || {}
+    const releasePolicy = pConfig.resultsReleasePolicy || 'IMMEDIATE'
+    const now = new Date()
+    const isWindowClosed = exam.endTime ? now >= new Date(exam.endTime) : true
+
+    let resultsReleased = false
+    if (normRole === ROLES.FACULTY || normRole === ROLES.ADMIN) {
+      resultsReleased = true
+    } else if (releasePolicy === 'IMMEDIATE') {
+      resultsReleased = true
+    } else if (releasePolicy === 'AFTER_WINDOW') {
+      resultsReleased = isWindowClosed
+    } else if (releasePolicy === 'MANUAL') {
+      resultsReleased = Boolean(pConfig.resultsReleased)
+    }
+
+    const answerMap = new Map((attempt.answers || []).map(a => [a.questionId, a]))
+    const attemptedCount = attempt.answers?.filter(a => a.selectedOptionIndex !== null && a.selectedOptionIndex !== undefined).length || 0
+
+    let questionReview = null
+    let releaseNotice = null
+
+    if (resultsReleased) {
+      questionReview = questions.map((q, idx) => {
+        const studentAns = answerMap.get(q.id)
+        const selected = studentAns?.selectedOptionIndex ?? null
+        const isCorrect = selected === q.correctOptionIndex
+        let scoreAwarded = 0
+        if (selected !== null) {
+          scoreAwarded = isCorrect ? Number(q.marks || 1) : -Math.abs(Number(q.negativeMarks || 0))
+        }
+
+        let parsedOptions = q.options
+        if (typeof parsedOptions === 'string') {
+          try { parsedOptions = JSON.parse(parsedOptions) } catch (_) {}
+        }
+        if (parsedOptions && typeof parsedOptions === 'object' && !Array.isArray(parsedOptions) && Array.isArray(parsedOptions.options)) {
+          parsedOptions = parsedOptions.options
+        }
+
+        return {
+          id: q.id,
+          questionNumber: idx + 1,
+          questionText: q.questionText,
+          options: parsedOptions,
+          marks: Number(q.marks) || 1,
+          negativeMarks: Number(q.negativeMarks) || 0,
+          selectedOptionIndex: selected,
+          correctOptionIndex: q.correctOptionIndex,
+          isCorrect,
+          scoreAwarded
+        }
+      })
+    } else {
+      releaseNotice = exam.endTime
+        ? `Detailed question review will be available after the examination window closes on ${new Date(exam.endTime).toLocaleString()}.`
+        : 'Detailed question review will be released by your instructor.'
+    }
+
+    return {
+      attempt: {
+        id: attempt.id,
+        status: attempt.status,
+        score,
+        totalMarks,
+        passingMarks,
+        percentage,
+        isPassed,
+        startedAt: attempt.startedAt,
+        submittedAt: attempt.submittedAt,
+        questionsCount: questions.length,
+        attemptedCount,
+        unattemptedCount: Math.max(0, questions.length - attemptedCount)
+      },
+      exam: {
+        id: exam.id,
+        title: exam.title,
+        courseCode: exam.courseCode,
+        durationMinutes: exam.durationMinutes,
+        startTime: exam.startTime,
+        endTime: exam.endTime
+      },
+      student: {
+        fullName: attempt.student?.fullName,
+        institutionId: attempt.student?.institutionId
+      },
+      resultsReleased,
+      releaseNotice,
+      questions: questionReview
+    }
+  }
+
+  async getStudentExamResult(examId, studentId) {
+    const attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
+    if (!attempt) {
+      throw httpErr('No examination attempt found for this exam', 404)
+    }
+    return this.getAttemptResults(attempt.id, studentId, 'STUDENT')
+  }
 }
 
 const attemptService = new AttemptService()

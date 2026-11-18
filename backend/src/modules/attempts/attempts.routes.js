@@ -16,6 +16,10 @@ router.get('/student/exams/:examId/start', authenticateToken, verifySeb, attempt
 router.post('/:examId/readiness', authenticateToken, attemptsController.getReadiness)
 router.post('/:examId/start', authenticateToken, verifySeb, attemptsController.startAttempt)
 
+// Results & Score Breakdown (Standard HTTP, student can view in any browser)
+router.get('/exams/:examId/my-result', authenticateToken, attemptsController.getExamResult)
+router.get('/:attemptId/results', authenticateToken, attemptsController.getAttemptResults)
+
 // Hot-Path Answer Upsert & State Sync
 router.get('/:attemptId', authenticateToken, verifySeb, attemptsController.getAttempt)
 router.post('/:attemptId/answers', authenticateToken, verifySeb, attemptsController.saveAnswer)
