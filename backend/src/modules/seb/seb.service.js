@@ -46,13 +46,17 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
 
   // 2. S3 File presence check
   let filePresent
+  let storageUnavailable = false
   const fileKey = sebConfig?.fileKey || 'seb/institution-config.seb'
   try {
     const storage = getStorageAdapter()
     const head = await storage.headObject(fileKey)
     filePresent = Boolean(head)
-  } catch (_) {
+  } catch (err) {
     filePresent = false
+    if (err && err.name !== 'NotFound' && err.$metadata?.httpStatusCode !== 404 && err.code !== 'ENOENT') {
+      storageUnavailable = true
+    }
   }
 
   // 3. Configured requires both key and file
@@ -108,6 +112,7 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     configured,
     keyPresent,
     filePresent,
+    storageUnavailable,
     lastVerifiedAt,
     lastVerifiedMethod: sebConfig?.lastVerifiedMethod || null,
     lastVerifiedUserAgent: sebConfig?.lastVerifiedUserAgent || null,

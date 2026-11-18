@@ -19,7 +19,7 @@ const { sebDiagnosticsService } = require('./sebDiagnostics.service')
  */
 function verifySebHeaderHash(req, activeKey, targetPath = null) {
   if (!activeKey || !/^[0-9a-f]{64}$/i.test(activeKey)) return false
-  const rawHeader = req.headers['x-safeexambrowser-configkeyhash'] || req.headers['x-safeexambrowser-requesthash']
+  const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
   const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim().toLowerCase() : ''
   if (!/^[0-9a-f]{64}$/.test(receivedHeader)) return false
 
@@ -314,89 +314,133 @@ async function downloadSebConfig(req, res, next) {
  */
 async function exchange(req, res, next) {
   try {
+    const requestId = req.headers['x-request-id'] || req.id || crypto.randomUUID().slice(0, 8)
     const rawToken = req.query.launch || req.query.token
     if (!rawToken) {
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=missing_token')
       }
       return res.status(400).json({
-        code: 'MISSING_LAUNCH_TOKEN',
-        message: 'Launch token is required in query parameter ?launch=TOKEN'
+        code: 'INVALID_CODE',
+        message: 'Launch token is required in query parameter ?launch=TOKEN',
+        requestId
       })
     }
 
-    const consumeResult = sebTokenService.validateLaunchToken(rawToken)
-    if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
+    const validateResult = sebTokenService.validateLaunchToken(rawToken)
+    if (validateResult.status === 'TOO_MANY_ATTEMPTS') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'RATE_LIMITED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       return res.status(429).json({
-        code: 'TOO_MANY_ATTEMPTS',
-        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.'
+        code: 'RATE_LIMITED',
+        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.',
+        requestId
       })
     }
 
-    if (consumeResult.status === 'NOT_FOUND') {
+    if (validateResult.status === 'NOT_FOUND') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'INVALID_CODE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=invalid_token')
       }
       return res.status(401).json({
-        code: 'INVALID_LAUNCH_TOKEN',
-        message: 'Invalid or unrecognized launch token.'
+        code: 'INVALID_CODE',
+        message: 'Invalid or unrecognized launch token.',
+        requestId
       })
     }
 
-    if (consumeResult.status === 'EXPIRED') {
+    if (validateResult.status === 'EXPIRED') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_EXPIRED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=expired')
       }
       return res.status(401).json({
-        code: 'TOKEN_EXPIRED',
-        message: 'Launch token has expired. Please return to your browser and request a new launch link.'
+        code: 'CODE_EXPIRED',
+        message: 'Launch token has expired. Please return to your browser and request a new launch link.',
+        requestId
       })
     }
 
-    if (consumeResult.status === 'ALREADY_USED') {
+    if (validateResult.status === 'ALREADY_USED' || validateResult.status === 'CONSUMED') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_USED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=already_used')
       }
       return res.status(409).json({
-        code: 'TOKEN_ALREADY_USED',
-        message: 'This launch token has already been used. Please return to your browser and request a new launch link.'
+        code: 'CODE_USED',
+        message: 'This launch token has already been used. Please return to your browser and request a new launch link.',
+        requestId
       })
     }
 
-    const { record } = consumeResult
+    const { record } = validateResult
     const sebState = await getInstitutionSebState()
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
     // Enforcement mode security gating
     const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
+    const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+    const hasHeader = typeof rawHeader === 'string' && rawHeader.trim().length > 0
     const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
 
-    if (sebState.effectiveMode === 'enforce') {
-      if (!isSebAgent) {
+    const isEnforce = sebState.effectiveMode === 'enforce' || sebState.requestedMode === 'enforce'
+    if (isEnforce) {
+      if (sebState.storageUnavailable) {
+        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed: storage unavailable')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'STORAGE_UNAVAILABLE', requestId, userAgent, clientIp: req.ip })
+        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+          return res.redirect(302, '/seb/enter?error=storage_unavailable')
+        }
+        return res.status(503).json({
+          code: 'STORAGE_UNAVAILABLE',
+          message: "The exam system isn't ready. Storage is currently unavailable. Please contact your invigilator.",
+          requestId
+        })
+      }
+
+      if (!sebState.configured || !activeKey) {
+        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed: institution configuration missing')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'INSTITUTION_NOT_CONFIGURED', requestId, userAgent, clientIp: req.ip })
+        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
+          return res.redirect(302, '/seb/enter?error=not_ready')
+        }
+        return res.status(503).json({
+          code: 'INSTITUTION_NOT_CONFIGURED',
+          message: "The exam system isn't ready, tell your invigilator (Ref: #" + requestId + ")",
+          requestId
+        })
+      }
+
+      if (!isSebAgent || !hasHeader) {
+        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed: header missing or standard browser')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISSING', requestId, userAgent, clientIp: req.ip })
         if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
           return res.redirect(302, '/seb/enter?error=seb_required')
         }
         return res.status(403).json({
-          code: 'SEB_ENFORCEMENT_FAILED',
-          message: 'Access restricted to verified Safe Exam Browser sessions. Standard browsers are blocked.'
+          code: 'SEB_HEADER_MISSING',
+          message: 'Access restricted to verified Safe Exam Browser sessions. Configuration header is missing.',
+          requestId
         })
       }
 
       if (!headerMatch) {
-        logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on exchange: invalid or missing header hash')
+        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on exchange: invalid or mismatch header hash')
         sebDiagnosticsService.recordAttempt({
           purpose: record.purpose || 'exam',
           outcome: 'HEADER_MISMATCH',
           userAgent,
           clientIp: req.ip
         })
+        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISMATCH', requestId, userAgent, clientIp: req.ip })
         if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
           return res.redirect(302, '/seb/enter?error=seb_header_invalid')
         }
         return res.status(403).json({
-          code: 'SEB_ENFORCEMENT_FAILED',
-          message: 'Safe Exam Browser configuration check failed. Configuration Key header is missing or invalid.'
+          code: 'SEB_HEADER_MISMATCH',
+          message: 'Safe Exam Browser configuration check failed. Configuration Key header mismatch.',
+          requestId
         })
       }
     } else {
@@ -408,6 +452,9 @@ async function exchange(req, res, next) {
         clientIp: req.ip
       })
     }
+
+    // Now consume the token atomically after all security gates pass
+    sebTokenService.markConsumed(record)
 
     // Lookup user by id
     const user = await prisma.user.findUnique({
@@ -527,39 +574,50 @@ async function exchange(req, res, next) {
 async function exchangePin(req, res, next) {
   try {
     const rawPin = req.body?.pin || req.body?.code
+    const requestId = req.headers['x-request-id'] || req.id || crypto.randomUUID().slice(0, 8)
+
     if (!rawPin || typeof rawPin !== 'string') {
       return res.status(400).json({
-        code: 'MISSING_PIN',
-        message: 'A 6-digit launch code is required.'
+        code: 'INVALID_CODE',
+        message: 'A 6-digit launch code is required.',
+        requestId
       })
     }
 
     const consumeResult = sebTokenService.validatePin(rawPin.trim())
     if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'RATE_LIMITED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       return res.status(429).json({
-        code: 'TOO_MANY_ATTEMPTS',
-        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.'
+        code: 'RATE_LIMITED',
+        message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.',
+        requestId
       })
     }
 
     if (consumeResult.status === 'NOT_FOUND') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'INVALID_CODE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       return res.status(401).json({
-        code: 'INVALID_PIN',
-        message: 'Invalid 6-digit launch code. Please check the code and try again.'
+        code: 'INVALID_CODE',
+        message: 'Invalid 6-digit launch code. Please check the code and try again.',
+        requestId
       })
     }
 
     if (consumeResult.status === 'EXPIRED') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_EXPIRED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       return res.status(401).json({
-        code: 'PIN_EXPIRED',
-        message: 'This launch code has expired. Please return to your browser to generate a fresh code.'
+        code: 'CODE_EXPIRED',
+        message: 'This launch code has expired. Please return to your browser to generate a fresh code.',
+        requestId
       })
     }
 
     if (consumeResult.status === 'ALREADY_USED') {
+      sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_USED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
       return res.status(409).json({
-        code: 'PIN_ALREADY_USED',
-        message: 'This launch code has already been used. Please generate a fresh code.'
+        code: 'CODE_USED',
+        message: 'This launch code has already been used. Please generate a fresh code.',
+        requestId
       })
     }
 
@@ -569,27 +627,55 @@ async function exchangePin(req, res, next) {
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
     const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
+    const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+    const hasHeader = typeof rawHeader === 'string' && rawHeader.trim().length > 0
     const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
 
-    if (sebState.effectiveMode === 'enforce') {
-      if (!isSebAgent) {
+    const isEnforce = sebState.effectiveMode === 'enforce' || sebState.requestedMode === 'enforce'
+    if (isEnforce) {
+      if (sebState.storageUnavailable) {
+        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed on PIN exchange: storage unavailable')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'STORAGE_UNAVAILABLE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+        return res.status(503).json({
+          code: 'STORAGE_UNAVAILABLE',
+          message: "The exam system isn't ready. Storage is currently unavailable. Please contact your invigilator.",
+          requestId
+        })
+      }
+
+      if (!sebState.configured || !activeKey) {
+        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed on PIN exchange: institution configuration missing')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'INSTITUTION_NOT_CONFIGURED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+        return res.status(503).json({
+          code: 'INSTITUTION_NOT_CONFIGURED',
+          message: "The exam system isn't ready, tell your invigilator (Ref: #" + requestId + ")",
+          requestId
+        })
+      }
+
+      if (!isSebAgent || !hasHeader) {
+        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on PIN exchange: header missing or standard browser')
+        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISSING', requestId, userAgent, clientIp: req.ip })
         return res.status(403).json({
-          code: 'SEB_ENFORCEMENT_FAILED',
-          message: 'Access is restricted to verified Safe Exam Browser sessions.'
+          code: 'SEB_HEADER_MISSING',
+          message: 'Access is restricted to verified Safe Exam Browser sessions. Configuration header is missing.',
+          requestId
         })
       }
 
       if (!headerMatch) {
-        logger.warn({ ip: req.ip, userAgent }, 'SEB enforcement failed on PIN exchange: invalid or missing header hash')
+        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on PIN exchange: invalid or mismatch header hash')
         sebDiagnosticsService.recordAttempt({
           purpose: record.purpose || 'exam',
           outcome: 'HEADER_MISMATCH',
           userAgent,
           clientIp: req.ip
         })
+        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISMATCH', requestId, userAgent, clientIp: req.ip })
         return res.status(403).json({
-          code: 'SEB_ENFORCEMENT_FAILED',
-          message: 'Safe Exam Browser configuration check failed. Configuration Key header is missing or invalid.'
+          code: 'SEB_HEADER_MISMATCH',
+          message: 'Safe Exam Browser configuration check failed. Configuration Key header mismatch.',
+          requestId
         })
       }
     } else {
@@ -609,7 +695,8 @@ async function exchangePin(req, res, next) {
     if (!user || user.status === 'SUSPENDED') {
       return res.status(403).json({
         code: 'ACCOUNT_SUSPENDED',
-        message: 'Your account is invalid or suspended.'
+        message: 'Your account is invalid or suspended.',
+        requestId
       })
     }
 
@@ -691,7 +778,8 @@ async function exchangePin(req, res, next) {
       success: true,
       redirectUrl: destination,
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
-      token: accessToken
+      token: accessToken,
+      requestId
     })
   } catch (err) {
     logger.error({ err }, 'Error during SEB launch PIN exchange')

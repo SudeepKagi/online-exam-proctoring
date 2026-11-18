@@ -4,11 +4,61 @@ const crypto = require('crypto')
 
 const MAX_HISTORY = 20
 const attemptsHistory = []
+const exchangeFailures = []
 
 /**
  * Diagnostic service recording recent Safe Exam Browser verification and handshake attempts.
  */
 class SebDiagnosticsService {
+  /**
+   * Records an exchange failure event for admin diagnostics.
+   */
+  recordExchangeFailure({ code, requestId, userAgent = null, clientIp = null, timestamp = Date.now() }) {
+    const entry = {
+      timestamp,
+      code,
+      requestId: requestId || crypto.randomUUID().slice(0, 8),
+      userAgent: userAgent ? String(userAgent).slice(0, 100) : 'unknown',
+      clientIp: clientIp ? String(clientIp).replace(/^::ffff:/, '') : 'unknown'
+    }
+    exchangeFailures.unshift(entry)
+    if (exchangeFailures.length > 500) {
+      exchangeFailures.pop()
+    }
+    return entry
+  }
+
+  /**
+   * Returns aggregated failure counts by code and last request ID per code in the last 24 hours.
+   */
+  getEntryDiagnostics24h() {
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+    const recent = exchangeFailures.filter(e => e.timestamp >= oneDayAgo)
+    const failureCounts24h = {
+      INVALID_CODE: 0,
+      CODE_EXPIRED: 0,
+      CODE_USED: 0,
+      RATE_LIMITED: 0,
+      SEB_HEADER_MISSING: 0,
+      SEB_HEADER_MISMATCH: 0,
+      INSTITUTION_NOT_CONFIGURED: 0,
+      STORAGE_UNAVAILABLE: 0
+    }
+    const lastRequestIdByCode = {}
+    for (const e of recent) {
+      if (failureCounts24h[e.code] !== undefined) {
+        failureCounts24h[e.code]++
+        if (!lastRequestIdByCode[e.code]) {
+          lastRequestIdByCode[e.code] = e.requestId
+        }
+      }
+    }
+    return {
+      failureCounts24h,
+      lastRequestIdByCode
+    }
+  }
+
   /**
    * Records a verification attempt into the diagnostic log.
    */
@@ -53,6 +103,7 @@ class SebDiagnosticsService {
    */
   clearHistory() {
     attemptsHistory.length = 0
+    exchangeFailures.length = 0
   }
 
   /**

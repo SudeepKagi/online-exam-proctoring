@@ -23,7 +23,10 @@ import {
   Laptop,
   Clock,
   XCircle,
-  Info
+  Info,
+  HelpCircle,
+  Activity,
+  RotateCw
 } from 'lucide-react'
 
 export default function AdminSebConfigPage() {
@@ -60,6 +63,8 @@ export default function AdminSebConfigPage() {
   const [testDiagnostics, setTestDiagnostics] = useState(null)
   const [recentAttempts, setRecentAttempts] = useState([])
   const [justVerified, setJustVerified] = useState(false)
+  const [entryDiagnostics, setEntryDiagnostics] = useState(null)
+  const [loadingEntryDiagnostics, setLoadingEntryDiagnostics] = useState(false)
 
   // Modal & Messages
   const [confirmEnforceOpen, setConfirmEnforceOpen] = useState(false)
@@ -118,6 +123,18 @@ export default function AdminSebConfigPage() {
     } catch (_) {}
   }
 
+  const fetchEntryDiagnostics = async () => {
+    setLoadingEntryDiagnostics(true)
+    try {
+      const res = await apiClient.get('/admin/seb/entry-diagnostics')
+      if (res?.data) {
+        setEntryDiagnostics(res.data)
+      }
+    } catch (_) {} finally {
+      setLoadingEntryDiagnostics(false)
+    }
+  }
+
   const refreshStorage = async () => {
     setCheckingStorage(true)
     try {
@@ -138,6 +155,7 @@ export default function AdminSebConfigPage() {
     fetchStatus()
     fetchStorageHealth()
     fetchRecentAttempts()
+    fetchEntryDiagnostics()
 
     const pollInterval = setInterval(() => {
       fetchStatus()
@@ -959,6 +977,133 @@ export default function AdminSebConfigPage() {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Why students may fail to enter Diagnostic Card */}
+        <Card className="bg-white rounded-[16px] shadow-sm border-0" data-testid="why-students-fail-card">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="w-6 h-6 rounded-full bg-[#edecfb] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
+                  <Activity className="w-3.5 h-3.5" />
+                </span>
+                <div>
+                  <CardTitle className="text-sm font-[480] text-[#28253b]">
+                    Why students may fail to enter
+                  </CardTitle>
+                  <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
+                    Pre-entry infrastructure verification and 24-hour student exchange failure log
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={fetchEntryDiagnostics}
+                disabled={loadingEntryDiagnostics}
+                className="self-start sm:self-auto rounded-[40px] px-3 text-[11px]"
+              >
+                {loadingEntryDiagnostics ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : (
+                  <RotateCw className="w-3 h-3 mr-1.5 text-[#554e7b]" />
+                )}
+                Run Storage Probe & Refresh
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0 text-xs text-[#554e7b] font-[360]">
+            {/* Status Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* 1. Object Storage Config File */}
+              <div className="bg-[#fbfbff] p-3 rounded-[12px] flex flex-col gap-1">
+                <span className="text-[#554e7b] font-[420] text-[11px]">Config Object (HEAD)</span>
+                <span className={`inline-flex items-center gap-1.5 font-[480] ${entryDiagnostics?.configObjectPresent ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
+                  {entryDiagnostics?.configObjectPresent ? <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> : <XCircle className="w-3.5 h-3.5 text-[#c04b4b]" />}
+                  {entryDiagnostics?.configObjectPresent ? 'Present in S3' : 'Missing in S3'}
+                </span>
+              </div>
+
+              {/* 2. Key Presence */}
+              <div className="bg-[#fbfbff] p-3 rounded-[12px] flex flex-col gap-1">
+                <span className="text-[#554e7b] font-[420] text-[11px]">Configuration Key</span>
+                <span className={`inline-flex items-center gap-1.5 font-[480] ${entryDiagnostics?.keyPresent ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
+                  {entryDiagnostics?.keyPresent ? <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> : <XCircle className="w-3.5 h-3.5 text-[#c04b4b]" />}
+                  {entryDiagnostics?.keyPresent ? 'Active in DB' : 'Not configured'}
+                </span>
+              </div>
+
+              {/* 3. Effective Mode */}
+              <div className="bg-[#fbfbff] p-3 rounded-[12px] flex flex-col gap-1">
+                <span className="text-[#554e7b] font-[420] text-[11px]">Effective Mode</span>
+                <span className="font-[480] text-[#28253b] capitalize">
+                  {entryDiagnostics?.effectiveMode === 'enforce' ? 'Enforced' : (entryDiagnostics?.effectiveMode || status.effectiveMode) + ' Mode'}
+                </span>
+              </div>
+
+              {/* 4. Storage Probe */}
+              <div className="bg-[#fbfbff] p-3 rounded-[12px] flex flex-col gap-1">
+                <span className="text-[#554e7b] font-[420] text-[11px]">Storage Probe (IAM)</span>
+                <span className={`inline-flex items-center gap-1.5 font-[480] ${entryDiagnostics?.storageProbe?.passed ? 'text-[#5266eb]' : 'text-[#c04b4b]'}`}>
+                  {entryDiagnostics?.storageProbe?.passed ? <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> : <XCircle className="w-3.5 h-3.5 text-[#c04b4b]" />}
+                  {entryDiagnostics?.storageProbe?.passed ? 'Read/Write/Delete OK' : (entryDiagnostics?.storageProbe?.error ? 'Probe Denied' : 'Pending')}
+                </span>
+              </div>
+            </div>
+
+            {/* Exchange Failure Counts Table (24h) */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <h4 className="font-[480] text-[#28253b] text-xs">Student Entry Failure Modes (Last 24 Hours)</h4>
+                <span className="text-[11px] text-[#70707d]">Aggregated by distinct error code</span>
+              </div>
+              <div className="bg-[#fbfbff] rounded-[12px] overflow-hidden text-[11px]">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="border-b border-[#edecfb] text-[#554e7b] font-[420]">
+                      <th className="py-2.5 px-3">Failure Mode / Error Code</th>
+                      <th className="py-2.5 px-3">Root Cause & Guidance</th>
+                      <th className="py-2.5 px-3 text-right">24h Count</th>
+                      <th className="py-2.5 px-3 text-right">Last Request Ref</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#edecfb]/60 text-[#28253b]">
+                    {[
+                      { code: 'INVALID_CODE', label: 'Invalid / Unrecognized PIN', desc: 'Candidate entered an incorrect or misspelled 6-digit PIN' },
+                      { code: 'CODE_EXPIRED', label: 'Expired Launch Code', desc: 'Candidate waited >5 minutes after generating PIN before launch' },
+                      { code: 'CODE_USED', label: 'PIN Already Consumed', desc: 'Candidate attempted to reuse a PIN that was already redeemed' },
+                      { code: 'RATE_LIMITED', label: 'Rate Limit Exceeded', desc: 'More than 5 invalid PIN attempts within 1 minute' },
+                      { code: 'SEB_HEADER_MISSING', label: 'Missing ConfigKey Header', desc: 'Candidate opened exam in standard browser or SEB stripped headers' },
+                      { code: 'SEB_HEADER_MISMATCH', label: 'Configuration Key Mismatch', desc: 'Client SEB is running a different .seb config file than the server DB' },
+                      { code: 'INSTITUTION_NOT_CONFIGURED', label: 'Institution Not Configured', desc: 'No active SEB config file or 64-hex key stored on server' },
+                      { code: 'STORAGE_UNAVAILABLE', label: 'Object Storage Down', desc: 'S3 bucket connection or IAM permissions failure' }
+                    ].map((row) => {
+                      const count = entryDiagnostics?.failureCounts24h?.[row.code] || 0
+                      const lastId = entryDiagnostics?.lastRequestIdByCode?.[row.code] || '—'
+                      return (
+                        <tr key={row.code} className="hover:bg-white/60">
+                          <td className="py-2.5 px-3 font-mono font-[480] text-[#28253b]">
+                            {row.code}
+                            <span className="block font-sans text-[10px] text-[#554e7b] font-[360]">{row.label}</span>
+                          </td>
+                          <td className="py-2.5 px-3 text-[#554e7b]">{row.desc}</td>
+                          <td className="py-2.5 px-3 text-right font-[480]">
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] ${count > 0 ? 'bg-[#edecfb] text-[#5266eb]' : 'text-[#70707d]'}`}>
+                              {count}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono text-[#554e7b]">
+                            {lastId !== '—' ? `#${lastId}` : '—'}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </CardContent>
         </Card>
 

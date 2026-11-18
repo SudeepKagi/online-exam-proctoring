@@ -165,20 +165,29 @@ export default function LoginPage() {
         setSebPinError('Exchange failed. Please check your code.')
       }
     } catch (err) {
-      const code = err.response?.data?.code || err.code
-      const msg = err.response?.data?.message || err.message
-      if (code === 'TOO_MANY_ATTEMPTS') {
-        setSebPinError('Too many incorrect attempts for this code. Please return to Chrome to generate a fresh code.')
-      } else if (code === 'PIN_EXPIRED') {
-        setSebPinError('This launch code expired (codes are valid for 5 minutes). Please return to Chrome and click "Generate New Code".')
-      } else if (code === 'PIN_ALREADY_USED') {
-        setSebPinError('This launch code has already been used. If you closed or refreshed SEB, please return to Chrome and click "Generate New Code" (or sign in with password below).')
-      } else if (code === 'INVALID_PIN') {
-        setSebPinError('Invalid launch code. Please check the 6 digits displayed on your browser screen.')
-      } else if (code === 'SEB_ENFORCEMENT_FAILED') {
-        setSebPinError('Institutional configuration check failed. Contact your exam administrator.')
+      const data = err.response?.data || {}
+      const code = data.code || data.error?.code || err.code
+      const msg = data.message || data.error?.message || err.message
+      const refId = data.requestId || 'N/A'
+
+      if (code === 'TOO_MANY_ATTEMPTS' || code === 'RATE_LIMITED') {
+        setSebPinError('Too many incorrect attempts. Please wait a minute before trying again.')
+      } else if (code === 'PIN_EXPIRED' || code === 'CODE_EXPIRED') {
+        setSebPinError('This launch code has expired (codes are valid for 5 minutes). Please return to your browser to generate a fresh code.')
+      } else if (code === 'PIN_ALREADY_USED' || code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED') {
+        setSebPinError('This launch code has already been used. Please return to your browser to generate a fresh code.')
+      } else if (code === 'INVALID_PIN' || code === 'INVALID_CODE') {
+        setSebPinError('Wrong launch code. Please check the 6-digit code displayed on your primary browser.')
+      } else if (
+        code === 'INSTITUTION_NOT_CONFIGURED' ||
+        code === 'STORAGE_UNAVAILABLE' ||
+        code === 'SEB_HEADER_MISSING' ||
+        code === 'SEB_HEADER_MISMATCH' ||
+        code === 'SEB_ENFORCEMENT_FAILED'
+      ) {
+        setSebPinError(`The exam system isn't ready, tell your invigilator (Ref: #${refId})`)
       } else {
-        setSebPinError(msg || 'Unable to verify launch code. Please try again.')
+        setSebPinError(msg || `The exam system isn't ready, tell your invigilator (Ref: #${refId})`)
       }
     } finally {
       setSebPinLoading(false)
