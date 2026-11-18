@@ -36,6 +36,7 @@ export default function ExamArenaPage() {
   const [show1MinWarning, setShow1MinWarning] = useState(false)
   const [isTimeUpSubmitting, setIsTimeUpSubmitting] = useState(false)
   const [showSyncSuccess, setShowSyncSuccess] = useState(false)
+  const [mobilePaletteOpen, setMobilePaletteOpen] = useState(false)
 
   // Re-authentication state mid-exam
   const [reauthOpen, setReauthOpen] = useState(false)
@@ -506,6 +507,19 @@ export default function ExamArenaPage() {
         </div>
       )}
 
+      {/* Mobile Floating Question Palette Trigger Button */}
+      <div className="lg:hidden fixed bottom-4 right-4 z-30">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => setMobilePaletteOpen(true)}
+          className="shadow-md h-11 px-4 rounded-full border-0 font-[480] text-xs flex items-center gap-2 cursor-pointer"
+        >
+          <span>Q {currentIndex + 1} / {questions.length} · Navigator</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#5266eb]" />
+        </Button>
+      </div>
+
       {/* Main Examination Grid */}
       <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0 overflow-hidden">
         <div className="col-span-12 lg:col-span-9 flex flex-col min-h-0">
@@ -523,7 +537,7 @@ export default function ExamArenaPage() {
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-3 flex flex-col min-h-0">
+        <div className="hidden lg:flex lg:col-span-3 flex-col min-h-0">
           <QuestionPalette
             questions={questions}
             currentIndex={currentIndex}
@@ -534,6 +548,40 @@ export default function ExamArenaPage() {
           />
         </div>
       </div>
+
+      {/* Mobile Bottom Sheet Drawer for Question Palette */}
+      {mobilePaletteOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
+          <div
+            className="fixed inset-0 bg-[#28253b]/30 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobilePaletteOpen(false)}
+          />
+          <div className="relative bg-white rounded-t-[20px] p-5 shadow-xl max-h-[80dvh] overflow-y-auto z-10 flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-[#e9eaf2] mb-3">
+              <span className="font-[480] text-sm text-[#28253b]">Question Navigator</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setMobilePaletteOpen(false)}
+                className="h-8 px-3 text-xs"
+              >
+                Done
+              </Button>
+            </div>
+            <QuestionPalette
+              questions={questions}
+              currentIndex={currentIndex}
+              onSelectIndex={(idx) => {
+                setCurrentIndex(idx)
+                setMobilePaletteOpen(false)
+              }}
+              answers={answers}
+              bookmarks={bookmarks}
+              isDirty={syncStatus === 'SAVING'}
+            />
+          </div>
+        </div>
+      )}
 
       <SubmitExamDialog
         open={submitDialogOpen}

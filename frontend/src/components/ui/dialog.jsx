@@ -70,7 +70,7 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
         className="fixed inset-0 bg-[#171721]/60 backdrop-blur-xs transition-opacity animate-in fade-in-0"
         onClick={() => onOpenChange && onOpenChange(false)}
@@ -78,7 +78,7 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
       <div
         ref={ref}
         className={cn(
-          'relative z-50 w-full max-w-lg rounded-[12px] border border-[#e9eaf2] bg-white p-6 shadow-[0_8px_30px_rgba(40,37,59,0.08)] animate-in zoom-in-95 font-sans',
+          'relative z-50 w-full max-w-lg rounded-t-[20px] sm:rounded-[12px] border border-[#e9eaf2] bg-white p-5 sm:p-6 shadow-[0_8px_30px_rgba(40,37,59,0.08)] max-sm:max-h-[92dvh] overflow-y-auto animate-in zoom-in-95 font-sans',
           className
         )}
         {...props}
@@ -92,7 +92,7 @@ const DialogContent = React.forwardRef(({ className, children, onClose, ...props
             if (onClose) onClose()
             if (onOpenChange) onOpenChange(false)
           }}
-          className="absolute right-4 top-4"
+          className="absolute right-4 top-4 h-9 w-9 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

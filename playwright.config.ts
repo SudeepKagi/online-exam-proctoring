@@ -6,9 +6,9 @@ dotenv.config({ path: path.resolve(__dirname, '.env.test'), override: true })
 
 export default defineConfig({
   outputDir: 'test-results/artifacts',
-  testDir: './e2e',
-  testMatch: ['**/*.spec.ts', '**/*.spec.js'],
-  testIgnore: ['**/seb-simulated-journey.spec.ts'],
+  testDir: '.',
+  testMatch: ['e2e/**/*.spec.ts', 'e2e/**/*.spec.js', 'scripts/ci/responsive-audit.spec.ts'],
+  testIgnore: ['**/seb-simulated-journey.spec.ts', '**/node_modules/**'],
   timeout: 90000,
   expect: {
     timeout: 10000
@@ -42,6 +42,41 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome']
       }
+    },
+    {
+      name: 'Pixel 7',
+      use: {
+        ...devices['Pixel 7'],
+        defaultBrowserType: 'chromium'
+      },
+      testMatch: ['**/scripts/ci/responsive-audit.spec.ts']
+    },
+    {
+      name: 'iPhone 14',
+      use: {
+        ...devices['iPhone 14'],
+        defaultBrowserType: 'chromium'
+      },
+      testMatch: ['**/scripts/ci/responsive-audit.spec.ts']
+    },
+    {
+      name: 'Mobile 360x640',
+      use: {
+        viewport: { width: 360, height: 640 },
+        userAgent: 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+        isMobile: true,
+        hasTouch: true,
+        defaultBrowserType: 'chromium'
+      },
+      testMatch: ['**/scripts/ci/responsive-audit.spec.ts']
+    },
+    {
+      name: 'iPad (gen 7)',
+      use: {
+        ...devices['iPad (gen 7)'],
+        defaultBrowserType: 'chromium'
+      },
+      testMatch: ['**/scripts/ci/responsive-audit.spec.ts']
     }
   ],
   webServer: [
