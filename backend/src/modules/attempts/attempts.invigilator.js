@@ -17,7 +17,7 @@ async function suspendAttempt(attemptId, invigilatorId, reason = 'Administrative
   const attempt = await attemptsSql.findAttemptById(attemptId)
   if (!attempt) throw httpErr('Attempt not found', 404)
 
-  if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status) || attempt.violationCount >= 3) {
+  if (['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(attempt.status)) {
     throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
   }
 
@@ -36,7 +36,7 @@ async function resumeAttempt(attemptId, invigilatorId) {
   const attempt = await attemptsSql.findAttemptById(attemptId)
   if (!attempt) throw httpErr('Attempt not found', 404)
 
-  if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status) || attempt.violationCount >= 3) {
+  if (['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(attempt.status)) {
     throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
   }
 
@@ -61,7 +61,7 @@ async function terminateAttempt(attemptId, invigilatorId, reason = 'Invigilator 
   const attempt = await attemptsSql.findAttemptById(attemptId)
   if (!attempt) throw httpErr('Attempt not found', 404)
 
-  if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status)) {
+  if (['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(attempt.status)) {
     throw httpErr('Cannot modify a finalized exam attempt.', 409, 'INVALID_ATTEMPT_TRANSITION')
   }
 

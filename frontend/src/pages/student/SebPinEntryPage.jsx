@@ -134,82 +134,82 @@ export default function SebPinEntryPage() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <h2 className="text-lg font-[480] tracking-tight text-[#28253b] mb-1">Enter Launch Code</h2>
-          <p className="text-xs text-[#554e7b] font-[360] leading-relaxed">
-            {autoExchanging
-              ? 'Connecting your session automatically...'
-              : 'Enter the 6-digit code shown on your browser to connect this Safe Exam Browser session directly to your exam.'}
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-5 p-3 rounded-[12px] bg-[#fbfbff] text-xs text-[#554e7b] font-[420] border-l-2 border-[#5266eb]">
-            {typeof error === 'string' ? error : (error?.message || String(error))}
-          </div>
-        )}
-
         {autoExchanging ? (
-          <div className="py-8 text-center space-y-4">
-            <div className="w-8 h-8 border-2 border-[#5266eb] border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="py-8 text-center space-y-4" data-testid="seb-splash-connecting">
+            <div className="w-10 h-10 border-2 border-[#5266eb] border-t-transparent rounded-full animate-spin mx-auto" />
             <div>
-              <h3 className="text-sm font-[480] text-[#28253b]">Connecting to your exam session...</h3>
-              <p className="text-xs text-[#554e7b] font-[360] mt-1">
+              <h2 className="text-base font-[480] tracking-tight text-[#28253b]">Connecting to your exam session...</h2>
+              <p className="text-xs text-[#554e7b] font-[360] mt-1.5 leading-relaxed">
                 Safe Exam Browser is authenticating with ProctorNet. You will be redirected momentarily.
               </p>
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="seb-pin-input" className="block text-xs font-[500] uppercase tracking-wider text-[#554e7b] mb-2">
-                6-Digit Code
-              </label>
-              <input
-                id="seb-pin-input"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength={6}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                className="w-full h-12 text-center text-xl tracking-[0.3em] font-[480] bg-[#fbfbff] rounded-[16px] outline-none text-[#28253b] focus:ring-2 focus:ring-[#5266eb]/30 transition-all"
-                autoFocus
-                disabled={loading}
-              />
+          <>
+            <div className="mb-6">
+              <h2 className="text-lg font-[480] tracking-tight text-[#28253b] mb-1">Enter Launch Code</h2>
+              <p className="text-xs text-[#554e7b] font-[360] leading-relaxed">
+                Enter the 6-digit code shown on your browser to connect this Safe Exam Browser session directly to your exam.
+              </p>
             </div>
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loading || pin.length !== 6}
-              className="w-full"
-            >
-              {loading ? 'Verifying code...' : 'Continue to exam'}
-            </Button>
+            {error && (
+              <div className="mb-5 p-3 rounded-[12px] bg-[#fbfbff] text-xs text-[#554e7b] font-[420] border-l-2 border-[#5266eb]">
+                {typeof error === 'string' ? error : (error?.message || String(error))}
+              </div>
+            )}
 
-            <div className="flex flex-col gap-2 text-center pt-2">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="seb-pin-input" className="block text-xs font-[500] uppercase tracking-wider text-[#554e7b] mb-2">
+                  6-Digit Code
+                </label>
+                <input
+                  id="seb-pin-input"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="123456"
+                  className="w-full h-12 text-center text-xl tracking-[0.3em] font-[480] bg-[#fbfbff] rounded-[16px] outline-none text-[#28253b] focus:ring-2 focus:ring-[#5266eb]/30 transition-all"
+                  autoFocus
+                  disabled={loading}
+                />
+              </div>
+
               <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={() => navigate('/login?manual=1')}
-                className="text-xs text-[#554e7b] hover:text-[#28253b]"
+                type="submit"
+                variant="primary"
+                disabled={loading || pin.length !== 6}
+                className="w-full"
               >
-                Sign in with password instead
+                {loading ? 'Verifying code...' : 'Continue to exam'}
               </Button>
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                onClick={() => { window.location.href = '/student/dashboard' }}
-                className="text-xs text-[#554e7b] hover:text-[#28253b]"
-              >
-                Return to Student Dashboard
-              </Button>
-            </div>
-          </form>
+
+              <div className="flex flex-col gap-2 text-center pt-2">
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => navigate('/login?manual=1')}
+                  className="text-xs text-[#554e7b] hover:text-[#28253b]"
+                >
+                  Sign in with password instead
+                </Button>
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  onClick={() => { window.location.href = '/student/dashboard' }}
+                  className="text-xs text-[#554e7b] hover:text-[#28253b]"
+                >
+                  Return to Student Dashboard
+                </Button>
+              </div>
+            </form>
+          </>
         )}
       </div>
     </div>

@@ -274,7 +274,8 @@ export default function ExamArenaPage() {
   useEffect(() => {
     if (!isSubmitted || isAutoExitCancelled) return
 
-    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || 'http://localhost:5173/student/login'
+    const fallbackQuit = typeof window !== 'undefined' ? `${window.location.origin}/seb/done` : '/seb/done'
+    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || fallbackQuit
     const isSeb = Boolean(exam?.proctoringConfig?.sebRequired && (sebStatus?.verified || (typeof window !== 'undefined' && window.navigator?.userAgent?.includes('SEB'))))
 
     if (exitCountdown <= 0) {
@@ -294,8 +295,10 @@ export default function ExamArenaPage() {
   }, [isSubmitted, isAutoExitCancelled, exitCountdown, exam, sebStatus, navigate])
 
   if (isSubmitted) {
-    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || 'http://localhost:5173/student/login'
+    const fallbackQuit = typeof window !== 'undefined' ? `${window.location.origin}/seb/done` : '/seb/done'
+    const sebQuitUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_QUIT_URL) || fallbackQuit
     const isSeb = Boolean(exam?.proctoringConfig?.sebRequired && (sebStatus?.verified || (typeof window !== 'undefined' && window.navigator?.userAgent?.includes('SEB'))))
+
     return (
       <ExamArenaShell className="items-center justify-center p-6 bg-[#fbfcfd] font-sans">
         <div className="w-full max-w-md bg-white rounded-[16px] p-8 text-center shadow-md space-y-4">
