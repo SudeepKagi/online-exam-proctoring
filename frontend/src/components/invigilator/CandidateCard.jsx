@@ -2,7 +2,7 @@ import React from 'react'
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ShieldCheck, ShieldAlert, PauseCircle, PlayCircle, Clock, ZoomIn } from 'lucide-react'
+import { ShieldCheck, ShieldAlert, PauseCircle, PlayCircle, Clock, ZoomIn, UserCheck } from 'lucide-react'
 import { formatViolationType } from '@/shared/violationTypes'
 
 export default function CandidateCard({
@@ -13,21 +13,22 @@ export default function CandidateCard({
   actionLoading
 }) {
   const isSuspended = candidate.attemptStatus === 'SUSPENDED'
-  // Phase 2 C.1: Remove automated termination by violation count
   const isFinalized = ['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(candidate.attemptStatus)
   const isSubmitted = isFinalized
   const snapshotUrl = candidate.latestSnapshotUrl
   const hasSnapshot = Boolean(snapshotUrl)
+  const needsIdentityApproval = candidate.faceStatus === 'PENDING_APPROVAL' || candidate.faceStatus === 'NO_REFERENCE' || (!candidate.faceVerified && candidate.faceStatus && candidate.faceStatus !== 'MATCH')
 
   return (
     <Card
       data-slot="card"
+      data-testid="candidate-card"
       onClick={(e) => {
         if (!e.target.closest('button')) onInspectHistory(candidate)
       }}
-      className="border-[#e9eaf2] bg-white hover:border-[#5266eb]/50 transition shadow-xs hover:shadow-md rounded-[12px] overflow-hidden flex flex-col justify-between font-sans cursor-pointer"
+      className="border-0 bg-white hover:bg-[#fbfbff] transition shadow-xs hover:shadow-md rounded-[16px] overflow-hidden flex flex-col justify-between font-sans cursor-pointer"
     >
-      <CardHeader className="p-3 pb-2 flex flex-row items-start justify-between bg-[#fbfbff] border-b border-[#e9eaf2]">
+      <CardHeader className="p-3.5 pb-2.5 flex flex-row items-start justify-between bg-[#fbfbff] border-0">
         <div className="min-w-0 pr-2">
           <CardTitle className="text-xs font-[480] text-[#28253b] truncate" title={candidate.studentName}>
             {candidate.studentName}
@@ -36,21 +37,31 @@ export default function CandidateCard({
             USN: {candidate.institutionId || '—'}
           </p>
         </div>
-        <Badge
-          variant="outline"
-          className={`text-[10px] shrink-0 font-[420] border-0 ${
-            isSuspended ? 'bg-[#edecfb] text-[#554e7b]' :
-            isSubmitted ? 'bg-[#edecfb] text-[#5266eb]' :
-            candidate.attemptStatus === 'IN_PROGRESS' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
-            'bg-[#fbfbff] text-[#70707d]'
-          }`}
-        >
-          {candidate.attemptStatus}
-        </Badge>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <Badge
+            variant="outline"
+            className={`text-[10px] shrink-0 font-[420] border-0 ${
+              isSuspended ? 'bg-[#edecfb] text-[#554e7b]' :
+              isSubmitted ? 'bg-[#edecfb] text-[#5266eb]' :
+              candidate.attemptStatus === 'IN_PROGRESS' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+              'bg-[#fbfbff] text-[#70707d]'
+            }`}
+          >
+            {candidate.attemptStatus}
+          </Badge>
+          {needsIdentityApproval && (
+            <Badge
+              variant="outline"
+              className="text-[9px] font-[420] border-0 bg-[#edecfb] text-[#5266eb] flex items-center gap-1 py-0 px-1.5"
+            >
+              <UserCheck className="w-2.5 h-2.5" /> ID Review
+            </Badge>
+          )}
+        </div>
       </CardHeader>
 
-      <CardContent className="p-3 pt-3 space-y-2">
-        {/* Phase 2 B.4: Latest Violation Screenshot Thumbnail (never a face camera stream) */}
+      <CardContent className="p-3.5 pt-2.5 space-y-2.5">
+        {/* Violation Screenshot Thumbnail or Clean Status */}
         <div
           onClick={() => hasSnapshot && onZoomSnapshot({
             studentName: candidate.studentName,
@@ -59,8 +70,8 @@ export default function CandidateCard({
             eventType: candidate.latestViolationType || 'VIOLATION_SCREENSHOT',
             createdAt: candidate.lastActiveAt
           })}
-          className={`aspect-video rounded-lg relative overflow-hidden flex flex-col items-center justify-center text-xs group transition ${
-            hasSnapshot ? 'cursor-pointer border border-[#c3c3cc]/40 shadow-inner' : 'bg-[#edecfb] text-[#554e7b]'
+          className={`aspect-video rounded-[12px] relative overflow-hidden flex flex-col items-center justify-center text-xs group transition ${
+            hasSnapshot ? 'cursor-pointer shadow-inner bg-black/5' : 'bg-[#edecfb] text-[#554e7b]'
           }`}
         >
           {hasSnapshot ? (
@@ -73,7 +84,7 @@ export default function CandidateCard({
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white gap-1 text-[11px] font-[420]">
                 <ZoomIn className="w-3.5 h-3.5" /> Inspect Screenshot
               </div>
-              <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
+              <div className="absolute bottom-1.5 right-1.5 bg-black/70 text-white text-[9px] font-mono px-1.5 py-0.5 rounded">
                 {candidate.latestViolationType ? formatViolationType(candidate.latestViolationType) : 'Screenshot'}
               </div>
             </>
@@ -93,7 +104,7 @@ export default function CandidateCard({
         </div>
 
         <div className="flex items-center justify-between text-xs pt-1">
-          <div className="flex items-center space-x-1 text-[#554e7b]">
+          <div className="flex items-center space-x-1.5 text-[#554e7b]">
             <Clock className="w-3 h-3 text-[#554e7b]" />
             <span className="text-[10px] text-[#554e7b] font-[360]">
               {candidate.lastActiveAt ? new Date(candidate.lastActiveAt).toLocaleTimeString() : 'Not active'}
@@ -110,23 +121,21 @@ export default function CandidateCard({
         </div>
       </CardContent>
 
-      <CardFooter className="p-2.5 pt-0 grid grid-cols-2 gap-2 border-t border-[#e9eaf2]/60 mt-1">
+      <CardFooter className="p-3 pt-0 grid grid-cols-2 gap-2 border-0 mt-1">
         <Button
           size="sm"
-          variant="outline"
+          variant="secondary"
           onClick={() => onInspectHistory(candidate)}
-          className="text-[11px] h-7 px-2 font-[420] rounded-[40px] bg-[rgba(82,102,235,0.08)] text-[#28253b] border-0"
+          className="text-[11px] h-7 px-2 font-[420] rounded-[40px]"
         >
           Audit History
         </Button>
         <Button
           size="sm"
           disabled={actionLoading || !candidate.attemptId || isSubmitted}
-          variant={isSuspended ? 'default' : 'secondary'}
+          variant={isSuspended ? 'primary' : 'secondary'}
           onClick={() => onToggleSuspend(candidate)}
-          className={`text-[11px] h-7 px-2 font-[420] rounded-[40px] border-0 ${
-            isSuspended ? 'bg-[#5266eb] text-white' : 'bg-[rgba(82,102,235,0.08)] text-[#28253b]'
-          }`}
+          className="text-[11px] h-7 px-2 font-[420] rounded-[40px]"
         >
           {isSuspended ? <PlayCircle className="w-3 h-3 mr-1" /> : <PauseCircle className="w-3 h-3 mr-1" />}
           {isSuspended ? 'Resume' : 'Suspend'}
