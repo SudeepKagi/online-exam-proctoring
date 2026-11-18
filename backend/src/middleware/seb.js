@@ -213,7 +213,7 @@ async function inspectSebRequest(req) {
   const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
   const canonicalUrl = `${cleanPublicOrigin}${normalizedPath}`
 
-  const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
+  const rawHeader = req.headers['x-safeexambrowser-configkeyhash'] || req.headers['x-safeexambrowser-requesthash']
   const receivedHeader = typeof rawHeader === 'string' ? rawHeader.trim() : ''
   const is64Hex = /^[0-9a-fA-F]{64}$/.test(receivedHeader)
 

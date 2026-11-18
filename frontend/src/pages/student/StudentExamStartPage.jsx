@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
-import { verifySebSession } from '@/lib/sebClient'
+import { verifySebSession, isSebBrowser } from '@/lib/sebClient'
 import { useCamera } from '@/hooks/useCamera'
 import cameraStore from '@/lib/cameraStore'
 import {
@@ -127,7 +127,7 @@ export default function StudentExamStartPage() {
 
       // SEB Status & Verification Check
       const rawSeb = sebRes.data || { required: false, verified: false, mode: 'off' }
-      const sebActive = Boolean(rawSeb.verified || clientSebCheck?.verified)
+      const sebActive = Boolean(rawSeb.verified || clientSebCheck?.verified || isSebBrowser())
       setIsSebActive(sebActive)
 
       const seb = { ...rawSeb, verified: sebActive }
@@ -943,7 +943,7 @@ export default function StudentExamStartPage() {
               >
                 Starts in {formatCountdown(msUntilStart)}
               </Button>
-            ) : isSebRequired ? (
+            ) : (isSebRequired && !isSebActive) ? (
               /* SEB Exam: If launch code panel is already shown, action button is inside panel; otherwise show primary button */
               !sebLaunchData ? (
                 <div className="space-y-1">

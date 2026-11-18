@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
-import { verifySebSession } from '@/lib/sebClient'
+import { verifySebSession, isSebBrowser } from '@/lib/sebClient'
 import { useCamera } from '@/hooks/useCamera'
 import cameraStore from '@/lib/cameraStore'
 import { detectOsFamily, detectBrowserFamily } from '@/lib/systemCheck'
@@ -78,16 +78,17 @@ export default function PreExamCheckPage() {
 
       // Query SEB status for the exam with client verification check
       try {
+        const isClientSeb = isSebBrowser()
         const [sebRes, clientSebCheck] = await Promise.all([
           apiClient.get(`/attempts/exams/${id}/seb-status`).catch(() => ({ data: {} })),
           verifySebSession(apiClient).catch(() => ({ verified: false }))
         ])
         const status = sebRes.data || {}
         if (!active) return
-        const isVerified = Boolean(status.verified || clientSebCheck?.verified)
+        const isVerified = Boolean(status.verified || clientSebCheck?.verified || isClientSeb)
         const updatedStatus = { ...status, verified: isVerified }
         setSebStatus(updatedStatus)
-        if (updatedStatus.mode === 'enforce' && updatedStatus.required && !updatedStatus.verified) {
+        if (updatedStatus.mode === 'enforce' && updatedStatus.required && !updatedStatus.verified && !isClientSeb) {
           navigate(`/student/exams/${id}/seb-required`, { replace: true })
           return
         }
