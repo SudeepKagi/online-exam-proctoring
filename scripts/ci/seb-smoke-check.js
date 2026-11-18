@@ -136,6 +136,22 @@ async function runSmokeCheck() {
     console.log(`[✓] Created test exam ID: ${exam.id}`)
   }
 
+  // Ensure student has a pre-verified identity state for the attempt gate
+  const student = await prisma.user.findFirst({ where: { email: 'student1@proctornet.com' } })
+  if (student) {
+    await prisma.examAttempt.upsert({
+      where: { examId_studentId: { examId: exam.id, studentId: student.id } },
+      update: { faceVerified: true, faceStatus: 'MATCH' },
+      create: {
+        examId: exam.id,
+        studentId: student.id,
+        faceVerified: true,
+        faceStatus: 'MATCH',
+        status: 'READY'
+      }
+    })
+  }
+
   const startPath = `/api/v1/attempts/exams/${exam.id}/start`
   const canonicalUrl = `${publicOrigin}${startPath}`
 
