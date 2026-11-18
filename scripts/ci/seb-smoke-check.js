@@ -89,8 +89,18 @@ async function runSmokeCheck() {
   const token = loginRes.body.token
   console.log('[✓] Student authenticated successfully')
 
-  // 3. Find or seed an exam that requires SEB
+  // 3. Configure and verify institution SEB settings, then find or seed an exam that requires SEB
   const { prisma } = require(path.resolve(__dirname, '../../backend/src/infra/postgres/client'))
+  const { settingsService } = require(path.resolve(__dirname, '../../backend/src/modules/admin/settings.service'))
+
+  await settingsService.saveSebConfig({
+    fileKey: 'seb/institution-config.seb',
+    configKey: TEST_CONFIG_KEY,
+    lastVerifiedAt: new Date().toISOString(),
+    requestedMode: 'enforce'
+  })
+  console.log('[✓] Institution SEB configuration saved in database with enforce mode')
+
   let exam = await prisma.exam.findFirst({
     where: {
       proctoringConfig: {

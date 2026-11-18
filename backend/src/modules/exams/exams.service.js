@@ -213,14 +213,34 @@ class ExamService {
       return { sebRequired: false, sebConfigKey: null, effectiveMode: 'off' }
     }
     const perExamKey = pConfig.sebConfigKey ? String(pConfig.sebConfigKey).trim().toLowerCase() : null
+    const validPerExam = perExamKey && /^[0-9a-fA-F]{64}$/.test(perExamKey)
     const { getInstitutionSebState } = require('../seb/seb.service')
     const sebState = await getInstitutionSebState()
     const sebConfigKey = sebRequired ? (perExamKey || sebState.configKey || null) : null
+
+    // Determine effective mode for this exam
+    let effectiveMode = sebState.effectiveMode
+    const isConfigured = Boolean(sebState.configured || validPerExam)
+
+    if (validPerExam && !sebState.configured) {
+      const rawEnvMode = process.env.SEB_MODE ? process.env.SEB_MODE.toLowerCase().trim() : null
+      const requestedMode = (sebState.requestedMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+      if (rawEnvMode === 'off') {
+        effectiveMode = 'off'
+      } else if (rawEnvMode === 'enforce' || requestedMode === 'enforce') {
+        effectiveMode = 'enforce'
+      } else if (rawEnvMode === 'log' || rawEnvMode === 'audit' || requestedMode === 'audit') {
+        effectiveMode = 'audit'
+      } else {
+        effectiveMode = 'off'
+      }
+    }
+
     return {
       sebRequired,
       sebConfigKey,
-      effectiveMode: sebState.effectiveMode,
-      configured: sebState.configured
+      effectiveMode,
+      configured: isConfigured
     }
   }
 
