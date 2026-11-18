@@ -181,8 +181,8 @@ export default function StudentDashboardPage() {
               {readiness?.passed || computerCheckFeedback.includes("You're ready")
                 ? "Your camera, internet connection, and clock are verified for upcoming exams."
                 : readiness?.issues?.length > 0
-                ? "Some items need attention before your exams: " + readiness.issues.join('. ')
-                : "Run a quick check of your camera, internet, and clock to make sure you're ready for exam day."}
+                  ? "Some items need attention before your exams: " + readiness.issues.join('. ')
+                  : "Run a quick check of your camera, internet, and clock to make sure you're ready for exam day."}
             </p>
           </div>
           <Button
@@ -292,14 +292,15 @@ export default function StudentDashboardPage() {
                   <TableHead>Course Code</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Result Score</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableSkeleton rows={2} cols={4} />
+                  <TableSkeleton rows={2} cols={5} />
                 ) : completed.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="p-0">
+                    <TableCell colSpan={5} className="p-0">
                       <EmptyState
                         icon={CheckCircle2}
                         title="No completed assessments"
@@ -319,6 +320,13 @@ export default function StudentDashboardPage() {
                       </TableCell>
                       <TableCell className="font-[480] text-[#28253b] text-xs">
                         {exam.score != null ? `${exam.score} pts` : 'Evaluated'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild variant="ghost" size="sm" className="h-7 px-2.5 text-xs font-[420]">
+                          <Link to={exam.attemptId ? `/student/results/${exam.attemptId}` : `/student/exams/${exam.id}/results`}>
+                            View Results <ArrowRight className="w-3 h-3 ml-1" />
+                          </Link>
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))

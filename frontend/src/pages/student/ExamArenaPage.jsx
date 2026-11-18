@@ -361,6 +361,16 @@ export default function ExamArenaPage() {
                 Cancel auto-exit
               </Button>
             )}
+            {!isSeb && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => navigate(attempt?.id ? `/student/results/${attempt.id}` : `/student/exams/${id}/results`)}
+                className="w-full text-xs font-[420] h-10 rounded-[40px]"
+              >
+                View Examination Results
+              </Button>
+            )}
           </div>
         </div>
       </ExamArenaShell>
