@@ -158,7 +158,7 @@ export default function LoginPage() {
             localStorage.setItem('user', JSON.stringify(res.data.user))
             if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
             if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
-          } catch (_) {}
+          } catch (_) { }
         }
         window.location.href = res.data.redirectUrl
       } else {
@@ -177,7 +177,7 @@ export default function LoginPage() {
       } else if (code === 'PIN_ALREADY_USED' || code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED') {
         setSebPinError('This launch code has already been used. Please return to your browser to generate a fresh code.')
       } else if (code === 'INVALID_PIN' || code === 'INVALID_CODE') {
-        setSebPinError('Wrong launch code. Please check the 6-digit code displayed on your primary browser.')
+        setSebPinError('Invalid launch code. Wrong code entered — please check the 6-digit code displayed on your primary browser.')
       } else if (
         code === 'INSTITUTION_NOT_CONFIGURED' ||
         code === 'STORAGE_UNAVAILABLE' ||
@@ -363,55 +363,55 @@ export default function LoginPage() {
                 </div>
               </CardHeader>
 
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-4 pt-6">
-                {error && (
-                  <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl flex items-center gap-2.5 font-[420] border-0">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
-                    <span>{error}</span>
+              <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-4 pt-6">
+                  {error && (
+                    <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl flex items-center gap-2.5 font-[420] border-0">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-[#5266eb]" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <FormField label={config.idLabel} required>
+                    <Input
+                      required
+                      type="text"
+                      placeholder={config.idPlaceholder}
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      className="h-10 text-xs bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl placeholder:text-[#70707d]"
+                    />
+                  </FormField>
+
+                  <FormField label={config.passLabel} required>
+                    <PasswordInput
+                      required
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-10 text-xs bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl placeholder:text-[#70707d]"
+                    />
+                  </FormField>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-[#554e7b] font-[360]">{config.hint}</span>
+                    <Link to="/forgot-password" className="text-[#5266eb] hover:underline font-[420] shrink-0 ml-2 transition">
+                      Forgot password?
+                    </Link>
                   </div>
-                )}
+                </CardContent>
 
-                <FormField label={config.idLabel} required>
-                  <Input
-                    required
-                    type="text"
-                    placeholder={config.idPlaceholder}
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    className="h-10 text-xs bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl placeholder:text-[#70707d]"
-                  />
-                </FormField>
-
-                <FormField label={config.passLabel} required>
-                  <PasswordInput
-                    required
-                    placeholder="••••••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="h-10 text-xs bg-white border-[#c3c3cc]/70 focus:border-[#5266eb] text-[#28253b] rounded-xl placeholder:text-[#70707d]"
-                  />
-                </FormField>
-
-                <div className="flex items-center justify-between text-[11px] pt-1">
-                  <span className="text-[#554e7b] font-[360]">{config.hint}</span>
-                  <Link to="/forgot-password" className="text-[#5266eb] hover:underline font-[420] shrink-0 ml-2 transition">
-                    Forgot password?
-                  </Link>
-                </div>
-              </CardContent>
-
-              <CardFooter className="pt-2 pb-6 px-6">
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full h-10 cursor-pointer transition"
-                >
-                  {loading ? 'Authenticating Credentials...' : `Sign In to ${activeRole.charAt(0) + activeRole.slice(1).toLowerCase()} Portal`}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
+                <CardFooter className="pt-2 pb-6 px-6">
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-10 cursor-pointer transition"
+                  >
+                    {loading ? 'Authenticating Credentials...' : `Sign In to ${activeRole.charAt(0) + activeRole.slice(1).toLowerCase()} Portal`}
+                  </Button>
+                </CardFooter>
+              </form>
+            </Card>
           )}
         </div>
       </div>

@@ -122,7 +122,7 @@ export default function SebPinEntryPage() {
         }
         setError('This launch code has already been used. Please return to your browser to generate a fresh code.')
       } else if (code === 'INVALID_PIN' || code === 'INVALID_CODE') {
-        setError('Wrong launch code. Please check the 6-digit code displayed on your primary browser.')
+        setError('Invalid launch code. Wrong code entered — please check the 6-digit code displayed on your primary browser.')
       } else if (
         code === 'INSTITUTION_NOT_CONFIGURED' ||
         code === 'STORAGE_UNAVAILABLE' ||
