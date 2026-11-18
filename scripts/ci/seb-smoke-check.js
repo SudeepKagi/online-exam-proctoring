@@ -147,7 +147,7 @@ async function runSmokeCheck() {
         studentId: student.id,
         faceVerified: true,
         faceStatus: 'MATCH',
-        status: 'READY'
+        status: 'NOT_STARTED'
       }
     })
   }
