@@ -1,18 +1,26 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { apiClient } from '@/lib/apiClient'
 import { ShieldAlert, Download, ExternalLink, ArrowLeft, RefreshCw, AlertCircle, Laptop } from 'lucide-react'
 import { isMobileOrTablet } from '@/lib/systemCheck'
+import { isSebBrowser } from '@/lib/sebClient'
 import COPY from '@/copy'
 
 export default function SebRequiredPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [exam, setExam] = useState(null)
   const [checking, setChecking] = useState(false)
   const isMobile = isMobileOrTablet()
+
+  useEffect(() => {
+    if (isSebBrowser() && id) {
+      navigate(`/student/exams/${id}/start`, { replace: true })
+    }
+  }, [id, navigate])
 
   const downloadUrl = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SEB_DOWNLOAD_URL) || 'https://safeexambrowser.org/download_en.html'
   const configUrl = typeof import.meta !== 'undefined' ? import.meta.env?.VITE_SEB_CONFIG_URL : null

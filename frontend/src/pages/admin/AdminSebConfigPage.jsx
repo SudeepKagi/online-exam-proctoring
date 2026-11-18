@@ -281,8 +281,11 @@ export default function AdminSebConfigPage() {
       const pin = res.data?.pin
       if (pin) setTestPin(pin)
 
+      // Allow 4-second buffer for the administrator to read the PIN before triggering protocol handler
       if (launchUrl) {
-        window.location.href = launchUrl
+        setTimeout(() => {
+          window.location.href = launchUrl
+        }, 3500)
       }
 
       let secondsLeft = 120

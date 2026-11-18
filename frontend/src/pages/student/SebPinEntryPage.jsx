@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '@/lib/apiClient'
 import { useAuth } from '@/context/AuthContext'
@@ -10,6 +10,7 @@ export default function SebPinEntryPage() {
   const [searchParams] = useSearchParams()
   const errorParam = searchParams.get('error')
   const launchParam = searchParams.get('launch') || searchParams.get('token')
+  const hasExchangedRef = useRef(false)
 
   const [pin, setPin] = useState('')
   const [loading, setLoading] = useState(false)
@@ -31,7 +32,8 @@ export default function SebPinEntryPage() {
 
   // 2. Auto-exchange when ?launch=TOKEN is forwarded by SEB 3.x
   useEffect(() => {
-    if (!launchParam || user) return
+    if (!launchParam || user || hasExchangedRef.current) return
+    hasExchangedRef.current = true
     let active = true
 
     async function attemptAutoExchange() {
@@ -53,6 +55,11 @@ export default function SebPinEntryPage() {
       } catch (err) {
         if (active) {
           const code = err.response?.data?.code || err.code
+          const alreadyLoggedIn = localStorage.getItem('proctornet_logged_in') === 'true'
+          if (alreadyLoggedIn && (code === 'TOKEN_ALREADY_USED' || code === 'TOKEN_EXPIRED')) {
+            navigate('/student/dashboard', { replace: true })
+            return
+          }
           if (code === 'TOKEN_EXPIRED') {
             setError('Launch token has expired. Please enter the 6-digit code shown on your browser.')
           } else if (code === 'TOKEN_ALREADY_USED') {
@@ -68,7 +75,7 @@ export default function SebPinEntryPage() {
 
     attemptAutoExchange()
     return () => { active = false }
-  }, [launchParam, user])
+  }, [launchParam, user, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -104,7 +111,12 @@ export default function SebPinEntryPage() {
         setError('Too many incorrect attempts for this code. Please return to Chrome to generate a fresh code.')
       } else if (code === 'PIN_EXPIRED') {
         setError('This launch code expired (codes are valid for 5 minutes). Please return to Chrome and click "Generate New Code".')
-      } else if (code === 'PIN_ALREADY_USED') {
+      } else if (code === 'PIN_ALREADY_USED' || code === 'TOKEN_ALREADY_USED') {
+        const alreadyLoggedIn = localStorage.getItem('proctornet_logged_in') === 'true'
+        if (alreadyLoggedIn) {
+          navigate('/student/dashboard', { replace: true })
+          return
+        }
         setError('This launch code has already been used. If you closed or refreshed SEB, please return to Chrome and click "Generate New Code" (or sign in with password below).')
       } else if (code === 'INVALID_PIN') {
         setError('Invalid launch code. Please check the 6 digits displayed on your browser screen.')

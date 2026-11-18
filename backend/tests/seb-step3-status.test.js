@@ -171,6 +171,7 @@ describe('Step 3: Safe Exam Browser (SEB) UI, Status Endpoint & Modal Suite', ()
 
   describe('1. GET /api/v1/attempts/exams/:examId/seb-status endpoint', () => {
     it('under SEB_MODE=off: returns 200 without blocking', async () => {
+      await clearInstitutionConfig()
       const origMode = config.sebMode
       config.sebMode = 'off'
       try {

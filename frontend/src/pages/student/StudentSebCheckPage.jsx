@@ -77,9 +77,12 @@ export default function StudentSebCheckPage() {
       setLaunchData(data)
       setPollCountdown(120)
 
-      // Automatically trigger protocol handler
-      if (data.url || data.launchUrl) {
-        window.location.href = data.url || data.launchUrl
+      // Automatically trigger protocol handler after a brief buffer so the student can read the 6-digit PIN
+      const targetUrl = data.url || data.launchUrl
+      if (targetUrl) {
+        setTimeout(() => {
+          window.location.href = targetUrl
+        }, 3500)
       }
 
       // Begin polling token status
