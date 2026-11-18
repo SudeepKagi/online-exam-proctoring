@@ -126,6 +126,57 @@ describe('Phase 2: Flow Integrity, Single Attempt & Violation Threshold Eliminat
     await prisma.user.delete({ where: { id: studentA.id } })
   })
 
+  it('1b. Idempotent concurrent start attempts: simultaneous start calls for same student create exactly 1 row', async () => {
+    const randomSuffix = crypto.randomBytes(3).toString('hex')
+    const studentConc = await prisma.user.create({
+      data: {
+        email: `stu-conc-${randomSuffix}@test.local`,
+        fullName: 'Student Concurrent',
+        passwordHash: 'dummy',
+        role: 'STUDENT',
+        institutionId: `USN-CONC-${randomSuffix}`
+      }
+    })
+
+    // Pre-seed readiness attempt so photo check is satisfied
+    await prisma.examAttempt.create({
+      data: {
+        examId: testExam.id,
+        studentId: studentConc.id,
+        status: 'NOT_STARTED',
+        faceVerified: true,
+        faceStatus: 'MATCH'
+      }
+    })
+
+    // Fire 5 concurrent startAttempt calls for the same student
+    const starts = await Promise.all([
+      attemptService.startAttempt(testExam.id, studentConc.id),
+      attemptService.startAttempt(testExam.id, studentConc.id),
+      attemptService.startAttempt(testExam.id, studentConc.id),
+      attemptService.startAttempt(testExam.id, studentConc.id),
+      attemptService.startAttempt(testExam.id, studentConc.id)
+    ])
+
+    // All should succeed and return the exact same attempt ID
+    assert.equal(starts.length, 5)
+    const firstAttemptId = starts[0].attempt.id
+    for (const res of starts) {
+      assert.equal(res.attempt.id, firstAttemptId)
+      assert.equal(res.attempt.status, 'IN_PROGRESS')
+    }
+
+    // Verify exactly 1 attempt exists in DB
+    const count = await prisma.examAttempt.count({
+      where: { examId: testExam.id, studentId: studentConc.id }
+    })
+    assert.equal(count, 1)
+
+    // Clean up
+    await prisma.examAttempt.deleteMany({ where: { examId: testExam.id, studentId: studentConc.id } })
+    await prisma.user.delete({ where: { id: studentConc.id } })
+  })
+
   it('2. Eliminates 3-violation threshold: suspendAttempt and resumeAttempt succeed even when violationCount >= 3', async () => {
     const randomSuffix = crypto.randomBytes(3).toString('hex')
     const studentB = await prisma.user.create({

@@ -156,8 +156,8 @@ export const COPY = {
           desc: 'Your answers autosave continuously. If your network connection drops, answers are saved offline on your device and synchronized as soon as connectivity resumes.'
         },
         {
-          title: 'Violation Threshold & Session Termination',
-          desc: 'A maximum limit of 3 violations is enforced. Exceeding this limit terminates your examination session immediately.'
+          title: 'Proctoring Review & Session Integrity',
+          desc: 'All security events and anomalies are logged for live invigilator review. Examination attempts may only be reviewed or terminated by an authorized invigilator or administrator.'
         }
       ]
     },

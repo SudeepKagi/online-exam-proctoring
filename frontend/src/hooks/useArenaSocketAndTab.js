@@ -84,9 +84,9 @@ export function useArenaSocketAndTab({ examId, attemptId, onTerminated, initialS
     const onRes = () => setIsSuspended(false)
     const onTerm = (data) => {
       if (onTerminated) {
-        onTerminated(data?.reason === 'MAX_VIOLATIONS_EXCEEDED'
-          ? 'Your examination was terminated because maximum violations (3/3) were exceeded.'
-          : 'Your examination was terminated by an invigilator.')
+        onTerminated(data?.reason
+          ? `Your examination was terminated: ${data.reason}`
+          : 'Your examination was terminated by an invigilator or administrator.')
       }
     }
     socket.on('attempt:suspended', onSusp)
