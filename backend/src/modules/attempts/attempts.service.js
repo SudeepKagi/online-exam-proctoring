@@ -44,7 +44,7 @@ class AttemptService {
     let attempt = await attemptsSql.findAttemptByExamAndStudent(examId, studentId)
     if (!attempt) attempt = await attemptsSql.createOrGetReadinessAttempt(examId, studentId)
 
-    if (['SUBMITTED', 'TIMED_OUT'].includes(attempt.status)) {
+    if (['SUBMITTED', 'TIMED_OUT', 'TERMINATED'].includes(attempt.status)) {
       throw httpErr('Attempt is already finalized', 409, 'ATTEMPT_ALREADY_FINALIZED')
     }
 
