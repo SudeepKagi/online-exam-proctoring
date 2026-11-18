@@ -287,6 +287,67 @@ async function deleteSebConfig(_req, res, next) {
   }
 }
 
+/**
+ * Returns entry diagnostics and why students may fail to enter.
+ * GET /api/v1/admin/seb/entry-diagnostics
+ */
+async function getEntryDiagnostics(req, res, next) {
+  try {
+    const state = await getInstitutionSebState({ bypassCache: true })
+    const storage = getStorageAdapter()
+
+    // Config object present (HEAD)
+    const fileKey = 'seb/institution-config.seb'
+    let configObjectPresent = false
+    try {
+      const head = await storage.headObject(fileKey)
+      configObjectPresent = Boolean(head)
+    } catch (_) {
+      configObjectPresent = false
+    }
+
+    // Storage probe: write, read, delete on probe/ prefix
+    let probePassed = false
+    const probeDetails = { write: false, read: false, delete: false }
+    try {
+      const probeKey = `probe/health-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.txt`
+      const testBuffer = Buffer.from('proctornet-probe-check', 'utf8')
+      await storage.putObject(probeKey, testBuffer, 'text/plain')
+      probeDetails.write = true
+
+      const readBuf = await storage.getObjectBuffer(probeKey)
+      if (readBuf && readBuf.toString('utf8') === 'proctornet-probe-check') {
+        probeDetails.read = true
+      }
+
+      await storage.deleteObject(probeKey)
+      probeDetails.delete = true
+      probePassed = probeDetails.write && probeDetails.read && probeDetails.delete
+    } catch (probeErr) {
+      probePassed = false
+      probeDetails.error = probeErr.message
+    }
+
+    const failureDiag = sebDiagnosticsService.getEntryDiagnostics24h()
+
+    return res.status(200).json({
+      success: true,
+      configObjectPresent,
+      keyPresent: state.keyPresent,
+      effectiveMode: state.effectiveMode,
+      storageProbe: {
+        passed: probePassed,
+        ...probeDetails
+      },
+      failureCounts24h: failureDiag.failureCounts24h,
+      lastRequestIdByCode: failureDiag.lastRequestIdByCode
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to compute entry diagnostics')
+    next(err)
+  }
+}
+
 module.exports = {
   upload,
   uploadSebConfig,
@@ -296,5 +357,6 @@ module.exports = {
   inspectSebBuffer,
   inspectConfig,
   getStarterConfig,
-  getRecentAttempts
+  getRecentAttempts,
+  getEntryDiagnostics
 }

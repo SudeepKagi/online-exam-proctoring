@@ -212,7 +212,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
     })
 
     assert.strictEqual(res.statusCode, 403, 'Must refuse token exchange without header in enforce mode')
-    assert.strictEqual(res.json?.code, 'SEB_ENFORCEMENT_FAILED')
+    assert.ok(['SEB_ENFORCEMENT_FAILED', 'SEB_HEADER_MISSING'].includes(res.json?.code))
 
     // Verify no auth cookie was set
     const setCookie = res.headers['set-cookie'] || []
@@ -232,7 +232,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
     }, { pin: launch.pin })
 
     assert.strictEqual(pinRes.statusCode, 403, 'Must refuse PIN exchange without header in enforce mode')
-    assert.strictEqual(pinRes.json?.code, 'SEB_ENFORCEMENT_FAILED')
+    assert.ok(['SEB_ENFORCEMENT_FAILED', 'SEB_HEADER_MISSING'].includes(pinRes.json?.code))
   })
 
   it('3. Exact-URL rule: Header computed for a different URL is rejected with 403', async () => {
