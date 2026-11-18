@@ -16,10 +16,12 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { apiClient } from '@/lib/apiClient'
+import { isMobileOrTablet } from '@/lib/systemCheck'
 
 export default function StudentSebCheckPage() {
   const [searchParams] = useSearchParams()
   const isDirectVerified = searchParams.get('verified') === '1'
+  const isMobile = isMobileOrTablet()
 
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState({
@@ -183,33 +185,39 @@ export default function StudentSebCheckPage() {
                 )}
               </div>
               <h2 className="text-xl font-normal text-[#28253b] tracking-tight">
-                {isVerified
+                {isMobile
+                  ? 'Windows PC or Laptop Required'
+                  : isVerified
                   ? 'Safe Exam Browser is verified on this device'
                   : 'Prepare your computer for proctored exams'}
               </h2>
               <p className="text-xs text-[#554e7b] max-w-xl font-normal leading-relaxed">
-                {isVerified
+                {isMobile
+                  ? 'Safe Exam Browser requires a Windows 10 or 11 laptop or desktop computer. Mobile devices and tablets cannot run secured examinations or launch test setups.'
+                  : isVerified
                   ? `Your device was successfully verified on ${status.lastCheckedAt ? new Date(status.lastCheckedAt).toLocaleDateString() : 'recent check'}${status.sebVersion ? ` (${status.sebVersion})` : ''}. You are ready to launch proctored exams.`
                   : 'Follow the 3 quick steps below to install and test Safe Exam Browser before your scheduled exams.'}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 self-start md:self-auto">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleStartTest}
-                disabled={launching}
-                className="gap-2"
-              >
-                {launching ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Laptop className="w-3.5 h-3.5" />
-                )}
-                <span>{isVerified ? 'Retest Setup' : 'Test My Setup'}</span>
-              </Button>
-            </div>
+            {!isMobile && (
+              <div className="flex items-center gap-2 self-start md:self-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleStartTest}
+                  disabled={launching}
+                  className="gap-2"
+                >
+                  {launching ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Laptop className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isVerified ? 'Retest Setup' : 'Test My Setup'}</span>
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Institutional Mode Notice */}

@@ -48,8 +48,15 @@
 }
 
 @layer base {
-  * {
+  *, *::before, *::after {
     box-sizing: border-box;
+  }
+
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
   }
 
   html {
@@ -59,6 +66,8 @@
     scroll-behavior: smooth;
     background-color: var(--color-canvas);
     color: var(--color-ink);
+    min-height: 100%;
+    min-height: 100dvh;
   }
 
   body {
@@ -71,6 +80,22 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
+    min-height: 100%;
+    min-height: 100dvh;
+    padding-top: var(--sat);
+    padding-bottom: var(--sab);
+    padding-left: var(--sal);
+    padding-right: var(--sar);
+  }
+
+  img, svg, video, canvas, audio, iframe, embed, object {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Form inputs at least 16px font to prevent mobile viewport zoom */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select, textarea {
+    font-size: 16px !important;
   }
 
   /* Strict constraint: Never exceed font-weight 500 */

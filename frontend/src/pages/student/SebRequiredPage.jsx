@@ -71,30 +71,33 @@ export default function SebRequiredPage() {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-4">
-          <div className="p-3.5 bg-[#edecfb] rounded-[12px] text-xs text-[#28253b] font-[420] space-y-1.5 border-0">
-            <div className="flex items-center gap-1.5 font-[480] text-[#5266eb]">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>Assessment Security Notice</span>
-            </div>
-            <p className="font-[360] text-[#554e7b] leading-relaxed">
-              Standard web browsers are restricted for this exam. Safe Exam Browser locks your computer into a secure kiosk mode, disabling unauthorized applications, secondary monitors, and shortcuts during the session.
-            </p>
-          </div>
-
-          {isMobile && (
-            <div className="p-3.5 bg-[#fbfbff] rounded-[12px] text-xs text-[#28253b] space-y-1.5 border border-[#e9eaf2]">
-              <div className="flex items-center gap-1.5 font-[480] text-[#5266eb]">
-                <Laptop className="w-4 h-4 shrink-0" />
-                <span>{COPY.student.seb.mobileAlertTitle}</span>
+          {isMobile ? (
+            <div className="p-4 bg-[#fbfbff] rounded-[16px] text-xs text-[#28253b] space-y-2 border border-[#5266eb]/30 shadow-xs">
+              <div className="flex items-center gap-2 font-[480] text-[#5266eb]">
+                <Laptop className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Windows PC or Laptop Required</span>
               </div>
               <p className="font-[360] text-[#554e7b] leading-relaxed">
-                {COPY.student.seb.mobileWarning}
+                This examination requires Safe Exam Browser running in full kiosk mode on a <strong>Windows 10 or 11 laptop or desktop</strong>. Mobile devices, phones, and tablets are strictly prohibited from entering secure browser exams.
+              </p>
+              <p className="font-[420] text-[#28253b] pt-1">
+                Please log into ProctorNet from your Windows computer to start this assessment.
+              </p>
+            </div>
+          ) : (
+            <div className="p-3.5 bg-[#edecfb] rounded-[12px] text-xs text-[#28253b] font-[420] space-y-1.5 border-0">
+              <div className="flex items-center gap-1.5 font-[480] text-[#5266eb]">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>Assessment Security Notice</span>
+              </div>
+              <p className="font-[360] text-[#554e7b] leading-relaxed">
+                Standard web browsers are restricted for this exam. Safe Exam Browser locks your computer into a secure kiosk mode, disabling unauthorized applications, secondary monitors, and shortcuts during the session.
               </p>
             </div>
           )}
 
           <div className="flex flex-col gap-2.5 pt-1">
-            {configUrl && (
+            {!isMobile && configUrl && (
               <Button
                 asChild
                 className="w-full h-10 gap-2 cursor-pointer"
@@ -105,15 +108,17 @@ export default function SebRequiredPage() {
               </Button>
             )}
 
-            <Button
-              asChild
-              variant={configUrl ? "secondary" : "primary"}
-              className="w-full h-10 gap-2 cursor-pointer"
-            >
-              <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                <Download className="w-4 h-4" /> Download Safe Exam Browser
-              </a>
-            </Button>
+            {!isMobile && (
+              <Button
+                asChild
+                variant={configUrl ? "secondary" : "primary"}
+                className="w-full h-10 gap-2 cursor-pointer"
+              >
+                <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                  <Download className="w-4 h-4" /> Download Safe Exam Browser
+                </a>
+              </Button>
+            )}
 
             <Button
               type="button"

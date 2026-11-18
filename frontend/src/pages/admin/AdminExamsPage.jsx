@@ -76,7 +76,8 @@ export default function AdminExamsPage() {
 
       <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -137,6 +138,55 @@ export default function AdminExamsPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Stacked Cards (md:hidden) */}
+        <div className="block md:hidden divide-y divide-[#c3c3cc]/20">
+          {loading ? (
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-[#edecfb] rounded-full w-3/4 animate-pulse" />
+              <div className="h-3 bg-[#fbfbff] rounded-full w-1/2 animate-pulse" />
+            </div>
+          ) : exams.length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              title="No exams registered"
+              description="Assessments created by faculty will appear here for invigilator assignment."
+            />
+          ) : (
+            exams.map((exam) => (
+              <div key={exam.id} className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-[480] text-[#28253b]">{exam.title}</h4>
+                    <span className="text-[11px] font-mono text-[#554e7b]">{exam.courseCode}</span>
+                  </div>
+                  <Badge variant="outline" className={`text-xs font-[420] border-0 ${
+                    exam.status === 'ACTIVE' ? 'bg-[#edecfb] text-[#5266eb]' :
+                    exam.status === 'PUBLISHED' ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b]' :
+                    'bg-[#fbfbff] text-[#70707d]'
+                  }`}>
+                    {exam.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-[#554e7b]">
+                  <span>Duration: {exam.durationMinutes} mins</span>
+                  <span>{new Date(exam.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full h-10 text-xs gap-1.5 rounded-[40px] px-3.5 bg-[rgba(82,102,235,0.08)] hover:bg-[rgba(82,102,235,0.15)] text-[#28253b] border-transparent font-[420] cursor-pointer justify-center"
+                  onClick={() => {
+                    setSelectedExam(exam)
+                    setAssignDialogOpen(true)
+                  }}
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-[#5266eb]" /> Assign Invigilator
+                </Button>
+              </div>
+            ))
+          )}
         </div>
       </CardContent>
       </Card>
