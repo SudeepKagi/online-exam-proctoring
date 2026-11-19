@@ -32,6 +32,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `admin-seb-setup.test.js` | 13 | **NEW** | Verifies Phase 3 Safe Exam Browser administration: plain XML vs encrypted container inspection, Config Key comparison ("looks like Browser Exam Key" warning), starter config generator, 7-day verified ping invariant for enforce mode, diagnostic attempts tracking, and storage health check. |
 | `ai-flow-comprehensive.test.js` | 10 | **KEEP** | Verifies full AI question redesign: honest capacity estimation, difficulty split (Mixed 30/50/20), grounding check, token deduplication, extract mode with AI-suggested badges, and batch job cancellation/partial result persistence. |
 | `ai-generator-fixture.test.js` | 5 | **KEEP** | Verifies Zod schema validation on LLM JSON output, normalization of non-standard options, letter-based indices (A-D), deterministic fallback generation, and low-confidence flags (< 0.7). |
+| `ai-grounded-generation.test.js` | 12 | **NEW** | Verifies Phase 2 AI Grounding invariants: production refusal without keys (503 AI_GENERATION_NOT_CONFIGURED), 300-word substantive threshold rejection (400 INSUFFICIENT_SOURCE_TEXT), multi-page text extraction, server-side verbatim citation verification against cited page, rejection of hallucinated/short excerpts, page-aware chunking with proportional question count allocation, single question regeneration from excerpt, and preflight environment variable enforcement. |
 | `assertNonProduction.test.js` | 3 | **KEEP** | Verifies database wipe guards; strictly forbids cleanroom wipe when connected to external/production database hosts. |
 | `auth-onboarding.test.js` | 5 | **KEEP** | Verifies temporary password authentication, password policy enforcement (min 8 chars), department/semester normalization, and PENDING_APPROVAL state transition. |
 | `baseline-verification.test.js` | 9 | **KEEP** | Verifies mass-assignment prevention on `updateExam`, draft exam access control, and dynamic L1 cache invalidation upon publish. |
@@ -76,7 +77,7 @@ Every test file across the ProctorNet test suite was audited against strict prod
 | `student-seb-check.test.js` | 7 | **NEW** | Verifies Phase 4 student pre-exam check: authenticated status check (`checked`, `lastCheckedAt`, `sebVersion`), launch token with `purpose=check`, live token status polling, token exchange with profileMetadata persistence, and 6-digit PIN fallback exchange. |
 | `student-system-check.test.js` | 11 | **KEEP** | Verifies pre-exam system check: clock skew detection, latency measurement, OS compatibility, and friendly student error mapping. |
 | `violation-labels.test.js` | 5 | **KEEP** | Verifies legacy violation label formatting (`Screen share ended (legacy)`) and canonical pass-throughs. |
-| `wizard-scheduling-bugs.test.js` | 6 | **KEEP** | Verifies edge cases in scheduling (start too soon, invalid duration, AI rate limits). |
+| `wizard-scheduling-bugs.test.js` | 6 | **UPDATE** | Verifies edge cases in scheduling (start too soon, invalid duration, AI rate limits). Test 5 updated to provide a realistic substantive PDF fixture (300+ words generated via `pdf-lib`) conforming to Phase 2 substantive text threshold requirement, strictly asserting 5 requests/hour faculty rate limit. |
 
 ---
 

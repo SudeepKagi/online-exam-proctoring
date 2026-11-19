@@ -152,7 +152,9 @@ export default function ExamWizardModal({ isOpen, onClose, onExamCreated, existi
         title: result.metadata.title || prev.title,
         subjectCode: result.metadata.courseCode || prev.subjectCode,
         description: result.metadata.description || prev.description,
-        durationMinutes: result.metadata.suggestedDuration || prev.durationMinutes
+        durationMinutes: result.metadata.suggestedDuration || prev.durationMinutes,
+        sourceCoverage: result.sourceCoverage || result.aiAudit?.sourceCoverage,
+        aiAudit: result.aiAudit
       }))
     }
     if (result.questions && result.questions.length) {

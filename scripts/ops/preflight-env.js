@@ -216,6 +216,18 @@ function preflightEnv(filePath, options = {}) {
     }
   }
 
+  // 8. AI generation key check when enabled
+  const isAiEnabled = envMap.FEATURE_AI_GENERATION === 'true' || envMap.AI_ENABLED === 'true'
+  if (isAiEnabled) {
+    const hasAiKey = Boolean(
+      (envMap.GEMINI_API_KEY && envMap.GEMINI_API_KEY.trim()) ||
+      (envMap.OPENAI_API_KEY && envMap.OPENAI_API_KEY.trim())
+    )
+    if (!hasAiKey) {
+      errors.push('AI generation is enabled (FEATURE_AI_GENERATION or AI_ENABLED is true) but neither GEMINI_API_KEY nor OPENAI_API_KEY is configured.')
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors,
