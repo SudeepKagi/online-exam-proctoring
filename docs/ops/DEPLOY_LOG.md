@@ -744,3 +744,45 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-19T11:46:07.358Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0.sh`
+- **Command ID**: `52bff556-c681-4190-9edb-22d2b622e8d7`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/phase0-evidence.log`
+
+### [2026-11-19T11:50:56.904Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0a.sh`
+- **Command ID**: `b26f75e3-0558-4591-bc4b-2f0dc6117a82`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/phase0a-evidence.log`
+
+### [2026-11-19T11:52:24.072Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-service.sh`
+- **Command ID**: `9c2fb3d5-a029-4855-906a-aeb69377776c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-service.log`
+
+### [2026-11-19T12:00:48.137Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0-full.sh`
+- **Command ID**: `b2abe3b5-b348-4147-b4e4-72504bd2601a`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/phase0-full-evidence.log`
+
+### [2026-11-19T12:02:51.333Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0-full.sh`
+- **Command ID**: `6ca3a77e-bc73-4f4b-89f2-08f993659b4c`
+- **Status**: `Failed` (Exit Code: 1)
+- **Log File**: `logs-deploy/phase0-full-evidence.log`
+
+### [2026-11-19T12:04:26.375Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0-full.sh`
+- **Command ID**: `fe8b28ec-88d2-47d5-9603-e535b40364fa`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase0-full-evidence.log`
+
+### [2026-11-19T12:09:28.013Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-phase0-full.sh`
+- **Command ID**: `05927f71-d49a-4275-b753-223cfed130b2`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/phase0-full-evidence.log`
