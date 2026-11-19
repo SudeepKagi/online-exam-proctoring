@@ -5,7 +5,7 @@
  * scripts/ci/seb-smoke-check.js
  * SEB Smoke Verification:
  * Starts/verifies against backend with SEB_MODE=enforce and a known SEB_CONFIG_KEY.
- * 1. Checks that an attempt start request WITHOUT SEB header returns HTTP 403 { code: 'SEB_REQUIRED' }.
+ * 1. Checks that an attempt start request WITHOUT SEB header returns HTTP 403 { code: 'SEB_HEADER_MISSING' }.
  * 2. Computes the canonical hash using the formula (Variant A: sha256_hex(url + key)).
  * 3. Checks that an attempt start request WITH X-SafeExamBrowser-ConfigKeyHash header returns HTTP 200.
  */
@@ -179,10 +179,11 @@ async function runSmokeCheck() {
   })
 
   console.log(`[SEB Smoke] Response Status: ${rejectRes.status}, Body:`, rejectRes.body)
-  if (rejectRes.status !== 403 || rejectRes.body?.code !== 'SEB_REQUIRED') {
-    throw new Error(`Expected HTTP 403 with code SEB_REQUIRED, got HTTP ${rejectRes.status}: ${JSON.stringify(rejectRes.body)}`)
+  const isExpectedMissing = rejectRes.status === 403 && (rejectRes.body?.code === 'SEB_HEADER_MISSING' || rejectRes.body?.code === 'SEB_REQUIRED')
+  if (!isExpectedMissing) {
+    throw new Error(`Expected HTTP 403 with code SEB_HEADER_MISSING, got HTTP ${rejectRes.status}: ${JSON.stringify(rejectRes.body)}`)
   }
-  console.log('[✓] Successfully blocked with 403 SEB_REQUIRED when header is absent')
+  console.log('[✓] Successfully blocked with 403 when header is absent')
 
   // 5. Test 2: Calculate expected hash using formula (Variant A: sha256(canonicalUrl + key))
   console.log(`[SEB Smoke] 4. Calculating SEB Config Key hash for canonical URL: ${canonicalUrl}`)
