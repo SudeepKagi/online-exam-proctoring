@@ -47,6 +47,7 @@ class AiJobsService {
     extractedText,
     fileName,
     pageCount = 1,
+    pages = [],
     settings = {}
   }) {
     const count = parseInt(settings.count, 10) || 10
@@ -106,6 +107,7 @@ class AiJobsService {
       settings,
       extractedText,
       fileName,
+      pages,
       batches,
       questions: [],
       metadata: null,
@@ -147,6 +149,7 @@ class AiJobsService {
         const genResult = await generateExamQuestions({
           topic: currentJob.settings.topic || 'Engineering',
           syllabusText: currentJob.extractedText,
+          pages: currentJob.pages || [],
           difficulty: currentJob.settings.difficulty || 'MEDIUM',
           difficultySplit: currentJob.settings.difficultySplit,
           count: batch.count,
@@ -194,6 +197,16 @@ class AiJobsService {
     const finalJob = jobs.get(jobId)
     if (finalJob && finalJob.status !== 'cancelled') {
       finalJob.status = 'completed'
+      const questions = finalJob.questions || []
+      const coveredPages = Array.from(new Set(questions.map(q => Number(q.sourcePage) || 1))).sort((a, b) => a - b)
+      const totalPages = finalJob.pages?.length || 1
+      const readablePages = (finalJob.pages || []).filter(p => p.isReadable).length || totalPages
+      finalJob.sourceCoverage = {
+        coveredPages,
+        totalPages,
+        readablePages,
+        coveragePercent: Math.round((coveredPages.length / Math.max(1, readablePages)) * 100)
+      }
       finalJob.updatedAt = new Date().toISOString()
     }
   }

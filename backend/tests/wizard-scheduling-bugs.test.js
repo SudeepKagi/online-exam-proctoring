@@ -5,8 +5,43 @@ process.env.CACHE_DRIVER = 'memory'
 
 const { describe, it } = require('node:test')
 const assert = require('node:assert/strict')
+const { PDFDocument, StandardFonts } = require('pdf-lib')
 const { examWizardService } = require('../src/modules/exams/exam.wizard.service')
 const { examDraftService } = require('../src/modules/exams/exam.draft.service')
+
+async function createSubstantiveTestPdf() {
+  const doc = await PDFDocument.create()
+  const font = await doc.embedFont(StandardFonts.Helvetica)
+  const page = doc.addPage([600, 900])
+  
+  const textParagraphs = [
+    'The architecture of computer operating systems relies heavily on memory management subsystems to provide isolation and efficient resource sharing across concurrent processes.',
+    'Virtual memory mechanisms map logical process addresses into physical random access memory frames using multi-level hierarchical page tables and translation caches.',
+    'Hardware translation lookaside buffers cache the most recent address translations to dramatically reduce memory latency on modern high throughput microprocessors.',
+    'When an active process attempts to access a virtual memory address that is not currently mapped into physical storage, the processor triggers a page fault exception.',
+    'The kernel interrupt handler intercepts this fault and resolves the missing reference by scheduling an asynchronous input output transfer from secondary solid state storage.',
+    'Process scheduling algorithms allocate central processing unit execution time slices among competing computational threads based on priority, fairness, and state metrics.',
+    'System protection rings strictly isolate unprivileged user space applications from supervisor mode kernel execution environments to ensure platform security and stability.',
+    'Direct memory access controllers offload high throughput data transfers between peripheral hardware interfaces and main memory without continuous processor intervention.',
+    'Inter-process communication protocols enable distributed or local software components to exchange synchronized telemetry, event notifications, and operational messages.',
+    'Deadlock avoidance mechanisms continuously analyze resource allocation graphs to prevent circular wait conditions from starving active computational pipelines.',
+    'Symmetric multiprocessing architectures maintain cache coherence across independent processor cores using bus snooping or directory based protocols under heavy loads.',
+    'Non-volatile storage file systems organize persistent disk blocks into indexed structures with transactional journaling to guarantee crash recovery integrity.',
+    'Device drivers operate as modular kernel extensions that translate high level abstract input output requests into device specific hardware register commands.',
+    'Dynamic memory allocators employ buddy systems and slab caches to mitigate both internal and external fragmentation during rapid heap allocations.',
+    'Cryptographic security primitives protect sensitive credential tokens and authentication hashes across untrusted communication networks and storage volumes.',
+    'Distributed consensus protocols establish fault tolerant state replication across distributed database clusters in high availability production architectures.'
+  ]
+
+  let y = 820
+  for (const para of textParagraphs) {
+    page.drawText(para, { x: 50, y, size: 10, font, maxWidth: 500 })
+    y -= 50
+  }
+
+  const pdfBytes = await doc.save()
+  return Buffer.from(pdfBytes).toString('base64')
+}
 
 describe('Wizard Scheduling, Timezone & Rate Limiting Regression Suite', () => {
   it('1. Rejects exam start within 2 minutes of now with 400 START_TOO_SOON', async () => {
@@ -107,7 +142,7 @@ describe('Wizard Scheduling, Timezone & Rate Limiting Regression Suite', () => {
 
   it('5. Enforces AI generation rate limit of 5 requests per hour per faculty', async () => {
     const mockFacultyId = `faculty_ratelimit_${Date.now()}`
-    const fakePdf = Buffer.from('%PDF-1.4 mock pdf content').toString('base64')
+    const fakePdf = await createSubstantiveTestPdf()
 
     // Requests 1 to 5 should succeed (falling back to deterministic fallback)
     for (let i = 0; i < 5; i++) {

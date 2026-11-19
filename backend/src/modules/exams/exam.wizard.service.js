@@ -39,26 +39,79 @@ class ExamWizardService {
       throw err
     }
 
-    let extractedText
-    let pageCount = 1
+    const { PDFParse } = require('pdf-parse')
+    const parser = new PDFParse({ data: buffer })
+    let parsed
     try {
-      const pdfParse = require('pdf-parse')
-      const parsed = await pdfParse(buffer)
-      extractedText = parsed?.text || ''
-      pageCount = parsed?.numpages || 1
+      parsed = await parser.getText()
     } catch (_) {
-      extractedText = buffer.toString('utf-8').replace(/[^a-zA-Z0-9\s.,?!;:()\-_/]/g, ' ')
+      // Fallback text extraction if format is unusual
+      const fallbackText = buffer.toString('utf-8').replace(/[^a-zA-Z0-9\s.,?!;:()\-_/]/g, ' ')
+      parsed = {
+        total: 1,
+        pages: [{ num: 1, text: fallbackText }],
+        text: fallbackText
+      }
+    } finally {
+      await parser.destroy().catch(() => {})
     }
 
-    // Sanitize untrusted document text: remove HTML tags, normalize whitespace
-    extractedText = (extractedText || '')
-      .replace(/<[^>]*>?/gm, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
+    const rawPages = parsed?.pages || []
+    const totalPages = parsed?.total || rawPages.length || 1
+
+    const pages = []
+    let totalWords = 0
+    let readablePages = 0
+
+    for (let i = 0; i < totalPages; i++) {
+      const pageNum = i + 1
+      const pageObj = rawPages.find(p => p.num === pageNum) || rawPages[i]
+      const rawText = (pageObj?.text || '')
+        .replace(/<[^>]*>?/gm, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+      const words = rawText.split(/\s+/).filter(w => w.length > 0)
+      const wordCount = words.length
+      const isReadable = wordCount >= 10
+
+      if (isReadable) {
+        readablePages++
+        totalWords += wordCount
+      }
+
+      pages.push({
+        pageNumber: pageNum,
+        text: rawText,
+        wordCount,
+        isReadable,
+        flag: isReadable ? null : 'unreadable'
+      })
+    }
+
+    const minWords = parseInt(process.env.AI_MIN_SUBSTANTIVE_WORDS, 10) || 300
+    if (totalWords < minWords) {
+      const err = new Error("We couldn't read text from this PDF. Upload a text-based PDF or paste the text")
+      err.status = 400
+      err.code = 'INSUFFICIENT_SOURCE_TEXT'
+      err.details = {
+        totalWords,
+        minWordsRequired: minWords,
+        totalPages,
+        readablePages
+      }
+      throw err
+    }
+
+    const combinedText = pages.filter(p => p.isReadable).map(p => p.text).join('\n\n')
 
     return {
-      text: extractedText,
-      pageCount
+      text: combinedText,
+      pages,
+      totalPages,
+      readablePages,
+      totalWords,
+      summary: `Read ${readablePages} of ${totalPages} pages, about ${totalWords.toLocaleString()} words`
     }
   }
 
@@ -96,13 +149,14 @@ class ExamWizardService {
       aiRateLimitMap.set(creatorId, history)
     }
 
-    const { text: extractedText } = await this.extractPdfText({ pdfBase64, pdfBuffer })
+    const extracted = await this.extractPdfText({ pdfBase64, pdfBuffer })
 
     const cleanTopic = topicHint || (fileName ? fileName.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') : null) || 'Engineering Subject'
 
     const genResult = await generateExamQuestions({
       topic: cleanTopic,
-      syllabusText: extractedText.slice(0, 15000),
+      syllabusText: extracted.text.slice(0, 30000),
+      pages: extracted.pages,
       difficulty,
       difficultySplit,
       count: parseInt(count, 10) || 10,
@@ -115,23 +169,39 @@ class ExamWizardService {
       isExtractMode: Boolean(isExtractMode)
     })
 
+    const questions = genResult.questions || []
+    const coveredPages = Array.from(new Set(questions.map(q => Number(q.sourcePage) || 1))).sort((a, b) => a - b)
+    const coveragePercent = Math.round((coveredPages.length / Math.max(1, extracted.readablePages)) * 100)
+
+    const sourceCoverage = {
+      coveredPages,
+      totalPages: extracted.totalPages,
+      readablePages: extracted.readablePages,
+      coveragePercent
+    }
+
     return {
       status: 'success',
       source: genResult.source,
       topic: genResult.subject || cleanTopic,
+      extractionSummary: extracted.summary,
+      sourceCoverage,
       metadata: {
         title: genResult.title || `${cleanTopic} Examination`,
-        courseCode: genResult.courseCode || 'EXM101',
+        courseCode: genResult.courseCode || '',
         subject: genResult.subject || cleanTopic,
         description: genResult.description || '',
         studentInstructions: genResult.studentInstructions || '',
         suggestedDuration: genResult.suggestedDuration || 60,
         markingScheme: genResult.markingScheme || { positive: 1, negative: 0 }
       },
-      count: genResult.questions ? genResult.questions.length : 0,
-      questions: genResult.questions || [],
+      count: questions.length,
+      questions,
       honestyNote: genResult.honestyNote,
-      aiAudit: genResult.aiAudit
+      aiAudit: {
+        ...genResult.aiAudit,
+        sourceCoverage
+      }
     }
   }
 

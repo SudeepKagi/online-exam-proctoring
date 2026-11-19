@@ -22,6 +22,8 @@ router.get('/exams', authenticateToken, (req, res, next) => {
 })
 
 // 5-Step Exam Wizard Endpoints — MUST be before /:id to avoid shadowing
+router.get('/ai/preflight', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.checkAiPreflight)
+router.post('/ai/regenerate-question', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.regenerateQuestion)
 router.post('/generate-from-pdf', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.generateFromPdf)
 router.post('/ai/estimate-capacity', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsOpsController.estimateAiCapacity)
 router.post('/ai-jobs/start', authenticateToken, requireRole('FACULTY', 'ADMIN'), examsController.uploadQuestionsMiddleware, examsOpsController.startAiJob)

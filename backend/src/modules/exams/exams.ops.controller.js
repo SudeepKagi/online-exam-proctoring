@@ -1,8 +1,51 @@
 'use strict'
 
-const { generateExamQuestions, estimateSupportedQuestions } = require('./ai.generator')
+const {
+  generateExamQuestions,
+  estimateSupportedQuestions,
+  probeAiAvailability,
+  regenerateSingleQuestion,
+  getAiProviderInfo
+} = require('./ai.generator')
 const { aiJobsService } = require('./ai.jobs.service')
 const { invigilatorService } = require('./invigilator.service')
+
+async function checkAiPreflight(req, res, next) {
+  try {
+    const probe = await probeAiAvailability()
+    const info = getAiProviderInfo()
+    return res.status(probe.ok ? 200 : 503).json({
+      ...probe,
+      ...info
+    })
+  } catch (err) {
+    next(err)
+  }
+}
+
+async function regenerateQuestion(req, res, next) {
+  try {
+    const { excerpt, sourcePage, difficulty, topic, optionsPerQuestion } = req.body || {}
+    if (!excerpt || excerpt.length < 15) {
+      return res.status(400).json({
+        error: { message: 'Supporting excerpt of at least 15 characters is required' }
+      })
+    }
+    const question = await regenerateSingleQuestion({
+      excerpt,
+      sourcePage: sourcePage || 1,
+      difficulty: difficulty || 'MEDIUM',
+      topic: topic || 'General',
+      optionsPerQuestion: optionsPerQuestion || 4
+    })
+    return res.status(200).json({
+      status: 'success',
+      question
+    })
+  } catch (err) {
+    next(err)
+  }
+}
 
 async function generateQuestions(req, res, next) {
   try {
@@ -55,7 +98,8 @@ async function startAiJob(req, res, next) {
     const job = await aiJobsService.startGenerationJob({
       creatorId: req.user?.id,
       extractedText: extracted.text,
-      pageCount: extracted.pageCount || 1,
+      pageCount: extracted.totalPages || 1,
+      pages: extracted.pages || [],
       fileName: fileName || req.file?.originalname || 'StudyMaterial.pdf',
       settings
     })
@@ -239,5 +283,7 @@ module.exports = {
   getDraft,
   saveDraft,
   deleteDraft,
-  getInstitutionSebStatus
+  getInstitutionSebStatus,
+  checkAiPreflight,
+  regenerateQuestion
 }

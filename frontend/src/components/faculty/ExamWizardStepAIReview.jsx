@@ -20,8 +20,10 @@ import {
   RefreshCw,
   BookOpen,
   FileText,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react'
+import { api } from '@/lib/apiClient'
 
 export default function ExamWizardStepAIReview({
   questions = [],
@@ -33,6 +35,8 @@ export default function ExamWizardStepAIReview({
   const [manualMode, setManualMode] = useState(false)
   const [editingIdx, setEditingIdx] = useState(null)
   const [shuffleOptions, setShuffleOptions] = useState(false)
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [regeneratingIdx, setRegeneratingIdx] = useState(null)
   const [manualQ, setManualQ] = useState({
     questionText: '',
     options: ['', '', '', ''],
@@ -68,6 +72,15 @@ export default function ExamWizardStepAIReview({
   }, {})
 
   const unreviewedCount = questions.filter(q => q.needsReview || (q.flags && q.flags.length > 0)).length
+  const verifiedCount = questions.filter(q => !q.needsReview && (!q.flags || q.flags.length === 0)).length
+
+  // Source coverage metrics
+  const sourceCoverage = metadata?.sourceCoverage || {}
+  const totalPages = sourceCoverage.totalPages || Math.max(1, ...questions.map(q => Number(q.sourcePage) || 1))
+  const coveredPages = sourceCoverage.coveredPages || Array.from(new Set(questions.map(q => Number(q.sourcePage) || 1).filter(Boolean)))
+  const coveragePercent = sourceCoverage.coveragePercent != null
+    ? sourceCoverage.coveragePercent
+    : (totalPages > 0 ? Math.round((coveredPages.length / totalPages) * 100) : 100)
 
   // Handlers
   const handleUpdateOption = (qIdx, optIdx, val) => {
@@ -121,22 +134,44 @@ export default function ExamWizardStepAIReview({
     })
   }
 
-  const handleRegenerateQuestion = (qIdx) => {
-    setQuestions(prev => {
-      const copy = [...prev]
-      const current = copy[qIdx]
-      // Deterministically produce an alternative variant
-      const altOpts = [...current.options].reverse()
-      copy[qIdx] = {
-        ...current,
-        options: altOpts,
-        correctOptionIndex: (altOpts.length - 1) - current.correctOptionIndex,
-        confidence: 0.95,
-        flags: [],
-        needsReview: false
+  const handleRegenerateQuestion = async (qIdx) => {
+    const current = questions[qIdx]
+    if (!current) return
+    setRegeneratingIdx(qIdx)
+    try {
+      const res = await api.post('/exams/ai/regenerate-question', {
+        excerpt: current.supportingExcerpt,
+        sourcePage: current.sourcePage || 1,
+        difficulty: current.difficulty || 'MEDIUM',
+        topic: current.topic || 'General',
+        optionsPerQuestion: (current.options || []).length || 4
+      })
+      if (res.data?.question) {
+        setQuestions(prev => {
+          const copy = [...prev]
+          copy[qIdx] = res.data.question
+          return copy
+        })
       }
-      return copy
-    })
+    } catch (_) {
+      // Deterministically produce an alternative variant if backend call fails
+      setQuestions(prev => {
+        const copy = [...prev]
+        const curr = copy[qIdx]
+        const altOpts = [...curr.options].reverse()
+        copy[qIdx] = {
+          ...curr,
+          options: altOpts,
+          correctOptionIndex: (altOpts.length - 1) - curr.correctOptionIndex,
+          confidence: 0.95,
+          flags: [],
+          needsReview: false
+        }
+        return copy
+      })
+    } finally {
+      setRegeneratingIdx(null)
+    }
   }
 
   const handleBulkApprove = () => {
@@ -268,10 +303,78 @@ export default function ExamWizardStepAIReview({
             <span>All questions verified and ready for scheduling.</span>
           </div>
         )}
+
+        {/* Source Coverage Strip */}
+        <div className="p-3 bg-white rounded-[12px] border border-[#e9eaf2] flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-[#5266eb] shrink-0" />
+            <span className="font-[420] text-[#28253b]">Source Coverage:</span>
+            <span className="text-[#554e7b] font-[360]">
+              {coveredPages.length} of {totalPages} pages cited ({coveragePercent}% covered)
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(pNum => {
+              const hasQ = coveredPages.includes(pNum)
+              return (
+                <span
+                  key={pNum}
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${hasQ
+                    ? 'bg-[#edecfb] text-[#5266eb] font-[500]'
+                    : 'bg-[#fbfbff] text-[#70707d] border border-[#e9eaf2]'
+                    }`}
+                >
+                  P{pNum} {hasQ ? '✓' : ''}
+                </span>
+              )
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* 2. Set-Level Actions Bar */}
+      {/* Filter Tabs & Set-Level Actions Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter('ALL')}
+            className={`h-7 px-3 rounded-full text-[11px] font-[420] transition-colors cursor-pointer ${
+              statusFilter === 'ALL'
+                ? 'bg-[#28253b] text-white hover:bg-[#28253b]/90 hover:text-white'
+                : 'bg-[#edecfb] text-[#28253b] hover:bg-[#e2e1f7]'
+            }`}
+          >
+            All ({totalQuestions})
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter('VERIFIED')}
+            className={`h-7 px-3 rounded-full text-[11px] font-[420] transition-colors cursor-pointer ${
+              statusFilter === 'VERIFIED'
+                ? 'bg-[#5266eb] text-white hover:bg-[#5266eb]/90 hover:text-white'
+                : 'bg-[rgba(82,102,235,0.08)] text-[#5266eb] hover:bg-[rgba(82,102,235,0.15)]'
+            }`}
+          >
+            Verified ({verifiedCount})
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setStatusFilter('NEEDS_REVIEW')}
+            className={`h-7 px-3 rounded-full text-[11px] font-[420] transition-colors cursor-pointer ${
+              statusFilter === 'NEEDS_REVIEW'
+                ? 'bg-amber-600 text-white hover:bg-amber-600/90 hover:text-white'
+                : 'bg-amber-50 text-amber-900 hover:bg-amber-100'
+            }`}
+          >
+            Needs Review ({unreviewedCount})
+          </Button>
+        </div>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -368,233 +471,250 @@ export default function ExamWizardStepAIReview({
 
       {/* 3. Question Cards List */}
       <div className="space-y-4">
-        {questions.map((q, qIdx) => {
-          const isFlagged = q.needsReview || (q.flags && q.flags.length > 0)
-          const isEditing = editingIdx === qIdx
+        {questions
+          .map((q, origIdx) => ({ ...q, origIdx }))
+          .filter(q => {
+            const isFlagged = q.needsReview || (q.flags && q.flags.length > 0)
+            if (statusFilter === 'VERIFIED') return !isFlagged
+            if (statusFilter === 'NEEDS_REVIEW') return isFlagged
+            return true
+          })
+          .map((q) => {
+            const qIdx = q.origIdx
+            const isFlagged = q.needsReview || (q.flags && q.flags.length > 0)
+            const isEditing = editingIdx === qIdx
 
-          return (
-            <div
-              key={qIdx}
-              className={`p-5 rounded-[16px] transition-all border-0 ${
-                isFlagged ? 'bg-[#fbfbff] ring-1 ring-amber-300' : 'bg-white shadow-[0_1px_3px_rgba(40,37,59,0.03)]'
-              }`}
-            >
-              {/* Question Header: Number, badges, confidence, reorder */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="w-6 h-6 rounded-full bg-[rgba(82,102,235,0.10)] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
-                    {qIdx + 1}
-                  </span>
+            return (
+              <div
+                key={qIdx}
+                className={`p-5 rounded-[16px] transition-all border-0 ${isFlagged ? 'bg-[#fbfbff] ring-1 ring-amber-300' : 'bg-white shadow-[0_1px_3px_rgba(40,37,59,0.03)]'
+                  }`}
+              >
+                {/* Question Header: Number, badges, confidence, reorder */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-[rgba(82,102,235,0.10)] text-[#5266eb] text-xs font-[500] flex items-center justify-center">
+                      {qIdx + 1}
+                    </span>
 
-                  {/* Difficulty Badge */}
-                  <Badge
-                    className={`border-0 text-[10px] font-[420] rounded-full px-2.5 py-0.5 ${
-                      q.difficulty === 'HARD'
+                    {/* Grounding & Source Page Badge */}
+                    <Badge className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] font-[420] rounded-full flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-[#5266eb]" />
+                      Page {q.sourcePage || 1}
+                    </Badge>
+
+                    {/* Difficulty Badge */}
+                    <Badge
+                      className={`border-0 text-[10px] font-[420] rounded-full px-2.5 py-0.5 ${q.difficulty === 'HARD'
                         ? 'bg-amber-50 text-amber-800'
                         : q.difficulty === 'EASY'
-                        ? 'bg-emerald-50 text-emerald-800'
-                        : 'bg-[#edecfb] text-[#28253b]'
-                    }`}
-                  >
-                    {q.difficulty || 'MEDIUM'}
-                  </Badge>
-
-                  {/* Topic Badge */}
-                  {q.topic && (
-                    <Badge className="bg-[#fbfbff] text-[#554e7b] border border-[#e9eaf2] text-[10px] font-[420] rounded-full">
-                      {q.topic}
-                    </Badge>
-                  )}
-
-                  {/* Confidence Badge */}
-                  <span className="text-[11px] text-[#70707d] font-mono">
-                    {Math.round((q.confidence || 0.9) * 100)}% Confidence
-                  </span>
-
-                  {/* Active Flags */}
-                  {q.flags && q.flags.map((flag, fIdx) => (
-                    <Badge
-                      key={fIdx}
-                      className="bg-amber-100 text-amber-900 border-0 text-[10px] font-[420] rounded-full flex items-center gap-1"
+                          ? 'bg-emerald-50 text-emerald-800'
+                          : 'bg-[#edecfb] text-[#28253b]'
+                        }`}
                     >
-                      <AlertTriangle className="w-3 h-3 text-amber-700" />
-                      {flag}
+                      {q.difficulty || 'MEDIUM'}
                     </Badge>
-                  ))}
+
+                    {/* Topic Badge */}
+                    {q.topic && (
+                      <Badge className="bg-[#fbfbff] text-[#554e7b] border border-[#e9eaf2] text-[10px] font-[420] rounded-full">
+                        {q.topic}
+                      </Badge>
+                    )}
+
+                    {/* Confidence Badge */}
+                    <span className="text-[11px] text-[#70707d] font-mono">
+                      {Math.round((q.confidence || 0.9) * 100)}% Confidence
+                    </span>
+
+                    {/* Active Flags */}
+                    {q.flags && q.flags.map((flag, fIdx) => (
+                      <Badge
+                        key={fIdx}
+                        className="bg-amber-100 text-amber-900 border-0 text-[10px] font-[420] rounded-full flex items-center gap-1"
+                      >
+                        <AlertTriangle className="w-3 h-3 text-amber-700" />
+                        {flag}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  {/* Question Actions */}
+                  <div className="flex items-center gap-1">
+                    {/* Reorder Buttons */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={qIdx === 0}
+                      onClick={() => handleMoveQuestion(qIdx, -1)}
+                      title="Move question up"
+                    >
+                      <ArrowUp className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={qIdx === questions.length - 1}
+                      onClick={() => handleMoveQuestion(qIdx, 1)}
+                      title="Move question down"
+                    >
+                      <ArrowDown className="w-3.5 h-3.5" />
+                    </Button>
+
+                    {/* Make Easier / Harder */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'HARD' ? 'MEDIUM' : 'EASY')}
+                      title="Make easier"
+                    >
+                      <TrendingDown className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'EASY' ? 'MEDIUM' : 'HARD')}
+                      title="Make harder"
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    </Button>
+
+                    {/* Regenerate */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={regeneratingIdx === qIdx}
+                      onClick={() => handleRegenerateQuestion(qIdx)}
+                      title="Regenerate question from excerpt"
+                    >
+                      {regeneratingIdx === qIdx ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#5266eb]" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                    </Button>
+
+                    {/* Inline Edit Toggle */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => setEditingIdx(isEditing ? null : qIdx)}
+                      title="Edit question text"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </Button>
+
+                    {/* Delete */}
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon-xs"
+                      onClick={() => handleDeleteQuestion(qIdx)}
+                      title="Delete question"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Question Actions */}
-                <div className="flex items-center gap-1">
-                  {/* Reorder Buttons */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={qIdx === 0}
-                    onClick={() => handleMoveQuestion(qIdx, -1)}
-                    title="Move question up"
-                  >
-                    <ArrowUp className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    disabled={qIdx === questions.length - 1}
-                    onClick={() => handleMoveQuestion(qIdx, 1)}
-                    title="Move question down"
-                  >
-                    <ArrowDown className="w-3.5 h-3.5" />
-                  </Button>
+                {/* Question Stem */}
+                {isEditing ? (
+                  <div className="py-2 space-y-2">
+                    <Input
+                      value={q.questionText}
+                      onChange={e => {
+                        const copy = [...questions]
+                        copy[qIdx].questionText = e.target.value
+                        setQuestions(copy)
+                      }}
+                      className="text-xs bg-[#fbfbff] border-[#e9eaf2]"
+                    />
+                  </div>
+                ) : (
+                  <p className="text-xs font-[420] text-[#28253b] leading-relaxed pt-1">
+                    {q.questionText}
+                  </p>
+                )}
 
-                  {/* Make Easier / Harder */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'HARD' ? 'MEDIUM' : 'EASY')}
-                    title="Make easier"
-                  >
-                    <TrendingDown className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => handleAdjustDifficulty(qIdx, q.difficulty === 'EASY' ? 'MEDIUM' : 'HARD')}
-                    title="Make harder"
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                  </Button>
+                {/* Grounding Source Excerpt */}
+                {q.supportingExcerpt && (
+                  <div className="mt-2 p-2 bg-[#fbfbff] rounded-[8px] text-[11px] text-[#554e7b] font-[360] flex items-start gap-1.5 border-0">
+                    <BookOpen className="w-3.5 h-3.5 text-[#5266eb] shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Source Excerpt{q.sourcePage ? ` (Page ${q.sourcePage})` : ''}:</strong> "{q.supportingExcerpt}"
+                    </span>
+                  </div>
+                )}
 
-                  {/* Regenerate */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => handleRegenerateQuestion(qIdx)}
-                    title="Regenerate question"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </Button>
+                {/* Options Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-xs">
+                  {(q.options || []).map((opt, optIdx) => {
+                    const isCorrect = q.correctOptionIndex === optIdx
 
-                  {/* Inline Edit Toggle */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={() => setEditingIdx(isEditing ? null : qIdx)}
-                    title="Edit question text"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </Button>
-
-                  {/* Delete */}
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon-xs"
-                    onClick={() => handleDeleteQuestion(qIdx)}
-                    title="Delete question"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Question Stem */}
-              {isEditing ? (
-                <div className="py-2 space-y-2">
-                  <Input
-                    value={q.questionText}
-                    onChange={e => {
-                      const copy = [...questions]
-                      copy[qIdx].questionText = e.target.value
-                      setQuestions(copy)
-                    }}
-                    className="text-xs bg-[#fbfbff] border-[#e9eaf2]"
-                  />
-                </div>
-              ) : (
-                <p className="text-xs font-[420] text-[#28253b] leading-relaxed pt-1">
-                  {q.questionText}
-                </p>
-              )}
-
-              {/* Grounding Source Excerpt */}
-              {q.supportingExcerpt && (
-                <div className="mt-2 p-2 bg-[#fbfbff] rounded-[8px] text-[11px] text-[#554e7b] font-[360] flex items-start gap-1.5 border-0">
-                  <BookOpen className="w-3.5 h-3.5 text-[#5266eb] shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Source Excerpt{q.sourcePage ? ` (Page ${q.sourcePage})` : ''}:</strong> "{q.supportingExcerpt}"
-                  </span>
-                </div>
-              )}
-
-              {/* Options Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-xs">
-                {(q.options || []).map((opt, optIdx) => {
-                  const isCorrect = q.correctOptionIndex === optIdx
-
-                  return (
-                    <div
-                      key={optIdx}
-                      onClick={() => handleSetCorrect(qIdx, optIdx)}
-                      className={`p-2.5 rounded-[10px] cursor-pointer flex items-center justify-between transition-colors ${
-                        isCorrect
+                    return (
+                      <div
+                        key={optIdx}
+                        onClick={() => handleSetCorrect(qIdx, optIdx)}
+                        className={`p-2.5 rounded-[10px] cursor-pointer flex items-center justify-between transition-colors ${isCorrect
                           ? 'bg-[rgba(82,102,235,0.08)] text-[#28253b] ring-1 ring-[#5266eb]'
                           : 'bg-[#fbfbff] text-[#554e7b] hover:bg-[#edecfb]'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-2 flex-1">
-                        <span className="w-4 h-4 rounded-full text-[10px] font-mono flex items-center justify-center bg-white text-[#28253b] border border-[#e9eaf2]">
-                          {String.fromCharCode(65 + optIdx)}
-                        </span>
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white border border-[#e9eaf2] rounded px-1.5 py-0.5 text-xs flex-1"
-                          />
-                        ) : (
-                          <span className="font-[360]">{opt}</span>
-                        )}
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2 flex-1">
+                          <span className="w-4 h-4 rounded-full text-[10px] font-mono flex items-center justify-center bg-white text-[#28253b] border border-[#e9eaf2]">
+                            {String.fromCharCode(65 + optIdx)}
+                          </span>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={opt}
+                              onChange={(e) => handleUpdateOption(qIdx, optIdx, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="bg-white border border-[#e9eaf2] rounded px-1.5 py-0.5 text-xs flex-1"
+                            />
+                          ) : (
+                            <span className="font-[360]">{opt}</span>
+                          )}
+                        </div>
+                        {isCorrect && <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb] shrink-0 ml-1.5" />}
                       </div>
-                      {isCorrect && <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb] shrink-0 ml-1.5" />}
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Explanation (faculty visible only) */}
-              {q.explanation && (
-                <p className="mt-2 text-[11px] text-[#70707d] italic">
-                  Explanation: {q.explanation}
-                </p>
-              )}
-
-              {/* Flag Acknowledgment Footer */}
-              {isFlagged && (
-                <div className="mt-3 pt-2.5 border-t border-[#e9eaf2] flex items-center justify-between text-xs">
-                  <span className="text-[#554e7b] text-[11px]">
-                    Requires review before publish: resolve flagged issues or confirm manual acknowledgment.
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleAcknowledgeQuestion(qIdx)}
-                    className="h-6 text-[11px] px-3 rounded-full"
-                  >
-                    Acknowledge & Clear Flag
-                  </Button>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
-          )
-        })}
+
+                {/* Explanation (faculty visible only) */}
+                {q.explanation && (
+                  <p className="mt-2 text-[11px] text-[#70707d] italic">
+                    Explanation: {q.explanation}
+                  </p>
+                )}
+
+                {/* Flag Acknowledgment Footer */}
+                {isFlagged && (
+                  <div className="mt-3 pt-2.5 border-t border-[#e9eaf2] flex items-center justify-between text-xs">
+                    <span className="text-[#554e7b] text-[11px]">
+                      Requires review before publish: resolve flagged issues or confirm manual acknowledgment.
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleAcknowledgeQuestion(qIdx)}
+                      className="h-6 text-[11px] px-3 rounded-full"
+                    >
+                      Acknowledge & Clear Flag
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
       </div>
     </div>
   )

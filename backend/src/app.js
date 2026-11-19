@@ -186,6 +186,15 @@ if ((require.main === module || process.env.NODE_ENV !== 'test') && !process.env
         logger.warn({ err: err.message }, 'Could not run startup storage probe')
       }
     }
+
+    try {
+      const { getAiProviderInfo } = require('./modules/exams/ai.generator')
+      const aiInfo = getAiProviderInfo()
+      logger.info(aiInfo, `AI generation provider: ${aiInfo.provider} (model: ${aiInfo.model}, configured: ${aiInfo.configured})`)
+      console.log(`🤖 AI generation provider: ${aiInfo.provider} (model: ${aiInfo.model}, configured: ${aiInfo.configured})`)
+    } catch (err) {
+      logger.warn({ err: err.message }, 'Could not log AI provider status')
+    }
   })
 }
 
