@@ -131,14 +131,15 @@ async function uploadSebConfig(req, res, next) {
 
     let saved = null
     try {
-      // Upsert into system settings
+      // Upsert into system settings (reset verified status to 'Needs re-test' on new upload)
       const existing = await settingsService.getSebConfig()
       saved = await settingsService.saveSebConfig({
         fileKey,
         configKey: trimmedKey,
         startUrl: inspection.settingsSummary?.startURL || null,
         uploadedAt: new Date().toISOString(),
-        lastVerifiedAt: existing?.lastVerifiedAt || null,
+        lastVerifiedAt: null,
+        verifiedConfigVersion: null,
         requestedMode: existing?.requestedMode || 'off'
       })
       invalidateInstitutionSebState()
@@ -196,6 +197,10 @@ async function getSebStatus(req, res, next) {
       lastVerifiedAt: state.lastVerifiedAt,
       lastVerifiedMethod: state.lastVerifiedMethod || sebConfig?.lastVerifiedMethod || null,
       lastVerifiedUserAgent: state.lastVerifiedUserAgent || sebConfig?.lastVerifiedUserAgent || null,
+      configVersion: state.configVersion || null,
+      verifiedConfigVersion: state.verifiedConfigVersion || null,
+      isConfigVersionMatched: state.isVersionValid,
+      isVerifiedRecent: state.isVerifiedRecent,
       requestedMode: state.requestedMode,
       effectiveMode: state.effectiveMode,
       enforcementReason: state.enforcementReason,
@@ -232,13 +237,14 @@ async function updateSebMode(req, res, next) {
     }
 
     if (targetMode === 'enforce') {
-      const lastVerifiedAt = sebConfig.lastVerifiedAt
-      const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
-      const isVerifiedRecent = lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo
-      if (!isVerifiedRecent) {
+      const state = await getInstitutionSebState({ bypassCache: true })
+      if (!state.isVerifiedRecent) {
+        const msg = !state.isVersionValid && state.verifiedConfigVersion
+          ? 'Cannot enable enforcement: Safe Exam Browser configuration has not been verified for the current file and key. Complete "Test my setup" first.'
+          : 'Cannot enable enforcement: Safe Exam Browser setup has not been verified within the last 7 days. Complete "Test my setup" first.'
         return res.status(400).json({
           code: 'SEB_NOT_VERIFIED',
-          message: 'Cannot enable enforcement: Safe Exam Browser setup has not been verified within the last 7 days. Complete "Test my setup" first.'
+          message: msg
         })
       }
     }
@@ -329,21 +335,52 @@ async function getEntryDiagnostics(req, res, next) {
     }
 
     const failureDiag = sebDiagnosticsService.getEntryDiagnostics24h()
+    const setupFailures10m = sebDiagnosticsService.getSetupFailures10m()
 
     return res.status(200).json({
       success: true,
       configObjectPresent,
       keyPresent: state.keyPresent,
       effectiveMode: state.effectiveMode,
+      configVersion: state.configVersion || null,
+      verifiedConfigVersion: state.verifiedConfigVersion || null,
+      isConfigVersionMatched: state.isVersionValid,
       storageProbe: {
         passed: probePassed,
         ...probeDetails
       },
       failureCounts24h: failureDiag.failureCounts24h,
-      lastRequestIdByCode: failureDiag.lastRequestIdByCode
+      lastRequestIdByCode: failureDiag.lastRequestIdByCode,
+      mostLikelyCause: failureDiag.mostLikelyCause,
+      recentRefs: failureDiag.recentRefs,
+      setupFailures10m
     })
   } catch (err) {
     logger.error({ err }, 'Failed to compute entry diagnostics')
+    next(err)
+  }
+}
+
+/**
+ * Endpoint to look up failure diagnostic details by reference ID.
+ * GET /api/v1/admin/seb/diagnostics/lookup/:refId
+ */
+async function lookupRefId(req, res, next) {
+  try {
+    const rawRef = req.params?.refId
+    const record = sebDiagnosticsService.lookupRefId(rawRef)
+    if (!record) {
+      return res.status(404).json({
+        code: 'REF_NOT_FOUND',
+        message: `No diagnostic failure record found for reference id: ${rawRef}`
+      })
+    }
+    return res.status(200).json({
+      success: true,
+      record
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to lookup diagnostic reference id')
     next(err)
   }
 }
@@ -358,5 +395,6 @@ module.exports = {
   inspectConfig,
   getStarterConfig,
   getRecentAttempts,
-  getEntryDiagnostics
+  getEntryDiagnostics,
+  lookupRefId
 }

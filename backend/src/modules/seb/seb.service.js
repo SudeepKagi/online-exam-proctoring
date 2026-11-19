@@ -1,5 +1,6 @@
 'use strict'
 
+const crypto = require('crypto')
 const { settingsService } = require('../admin/settings.service')
 const { getStorageAdapter } = require('../../infra/s3/s3.client')
 const config = require('../../shared/config')
@@ -46,12 +47,16 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
 
   // 2. S3 File presence check
   let filePresent
+  let fileEtag = null
   let storageUnavailable = false
   const fileKey = sebConfig?.fileKey || 'seb/institution-config.seb'
   try {
     const storage = getStorageAdapter()
     const head = await storage.headObject(fileKey)
     filePresent = Boolean(head)
+    if (head) {
+      fileEtag = head.ETag ? String(head.ETag).replace(/["']/g, '') : (head.LastModified ? String(new Date(head.LastModified).getTime()) : (head.size ? String(head.size) : 'active_file'))
+    }
   } catch (err) {
     filePresent = false
     if (err && err.name !== 'NotFound' && err.$metadata?.httpStatusCode !== 404 && err.code !== 'ENOENT') {
@@ -61,10 +66,22 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
 
   // 3. Configured requires both key and file
   const configured = Boolean(keyPresent && filePresent)
+  const cleanPublicOrigin = config.publicOrigin || process.env.PUBLIC_ORIGIN || 'https://proctornet.duckdns.org'
 
-  // 4. Verification and Enforcement Modes
+  // 4. Config Versioning
+  const configVersion = (keyPresent && filePresent)
+    ? crypto.createHash('sha256').update(`${fileEtag || 'noetag'}:${resolvedKey}:${cleanPublicOrigin}`).digest('hex').slice(0, 16)
+    : null
+  const verifiedConfigVersion = sebConfig?.verifiedConfigVersion || null
+
+  // 5. Verification and Enforcement Modes
   const lastVerifiedAt = sebConfig?.lastVerifiedAt || null
   const requestedMode = (sebConfig?.requestedMode || process.env.SEB_MODE || config.sebMode || 'off').toLowerCase().trim()
+
+  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
+  const isTimeValid = Boolean(lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo)
+  const isVersionValid = verifiedConfigVersion ? Boolean(configVersion && verifiedConfigVersion === configVersion) : true
+  const isVerifiedRecent = isTimeValid && isVersionValid
 
   let effectiveMode
   let enforcementReason = null
@@ -79,15 +96,17 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
       enforcementReason = 'Safe Exam Browser 64-hex Config Key is not configured.'
     }
   } else if (requestedMode === 'enforce') {
-    const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000)
-    const isVerifiedRecent = lastVerifiedAt && new Date(lastVerifiedAt).getTime() >= sevenDaysAgo
     if (isVerifiedRecent) {
       effectiveMode = 'enforce'
     } else {
       effectiveMode = 'audit'
-      enforcementReason = lastVerifiedAt
-        ? 'Enforcement suspended: Last verified setup ping was over 7 days ago. Re-verify in Admin to re-enable.'
-        : 'Enforcement suspended: Safe Exam Browser has not been verified yet. Complete "Test my setup" in Admin to enable enforcement.'
+      if (!isVersionValid && verifiedConfigVersion) {
+        enforcementReason = 'Enforcement suspended: Configuration file or key changed since last verification. Complete "Test my setup" in Admin to re-verify.'
+      } else if (!isTimeValid && lastVerifiedAt) {
+        enforcementReason = 'Enforcement suspended: Last verified setup ping was over 7 days ago. Re-verify in Admin to re-enable.'
+      } else {
+        enforcementReason = 'Enforcement suspended: Safe Exam Browser has not been verified yet. Complete "Test my setup" in Admin to enable enforcement.'
+      }
     }
   } else if (requestedMode === 'audit') {
     effectiveMode = 'audit'
@@ -106,8 +125,6 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     enforcementReason = `Strict enforcement is restricted to audit mode by server environment ceiling (SEB_MODE=${rawEnvMode}).`
   }
 
-  const cleanPublicOrigin = config.publicOrigin || process.env.PUBLIC_ORIGIN || 'https://proctornet.duckdns.org'
-
   const state = {
     configured,
     keyPresent,
@@ -116,12 +133,17 @@ async function getInstitutionSebState({ bypassCache = false } = {}) {
     lastVerifiedAt,
     lastVerifiedMethod: sebConfig?.lastVerifiedMethod || null,
     lastVerifiedUserAgent: sebConfig?.lastVerifiedUserAgent || null,
+    configVersion,
+    verifiedConfigVersion,
+    isVerifiedRecent,
+    isVersionValid,
     requestedMode,
     effectiveMode,
     enforcementReason,
     keyLast4: keyPresent ? resolvedKey.slice(-4) : null,
     configKey: keyPresent ? resolvedKey : null,
     fileKey: filePresent ? fileKey : null,
+    fileEtag,
     publicOrigin: cleanPublicOrigin
   }
 

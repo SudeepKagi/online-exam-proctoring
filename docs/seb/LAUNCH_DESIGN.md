@@ -66,12 +66,11 @@ Derived directly from `SafeExamBrowser.Settings/Settings/Keys.cs` and SEB Plist 
 
 | Feature / Purpose | Plist Key String | Type | SEB Config Tool Location & Description |
 | :--- | :--- | :--- | :--- |
-| **Start URL** | `startURL` | String | *General -> Start URL*: Initial page loaded when SEB launches. |
+| **Start URL** | `startURL` | String | *General -> Start URL*: Initial page loaded when SEB launches (`/seb/enter`). |
 | **Query Parameter Forwarding** | `startURLAppendQueryParameter` | Boolean | *Exam -> Query String Parameter -> Allow Query Parameter*: When true, appends `StartUrlQuery` to `StartURL`. |
 | **HTTP Request Headers (BEK/CK)** | `sendBrowserExamKey` | Boolean | *Exam -> Browser Exam Key -> Send Browser Exam Key & Config Key in HTTP Request*: Enables `X-SafeExamBrowser-RequestHash` / `X-SafeExamBrowser-ConfigKeyHash`. |
 | **Quit URL** | `quitURL` | String | *Session / Quitting -> Quit URL*: Navigation to this URL quits SEB. |
 | **Quit URL Confirm** | `quitURLConfirm` | Boolean | *Session / Quitting -> Ask user to confirm quitting when loading Quit URL*. |
-| **Allow Camera / Media** | `enable-media-stream` / `use-fake-ui-for-media-stream` | String / Args | *Media / WebRTC*: Passed via CEF command-line arguments to allow getUserMedia. |
 | **URL Filter Enable** | `URLFilterEnable` | Boolean | *Network -> Filter -> Enable URL Filtering*. |
 | **URL Filter Content** | `URLFilterEnableContentFilter` | Boolean | *Network -> Filter -> Enable Content Filtering*. |
 | **URL Filter Rules** | `URLFilterRules` | Array of Dicts | *Network -> Filter -> Filter Rules*: List of dictionaries containing `action` (1=allow, 0=block), `regex` (bool), `expression` (pattern). |

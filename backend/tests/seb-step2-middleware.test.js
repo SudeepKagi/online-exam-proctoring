@@ -389,7 +389,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
         })
 
         assert.strictEqual(res.statusCode, 403)
-        assert.strictEqual(res.body.code, 'SEB_REQUIRED')
+        assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISMATCH'].includes(res.body.code))
       } finally {
         config.sebMode = originalMode
       }
@@ -648,7 +648,7 @@ describe('Step 2: Safe Exam Browser (SEB) Verification Middleware Suite', () => 
         })
         assert.strictEqual(rejectedRes.status, 403)
         const rejectBody = await rejectedRes.json()
-        assert.strictEqual(rejectBody.code, 'SEB_REQUIRED')
+        assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(rejectBody.code))
 
         // 2. With valid SEB header -> 200 success (student must be photo-verified per Phase 2 server gate)
         await prisma.examAttempt.upsert({

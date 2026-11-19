@@ -1,6 +1,6 @@
 {
   "name": "proctornet-backend",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "description": "ProctorNet Backend — Express API + Socket.io + Prisma ORM",
   "main": "src/app.js",
   "type": "commonjs",

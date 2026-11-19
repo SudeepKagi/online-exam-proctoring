@@ -4,6 +4,60 @@ const zlib = require('zlib')
 const crypto = require('crypto')
 
 /**
+ * Serializes an in-memory dictionary to compact sorted JSON per SEB specification (Json.cs).
+ *
+ * Rules:
+ * 1. Keys sorted alphabetically using invariant comparison.
+ * 2. Excludes originatorVersion (case-insensitive).
+ * 3. Excludes empty sub-dictionaries.
+ * 4. Booleans formatted as lowercase 'true' or 'false'.
+ * 5. Numbers serialized using invariant format.
+ * 6. Strings and nulls wrapped in quotes.
+ */
+function serializeSebJson(value) {
+  if (value === null || value === undefined) {
+    return '""'
+  }
+
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+
+  if (typeof value === 'number') {
+    return String(value)
+  }
+
+  if (typeof value === 'string') {
+    return JSON.stringify(value)
+  }
+
+  if (Array.isArray(value)) {
+    const serializedItems = value.map(serializeSebJson)
+    return `[${serializedItems.join(',')}]`
+  }
+
+  if (typeof value === 'object') {
+    const keys = Object.keys(value).sort((a, b) => a.localeCompare(b))
+    const parts = []
+
+    for (const key of keys) {
+      if (key.toLowerCase() === 'originatorversion') {
+        continue
+      }
+      const val = value[key]
+      if (val !== null && typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) {
+        continue // Skip empty dictionary per Json.cs
+      }
+      parts.push(`${JSON.stringify(key)}:${serializeSebJson(val)}`)
+    }
+
+    return `{${parts.join(',')}}`
+  }
+
+  return '""'
+}
+
+/**
  * Normalizes an XML plist string by removing insignificant whitespace, comments,
  * and excluded keys per SEB Developer Specification.
  */
@@ -18,13 +72,25 @@ function normalizePlistXml(xmlStr) {
 
 /**
  * Computes the SEB Configuration Key from a plain XML string.
- * Per the SEB specification, the Configuration Key is computed as SHA-256 of the
- * normalized configuration plist.
+ * Legacy compatibility helper matching original test harness.
  */
 function computeConfigKeyFromXml(xmlStr) {
   try {
     const normalized = normalizePlistXml(xmlStr)
     return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex').toLowerCase()
+  } catch (_) {
+    return null
+  }
+}
+
+/**
+ * Computes the SEB Configuration Key from a parsed dictionary per the official SEB specification.
+ */
+function computeConfigKeyOfficial(dictionary) {
+  try {
+    if (!dictionary || typeof dictionary !== 'object') return null
+    const jsonStr = serializeSebJson(dictionary)
+    return crypto.createHash('sha256').update(jsonStr, 'utf8').digest('hex').toLowerCase()
   } catch (_) {
     return null
   }
@@ -37,7 +103,7 @@ function parsePlistDict(xmlStr) {
   const settings = {}
   if (!xmlStr) return settings
 
-  // Match key followed by string, true, false (allowing optional whitespace before />), or integer
+  // Match key followed by string, true, false, or integer
   const keyRegex = /<key>([^<]+)<\/key>\s*(?:<string>([^<]*)<\/string>|<(true|false)\s*\/?>|<integer>([^<]*)<\/integer>)/gi
   let match
   while ((match = keyRegex.exec(xmlStr)) !== null) {
@@ -65,7 +131,7 @@ function inspectSebBuffer(buffer, options = {}) {
     return { valid: false, error: 'Empty file provided.' }
   }
 
-  const { publicOrigin = 'https://proctornet.duckdns.org', s3Host: _s3Host = '', pastedKey = '' } = options
+  const { publicOrigin = 'https://proctornet.duckdns.org', pastedKey = '' } = options
 
   // 1. Decompress if GZip (ID1 = 0x1F, ID2 = 0x8B, CM = 0x08)
   let decompressed = buffer
@@ -74,7 +140,7 @@ function inspectSebBuffer(buffer, options = {}) {
     try {
       decompressed = zlib.gunzipSync(buffer)
       wasCompressed = true
-    } catch (err) {
+    } catch (_) {
       return { valid: false, error: 'Corrupt or malformed compressed .seb file.' }
     }
   }
@@ -91,9 +157,11 @@ function inspectSebBuffer(buffer, options = {}) {
       isEncrypted: true,
       format: 'encrypted',
       wasCompressed,
-      notice: 'This configuration file is protected with a settings password or certificate. Internal settings cannot be inspected statically before launch. Use "Test my setup" to verify end-to-end communication.',
+      notice: 'This configuration file is protected with a settings password or certificate. Internal settings and Configuration Key cannot be inspected statically before launch. Use "Test my setup" to verify end-to-end communication.',
       recommendation: 'Settings password encryption is recommended in production to prevent candidates from opening and editing configuration rules in the SEB Config Tool.',
-      checks: []
+      checks: [],
+      keyMatch: false,
+      keyNotice: 'Encrypted file: Configuration Key must be copied from SEB Config Tool (Exam tab) or observed via live handshake.'
     }
   }
 
@@ -112,7 +180,6 @@ function inspectSebBuffer(buffer, options = {}) {
   const checks = []
   let hasErrors = false
 
-  // Parse Public Origin Host for domain matching
   let expectedHost = 'proctornet.duckdns.org'
   try {
     expectedHost = new URL(publicOrigin).host
@@ -146,7 +213,7 @@ function inspectSebBuffer(buffer, options = {}) {
           key: 'startURL',
           label: 'Start URL',
           status: 'warning',
-          message: `Start URL is configured to "${startUrl}" (works, but update your configuration to the recommended Start URL: ${publicOrigin}/seb/enter).`
+          message: `Start URL is configured to "${startUrl}". This works, but update your configuration to the recommended Start URL (${publicOrigin}/seb/enter) for automatic handoff.`
         })
       } else {
         checks.push({
@@ -250,7 +317,7 @@ function inspectSebBuffer(buffer, options = {}) {
   }
 
   // f. Key Verification
-  let computedKey = computeConfigKeyFromXml(textContent)
+  const computedKey = computeConfigKeyFromXml(textContent)
   let keyMatch = false
   let keyWarning = null
 
@@ -351,5 +418,7 @@ module.exports = {
   inspectSebBuffer,
   generateStarterSebConfig,
   computeConfigKeyFromXml,
+  computeConfigKeyOfficial,
+  serializeSebJson,
   parsePlistDict
 }

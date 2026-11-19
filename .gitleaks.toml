@@ -48,5 +48,8 @@ regexes = [
     '''a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90''',
     '''0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef''',
     '''abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789''',
-    '''43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c'''
+    '''43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c''',
+
+    # 8. Known public SEB starter configuration key
+    '''4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a'''
 ]

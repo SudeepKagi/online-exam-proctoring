@@ -106,3 +106,12 @@
      | `WINDOW_BLUR`    | Metadata Only | Capturing the exam page would mislead since candidate is away; records time-away |
   4. **Rate Limiting & Asynchronous Attachment:** Screenshots are rate-limited to at most 1 per 10 seconds per attempt. The violation event is recorded FIRST, and the screenshot is uploaded asynchronously to S3. Upload failures are queued for retry and never block candidate navigation or throw errors in the arena.
   5. **Removal of Automated Threshold Termination:** Candidates are never automatically locked out or terminated by a client-side violation counter (no '3-strikes' auto-kill). Only an authorized invigilator or admin can suspend or terminate an attempt based on logged evidence.
+
+
+## Decision 18: Decouple Launch Exchange from Config Key Gate & Gating on Exam-Content Endpoints
+- **Context:** Previously, the exchange endpoints (`/seb/exchange` and `/seb/exchange-pin`) strictly enforced the `X-SafeExamBrowser-ConfigKeyHash` header at authentication time in `enforce` mode. This coupled candidate authentication / PIN redemption to the configuration key check, prematurely aborting valid user sessions before reaching the exam and causing generic "isn't ready" error notices if the header drifted.
+- **Decision (Supersedes prior instructions):**
+  1. **Decoupled Exchange:** The launch-code and token exchange endpoints (`/seb/exchange` and `/seb/exchange-pin`) create the user session whenever the launch code or token is valid, the account is active, and exam window/identity rules permit it. The exchange endpoint does **not** require the Config Key header in any mode.
+  2. **Diagnostic Tracking:** The exchange records `headerPresent` and `headerMatch` on the session and attempt diagnostics, enabling real-time visibility into whether the client opened inside SEB with the expected configuration.
+  3. **Strict Gate on Exam Content Endpoints:** The security gate remains strictly enforced on exam-content endpoints (`POST /exams/:id/start`, `POST/PUT /attempts/:id/answers`, `POST /attempts/:id/submit`, and `GET /attempts/:id`). In `enforce` mode, a valid `X-SafeExamBrowser-ConfigKeyHash` header is mandatory on that very request. A flag set during exchange never satisfies or bypasses content endpoints.
+  4. **Distinct Error Codes:** The backend returns distinct, unambiguous codes (`INVALID_CODE`, `CODE_EXPIRED`, `CODE_USED`, `RATE_LIMITED`, `SEB_HEADER_MISSING`, `SEB_HEADER_MISMATCH`, `INSTITUTION_NOT_CONFIGURED`, `STORAGE_UNAVAILABLE`) with dedicated student-facing explanations and reference IDs.

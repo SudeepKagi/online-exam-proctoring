@@ -15,6 +15,7 @@ router.post('/inspect', requireRole('ADMIN'), sebAdminController.upload.single('
 router.get('/starter-config', requireRole('ADMIN'), sebAdminController.getStarterConfig)
 router.get('/attempts', requireRole('ADMIN'), sebAdminController.getRecentAttempts)
 router.get('/entry-diagnostics', requireRole('ADMIN'), sebAdminController.getEntryDiagnostics)
+router.get('/diagnostics/lookup/:refId', requireRole('ADMIN'), sebAdminController.lookupRefId)
 router.get('/status', requireRole('ADMIN'), sebAdminController.getSebStatus)
 router.patch('/mode', requireRole('ADMIN'), sebAdminController.updateSebMode)
 router.delete('/config', requireRole('ADMIN'), sebAdminController.deleteSebConfig)
