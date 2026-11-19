@@ -60,14 +60,15 @@ class SettingsService {
     return null
   }
 
-  async saveSebConfig({ fileKey, configKey, uploadedAt = new Date().toISOString(), lastVerifiedAt = null, requestedMode = null }) {
+  async saveSebConfig({ fileKey, configKey, uploadedAt = new Date().toISOString(), lastVerifiedAt = null, requestedMode = null, verifiedConfigVersion = null }) {
     const existing = await this.getSebConfig()
     const payload = {
       fileKey: fileKey || existing?.fileKey || null,
       configKey: configKey ? String(configKey).trim().toLowerCase() : (existing?.configKey || null),
       uploadedAt: uploadedAt || existing?.uploadedAt || new Date().toISOString(),
       lastVerifiedAt: lastVerifiedAt !== undefined ? lastVerifiedAt : (existing?.lastVerifiedAt || null),
-      requestedMode: requestedMode !== null ? requestedMode : (existing?.requestedMode || 'off')
+      requestedMode: requestedMode !== null ? requestedMode : (existing?.requestedMode || 'off'),
+      verifiedConfigVersion: verifiedConfigVersion !== undefined ? verifiedConfigVersion : (existing?.verifiedConfigVersion || null)
     }
 
     const saved = await this.setSetting(SEB_CONFIG_KEY, payload)
@@ -103,10 +104,12 @@ class SettingsService {
       inMemoryCachedSebConfig.lastVerifiedAt = timestamp
       if (meta.method) inMemoryCachedSebConfig.lastVerifiedMethod = meta.method
       if (meta.userAgent) inMemoryCachedSebConfig.lastVerifiedUserAgent = meta.userAgent
+      if (meta.configVersion) inMemoryCachedSebConfig.verifiedConfigVersion = meta.configVersion
     }
 
-    // Force database write immediately on first verification; otherwise throttle to once per 60 seconds
-    if (!isFirstTime && (now - lastVerifiedWriteTime < 60000)) {
+    // Force database write immediately on first verification or config version change; otherwise throttle to once per 60 seconds
+    const versionChanged = meta.configVersion && inMemoryCachedSebConfig?.verifiedConfigVersion !== meta.configVersion
+    if (!isFirstTime && !versionChanged && (now - lastVerifiedWriteTime < 60000)) {
       return
     }
 
@@ -116,6 +119,7 @@ class SettingsService {
         current.lastVerifiedAt = timestamp
         if (meta.method) current.lastVerifiedMethod = meta.method
         if (meta.userAgent) current.lastVerifiedUserAgent = meta.userAgent
+        if (meta.configVersion) current.verifiedConfigVersion = meta.configVersion
         await this.setSetting(SEB_CONFIG_KEY, current)
         lastVerifiedWriteTime = now
         inMemoryCachedSebConfig = current

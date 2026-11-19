@@ -299,18 +299,11 @@ function verifySeb(req, res, next) {
 }
 
 async function runVerifySeb(req, res, next) {
-  const sebMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
-
-  // 1. If SEB_MODE=off: pass through
-  if (sebMode === 'off') {
-    req.seb = { mode: 'off', verified: false, sebRequired: false }
-    return next()
-  }
-
-  // 2. Non-STUDENT roles: pass through
+  // 1. Non-STUDENT roles: pass through
   const userRole = normalizeRole(req.user?.role)
   if (!userRole || userRole !== ROLES.STUDENT) {
-    req.seb = { mode: sebMode, verified: true, sebRequired: false, roleBypass: true }
+    const rawMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+    req.seb = { mode: rawMode, verified: true, sebRequired: false, roleBypass: true }
     return next()
   }
 
@@ -321,6 +314,16 @@ async function runVerifySeb(req, res, next) {
     mode: inspection.mode,
     verified: inspection.verified,
     examId: inspection.examId
+  }
+
+  // If exam requires SEB and key is missing while enforce mode is requested or active, reject with 503
+  const intendedMode = (process.env.SEB_MODE || config.sebMode || inspection.mode || 'off').toLowerCase().trim()
+  if (inspection.required && inspection.missingConfigKey && (intendedMode === 'enforce' || inspection.mode === 'enforce')) {
+    logger.warn({ examId: inspection.examId }, 'SEB verification failed: missing institution configuration key')
+    return res.status(503).json({
+      code: 'INSTITUTION_NOT_CONFIGURED',
+      message: 'Safe Exam Browser institution configuration is not configured.'
+    })
   }
 
   if (!inspection.required || inspection.mode === 'off') {
@@ -358,6 +361,14 @@ async function runVerifySeb(req, res, next) {
   }
 
   // Enforce mode: requires cryptographic header match
+  if (inspection.missingConfigKey) {
+    logger.warn({ examId: inspection.examId }, 'SEB verification failed: missing institution configuration key')
+    return res.status(503).json({
+      code: 'INSTITUTION_NOT_CONFIGURED',
+      message: 'Safe Exam Browser institution configuration is not configured.'
+    })
+  }
+
   if (inspection.headerMatched) {
     const attemptId = req.params?.attemptId || req.params?.id
     if (attemptId) {
@@ -366,15 +377,23 @@ async function runVerifySeb(req, res, next) {
     return next()
   }
 
+  const requestId = req.headers['x-request-id'] || req.id || crypto.randomUUID().slice(0, 8)
+  const isHeaderPresent = Boolean(inspection.receivedHeader && inspection.receivedHeader.trim().length > 0)
+  const code = !isHeaderPresent ? 'SEB_HEADER_MISSING' : 'SEB_HEADER_MISMATCH'
+
   logger.warn({
     examId: inspection.examId,
+    code,
     receivedPrefix8: inspection.receivedHeader ? inspection.receivedHeader.slice(0, 8) : null,
     urlHashed: inspection.expectedUrl
   }, 'SEB request verification failed (enforce mode 403)')
 
   return res.status(403).json({
-    code: 'SEB_REQUIRED',
-    message: 'Access denied: Safe Exam Browser verification required.'
+    code,
+    message: isHeaderPresent
+      ? 'Safe Exam Browser configuration check failed. Configuration Key header mismatch.'
+      : 'Access restricted to verified Safe Exam Browser sessions. Configuration header is missing.',
+    requestId
   })
 }
 

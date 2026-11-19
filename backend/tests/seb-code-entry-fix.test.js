@@ -16,6 +16,7 @@ const { app } = require('../src/app')
 const config = require('../src/shared/config')
 const { settingsService } = require('../src/modules/admin/settings.service')
 const { invalidateInstitutionSebState } = require('../src/modules/seb/seb.service')
+const { clearAllSebCaches } = require('../src/middleware/seb')
 const { sebTokenService } = require('../src/modules/seb/sebToken.service')
 const { sebDiagnosticsService } = require('../src/modules/seb/sebDiagnostics.service')
 const { getStorageAdapter } = require('../src/infra/s3/s3.client')
@@ -29,8 +30,10 @@ const FORGED_KEY = '111111111111111111111111111111111111111111111111111111111111
 let testServer = null
 let port = 0
 let studentUser = null
+let studentToken = null
 let adminUser = null
 let adminToken = null
+let testExam = null
 
 function httpRequest(options, postBody = null) {
   return new Promise((resolve, reject) => {
@@ -101,13 +104,59 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       { expiresIn: '1h' }
     )
 
+    studentToken = jwt.sign(
+      { id: studentUser.id, email: studentUser.email, role: 'STUDENT', status: 'ACTIVE' },
+      config.jwtSecret || process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    )
+
     testServer = http.createServer(app)
     await new Promise((resolve) => {
       testServer.listen(0, '127.0.0.1', () => {
         port = testServer.address().port
+        config.publicOrigin = `http://localhost:${port}`
         resolve()
       })
     })
+
+    const teacherUser = await prisma.user.upsert({
+      where: { email: 'phase1-codefix-teacher@proctornet.test' },
+      update: { status: 'ACTIVE', role: 'FACULTY' },
+      create: {
+        email: 'phase1-codefix-teacher@proctornet.test',
+        fullName: 'Phase 1 Codefix Teacher',
+        passwordHash: 'dummy',
+        role: 'FACULTY',
+        status: 'ACTIVE'
+      }
+    })
+
+    const now = new Date()
+    testExam = await prisma.exam.create({
+      data: {
+        title: 'Phase 1 SEB Code Entry Exam',
+        courseCode: 'SEC401',
+        status: 'PUBLISHED',
+        startTime: new Date(now.getTime() - 10 * 60 * 1000),
+        endTime: new Date(now.getTime() + 120 * 60 * 1000),
+        durationMinutes: 60,
+        createdById: teacherUser.id,
+        proctoringConfig: {
+          sebRequired: true,
+          identityCheck: false
+        }
+      }
+    })
+
+    await prisma.examAttempt.create({
+      data: {
+        examId: testExam.id,
+        studentId: studentUser.id,
+        status: 'NOT_STARTED',
+        faceVerified: true,
+        faceStatus: 'MATCH'
+      }
+    }).catch(() => {})
   })
 
   after(async () => {
@@ -119,6 +168,10 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       requestedMode: 'audit'
     }).catch(() => {})
     invalidateInstitutionSebState()
+    if (testExam) {
+      await prisma.examAttempt.deleteMany({ where: { examId: testExam.id } }).catch(() => {})
+      await prisma.exam.delete({ where: { id: testExam.id } }).catch(() => {})
+    }
     if (testServer) {
       await new Promise((resolve) => testServer.close(resolve))
     }
@@ -129,6 +182,7 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     sebDiagnosticsService.clearHistory()
     sebTokenService.clear()
     invalidateInstitutionSebState()
+    clearAllSebCaches()
 
     const storage = getStorageAdapter()
     await storage.putObject('seb/institution-config.seb', Buffer.from('mock-seb-file'), 'application/seb')
@@ -185,14 +239,13 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     assert.ok(res.json?.requestId, 'Must return requestId')
   })
 
-  it('3. In enforce mode with missing header: returns SEB_HEADER_MISSING and DOES NOT burn the PIN', async () => {
+  it('3. In enforce mode with missing header: decoupled exchange succeeds (200) and records diagnostics', async () => {
     const token = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: 'STUDENT',
       purpose: 'exam'
     })
 
-    // Attempt PIN exchange without X-SafeExamBrowser-ConfigKeyHash header
     const res1 = await httpRequest({
       hostname: 'localhost',
       port,
@@ -204,14 +257,10 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       }
     }, { pin: token.pin })
 
-    assert.strictEqual(res1.statusCode, 403)
-    assert.strictEqual(res1.json?.code, 'SEB_HEADER_MISSING')
-    assert.ok(res1.json?.requestId, 'Must return requestId')
+    assert.strictEqual(res1.statusCode, 200, 'Exchange must succeed under decoupled model')
+    assert.strictEqual(res1.json?.success, true)
 
-    // PIN MUST NOT BE CONSUMED! Retry with valid header must succeed!
-    const targetUrl = `${config.publicOrigin}/api/v1/seb/exchange-pin`
-    const validHash = computeSebHash(targetUrl, INSTITUTION_KEY)
-
+    // Replay with consumed PIN returns CODE_USED
     const res2 = await httpRequest({
       hostname: 'localhost',
       port,
@@ -219,16 +268,15 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
-        'X-SafeExamBrowser-ConfigKeyHash': validHash
+        'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
     }, { pin: token.pin })
 
-    assert.strictEqual(res2.statusCode, 200, 'Must succeed when retried with valid header because PIN was preserved')
-    assert.strictEqual(res2.json?.success, true)
+    assert.strictEqual(res2.statusCode, 409)
+    assert.strictEqual(res2.json?.code, 'CODE_USED')
   })
 
-  it('4. In enforce mode with mismatched header: returns SEB_HEADER_MISMATCH and DOES NOT burn the PIN', async () => {
+  it('4. In enforce mode with mismatched header: decoupled exchange succeeds (200) and records SEB_HEADER_MISMATCH diagnostics', async () => {
     const token = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: 'STUDENT',
@@ -250,92 +298,54 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       }
     }, { pin: token.pin })
 
-    assert.strictEqual(res1.statusCode, 403)
-    assert.strictEqual(res1.json?.code, 'SEB_HEADER_MISMATCH')
-    assert.ok(res1.json?.requestId)
+    assert.strictEqual(res1.statusCode, 200, 'Exchange must succeed under decoupled model')
+    assert.strictEqual(res1.json?.success, true)
 
-    // Now retry with valid hash
-    const validHash = computeSebHash(targetUrl, INSTITUTION_KEY)
-    const res2 = await httpRequest({
-      hostname: 'localhost',
-      port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
-        'X-SafeExamBrowser-ConfigKeyHash': validHash
-      }
-    }, { pin: token.pin })
-
-    assert.strictEqual(res2.statusCode, 200)
-    assert.strictEqual(res2.json?.success, true)
-
-    // And once successfully consumed, subsequent exchange returns CODE_USED
-    const res3 = await httpRequest({
-      hostname: 'localhost',
-      port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
-        'X-SafeExamBrowser-ConfigKeyHash': validHash
-      }
-    }, { pin: token.pin })
-
-    assert.strictEqual(res3.statusCode, 409)
-    assert.strictEqual(res3.json?.code, 'CODE_USED')
+    // Diagnostics should record the mismatch
+    const diag = sebDiagnosticsService.getEntryDiagnostics24h()
+    assert.ok(diag.failureCounts24h.SEB_HEADER_MISMATCH >= 1)
   })
 
-  it('5. Strictly rejects x-safeexambrowser-requesthash as Configuration Key proof', async () => {
-    const token = sebTokenService.createLaunchToken({
-      userId: studentUser.id,
-      userRole: 'STUDENT',
-      purpose: 'exam'
-    })
+  it('5. Strictly rejects x-safeexambrowser-requesthash as Configuration Key proof on content endpoint', async () => {
+    const targetPath = `/api/v1/attempts/exams/${testExam.id}/start`
+    const canonicalUrl = `${config.publicOrigin}${targetPath}`
+    const bekHash = computeSebHash(canonicalUrl, INSTITUTION_KEY)
 
-    const targetUrl = `${config.publicOrigin}/api/v1/seb/exchange-pin`
-    const bekHash = computeSebHash(targetUrl, INSTITUTION_KEY)
-
-    // Send hash under legacy Browser Exam Key header x-safeexambrowser-requesthash
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
+      path: targetPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
         'x-safeexambrowser-requesthash': bekHash
       }
-    }, { pin: token.pin })
+    }, {})
 
     assert.strictEqual(res.statusCode, 403)
-    assert.strictEqual(res.json?.code, 'SEB_HEADER_MISSING', 'Must not accept requesthash header as Config Key proof')
+    assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(res.json?.code))
   })
 
-  it('6. Returns INSTITUTION_NOT_CONFIGURED when institution key is missing', async () => {
+  it('6. Content endpoint returns INSTITUTION_NOT_CONFIGURED when institution key is missing', async () => {
     process.env.SEB_MODE = 'enforce'
     await settingsService.deleteSebConfig()
     invalidateInstitutionSebState()
+    clearAllSebCaches()
 
-    const token = sebTokenService.createLaunchToken({
-      userId: studentUser.id,
-      userRole: 'STUDENT',
-      purpose: 'exam'
-    })
-
+    const targetPath = `/api/v1/attempts/exams/${testExam.id}/start`
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
+      path: targetPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: token.pin })
+    }, {})
 
     assert.strictEqual(res.statusCode, 503)
     assert.strictEqual(res.json?.code, 'INSTITUTION_NOT_CONFIGURED')
@@ -380,33 +390,29 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     assert.strictEqual(hasAuthCookie, true, 'Must issue authentication cookie in log mode')
   })
 
-  it('8. Strictly refuses starter-key header as Config Key proof when custom institution key is active', async () => {
-    const token = sebTokenService.createLaunchToken({
-      userId: studentUser.id,
-      userRole: 'STUDENT',
-      purpose: 'exam'
-    })
-
-    const targetUrl = `${config.publicOrigin}/api/v1/seb/exchange-pin`
-    const starterHash = computeSebHash(targetUrl, STARTER_KEY)
+  it('8. Strictly refuses starter-key header as Config Key proof on content endpoint when custom institution key is active', async () => {
+    const targetPath = `/api/v1/attempts/exams/${testExam.id}/start`
+    const canonicalUrl = `${config.publicOrigin}${targetPath}`
+    const starterHash = computeSebHash(canonicalUrl, STARTER_KEY)
 
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
+      path: targetPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${studentToken}`,
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
         'X-SafeExamBrowser-ConfigKeyHash': starterHash
       }
-    }, { pin: token.pin })
+    }, {})
 
     assert.strictEqual(res.statusCode, 403)
     assert.strictEqual(res.json?.code, 'SEB_HEADER_MISMATCH', 'Starter key must not match configured institution key')
   })
 
-  it('9. In enforce mode: launch URL (?launch=...) redeemed without SEB header gets no session and returns 403', async () => {
+  it('9. Decoupled exchange: launch URL (?launch=...) redeemed without SEB header exchanges session, but content endpoint requires SEB header', async () => {
     const token = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: 'STUDENT',
@@ -424,11 +430,25 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       }
     })
 
-    assert.strictEqual(res.statusCode, 403)
-    assert.strictEqual(res.json?.code, 'SEB_HEADER_MISSING')
-    const setCookie = res.headers['set-cookie'] || []
-    const hasAuthCookie = setCookie.some((c) => c.startsWith('proctornet_auth=') || c.startsWith('pn_at='))
-    assert.strictEqual(hasAuthCookie, false, 'No session cookie may be issued when launch URL is redeemed without valid SEB header in enforce mode')
+    assert.strictEqual(res.statusCode, 200, 'Exchange must succeed under decoupled model')
+    assert.strictEqual(res.json?.success, true)
+
+    // Now verify content endpoint is protected
+    const targetPath = `/api/v1/attempts/exams/${testExam.id}/start`
+    const contentRes = await httpRequest({
+      hostname: 'localhost',
+      port,
+      path: targetPath,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${res.json?.token}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
+      }
+    }, {})
+
+    assert.strictEqual(contentRes.statusCode, 403)
+    assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(contentRes.json?.code))
   })
 
   it('10. Admin entry-diagnostics endpoint returns object presence, key presence, probe status, failure counts, and NO key material', async () => {

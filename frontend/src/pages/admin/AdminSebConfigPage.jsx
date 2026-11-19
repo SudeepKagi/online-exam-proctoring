@@ -66,6 +66,12 @@ export default function AdminSebConfigPage() {
   const [entryDiagnostics, setEntryDiagnostics] = useState(null)
   const [loadingEntryDiagnostics, setLoadingEntryDiagnostics] = useState(false)
 
+  // Ref Lookup states
+  const [refSearchId, setRefSearchId] = useState('')
+  const [refSearchResult, setRefSearchResult] = useState(null)
+  const [refSearchLoading, setRefSearchLoading] = useState(false)
+  const [refSearchError, setRefSearchError] = useState('')
+
   // Modal & Messages
   const [confirmEnforceOpen, setConfirmEnforceOpen] = useState(false)
   const [updatingMode, setUpdatingMode] = useState(false)
@@ -83,6 +89,27 @@ export default function AdminSebConfigPage() {
       setCopiedField(fieldName)
       setTimeout(() => setCopiedField(null), 2000)
     } catch (_) {}
+  }
+
+  const handleLookupRef = async (refIdToLookup) => {
+    const id = (refIdToLookup || refSearchId).replace(/^#/, '').trim()
+    if (!id) return
+    if (refIdToLookup) setRefSearchId(refIdToLookup)
+    setRefSearchLoading(true)
+    setRefSearchError('')
+    setRefSearchResult(null)
+    try {
+      const res = await apiClient.get(`/admin/seb/diagnostics/lookup/${encodeURIComponent(id)}`)
+      if (res?.data?.record) {
+        setRefSearchResult(res.data.record)
+      } else {
+        setRefSearchError('No failure record found for this reference ID.')
+      }
+    } catch (err) {
+      setRefSearchError(err?.response?.data?.message || 'Reference ID not found in recent records.')
+    } finally {
+      setRefSearchLoading(false)
+    }
   }
 
   const fetchStatus = async () => {
@@ -379,9 +406,12 @@ export default function AdminSebConfigPage() {
   const cleanedKeyInput = configKey.trim().toLowerCase()
   const isKeyValidHex = /^[0-9a-f]{64}$/.test(cleanedKeyInput)
 
+  const isConfigVersionValid = status.isConfigVersionMatched !== false
+
   const isVerifiedRecent = Boolean(
     status.lastVerifiedAt &&
-    new Date(status.lastVerifiedAt).getTime() >= (Date.now() - 7 * 24 * 60 * 60 * 1000)
+    new Date(status.lastVerifiedAt).getTime() >= (Date.now() - 7 * 24 * 60 * 60 * 1000) &&
+    isConfigVersionValid
   )
 
   return (
@@ -423,6 +453,10 @@ export default function AdminSebConfigPage() {
               {isVerifiedRecent ? (
                 <span className="inline-flex items-center gap-1.5 font-[480] text-[#5266eb]" data-testid="seb-verified-pill">
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Verified ✓
+                </span>
+              ) : status.lastVerifiedAt && !isConfigVersionValid ? (
+                <span className="inline-flex items-center gap-1.5 font-[480] text-[#8a6a26]">
+                  <AlertTriangle className="w-3.5 h-3.5 text-[#8a6a26]" /> Needs re-test
                 </span>
               ) : status.lastVerifiedAt ? (
                 <span className="inline-flex items-center gap-1.5 font-[480] text-[#8a6a26]">
@@ -472,6 +506,34 @@ export default function AdminSebConfigPage() {
             </div>
           </div>
         </div>
+
+        {/* Suggestion-Only Circuit Breaker Banner */}
+        {entryDiagnostics?.setupFailures10m?.thresholdExceeded && (
+          <div className="p-4 rounded-[16px] bg-[#fbfbff] text-[#28253b] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-[#c04b4b] mt-0.5" />
+              <div>
+                <p className="font-[480] text-[#c04b4b]">High Entry Failure Rate Detected ({entryDiagnostics.setupFailures10m.count} setup failures in last 10 minutes)</p>
+                <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
+                  Candidates are encountering repeated configuration mismatches or missing headers. Recommendation: Return to Audit mode until configuration is re-tested.
+                </p>
+              </div>
+            </div>
+            {status.effectiveMode === 'enforce' && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={() => handleUpdateMode('audit')}
+                disabled={updatingMode}
+                className="rounded-[40px] px-3.5 text-[11px] shrink-0"
+              >
+                {updatingMode ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Unlock className="w-3 h-3 mr-1" />}
+                Return to Audit Mode
+              </Button>
+            )}
+          </div>
+        )}
 
         {/* Non-blocking Start URL Recommendation Notice */}
         {status.configured && status.startUrl && !status.startUrl.includes('/seb/enter') && (
@@ -1104,6 +1166,86 @@ export default function AdminSebConfigPage() {
                 </table>
               </div>
             </div>
+
+            {/* Most Likely Cause & Troubleshooting Guidance */}
+            <div className="p-3.5 bg-[#fbfbff] rounded-[12px] space-y-1.5">
+              <div className="flex items-center gap-1.5 font-[480] text-[#28253b] text-xs">
+                <Info className="w-3.5 h-3.5 text-[#5266eb]" /> Most Likely Cause of Recent Failures
+              </div>
+              <p className="text-[11px] text-[#554e7b] leading-relaxed">
+                {entryDiagnostics?.mostLikelyCause || 'No entry failures reported in the last 24 hours.'}
+              </p>
+              {entryDiagnostics?.recentRefs?.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                  <span className="text-[10px] text-[#70707d]">Recent Failure References:</span>
+                  {entryDiagnostics.recentRefs.map(ref => (
+                    <Button
+                      key={ref.requestId}
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => handleLookupRef(ref.requestId)}
+                      className="h-auto text-[10px] font-mono px-2 py-0.5 rounded-full"
+                    >
+                      #{ref.requestId.slice(0, 8)} ({ref.code})
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Reference ID Diagnostics Lookup */}
+            <div className="p-3.5 bg-[#fbfbff] rounded-[12px] space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="font-[480] text-[#28253b] text-xs flex items-center gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-[#5266eb]" /> Look up a student reference ID
+                </div>
+                <span className="text-[10px] text-[#70707d]">From candidate error screen (Ref: #...)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Paste reference ID (e.g. 231b5db7-580f-4839-9cd8-1c0f6d26bac5)"
+                  value={refSearchId}
+                  onChange={(e) => setRefSearchId(e.target.value)}
+                  className="font-mono text-xs rounded-xl bg-white h-9 border-0 flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={() => handleLookupRef()}
+                  disabled={refSearchLoading || !refSearchId.trim()}
+                  className="rounded-[40px] px-3.5 h-9 shrink-0"
+                >
+                  {refSearchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
+                  Look up
+                </Button>
+              </div>
+
+              {refSearchError && (
+                <p className="text-[11px] text-[#c04b4b] font-[420]">{refSearchError}</p>
+              )}
+
+              {refSearchResult && (
+                <div className="p-3 bg-white rounded-[10px] text-[11px] space-y-1.5 border border-[#edecfb]/60">
+                  <div className="flex items-center justify-between">
+                    <span className="font-[480] text-[#28253b]">Reference #{refSearchResult.requestId}</span>
+                    <Badge className="bg-[#edecfb] text-[#5266eb] border-0 text-[10px] rounded-full">
+                      {refSearchResult.code}
+                    </Badge>
+                  </div>
+                  <p className="text-[#554e7b]"><strong className="text-[#28253b]">Likely Cause:</strong> {refSearchResult.likelyCause || 'Unknown error'}</p>
+                  {refSearchResult.matchedVariant && (
+                    <p className="text-[#554e7b]"><strong className="text-[#28253b]">Diagnostic Variant:</strong> {refSearchResult.matchedVariant}</p>
+                  )}
+                  {refSearchResult.receivedHeaderPrefix8 && (
+                    <p className="text-[#554e7b]"><strong className="text-[#28253b]">Received Hash Prefix:</strong> <code className="font-mono">{refSearchResult.receivedHeaderPrefix8}...</code></p>
+                  )}
+                  <p className="text-[10px] text-[#70707d]">{new Date(refSearchResult.timestamp).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -1164,7 +1306,7 @@ export default function AdminSebConfigPage() {
                     type="button"
                     variant="secondary"
                     size="sm"
-                    disabled={updatingMode || !status.configured || !isVerifiedRecent}
+                    disabled={updatingMode || !status.configured || !isVerifiedRecent || !isConfigVersionValid}
                     onClick={() => setConfirmEnforceOpen(true)}
                   >
                     {updatingMode ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Lock className="w-3.5 h-3.5 mr-1.5" />}
@@ -1179,7 +1321,9 @@ export default function AdminSebConfigPage() {
               <div className="text-[11px] text-[#8a6a26] bg-[#fbfbff] p-3 rounded-[10px] flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0 text-[#8a6a26]" />
                 <span>
-                  Safety invariant: Strict enforcement can only be enabled after a verified test ping within the last 7 days. Complete Step 3 above to verify your setup.
+                  {!isConfigVersionValid
+                    ? 'Configuration mismatch: The configuration file or key was modified since the last verification test. Complete Step 3 ("Test my setup") to re-verify before enabling strict enforcement.'
+                    : 'Safety invariant: Strict enforcement can only be enabled after a verified test ping within the last 7 days. Complete Step 3 above to verify your setup.'}
                 </span>
               </div>
             )}

@@ -369,7 +369,7 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
         purpose: 'exam'
       })
 
-      // Non-SEB browser should be rejected with 403 SEB_ENFORCEMENT_FAILED
+      // Decision 18 decoupled exchange: Token exchange succeeds even from plain browser to establish candidate session
       const chromeRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
@@ -380,8 +380,23 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       })
-      assert.strictEqual(chromeRes.statusCode, 403)
-      assert.ok(['SEB_ENFORCEMENT_FAILED', 'SEB_HEADER_MISSING'].includes(chromeRes.json?.code))
+      assert.strictEqual(chromeRes.statusCode, 200, 'Exchange succeeds to establish candidate session')
+      assert.strictEqual(chromeRes.json?.success, true)
+
+      // Content endpoint strictly requires valid SEB headers
+      const contentRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/attempts/exams/${testExam.id}/start`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${chromeRes.json?.token}`,
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }, {})
+      assert.strictEqual(contentRes.statusCode, 403)
+      assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(contentRes.json?.code))
 
       // Reset back to audit mode
       await settingsService.saveSebConfig({

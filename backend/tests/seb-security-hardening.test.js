@@ -187,10 +187,10 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
     }, {})
 
     assert.strictEqual(res.statusCode, 403, 'Must reject starter key in enforce mode')
-    assert.strictEqual(res.json?.code, 'SEB_REQUIRED')
+    assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISMATCH'].includes(res.json?.code))
   })
 
-  it('2. A launch token redeemed with no header or bad header is refused in enforce mode and marks nothing', async () => {
+  it('2. Decoupled exchange: Launch token / PIN exchange succeeds without header, but content endpoint is strictly rejected', async () => {
     const launch = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: studentUser.role,
@@ -198,7 +198,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
       purpose: 'exam'
     })
 
-    // Attempt exchange without header in enforce mode
+    // Exchange without header succeeds under decoupled exchange
     const exchangePath = `/api/v1/seb/exchange?launch=${launch.launchToken}`
     const res = await httpRequest({
       hostname: 'localhost',
@@ -211,28 +211,25 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
       }
     })
 
-    assert.strictEqual(res.statusCode, 403, 'Must refuse token exchange without header in enforce mode')
-    assert.ok(['SEB_ENFORCEMENT_FAILED', 'SEB_HEADER_MISSING'].includes(res.json?.code))
+    assert.strictEqual(res.statusCode, 200, 'Token exchange must succeed under decoupled model')
+    assert.strictEqual(res.json?.success, true)
 
-    // Verify no auth cookie was set
-    const setCookie = res.headers['set-cookie'] || []
-    const hasAuthCookie = setCookie.some((c) => c.startsWith('proctornet_auth=') || c.startsWith('pn_at='))
-    assert.strictEqual(hasAuthCookie, false, 'Must not issue auth cookie on failed verification')
-
-    // Attempt exchangePin without header in enforce mode
-    const pinRes = await httpRequest({
+    // And now content endpoint /start without SEB header must be strictly rejected with 403
+    const targetPath = `/api/v1/attempts/exams/${testExam.id}/start`
+    const contentRes = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
+      path: targetPath,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: `Bearer ${res.json?.token}`,
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: launch.pin })
+    }, {})
 
-    assert.strictEqual(pinRes.statusCode, 403, 'Must refuse PIN exchange without header in enforce mode')
-    assert.ok(['SEB_ENFORCEMENT_FAILED', 'SEB_HEADER_MISSING'].includes(pinRes.json?.code))
+    assert.strictEqual(contentRes.statusCode, 403, 'Content endpoint must refuse attempt without SEB header')
+    assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(contentRes.json?.code))
   })
 
   it('3. Exact-URL rule: Header computed for a different URL is rejected with 403', async () => {
@@ -255,7 +252,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
     }, {})
 
     assert.strictEqual(res.statusCode, 403, 'Must reject hash matching candidate URL loops under exact-URL rule')
-    assert.strictEqual(res.json?.code, 'SEB_REQUIRED')
+    assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISMATCH'].includes(res.json?.code))
   })
 
   it('4. Correct header matching canonical URL and stored institution key passes 200', async () => {

@@ -85,7 +85,8 @@ async function ping(req, res, next) {
       const nowIso = new Date().toISOString()
       await settingsService.updateSebLastVerified(nowIso, {
         method: matchMethod,
-        userAgent
+        userAgent,
+        configVersion: sebState.configVersion || null
       })
       invalidateInstitutionSebState()
       sebDiagnosticsService.recordAttempt({
@@ -378,76 +379,46 @@ async function exchange(req, res, next) {
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
-    // Enforcement mode security gating
+    // Decoupled exchange: evaluates and records SEB headers for diagnostics without blocking session issuance
     const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
     const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
     const hasHeader = typeof rawHeader === 'string' && rawHeader.trim().length > 0
-    const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
+    const headerMatch = activeKey ? Boolean(verifySebHeaderHash(req, activeKey)) : false
 
-    const isEnforce = sebState.effectiveMode === 'enforce' || sebState.requestedMode === 'enforce'
-    if (isEnforce) {
-      if (sebState.storageUnavailable) {
-        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed: storage unavailable')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'STORAGE_UNAVAILABLE', requestId, userAgent, clientIp: req.ip })
-        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
-          return res.redirect(302, '/seb/enter?error=storage_unavailable')
-        }
-        return res.status(503).json({
-          code: 'STORAGE_UNAVAILABLE',
-          message: "The exam system isn't ready. Storage is currently unavailable. Please contact your invigilator.",
-          requestId
-        })
-      }
+    const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
+    const rawPath = (req.originalUrl || req.url || '').split('#')[0]
+    const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+    const canonicalUrl = `${cleanPublicOrigin}${normalizedPath}`
 
-      if (!sebState.configured || !activeKey) {
-        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed: institution configuration missing')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'INSTITUTION_NOT_CONFIGURED', requestId, userAgent, clientIp: req.ip })
-        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
-          return res.redirect(302, '/seb/enter?error=not_ready')
-        }
-        return res.status(503).json({
-          code: 'INSTITUTION_NOT_CONFIGURED',
-          message: "The exam system isn't ready, tell your invigilator (Ref: #" + requestId + ")",
-          requestId
-        })
-      }
-
-      if (!isSebAgent || !hasHeader) {
-        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed: header missing or standard browser')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISSING', requestId, userAgent, clientIp: req.ip })
-        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
-          return res.redirect(302, '/seb/enter?error=seb_required')
-        }
-        return res.status(403).json({
-          code: 'SEB_HEADER_MISSING',
-          message: 'Access restricted to verified Safe Exam Browser sessions. Configuration header is missing.',
-          requestId
-        })
-      }
-
-      if (!headerMatch) {
-        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on exchange: invalid or mismatch header hash')
-        sebDiagnosticsService.recordAttempt({
-          purpose: record.purpose || 'exam',
-          outcome: 'HEADER_MISMATCH',
-          userAgent,
-          clientIp: req.ip
-        })
-        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISMATCH', requestId, userAgent, clientIp: req.ip })
-        if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
-          return res.redirect(302, '/seb/enter?error=seb_header_invalid')
-        }
-        return res.status(403).json({
-          code: 'SEB_HEADER_MISMATCH',
-          message: 'Safe Exam Browser configuration check failed. Configuration Key header mismatch.',
-          requestId
-        })
-      }
-    } else {
-      // In audit / log mode, record header check result without blocking
+    if (hasHeader && !headerMatch && activeKey) {
+      const evalResult = sebDiagnosticsService.evaluateHeaderMismatch(rawHeader, canonicalUrl, activeKey)
+      sebDiagnosticsService.recordExchangeFailure({
+        code: 'SEB_HEADER_MISMATCH',
+        requestId,
+        userAgent,
+        clientIp: req.ip,
+        likelyCause: evalResult.likelyCause,
+        matchedVariant: evalResult.matchedVariant,
+        receivedHeader: rawHeader
+      })
       sebDiagnosticsService.recordAttempt({
         purpose: record.purpose || 'exam',
-        outcome: headerMatch ? 'SUCCESS' : 'HEADER_MISMATCH',
+        outcome: 'HEADER_MISMATCH',
+        userAgent,
+        clientIp: req.ip
+      })
+    } else if (!hasHeader && isSebAgent) {
+      sebDiagnosticsService.recordExchangeFailure({
+        code: 'SEB_HEADER_MISSING',
+        requestId,
+        userAgent,
+        clientIp: req.ip,
+        likelyCause: 'Safe Exam Browser configuration header is missing.'
+      })
+    } else if (headerMatch) {
+      sebDiagnosticsService.recordAttempt({
+        purpose: record.purpose || 'exam',
+        outcome: 'SUCCESS',
         userAgent,
         clientIp: req.ip
       })
@@ -626,63 +597,46 @@ async function exchangePin(req, res, next) {
     const userAgent = req.headers['user-agent'] || ''
     const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
 
+    // Decoupled PIN exchange: evaluates and records SEB headers for diagnostics without blocking session issuance
     const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
     const rawHeader = req.headers['x-safeexambrowser-configkeyhash']
     const hasHeader = typeof rawHeader === 'string' && rawHeader.trim().length > 0
-    const headerMatch = activeKey ? verifySebHeaderHash(req, activeKey) : false
+    const headerMatch = activeKey ? Boolean(verifySebHeaderHash(req, activeKey)) : false
 
-    const isEnforce = sebState.effectiveMode === 'enforce' || sebState.requestedMode === 'enforce'
-    if (isEnforce) {
-      if (sebState.storageUnavailable) {
-        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed on PIN exchange: storage unavailable')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'STORAGE_UNAVAILABLE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
-        return res.status(503).json({
-          code: 'STORAGE_UNAVAILABLE',
-          message: "The exam system isn't ready. Storage is currently unavailable. Please contact your invigilator.",
-          requestId
-        })
-      }
+    const cleanPublicOrigin = config.publicOrigin || 'http://localhost:5000'
+    const rawPath = (req.originalUrl || req.url || '').split('#')[0]
+    const normalizedPath = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+    const canonicalUrl = `${cleanPublicOrigin}${normalizedPath}`
 
-      if (!sebState.configured || !activeKey) {
-        logger.warn({ ip: req.ip, requestId }, 'SEB enforcement failed on PIN exchange: institution configuration missing')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'INSTITUTION_NOT_CONFIGURED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
-        return res.status(503).json({
-          code: 'INSTITUTION_NOT_CONFIGURED',
-          message: "The exam system isn't ready, tell your invigilator (Ref: #" + requestId + ")",
-          requestId
-        })
-      }
-
-      if (!isSebAgent || !hasHeader) {
-        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on PIN exchange: header missing or standard browser')
-        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISSING', requestId, userAgent, clientIp: req.ip })
-        return res.status(403).json({
-          code: 'SEB_HEADER_MISSING',
-          message: 'Access is restricted to verified Safe Exam Browser sessions. Configuration header is missing.',
-          requestId
-        })
-      }
-
-      if (!headerMatch) {
-        logger.warn({ ip: req.ip, userAgent, requestId }, 'SEB enforcement failed on PIN exchange: invalid or mismatch header hash')
-        sebDiagnosticsService.recordAttempt({
-          purpose: record.purpose || 'exam',
-          outcome: 'HEADER_MISMATCH',
-          userAgent,
-          clientIp: req.ip
-        })
-        sebDiagnosticsService.recordExchangeFailure({ code: 'SEB_HEADER_MISMATCH', requestId, userAgent, clientIp: req.ip })
-        return res.status(403).json({
-          code: 'SEB_HEADER_MISMATCH',
-          message: 'Safe Exam Browser configuration check failed. Configuration Key header mismatch.',
-          requestId
-        })
-      }
-    } else {
-      // In audit / log mode, record header check result without blocking
+    if (hasHeader && !headerMatch && activeKey) {
+      const evalResult = sebDiagnosticsService.evaluateHeaderMismatch(rawHeader, canonicalUrl, activeKey)
+      sebDiagnosticsService.recordExchangeFailure({
+        code: 'SEB_HEADER_MISMATCH',
+        requestId,
+        userAgent,
+        clientIp: req.ip,
+        likelyCause: evalResult.likelyCause,
+        matchedVariant: evalResult.matchedVariant,
+        receivedHeader: rawHeader
+      })
       sebDiagnosticsService.recordAttempt({
         purpose: record.purpose || 'exam',
-        outcome: headerMatch ? 'SUCCESS' : 'HEADER_MISMATCH',
+        outcome: 'HEADER_MISMATCH',
+        userAgent,
+        clientIp: req.ip
+      })
+    } else if (!hasHeader && isSebAgent) {
+      sebDiagnosticsService.recordExchangeFailure({
+        code: 'SEB_HEADER_MISSING',
+        requestId,
+        userAgent,
+        clientIp: req.ip,
+        likelyCause: 'Safe Exam Browser configuration header is missing.'
+      })
+    } else if (headerMatch) {
+      sebDiagnosticsService.recordAttempt({
+        purpose: record.purpose || 'exam',
+        outcome: 'SUCCESS',
         userAgent,
         clientIp: req.ip
       })
@@ -849,6 +803,39 @@ async function getTokenStatus(req, res, next) {
   }
 }
 
+/**
+ * Public Diagnostic endpoint: inspects incoming request headers, configuration state, and origin.
+ * GET /api/v1/seb/diagnostics
+ */
+async function getPublicDiagnostics(req, res, next) {
+  try {
+    const sebState = await getInstitutionSebState()
+    const activeKey = sebState.configKey ? sebState.configKey.trim().toLowerCase() : null
+    const userAgent = req.headers['user-agent'] || ''
+    const isSebAgent = /SEB|SafeExamBrowser/i.test(userAgent)
+
+    const rawConfigHeader = req.headers['x-safeexambrowser-configkeyhash']
+    const hasHeader = typeof rawConfigHeader === 'string' && rawConfigHeader.trim().length > 0
+    const headerMatch = activeKey ? Boolean(verifySebHeaderHash(req, activeKey)) : false
+
+    const diagnosticRef = req.headers['x-request-id'] || req.id || crypto.randomUUID().slice(0, 8)
+
+    return res.status(200).json({
+      success: true,
+      sebHeaderPresent: hasHeader,
+      sebHeaderMatch: headerMatch,
+      effectiveMode: sebState.effectiveMode,
+      publicOrigin: sebState.publicOrigin,
+      configVersion: sebState.configVersion || null,
+      isSebAgent,
+      diagnosticRef
+    })
+  } catch (err) {
+    logger.error({ err }, 'Error serving public SEB diagnostics')
+    next(err)
+  }
+}
+
 module.exports = {
   ping,
   createLaunchLink,
@@ -857,5 +844,6 @@ module.exports = {
   exchangePin,
   verifySebHeaderHash,
   getStudentCheckStatus,
-  getTokenStatus
+  getTokenStatus,
+  getPublicDiagnostics
 }

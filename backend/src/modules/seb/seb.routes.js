@@ -68,6 +68,9 @@ router.get('/config/:token', downloadLimiter, sebController.downloadSebConfig)
 // Single-use token exchange: query param ?launch=TOKEN
 router.get('/exchange', exchangeLimiter, sebController.exchange)
 
+// Public SEB diagnostics inspection
+router.get('/diagnostics', pingLimiter, sebController.getPublicDiagnostics)
+
 // Fallback 6-digit PIN exchange
 router.post('/exchange-pin', exchangeLimiter, sebController.exchangePin)
 
