@@ -56,12 +56,12 @@ export default function ExamReadinessTab({ examId, exam }) {
     <div className="space-y-4 font-sans" data-testid="readiness-tab-container">
       {/* Metric Cards - Light Surface World */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3.5 bg-white rounded-[14px] border border-[#e9eaf2]/70 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+        <div className="p-3.5 bg-white rounded-[14px] border-0 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
           <span className="text-[11px] font-[420] text-[#70707d] uppercase tracking-wider">Total Enrolled</span>
           <div className="text-xl font-[480] text-[#28253b] mt-1">{summary.total}</div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-[14px] border border-[#e9eaf2]/70 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+        <div className="p-3.5 bg-white rounded-[14px] border-0 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-[420] text-[#70707d] uppercase tracking-wider">Ready to Test</span>
             <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" />
@@ -69,7 +69,7 @@ export default function ExamReadinessTab({ examId, exam }) {
           <div className="text-xl font-[480] text-[#5266eb] mt-1">{summary.ready}</div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-[14px] border border-[#e9eaf2]/70 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+        <div className="p-3.5 bg-white rounded-[14px] border-0 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-[420] text-[#70707d] uppercase tracking-wider">Needs Attention</span>
             <AlertTriangle className="w-3.5 h-3.5 text-[#8a6a26]" />
@@ -77,7 +77,7 @@ export default function ExamReadinessTab({ examId, exam }) {
           <div className="text-xl font-[480] text-[#8a6a26] mt-1">{summary.notReady}</div>
         </div>
 
-        <div className="p-3.5 bg-white rounded-[14px] border border-[#e9eaf2]/70 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
+        <div className="p-3.5 bg-white rounded-[14px] border-0 shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-[420] text-[#70707d] uppercase tracking-wider">Not Yet Checked</span>
             <Clock className="w-3.5 h-3.5 text-[#70707d]" />
@@ -87,7 +87,7 @@ export default function ExamReadinessTab({ examId, exam }) {
       </div>
 
       {/* Control Bar: Filters, Search, Export */}
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] p-3.5">
+      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[14px] p-3.5">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           {/* Status Filter Pills */}
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -157,8 +157,8 @@ export default function ExamReadinessTab({ examId, exam }) {
       )}
 
       {/* Readiness Telemetry Table */}
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-[#fbfbff] border-b border-[#e9eaf2]">
+      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[16px] overflow-hidden">
+        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-[#fbfbff] border-b border-[#f0f0f5]">
           <CardTitle className="text-xs font-[480] text-[#28253b]">
             Telemetry & Pre-flight Diagnostics ({readinessList.length})
           </CardTitle>

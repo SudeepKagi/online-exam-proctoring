@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api, ensureArray } from '@/lib/apiClient'
 import { Users, BookOpen, ShieldAlert, Award, ArrowRight, ShieldCheck, CheckCircle2, Activity } from 'lucide-react'
+import { StaggerContainer, StaggerItem } from '@/components/common/MotionWrapper'
 
 export default function AdminDashboardPage() {
   const [exams, setExams] = useState([])
@@ -50,53 +51,61 @@ export default function AdminDashboardPage() {
   return (
     <DashboardShell title="Administrative Overview">
       {/* 4 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
-        <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Students</CardTitle>
-            <Users className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{totalStudents}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Enrolled candidate accounts</p>
-          </CardContent>
-        </Card>
+      <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Students</CardTitle>
+              <Users className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{totalStudents}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Enrolled candidate accounts</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Pending ID Approvals</CardTitle>
-            <ShieldAlert className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{approvals.length}</div>
-            <Link to="/admin/users" className="text-xs font-[420] text-[#5266eb] hover:underline flex items-center gap-1 mt-1">
-              Review Queue <ArrowRight className="w-3 h-3" />
-            </Link>
-          </CardContent>
-        </Card>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Pending ID Approvals</CardTitle>
+              <ShieldAlert className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{approvals.length}</div>
+              <Link to="/admin/users" className="text-xs font-[420] text-[#5266eb] hover:underline flex items-center gap-1 mt-1">
+                Review Queue <ArrowRight className="w-3 h-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Verified Faculty</CardTitle>
-            <Award className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{verifiedFaculty}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Authorized test authors</p>
-          </CardContent>
-        </Card>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Verified Faculty</CardTitle>
+              <Award className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{verifiedFaculty}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Authorized test authors</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Active / Published Exams</CardTitle>
-            <BookOpen className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{activeExams.length}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">{exams.length} Total Cohorts</p>
-          </CardContent>
-        </Card>
-      </div>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Active / Published Exams</CardTitle>
+              <BookOpen className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{activeExams.length}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">{exams.length} Total Cohorts</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* System Health Status */}
       <div className="p-4 bg-[#edecfb] rounded-[12px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-sans border-0">
@@ -123,7 +132,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Recent Onboarding Activity */}
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden mt-6 font-sans">
+      <Card className="border-0 bg-white shadow-xs rounded-[12px] overflow-hidden mt-6 font-sans">
         <CardHeader className="flex flex-row items-center justify-between pb-3 bg-[#fbfbff] border-b border-[#e9eaf2]">
           <div>
             <CardTitle className="text-xs font-[480] text-[#28253b]">Recent Onboarding Activity</CardTitle>

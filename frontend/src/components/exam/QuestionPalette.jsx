@@ -15,8 +15,8 @@ export default function QuestionPalette({
   const bookmarkedCount = Object.keys(bookmarks).filter(k => bookmarks[k]).length
 
   return (
-    <Card className="flex-1 flex flex-col border-[#e9eaf2] bg-white overflow-hidden shadow-xs rounded-[12px] font-sans">
-      <CardHeader className="py-3 px-4 border-b border-[#e9eaf2] bg-[#fbfbff] flex flex-row items-center justify-between">
+    <Card className="flex-1 flex flex-col border-0 bg-white overflow-hidden shadow-xs rounded-[16px] font-sans">
+      <CardHeader className="py-3 px-4 border-b border-[#f0f0f5] bg-[#fbfbff] flex flex-row items-center justify-between">
         <CardTitle className="text-xs font-[500] uppercase text-[#554e7b] tracking-[0.28px]">
           Question Palette
         </CardTitle>
@@ -43,7 +43,7 @@ export default function QuestionPalette({
                 onClick={() => onSelectIndex(idx)}
                 className={`h-9 w-full p-0 text-xs font-[480] transition-all rounded-lg ${
                   isCurrent ? 'ring-2 ring-[#5266eb] ring-offset-1 font-[500]' : ''
-                } ${!answered && !marked ? 'border border-[#e9eaf2]' : ''}`}
+                } ${!answered && !marked ? 'border border-[#c3c3cc]/40' : ''}`}
               >
                 {idx + 1}
               </Button>
@@ -52,7 +52,7 @@ export default function QuestionPalette({
         </div>
 
         {/* Legend */}
-        <div className="pt-2 border-t border-[#e9eaf2] space-y-1.5 text-[11px] text-[#554e7b]">
+        <div className="pt-2 border-t border-[#f0f0f5] space-y-1.5 text-[11px] text-[#554e7b]">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-[#5266eb] inline-block" /> Answered

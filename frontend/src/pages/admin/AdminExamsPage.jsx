@@ -74,7 +74,7 @@ export default function AdminExamsPage() {
         </div>
       )}
 
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
+      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[14px] overflow-hidden font-sans">
         <CardContent className="p-0">
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">

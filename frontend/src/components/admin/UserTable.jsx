@@ -9,13 +9,13 @@ import EmptyState from '@/components/common/EmptyState'
 
 export default function UserTable({ users, loading, onToggle, onVerify }) {
   return (
-    <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-xl overflow-hidden font-sans">
+    <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-2xl overflow-hidden font-sans">
       <CardContent className="p-0">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#e9eaf2] bg-[#fbfbff]">
+              <TableRow className="border-b border-[#f0f0f5] bg-[#fbfbff]">
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">Full Name</TableHead>
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">Email Address</TableHead>
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">USN / Employee ID</TableHead>
@@ -38,7 +38,7 @@ export default function UserTable({ users, loading, onToggle, onVerify }) {
                 </TableRow>
               ) : (
                 users.map((u) => (
-                  <TableRow key={u.id} className="border-[#e9eaf2] hover:bg-[#fbfcfd]">
+                  <TableRow key={u.id} className="border-b border-[#f0f0f5] hover:bg-[#fbfcfd]">
                     <TableCell className="font-[480] text-[#28253b] text-xs">{u.fullName}</TableCell>
                     <TableCell className="text-[#554e7b] text-xs font-mono">{u.email}</TableCell>
                     <TableCell className="text-[#5266eb] text-xs font-mono font-[480]">{u.institutionId || '—'}</TableCell>

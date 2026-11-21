@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -331,7 +332,13 @@ export default function PreExamCheckPage() {
 
   return (
     <ExamArenaShell className="items-center justify-center p-4">
-      <Card className="w-full max-w-xl border-0 bg-white shadow-md rounded-[16px] font-sans">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-xl"
+      >
+        <Card className="w-full border-0 bg-white shadow-md rounded-[16px] font-sans">
         <CardHeader className="text-center pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <ShieldCheck className="w-6 h-6 text-[#5266eb]" />
@@ -630,6 +637,7 @@ export default function PreExamCheckPage() {
           )}
         </CardContent>
       </Card>
+      </motion.div>
     </ExamArenaShell>
   )
 }

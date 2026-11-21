@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -39,7 +40,7 @@ export default function PendingApprovalPage() {
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col justify-between font-sans">
       {/* Mercury Light Framing Nav Bar: 72px */}
-      <header className="h-[72px] bg-white border-b border-[#e9eaf2] px-6 sm:px-8 flex items-center justify-between">
+      <header className="h-[72px] bg-white border-b border-[#f0f0f5] px-6 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Verification</span>
@@ -54,8 +55,13 @@ export default function PendingApprovalPage() {
         </Button>
       </header>
 
-      <div className="w-full max-w-lg mx-auto my-auto py-8 px-4">
-        <Card className="border-[#e9eaf2] bg-white rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)] overflow-hidden text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-lg mx-auto my-auto py-8 px-4"
+      >
+        <Card className="border-0 bg-white rounded-2xl shadow-[0_4px_24px_rgba(40,37,59,0.06)] overflow-hidden text-center">
           <CardHeader className="pt-8 pb-4">
             <div className="w-16 h-16 rounded-full bg-[#5266eb]/10 border border-[#5266eb]/20 text-[#5266eb] flex items-center justify-center mx-auto mb-3 shadow-xs">
               <Clock className="w-8 h-8 animate-pulse" />
@@ -69,16 +75,16 @@ export default function PendingApprovalPage() {
           </CardHeader>
 
           <CardContent className="space-y-4 px-6 text-left">
-            <div className="p-4 rounded-xl bg-[#fbfbff] border border-[#e9eaf2] text-xs space-y-2">
-              <div className="flex justify-between items-center pb-2 border-b border-[#e9eaf2]">
+            <div className="p-4 rounded-xl bg-[#fbfbff] border-0 shadow-xs text-xs space-y-2">
+              <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
                 <span className="text-[#554e7b] font-[400]">Student Name</span>
                 <span className="font-[480] text-[#28253b]">{user?.fullName || '—'}</span>
               </div>
-              <div className="flex justify-between items-center pb-2 border-b border-[#e9eaf2]">
+              <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
                 <span className="text-[#554e7b] font-[400]">Institutional Email</span>
                 <span className="font-mono text-[#28253b]">{user?.email || '—'}</span>
               </div>
-              <div className="flex justify-between items-center pb-2 border-b border-[#e9eaf2]">
+              <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
                 <span className="text-[#554e7b] font-[400]">Roll No / ID</span>
                 <span className="font-mono font-[480] text-[#5266eb]">{user?.institutionId || '—'}</span>
               </div>
@@ -114,10 +120,10 @@ export default function PendingApprovalPage() {
             </Button>
           </CardFooter>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Mercury Light Footer */}
-      <footer className="bg-white text-[#554e7b] border-t border-[#e9eaf2] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
+      <footer className="bg-white text-[#554e7b] border-t border-[#f0f0f5] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
         <span className="text-[#28253b] font-[480]">ProctorNet Identity Assurance</span>
         <span className="text-[11px] text-[#554e7b]">Institutional Verification Queue</span>
       </footer>

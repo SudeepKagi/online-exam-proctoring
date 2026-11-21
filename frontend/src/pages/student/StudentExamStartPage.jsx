@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -463,7 +464,13 @@ export default function StudentExamStartPage() {
   if (isSebActive) {
     return (
       <ExamArenaShell className="items-center justify-center p-4">
-        <Card className="w-full max-w-lg border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full max-w-lg"
+        >
+          <Card className="w-full border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
           <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#edecfb]">
             <div className="flex items-center justify-center gap-2 mb-1.5">
               <ShieldCheck className="w-5 h-5 text-[#5266eb]" />
@@ -548,9 +555,10 @@ export default function StudentExamStartPage() {
             )}
           </CardContent>
         </Card>
-      </ExamArenaShell>
-    )
-  }
+      </motion.div>
+    </ExamArenaShell>
+  )
+}
 
   // =========================================================================
   // VIEW B: IN NORMAL BROWSER (Chrome, Edge, etc.)
@@ -561,7 +569,13 @@ export default function StudentExamStartPage() {
 
   return (
     <ExamArenaShell className="items-center justify-center p-4">
-      <Card className="w-full max-w-xl border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-xl"
+      >
+        <Card className="w-full border-0 bg-white shadow-xs rounded-[16px] font-sans overflow-hidden">
         {/* Header */}
         <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#edecfb]">
           <div className="flex items-center justify-center gap-2 mb-1.5">
@@ -1011,6 +1025,7 @@ export default function StudentExamStartPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
     </ExamArenaShell>
   )
 }

@@ -12,6 +12,7 @@ import ExamCredentialsModal from '@/components/faculty/ExamCredentialsModal'
 import TableSkeleton from '@/components/common/TableSkeleton'
 import EmptyState from '@/components/common/EmptyState'
 import { usePageTitle } from '@/hooks/usePageTitle'
+import { StaggerContainer, StaggerItem } from '@/components/common/MotionWrapper'
 
 export default function FacultyExamsPage() {
   usePageTitle('Faculty Workspace')
@@ -61,51 +62,59 @@ export default function FacultyExamsPage() {
 
   return (
     <DashboardShell title="Faculty Examination Workspace">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Exams</CardTitle>
-            <BookOpen className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{exams.length}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Authored examinations</p>
-          </CardContent>
-        </Card>
+      <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Total Exams</CardTitle>
+              <BookOpen className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{exams.length}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Authored examinations</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Published / Live</CardTitle>
-            <CheckCircle2 className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#5266eb]">{publishedCount}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Ready for candidate entry</p>
-          </CardContent>
-        </Card>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Published / Live</CardTitle>
+              <CheckCircle2 className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#5266eb]">{publishedCount}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Ready for candidate entry</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Questions Authored</CardTitle>
-            <HelpCircle className="w-4 h-4 text-[#554e7b]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">{totalQuestions || 'Active'}</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Standardized MCQ pool</p>
-          </CardContent>
-        </Card>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Questions Authored</CardTitle>
+              <HelpCircle className="w-4 h-4 text-[#554e7b]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">{totalQuestions || 'Active'}</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Standardized MCQ pool</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
 
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Proctoring Mode</CardTitle>
-            <Users className="w-4 h-4 text-[#5266eb]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-[480] text-[#28253b]">Camera &amp; SEB</div>
-            <p className="text-xs text-[#70707d] font-[360] mt-1">Facial verification &amp; kiosk lockdown</p>
-          </CardContent>
-        </Card>
-      </div>
+        <StaggerItem>
+          <Card className="border-0 bg-white shadow-xs rounded-[12px] h-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">Proctoring Mode</CardTitle>
+              <Users className="w-4 h-4 text-[#5266eb]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-[480] text-[#28253b]">Camera &amp; SEB</div>
+              <p className="text-xs text-[#70707d] font-[360] mt-1">Facial verification &amp; kiosk lockdown</p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      </StaggerContainer>
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-6 font-sans">
         <div>
@@ -127,7 +136,7 @@ export default function FacultyExamsPage() {
         </div>
       )}
 
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
+      <Card className="border-0 bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
         <CardContent className="p-0">
           {/* Desktop Table View */}
           <div className="hidden md:block overflow-x-auto">

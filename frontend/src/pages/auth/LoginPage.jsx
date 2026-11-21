@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -218,14 +219,19 @@ export default function LoginPage() {
               Secure browser ✓
             </div>
           )}
-          <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-white border border-[#e9eaf2] shadow-[0_1px_2px_rgba(40,37,59,0.03)] transition">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-xs font-[420] text-[#554e7b] hover:text-[#28253b] px-3.5 py-1.5 rounded-full bg-[#edecfb] border-0 shadow-xs transition">
             <ArrowLeft className="w-3.5 h-3.5" /> Return to Home
           </Link>
         </div>
       </div>
 
       {/* 2-Column Layout */}
-      <div className="w-full max-w-6xl mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-6xl mx-auto my-auto py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10"
+      >
         {/* Left Column: Brand Showcase */}
         <div className="lg:col-span-5 space-y-6 text-[#28253b] pr-0 lg:pr-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#edecfb] border border-[#5266eb]/20 text-[#5266eb] rounded-full text-xs font-[420]">
@@ -246,7 +252,7 @@ export default function LoginPage() {
               { label: 'Reference Photo Verification', desc: 'Photo match against verified institutional records' },
               { label: 'Multi-Role Identity Access', desc: 'Dedicated portals for students, faculty & proctors' }
             ].map((b, i) => (
-              <div key={i} className="flex items-start gap-3 p-3.5 bg-white border border-[#e9eaf2] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.03)]">
+              <div key={i} className="flex items-start gap-3 p-3.5 bg-white border-0 rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.03)]">
                 <CheckCircle2 className="w-4 h-4 text-[#5266eb] shrink-0 mt-0.5" />
                 <div>
                   <h2 className="text-xs font-[480] text-[#28253b]">{b.label}</h2>
@@ -260,8 +266,8 @@ export default function LoginPage() {
         {/* Right Column: Mercury Light Form Card */}
         <div className="lg:col-span-7 max-w-lg w-full mx-auto">
           {isSebClient && !showPasswordLogin ? (
-            <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]" data-testid="seb-launch-code-card">
-              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#e9eaf2]">
+            <Card className="border-0 bg-white rounded-2xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]" data-testid="seb-launch-code-card">
+              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#f0f0f5]">
                 <div className="w-11 h-11 bg-[#5266eb] text-white rounded-full mx-auto flex items-center justify-center mb-2 shadow-xs">
                   <ShieldCheck className="w-5 h-5 text-white" />
                 </div>
@@ -326,8 +332,8 @@ export default function LoginPage() {
               </form>
             </Card>
           ) : (
-            <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
-              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#e9eaf2]">
+            <Card className="border-0 bg-white rounded-2xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
+              <CardHeader className="text-center pb-3 pt-6 bg-[#fbfbff] border-b border-[#f0f0f5]">
                 {isSebClient && (
                   <div className="mb-2">
                     <Button
@@ -353,7 +359,7 @@ export default function LoginPage() {
 
                 <div className="pt-4">
                   <Tabs value={activeRole} onValueChange={handleRoleChange} className="w-full">
-                    <TabsList className="grid grid-cols-4 bg-white border border-[#e9eaf2] p-1 rounded-full shadow-xs">
+                    <TabsList className="grid grid-cols-4 bg-[#f4f4f9] border-0 p-1 rounded-full shadow-xs">
                       <TabsTrigger value="STUDENT" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Student</TabsTrigger>
                       <TabsTrigger value="FACULTY" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Faculty</TabsTrigger>
                       <TabsTrigger value="INVIGILATOR" className="text-xs font-[420] py-1.5 rounded-full cursor-pointer text-[#554e7b] data-[state=active]:bg-[#edecfb] data-[state=active]:text-[#5266eb] data-[state=active]:font-[480]">Invigilator</TabsTrigger>
@@ -414,7 +420,7 @@ export default function LoginPage() {
             </Card>
           )}
         </div>
-      </div>
+      </motion.div>
 
       <div className="text-center text-[11px] text-[#554e7b] pb-2 z-10 font-[360]">
         ProctorNet Institutional Examination Platform • Zero Plugins • Secure Browser Runtime

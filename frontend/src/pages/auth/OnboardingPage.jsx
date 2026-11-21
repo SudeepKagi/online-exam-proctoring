@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { api, errorMessage } from '@/lib/apiClient'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -97,7 +98,7 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-[#28253b] flex flex-col justify-between font-sans">
       {/* Mercury Light Framing Nav Bar: 72px */}
-      <header className="h-[72px] bg-white border-b border-[#e9eaf2] px-6 sm:px-8 flex items-center justify-between">
+      <header className="h-[72px] bg-white border-b border-[#f0f0f5] px-6 sm:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet Onboarding</span>
@@ -112,9 +113,14 @@ export default function OnboardingPage() {
         </Button>
       </header>
 
-      <div className="w-full max-w-2xl mx-auto my-auto py-8 px-4">
-        <Card className="border-[#e9eaf2] bg-white rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)] overflow-hidden">
-          <CardHeader className="border-b border-[#e9eaf2] bg-[#fbfbff] pb-4">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-2xl mx-auto my-auto py-8 px-4"
+      >
+        <Card className="border-0 bg-white rounded-2xl shadow-[0_4px_24px_rgba(40,37,59,0.06)] overflow-hidden">
+          <CardHeader className="border-b border-[#f0f0f5] bg-[#fbfbff] pb-4">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-xl font-[480] text-[#28253b]">
@@ -184,10 +190,10 @@ export default function OnboardingPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       {/* Mercury Light Footer */}
-      <footer className="bg-white text-[#554e7b] border-t border-[#e9eaf2] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
+      <footer className="bg-white text-[#554e7b] border-t border-[#f0f0f5] px-6 sm:px-8 py-3.5 text-xs flex items-center justify-between font-[360]">
         <span className="text-[#28253b] font-[480]">ProctorNet Identity Assurance</span>
         <span className="text-[11px] text-[#554e7b]">Institutional Student Identity Verification</span>
       </footer>

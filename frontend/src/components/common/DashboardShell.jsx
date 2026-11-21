@@ -5,6 +5,7 @@ import { usePageTitle } from '@/hooks/usePageTitle'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, LayoutDashboard, Users, BookOpen, MonitorPlay, LogOut, Settings, ShieldCheck, Menu, X } from 'lucide-react'
+import { PageTransition } from '@/components/common/MotionWrapper'
 
 export default function DashboardShell({ children, title = 'Dashboard' }) {
   usePageTitle(title)
@@ -177,7 +178,9 @@ export default function DashboardShell({ children, title = 'Dashboard' }) {
             <div className="flex items-center justify-between pb-3 border-b border-[#e9eaf2]">
               <h1 className="text-xl sm:text-2xl font-[480] tracking-tight text-[#28253b]">{title}</h1>
             </div>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </div>
         </main>
       </div>

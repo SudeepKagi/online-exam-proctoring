@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,15 +90,20 @@ export default function ForgotPasswordPage() {
           <div className="w-8 h-8 rounded-full bg-[#5266eb] text-white flex items-center justify-center font-[480] text-sm shadow-xs">P</div>
           <span className="font-[480] text-[#28253b] text-base tracking-wide">ProctorNet</span>
         </Link>
-        <Link to="/login" className="text-xs text-[#554e7b] hover:text-[#28253b] flex items-center gap-1 font-[420] px-3.5 py-1.5 rounded-full bg-white border border-[#e9eaf2] shadow-xs transition">
+        <Link to="/login" className="text-xs text-[#554e7b] hover:text-[#28253b] flex items-center gap-1 font-[420] px-3.5 py-1.5 rounded-full bg-[#edecfb] border-0 shadow-xs transition">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
         </Link>
       </div>
 
       {/* Main Card */}
-      <div className="w-full max-w-md mx-auto my-auto py-8 z-10">
-        <Card className="border-[#e9eaf2] bg-white rounded-xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
-          <CardHeader className="border-b border-[#e9eaf2] pb-4 text-center bg-[#fbfbff]">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-md mx-auto my-auto py-8 z-10"
+      >
+        <Card className="border-0 bg-white rounded-2xl overflow-hidden text-[#28253b] shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
+          <CardHeader className="border-b border-[#f0f0f5] pb-4 text-center bg-[#fbfbff]">
             <div className="w-12 h-12 rounded-full bg-[#edecfb] border border-[#5266eb]/20 text-[#5266eb] flex items-center justify-center mx-auto mb-3">
               <KeyRound className="w-6 h-6" />
             </div>
@@ -125,7 +131,7 @@ export default function ForgotPasswordPage() {
             {step === 1 && !successMsg && (
               <form onSubmit={handleRequestOtp} className="space-y-4">
                 <FormField label="Institutional Role" required>
-                  <div className="grid grid-cols-4 gap-1 p-1 bg-white border border-[#e9eaf2] rounded-full shadow-xs">
+                  <div className="grid grid-cols-4 gap-1 p-1 bg-[#f4f4f9] border-0 rounded-full shadow-xs">
                     {['STUDENT', 'FACULTY', 'ADMIN', 'INVIGILATOR'].map((r) => ( // terms-ok: internal role check
                       <Button
                         key={r}
@@ -229,7 +235,7 @@ export default function ForgotPasswordPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
 
       <div className="text-center text-[11px] text-[#554e7b] pb-2 z-10 font-[360]">
         Institutional Identity Protection • ProctorNet Examination Platform

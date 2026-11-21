@@ -92,8 +92,8 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl w-full p-6 font-sans max-h-[92vh] overflow-y-auto bg-white border-[#e9eaf2] text-[#28253b] rounded-xl shadow-[0_1px_3px_rgba(40,37,59,0.04)]">
-          <DialogHeader className="border-b border-[#e9eaf2] pb-3 flex flex-row items-center justify-between pr-10">
+        <DialogContent className="max-w-3xl w-full p-6 font-sans max-h-[92vh] overflow-y-auto bg-white border-0 text-[#28253b] rounded-2xl shadow-[0_4px_24px_rgba(40,37,59,0.06)]">
+          <DialogHeader className="border-b border-[#f0f0f5] pb-3 flex flex-row items-center justify-between pr-10">
             <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#5266eb]" /> Review & Verify Identity Profile — {user.fullName}
             </DialogTitle>
@@ -105,7 +105,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           {error && <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">{error}</div>}
 
           {/* User Metadata Grid: 3-column, 2-row spacious card */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-[#fbfbff] p-4 rounded-xl border-0 shadow-xs text-xs">
             <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Full Name</span><span className="font-[480] text-[#28253b] block">{user.fullName}</span></div>
             <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">Email Address</span><span className="font-[420] text-[#28253b] block break-all">{user.email}</span></div>
             <div><span className="text-[#554e7b] block text-[10px] font-[500] uppercase">{isStudent ? 'USN' : 'Employee ID'}</span><span className="font-mono font-[480] text-[#5266eb] block">{user.institutionId || '—'}</span></div>
@@ -172,7 +172,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
           )}
 
           {/* Modal Actions */}
-          <div className="pt-4 border-t border-[#e9eaf2] flex flex-wrap items-center justify-between gap-3">
+          <div className="pt-4 border-t border-[#f0f0f5] flex flex-wrap items-center justify-between gap-3">
             <div>
               <Button variant="secondary" size="sm" onClick={() => setAdminPasswordReset(p => ({ ...p, open: !p.open }))}><Key className="w-3.5 h-3.5" /> Reset Password</Button>
             </div>
