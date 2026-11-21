@@ -27,7 +27,7 @@ description: Enforces Backend (Express/Zod/Pino/Sentry) and Frontend (Error Boun
 
 ## Frontend Checklist (React + TypeScript)
 1. **Root React Error Boundary:**
-   - Wrap the application root and the exam-runner view in a React Error Boundary styled with `.agent/specs/DESIGN.md` tokens (`#fbfcfd` canvas, `#edecfb` card, `#28253b` ink text).
+   - Wrap the application root and the exam-runner view in a React Error Boundary styled with `.agents/specs/DESIGN.md` tokens (`#fbfcfd` canvas, `#edecfb` card, `#28253b` ink text).
 2. **Mandatory View States:**
    - Every screen and asynchronous component MUST implement and test four explicit states: `loading`, `error`, `empty`, and `success`.
 3. **Central Axios/Fetch Interceptor:**

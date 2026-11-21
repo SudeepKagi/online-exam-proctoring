@@ -2,7 +2,7 @@
 
 > **STRICT ENTERPRISE MANDATE:** This application operates exclusively in the **Light Surface World** (`--color-canvas` `#fbfcfd`, `--color-surface` `#ffffff`, `--color-surface-tint` `#fbfbff`, `--color-lavender` `#edecfb`). Dark mode, dark page canvases, dark sidebars, neon status colors, heavy drop shadows, font weights above `500`, and `1px` box outlines around cards are strictly prohibited across all screens.
 >
-> Single Source of Truth: Refer to [DESIGN.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agent/specs/DESIGN.md) and [05-enterprise-ui-design.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agent/rules/05-enterprise-ui-design.md).
+> Single Source of Truth: Refer to [DESIGN.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agents/specs/DESIGN.md) and [05-enterprise-ui-design.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agents/rules/05-enterprise-ui-design.md).
 
 ---
 

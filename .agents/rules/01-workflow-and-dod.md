@@ -7,8 +7,8 @@ description: Enforces spec-first development, vertical slicing, and strict Defin
 
 ## 1. Spec-First Mandate
 Before creating or modifying routes, controllers, or React views:
-- Verify that `.agent/specs/SPEC.md` defines the exact role (`student`, `teacher`, `admin`), state transitions, API schemas, and edge cases.
-- Verify that the planned UI layout uses only tokens and component primitives defined in `.agent/specs/DESIGN.md`.
+- Verify that `.agents/specs/SPEC.md` defines the exact role (`student`, `teacher`, `admin`), state transitions, API schemas, and edge cases.
+- Verify that the planned UI layout uses only tokens and component primitives defined in `.agents/specs/DESIGN.md`.
 
 ## 2. Vertical Slice Isolation
 Build and verify one vertical slice end-to-end before starting the next:

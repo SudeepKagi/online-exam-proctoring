@@ -1,6 +1,6 @@
 # Enterprise UI Design Rules & Quality Standards
 
-This document establishes the mandatory visual and ergonomic standards for ProctorNet, codifying `.agent/specs/DESIGN.md` and Rule 05.
+This document establishes the mandatory visual and ergonomic standards for ProctorNet, codifying `.agents/specs/DESIGN.md` and Rule 05.
 
 ---
 

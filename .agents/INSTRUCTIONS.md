@@ -1,6 +1,6 @@
 # STRICT ENGINEERING & UI/UX CONSTITUTION
 
-> **SUPERSEDED BY AGENTS.MD:** This constitution operates under [AGENTS.md](file:///c:/Final%20year%20project/online-exam-proctoring/AGENTS.md), [.agent/rules/](file:///c:/Final%20year%20project/online-exam-proctoring/.agent/rules/), [.agent/specs/DESIGN.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agent/specs/DESIGN.md), and [.agent/workflows/execution-order.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agent/workflows/execution-order.md).
+> **SUPERSEDED BY AGENTS.MD:** This constitution operates under [AGENTS.md](file:///c:/Final%20year%20project/online-exam-proctoring/AGENTS.md), [.agents/rules/](file:///c:/Final%20year%20project/online-exam-proctoring/.agents/rules/), [.agents/specs/DESIGN.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agents/specs/DESIGN.md), and [.agents/workflows/execution-order.md](file:///c:/Final%20year%20project/online-exam-proctoring/.agents/workflows/execution-order.md).
 
 ## 1. HARD CONSTRAINTS (ZERO TOLERANCE)
 1. **NO UNREQUESTED FILES:** Never create phase reports, QA ledgers, performance audits, or extra `.env` / `docker-compose` files.
@@ -48,7 +48,7 @@
 
 ## 5. UI/UX SKILLS & DESIGN SYSTEM MANDATE
 Before modifying or creating ANY UI file in `frontend/src/`:
-1. **Mandatory Token Reading:** You MUST read and follow `.agent/specs/DESIGN.md` and `.agent/rules/05-enterprise-ui-design.md` as the single source of truth for typography, color tokens, role badges, status indicators, and spatial rhythm.
+1. **Mandatory Token Reading:** You MUST read and follow `.agents/specs/DESIGN.md` and `.agents/rules/05-enterprise-ui-design.md` as the single source of truth for typography, color tokens, role badges, status indicators, and spatial rhythm.
 2. **Mandatory Skills Application:** Adhere to all engineering skills in `.agents/skills/`:
    - `frontend-design` (Inter variable typography 360–500, Mercury Indigo #5266eb, tonal lavender #edecfb surfaces)
    - `exam-platform-terminology` (Mandatory domain language)
