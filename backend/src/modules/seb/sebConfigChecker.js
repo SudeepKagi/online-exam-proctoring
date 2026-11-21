@@ -351,6 +351,41 @@ function inspectSebBuffer(buffer, options = {}) {
 }
 
 /**
+ * Sanitizes plain XML plist so that non-killable background Windows services
+ * (like UltraViewer_Service.exe and TeamViewer_Service.exe) have active set to false.
+ * Prevents Win32 Access Denied errors and "Configuration failed" dialogs on student machines.
+ * Supports both string and Buffer inputs.
+ */
+function sanitizeProhibitedProcesses(input) {
+  if (!input) return input
+  const isBuf = Buffer.isBuffer(input)
+  let xmlStr = isBuf ? input.toString('utf8') : input
+
+  if (typeof xmlStr !== 'string') return input
+  if (!xmlStr.includes('<?xml') && !xmlStr.includes('<plist')) return input
+
+  const systemServices = [
+    'ultraviewer_service.exe',
+    'teamviewer_service.exe',
+    'pcmonitorsrv.exe',
+    'rpcservice.exe',
+    'remoting_native_messaging_host.exe',
+    'remote_assistance_host.exe'
+  ]
+
+  const sanitized = xmlStr.replace(/<dict>([\s\S]*?)<\/dict>/gi, (dictBlock) => {
+    const lowerBlock = dictBlock.toLowerCase()
+    const isService = systemServices.some(svc => lowerBlock.includes(svc))
+    if (isService) {
+      return dictBlock.replace(/<key>active<\/key>\s*<true\s*\/>/i, '<key>active</key>\n        <false/>')
+    }
+    return dictBlock
+  })
+
+  return isBuf ? Buffer.from(sanitized, 'utf8') : sanitized
+}
+
+/**
  * Generates a valid starter SEB XML plist configuration.
  *
  * @param {Object} options - { publicOrigin, s3Host }
@@ -389,6 +424,10 @@ function generateStarterSebConfig({ publicOrigin = 'https://proctornet.duckdns.o
     <string>${origin}/seb/done</string>
     <key>quitURLConfirm</key>
     <true/>
+    <key>allowVideoCapture</key>
+    <true/>
+    <key>allowAudioCapture</key>
+    <true/>
     <key>examSessionClearCookiesOnStart</key>
     <true/>
     <key>examSessionClearCookiesOnEnd</key>
@@ -410,6 +449,137 @@ function generateStarterSebConfig({ publicOrigin = 'https://proctornet.duckdns.o
             <false/>
         </dict>${s3FilterRule}
     </array>
+    <key>prohibitedProcesses</key>
+    <array>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>UltraViewer_Desktop.exe</string>
+            <key>originalName</key>
+            <string>UltraViewer_Desktop.exe</string>
+            <key>description</key>
+            <string>UltraViewer Screen Sharing Client</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <false/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>UltraViewer_Service.exe</string>
+            <key>originalName</key>
+            <string>UltraViewer_Service.exe</string>
+            <key>description</key>
+            <string>UltraViewer Service (Ignored - Windows Service)</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>TeamViewer.exe</string>
+            <key>originalName</key>
+            <string>TeamViewer.exe</string>
+            <key>description</key>
+            <string>TeamViewer Client</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <false/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>TeamViewer_Service.exe</string>
+            <key>originalName</key>
+            <string>TeamViewer_Service.exe</string>
+            <key>description</key>
+            <string>TeamViewer Service (Ignored - Windows Service)</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>AnyDesk.exe</string>
+            <key>originalName</key>
+            <string>AnyDesk.exe</string>
+            <key>description</key>
+            <string>AnyDesk Remote Desktop</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>Telegram.exe</string>
+            <key>originalName</key>
+            <string>Telegram.exe</string>
+            <key>description</key>
+            <string>Telegram Messaging Client</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>Discord.exe</string>
+            <key>originalName</key>
+            <string>Discord.exe</string>
+            <key>description</key>
+            <string>Discord Messaging Client</string>
+        </dict>
+        <dict>
+            <key>active</key>
+            <true/>
+            <key>currentUser</key>
+            <true/>
+            <key>strongKill</key>
+            <false/>
+            <key>os</key>
+            <integer>1</integer>
+            <key>executable</key>
+            <string>Zoom.exe</string>
+            <key>originalName</key>
+            <string>Zoom.exe</string>
+            <key>description</key>
+            <string>Zoom Video Meeting</string>
+        </dict>
+    </array>
 </dict>
 </plist>`
 }
@@ -417,6 +587,7 @@ function generateStarterSebConfig({ publicOrigin = 'https://proctornet.duckdns.o
 module.exports = {
   inspectSebBuffer,
   generateStarterSebConfig,
+  sanitizeProhibitedProcesses,
   computeConfigKeyFromXml,
   computeConfigKeyOfficial,
   serializeSebJson,

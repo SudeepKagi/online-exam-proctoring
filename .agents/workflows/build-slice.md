@@ -5,7 +5,7 @@ description: Build a single vertical slice end-to-end with strict verification, 
 # Workflow: Build Vertical Slice (`/build-slice`)
 
 1. **Spec & Design Verification:**
-   - Read `.agent/specs/SPEC.md` and `.agent/specs/DESIGN.md`.
+   - Read `.agents/specs/SPEC.md` and `.agents/specs/DESIGN.md`.
    - Confirm the slice's API schemas, database constraints, and Light-Only UI tokens (`#fbfcfd` canvas, `#edecfb` lavender cards, `#5266eb` single primary pill, Inter 360–500 weights, zero box outlines).
 2. **Backend & Database Implementation:**
    - Implement schema migrations, Zod request validation on every route, RBAC guards, and business logic routing errors to the central Express `{ code, message }` middleware.
@@ -13,7 +13,7 @@ description: Build a single vertical slice end-to-end with strict verification, 
    - Write integration tests against a real test database covering happy path, Zod `400` bad inputs, `401` expired/tampered JWT, `403` role violations, and race conditions.
    - Run `npm --workspace=backend test` and ensure 100% pass.
 4. **Frontend Implementation (React + RHF + Zod + DESIGN.md):**
-   - Build the screen using only `.agent/specs/DESIGN.md` tokens (strictly light mode, tonal cards with `12px` radius and `32px` padding, capsule buttons with `32px`/`40px` radius, font weights `360–500`).
+   - Build the screen using only `.agents/specs/DESIGN.md` tokens (strictly light mode, tonal cards with `12px` radius and `32px` padding, capsule buttons with `32px`/`40px` radius, font weights `360–500`).
    - Implement `loading`, `error`, `empty`, and `success` states and disable submit buttons during submission.
 5. **Frontend Component Tests (Vitest + RTL + MSW):**
    - Test all 4 view states (`loading`, `error`, `empty`, `success`), form validation, and button disabling on submit.

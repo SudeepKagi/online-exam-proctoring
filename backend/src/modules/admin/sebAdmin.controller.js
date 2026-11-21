@@ -5,7 +5,7 @@ const { settingsService } = require('./settings.service')
 const { getStorageAdapter } = require('../../infra/s3/s3.client')
 const { logger } = require('../../shared/logging')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('../seb/seb.service')
-const { inspectSebBuffer, generateStarterSebConfig } = require('../seb/sebConfigChecker')
+const { inspectSebBuffer, generateStarterSebConfig, sanitizeProhibitedProcesses } = require('../seb/sebConfigChecker')
 const { sebDiagnosticsService } = require('../seb/sebDiagnostics.service')
 
 const upload = multer({
@@ -121,9 +121,13 @@ async function uploadSebConfig(req, res, next) {
 
     // Save to S3 first (no key stored in metadata)
     const fileKey = 'seb/institution-config.seb'
+    let bufferToSave = req.file.buffer
+    if (!inspection.isEncrypted && bufferToSave.slice(0, 5).toString('utf8').includes('<?xml')) {
+      bufferToSave = Buffer.from(sanitizeProhibitedProcesses(bufferToSave.toString('utf8')), 'utf8')
+    }
     const storage = getStorageAdapter()
     try {
-      await storage.putObject(fileKey, req.file.buffer, 'application/seb')
+      await storage.putObject(fileKey, bufferToSave, 'application/seb')
     } catch (storageErr) {
       storageErr.isStorageError = true
       throw storageErr

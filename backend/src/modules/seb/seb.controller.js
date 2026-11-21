@@ -13,6 +13,7 @@ const { verifySebLaunchToken } = require('./sebToken')
 const { sebTokenService } = require('./sebToken.service')
 const { getInstitutionSebState, invalidateInstitutionSebState } = require('./seb.service')
 const { sebDiagnosticsService } = require('./sebDiagnostics.service')
+const { generateStarterSebConfig, sanitizeProhibitedProcesses } = require('./sebConfigChecker')
 
 /**
  * Validates X-SafeExamBrowser-ConfigKeyHash against candidate URLs for the given activeKey.
@@ -277,26 +278,30 @@ async function downloadSebConfig(req, res, next) {
 
     // Retrieve .seb configuration file from S3 storage
     const sebConfig = await settingsService.getSebConfig()
-    if (!sebConfig || !sebConfig.fileKey) {
-      return res.status(404).json({
-        code: 'SEB_CONFIG_FILE_NOT_FOUND',
-        message: 'Institution Safe Exam Browser configuration file not found.'
-      })
+    let buffer = null
+
+    if (sebConfig && sebConfig.fileKey) {
+      const storage = getStorageAdapter()
+      try {
+        buffer = await storage.getObjectBuffer(sebConfig.fileKey)
+      } catch (storageErr) {
+        logger.error({ storageErr }, 'Storage adapter error fetching SEB config file')
+      }
     }
 
-    const storage = getStorageAdapter()
-    let buffer
-    try {
-      buffer = await storage.getObjectBuffer(sebConfig.fileKey)
-    } catch (storageErr) {
-      logger.error({ storageErr }, 'Storage adapter error fetching SEB config file')
-    }
-
+    // Dynamic Fallback: If S3 file is missing or empty, generate valid starter SEB config dynamically
     if (!buffer || buffer.length === 0) {
-      return res.status(404).json({
-        code: 'SEB_CONFIG_FILE_NOT_FOUND',
-        message: 'Institution Safe Exam Browser configuration file not found.'
+      const starterXml = generateStarterSebConfig({
+        publicOrigin: config.publicOrigin || 'https://proctornet.duckdns.org',
+        s3Host: config.s3PublicHost || ''
       })
+      buffer = Buffer.from(starterXml, 'utf8')
+    }
+
+    // Sanitize plain XML so background services don't crash student SEB instances
+    if (buffer && buffer.length > 0 && buffer.slice(0, 5).toString('utf8').includes('<?xml')) {
+      const sanitizedXml = sanitizeProhibitedProcesses(buffer.toString('utf8'))
+      buffer = Buffer.from(sanitizedXml, 'utf8')
     }
 
     res.setHeader('Content-Type', 'application/seb')

@@ -89,7 +89,7 @@ export function CommandPalette({ open, onOpenChange }) {
           )}
         </div>
 
-        <div className="px-4 py-2.5 border-t border-border bg-[#f8fafc] dark:bg-neutral-900 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="px-4 py-2.5 border-t border-border bg-[#f8fafc] flex items-center justify-between text-xs text-muted-foreground">
           <span>Navigate: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-[480] text-[10px]">↑↓</kbd></span>
           <span>Select: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-[480] text-[10px]">↵</kbd></span>
           <span>Close: <kbd className="px-1.5 py-0.5 bg-card border border-border rounded-md text-foreground font-[480] text-[10px]">ESC</kbd></span>

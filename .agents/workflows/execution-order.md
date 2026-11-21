@@ -7,7 +7,7 @@ description: Execute the 4-phase engineering and UI build order strictly.
 Follow this exact 4-phase sequence:
 
 ## Phase 1: Design Token Foundation & Core Playwright E2E Flows
-1. Set up the CSS variables and typography tokens from `.agent/specs/DESIGN.md` (strictly Light Theme `#fbfcfd` canvas, `#edecfb` cards, `#5266eb` primary pill, Inter 360–500).
+1. Set up the CSS variables and typography tokens from `.agents/specs/DESIGN.md` (strictly Light Theme `#fbfcfd` canvas, `#edecfb` cards, `#5266eb` primary pill, Inter 360–500).
 2. Build the 3 to 5 core vertical slices and write Playwright E2E tests for them.
 3. Run `npx playwright test`, inspect traces on failure, and fix all issues until passing.
 
@@ -17,7 +17,7 @@ Follow this exact 4-phase sequence:
 3. Verify with Supertest and React Testing Library + MSW tests.
 
 ## Phase 3: Exam-System Invariants & 15-Point Red-Team Suites
-1. Implement and test all 10 exam-specific cases in `.agent/rules/03-exam-domain-invariants.md` (server timer, auto-submit worker, refresh resume, offline autosave, double-click idempotency, single attempt constraint, RBAC/answer hiding, JWT tamper handling, partial/negative scoring, exam start/end windows).
+1. Implement and test all 10 exam-specific cases in `.agents/rules/03-exam-domain-invariants.md` (server timer, auto-submit worker, refresh resume, offline autosave, double-click idempotency, single attempt constraint, RBAC/answer hiding, JWT tamper handling, partial/negative scoring, exam start/end windows).
 2. Run `/red-team-flow` on every flow ("list 15 ways this flow can break") and turn each into an automated test.
 
 ## Phase 4: Static Gates, Fuzzing, Load Testing, CI & Sentry

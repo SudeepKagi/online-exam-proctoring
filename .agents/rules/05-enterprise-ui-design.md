@@ -1,11 +1,11 @@
 ---
 trigger: always_on
-description: Enforces the strict Light-Only Enterprise Mercury Design System (.agent/specs/DESIGN.md) with zero dark theme, zero neon colors, zero box outlines, and light variable typography.
+description: Enforces the strict Light-Only Enterprise Mercury Design System (.agents/specs/DESIGN.md) with zero dark theme, zero neon colors, zero box outlines, and light variable typography.
 ---
 
 # Rule 05: Enterprise UI Design System (Strict Light-Only Mandate)
 
-You MUST style every page, layout, form, table, modal, and component strictly according to `.agent/specs/DESIGN.md` with the following **mandatory enterprise constraints**:
+You MUST style every page, layout, form, table, modal, and component strictly according to `.agents/specs/DESIGN.md` with the following **mandatory enterprise constraints**:
 
 ## 1. STRICT LIGHT THEME ONLY (No Dark Mode / No Dark Surfaces)
 - **Light Mode Exclusively:** Every page, dashboard, exam runner, login screen, and modal MUST use the Light Surface World (`{colors.canvas}` `#fbfcfd` background, `{colors.surface}` `#ffffff`, `{colors.surface-tint}` `#fbfbff`, and `{colors.lavender}` `#edecfb` cards).
