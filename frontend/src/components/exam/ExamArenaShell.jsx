@@ -5,7 +5,7 @@ import React from 'react'
  * Dedicated container for Student System & Identity Check and Live Exam Arena
  * Enforces:
  * - Viewport lockdown & select-none
- * - Standard canvas styling (bg-slate-50 / dark:bg-slate-950)
+ * - Standard canvas styling (bg-[#fbfcfd])
  * - Zero outer scroll leakage
  */
 export default function ExamArenaShell({ children, className = '' }) {

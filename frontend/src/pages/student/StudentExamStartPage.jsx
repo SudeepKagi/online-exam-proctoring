@@ -801,7 +801,7 @@ export default function StudentExamStartPage() {
 
           {/* SEB Launch Code Panel (Shown after clicking launch) */}
           {sebLaunchData && (
-            <div className="p-5 bg-white border border-[#edecfb] rounded-[16px] text-xs text-[#28253b] space-y-4 shadow-sm font-sans" data-testid="seb-launch-active-panel">
+            <div className="p-5 bg-[#ffffff] rounded-[16px] text-xs text-[#28253b] space-y-4 shadow-[0_4px_20px_rgba(40,37,59,0.04)] font-sans" data-testid="seb-launch-active-panel">
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-[480] text-[#28253b] text-sm flex items-center gap-1.5">
