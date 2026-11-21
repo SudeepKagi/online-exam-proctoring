@@ -1,10 +1,11 @@
 # ProctorNet Production Release v1.5.0
 
 - **Release Version**: `v1.5.0` (Minor Release)
-- **Deployment Git Target**: `release/v1.5.0`
+- **Deployment Git Commit SHA**: `773f24c7f0d9e5a75d8375c7c2d395f8001c4315`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-773f24c7f0d9e5a75d8375c7c2d395f8001c4315.tar.gz`
 - **Target Instance**: EC2 `i-0d242d962823f0a89` (`proctornet.duckdns.org`, region `ap-south-1`)
-- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/`
-- **Release Date**: `2026-11-20`
+- **Cutover SSM Command ID**: `431950cb-eab1-4574-8fc9-e74097d35b02` (Status: `Success`, Exit Code: 0)
+- **Cutover Timestamp**: `2026-11-20T00:10:44.741Z`
 - **Effective SEB Mode**: `log` (CEILING: `log`, DB: `audit`)
 
 ---
