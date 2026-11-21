@@ -104,7 +104,7 @@ export default function ExamWizardStepAudience({ audience, setAudience }) {
       </div>
 
       {/* Live Cohort Count Preview Card */}
-      <Card className="border border-primary/20 bg-primary/5">
+      <Card className="border-0 bg-[#edecfb] rounded-[16px]">
         <CardContent className="p-4 flex items-center justify-between">
           <div className="flex items-start space-x-3">
             <div className="p-2 rounded-lg bg-primary/10 text-primary mt-0.5">

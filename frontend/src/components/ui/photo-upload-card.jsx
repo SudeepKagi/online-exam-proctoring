@@ -138,7 +138,7 @@ export function PhotoUploadCard({
   }
 
   return (
-    <Card className={`border-slate-200 bg-white shadow-xs rounded-xl overflow-hidden font-sans ${className}`}>
+    <Card className={`border-0 bg-white shadow-xs rounded-xl overflow-hidden font-sans ${className}`}>
       {(label || description) && (
         <div className="p-3.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
           <div>

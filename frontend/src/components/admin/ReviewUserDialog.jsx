@@ -74,7 +74,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl font-sans max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="border-b border-[#e9eaf2] pb-3">
+        <DialogHeader className="border-b border-[#f0f0f5] pb-3">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-base font-[480] text-[#28253b] flex items-center gap-2">
               <ShieldCheck className="w-5 h-5 text-[#5266eb]" />
@@ -93,7 +93,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
         )}
 
         {/* Profile Details */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-[#fbfbff] border-0 shadow-xs rounded-[12px] text-xs">
           <div>
             <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Candidate</span>
             <span className="font-[480] text-[#28253b]">{user.fullName}</span>
@@ -119,7 +119,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
             <span className="text-xs font-[480] text-[#28253b] flex items-center justify-center gap-1.5">
               <User className="w-4 h-4 text-[#5266eb]" /> Live Webcam Face Photo
             </span>
-            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#e9eaf2] bg-[#fbfbff] flex items-center justify-center">
+            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#c3c3cc]/40 bg-[#fbfbff] flex items-center justify-center">
               {loadingPhotos ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#70707d]" />
               ) : photos.referencePhotoUrl ? (
@@ -136,7 +136,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
             <span className="text-xs font-[480] text-[#28253b] flex items-center justify-center gap-1.5">
               <FileText className="w-4 h-4 text-[#5266eb]" /> College ID Card Document
             </span>
-            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#e9eaf2] bg-[#fbfbff] flex items-center justify-center p-2">
+            <div className="w-full aspect-4/3 rounded-[12px] overflow-hidden border border-[#c3c3cc]/40 bg-[#fbfbff] flex items-center justify-center p-2">
               {loadingPhotos ? (
                 <Loader2 className="w-6 h-6 animate-spin text-[#70707d]" />
               ) : photos.idCardPhotoUrl ? (
@@ -164,7 +164,7 @@ export default function ReviewUserDialog({ user, open, onOpenChange, onSuccess }
         )}
 
         {/* Modal Actions */}
-        <div className="pt-4 border-t border-[#e9eaf2] flex items-center justify-between gap-3">
+        <div className="pt-4 border-t border-[#f0f0f5] flex items-center justify-between gap-3">
           <Button
             variant="outline"
             size="sm"

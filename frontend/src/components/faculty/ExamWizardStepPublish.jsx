@@ -82,8 +82,8 @@ Proctoring Console   : ${window.location.origin}/login
       </div>
 
       {/* Mercury Light Invigilator Credentials Card */}
-      <Card className="border border-[#e9eaf2] bg-[#edecfb] text-[#28253b] shadow-xs rounded-[12px] overflow-hidden font-sans">
-        <div className="bg-[#fbfbff] px-4 py-2.5 border-b border-[#e9eaf2] flex items-center justify-between">
+      <Card className="border-0 bg-[#edecfb] text-[#28253b] shadow-xs rounded-[16px] overflow-hidden font-sans">
+        <div className="bg-[#fbfbff] px-4 py-2.5 border-b border-[#f0f0f5] flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <KeyRound className="w-4 h-4 text-[#5266eb] animate-pulse" />
             <span className="text-xs font-[500] uppercase tracking-wider text-[#28253b]">
@@ -97,21 +97,21 @@ Proctoring Console   : ${window.location.origin}/login
 
         <CardContent className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+            <div className="bg-white p-3 rounded-[12px] border-0 shadow-xs">
               <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Exam Code</span>
               <p className="text-base font-mono font-[480] text-[#28253b] mt-1 select-all">
                 {publishConfig.examCode || 'EXM-CODE'}
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+            <div className="bg-white p-3 rounded-[12px] border-0 shadow-xs">
               <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Invigilator Login ID</span>
               <p className="text-base font-mono font-[480] text-[#5266eb] mt-1 select-all">
                 {publishConfig.invigilatorId || 'INV-ID'}
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+            <div className="bg-white p-3 rounded-[12px] border-0 shadow-xs">
               <span className="text-[11px] font-[500] text-[#554e7b] uppercase tracking-wider">Password</span>
               <p className="text-base font-mono font-[480] text-[#5266eb] mt-1 select-all">
                 {publishConfig.invigilatorPassword || 'PASSWORD'}

@@ -147,7 +147,7 @@ export default function ExamWizardStepSecurity({
       </div>
 
       {/* Live Cohort Count Preview */}
-      <Card className="border border-primary/20 bg-primary/5">
+      <Card className="border-0 bg-[#edecfb] rounded-[16px]">
         <CardContent className="p-3.5 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <Users className="w-4 h-4 text-primary" />
@@ -162,7 +162,7 @@ export default function ExamWizardStepSecurity({
       </Card>
 
       {/* Security & Safe Exam Browser (SEB) Settings */}
-      <Card className="border border-border bg-card rounded-[14px]">
+      <Card className="border-0 bg-[#fbfbff] rounded-[16px] shadow-xs">
         <CardContent className="p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">

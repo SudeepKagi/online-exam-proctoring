@@ -78,8 +78,8 @@ export default function SettingsPage() {
         )}
 
         {/* Identity & Verification Status Card */}
-        <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
-          <CardHeader className="bg-[#fbfbff] border-b border-[#e9eaf2] pb-3">
+        <Card className="border-0 bg-white shadow-xs rounded-[16px] overflow-hidden">
+          <CardHeader className="bg-[#fbfbff] border-b border-[#f0f0f5] pb-3">
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-[480] text-[#28253b] flex items-center gap-2">
@@ -96,15 +96,15 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+            <div className="p-3 bg-[#fbfbff] border-0 rounded-[12px] shadow-xs space-y-1">
               <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Account Role</span>
               <span className="font-[480] text-[#28253b]">{user?.role}</span>
             </div>
-            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+            <div className="p-3 bg-[#fbfbff] border-0 rounded-[12px] shadow-xs space-y-1">
               <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">{isStudent ? 'Roll No / USN' : 'Employee ID'}</span>
               <span className="font-mono font-[480] text-[#5266eb]">{user?.institutionId || '—'}</span>
             </div>
-            <div className="p-3 bg-[#fbfbff] border border-[#e9eaf2] rounded-[12px] space-y-1">
+            <div className="p-3 bg-[#fbfbff] border-0 rounded-[12px] shadow-xs space-y-1">
               <span className="text-[#554e7b] block text-[10px] font-[500] uppercase tracking-[0.28px]">Registered Email</span>
               <span className="font-mono text-[#28253b] truncate block">{user?.email}</span>
             </div>
@@ -113,8 +113,8 @@ export default function SettingsPage() {
 
         {/* Profile & Password Form */}
         <form onSubmit={handleSave} className="space-y-6">
-          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-            <CardHeader className="border-b border-[#e9eaf2] pb-3">
+          <Card className="border-0 bg-white shadow-xs rounded-[16px]">
+            <CardHeader className="border-b border-[#f0f0f5] pb-3">
               <CardTitle className="text-sm font-[480] text-[#28253b]">Personal & Academic Details</CardTitle>
             </CardHeader>
             <CardContent className="p-4 space-y-4">
@@ -144,8 +144,8 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
-            <CardHeader className="border-b border-[#e9eaf2] pb-3">
+          <Card className="border-0 bg-white shadow-xs rounded-[16px]">
+            <CardHeader className="border-b border-[#f0f0f5] pb-3">
               <CardTitle className="text-sm font-[480] text-[#28253b] flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-[#5266eb]" /> Change Security Password
               </CardTitle>

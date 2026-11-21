@@ -145,7 +145,7 @@ Console              : ${window.location.origin}/login
       </div>
 
       {/* Student View Live Simulation Card */}
-      <Card className="border border-border bg-[#fbfbff] rounded-[16px] overflow-hidden">
+      <Card className="border-0 bg-[#fbfbff] rounded-[16px] overflow-hidden shadow-xs">
         <div className="p-4 bg-muted/20 border-b border-border flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="text-[11px] font-[500] uppercase tracking-wider text-muted-foreground">
@@ -204,7 +204,7 @@ Console              : ${window.location.origin}/login
       </Card>
 
       {/* Invigilator Surveillance Credentials Card */}
-      <Card className="border border-border bg-[#edecfb] rounded-[14px]">
+      <Card className="border-0 bg-[#edecfb] rounded-[14px]">
         <CardContent className="p-3.5 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-xs font-[480] text-foreground">

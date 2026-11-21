@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -52,7 +53,13 @@ export default function SebRequiredPage() {
 
   return (
     <div className="min-h-screen bg-[#fbfcfd] flex items-center justify-center p-4 font-sans text-[#28253b]">
-      <Card className="w-full max-w-lg border-0 bg-white shadow-md rounded-[16px] overflow-hidden">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full max-w-lg"
+      >
+        <Card className="w-full border-0 bg-white shadow-md rounded-[16px] overflow-hidden">
         <CardHeader className="text-center pb-4 pt-6 bg-[#fbfbff]">
           <div className="w-14 h-14 rounded-full bg-[#edecfb] text-[#5266eb] mx-auto flex items-center justify-center mb-3">
             <ShieldAlert className="w-7 h-7" />
@@ -165,6 +172,7 @@ export default function SebRequiredPage() {
           </div>
         </CardContent>
       </Card>
+      </motion.div>
     </div>
   )
 }

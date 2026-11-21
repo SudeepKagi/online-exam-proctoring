@@ -92,9 +92,9 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#28253b]/40 backdrop-blur-xs font-sans">
-      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#fbfcfd] rounded-[20px] shadow-xl overflow-hidden flex flex-col border border-[#e9eaf2]">
+      <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#fbfcfd] rounded-[20px] shadow-2xl overflow-hidden flex flex-col border-0">
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-white border-b border-[#e9eaf2] flex items-center justify-between">
+        <div className="px-6 py-4 bg-white border-b border-[#f0f0f5] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-[#edecfb] flex items-center justify-center text-[#5266eb]">
               <ShieldAlert className="w-4 h-4" />
@@ -140,7 +140,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
           )}
 
           {/* Review Decision & Invigilator Notes Card */}
-          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[16px] p-4 font-sans">
+          <Card className="border-0 bg-white shadow-xs rounded-[16px] p-4 font-sans">
             <h4 className="text-xs font-[480] text-[#28253b] mb-3 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-[#5266eb]" /> Invigilator Adjudication & Notes
             </h4>
@@ -157,7 +157,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                     if (st === 'CONFIRMED') setIsFlagged(true)
                     if (st === 'DISMISSED') setIsFlagged(false)
                   }}
-                  className="w-full text-xs font-[420] h-9 px-3 rounded-[12px] border border-[#e9eaf2] bg-[#fbfbff] text-[#28253b] focus:bg-white"
+                  className="w-full text-xs font-[420] h-9 px-3 rounded-[12px] border border-[#c3c3cc]/40 bg-[#fbfbff] text-[#28253b] focus:bg-white"
                 >
                   <option value="PENDING">Pending Review</option>
                   <option value="REVIEWED">Reviewed (Inconclusive)</option>
@@ -202,13 +202,13 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                 value={reviewNotes}
                 onChange={(e) => setReviewNotes(e.target.value)}
                 placeholder="Document verification findings, false-positive context, or disciplinary references..."
-                className="w-full text-xs font-[420] p-2.5 rounded-[12px] border border-[#e9eaf2] bg-[#fbfbff] text-[#28253b] focus:bg-white resize-none"
+                className="w-full text-xs font-[420] p-2.5 rounded-[12px] border border-[#c3c3cc]/40 bg-[#fbfbff] text-[#28253b] focus:bg-white resize-none"
               />
             </div>
           </Card>
 
           {/* Filter Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-[12px] border border-[#e9eaf2]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-[12px] border-0 shadow-xs">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[11px] font-[420] text-[#70707d] mr-1 flex items-center gap-1">
                 <Filter className="w-3 h-3" /> Severity:
@@ -236,7 +236,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="text-xs font-[420] h-8 px-2.5 rounded-[10px] border border-[#e9eaf2] bg-[#fbfbff] text-[#28253b]"
+                  className="text-xs font-[420] h-8 px-2.5 rounded-[10px] border border-[#c3c3cc]/40 bg-[#fbfbff] text-[#28253b]"
                 >
                   <option value="ALL">All Violation Types</option>
                   {availableTypes.map((t) => (
@@ -259,7 +259,7 @@ export default function IncidentReviewModal({ attemptId, isOpen, onClose, onRevi
                 Loading timeline and presigned evidence snapshots...
               </div>
             ) : filteredIncidents.length === 0 ? (
-              <Card className="border-[#e9eaf2] bg-white p-8 text-center rounded-[12px] shadow-xs">
+              <Card className="border-0 bg-[#fbfbff] p-8 text-center rounded-[14px] shadow-xs">
                 <CheckCircle2 className="w-8 h-8 text-[#5266eb] mx-auto mb-2 opacity-80" />
                 <p className="text-xs text-[#28253b] font-[480]">No incidents found</p>
                 <p className="text-[11px] text-[#70707d] font-[360] mt-0.5">

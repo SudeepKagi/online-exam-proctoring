@@ -19,8 +19,8 @@ export default function QuestionCard({
   const options = Array.isArray(currentQ?.options) ? currentQ.options : []
 
   return (
-    <Card className="flex-1 flex flex-col border-[#e9eaf2] bg-white overflow-hidden shadow-xs rounded-[12px] font-sans">
-      <CardHeader className="py-3 px-6 border-b border-[#e9eaf2] bg-[#fbfbff] flex flex-row items-center justify-between">
+    <Card className="flex-1 flex flex-col border-0 bg-white overflow-hidden shadow-xs rounded-[16px] font-sans">
+      <CardHeader className="py-3 px-6 border-b border-[#f0f0f5] bg-[#fbfbff] flex flex-row items-center justify-between">
         <span className="text-xs font-[500] text-[#554e7b] uppercase tracking-[0.28px]">
           Question {currentIndex + 1} of {totalQuestions}
         </span>
@@ -59,7 +59,7 @@ export default function QuestionCard({
                 <div className="flex items-center gap-3">
                   <span
                     className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-[480] shrink-0 ${
-                      isSelected ? 'bg-[#5266eb] text-white' : 'bg-[#fbfbff] text-[#554e7b] border border-[#e9eaf2]'
+                      isSelected ? 'bg-[#5266eb] text-white' : 'bg-[#fbfbff] text-[#554e7b] border border-[#c3c3cc]/40'
                     }`}
                   >
                     {String.fromCharCode(65 + idx)}

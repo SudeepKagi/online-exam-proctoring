@@ -174,8 +174,8 @@ export default function ExamManagePage() {
         </TabsContent>
 
         <TabsContent value="results" className="mt-4">
-          <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px] overflow-hidden">
-            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 bg-[#fbfbff] border-b border-[#e9eaf2]">
+          <Card className="border-0 bg-white shadow-xs rounded-[16px] overflow-hidden">
+            <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-2 bg-[#fbfbff] border-b border-[#f0f0f5]">
               <div>
                 <CardTitle className="text-xs font-[480] text-[#28253b]">Student Attempts, Integrity Flags & Grading</CardTitle>
                 <p className="text-[11px] text-[#70707d] font-[360] mt-0.5">

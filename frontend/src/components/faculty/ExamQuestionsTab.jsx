@@ -122,19 +122,19 @@ export default function ExamQuestionsTab({ examId, questions, isReadOnly = false
         )}
       </div>
 
-      <Card className="border-[#e9eaf2] bg-white shadow-xs rounded-[12px]">
+      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[16px]">
         <CardContent className="p-4 space-y-3">
           {questions.length === 0 ? (
             <div className="text-center py-10 text-xs text-[#70707d] font-[360]">No questions added yet. Use "✨ AI Generate Questions" or "+ Add MCQ" to populate this exam.</div>
           ) : (
             questions.map((q, idx) => (
-              <div key={q.id || idx} className="p-3 border border-[#e9eaf2] rounded-[12px] bg-[#fbfbff] flex items-start justify-between">
+              <div key={q.id || idx} className="p-3 border-0 rounded-[12px] bg-[#fbfbff] shadow-xs flex items-start justify-between">
                 <div>
                   <div className="text-[11px] font-[480] text-[#5266eb] mb-1">Question {idx + 1} ({q.marks} pts)</div>
                   <p className="text-xs font-[480] text-[#28253b]">{q.questionText}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 mt-2">
                     {(Array.isArray(q.options) ? q.options : []).map((opt, i) => (
-                      <div key={i} className={`text-xs px-2.5 py-1.5 rounded-lg border font-[420] ${i === q.correctOptionIndex ? 'border-[#5266eb]/30 bg-[#edecfb] text-[#5266eb] font-[480]' : 'border-[#e9eaf2] bg-white text-[#554e7b]'}`}>
+                      <div key={i} className={`text-xs px-2.5 py-1.5 rounded-lg border font-[420] ${i === q.correctOptionIndex ? 'border-[#5266eb]/30 bg-[#edecfb] text-[#5266eb] font-[480]' : 'border-[#c3c3cc]/40 bg-white text-[#554e7b]'}`}>
                         {String.fromCharCode(65 + i)}. {opt}
                       </div>
                     ))}

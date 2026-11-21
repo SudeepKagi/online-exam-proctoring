@@ -65,11 +65,11 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
         </div>
       )}
 
-      <Card className="border-[#e9eaf2] bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-xl overflow-hidden">
+      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="border-[#e9eaf2] bg-[#fbfbff]">
+              <TableRow className="border-b border-[#f0f0f5] bg-[#fbfbff]">
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">Candidate</TableHead>
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">Roll No / ID</TableHead>
                 <TableHead className="text-[11px] font-[500] uppercase tracking-wider text-[#554e7b]">Role</TableHead>
