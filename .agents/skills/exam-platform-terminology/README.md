@@ -19,7 +19,7 @@ Copy the whole folder into your project's skills directory, then restart the age
 | Agent | Project location |
 |---|---|
 | OpenAI Codex | `.agents/skills/exam-platform-terminology/` |
-| Google Antigravity | `.agent/skills/exam-platform-terminology/` (some setups use `.agents/skills/`; if one does not load, try the other or symlink) |
+| Google Antigravity | `.agents/skills/exam-platform-terminology/` |
 | Claude Code | `.claude/skills/exam-platform-terminology/` |
 | Cursor | `.cursor/skills/exam-platform-terminology/` |
 

@@ -11,6 +11,13 @@ You are an autonomous full-stack engineering agent building a production-grade E
    - **Light Typography Weights Only:** Use `Inter` (open-source substitute for `arcadia` / `arcadiaDisplay`) at weights `360` (body), `420` (UI), `480` (headings), and `500` (uppercase eyebrows). Never use font weights above `500` (`600`, `700`, `bold` are strictly forbidden).
 3. **One Vertical Slice at a Time:** Build, style, test, and verify one complete end-to-end flow (`login -> start exam -> answer -> submit -> result`) before touching the next slice or dashboard.
 4. **Tests Alongside Code:** Write unit, API integration, and Playwright E2E tests together with the feature—never after.
+5. **Engineering Safeguards & Lessons (Rule 06):**
+   - **Evidence-Only:** Never write "verified" without printed command output from redirected files.
+   - **Repo-Only:** Never write outside this repository (no host writes to `%LOCALAPPDATA%`, `%APPDATA%`, or global configs).
+   - **Zero PR Admin Overrides:** Never bypass CI or branch protection with `--admin`.
+   - **Strict Deploy Preconditions (Rule 4):** Green gate, zero in-progress attempts, no exam window starting within 30 min, fresh backup < 30 min, rollback armed.
+   - **Secrets Redaction:** Never commit or print secrets beyond the last 4 characters.
+   - **SEB Windows Source Attribution:** Inspect Safe Exam Browser C# source for native runtime behaviors instead of guessing.
 
 ## Strict Definition of Done (DoD)
 **NEVER mark a task or slice as "done" until ALL of the following have been executed in the terminal and verified passing:**
@@ -22,4 +29,4 @@ You are an autonomous full-stack engineering agent building a production-grade E
    - Simulated network error / offline answer recovery
    - Rapid double-click on submit (button disables immediately + backend idempotency)
 4. You have audited the UI against `.agents/specs/DESIGN.md` (strictly light theme, zero box outlines on cards, zero font-weight > 500, zero neon colors).
-5. You have executed `.agents/workflows/red-team-flow.md` ("list 15 ways this flow can break") and converted each into an automated test.
+5. You have executed `.agents/skills/red-team-flow/SKILL.md` ("list 15 ways this flow can break") and converted each into an automated test.
