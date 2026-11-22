@@ -9,8 +9,9 @@ import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { apiClient } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { isSebBrowser, detectSebEnvironment, verifySebSession } from '@/lib/sebClient'
-import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react'
+import { Shield, AlertCircle, ArrowLeft, UserCheck, GraduationCap, Building2, CheckCircle2, ShieldCheck, KeyRound, Loader2 } from 'lucide-react'
 
 const ROLE_CONFIG = {
   STUDENT: {
@@ -96,7 +97,7 @@ export default function LoginPage() {
   useEffect(() => {
     const roleParam = searchParams.get('role')?.toUpperCase()
     if (roleParam && ROLE_CONFIG[roleParam] && roleParam !== activeRole) setActiveRole(roleParam)
-  }, [searchParams])
+  }, [searchParams, activeRole])
 
   const handleRoleChange = (newRole) => {
     setActiveRole(newRole)
@@ -135,7 +136,8 @@ export default function LoginPage() {
       }
       return navigate('/student/dashboard')
     } else {
-      setError(res.error || 'Authentication failed. Please verify credentials.')
+      const mapped = mapClientError(res.error || 'Authentication failed. Please verify credentials.')
+      setError(mapped.message)
     }
   }
 
@@ -315,8 +317,9 @@ export default function LoginPage() {
                     type="submit"
                     variant="primary"
                     disabled={sebPinLoading || sebPin.length !== 6}
-                    className="w-full h-10 cursor-pointer transition"
+                    className="w-full h-10 cursor-pointer transition flex items-center justify-center gap-1.5"
                   >
+                    {sebPinLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     {sebPinLoading ? 'Verifying code...' : 'Continue to exam'}
                   </Button>
 
@@ -411,8 +414,9 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full h-10 cursor-pointer transition"
+                    className="w-full h-10 cursor-pointer transition flex items-center justify-center gap-1.5"
                   >
+                    {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     {loading ? 'Authenticating Credentials...' : `Sign In to ${activeRole.charAt(0) + activeRole.slice(1).toLowerCase()} Portal`}
                   </Button>
                 </CardFooter>

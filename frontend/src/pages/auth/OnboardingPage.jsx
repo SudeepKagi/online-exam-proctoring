@@ -2,7 +2,8 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
-import { api, errorMessage } from '@/lib/apiClient'
+import { api } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import StudentAcademicStep from '@/components/onboarding/StudentAcademicStep'
@@ -87,7 +88,7 @@ export default function OnboardingPage() {
       }
       navigate('/pending-approval')
     } catch (err) {
-      setGlobalError(errorMessage(err, 'Failed to submit onboarding profile.'))
+      setGlobalError(mapClientError(err, 'Failed to submit onboarding profile.').message)
     } finally {
       setSubmitting(false)
     }

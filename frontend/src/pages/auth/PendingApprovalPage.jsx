@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { useAuth } from '@/context/AuthContext'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { Clock, RefreshCw, LogOut, CheckCircle2, Shield, AlertTriangle } from 'lucide-react'
 
 export default function PendingApprovalPage() {
@@ -28,8 +29,8 @@ export default function PendingApprovalPage() {
         return
       }
       setMessage('Your submission is still currently in the administrative verification queue.')
-    } catch (_) {
-      setMessage('Failed to refresh status. Please try again.')
+    } catch (err) {
+      setMessage(mapClientError(err, 'Failed to refresh status. Please try again.').message)
     } finally {
       setChecking(false)
     }
@@ -77,19 +78,19 @@ export default function PendingApprovalPage() {
           <CardContent className="space-y-4 px-6 text-left">
             <div className="p-4 rounded-xl bg-[#fbfbff] border-0 shadow-xs text-xs space-y-2">
               <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
-                <span className="text-[#554e7b] font-[400]">Student Name</span>
+                <span className="text-[#554e7b] font-[360]">Student Name</span>
                 <span className="font-[480] text-[#28253b]">{user?.fullName || '—'}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
-                <span className="text-[#554e7b] font-[400]">Institutional Email</span>
+                <span className="text-[#554e7b] font-[360]">Institutional Email</span>
                 <span className="font-mono text-[#28253b]">{user?.email || '—'}</span>
               </div>
               <div className="flex justify-between items-center pb-2 border-b border-[#f0f0f5]">
-                <span className="text-[#554e7b] font-[400]">Roll No / ID</span>
+                <span className="text-[#554e7b] font-[360]">Roll No / ID</span>
                 <span className="font-mono font-[480] text-[#5266eb]">{user?.institutionId || '—'}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#554e7b] font-[400]">Department</span>
+                <span className="text-[#554e7b] font-[360]">Department</span>
                 <span className="font-[420] text-[#28253b]">{meta.department || 'General'}</span>
               </div>
             </div>
