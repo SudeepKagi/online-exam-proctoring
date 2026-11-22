@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { apiClient, errorMessage } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import {
   ShieldCheck,
@@ -308,7 +309,7 @@ export default function AdminSebConfigPage() {
         })
       } else {
         setStorageRetryable(false)
-        setMsg({ text: errorMessage(err, 'Failed to upload configuration'), type: 'error' })
+        setMsg({ text: mapClientError(err, 'Failed to upload configuration').message, type: 'error' })
       }
     } finally {
       setSubmitting(false)
@@ -326,7 +327,7 @@ export default function AdminSebConfigPage() {
       setMsg({ text: 'Institution configuration removed successfully.', type: 'success' })
       setInspectionResult(null)
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to remove configuration'), type: 'error' })
+      setMsg({ text: mapClientError(err, 'Failed to remove configuration').message, type: 'error' })
     } finally {
       setSubmitting(false)
     }
@@ -381,7 +382,7 @@ export default function AdminSebConfigPage() {
         }
       }, 3000)
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to generate test launch link'), type: 'error' })
+      setMsg({ text: mapClientError(err, 'Failed to generate test launch link').message, type: 'error' })
       setTesting(false)
       setPollCountdown(0)
     }
@@ -410,7 +411,7 @@ export default function AdminSebConfigPage() {
       }
     } catch (err) {
       setMsg({
-        text: errorMessage(err, 'Failed to update enforcement mode'),
+        text: mapClientError(err, 'Failed to update enforcement mode').message,
         type: 'error'
       })
     } finally {

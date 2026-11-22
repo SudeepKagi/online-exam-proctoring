@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
-import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
+import { apiClient, ensureArray } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
 import AdminApprovalsTab from '@/components/admin/AdminApprovalsTab'
 import UserTable from '@/components/admin/UserTable'
 import UserVerificationModal from '@/components/admin/UserVerificationModal'
@@ -17,6 +19,8 @@ export default function AdminUsersPage() {
   const [approvalsCount, setApprovalsCount] = useState(0)
   const [activeTab, setActiveTab] = useState('APPROVALS')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
+  const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [verificationUser, setVerificationUser] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -31,8 +35,9 @@ export default function AdminUsersPage() {
     role: 'STUDENT',
   })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const [usersRes, approvalsRes] = await Promise.all([
         apiClient.get('/users?limit=300'),
@@ -43,16 +48,19 @@ export default function AdminUsersPage() {
       setUsers(userList)
       setApprovalsCount(pendingList.length)
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to fetch users'), type: 'error' })
+      const mapped = mapClientError(err, 'Failed to fetch users')
+      setLoadError(mapped)
+      setMsg({ text: mapped.message, type: 'error' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [loadData])
 
   const handleCreate = async (e) => {
     e.preventDefault()
+    setCreating(true)
     try {
       await apiClient.post('/users', form)
       setDialogOpen(false)
@@ -60,7 +68,10 @@ export default function AdminUsersPage() {
       setMsg({ text: 'User account created with PENDING_SETUP status.', type: 'success' })
       loadData()
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Creation failed'), type: 'error' })
+      const mapped = mapClientError(err, 'Creation failed')
+      setMsg({ text: mapped.message, type: 'error' })
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -78,7 +89,8 @@ export default function AdminUsersPage() {
       setMsg({ text: `Imported ${res.data?.importedCount || 0} user(s) successfully.`, type: 'success' })
       loadData()
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Excel import failed'), type: 'error' })
+      const mapped = mapClientError(err, 'Excel import failed')
+      setMsg({ text: mapped.message, type: 'error' })
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -92,7 +104,8 @@ export default function AdminUsersPage() {
       setMsg({ text: `Status updated for ${user.fullName}.`, type: 'success' })
       loadData()
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to update status'), type: 'error' })
+      const mapped = mapClientError(err, 'Failed to update status')
+      setMsg({ text: mapped.message, type: 'error' })
     }
   }
 
@@ -143,8 +156,8 @@ export default function AdminUsersPage() {
                 <FormField label="Temporary Password" required>
                   <PasswordInput showStrength required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Temp@123" />
                 </FormField>
-                <Button type="submit" variant="primary" className="w-full mt-2">
-                  Create Provisioned Account
+                <Button type="submit" variant="primary" disabled={creating} className="w-full mt-2 cursor-pointer">
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Create Provisioned Account'}
                 </Button>
               </form>
             </DialogContent>
@@ -158,33 +171,41 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full font-sans">
-        <TabsList>
-          <TabsTrigger value="APPROVALS" className="text-xs flex items-center gap-1.5 cursor-pointer">
-            <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" />
-            Pending Approvals
-            {approvalsCount > 0 && (
-              <span className="ml-1 px-1.5 py-0.2 bg-[#5266eb] text-white rounded-full text-[10px] font-[500] animate-pulse">
-                {approvalsCount}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="STUDENT" className="cursor-pointer">Students ({users.filter(u => u.role === 'STUDENT').length})</TabsTrigger>
-          <TabsTrigger value="FACULTY" className="cursor-pointer">Faculty ({users.filter(u => u.role === 'FACULTY').length})</TabsTrigger>
-        </TabsList>
+      {loadError && users.length === 0 && !loading ? (
+        <AsyncStateView
+          state="error"
+          error={loadError}
+          onRetry={loadData}
+        />
+      ) : (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full font-sans">
+          <TabsList>
+            <TabsTrigger value="APPROVALS" className="text-xs flex items-center gap-1.5 cursor-pointer">
+              <ShieldAlert className="w-3.5 h-3.5 text-[#5266eb]" />
+              Pending Approvals
+              {approvalsCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 bg-[#5266eb] text-white rounded-full text-[10px] font-[500] animate-pulse">
+                  {approvalsCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="STUDENT" className="cursor-pointer">Students ({users.filter(u => u.role === 'STUDENT').length})</TabsTrigger>
+            <TabsTrigger value="FACULTY" className="cursor-pointer">Faculty ({users.filter(u => u.role === 'FACULTY').length})</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="APPROVALS" className="mt-4">
-          <AdminApprovalsTab onStatusUpdate={(text) => { setMsg({ text, type: 'success' }); loadData() }} />
-        </TabsContent>
+          <TabsContent value="APPROVALS" className="mt-4">
+            <AdminApprovalsTab onStatusUpdate={(text) => { setMsg({ text, type: 'success' }); loadData() }} />
+          </TabsContent>
 
-        <TabsContent value="STUDENT" className="mt-4">
-          <UserTable users={filtered} loading={loading} onToggle={handleToggleStatus} onVerify={setVerificationUser} />
-        </TabsContent>
+          <TabsContent value="STUDENT" className="mt-4">
+            <UserTable users={filtered} loading={loading} onToggle={handleToggleStatus} onVerify={setVerificationUser} />
+          </TabsContent>
 
-        <TabsContent value="FACULTY" className="mt-4">
-          <UserTable users={filtered} loading={loading} onToggle={handleToggleStatus} onVerify={setVerificationUser} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="FACULTY" className="mt-4">
+            <UserTable users={filtered} loading={loading} onToggle={handleToggleStatus} onVerify={setVerificationUser} />
+          </TabsContent>
+        </Tabs>
+      )}
 
       <UserVerificationModal
         user={verificationUser}
