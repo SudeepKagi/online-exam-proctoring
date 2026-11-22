@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react'
 
 /**
  * Enterprise Page Transition
- * Calibrated per .agents/skills/framer-motion-mastery/SKILL.md
+ * Calibrated per .agents/skills/enterprise-motion-restraint/SKILL.md
  * Subtle opacity fade + 6px vertical slide with snappy ease
  */
 export function PageTransition({ children, className = '' }) {

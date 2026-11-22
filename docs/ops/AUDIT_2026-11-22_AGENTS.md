@@ -29,7 +29,34 @@
 | `.agents/skills/the-nuclear-code-review/` | 12,629 | Third-party Skill Pack | None | 2026-10-18 | **DELETE**: Generic third-party code review pack. |
 | `.agents/skills/ui-ux-pro-max/` | 1,142 | Third-party Pointer | None | 2026-10-18 | **DELETE**: Pointer to deleted `MASTER.md`. |
 | `.agents/skills/12-principles-of-animation/` | 5,565 | Third-party Skill Pack | None | 2026-10-18 | **DELETE**: Disney animation rules; exam arena strictly bans decorative motion. |
-| `skills/{frontend-design, web-design-guidelines, react-best-practices, accesslint, vercel-react-native-skills, bencium-ux-designer}` | 8,243 | Skills | General frontend reference | 2026-10-18 | **KEEP & CONSOLIDATE**: Retain and refine into Phase 3 high-quality, spec-backed skills. |
+| `skills/{frontend-design, web-design-guidelines, react-best-practices, accesslint, vercel-react-native-skills, bencium-ux-designer, client-side-error-resilience, enterprise-motion-tokens, framer-motion-mastery}` | 21,458 | Legacy / Third-party Skills | General frontend reference | 2026-10-18 | **CONSOLIDATED & REPLACED**: Replaced in Phase 3 by 6 author-crafted, spec-backed skills cited from official standards (W3C, MDN, web.dev, React docs). |
+
+---
+
+## 4. Phase 3 Frontend Skills Architecture
+
+In accordance with Phase 3 specifications, 6 concise, high-quality, spec-backed skills were authored from official primary sources (each `< 150` lines in `SKILL.md` with accompanying guides in `references/`):
+
+1. **`enterprise-design-system`** (99 lines):
+   - *Sources:* W3C Design Tokens Community Group (DTCG), MDN Web Docs, WCAG 2.2 §1.4.3.
+   - *Scope:* Canvas `#fbfcfd`, surface `#ffffff`, lavender `#edecfb`, primary indigo `#5266eb`, single Button component, single primary action rule, font weights $\le 500$, zero box outlines on cards.
+2. **`enterprise-motion-restraint`** (90 lines):
+   - *Sources:* MDN Web Docs (`@media (prefers-reduced-motion)`), web.dev High Performance Animations, Motion for React.
+   - *Scope:* GPU composite transforms (`transform`, `opacity` only), micro-interactions (120-150ms), bottom sheets/modals (200-240ms), tonal lavender skeletons, strict zero-motion invariant in exam arena (`/student/exams/:id/live`), zero motion near countdown timer.
+3. **`responsive-and-touch`** (101 lines):
+   - *Sources:* MDN Web Docs (`dvh`, safe-area insets, container queries), WCAG 2.2 §2.5.8/§2.5.5, Apple HIG / Google Material Design (44x44px touch targets).
+   - *Scope:* Mobile-first 360px layout, dynamic viewport heights (`100dvh`), safe area insets, 44x44px minimum tap targets, tables-to-cards transformations ($< 768$px), bottom sheets for mobile modals ($< 640$px), zero horizontal overflow.
+4. **`client-error-resilience`** (125 lines):
+   - *Sources:* React Official Docs (Error Boundaries, Suspense), MDN Web Docs (`AbortController`, `fetch`, `IndexedDB`), RFC 9110 (Idempotency).
+   - *Scope:* 6 explicit async states (`loading`, `empty`, `error`, `offline`, `forbidden`, `session_expired`), React error boundaries, request cancellation via `AbortController`, transient retries with exponential backoff & jitter, idempotent submits (`disabled={isSubmitting}`), offline answer buffering and reconnection drain, plain-English messages.
+5. **`enterprise-accessibility`** (87 lines):
+   - *Sources:* W3C WCAG 2.2 AA Standard, W3C WAI-ARIA Authoring Practices Guide (APG), axe-core.
+   - *Scope:* Keyboard navigation flow, `:focus-visible` focus rings (2px solid `#5266eb`, 2px offset), modal focus trapping and escape handling, ARIA live regions (`polite` for timer/autosave, `assertive` for critical errors), accessible labels, color independence.
+6. **`frontend-performance`** (100 lines):
+   - *Sources:* web.dev Core Web Vitals (LCP < 2.5s, INP < 200ms, CLS < 0.1), React Official Docs (Code Splitting, `React.lazy`, `Suspense`), MDN Web Docs.
+   - *Scope:* Initial gzipped bundle $< 250$kB, route-level code splitting via `React.lazy()` and `<Suspense>`, zero CLS (explicit bounding boxes on icons/images, reserved skeleton geometry), strategic memoization (`useMemo`, `useCallback`).
+
+Total line count across all 6 frontend skills is 602 lines (average ~100 lines per skill), providing concise, trigger-oriented guidance without bloat.
 
 ---
 
