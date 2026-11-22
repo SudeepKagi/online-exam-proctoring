@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,23 +28,26 @@ export default function ExamViolationsTab({ examId }) {
   const [screenshotsOnly, setScreenshotsOnly] = useState(false)
   const [previewImage, setPreviewImage] = useState(null)
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async (signal) => {
     if (!examId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get(`/proctoring/exams/${examId}/logs`)
+      const res = await api.get(`/proctoring/exams/${examId}/logs`, { signal })
       setLogs(ensureArray(res.data?.logs || res.data))
     } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
       setError(errorMessage(err, 'Could not load violation logs'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [examId])
 
   useEffect(() => {
-    loadLogs()
-  }, [examId])
+    const controller = new AbortController()
+    loadLogs(controller.signal)
+    return () => { controller.abort() }
+  }, [loadLogs])
 
   // Computed KPIs
   const totalEvents = logs.length
@@ -249,13 +252,12 @@ export default function ExamViolationsTab({ examId }) {
                         <TableCell>
                           <Badge
                             variant="outline"
-                            className={`text-[10px] font-mono border-0 ${
-                              log.severity === 'CRITICAL'
-                                ? 'bg-[#edecfb] text-[#28253b]'
-                                : log.severity === 'HIGH'
+                            className={`text-[10px] font-mono border-0 ${log.severity === 'CRITICAL'
+                              ? 'bg-[#edecfb] text-[#28253b]'
+                              : log.severity === 'HIGH'
                                 ? 'bg-[#edecfb] text-[#554e7b]'
                                 : 'bg-[rgba(82,102,235,0.08)] text-[#28253b]'
-                            }`}
+                              }`}
                           >
                             {log.severity}
                           </Badge>

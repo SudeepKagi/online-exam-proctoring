@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,8 @@ import ExamWizardModal from '@/components/faculty/ExamWizardModal'
 import ExamCredentialsModal from '@/components/faculty/ExamCredentialsModal'
 import TableSkeleton from '@/components/common/TableSkeleton'
 import EmptyState from '@/components/common/EmptyState'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { StaggerContainer, StaggerItem } from '@/components/common/MotionWrapper'
 
@@ -18,36 +20,43 @@ export default function FacultyExamsPage() {
   usePageTitle('Faculty Workspace')
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
+  const [examsError, setExamsError] = useState(null)
   const [wizardOpen, setWizardOpen] = useState(false)
   const [selectedExamForCreds, setSelectedExamForCreds] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [sebStatus, setSebStatus] = useState(null)
 
-  const loadSebStatus = async () => {
+  const loadSebStatus = useCallback(async (signal) => {
     try {
-      const res = await api.get('/exams/seb-status')
+      const res = await api.get('/exams/seb-status', { signal })
       setSebStatus(res.data)
     } catch {
       // ignore
     }
-  }
+  }, [])
 
-  const loadExams = async () => {
+  const loadExams = useCallback(async (signal) => {
     setLoading(true)
+    setExamsError(null)
     try {
-      const res = await api.get('/faculty/exams')
+      const res = await api.get('/faculty/exams', { signal })
       setExams(ensureArray(res.data?.exams || res.data))
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to load exams'), type: 'error' })
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
+      const mapped = mapClientError(err, 'retry')
+      setExamsError(mapped)
+      setMsg({ text: mapped.message, type: 'error' })
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    loadExams()
-    loadSebStatus()
-  }, [])
+    const controller = new AbortController()
+    loadExams(controller.signal)
+    loadSebStatus(controller.signal)
+    return () => { controller.abort() }
+  }, [loadExams, loadSebStatus])
 
   const handleExamCreated = (newExam, publishConfig) => {
     setMsg({
@@ -138,8 +147,18 @@ export default function FacultyExamsPage() {
 
       <Card className="border-0 bg-white shadow-xs rounded-[12px] overflow-hidden font-sans">
         <CardContent className="p-0">
-          {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
+          {examsError ? (
+            <div className="p-6">
+              <AsyncStateView
+                state={examsError.code === 'NETWORK_ERROR' ? 'offline' : 'error'}
+                error={examsError}
+                onRetry={() => loadExams()}
+              />
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -335,6 +354,8 @@ export default function FacultyExamsPage() {
               })
             )}
           </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

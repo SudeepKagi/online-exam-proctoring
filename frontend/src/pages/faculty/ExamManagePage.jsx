@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -7,6 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, ensureArray, errorMessage } from '@/lib/apiClient'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import ExamQuestionsTab from '@/components/faculty/ExamQuestionsTab'
 import ExamInvigilatorsTab from '@/components/faculty/ExamInvigilatorsTab'
 import ExamReadinessTab from '@/components/faculty/ExamReadinessTab'
@@ -25,19 +27,26 @@ export default function ExamManagePage() {
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [sebStatus, setSebStatus] = useState(null)
   const [hasInvigilator, setHasInvigilator] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [examError, setExamError] = useState(null)
+  const [isPublishing, setIsPublishing] = useState(false)
 
-  const loadExam = async () => {
+  const loadExam = useCallback(async (signal) => {
+    setLoading(true)
+    setExamError(null)
     try {
       const [examRes, attemptsRes, sebRes, assignmentsRes] = await Promise.allSettled([
-        api.get(`/exams/${id}`),
-        api.get(`/exams/${id}/attempts`),
-        api.get('/exams/seb-status'),
-        api.get(`/exams/${id}/assignments`)
+        api.get(`/exams/${id}`, { signal }),
+        api.get(`/exams/${id}/attempts`, { signal }),
+        api.get('/exams/seb-status', { signal }),
+        api.get(`/exams/${id}/assignments`, { signal })
       ])
       if (examRes.status === 'fulfilled') {
         const data = examRes.value.data?.exam || examRes.value.data
         setExam(data)
         setQuestions(ensureArray(data?.questions))
+      } else {
+        throw examRes.reason
       }
       if (attemptsRes.status === 'fulfilled') {
         setAttempts(ensureArray(attemptsRes.value.data?.attempts || attemptsRes.value.data))
@@ -51,23 +60,37 @@ export default function ExamManagePage() {
         setHasInvigilator(invCount > 0)
       }
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to load exam'), type: 'error' })
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
+      const mapped = mapClientError(err, 'retry')
+      setExamError(mapped)
+      setMsg({ text: mapped.message, type: 'error' })
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [id])
 
-  useEffect(() => { loadExam() }, [id])
+  useEffect(() => {
+    const controller = new AbortController()
+    loadExam(controller.signal)
+    return () => { controller.abort() }
+  }, [loadExam])
 
   const handlePublish = async () => {
+    if (isPublishing) return
     if (questions.length === 0) {
       setMsg({ text: 'Cannot publish exam without questions.', type: 'error' })
       return
     }
+    setIsPublishing(true)
     try {
       await api.post(`/exams/${id}/publish`)
       setMsg({ text: 'Exam published successfully! Students can now access when window opens.', type: 'success' })
       loadExam()
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Publish failed'), type: 'error' })
+      const mapped = mapClientError(err, 'retry')
+      setMsg({ text: mapped.message, type: 'error' })
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -81,6 +104,36 @@ export default function ExamManagePage() {
     else lifecycle = 'SCHEDULED'
   }
   const isReadOnly = lifecycle === 'LIVE' || lifecycle === 'ENDED' || attempts.length > 0
+
+  if (loading) {
+    return (
+      <DashboardShell title="Manage Examination">
+        <div className="max-w-xl mx-auto my-12 p-8 bg-white rounded-[16px] shadow-xs text-center font-sans">
+          <div className="w-10 h-10 border-2 border-[#5266eb] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-xs text-[#554e7b] font-[420]">Loading examination workspace...</p>
+        </div>
+      </DashboardShell>
+    )
+  }
+
+  if (examError || !exam) {
+    return (
+      <DashboardShell title="Manage Examination">
+        <div className="max-w-xl mx-auto my-12 font-sans">
+          <AsyncStateView
+            state={examError?.code === 'NETWORK_ERROR' ? 'offline' : 'error'}
+            error={examError || { title: 'Assessment Unavailable', message: 'The assessment could not be loaded.' }}
+            onRetry={() => loadExam()}
+          />
+          <div className="mt-4 text-center">
+            <Button variant="outline" asChild className="rounded-[40px] px-6">
+              <Link to="/faculty/exams"><ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back to My Exams</Link>
+            </Button>
+          </div>
+        </div>
+      </DashboardShell>
+    )
+  }
 
   return (
     <DashboardShell title={exam?.title || 'Manage Examination'}>

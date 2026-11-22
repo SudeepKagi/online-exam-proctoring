@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -25,22 +25,25 @@ export default function ExamInvigilatorsTab({ examId, onStatusUpdate }) {
     password: ''
   })
 
-  const loadInvigilators = async () => {
+  const loadInvigilators = useCallback(async (signal) => {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get(`/exams/${examId}/invigilators`)
+      const res = await api.get(`/exams/${examId}/invigilators`, { signal })
       setInvigilators(ensureArray(res.data?.invigilators || res.data))
     } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
       setError(errorMessage(err, 'Failed to load invigilators'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [examId])
 
   useEffect(() => {
-    loadInvigilators()
-  }, [examId])
+    const controller = new AbortController()
+    loadInvigilators(controller.signal)
+    return () => { controller.abort() }
+  }, [loadInvigilators])
 
   const handleGenerate = async (e) => {
     e.preventDefault()
