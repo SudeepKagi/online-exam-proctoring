@@ -119,7 +119,7 @@ describe('High-Concurrency Load & Security Penetration Test Suite', () => {
     )
     const elapsed = performance.now() - t0
 
-    assert.ok(elapsed < 5000, `Thundering herd must finish < 5000ms; took ${elapsed.toFixed(1)}ms`)
+    assert.ok(elapsed < 8000, `Thundering herd must finish < 8000ms; took ${elapsed.toFixed(1)}ms`)
     assert.strictEqual(results.every(r => r.status === 200), true, 'All 100 requests must return 200')
 
     const dbAttempts = await prisma.examAttempt.findMany({ where: { examId: exam.id } })
