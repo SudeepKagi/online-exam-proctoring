@@ -98,7 +98,7 @@ export default function ExamWizardStepSecurity({
     }
     fetchSebStatus()
     return () => { isMounted = false }
-  }, [])
+  }, [setSecurityConfig])
 
   return (
     <div className="space-y-5">
