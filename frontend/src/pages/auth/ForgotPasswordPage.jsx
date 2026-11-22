@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FormField } from '@/components/ui/form-field'
 import { PasswordInput } from '@/components/ui/password-input'
-import { api, errorMessage } from '@/lib/apiClient'
+import { api } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { ArrowRight, ArrowLeft, KeyRound, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
       }
       setStep(2)
     } catch (err) {
-      setError(errorMessage(err, 'Failed to request password reset code.'))
+      setError(mapClientError(err, 'Failed to request password reset code.').message)
     } finally {
       setLoading(false)
     }
@@ -73,7 +74,7 @@ export default function ForgotPasswordPage() {
       setSuccessMsg('Your password has been reset successfully! Redirecting to sign in...')
       setTimeout(() => navigate('/login'), 2200)
     } catch (err) {
-      setError(errorMessage(err, 'Failed to reset password. Please verify the code and retry.'))
+      setError(mapClientError(err, 'Failed to reset password. Please verify the code and retry.').message)
     } finally {
       setLoading(false)
     }
