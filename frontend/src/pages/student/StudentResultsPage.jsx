@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api, errorMessage } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import {
   CheckCircle2,
@@ -17,7 +18,8 @@ import {
   ShieldCheck,
   AlertCircle,
   HelpCircle,
-  FileText
+  FileText,
+  RefreshCw
 } from 'lucide-react'
 
 export default function StudentResultsPage() {
@@ -29,37 +31,34 @@ export default function StudentResultsPage() {
 
   usePageTitle(data?.exam?.title ? `${data.exam.title} — Results` : 'Examination Results')
 
-  useEffect(() => {
-    let mounted = true
-    const fetchResults = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        let endpoint = ''
-        if (attemptId) {
-          endpoint = `/attempts/${attemptId}/results`
-        } else if (examId) {
-          endpoint = `/attempts/exams/${examId}/my-result`
-        } else {
-          throw new Error('No assessment or attempt identifier provided.')
-        }
-
-        const res = await api.get(endpoint)
-        if (mounted) {
-          setData(res.data)
-        }
-      } catch (err) {
-        if (mounted) {
-          setError(errorMessage(err, 'Unable to load examination results.'))
-        }
-      } finally {
-        if (mounted) setLoading(false)
+  const fetchResults = useCallback(async (signal) => {
+    setLoading(true)
+    setError(null)
+    try {
+      let endpoint = ''
+      if (attemptId) {
+        endpoint = `/attempts/${attemptId}/results`
+      } else if (examId) {
+        endpoint = `/attempts/exams/${examId}/my-result`
+      } else {
+        throw new Error('No assessment or attempt identifier provided.')
       }
-    }
 
-    fetchResults()
-    return () => { mounted = false }
+      const res = await api.get(endpoint, { signal })
+      setData(res.data)
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
+      setError(mapClientError(err, 'retry'))
+    } finally {
+      setLoading(false)
+    }
   }, [attemptId, examId])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchResults(controller.signal)
+    return () => { controller.abort() }
+  }, [fetchResults])
 
   if (loading) {
     return (
@@ -73,23 +72,39 @@ export default function StudentResultsPage() {
   }
 
   if (error || !data) {
+    const errorDetails = error || { title: 'Results Not Available', message: 'The requested examination attempt results could not be located.' }
+
     return (
       <DashboardShell title="Examination Results">
-        <div className="max-w-xl mx-auto my-12 text-center p-8 bg-white rounded-[16px] shadow-[0_4px_20px_rgba(40,37,59,0.04)]">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[#edecfb] flex items-center justify-center text-[#5266eb]">
+        <div className="max-w-xl mx-auto my-12 text-center p-8 bg-[#edecfb] rounded-[24px]">
+          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-white flex items-center justify-center text-[#5266eb]">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h2 className="text-lg font-[480] text-[#28253b] mb-2">Results Not Available</h2>
-          <p className="text-xs text-[#554e7b] font-[360] leading-relaxed mb-6">
-            {error || 'The requested examination attempt results could not be located.'}
+          <h2 className="text-lg font-[480] text-[#28253b] mb-2">{errorDetails.title || 'Results Not Available'}</h2>
+          <p className="text-xs text-[#554e7b] font-[360] leading-relaxed mb-4">
+            {errorDetails.message}
           </p>
-          <Button
-            variant="primary"
-            onClick={() => navigate('/student/dashboard')}
-            className="rounded-[32px] px-6"
-          >
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Return to Dashboard
-          </Button>
+          {errorDetails.referenceId && (
+            <p className="text-[11px] font-mono text-[#554e7b]/80 mb-6">
+              Reference: {errorDetails.referenceId}
+            </p>
+          )}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Button
+              variant="primary"
+              onClick={() => fetchResults()}
+              className="rounded-[32px] px-6 flex items-center gap-1.5"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Try Again
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate('/student/dashboard')}
+              className="rounded-[32px] px-6 flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Dashboard
+            </Button>
+          </div>
         </div>
       </DashboardShell>
     )

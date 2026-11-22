@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { useAuth } from '@/context/AuthContext'
@@ -17,6 +17,8 @@ import {
 import { BookOpen, Clock, Calendar, CheckCircle2, ShieldCheck, AlertCircle, Laptop, Camera, Wifi, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react'
 import { CardListSkeleton, TableSkeleton } from '@/components/common/TableSkeleton'
 import EmptyState from '@/components/common/EmptyState'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { usePageTitle } from '@/hooks/usePageTitle'
 import { StaggerContainer, StaggerItem, InteractiveCard } from '@/components/common/MotionWrapper'
 
@@ -26,6 +28,7 @@ export default function StudentDashboardPage() {
   const location = useLocation()
   const [exams, setExams] = useState([])
   const [loading, setLoading] = useState(true)
+  const [examsError, setExamsError] = useState(null)
   const [msg, setMsg] = useState({ text: '', type: '' })
   const [currentTime, setCurrentTime] = useState(Date.now())
   const [readiness, setReadiness] = useState(() => getSavedReadinessResult())
@@ -107,26 +110,33 @@ export default function StudentDashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
-  useEffect(() => {
-    let mounted = true
-    const loadExams = async () => {
+  const loadExams = useCallback(async (signal) => {
+    setLoading(true)
+    setExamsError(null)
+    try {
+      const res = await api.get('/student/exams', { signal })
+      setExams(ensureArray(res.data?.exams || res.data))
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
       try {
-        const res = await api.get('/student/exams')
-        if (mounted) setExams(ensureArray(res.data?.exams || res.data))
-      } catch (err) {
-        try {
-          const fallback = await api.get('/exams')
-          if (mounted) setExams(ensureArray(fallback.data?.exams || fallback.data))
-        } catch (e) {
-          if (mounted) setMsg({ text: errorMessage(e, 'Failed to fetch assigned exams'), type: 'error' })
-        }
-      } finally {
-        if (mounted) setLoading(false)
+        const fallback = await api.get('/exams', { signal })
+        setExams(ensureArray(fallback.data?.exams || fallback.data))
+      } catch (e) {
+        if (e.name === 'CanceledError' || e.name === 'AbortError') return
+        const mapped = mapClientError(e, 'retry')
+        setExamsError(mapped)
+        setMsg({ text: mapped.message, type: 'error' })
       }
+    } finally {
+      setLoading(false)
     }
-    loadExams()
-    return () => { mounted = false }
   }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadExams(controller.signal)
+    return () => { controller.abort() }
+  }, [loadExams])
 
   const activeOrUpcoming = exams.filter((e) => (e.status === 'PUBLISHED' || e.status === 'ACTIVE') && e.attemptStatus !== 'SUBMITTED')
   const completed = exams.filter((e) => e.status === 'COMPLETED' || e.attemptStatus === 'SUBMITTED')
@@ -214,6 +224,12 @@ export default function StudentDashboardPage() {
         </h3>
         {loading ? (
           <CardListSkeleton count={3} />
+        ) : examsError ? (
+          <AsyncStateView
+            state="error"
+            error={examsError}
+            onRetry={() => loadExams()}
+          />
         ) : activeOrUpcoming.length === 0 ? (
           <Card className="border-0 bg-white rounded-[16px] shadow-xs">
             <EmptyState
