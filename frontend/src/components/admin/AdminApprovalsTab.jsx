@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { api, ensureArray, errorMessage } from '@/lib/apiClient'
+import { api, ensureArray } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
 import UserVerificationModal from './UserVerificationModal'
 import { CheckCircle2, ShieldCheck, Loader2, RefreshCw } from 'lucide-react'
 
@@ -12,24 +14,24 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
   const [loading, setLoading] = useState(true)
   const [selectedUser, setSelectedUser] = useState(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(null)
 
-  const loadApprovals = async () => {
+  const loadApprovals = useCallback(async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const res = await api.get('/users/admin/approvals')
       setApprovals(ensureArray(res.data?.users || res.data?.pendingUsers || res.data))
     } catch (err) {
-      setError(errorMessage(err, 'Failed to fetch pending approvals'))
+      setError(mapClientError(err, 'Failed to fetch pending approvals'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadApprovals()
-  }, [])
+  }, [loadApprovals])
 
   const handleReview = (user) => {
     setSelectedUser(user)
@@ -61,11 +63,18 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
 
       {error && (
         <div className="p-3 bg-[#edecfb] text-xs text-[#28253b] rounded-xl font-[420] border-0">
-          {error}
+          {error.message || error}
         </div>
       )}
 
-      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-2xl overflow-hidden">
+      {error && approvals.length === 0 && !loading ? (
+        <AsyncStateView
+          state="error"
+          error={error}
+          onRetry={loadApprovals}
+        />
+      ) : (
+        <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -134,6 +143,7 @@ export default function AdminApprovalsTab({ onStatusUpdate }) {
           </Table>
         </CardContent>
       </Card>
+      )}
 
       <UserVerificationModal
         user={selectedUser}

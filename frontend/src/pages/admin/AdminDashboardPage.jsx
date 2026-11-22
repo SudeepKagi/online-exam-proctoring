@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -6,6 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { api, ensureArray } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
 import { Users, BookOpen, ShieldAlert, Award, ArrowRight, ShieldCheck, CheckCircle2, Activity } from 'lucide-react'
 import { StaggerContainer, StaggerItem } from '@/components/common/MotionWrapper'
 
@@ -15,33 +17,43 @@ export default function AdminDashboardPage() {
   const [approvals, setApprovals] = useState([])
   const [storageHealth, setStorageHealth] = useState({ ok: true, status: 'OK' })
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [examsRes, usersRes, approvalsRes, storageRes] = await Promise.allSettled([
+        api.get('/exams'),
+        api.get('/users?limit=100'),
+        api.get('/users/admin/approvals'),
+        api.get('/admin/health/storage')
+      ])
+
+      const coreFailed = examsRes.status === 'rejected' && usersRes.status === 'rejected'
+      if (coreFailed) {
+        setError(mapClientError(examsRes.reason || usersRes.reason, 'Failed to load administrative overview'))
+        return
+      }
+
+      if (examsRes.status === 'fulfilled') setExams(ensureArray(examsRes.value.data?.exams || examsRes.value.data))
+      if (usersRes.status === 'fulfilled') setUsers(ensureArray(usersRes.value.data?.users || usersRes.value.data))
+      if (approvalsRes.status === 'fulfilled') setApprovals(ensureArray(approvalsRes.value.data?.users || approvalsRes.value.data))
+      if (storageRes.status === 'fulfilled') {
+        setStorageHealth(storageRes.value.data)
+      } else {
+        setStorageHealth({ ok: false, status: 'Down' })
+      }
+    } catch (err) {
+      setError(mapClientError(err, 'Failed to load administrative overview'))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    let mounted = true
-    const fetchData = async () => {
-      try {
-        const [examsRes, usersRes, approvalsRes, storageRes] = await Promise.allSettled([
-          api.get('/exams'),
-          api.get('/users?limit=100'),
-          api.get('/users/admin/approvals'),
-          api.get('/admin/health/storage')
-        ])
-        if (!mounted) return
-        if (examsRes.status === 'fulfilled') setExams(ensureArray(examsRes.value.data?.exams || examsRes.value.data))
-        if (usersRes.status === 'fulfilled') setUsers(ensureArray(usersRes.value.data?.users || usersRes.value.data))
-        if (approvalsRes.status === 'fulfilled') setApprovals(ensureArray(approvalsRes.value.data?.users || approvalsRes.value.data))
-        if (storageRes.status === 'fulfilled') {
-          setStorageHealth(storageRes.value.data)
-        } else {
-          setStorageHealth({ ok: false, status: 'Down' })
-        }
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    }
     fetchData()
-    return () => { mounted = false }
-  }, [])
+  }, [fetchData])
 
   const totalStudents = users.filter(u => u.role === 'STUDENT').length
   const verifiedFaculty = users.filter(u => u.role === 'FACULTY' && u.status === 'ACTIVE').length
@@ -50,8 +62,16 @@ export default function AdminDashboardPage() {
 
   return (
     <DashboardShell title="Administrative Overview">
-      {/* 4 KPI Cards */}
-      <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
+      {error ? (
+        <AsyncStateView
+          state="error"
+          error={error}
+          onRetry={fetchData}
+        />
+      ) : (
+        <>
+          {/* 4 KPI Cards */}
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-sans">
         <StaggerItem>
           <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[12px] h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -198,6 +218,8 @@ export default function AdminDashboardPage() {
           </Table>
         </CardContent>
       </Card>
+      </>
+      )}
     </DashboardShell>
   )
 }

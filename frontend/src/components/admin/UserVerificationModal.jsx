@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { api, errorMessage } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { CheckCircle2, XCircle, ShieldCheck, Loader2, ZoomIn, ZoomOut, User, FileText, Phone, Mail, Building, Key } from 'lucide-react'
 
 export default function UserVerificationModal({ user, open, onOpenChange, onSuccess }) {
@@ -50,7 +51,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
       onSuccess?.(`Account approved for ${user.fullName}`)
       onOpenChange(false)
     } catch (err) {
-      setError(errorMessage(err, 'Failed to approve account'))
+      setError(mapClientError(err, 'Failed to approve account').message)
     } finally {
       setActionLoading(false)
     }
@@ -69,7 +70,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
       onSuccess?.(`Account rejected for ${user.fullName}. Candidate requested to re-upload.`)
       onOpenChange(false)
     } catch (err) {
-      setError(errorMessage(err, 'Failed to reject account'))
+      setError(mapClientError(err, 'Failed to reject account').message)
     } finally {
       setActionLoading(false)
     }
@@ -85,7 +86,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
       await api.post(`/users/${user.id}/reset-password`, { password: adminPasswordReset.password })
       setAdminPasswordReset(p => ({ ...p, loading: false, msg: 'Password updated successfully!', password: '' }))
     } catch (err) {
-      setAdminPasswordReset(p => ({ ...p, loading: false, msg: errorMessage(err, 'Password reset failed') }))
+      setAdminPasswordReset(p => ({ ...p, loading: false, msg: mapClientError(err, 'Password reset failed').message }))
     }
   }
 
@@ -167,7 +168,7 @@ export default function UserVerificationModal({ user, open, onOpenChange, onSucc
                 <input type="password" value={adminPasswordReset.password} onChange={(e) => setAdminPasswordReset(p => ({ ...p, password: e.target.value }))} placeholder="New temporary password (min 6 chars)" className="h-9 px-3 text-xs border border-slate-300 rounded-lg flex-1 bg-white" />
                 <Button variant="primary" size="sm" onClick={handleAdminResetPassword} disabled={adminPasswordReset.loading}>{adminPasswordReset.loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Set Password'}</Button>
               </div>
-              {adminPasswordReset.msg && <span className="text-[11px] font-medium text-slate-600 block">{adminPasswordReset.msg}</span>}
+              {adminPasswordReset.msg && <span className="text-[11px] font-[420] text-slate-600 block">{adminPasswordReset.msg}</span>}
             </div>
           )}
 

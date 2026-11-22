@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { DashboardShell } from '@/components/common/DashboardShell'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
+import { apiClient, ensureArray } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
 import { UserCheck, Calendar, Clock, BookOpen } from 'lucide-react'
 import TableSkeleton from '@/components/common/TableSkeleton'
 import EmptyState from '@/components/common/EmptyState'
@@ -16,31 +18,37 @@ export default function AdminExamsPage() {
   const [exams, setExams] = useState([])
   const [invigilators, setInvigilators] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [selectedExam, setSelectedExam] = useState(null)
   const [selectedInvigilatorId, setSelectedInvigilatorId] = useState('')
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [msg, setMsg] = useState({ text: '', type: '' })
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
       const [examsRes, usersRes] = await Promise.allSettled([
         apiClient.get('/exams'),
         apiClient.get('/users?role=INVIGILATOR'), // terms-ok: internal role API
       ])
-      if (examsRes.status === 'fulfilled') {
+      if (examsRes.status === 'rejected') {
+        setLoadError(mapClientError(examsRes.reason, 'Failed to load exams'))
+      } else {
         setExams(ensureArray(examsRes.value.data?.exams || examsRes.value.data))
       }
       if (usersRes.status === 'fulfilled') {
         setInvigilators(ensureArray(usersRes.value.data?.users || usersRes.value.data))
       }
+    } catch (err) {
+      setLoadError(mapClientError(err, 'Failed to load exams'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData() }, [loadData])
 
   const handleAssign = async (e) => {
     e.preventDefault()
@@ -56,7 +64,8 @@ export default function AdminExamsPage() {
       setSelectedInvigilatorId('')
       loadData()
     } catch (err) {
-      setMsg({ text: errorMessage(err, 'Failed to assign invigilator'), type: 'error' }) // terms-ok: role assignment error
+      const mapped = mapClientError(err, 'Failed to assign invigilator')
+      setMsg({ text: mapped.message, type: 'error' }) // terms-ok: role assignment error
     } finally {
       setSubmitting(false)
     }
@@ -74,7 +83,14 @@ export default function AdminExamsPage() {
         </div>
       )}
 
-      <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[14px] overflow-hidden font-sans">
+      {loadError && exams.length === 0 && !loading ? (
+        <AsyncStateView
+          state="error"
+          error={loadError}
+          onRetry={loadData}
+        />
+      ) : (
+        <Card className="border-0 bg-white shadow-[0_1px_3px_rgba(40,37,59,0.04)] rounded-[14px] overflow-hidden font-sans">
         <CardContent className="p-0">
           {/* Desktop Table */}
           <div className="hidden md:block overflow-x-auto">
@@ -190,6 +206,7 @@ export default function AdminExamsPage() {
         </div>
       </CardContent>
       </Card>
+      )}
 
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent className="max-w-md font-sans">
