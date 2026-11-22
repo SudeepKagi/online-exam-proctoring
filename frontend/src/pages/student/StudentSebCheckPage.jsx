@@ -16,6 +16,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { apiClient } from '@/lib/apiClient'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { isMobileOrTablet } from '@/lib/systemCheck'
 
 export default function StudentSebCheckPage() {
@@ -104,7 +105,8 @@ export default function StudentSebCheckPage() {
         }
       }, 2000)
     } catch (err) {
-      setPollError(err?.response?.data?.message || 'Unable to generate test launch link. Please try again.')
+      const mapped = mapClientError(err, 'retry')
+      setPollError(mapped.message + (mapped.referenceId ? ` (Ref: #${mapped.referenceId})` : ''))
     } finally {
       setLaunching(false)
     }

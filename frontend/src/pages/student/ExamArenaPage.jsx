@@ -4,6 +4,8 @@ import { ExamArenaShell } from '@/components/exam/ExamArenaShell'
 import { SubmitExamDialog, SuspendedOverlay, DuplicateTabOverlay } from '@/components/exam/SubmitExamDialog'
 import { ExamArenaHeader } from '@/components/exam/ExamArenaHeader'
 import { apiClient, ensureArray, errorMessage } from '@/lib/apiClient'
+import { AsyncStateView } from '@/components/common/AsyncStateView'
+import { mapClientError } from '@/lib/clientErrorMapper'
 import { useExamTimer } from '@/hooks/useExamTimer'
 import { useAnswerAutosave } from '@/hooks/useAnswerAutosave'
 import { useScreenProctoring } from '@/hooks/useScreenProctoring'
@@ -27,6 +29,7 @@ export default function ExamArenaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [initError, setInitError] = useState(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [exitCountdown, setExitCountdown] = useState(5)
   const [isAutoExitCancelled, setIsAutoExitCancelled] = useState(false)
@@ -98,7 +101,8 @@ export default function ExamArenaPage() {
       setIsSubmitted(true)
     } catch (err) {
       if (err.response?.data?.code === 'ATTEMPT_TERMINATED') return handleTerminationExit()
-      setSubmitError(errorMessage(err, 'Submission failed. Please click retry.'))
+      const mapped = mapClientError(err, 'retry')
+      setSubmitError(mapped.message + (mapped.referenceId ? ` (Ref: #${mapped.referenceId})` : ''))
     } finally {
       setSubmitting(false)
       setIsTimeUpSubmitting(false)
@@ -177,6 +181,70 @@ export default function ExamArenaPage() {
     }
   }
 
+  const initArena = useCallback(async (signal) => {
+    setLoading(true)
+    setInitError(null)
+    try {
+      const [examRes, startRes] = await Promise.all([
+        apiClient.get(`/exams/${id}`, { signal }),
+        apiClient.post(`/attempts/exams/${id}/start`, {}, { signal }).catch((err) => {
+          if (err.name === 'CanceledError' || err.name === 'AbortError') throw err
+          if (err.response?.status === 403 || err.response?.status === 404) throw err
+          return apiClient.post(`/attempts/${id}/start`, {}, { signal })
+        }),
+      ])
+      const ex = examRes.data?.exam || examRes.data
+      const att = startRes.data?.attempt || startRes.data
+      const qs = ensureArray(startRes.data?.questions || ex?.questions)
+      if (!att || !qs.length || att.status !== 'IN_PROGRESS') {
+        throw new Error('Examination session is not active or questions are unavailable.')
+      }
+
+      // Calculate clock offset from server Date header
+      const serverDateHeader = examRes.headers?.date || startRes.headers?.date
+      if (serverDateHeader) {
+        const serverEpoch = new Date(serverDateHeader).getTime()
+        if (!isNaN(serverEpoch)) {
+          setServerOffsetMs(serverEpoch - Date.now())
+        }
+      }
+
+      setExam(ex); setQuestions(qs); setAttempt(att)
+      apiClient.get(`/attempts/exams/${id}/seb-status`, { signal })
+        .then(res => { setSebStatus(res.data) })
+        .catch(() => {})
+      if (att?.violationCount) {
+        setViolationCount(att.violationCount)
+      }
+      if (att?.status === 'SUSPENDED') setIsSuspended(true)
+
+      const { restored, restoredBm } = restoreAnswers(startRes.data?.answers, att?.id)
+      setAnswers(prev => ({ ...restored, ...prev }))
+      setBookmarks(prev => ({ ...restoredBm, ...prev }))
+      setLoading(false)
+    } catch (err) {
+      if (err.name === 'CanceledError' || err.name === 'AbortError') return
+
+      const code = err.response?.data?.code || err.code
+      if (code === 'ATTEMPT_TERMINATED') {
+        return handleTerminationExit(err.response?.data?.message || 'Your examination attempt was terminated.')
+      }
+      if (code === 'ATTEMPT_ALREADY_EXISTS' || err.response?.status === 409) {
+        return navigate('/student/dashboard', { replace: true, state: { errorMsg: 'You have already attempted or completed this examination.' } })
+      }
+      if (code === 'EXAM_NOT_OPEN' || code === 'EXAM_ENDED') {
+        return navigate('/student/dashboard', { replace: true, state: { errorMsg: err.response?.data?.message || 'This examination window is not active.' } })
+      }
+      if (err.response?.status === 401) {
+        return // Handled by 401 interceptor
+      }
+
+      const mapped = mapClientError(err, 'retry')
+      setInitError(mapped)
+      setLoading(false)
+    }
+  }, [id, navigate, handleTerminationExit, setIsSuspended])
+
   useEffect(() => {
     // If remounting within StrictMode window, cancel pending stream teardown
     if (teardownTimerRef.current) {
@@ -184,57 +252,13 @@ export default function ExamArenaPage() {
       teardownTimerRef.current = null
     }
 
-    let mounted = true
-    const initArena = async () => {
-      try {
-        const [examRes, startRes] = await Promise.all([
-          apiClient.get(`/exams/${id}`),
-          apiClient.post(`/attempts/exams/${id}/start`, {}).catch((err) => {
-            if (err.response?.status === 403 || err.response?.status === 404) throw err
-            return apiClient.post(`/attempts/${id}/start`, {})
-          }),
-        ])
-        if (!mounted) return
-        const ex = examRes.data?.exam || examRes.data
-        const att = startRes.data?.attempt || startRes.data
-        const qs = ensureArray(startRes.data?.questions || ex?.questions)
-        if (!att || !qs.length || att.status !== 'IN_PROGRESS') {
-          throw new Error('Examination session is not active or questions are unavailable.')
-        }
-
-        // Calculate clock offset from server Date header
-        const serverDateHeader = examRes.headers?.date || startRes.headers?.date
-        if (serverDateHeader) {
-          const serverEpoch = new Date(serverDateHeader).getTime()
-          if (!isNaN(serverEpoch)) {
-            setServerOffsetMs(serverEpoch - Date.now())
-          }
-        }
-
-        setExam(ex); setQuestions(qs); setAttempt(att)
-        apiClient.get(`/attempts/exams/${id}/seb-status`)
-          .then(res => { if (mounted) setSebStatus(res.data) })
-          .catch(() => {})
-        if (att?.violationCount) {
-          setViolationCount(att.violationCount)
-        }
-        if (att?.status === 'SUSPENDED') setIsSuspended(true)
-
-        const { restored, restoredBm } = restoreAnswers(startRes.data?.answers, att?.id)
-        setAnswers(prev => ({ ...restored, ...prev }))
-        setBookmarks(prev => ({ ...restoredBm, ...prev }))
-        setLoading(false)
-      } catch (err) {
-        if (!mounted) return
-        navigate('/student/dashboard', { replace: true, state: { errorMsg: errorMessage(err, 'Exam is not currently available.') } })
-      }
-    }
-    initArena()
+    const controller = new AbortController()
+    initArena(controller.signal)
 
     return () => {
-      mounted = false
+      controller.abort()
     }
-  }, [id, navigate, handleTerminationExit, setIsSuspended])
+  }, [initArena])
 
   const isArenaInteractionLocked = isSuspended || isDuplicateTab || isTimeUpSubmitting || reauthOpen
   const currentQ = questions[currentIndex] || null
@@ -380,8 +404,33 @@ export default function ExamArenaPage() {
 
   if (loading) {
     return (
-      <ExamArenaShell className="items-center justify-center p-8">
+      <ExamArenaShell className="items-center justify-center p-8 bg-[#fbfcfd] font-sans">
         <div className="text-[#554e7b] text-sm font-[420] animate-pulse">Initializing secure exam session...</div>
+      </ExamArenaShell>
+    )
+  }
+
+  if (initError) {
+    return (
+      <ExamArenaShell className="items-center justify-center p-8 bg-[#fbfcfd] font-sans">
+        <div className="w-full max-w-md">
+          <AsyncStateView
+            state={initError.code === 'NETWORK_ERROR' ? 'offline' : 'error'}
+            error={initError}
+            onRetry={() => initArena()}
+            actionLabel="Try Reconnecting"
+          />
+          <div className="mt-4 text-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/student/dashboard')}
+              className="text-xs rounded-[40px] px-6"
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        </div>
       </ExamArenaShell>
     )
   }
