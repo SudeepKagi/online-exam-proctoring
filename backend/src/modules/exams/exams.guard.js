@@ -118,6 +118,7 @@ function validateQuestionsList(questions) {
 }
 
 const ALLOWED_PROCTORING_CONFIG_KEYS = new Set([
+  'webcam',
   'sebRequired',
   'sebConfigKey',
   'sebFileKey',

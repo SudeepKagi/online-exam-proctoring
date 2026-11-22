@@ -91,7 +91,7 @@ async function isAttemptSebVerified(attemptId) {
 }
 
 // Deprecated session bypass functions: HTTP route gating strictly requires valid header on that very request
-function markUserSebVerified() {}
+function markUserSebVerified() { }
 async function isUserSebVerified() { return false }
 
 // Invalidation Helper
@@ -173,7 +173,7 @@ async function inspectSebRequest(req) {
     } catch (_) { }
   }
 
-  const sebMode = (sebSettings?.effectiveMode || config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+  const sebMode = (process.env.SEB_MODE || sebSettings?.effectiveMode || config.sebMode || 'off').toLowerCase().trim()
 
   if (!examId) {
     return {
@@ -302,8 +302,7 @@ async function runVerifySeb(req, res, next) {
   // 1. Non-STUDENT roles: pass through
   const userRole = normalizeRole(req.user?.role)
   if (!userRole || userRole !== ROLES.STUDENT) {
-    const rawMode = (config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
-    req.seb = { mode: rawMode, verified: true, sebRequired: false, roleBypass: true }
+    req.seb = { mode: config.sebMode || process.env.SEB_MODE || 'off', verified: true, sebRequired: false, roleBypass: true }
     return next()
   }
 
@@ -316,9 +315,7 @@ async function runVerifySeb(req, res, next) {
     examId: inspection.examId
   }
 
-  // If exam requires SEB and key is missing while enforce mode is requested or active, reject with 503
-  const intendedMode = (process.env.SEB_MODE || config.sebMode || inspection.mode || 'off').toLowerCase().trim()
-  if (inspection.required && inspection.missingConfigKey && (intendedMode === 'enforce' || inspection.mode === 'enforce')) {
+  if (inspection.missingConfigKey && (inspection.mode === 'enforce' || process.env.SEB_MODE === 'enforce')) {
     logger.warn({ examId: inspection.examId }, 'SEB verification failed: missing institution configuration key')
     return res.status(503).json({
       code: 'INSTITUTION_NOT_CONFIGURED',
@@ -369,17 +366,42 @@ async function runVerifySeb(req, res, next) {
     })
   }
 
+  const { sebTokenService } = require('../modules/seb/sebToken.service')
+  const { sebDiagnosticsService } = require('../modules/seb/sebDiagnostics.service')
+
+  const userKey = req.user?.id ? `${req.user.id}:${inspection.examId || 'general'}` : null
+  const tokenHash = userKey ? sebTokenService.userActiveTokens.get(userKey) : null
+  const tokenRecord = tokenHash ? sebTokenService.tokens.get(tokenHash) : null
+  const correlationId = req.headers['x-correlation-id'] || tokenRecord?.correlationId || (req.user?.id ? crypto.createHash('sha256').update(String(req.user.id)).digest('hex').slice(0, 12) : 'unknown')
+
   if (inspection.headerMatched) {
     const attemptId = req.params?.attemptId || req.params?.id
     if (attemptId) {
       markAttemptSebVerified(attemptId)
     }
+    sebDiagnosticsService.recordLaunchHop(correlationId, {
+      step: 'EXAM_START_ATTEMPT',
+      status: 200,
+      code: 'SUCCESS',
+      userId: req.user?.id,
+      examId: inspection.examId,
+      details: 'Verified cryptographic header matched'
+    })
     return next()
   }
 
   const requestId = req.headers['x-request-id'] || req.id || crypto.randomUUID().slice(0, 8)
   const isHeaderPresent = Boolean(inspection.receivedHeader && inspection.receivedHeader.trim().length > 0)
   const code = !isHeaderPresent ? 'SEB_HEADER_MISSING' : 'SEB_HEADER_MISMATCH'
+
+  sebDiagnosticsService.recordLaunchHop(correlationId, {
+    step: 'EXAM_START_ATTEMPT',
+    status: 403,
+    code,
+    userId: req.user?.id,
+    examId: inspection.examId,
+    details: isHeaderPresent ? 'Configuration Key header mismatch' : 'Configuration header is missing'
+  })
 
   logger.warn({
     examId: inspection.examId,
