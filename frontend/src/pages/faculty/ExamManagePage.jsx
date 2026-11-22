@@ -105,7 +105,7 @@ export default function ExamManagePage() {
   }
   const isReadOnly = lifecycle === 'LIVE' || lifecycle === 'ENDED' || attempts.length > 0
 
-  if (loading) {
+  if (loading && !exam) {
     return (
       <DashboardShell title="Manage Examination">
         <div className="max-w-xl mx-auto my-12 p-8 bg-white rounded-[16px] shadow-xs text-center font-sans">
@@ -116,7 +116,7 @@ export default function ExamManagePage() {
     )
   }
 
-  if (examError || !exam) {
+  if (examError && !exam) {
     return (
       <DashboardShell title="Manage Examination">
         <div className="max-w-xl mx-auto my-12 font-sans">
