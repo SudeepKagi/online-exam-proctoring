@@ -209,9 +209,21 @@ async function createLaunchLink(req, res, next) {
     // Safe Exam Browser 3.x query forwarding syntax:
     // sebs://host/api/v1/seb/config/<downloadToken>.seb??launch=<exchangeToken>
     const url = `${scheme}//${origin.host}/api/v1/seb/config/${tokenResult.downloadToken}.seb??launch=${tokenResult.launchToken}`
+    const correlationId = tokenResult.correlationId
+
+    sebDiagnosticsService.recordLaunchHop(correlationId, {
+      step: 'LAUNCH_LINK_CREATED',
+      status: 200,
+      code: 'SUCCESS',
+      userId: user.id,
+      examId: qualifyingExamId,
+      purpose,
+      details: 'Launch link generated'
+    })
 
     return res.status(200).json({
       success: true,
+      correlationId,
       url,
       launchUrl: url,
       downloadToken: tokenResult.downloadToken,
@@ -236,6 +248,7 @@ async function downloadSebConfig(req, res, next) {
 
     // 1. Check stateful sebTokenService first (does NOT consume the exchange token)
     const tokenRecord = sebTokenService.getTokenRecord(cleanToken)
+    const correlationId = tokenRecord?.correlationId || crypto.createHash('sha256').update(cleanToken).digest('hex').slice(0, 12)
     let payload = null
 
     if (tokenRecord) {
@@ -249,8 +262,22 @@ async function downloadSebConfig(req, res, next) {
       const verification = verifySebLaunchToken(cleanToken)
       if (!verification.valid) {
         if (verification.error === 'TOKEN_EXPIRED') {
+          sebDiagnosticsService.recordLaunchHop(correlationId, {
+            step: 'CONFIG_DOWNLOAD_REQUEST',
+            status: 401,
+            code: 'TOKEN_EXPIRED',
+            userAgent: req.headers['user-agent'],
+            details: 'Launch token has expired'
+          })
           return res.status(401).json({ code: 'TOKEN_EXPIRED', message: 'Launch token has expired' })
         }
+        sebDiagnosticsService.recordLaunchHop(correlationId, {
+          step: 'CONFIG_DOWNLOAD_REQUEST',
+          status: 401,
+          code: 'INVALID_TOKEN',
+          userAgent: req.headers['user-agent'],
+          details: 'Invalid or tampered token'
+        })
         return res.status(401).json({ code: 'INVALID_TOKEN', message: 'Invalid or tampered token' })
       }
       payload = verification.payload
@@ -265,6 +292,13 @@ async function downloadSebConfig(req, res, next) {
       })
 
       if (!exam || !['PUBLISHED', 'ACTIVE'].includes(exam.status)) {
+        sebDiagnosticsService.recordLaunchHop(correlationId, {
+          step: 'CONFIG_DOWNLOAD_REQUEST',
+          status: 403,
+          code: 'EXAM_WINDOW_CLOSED',
+          userAgent: req.headers['user-agent'],
+          details: 'Exam window is closed'
+        })
         return res.status(403).json({ code: 'EXAM_WINDOW_CLOSED', message: 'Exam window is closed.' })
       }
 
@@ -272,6 +306,13 @@ async function downloadSebConfig(req, res, next) {
       const closeTime = new Date(exam.endTime)
 
       if (serverNow < openTime || serverNow > closeTime) {
+        sebDiagnosticsService.recordLaunchHop(correlationId, {
+          step: 'CONFIG_DOWNLOAD_REQUEST',
+          status: 403,
+          code: 'EXAM_WINDOW_CLOSED',
+          userAgent: req.headers['user-agent'],
+          details: 'Exam window is closed'
+        })
         return res.status(403).json({ code: 'EXAM_WINDOW_CLOSED', message: 'Exam window is closed.' })
       }
     }
@@ -304,6 +345,15 @@ async function downloadSebConfig(req, res, next) {
       buffer = Buffer.from(sanitizedXml, 'utf8')
     }
 
+    sebDiagnosticsService.recordLaunchHop(correlationId, {
+      step: 'CONFIG_DOWNLOAD_REQUEST',
+      status: 200,
+      code: 'SUCCESS',
+      bytes: buffer.length,
+      userAgent: req.headers['user-agent'],
+      details: `Configuration file downloaded (${buffer.length} bytes)`
+    })
+
     res.setHeader('Content-Type', 'application/seb')
     res.setHeader('Content-Disposition', 'attachment; filename="ProctorNet-Exam.seb"')
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
@@ -334,8 +384,11 @@ async function exchange(req, res, next) {
     }
 
     const validateResult = sebTokenService.validateLaunchToken(rawToken)
+    const errCorrelationId = validateResult.record?.correlationId || crypto.createHash('sha256').update(rawToken).digest('hex').slice(0, 12)
+
     if (validateResult.status === 'TOO_MANY_ATTEMPTS') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'RATE_LIMITED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(errCorrelationId, { step: 'TOKEN_EXCHANGE', status: 429, code: 'RATE_LIMITED', details: 'Rate limited' })
       return res.status(429).json({
         code: 'RATE_LIMITED',
         message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.',
@@ -345,6 +398,7 @@ async function exchange(req, res, next) {
 
     if (validateResult.status === 'NOT_FOUND') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'INVALID_CODE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(errCorrelationId, { step: 'TOKEN_EXCHANGE', status: 401, code: 'INVALID_CODE', details: 'Token not found' })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=invalid_token')
       }
@@ -357,6 +411,7 @@ async function exchange(req, res, next) {
 
     if (validateResult.status === 'EXPIRED') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_EXPIRED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(errCorrelationId, { step: 'TOKEN_EXCHANGE', status: 401, code: 'CODE_EXPIRED', details: 'Token expired' })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=expired')
       }
@@ -369,6 +424,7 @@ async function exchange(req, res, next) {
 
     if (validateResult.status === 'ALREADY_USED' || validateResult.status === 'CONSUMED') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_USED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(errCorrelationId, { step: 'TOKEN_EXCHANGE', status: 409, code: 'CODE_USED', details: 'Token already used' })
       if (req.accepts('html') && !req.xhr && !req.headers.accept?.includes('application/json')) {
         return res.redirect(302, '/seb/enter?error=already_used')
       }
@@ -527,9 +583,21 @@ async function exchange(req, res, next) {
       destination = `/student/exams/${record.examId}/start`
     }
 
+    sebDiagnosticsService.recordLaunchHop(record.correlationId, {
+      step: 'TOKEN_EXCHANGE',
+      status: 200,
+      code: 'SUCCESS',
+      userId: user.id,
+      examId: record.examId,
+      purpose: record.purpose,
+      userAgent,
+      details: 'Launch token successfully exchanged for user session'
+    })
+
     if (req.xhr || req.headers.accept?.includes('application/json')) {
       return res.status(200).json({
         success: true,
+        correlationId: record.correlationId,
         redirectUrl: destination,
         user: { id: user.id, email: user.email, name: user.name, role: user.role },
         token: accessToken
@@ -561,8 +629,11 @@ async function exchangePin(req, res, next) {
     }
 
     const consumeResult = sebTokenService.validatePin(rawPin.trim())
+    const pinCorrelationId = consumeResult.record?.correlationId || crypto.createHash('sha256').update(rawPin).digest('hex').slice(0, 12)
+
     if (consumeResult.status === 'TOO_MANY_ATTEMPTS') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'RATE_LIMITED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(pinCorrelationId, { step: 'PIN_EXCHANGE', status: 429, code: 'RATE_LIMITED', details: 'Rate limited' })
       return res.status(429).json({
         code: 'RATE_LIMITED',
         message: 'Too many incorrect attempts for this code. Please generate a fresh code from your browser.',
@@ -572,6 +643,7 @@ async function exchangePin(req, res, next) {
 
     if (consumeResult.status === 'NOT_FOUND') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'INVALID_CODE', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(pinCorrelationId, { step: 'PIN_EXCHANGE', status: 401, code: 'INVALID_CODE', details: 'PIN not found' })
       return res.status(401).json({
         code: 'INVALID_CODE',
         message: 'Invalid 6-digit launch code. Please check the code and try again.',
@@ -581,6 +653,7 @@ async function exchangePin(req, res, next) {
 
     if (consumeResult.status === 'EXPIRED') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_EXPIRED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(pinCorrelationId, { step: 'PIN_EXCHANGE', status: 401, code: 'CODE_EXPIRED', details: 'PIN expired' })
       return res.status(401).json({
         code: 'CODE_EXPIRED',
         message: 'This launch code has expired. Please return to your browser to generate a fresh code.',
@@ -590,6 +663,7 @@ async function exchangePin(req, res, next) {
 
     if (consumeResult.status === 'ALREADY_USED') {
       sebDiagnosticsService.recordExchangeFailure({ code: 'CODE_USED', requestId, userAgent: req.headers['user-agent'], clientIp: req.ip })
+      sebDiagnosticsService.recordLaunchHop(pinCorrelationId, { step: 'PIN_EXCHANGE', status: 409, code: 'CODE_USED', details: 'PIN already used' })
       return res.status(409).json({
         code: 'CODE_USED',
         message: 'This launch code has already been used. Please generate a fresh code.',
@@ -733,8 +807,20 @@ async function exchangePin(req, res, next) {
       destination = `/student/exams/${record.examId}/start`
     }
 
+    sebDiagnosticsService.recordLaunchHop(record.correlationId, {
+      step: 'PIN_EXCHANGE',
+      status: 200,
+      code: 'SUCCESS',
+      userId: user.id,
+      examId: record.examId,
+      purpose: record.purpose,
+      userAgent,
+      details: 'Launch PIN successfully exchanged for user session'
+    })
+
     return res.status(200).json({
       success: true,
+      correlationId: record.correlationId,
       redirectUrl: destination,
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
       token: accessToken,

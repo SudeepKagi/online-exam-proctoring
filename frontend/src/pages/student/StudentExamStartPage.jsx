@@ -71,6 +71,9 @@ export default function StudentExamStartPage() {
   const [sebCountdown, setSebCountdown] = useState(300)
   const [showSebHelp, setShowSebHelp] = useState(false)
   const [hasLaunchedSeb, setHasLaunchedSeb] = useState(false)
+  const [errorPin, setErrorPin] = useState('')
+  const [submittingErrorPin, setSubmittingErrorPin] = useState(false)
+  const [errorPinMessage, setErrorPinMessage] = useState('')
   const sebTimerRef = useRef(null)
   const sebHelpTimerRef = useRef(null)
 
@@ -134,8 +137,9 @@ export default function StudentExamStartPage() {
       const seb = { ...rawSeb, verified: sebActive }
       setSebStatus(seb)
 
-      // If attempt was already face-verified, reflect it
-      if (rawSeb.faceVerified) {
+      // If exam does not require webcam/camera proctoring or attempt was already face-verified, reflect it
+      const requiresCamera = Boolean(ex?.proctoringConfig?.cameraRequired ?? ex?.proctoringConfig?.webcam ?? false)
+      if (!requiresCamera || rawSeb.faceVerified) {
         setIdentityVerified(true)
       }
 
@@ -419,6 +423,37 @@ export default function StudentExamStartPage() {
 
   const isCameraBlocked = cameraStatus === 'denied' || cameraStatus === 'no_device' || cameraStatus === 'in_use' || cameraStatus === 'lost'
 
+  const handleErrorPinSubmit = async (e) => {
+    e.preventDefault()
+    const cleanPin = errorPin.trim()
+    if (!/^\d{6}$/.test(cleanPin)) {
+      setErrorPinMessage('Please enter a valid 6-digit numeric launch code.')
+      return
+    }
+    setSubmittingErrorPin(true)
+    setErrorPinMessage('')
+    try {
+      const res = await apiClient.post('/seb/exchange-pin', { pin: cleanPin })
+      if (res.data?.success && res.data?.redirectUrl) {
+        if (res.data.user) {
+          try {
+            localStorage.setItem('proctornet_logged_in', 'true')
+            localStorage.setItem('user', JSON.stringify(res.data.user))
+          } catch (_) {}
+        }
+        window.location.href = res.data.redirectUrl
+      } else {
+        setErrorPinMessage('Exchange failed. Please check your code.')
+      }
+    } catch (err) {
+      const data = err.response?.data || {}
+      const ref = data.requestId ? ` (Ref: #${data.requestId})` : ''
+      setErrorPinMessage((data.message || 'Invalid or expired launch code.') + ref)
+    } finally {
+      setSubmittingErrorPin(false)
+    }
+  }
+
   if (loading) {
     return (
       <ExamArenaShell className="items-center justify-center p-4">
@@ -433,24 +468,97 @@ export default function StudentExamStartPage() {
   if (globalError) {
     return (
       <ExamArenaShell className="items-center justify-center p-4">
-        <Card className="w-full max-w-lg border-0 bg-white shadow-xs rounded-[16px] font-sans p-6 text-center space-y-4">
+        <Card className="w-full max-w-lg border-0 bg-white shadow-[0_4px_20px_rgba(40,37,59,0.04)] rounded-[20px] font-sans p-6 text-center space-y-4" data-testid="seb-error-resilience-card">
           <div className="w-12 h-12 bg-[#edecfb] text-[#5266eb] rounded-full mx-auto flex items-center justify-center">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <CardTitle className="text-lg font-[480] text-[#28253b]">{globalError.title}</CardTitle>
-          <CardDescription className="text-xs font-[360] text-[#554e7b] leading-relaxed">
-            {globalError.message}
-          </CardDescription>
-          <div className="pt-2 flex flex-col gap-2">
+          <div>
+            <CardTitle className="text-lg font-[480] text-[#28253b]">{globalError.title}</CardTitle>
+            <CardDescription className="text-xs font-[360] text-[#554e7b] leading-relaxed mt-1">
+              {globalError.message}
+            </CardDescription>
+            {globalError.referenceId && (
+              <p className="text-[11px] text-[#70707d] font-mono mt-1" data-testid="error-reference-id">
+                Ref: #{globalError.referenceId}
+              </p>
+            )}
+          </div>
+
+          {/* 6-Digit Launch Code Fallback Form */}
+          <div className="bg-[#fbfbff] p-4 rounded-[16px] text-left space-y-3">
+            <div>
+              <h4 className="text-xs font-[480] text-[#28253b]">Have a launch code from your browser?</h4>
+              <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
+                Enter the 6-digit code shown on your primary browser to connect this session.
+              </p>
+            </div>
+
+            {errorPinMessage && (
+              <div className="p-2.5 rounded-[10px] bg-white text-[11px] text-[#c04b4b] font-[420] border-l-2 border-[#c04b4b]">
+                {errorPinMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleErrorPinSubmit} className="space-y-3">
+              <div>
+                <input
+                  id="seb-fallback-pin"
+                  data-testid="seb-fallback-pin-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={errorPin}
+                  onChange={(e) => setErrorPin(e.target.value.replace(/\D/g, ''))}
+                  placeholder="123456"
+                  className="w-full h-11 text-center text-lg tracking-[0.25em] font-[480] bg-white rounded-[12px] border-0 outline-none text-[#28253b] focus:ring-2 focus:ring-[#5266eb]/30 transition-all"
+                  disabled={submittingErrorPin}
+                />
+              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={submittingErrorPin || errorPin.length !== 6}
+                className="w-full"
+                data-testid="seb-fallback-pin-submit"
+              >
+                {submittingErrorPin ? 'Verifying...' : 'Continue with code'}
+              </Button>
+            </form>
+          </div>
+
+          {/* Fallback actions: never a dead end */}
+          <div className="pt-1 flex flex-col gap-2">
             <Button
-              onClick={() => navigate('/student/dashboard')}
-              variant="primary"
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/login?manual=1')}
               className="w-full"
+              data-testid="error-signin-password-fallback"
             >
-              Return to Dashboard
+              Sign in with password instead
             </Button>
-            <a href={supportUrl} className="inline-flex items-center justify-center gap-1.5 text-xs text-[#554e7b] hover:text-[#5266eb] pt-1 font-[420]">
-              <HelpCircle className="w-3.5 h-3.5" /> Need help? Contact technical support
+            <div className="flex items-center justify-between px-1 text-xs pt-1">
+              <Link
+                to="/seb/enter"
+                className="inline-flex items-center gap-1 text-[#5266eb] hover:underline font-[420]"
+                data-testid="error-diagnostics-link"
+              >
+                <HelpCircle className="w-3.5 h-3.5" /> Diagnostics & code entry
+              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/student/dashboard')}
+                className="text-xs text-[#554e7b] hover:text-[#28253b] p-0 h-auto font-[420]"
+              >
+                Return to Dashboard
+              </Button>
+            </div>
+            <a
+              href={supportUrl}
+              className="inline-flex items-center justify-center gap-1.5 text-[11px] text-[#70707d] hover:text-[#5266eb] pt-2 font-[360]"
+            >
+              Contact technical support
             </a>
           </div>
         </Card>

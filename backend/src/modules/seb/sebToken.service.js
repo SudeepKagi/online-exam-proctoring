@@ -89,8 +89,10 @@ class SebTokenStore {
 
     const now = Date.now()
     const expiresAt = now + LAUNCH_TOKEN_TTL_MS
+    const correlationId = tokenHash.slice(0, 12)
 
     const record = {
+      correlationId,
       tokenHash,
       downloadTokenHash,
       pinHash,
@@ -111,6 +113,7 @@ class SebTokenStore {
     this.userActiveTokens.set(userKey, tokenHash)
 
     return {
+      correlationId,
       launchToken: rawLaunchToken,
       downloadToken: rawDownloadToken,
       pin: rawPin,

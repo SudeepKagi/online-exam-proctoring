@@ -15,6 +15,7 @@ const { settingsService } = require('../src/modules/admin/settings.service')
 const { invalidateInstitutionSebState } = require('../src/modules/seb/seb.service')
 const { getStorageAdapter } = require('../src/infra/s3/s3.client')
 const { prisma } = require('../src/infra/postgres/client')
+const { clearAllSebCaches } = require('../src/middleware/seb')
 const { app, server: appServer } = require('../src/app')
 
 function httpRequest({ hostname, port, path, method = 'GET', headers = {}, body = null }) {
@@ -353,58 +354,65 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
     })
 
     it('enforces SEB user-agent gating when institution mode is enforce', async () => {
-      // Temporarily set mode to enforce with recent verification
-      await settingsService.saveSebConfig({
-        fileKey: 'seb/institution-config.seb',
-        configKey: VALID_64_HEX,
-        requestedMode: 'enforce',
-        lastVerifiedAt: new Date().toISOString()
-      })
-      invalidateInstitutionSebState()
+      const prevEnvMode = process.env.SEB_MODE
+      process.env.SEB_MODE = 'enforce'
+      try {
+        // Temporarily set mode to enforce with recent verification
+        await settingsService.saveSebConfig({
+          fileKey: 'seb/institution-config.seb',
+          configKey: VALID_64_HEX,
+          requestedMode: 'enforce',
+          lastVerifiedAt: new Date().toISOString()
+        })
+        invalidateInstitutionSebState()
+        clearAllSebCaches()
 
-      const token = sebTokenService.createLaunchToken({
-        userId: testUser.id,
-        userRole: 'STUDENT',
-        examId: testExam.id,
-        purpose: 'exam'
-      })
+        const token = sebTokenService.createLaunchToken({
+          userId: testUser.id,
+          userRole: 'STUDENT',
+          examId: testExam.id,
+          purpose: 'exam'
+        })
 
-      // Decision 18 decoupled exchange: Token exchange succeeds even from plain browser to establish candidate session
-      const chromeRes = await httpRequest({
-        hostname: '127.0.0.1',
-        port: serverPort,
-        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      })
-      assert.strictEqual(chromeRes.statusCode, 200, 'Exchange succeeds to establish candidate session')
-      assert.strictEqual(chromeRes.json?.success, true)
+        // Decision 18 decoupled exchange: Token exchange succeeds even from plain browser to establish candidate session
+        const chromeRes = await httpRequest({
+          hostname: '127.0.0.1',
+          port: serverPort,
+          path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        })
+        assert.strictEqual(chromeRes.statusCode, 200, 'Exchange succeeds to establish candidate session')
+        assert.strictEqual(chromeRes.json?.success, true)
 
-      // Content endpoint strictly requires valid SEB headers
-      const contentRes = await httpRequest({
-        hostname: '127.0.0.1',
-        port: serverPort,
-        path: `/api/v1/attempts/exams/${testExam.id}/start`,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${chromeRes.json?.token}`,
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-      }, {})
-      assert.strictEqual(contentRes.statusCode, 403)
-      assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(contentRes.json?.code))
-
-      // Reset back to audit mode
-      await settingsService.saveSebConfig({
-        fileKey: 'seb/institution-config.seb',
-        configKey: VALID_64_HEX,
-        requestedMode: 'audit'
-      })
-      invalidateInstitutionSebState()
+        // Content endpoint strictly requires valid SEB headers
+        const contentRes = await httpRequest({
+          hostname: '127.0.0.1',
+          port: serverPort,
+          path: `/api/v1/attempts/exams/${testExam.id}/start`,
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${chromeRes.json?.token}`,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+          }
+        }, {})
+        assert.strictEqual(contentRes.statusCode, 403)
+        assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISSING'].includes(contentRes.json?.code))
+      } finally {
+        process.env.SEB_MODE = prevEnvMode
+        // Reset back to audit mode
+        await settingsService.saveSebConfig({
+          fileKey: 'seb/institution-config.seb',
+          configKey: VALID_64_HEX,
+          requestedMode: 'audit'
+        })
+        invalidateInstitutionSebState()
+        clearAllSebCaches()
+      }
     })
   })
 })

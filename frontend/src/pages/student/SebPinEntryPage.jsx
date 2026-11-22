@@ -34,57 +34,55 @@ export default function SebPinEntryPage() {
   useEffect(() => {
     if (!launchParam || user || hasExchangedRef.current) return
     hasExchangedRef.current = true
-    let active = true
 
     async function attemptAutoExchange() {
       setAutoExchanging(true)
       try {
         const res = await api.get(`/seb/exchange?launch=${encodeURIComponent(launchParam)}`)
-        if (active && res.data?.success && res.data?.redirectUrl) {
+        if (res.data?.success && res.data?.redirectUrl) {
           if (res.data.user) {
             try {
               localStorage.setItem('proctornet_logged_in', 'true')
-              localStorage.setItem('user', JSON.stringify(res.data.user))
+              localStorage.setItem('user', JSON.stringify({ ...res.data.user, token: res.data.token }))
               if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
               if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
             } catch (_) { }
           }
-          window.location.href = res.data.redirectUrl
+          window.location.replace(res.data.redirectUrl)
           return
         }
       } catch (err) {
-        if (active) {
-          const data = err.response?.data || {}
-          const code = data.code || err.code
-          const refId = data.requestId || 'N/A'
-          const alreadyLoggedIn = localStorage.getItem('proctornet_logged_in') === 'true'
-          if (alreadyLoggedIn && (code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED' || code === 'TOKEN_EXPIRED' || code === 'CODE_EXPIRED')) {
-            navigate('/student/dashboard', { replace: true })
-            return
-          }
-          if (code === 'TOKEN_EXPIRED' || code === 'CODE_EXPIRED') {
-            setError(`Launch token has expired. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
-          } else if (code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED') {
-            setError(`Launch link was already used. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
-          } else if (code === 'SEB_HEADER_MISSING') {
-            setError(`Access restricted to Safe Exam Browser. Configuration header was not detected. (Ref: #${refId})`)
-          } else if (code === 'SEB_HEADER_MISMATCH') {
-            setError(`Safe Exam Browser configuration mismatch. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
-          } else if (code === 'STORAGE_UNAVAILABLE') {
-            setError(`Storage is temporarily unavailable. Please alert your invigilator. (Ref: #${refId})`)
-          } else if (code === 'INSTITUTION_NOT_CONFIGURED') {
-            setError(`The exam system isn't ready, tell your invigilator (Ref: #${refId})`)
-          } else {
-            setError(`Could not connect with launch link. Please enter your 6-digit code below. (Ref: #${refId})`)
-          }
+        const data = err.response?.data || {}
+        const code = data.code || err.code
+        const refId = data.requestId || 'N/A'
+        const alreadyLoggedIn = localStorage.getItem('proctornet_logged_in') === 'true'
+        if (alreadyLoggedIn && (code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED' || code === 'TOKEN_EXPIRED' || code === 'CODE_EXPIRED')) {
+          navigate('/student/dashboard', { replace: true })
+          return
+        }
+        if (code === 'TOKEN_EXPIRED' || code === 'CODE_EXPIRED') {
+          setError(`Launch token has expired. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
+        } else if (code === 'TOKEN_ALREADY_USED' || code === 'CODE_USED') {
+          setError(`Launch link was already used. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
+        } else if (code === 'INVALID_CODE' || code === 'INVALID_TOKEN') {
+          setError(`Invalid or unrecognized launch token. Please enter your 6-digit code below. (Ref: #${refId})`)
+        } else if (code === 'SEB_HEADER_MISSING') {
+          setError(`Access restricted to Safe Exam Browser. Configuration header was not detected. (Ref: #${refId})`)
+        } else if (code === 'SEB_HEADER_MISMATCH') {
+          setError(`Safe Exam Browser configuration mismatch. Please enter the 6-digit code shown on your browser. (Ref: #${refId})`)
+        } else if (code === 'STORAGE_UNAVAILABLE') {
+          setError(`Storage is temporarily unavailable. Please alert your invigilator. (Ref: #${refId})`)
+        } else if (code === 'INSTITUTION_NOT_CONFIGURED') {
+          setError(`The exam system isn't ready, tell your invigilator (Ref: #${refId})`)
+        } else {
+          setError(`Could not connect with launch link. Please enter your 6-digit code below. (Ref: #${refId})`)
         }
       } finally {
-        if (active) setAutoExchanging(false)
+        setAutoExchanging(false)
       }
     }
 
     attemptAutoExchange()
-    return () => { active = false }
   }, [launchParam, user, navigate])
 
   async function handleSubmit(e) {
@@ -104,13 +102,13 @@ export default function SebPinEntryPage() {
         if (res.data.user) {
           try {
             localStorage.setItem('proctornet_logged_in', 'true')
-            localStorage.setItem('user', JSON.stringify(res.data.user))
+            localStorage.setItem('user', JSON.stringify({ ...res.data.user, token: res.data.token }))
             if (res.data.user.role) localStorage.setItem('proctornet_role', res.data.user.role)
             if (res.data.user.email) localStorage.setItem('proctornet_email', res.data.user.email)
           } catch (_) { }
         }
         // Successful exchange: navigate to arena / lobby / check
-        window.location.href = res.data.redirectUrl
+        window.location.replace(res.data.redirectUrl)
       } else {
         setError('Exchange failed. Please check your code.')
       }

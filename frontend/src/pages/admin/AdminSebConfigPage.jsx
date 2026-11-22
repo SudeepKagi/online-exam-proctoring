@@ -26,7 +26,8 @@ import {
   Info,
   HelpCircle,
   Activity,
-  RotateCw
+  RotateCw,
+  RefreshCw
 } from 'lucide-react'
 
 export default function AdminSebConfigPage() {
@@ -65,6 +66,9 @@ export default function AdminSebConfigPage() {
   const [justVerified, setJustVerified] = useState(false)
   const [entryDiagnostics, setEntryDiagnostics] = useState(null)
   const [loadingEntryDiagnostics, setLoadingEntryDiagnostics] = useState(false)
+  const [launchTraces, setLaunchTraces] = useState([])
+  const [loadingLaunchTraces, setLoadingLaunchTraces] = useState(false)
+  const [expandedTraceId, setExpandedTraceId] = useState(null)
 
   // Ref Lookup states
   const [refSearchId, setRefSearchId] = useState('')
@@ -88,7 +92,7 @@ export default function AdminSebConfigPage() {
       await navigator.clipboard.writeText(text)
       setCopiedField(fieldName)
       setTimeout(() => setCopiedField(null), 2000)
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const handleLookupRef = async (refIdToLookup) => {
@@ -147,7 +151,7 @@ export default function AdminSebConfigPage() {
       if (res?.data?.attempts) {
         setRecentAttempts(res.data.attempts)
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   const fetchEntryDiagnostics = async () => {
@@ -157,8 +161,20 @@ export default function AdminSebConfigPage() {
       if (res?.data) {
         setEntryDiagnostics(res.data)
       }
-    } catch (_) {} finally {
+    } catch (_) { } finally {
       setLoadingEntryDiagnostics(false)
+    }
+  }
+
+  const fetchLaunchTraces = async () => {
+    setLoadingLaunchTraces(true)
+    try {
+      const res = await apiClient.get('/admin/seb/launch-traces')
+      if (res?.data?.traces) {
+        setLaunchTraces(res.data.traces)
+      }
+    } catch (_) { } finally {
+      setLoadingLaunchTraces(false)
     }
   }
 
@@ -183,10 +199,12 @@ export default function AdminSebConfigPage() {
     fetchStorageHealth()
     fetchRecentAttempts()
     fetchEntryDiagnostics()
+    fetchLaunchTraces()
 
     const pollInterval = setInterval(() => {
       fetchStatus()
       fetchRecentAttempts()
+      fetchLaunchTraces()
     }, 5000)
 
     return () => {
@@ -551,9 +569,8 @@ export default function AdminSebConfigPage() {
         {/* Global Notifications */}
         {msg.text && (
           <div
-            className={`p-3.5 rounded-[12px] text-xs font-[420] flex items-center justify-between gap-3 ${
-              msg.type === 'error' ? 'bg-[#edecfb] text-[#28253b]' : 'bg-[#edecfb] text-[#28253b]'
-            }`}
+            className={`p-3.5 rounded-[12px] text-xs font-[420] flex items-center justify-between gap-3 ${msg.type === 'error' ? 'bg-[#edecfb] text-[#28253b]' : 'bg-[#edecfb] text-[#28253b]'
+              }`}
           >
             <div className="flex items-center gap-2">
               {msg.type === 'error' ? (
@@ -1039,6 +1056,131 @@ export default function AdminSebConfigPage() {
                 </div>
               </div>
             )}
+
+            {/* Launch Traces Table (§Phase 1 Hop Timeline) */}
+            <div className="space-y-2 pt-4 border-t border-[#edecfb]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-[480] text-[#28253b] text-xs">Safe Exam Browser Launch Traces</h4>
+                  <p className="text-[11px] text-[#70707d] font-[360]">Per-hop timeline with status, step, and response code</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchLaunchTraces}
+                  disabled={loadingLaunchTraces}
+                  className="text-xs h-7 px-2.5 rounded-[40px]"
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${loadingLaunchTraces ? 'animate-spin' : ''}`} />
+                  Refresh Traces
+                </Button>
+              </div>
+
+              {launchTraces.length === 0 ? (
+                <div className="p-4 bg-[#fbfbff] rounded-[12px] text-center text-[11px] text-[#554e7b]">
+                  No recent launch traces recorded.
+                </div>
+              ) : (
+                <div className="bg-[#fbfbff] rounded-[12px] overflow-hidden text-[11px]">
+                  <table className="w-full text-left" data-testid="seb-launch-traces-table">
+                    <thead>
+                      <tr className="border-b border-[#edecfb] text-[#554e7b] font-[420]">
+                        <th className="py-2.5 px-3">Correlation ID</th>
+                        <th className="py-2.5 px-3">Started</th>
+                        <th className="py-2.5 px-3">Status</th>
+                        <th className="py-2.5 px-3">Hops</th>
+                        <th className="py-2.5 px-3 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#edecfb]/60 text-[#28253b]">
+                      {launchTraces.map((trace) => {
+                        const isExpanded = expandedTraceId === trace.correlationId
+                        return (
+                          <React.Fragment key={trace.correlationId}>
+                            <tr
+                              className="hover:bg-white/60 cursor-pointer"
+                              onClick={() => setExpandedTraceId(isExpanded ? null : trace.correlationId)}
+                            >
+                              <td className="py-2 px-3 font-mono font-[480] text-[#5266eb]">
+                                #{trace.correlationId}
+                              </td>
+                              <td className="py-2 px-3 text-[#554e7b] whitespace-nowrap">
+                                {new Date(trace.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                              </td>
+                              <td className="py-2 px-3">
+                                {trace.overallStatus === 'COMPLETED' ? (
+                                  <span className="inline-flex items-center gap-1 text-[#5266eb] font-[480]">
+                                    <CheckCircle2 className="w-3 h-3" /> Completed
+                                  </span>
+                                ) : trace.overallStatus === 'FAILED' ? (
+                                  <span className="inline-flex items-center gap-1 text-[#c04b4b] font-[480]">
+                                    <XCircle className="w-3 h-3" /> Failed
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[#8a6a26] font-[480]">
+                                    <AlertTriangle className="w-3 h-3" /> In Progress
+                                  </span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3">
+                                <div className="flex items-center gap-1">
+                                  {trace.hops?.map((hop, idx) => (
+                                    <span
+                                      key={idx}
+                                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${hop.status === 200
+                                        ? 'bg-[#edecfb] text-[#5266eb]'
+                                        : 'bg-[#fcebeb] text-[#c04b4b]'
+                                        }`}
+                                      title={`${hop.step}: ${hop.status} (${hop.code})`}
+                                    >
+                                      {hop.step === 'LAUNCH_LINK_CREATED' ? '1:Link' :
+                                        hop.step === 'CONFIG_DOWNLOAD_REQUEST' ? '2:Config' :
+                                          hop.step === 'TOKEN_EXCHANGE' || hop.step === 'PIN_EXCHANGE' ? '3:Exchange' :
+                                            hop.step === 'EXAM_START_ATTEMPT' ? '4:Start' : hop.step}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="py-2 px-3 text-right text-[#554e7b]">
+                                {isExpanded ? '▲ Hide' : '▼ View'}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="bg-white/80">
+                                <td colSpan={5} className="p-3">
+                                  <div className="space-y-1.5">
+                                    <p className="font-[480] text-[11px] text-[#28253b]">Lifecycle Hops Breakdown:</p>
+                                    <div className="space-y-1">
+                                      {trace.hops?.map((hop, idx) => (
+                                        <div key={idx} className="flex items-center justify-between text-[11px] p-1.5 bg-[#fbfbff] rounded-[8px]">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`w-2 h-2 rounded-full ${hop.status === 200 ? 'bg-[#5266eb]' : 'bg-[#c04b4b]'}`} />
+                                            <span className="font-[480] text-[#28253b]">{hop.step}</span>
+                                            <span className="text-[#554e7b]">{hop.details || ''}</span>
+                                          </div>
+                                          <div className="flex items-center gap-3 font-mono text-[10px]">
+                                            <span className={hop.status === 200 ? 'text-[#5266eb]' : 'text-[#c04b4b]'}>
+                                              HTTP {hop.status} ({hop.code})
+                                            </span>
+                                            <span className="text-[#70707d]">
+                                              {new Date(hop.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -1185,7 +1327,7 @@ export default function AdminSebConfigPage() {
                       variant="secondary"
                       size="xs"
                       onClick={() => handleLookupRef(ref.requestId)}
-                      className="h-auto text-[10px] font-mono px-2 py-0.5 rounded-full"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-full cursor-pointer h-auto"
                     >
                       #{ref.requestId.slice(0, 8)} ({ref.code})
                     </Button>
@@ -1264,9 +1406,8 @@ export default function AdminSebConfigPage() {
           <CardContent className="space-y-4 pt-0 text-xs text-[#554e7b] font-[360]">
             <div className="p-4 rounded-[12px] bg-[#fbfbff] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                  status.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-white text-[#554e7b]'
-                }`}>
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${status.effectiveMode === 'enforce' ? 'bg-[#edecfb] text-[#5266eb]' : 'bg-white text-[#554e7b]'
+                  }`}>
                   {status.effectiveMode === 'enforce' ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
                 </div>
                 <div>

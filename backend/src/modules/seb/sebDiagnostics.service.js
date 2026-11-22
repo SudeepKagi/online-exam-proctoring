@@ -4,8 +4,10 @@ const crypto = require('crypto')
 
 const MAX_HISTORY = 50
 const MAX_FAILURES = 500
+const MAX_TRACES = 50
 const attemptsHistory = []
 const exchangeFailures = []
+const launchTraces = new Map()
 
 const STARTER_CONFIG_KEY = '4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a'
 
@@ -281,6 +283,85 @@ class SebDiagnosticsService {
   clearHistory() {
     attemptsHistory.length = 0
     exchangeFailures.length = 0
+    launchTraces.clear()
+  }
+
+  /**
+   * Records a lifecycle hop for a Safe Exam Browser launch identified by its correlation ID.
+   * Correlation ID is a hashed token prefix (never the raw token).
+   */
+  recordLaunchHop(correlationId, {
+    step,
+    status = 200,
+    code = 'SUCCESS',
+    bytes = null,
+    durationMs = null,
+    details = null,
+    userAgent = null,
+    userId = null,
+    examId = null,
+    purpose = 'exam',
+    timestamp = new Date().toISOString()
+  } = {}) {
+    if (!correlationId) return null
+    const cleanId = String(correlationId).trim()
+
+    let trace = launchTraces.get(cleanId)
+    if (!trace) {
+      trace = {
+        correlationId: cleanId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        userId: userId || null,
+        examId: examId || null,
+        purpose: purpose || 'exam',
+        overallStatus: 'IN_PROGRESS',
+        hops: []
+      }
+      launchTraces.set(cleanId, trace)
+
+      // Keep within bound
+      if (launchTraces.size > MAX_TRACES) {
+        const oldestKey = launchTraces.keys().next().value
+        launchTraces.delete(oldestKey)
+      }
+    }
+
+    if (userId && !trace.userId) trace.userId = userId
+    if (examId && !trace.examId) trace.examId = examId
+    if (purpose && !trace.purpose) trace.purpose = purpose
+    trace.updatedAt = timestamp
+
+    const hop = {
+      step,
+      status: Number(status),
+      code: String(code),
+      timestamp,
+      bytes: bytes != null ? Number(bytes) : null,
+      durationMs: durationMs != null ? Number(durationMs) : null,
+      details: details ? String(details) : null,
+      userAgent: userAgent ? this.extractSebVersion(userAgent) : null
+    }
+
+    trace.hops.push(hop)
+
+    // Update overall status
+    if (status >= 400 || (code && code !== 'SUCCESS')) {
+      trace.overallStatus = 'FAILED'
+    } else if (step === 'EXAM_START_ATTEMPT' && status === 200) {
+      trace.overallStatus = 'COMPLETED'
+    }
+
+    return trace
+  }
+
+  /**
+   * Returns recent launch traces sorted by most recent first.
+   */
+  getLaunchTraces(limit = 20) {
+    const all = Array.from(launchTraces.values())
+    all.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    return all.slice(0, Math.min(limit, all.length))
   }
 
   extractSebVersion(userAgent) {

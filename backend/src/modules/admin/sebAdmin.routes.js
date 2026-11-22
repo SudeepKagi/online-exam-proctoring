@@ -14,6 +14,7 @@ router.post('/config', requireRole('ADMIN'), sebAdminController.upload.single('f
 router.post('/inspect', requireRole('ADMIN'), sebAdminController.upload.single('file'), sebAdminController.inspectConfig)
 router.get('/starter-config', requireRole('ADMIN'), sebAdminController.getStarterConfig)
 router.get('/attempts', requireRole('ADMIN'), sebAdminController.getRecentAttempts)
+router.get('/launch-traces', requireRole('ADMIN'), sebAdminController.getLaunchTraces)
 router.get('/entry-diagnostics', requireRole('ADMIN'), sebAdminController.getEntryDiagnostics)
 router.get('/diagnostics/lookup/:refId', requireRole('ADMIN'), sebAdminController.lookupRefId)
 router.get('/status', requireRole('ADMIN'), sebAdminController.getSebStatus)

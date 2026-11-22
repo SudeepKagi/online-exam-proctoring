@@ -389,6 +389,23 @@ async function lookupRefId(req, res, next) {
   }
 }
 
+/**
+ * Returns recent Safe Exam Browser launch traces with step and code per hop.
+ * GET /api/v1/admin/seb/launch-traces
+ */
+async function getLaunchTraces(req, res, next) {
+  try {
+    const traces = sebDiagnosticsService.getLaunchTraces(30)
+    return res.status(200).json({
+      success: true,
+      traces
+    })
+  } catch (err) {
+    logger.error({ err }, 'Failed to fetch SEB launch traces')
+    next(err)
+  }
+}
+
 module.exports = {
   upload,
   uploadSebConfig,
@@ -400,5 +417,6 @@ module.exports = {
   getStarterConfig,
   getRecentAttempts,
   getEntryDiagnostics,
-  lookupRefId
+  lookupRefId,
+  getLaunchTraces
 }
