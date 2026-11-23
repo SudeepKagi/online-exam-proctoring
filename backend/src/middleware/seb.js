@@ -173,7 +173,7 @@ async function inspectSebRequest(req) {
     } catch (_) { }
   }
 
-  const sebMode = (process.env.SEB_MODE || sebSettings?.effectiveMode || config.sebMode || 'off').toLowerCase().trim()
+  const sebMode = (sebSettings?.effectiveMode || process.env.SEB_MODE || config.sebMode || 'off').toLowerCase().trim()
 
   if (!examId) {
     return {
