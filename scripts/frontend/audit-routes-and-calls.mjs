@@ -220,7 +220,7 @@ ${auditedFiles
 ## 4. Remediation Plan by Route Group
 
 ### Route Group 1: Student Exam Lifecycle (Priority 1)
-- **Files:** \`StudentExamStartPage.jsx\`, \`ExamArenaPage.jsx\`, \`PreExamCheckPage.jsx\`, \`StudentDashboardPage.jsx\`, \`StudentResultsPage.jsx\`, \`SebPinEntryPage.jsx\`.
+- **Files:** \`StudentExamStartPage.jsx\`, \`ExamArenaPage.jsx\`, \`PreExamCheckPage.jsx\`, \`StudentDashboardPage.jsx\`, \`StudentResultsPage.jsx\`, \`SebHandoffPage.jsx\`.
 - **Target Invariants:**
   1. Standardize \`AsyncStateView\` for \`loading\`, \`empty\`, \`error\`, \`offline\`, \`forbidden\`, \`session_expired\`.
   2. Map all student backend errors via shared \`mapClientError()\` helper with plain language and retry action.

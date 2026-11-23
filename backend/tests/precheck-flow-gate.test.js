@@ -191,7 +191,7 @@ describe('Phase 2: Pre-Check Flow & Server-Side Identity Verification Gate', () 
     await prisma.user.deleteMany({ where: { id: unverifiedStudent.id } })
   })
 
-  it('4. SEB Launch Token Service: Single-use launch link & fallback 6-digit PIN', async () => {
+  it('4. SEB Launch Token Service: Single-use launch link & download token', async () => {
     const tokenResult = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: studentUser.role,
@@ -201,16 +201,15 @@ describe('Phase 2: Pre-Check Flow & Server-Side Identity Verification Gate', () 
 
     assert.ok(tokenResult.launchToken)
     assert.ok(tokenResult.downloadToken)
-    assert.ok(tokenResult.pin)
-    assert.equal(tokenResult.pin.length, 6)
-    assert.equal(/^\d{6}$/.test(tokenResult.pin), true)
 
     // Token is valid and can be consumed
     const consumed = sebTokenService.consumeLaunchToken(tokenResult.launchToken)
     assert.equal(consumed.status, 'SUCCESS')
     assert.equal(consumed.record.userId, studentUser.id)
 
-    // Replay attack is blocked (single use)
+    // Replay attack is blocked (single use beyond grace window)
+    const record = sebTokenService.tokens.get(sebTokenService.hash(tokenResult.launchToken))
+    if (record) record.consumedAt = Date.now() - 70000
     const replayed = sebTokenService.consumeLaunchToken(tokenResult.launchToken)
     assert.equal(replayed.status, 'ALREADY_USED')
   })

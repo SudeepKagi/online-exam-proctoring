@@ -9,8 +9,8 @@ echo "=== 1. CADDY REQUESTS WITH STATUS != 200/304 OR CONTAINING seb/api/v1/exch
 journalctl -u caddy --since "45 minutes ago" --no-pager -o cat | jq -c 'select(.request != null) | {ts: .ts, ip: .request.client_ip, m: .request.method, uri: .request.uri, status: .status, ua: .request.headers["User-Agent"]}' | tail -n 40 || true
 
 echo ""
-echo "=== 2. PROCTORNET RECENT LOGS (warn/error or seb/pin) ==="
-journalctl -u proctornet.service --since "45 minutes ago" --no-pager | grep -iE 'warn|error|seb|pin|launch|token|exchange' | tail -n 40 || true
+echo "=== 2. PROCTORNET RECENT LOGS (warn/error or seb/token/exchange) ==="
+journalctl -u proctornet.service --since "45 minutes ago" --no-pager | grep -iE 'warn|error|seb|launch|token|exchange' | tail -n 40 || true
 
 echo ""
 echo "=== 3. PRISMA QUERY FOR SEB SETTINGS & ATTEMPTS ==="

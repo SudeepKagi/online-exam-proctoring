@@ -4,21 +4,18 @@ const crypto = require('crypto')
 
 // Token TTL: 5 minutes
 const LAUNCH_TOKEN_TTL_MS = 5 * 60 * 1000
+// Replay tolerance: allows reloads or duplicate requests in the first 60 seconds without stranding the student
+const REPLAY_GRACE_WINDOW_MS = 60 * 1000
 
 /**
- * In-Memory Token Store with automatic expiration.
- * In a multi-instance setup with Redis, this also coordinates with Redis key-value storage.
+ * Stateful Launch Token Store with automatic expiration and replay tolerance.
  */
 class SebTokenStore {
   constructor() {
     // Map of tokenHash -> TokenRecord
     this.tokens = new Map()
-    // Map of pinHash -> tokenHash
-    this.pins = new Map()
     // Map of `${userId}:${examId || 'check'}` -> tokenHash (for invalidating older tokens)
     this.userActiveTokens = new Map()
-    // Map of pinHash -> failed attempt count
-    this.pinAttempts = new Map()
 
     // Periodic cleanup of expired tokens every 60 seconds
     this.cleanupInterval = setInterval(() => {
@@ -35,10 +32,6 @@ class SebTokenStore {
     for (const [hash, record] of this.tokens.entries()) {
       if (record.expiresAt < now) {
         this.tokens.delete(hash)
-        if (record.pinHash) {
-          this.pins.delete(record.pinHash)
-          this.pinAttempts.delete(record.pinHash)
-        }
         const userKey = `${record.userId}:${record.examId || 'check'}`
         if (this.userActiveTokens.get(userKey) === hash) {
           this.userActiveTokens.delete(userKey)
@@ -52,7 +45,7 @@ class SebTokenStore {
   }
 
   /**
-   * Generates a new 32-byte launch token and a 6-digit numeric PIN.
+   * Generates a new 32-byte launch token and download token.
    * Invalidates any previously active unconsumed token for this user/exam.
    */
   createLaunchToken({ userId, userRole, examId = null, purpose = 'exam' }) {
@@ -70,9 +63,6 @@ class SebTokenStore {
         oldRecord.consumedAt = Date.now()
         oldRecord.invalidated = true
       }
-      if (oldRecord.pinHash) {
-        this.pins.delete(oldRecord.pinHash)
-      }
     }
 
     // 32-byte cryptographically secure random token (64 hex chars)
@@ -83,10 +73,6 @@ class SebTokenStore {
     const rawDownloadToken = crypto.randomBytes(32).toString('hex')
     const downloadTokenHash = this.hash(rawDownloadToken)
 
-    // 6-digit cryptographically random numeric PIN
-    const rawPin = crypto.randomInt(100000, 1000000).toString()
-    const pinHash = this.hash(rawPin)
-
     const now = Date.now()
     const expiresAt = now + LAUNCH_TOKEN_TTL_MS
     const correlationId = tokenHash.slice(0, 12)
@@ -95,7 +81,6 @@ class SebTokenStore {
       correlationId,
       tokenHash,
       downloadTokenHash,
-      pinHash,
       userId: String(userId),
       userRole: String(userRole || 'STUDENT').toUpperCase(),
       examId: examId ? String(examId) : null,
@@ -109,14 +94,12 @@ class SebTokenStore {
     // Store by both token hash and download token hash
     this.tokens.set(tokenHash, record)
     this.tokens.set(downloadTokenHash, record)
-    this.pins.set(pinHash, tokenHash)
     this.userActiveTokens.set(userKey, tokenHash)
 
     return {
       correlationId,
       launchToken: rawLaunchToken,
       downloadToken: rawDownloadToken,
-      pin: rawPin,
       expiresAt,
       purpose: record.purpose,
       examId: record.examId
@@ -136,7 +119,9 @@ class SebTokenStore {
   }
 
   /**
-   * Validates a launch token without consuming it.
+   * Validates a launch token.
+   * Tolerates duplicate requests or browser reloads within REPLAY_GRACE_WINDOW_MS
+   * of the initial consumption so candidates are not stranded.
    */
   validateLaunchToken(rawToken) {
     if (!rawToken || typeof rawToken !== 'string') {
@@ -154,86 +139,36 @@ class SebTokenStore {
       return { status: 'EXPIRED', record }
     }
 
-    if (record.consumedAt || record.invalidated) {
+    if (record.invalidated) {
       return { status: 'ALREADY_USED', record }
     }
 
-    return { status: 'SUCCESS', record }
-  }
-
-  /**
-   * Validates a 6-digit numeric PIN without consuming it.
-   */
-  validatePin(rawPin) {
-    if (!rawPin || typeof rawPin !== 'string') {
-      return { status: 'NOT_FOUND' }
-    }
-
-    const pinHash = this.hash(rawPin)
-    const attempts = this.pinAttempts.get(pinHash) || 0
-    if (attempts >= 5) {
-      return { status: 'TOO_MANY_ATTEMPTS' }
-    }
-
-    const tokenHash = this.pins.get(pinHash)
-
-    if (!tokenHash) {
-      this.pinAttempts.set(pinHash, attempts + 1)
-      return { status: 'NOT_FOUND' }
-    }
-
-    const record = this.tokens.get(tokenHash)
-    if (!record) {
-      this.pins.delete(pinHash)
-      return { status: 'NOT_FOUND' }
-    }
-
-    if (Date.now() > record.expiresAt) {
-      this.pins.delete(pinHash)
-      return { status: 'EXPIRED', record }
-    }
-
-    if (record.consumedAt || record.invalidated) {
+    if (record.consumedAt) {
+      const elapsed = Date.now() - record.consumedAt
+      if (elapsed <= REPLAY_GRACE_WINDOW_MS) {
+        return { status: 'SUCCESS', record, isReplay: true }
+      }
       return { status: 'ALREADY_USED', record }
     }
 
-    return { status: 'SUCCESS', record }
+    return { status: 'SUCCESS', record, isReplay: false }
   }
 
   /**
-   * Marks a launch token and its linked PIN as consumed upon successful authentication.
+   * Marks a launch token as consumed upon successful authentication.
    */
   markConsumed(record) {
-    if (record) {
+    if (record && !record.consumedAt) {
       record.consumedAt = Date.now()
-      if (record.pin) {
-        this.pinAttempts.delete(this.hash(record.pin))
-      }
     }
   }
 
   /**
-   * Atomically consumes a launch token. Single-use enforcement.
-   * Returns:
-   *   { status: 'SUCCESS', record }
-   *   { status: 'EXPIRED' }
-   *   { status: 'ALREADY_USED' }
-   *   { status: 'NOT_FOUND' }
+   * Atomically consumes a launch token.
    */
   consumeLaunchToken(rawToken) {
     const res = this.validateLaunchToken(rawToken)
-    if (res.status === 'SUCCESS') {
-      this.markConsumed(res.record)
-    }
-    return res
-  }
-
-  /**
-   * Atomically consumes a 6-digit numeric PIN. Single-use enforcement.
-   */
-  consumePin(rawPin) {
-    const res = this.validatePin(rawPin)
-    if (res.status === 'SUCCESS') {
+    if (res.status === 'SUCCESS' && !res.isReplay) {
       this.markConsumed(res.record)
     }
     return res
@@ -265,9 +200,7 @@ class SebTokenStore {
    */
   clear() {
     this.tokens.clear()
-    this.pins.clear()
     this.userActiveTokens.clear()
-    this.pinAttempts.clear()
   }
 }
 
@@ -275,5 +208,6 @@ const sebTokenService = new SebTokenStore()
 
 module.exports = {
   sebTokenService,
-  LAUNCH_TOKEN_TTL_MS
+  LAUNCH_TOKEN_TTL_MS,
+  REPLAY_GRACE_WINDOW_MS
 }

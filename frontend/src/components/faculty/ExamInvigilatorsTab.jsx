@@ -120,7 +120,7 @@ Portal: https://proctornet.duckdns.org/login?role=invigilator` // terms-ok: cred
               <FormField label="Exam Hall / Room" required>
                 <Input required placeholder="e.g. Lab 302 or Hall B" value={form.room} onChange={(e) => setForm({ ...form, room: e.target.value })} className="h-9 text-xs" />
               </FormField>
-              <FormField label="Access Password" hint="Leave empty for auto-generated secure PIN">
+              <FormField label="Access Password" hint="Leave empty for auto-generated secure access code">
                 <PasswordInput placeholder="Leave blank to auto-generate" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
               </FormField>
               <Button type="submit" variant="primary" disabled={submitting} className="w-full mt-2">

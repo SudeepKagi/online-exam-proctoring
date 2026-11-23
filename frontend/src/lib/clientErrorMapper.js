@@ -38,9 +38,9 @@ const ERROR_CODE_MAP = {
     action: 'diagnostics',
     actionLabel: 'Run Diagnostics'
   },
-  SEB_PIN_INVALID: {
-    title: 'Access Code Invalid',
-    message: 'The 6-digit access code entered does not match an active session for this exam.',
+  TOKEN_ALREADY_USED: {
+    title: 'Launch Link Already Used',
+    message: 'This secure browser launch link has already been used. Please return to your regular browser to launch again.',
     action: 'retry',
     actionLabel: 'Try Again'
   },

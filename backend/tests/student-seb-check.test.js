@@ -141,7 +141,7 @@ describe('Phase 4: Student Pre-Exam Check & Secure Browser Flow', () => {
   })
 
   describe('2. Launch Token Generation with purpose=check', () => {
-    it('generates a launch token and PIN even without active exam', async () => {
+    it('generates a launch token and download token even without active exam', async () => {
       const res = await httpRequest({
         hostname: '127.0.0.1',
         port: server.address().port,
@@ -154,8 +154,7 @@ describe('Phase 4: Student Pre-Exam Check & Secure Browser Flow', () => {
       assert.equal(res.data.success, true)
       assert.ok(res.data.launchUrl.startsWith('seb://') || res.data.launchUrl.startsWith('sebs://'))
       assert.ok(res.data.launchToken)
-      assert.ok(res.data.pin)
-      assert.equal(res.data.pin.length, 6)
+      assert.ok(res.data.downloadToken)
       assert.equal(res.data.purpose, 'check')
     })
   })
@@ -254,7 +253,7 @@ describe('Phase 4: Student Pre-Exam Check & Secure Browser Flow', () => {
       assert.equal(checkStatusRes.data.sebVersion, '3.8.0.742')
     })
 
-    it('exchanges 6-digit PIN and updates student verification', async () => {
+    it('allows duplicate exchange within grace window and updates student verification', async () => {
       // Create launch token
       const launchRes = await httpRequest({
         hostname: '127.0.0.1',
@@ -264,22 +263,36 @@ describe('Phase 4: Student Pre-Exam Check & Secure Browser Flow', () => {
         headers: { Authorization: `Bearer ${studentToken}` }
       }, { purpose: 'check' })
 
-      const { pin } = launchRes.data
+      const token = launchRes.data.launchToken
 
-      // Exchange PIN
-      const pinRes = await httpRequest({
+      // Exchange token
+      const exRes = await httpRequest({
         hostname: '127.0.0.1',
         port: server.address().port,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
+        path: `/api/v1/seb/exchange?launch=${token}`,
+        method: 'GET',
         headers: {
-          'User-Agent': 'Mozilla/5.0 SEB/3.8.0 (Windows NT 10.0)'
+          'User-Agent': 'Mozilla/5.0 SEB/3.8.0.742 (Windows NT 10.0; Win64; x64)',
+          Accept: 'application/json'
         }
-      }, { pin })
+      })
 
-      assert.equal(pinRes.statusCode, 200)
-      assert.equal(pinRes.data.success, true)
-      assert.equal(pinRes.data.redirectUrl, '/student/secure-browser?verified=1')
+      assert.equal(exRes.statusCode, 200)
+      assert.equal(exRes.data.success, true)
+      assert.equal(exRes.data.redirectUrl, '/student/secure-browser?verified=1')
+
+      // Immediate duplicate exchange within 60s grace window succeeds
+      const reloadRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: server.address().port,
+        path: `/api/v1/seb/exchange?launch=${token}`,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 SEB/3.8.0.742 (Windows NT 10.0; Win64; x64)',
+          Accept: 'application/json'
+        }
+      })
+      assert.equal(reloadRes.statusCode, 200)
 
       // Verify student check status updated
       const checkStatusRes = await httpRequest({
@@ -293,6 +306,7 @@ describe('Phase 4: Student Pre-Exam Check & Secure Browser Flow', () => {
       assert.equal(checkStatusRes.statusCode, 200)
       assert.equal(checkStatusRes.data.checked, true)
       assert.ok(checkStatusRes.data.lastCheckedAt)
+      assert.equal(checkStatusRes.data.sebVersion, '3.8.0.742')
     })
   })
 })

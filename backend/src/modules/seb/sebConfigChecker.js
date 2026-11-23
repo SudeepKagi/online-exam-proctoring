@@ -265,7 +265,7 @@ function inspectSebBuffer(buffer, options = {}) {
       key: 'startURLAppendQueryParameter',
       label: 'Query Parameter Forwarding',
       status: 'warning',
-      message: 'The setting "startURLAppendQueryParameter" is disabled. Safe Exam Browser might not forward the launch token, requiring student PIN fallback.'
+      message: 'The setting "startURLAppendQueryParameter" is disabled. Safe Exam Browser will not forward the launch token, requiring students to sign in manually.'
     })
   }
 

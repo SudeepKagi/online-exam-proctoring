@@ -190,7 +190,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
     assert.ok(['SEB_REQUIRED', 'SEB_HEADER_MISMATCH'].includes(res.json?.code))
   })
 
-  it('2. Decoupled exchange: Launch token / PIN exchange succeeds without header, but content endpoint is strictly rejected', async () => {
+  it('2. Decoupled exchange: Launch token exchange succeeds without header, but content endpoint is strictly rejected', async () => {
     const launch = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: studentUser.role,
@@ -279,7 +279,7 @@ describe('Phase 1 Security Hardening: SEB Strict Cryptographic Verification', ()
   })
 
   it('5. SEB-simulated end-to-end journey passes under strict verification', async () => {
-    // Step A: Generate launch token & PIN
+    // Step A: Generate launch token
     const launch = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: studentUser.role,

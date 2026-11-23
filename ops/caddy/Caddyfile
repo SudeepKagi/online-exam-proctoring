@@ -41,7 +41,6 @@ http://43.204.45.86, http://43.204.45.86.sslip.io {
                 uri query {
                     replace launch "[REDACTED]"
                     replace token "[REDACTED]"
-                    replace pin "[REDACTED]"
                 }
             }
         }

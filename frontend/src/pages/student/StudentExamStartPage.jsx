@@ -30,8 +30,6 @@ import {
   RefreshCw,
   HelpCircle,
   AlertCircle,
-  Copy,
-  Check,
   RotateCcw,
   Download
 } from 'lucide-react'
@@ -63,19 +61,16 @@ export default function StudentExamStartPage() {
   const [clockState, setClockState] = useState({ status: 'checking', warning: false, message: 'Checking system clock...' })
   const [computerState, setComputerState] = useState({ status: 'checking', compatible: true, message: 'Checking computer compatibility...' })
 
-  // SEB Launch & Fallback PIN State
+  // SEB Launch & Live Token State
   const [launchingSeb, setLaunchingSeb] = useState(false)
   const [sebLaunchData, setSebLaunchData] = useState(null)
-  const [copiedPin, setCopiedPin] = useState(false)
+  const [sebLiveState, setSebLiveState] = useState('IDLE') // 'IDLE' | 'OPENING' | 'WAITING' | 'OPEN' | 'EXPIRED'
   const [launchError, setLaunchError] = useState(null)
   const [sebCountdown, setSebCountdown] = useState(300)
   const [showSebHelp, setShowSebHelp] = useState(false)
-  const [hasLaunchedSeb, setHasLaunchedSeb] = useState(false)
-  const [errorPin, setErrorPin] = useState('')
-  const [submittingErrorPin, setSubmittingErrorPin] = useState(false)
-  const [errorPinMessage, setErrorPinMessage] = useState('')
   const sebTimerRef = useRef(null)
   const sebHelpTimerRef = useRef(null)
+  const sebPollRef = useRef(null)
 
   const {
     status: cameraStatus,
@@ -339,8 +334,16 @@ export default function StudentExamStartPage() {
     requestCamera().catch(() => { })
   }
 
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (sebTimerRef.current) clearInterval(sebTimerRef.current)
+      if (sebHelpTimerRef.current) clearTimeout(sebHelpTimerRef.current)
+      if (sebPollRef.current) clearInterval(sebPollRef.current)
+    }
+  }, [])
+
   const triggerProtocolLaunch = (url) => {
-    setHasLaunchedSeb(true)
     if (url) {
       window.location.href = url
     }
@@ -351,21 +354,25 @@ export default function StudentExamStartPage() {
     setLaunchingSeb(true)
     setLaunchError(null)
     setShowSebHelp(false)
-    setHasLaunchedSeb(false)
+    setSebLiveState('OPENING')
     try {
       const res = await apiClient.post('/seb/launch-link', { examId: id })
       const launchUrl = res.data?.url
-      const pin = res.data?.pin
+      const token = res.data?.exchangeToken || res.data?.launchToken || res.data?.token
       if (!launchUrl) throw new Error('No launch link returned by server')
 
-      setSebLaunchData({ url: launchUrl, pin })
+      setSebLaunchData({ url: launchUrl, token })
       setSebCountdown(300)
+      setSebLiveState('WAITING')
+
+      triggerProtocolLaunch(launchUrl)
 
       if (sebTimerRef.current) clearInterval(sebTimerRef.current)
       sebTimerRef.current = setInterval(() => {
         setSebCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(sebTimerRef.current)
+            setSebLiveState('EXPIRED')
             return 0
           }
           return prev - 1
@@ -375,19 +382,30 @@ export default function StudentExamStartPage() {
       if (sebHelpTimerRef.current) clearTimeout(sebHelpTimerRef.current)
       sebHelpTimerRef.current = setTimeout(() => {
         setShowSebHelp(true)
-      }, 6000)
+      }, 5000)
+
+      if (sebPollRef.current) clearInterval(sebPollRef.current)
+      if (token) {
+        sebPollRef.current = setInterval(async () => {
+          try {
+            const statusRes = await apiClient.get(`/seb/token-status/${token}`)
+            if (statusRes.data?.consumed || statusRes.data?.status === 'CONSUMED') {
+              setSebLiveState('OPEN')
+              if (sebPollRef.current) clearInterval(sebPollRef.current)
+              if (sebTimerRef.current) clearInterval(sebTimerRef.current)
+            } else if (statusRes.data?.status === 'EXPIRED') {
+              setSebLiveState('EXPIRED')
+              if (sebPollRef.current) clearInterval(sebPollRef.current)
+            }
+          } catch (_) {}
+        }, 2000)
+      }
     } catch (err) {
       setLaunchError(mapStudentError(err)?.message || 'Failed to generate secure browser launch link.')
+      setSebLiveState('IDLE')
     } finally {
       setLaunchingSeb(false)
     }
-  }
-
-  const handleCopyPin = () => {
-    if (!sebLaunchData?.pin) return
-    navigator.clipboard?.writeText(sebLaunchData.pin)
-    setCopiedPin(true)
-    setTimeout(() => setCopiedPin(false), 2000)
   }
 
   // Start Exam directly (for standard browsers or when inside verified SEB)
@@ -423,37 +441,6 @@ export default function StudentExamStartPage() {
 
   const isCameraBlocked = cameraStatus === 'denied' || cameraStatus === 'no_device' || cameraStatus === 'in_use' || cameraStatus === 'lost'
 
-  const handleErrorPinSubmit = async (e) => {
-    e.preventDefault()
-    const cleanPin = errorPin.trim()
-    if (!/^\d{6}$/.test(cleanPin)) {
-      setErrorPinMessage('Please enter a valid 6-digit numeric launch code.')
-      return
-    }
-    setSubmittingErrorPin(true)
-    setErrorPinMessage('')
-    try {
-      const res = await apiClient.post('/seb/exchange-pin', { pin: cleanPin })
-      if (res.data?.success && res.data?.redirectUrl) {
-        if (res.data.user) {
-          try {
-            localStorage.setItem('proctornet_logged_in', 'true')
-            localStorage.setItem('user', JSON.stringify(res.data.user))
-          } catch (_) {}
-        }
-        window.location.href = res.data.redirectUrl
-      } else {
-        setErrorPinMessage('Exchange failed. Please check your code.')
-      }
-    } catch (err) {
-      const data = err.response?.data || {}
-      const ref = data.requestId ? ` (Ref: #${data.requestId})` : ''
-      setErrorPinMessage((data.message || 'Invalid or expired launch code.') + ref)
-    } finally {
-      setSubmittingErrorPin(false)
-    }
-  }
-
   if (loading) {
     return (
       <ExamArenaShell className="items-center justify-center p-4">
@@ -484,50 +471,8 @@ export default function StudentExamStartPage() {
             )}
           </div>
 
-          {/* 6-Digit Launch Code Fallback Form */}
-          <div className="bg-[#fbfbff] p-4 rounded-[16px] text-left space-y-3">
-            <div>
-              <h4 className="text-xs font-[480] text-[#28253b]">Have a launch code from your browser?</h4>
-              <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
-                Enter the 6-digit code shown on your primary browser to connect this session.
-              </p>
-            </div>
-
-            {errorPinMessage && (
-              <div className="p-2.5 rounded-[10px] bg-white text-[11px] text-[#c04b4b] font-[420] border-l-2 border-[#c04b4b]">
-                {errorPinMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleErrorPinSubmit} className="space-y-3">
-              <div>
-                <input
-                  id="seb-fallback-pin"
-                  data-testid="seb-fallback-pin-input"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={errorPin}
-                  onChange={(e) => setErrorPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="123456"
-                  className="w-full h-11 text-center text-lg tracking-[0.25em] font-[480] bg-white rounded-[12px] border-0 outline-none text-[#28253b] focus:ring-2 focus:ring-[#5266eb]/30 transition-all"
-                  disabled={submittingErrorPin}
-                />
-              </div>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={submittingErrorPin || errorPin.length !== 6}
-                className="w-full"
-                data-testid="seb-fallback-pin-submit"
-              >
-                {submittingErrorPin ? 'Verifying...' : 'Continue with code'}
-              </Button>
-            </form>
-          </div>
-
           {/* Fallback actions: never a dead end */}
-          <div className="pt-1 flex flex-col gap-2">
+          <div className="pt-2 flex flex-col gap-2">
             <Button
               type="button"
               variant="outline"
@@ -539,11 +484,11 @@ export default function StudentExamStartPage() {
             </Button>
             <div className="flex items-center justify-between px-1 text-xs pt-1">
               <Link
-                to="/seb/enter"
+                to="/seb/diagnostics"
                 className="inline-flex items-center gap-1 text-[#5266eb] hover:underline font-[420]"
                 data-testid="error-diagnostics-link"
               >
-                <HelpCircle className="w-3.5 h-3.5" /> Diagnostics & code entry
+                <HelpCircle className="w-3.5 h-3.5" /> Diagnostics & system check
               </Link>
               <Button
                 variant="ghost"
@@ -921,97 +866,102 @@ export default function StudentExamStartPage() {
             </div>
           ) : null}
 
-          {/* SEB Launch Code Panel (Shown after clicking launch) */}
+          {/* SEB Live Launch Status Panel */}
           {sebLaunchData && (
             <div className="p-5 bg-[#ffffff] rounded-[16px] text-xs text-[#28253b] space-y-4 shadow-[0_4px_20px_rgba(40,37,59,0.04)] font-sans" data-testid="seb-launch-active-panel">
               <div className="flex items-start justify-between">
                 <div>
                   <h4 className="font-[480] text-[#28253b] text-sm flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Launching — Launch Code
+                    <ShieldCheck className="w-4 h-4 text-[#5266eb]" /> Safe Exam Browser Handoff
                   </h4>
                   <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
-                    Note down your 6-digit code. Safe Exam Browser connects directly to your exam session.
+                    Connecting your verified exam session into Safe Exam Browser.
                   </p>
                 </div>
-                <div className="text-right">
-                  <span className="font-mono text-xs font-[480] text-[#5266eb] bg-[#edecfb] px-2.5 py-1 rounded-full">
-                    {formatCountdown(sebCountdown * 1000)} remaining
-                  </span>
-                </div>
-              </div>
-
-              {/* Step instructions */}
-              <div className="p-3 bg-[#edecfb] rounded-[12px] text-xs text-[#28253b] space-y-1 font-[420] border-l-2 border-[#5266eb]">
-                <p className="font-[480]">Ready to Launch:</p>
-                <p className="font-[360] text-[#554e7b]">1. Note down your 6-digit code or copy it below.</p>
-                <p className="font-[360] text-[#554e7b]">2. When you are ready, click <strong>Launch Safe Exam Browser Now</strong>.</p>
-                <p className="font-[360] text-[#554e7b]">3. If Safe Exam Browser asks for a code, type these 6 digits.</p>
-              </div>
-
-              {/* 6-digit Launch Code Large Display */}
-              {sebLaunchData.pin && (
-                <div className="p-4 bg-[#fbfbff] rounded-[12px] flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
-                  <div>
-                    <span className="text-[10px] uppercase font-[500] tracking-wider text-[#554e7b] block mb-1">
-                      Your 6-Digit Launch Code
-                    </span>
-                    <span className="text-3xl sm:text-4xl font-mono font-[480] text-[#28253b] tracking-[0.25em]">
-                      {sebLaunchData.pin}
+                {sebLiveState === 'WAITING' && (
+                  <div className="text-right">
+                    <span className="font-mono text-xs font-[480] text-[#5266eb] bg-[#edecfb] px-2.5 py-1 rounded-full">
+                      {formatCountdown(sebCountdown * 1000)} remaining
                     </span>
                   </div>
+                )}
+              </div>
+
+              {/* State 1: OPENING */}
+              {sebLiveState === 'OPENING' && (
+                <div className="p-4 bg-[#fbfbff] rounded-[12px] flex items-center gap-3 text-[#28253b]">
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#5266eb] shrink-0" />
+                  <div>
+                    <p className="font-[480] text-xs">Opening the secure browser…</p>
+                    <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">Preparing one-click configuration handoff.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* State 2: WAITING FOR SECURE BROWSER */}
+              {sebLiveState === 'WAITING' && (
+                <div className="p-4 bg-[#fbfbff] rounded-[12px] space-y-3">
+                  <div className="flex items-center gap-3 text-[#28253b]">
+                    <div className="w-4 h-4 rounded-full border-2 border-[#5266eb] border-t-transparent animate-spin shrink-0" />
+                    <div>
+                      <p className="font-[480] text-xs">Waiting for the secure browser…</p>
+                      <p className="text-[11px] text-[#554e7b] font-[360] mt-0.5">
+                        If prompted by your browser, click <strong>Open Safe Exam Browser</strong>.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-1">
+                    <Button
+                      type="button"
+                      variant="primary"
+                      onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <span>Relaunch Safe Exam Browser</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* State 3: EXAM OPEN IN SECURE BROWSER */}
+              {sebLiveState === 'OPEN' && (
+                <div className="p-4 bg-[#edecfb] rounded-[12px] space-y-2 border-l-2 border-[#5266eb]" data-testid="seb-open-confirmation">
+                  <div className="flex items-center gap-2 text-[#5266eb] font-[480]">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span>Your exam is open in the secure browser, you can close this tab.</span>
+                  </div>
+                  <p className="text-[11px] text-[#554e7b] font-[360] pl-6">
+                    Your authenticated session is active inside Safe Exam Browser. Good luck with your examination!
+                  </p>
+                </div>
+              )}
+
+              {/* State 4: EXPIRED */}
+              {sebLiveState === 'EXPIRED' && (
+                <div className="p-4 bg-[#fbfbff] rounded-[12px] space-y-2">
+                  <p className="text-xs text-[#c04b4b] font-[480]">Launch link has expired.</p>
+                  <p className="text-[11px] text-[#554e7b] font-[360]">Please generate a new launch link to proceed.</p>
                   <Button
                     type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleCopyPin}
-                    className="shrink-0"
+                    variant="primary"
+                    onClick={handleLaunchSeb}
+                    disabled={launchingSeb}
+                    className="w-full"
                   >
-                    {copiedPin ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                    {copiedPin ? 'Copied' : 'Copy PIN / Code'}
+                    Generate New Launch Link
                   </Button>
                 </div>
               )}
 
-              {/* Launch Protocol Action */}
-              <div className="pt-1">
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
-                  className="w-full flex items-center justify-center gap-2"
-                >
-                  {hasLaunchedSeb ? 'Relaunch Safe Exam Browser' : 'Launch Safe Exam Browser Now'}
-                  <ExternalLink className="w-4 h-4" />
-                </Button>
-                {hasLaunchedSeb && (
-                  <p className="text-[11px] text-[#554e7b] text-center font-[360] mt-1.5">
-                    Safe Exam Browser launched. If prompted by your browser, click &quot;Open Safe Exam Browser&quot;.
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-[#554e7b] px-1">
-                <span>Single-use code • Valid for 5 minutes</span>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="sm"
-                  onClick={handleLaunchSeb}
-                  disabled={launchingSeb}
-                  className="text-[11px] text-[#5266eb] hover:underline font-[480] h-auto p-0"
-                >
-                  <RefreshCw className={`w-3 h-3 mr-1 ${launchingSeb ? 'animate-spin' : ''}`} /> Generate New Code
-                </Button>
-              </div>
-
-              {/* 4-Second Timeout Help Banner */}
-              {showSebHelp && (
-                <div className="p-3 bg-[#edecfb]/60 rounded-[10px] space-y-2 border-l-2 border-[#5266eb]">
+              {/* Help & Relaunch / Download Banner */}
+              {showSebHelp && sebLiveState === 'WAITING' && (
+                <div className="p-3.5 bg-[#edecfb]/60 rounded-[10px] space-y-2 border-l-2 border-[#5266eb]">
                   <p className="text-[11px] text-[#28253b] font-[420] flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-[#5266eb] shrink-0" /> Safe Exam Browser not opening?
                   </p>
                   <p className="text-[11px] text-[#554e7b] font-[360] leading-relaxed">
-                    Make sure Safe Exam Browser 3.x is installed on your computer. If it didn&apos;t launch automatically, click Relaunch below or type your 6-digit code into Safe Exam Browser.
+                    Make sure Safe Exam Browser 3.x is installed on your computer. If it didn&apos;t launch automatically, click Relaunch or download the installer below.
                   </p>
                   <div className="flex items-center gap-3 pt-1">
                     <a
@@ -1026,11 +976,10 @@ export default function StudentExamStartPage() {
                     <Button
                       type="button"
                       variant="link"
-                      onClick={() => sebLaunchData?.url ? triggerProtocolLaunch(sebLaunchData.url) : handleLaunchSeb()}
-                      disabled={launchingSeb}
+                      onClick={() => triggerProtocolLaunch(sebLaunchData.url)}
                       className="text-[11px] text-[#5266eb] hover:underline font-[480] cursor-pointer bg-transparent border-0 inline-flex items-center gap-1 h-auto p-0"
                     >
-                      <RefreshCw className={`w-3 h-3 ${launchingSeb ? 'animate-spin' : ''}`} /> Relaunch SEB
+                      <RefreshCw className="w-3 h-3" /> Relaunch SEB
                     </Button>
                   </div>
                 </div>
@@ -1066,7 +1015,7 @@ export default function StudentExamStartPage() {
                 Starts in {formatCountdown(msUntilStart)}
               </Button>
             ) : (isSebRequired && !isSebActive) ? (
-              /* SEB Exam: If launch code panel is already shown, action button is inside panel; otherwise show primary button */
+              /* SEB Exam: Action button */
               !sebLaunchData ? (
                 <div className="space-y-1">
                   <Button

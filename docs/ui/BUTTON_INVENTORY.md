@@ -252,8 +252,8 @@ Elements with defects: **1**
 | /student/exams/:id/precheck | `pages\student\PreExamCheckPage.jsx:532` | `Button` | `primary` | `flex-1` |
 | /student/exams/:id/precheck | `pages\student\PreExamCheckPage.jsx:567` | `Button` | `secondary` | `w-full mt-2` |
 | /student/exams/:id/precheck | `pages\student\PreExamCheckPage.jsx:617` | `Button` | `primary` | `w-full flex items-center justify-center ...` |
-| /seb/pin | `pages\student\SebPinEntryPage.jsx:106` | `Button` | `primary` | `w-full` |
-| /seb/pin | `pages\student\SebPinEntryPage.jsx:116` | `Button` | `link` | — |
+| /seb/handoff | `pages\student\SebHandoffPage.jsx:175` | `Button` | `primary` | `w-full flex items-center justify-center gap-2` |
+| /seb/handoff | `pages\student\SebHandoffPage.jsx:195` | `Button` | `ghost` | `text-xs text-[#554e7b]` |
 | /seb/required | `pages\student\SebRequiredPage.jsx:90` | `Button` | `default` | `w-full h-10 gap-2 cursor-pointer` |
 | /seb/required | `pages\student\SebRequiredPage.jsx:100` | `Button` | `default` | `w-full h-10 gap-2 cursor-pointer` |
 | /seb/required | `pages\student\SebRequiredPage.jsx:110` | `Button` | `ghost` | `w-full h-9 gap-1.5 cursor-pointer` |

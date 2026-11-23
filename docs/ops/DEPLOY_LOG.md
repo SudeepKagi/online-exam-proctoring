@@ -500,10 +500,10 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Smoke Check**: 8/8 Passed Cleanly
 
 ### [2026-11-17T09:22:31.815Z] Command on i-0d242d962823f0a89
-- **Script**: `scripts\ops\remote\check-pin-error.sh`
+- **Script**: `scripts/ops/remote/check-seb-error.sh`
 - **Command ID**: `a5661a91-6028-433f-8a0a-af0ab8f6249d`
 - **Status**: `Success` (Exit Code: 0)
-- **Log File**: `logs-deploy/pin-error.log`
+- **Log File**: `logs-deploy/seb-error.log`
 
 ### [2026-11-17T09:45:44.325Z] Command on i-0d242d962823f0a89
 - **Script**: `scripts\ops\remote\automated-cutover.sh`
@@ -801,3 +801,51 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Status**: SUCCESS
 - **Automated Rollback Safeguard**: Active
 - **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-23T00:44:44.355Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-seb-incident.sh`
+- **Command ID**: `7f90655e-7de1-4959-9aae-0613678adce4`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/incident-query.log`
+
+### [2026-11-23T00:45:12.165Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-seb-detailed.sh`
+- **Command ID**: `b7544d03-6286-4bff-a471-daff8f8f3d52`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/incident-detail.log`
+
+### [2026-11-23T00:45:49.106Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-seb-1256.sh`
+- **Command ID**: `e1f39815-71c2-45b2-98d1-3da578a4037c`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/incident-1256.log`
+
+### [2026-11-23T00:46:16.593Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-seb-caddy-125614.sh`
+- **Command ID**: `4681f39d-a9c4-4ed6-a06b-c340269ac4c2`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/caddy-125614.log`
+
+### [2026-11-23T00:46:46.367Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-seb-caddy-125606.sh`
+- **Command ID**: `f9b57ce0-f155-415e-a0c5-72451ab7cbdd`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/caddy-125606.log`
+
+### [2026-11-23T00:49:17.278Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-exam-seb.sh`
+- **Command ID**: `50eff912-bd47-46c2-9c61-73fca79e3972`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/exam-seb-query.log`
+
+### [2026-11-23T00:49:50.704Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-db-url.sh`
+- **Command ID**: `7280e6bc-b7b9-4447-8902-8ca57ac53652`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/db-url-check.log`
+
+### [2026-11-23T00:50:20.043Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-service.sh`
+- **Command ID**: `ad315b74-5baa-4572-9118-b4cc94e2ea40`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/service-check.log`

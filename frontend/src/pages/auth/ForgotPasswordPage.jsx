@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
   const handleResetPassword = async (e) => {
     e.preventDefault()
     if (!otp.trim() || otp.trim().length !== 6) {
-      setError('Please enter the 6-digit verification code.')
+      setError('Please enter the verification code.')
       return
     }
     if (!newPassword || newPassword.length < 6) {
@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
             </div>
             <CardTitle className="text-xl font-[480] text-[#28253b]">Reset Password</CardTitle>
             <CardDescription className="text-xs text-[#554e7b] mt-1 font-[360]">
-              {step === 1 ? 'Enter your institutional credentials to receive a reset code' : 'Enter the 6-digit verification code and your new password'}
+              {step === 1 ? 'Enter your institutional credentials to receive a reset code' : 'Enter the verification code and your new password'}
             </CardDescription>
           </CardHeader>
 
@@ -181,7 +181,7 @@ export default function ForgotPasswordPage() {
                   </div>
                 )}
 
-                <FormField label="6-Digit Verification Code" required hint="Valid for 15 minutes">
+                <FormField label="Verification Code" required hint="Valid for 15 minutes">
                   <Input
                     required
                     type="text"

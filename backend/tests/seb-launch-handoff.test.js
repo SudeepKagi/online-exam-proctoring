@@ -133,7 +133,7 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
   })
 
   describe('1. Cryptographic Launch Token Generation & Invalidation Invariants', () => {
-    it('generates 32-byte high-entropy token, download token, and 6-digit PIN', () => {
+    it('generates 32-byte high-entropy token and download token', () => {
       const res = sebTokenService.createLaunchToken({
         userId: testUser.id,
         userRole: 'STUDENT',
@@ -145,7 +145,6 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
       assert.strictEqual(res.launchToken.length, 64) // 32 bytes hex = 64 chars
       assert.strictEqual(typeof res.downloadToken, 'string')
       assert.strictEqual(res.downloadToken.length, 64)
-      assert.match(res.pin, /^\d{6}$/)
       assert.strictEqual(res.purpose, 'exam')
       assert.strictEqual(res.examId, testExam.id)
       assert.ok(res.expiresAt > Date.now() + LAUNCH_TOKEN_TTL_MS - 5000)
@@ -163,11 +162,15 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
       assert.strictEqual(firstConsume.status, 'SUCCESS')
       assert.strictEqual(firstConsume.record.userId, testUser.id)
 
+      // Fast forward past the 60s grace window to verify single-use enforcement
+      const record = sebTokenService.tokens.get(sebTokenService.hash(res.launchToken))
+      if (record) record.consumedAt = Date.now() - 70000
+
       const secondConsume = sebTokenService.consumeLaunchToken(res.launchToken)
       assert.strictEqual(secondConsume.status, 'ALREADY_USED')
     })
 
-    it('enforces single-use for PIN: consuming PIN invalidates token and vice-versa', () => {
+    it('supports 60-second replay grace window for reloads / duplicate requests', () => {
       const res = sebTokenService.createLaunchToken({
         userId: testUser.id,
         userRole: 'STUDENT',
@@ -175,14 +178,19 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
         purpose: 'exam'
       })
 
-      const pinConsume = sebTokenService.consumePin(res.pin)
-      assert.strictEqual(pinConsume.status, 'SUCCESS')
+      const firstConsume = sebTokenService.consumeLaunchToken(res.launchToken)
+      assert.strictEqual(firstConsume.status, 'SUCCESS')
 
-      const tokenConsume = sebTokenService.consumeLaunchToken(res.launchToken)
-      assert.strictEqual(tokenConsume.status, 'ALREADY_USED')
+      // Second consume within 60s
+      const secondConsume = sebTokenService.consumeLaunchToken(res.launchToken)
+      assert.strictEqual(secondConsume.status, 'SUCCESS')
 
-      const secondPin = sebTokenService.consumePin(res.pin)
-      assert.strictEqual(secondPin.status, 'ALREADY_USED')
+      // Beyond 60s
+      const record = sebTokenService.tokens.get(sebTokenService.hash(res.launchToken))
+      if (record) record.consumedAt = Date.now() - 70000
+
+      const thirdConsume = sebTokenService.consumeLaunchToken(res.launchToken)
+      assert.strictEqual(thirdConsume.status, 'ALREADY_USED')
     })
 
     it('new token generation invalidates older unconsumed tokens for the same user/exam', () => {
@@ -282,7 +290,10 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
       })
       assert.strictEqual(firstRes.statusCode, 302)
 
-      // Second exchange: 409 rejection
+      // Second exchange after grace window: 409 rejection
+      const record = sebTokenService.tokens.get(sebTokenService.hash(token.launchToken))
+      if (record) record.consumedAt = Date.now() - 70000
+
       const secondRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
@@ -291,10 +302,10 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
         headers: { Accept: 'application/json' }
       })
       assert.strictEqual(secondRes.statusCode, 409)
-      assert.ok(['TOKEN_ALREADY_USED', 'CODE_USED'].includes(secondRes.json?.code))
+      assert.strictEqual(secondRes.json?.code, 'TOKEN_ALREADY_USED')
     })
 
-    it('fallback PIN exchange succeeds with 200 and auth cookies', async () => {
+    it('live token status endpoint returns accurate state for polling', async () => {
       const token = sebTokenService.createLaunchToken({
         userId: testUser.id,
         userRole: 'STUDENT',
@@ -302,35 +313,38 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
         purpose: 'exam'
       })
 
-      const pinRes = await httpRequest({
+      const pendingRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: token.pin }
+        path: `/api/v1/seb/token-status/${token.launchToken}`,
+        method: 'GET'
       })
+      assert.strictEqual(pendingRes.statusCode, 200)
+      assert.strictEqual(pendingRes.json?.status, 'PENDING')
+      assert.strictEqual(pendingRes.json?.consumed, false)
 
-      assert.strictEqual(pinRes.statusCode, 200)
-      assert.strictEqual(pinRes.json?.success, true)
-      assert.strictEqual(pinRes.json?.redirectUrl, `/student/exams/${testExam.id}/start`)
-      assert.ok(pinRes.headers['set-cookie'])
-      assert.ok(pinRes.json?.token)
-
-      // Re-using PIN fails with 409
-      const secondPin = await httpRequest({
+      // Exchange the token
+      await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: token.pin }
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET'
       })
-      assert.strictEqual(secondPin.statusCode, 409)
-      assert.ok(['PIN_ALREADY_USED', 'CODE_USED'].includes(secondPin.json?.code))
+
+      const consumedRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/seb/token-status/${token.launchToken}`,
+        method: 'GET'
+      })
+      assert.strictEqual(consumedRes.statusCode, 200)
+      assert.strictEqual(consumedRes.json?.status, 'CONSUMED')
+      assert.strictEqual(consumedRes.json?.consumed, true)
     })
   })
 
   describe('3. Security & Logging Redaction Invariants', () => {
-    it('redacts launch tokens and PINs from logger payloads and URLs', () => {
+    it('redacts launch tokens from logger payloads and URLs', () => {
       const rawUrl = 'https://proctornet.duckdns.org/api/v1/seb/exchange?launch=secretLaunchToken123456'
       const scrubbed = scrubSebString(rawUrl)
       assert.strictEqual(scrubbed.includes('secretLaunchToken123456'), false)
@@ -344,12 +358,12 @@ describe('Safe Exam Browser (SEB) Launch Handoff & Token Service Suite', () => {
       const payload = {
         user: 'student',
         launch: 'secret123',
-        pin: '654321',
+        token: 'secretToken456',
         code: '999888'
       }
       const sanitized = sanitizeLogPayload(payload)
       assert.strictEqual(sanitized.launch, '[REDACTED]')
-      assert.strictEqual(sanitized.pin, '[REDACTED]')
+      assert.strictEqual(sanitized.token, '[REDACTED]')
       assert.strictEqual(sanitized.code, '[REDACTED]')
     })
 

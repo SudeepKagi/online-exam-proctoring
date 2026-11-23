@@ -267,7 +267,7 @@ describe('Phase 1: SEB Decoupled Entry, Diagnostics & Config Versioning Suite', 
         code: 'SEB_HEADER_MISMATCH',
         receivedHeader: '4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a',
         activeKey: INSTITUTION_KEY,
-        targetUrl: 'https://proctornet.duckdns.org/api/v1/seb/exchange-pin',
+        targetUrl: 'https://proctornet.duckdns.org/api/v1/seb/exchange',
         userAgent: 'SEB/3.10.3 (Windows NT 10.0)'
       })
 

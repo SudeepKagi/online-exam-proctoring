@@ -10,7 +10,6 @@ import {
   ChevronUp,
   ExternalLink,
   Laptop,
-  KeyRound,
   RefreshCw,
   HelpCircle,
   ArrowLeft
@@ -80,12 +79,10 @@ export default function StudentSebCheckPage() {
       setLaunchData(data)
       setPollCountdown(120)
 
-      // Automatically trigger protocol handler after a brief buffer so the student can read the 6-digit PIN
+      // Trigger protocol handler to launch Safe Exam Browser
       const targetUrl = data.url || data.launchUrl
       if (targetUrl) {
-        setTimeout(() => {
-          window.location.href = targetUrl
-        }, 3500)
+        window.location.href = targetUrl
       }
 
       // Begin polling token status
@@ -260,30 +257,25 @@ export default function StudentSebCheckPage() {
               <RefreshCw className="w-4 h-4 text-[#5266eb] animate-spin shrink-0 mt-1" />
             </div>
 
-            {/* Direct Link + PIN Fallback */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="bg-[#ffffff] rounded-xl p-4 space-y-2">
-                <span className="text-[11px] font-normal text-[#554e7b] block">Option A: Direct Protocol</span>
+            {/* Direct Launch Actions */}
+            <div className="bg-[#ffffff] rounded-xl p-4 space-y-2">
+              <span className="text-[11px] font-normal text-[#554e7b] block">Launch Safe Exam Browser Directly</span>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <a
                   href={launchData.url || launchData.launchUrl}
                   className="inline-flex items-center gap-1.5 text-xs text-[#5266eb] hover:underline font-normal"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Click here to launch SEB directly</span>
+                  <span>Click here if Safe Exam Browser did not open automatically</span>
                 </a>
-              </div>
-
-              <div className="bg-[#ffffff] rounded-xl p-4 space-y-2">
-                <span className="text-[11px] font-normal text-[#554e7b] block">Option B: 6-Digit Launch PIN</span>
-                <div className="flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-[#5266eb]" />
-                  <span className="font-mono text-base font-medium tracking-wider text-[#28253b]">
-                    {launchData.pin || '------'}
-                  </span>
-                </div>
-                <span className="text-[10px] text-[#554e7b] block font-normal">
-                  If SEB asks for a launch code, enter these 6 digits.
-                </span>
+                <a
+                  href="https://safeexambrowser.org/download_en.html"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-[#554e7b] hover:underline inline-flex items-center gap-1 font-normal"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download SEB installer
+                </a>
               </div>
             </div>
           </section>
