@@ -223,9 +223,9 @@ class ExamService {
     const isConfigured = Boolean(sebState.configured || validPerExam)
 
     if (validPerExam && !sebState.configured) {
-      const rawEnvMode = process.env.SEB_MODE ? process.env.SEB_MODE.toLowerCase().trim() : null
-      const requestedMode = (sebState.requestedMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
-      if (rawEnvMode === 'off') {
+      const rawEnvMode = (config.sebMode || process.env.SEB_MODE || '').toLowerCase().trim() || null
+      const requestedMode = (sebState.requestedMode || config.sebMode || process.env.SEB_MODE || 'off').toLowerCase().trim()
+      if (rawEnvMode === 'off' || requestedMode === 'off') {
         effectiveMode = 'off'
       } else if (rawEnvMode === 'enforce' || requestedMode === 'enforce') {
         effectiveMode = 'enforce'

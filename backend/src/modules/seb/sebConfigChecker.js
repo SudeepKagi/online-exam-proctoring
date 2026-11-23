@@ -3,16 +3,169 @@
 const zlib = require('zlib')
 const crypto = require('crypto')
 
+const collator = new Intl.Collator('en', { sensitivity: 'case', caseFirst: 'upper' })
+
+/**
+ * Parses an Apple XML property list (.seb plain format) recursively into
+ * native JavaScript types matching SafeExamBrowser.Configuration.DataFormats.XmlParser.
+ */
+function parsePlistXml(xmlStr) {
+  if (!xmlStr || typeof xmlStr !== 'string') return {}
+  let pos = 0
+
+  function skipWhitespaceAndComments() {
+    while (pos < xmlStr.length) {
+      if (xmlStr.startsWith('<!--', pos)) {
+        const endComment = xmlStr.indexOf('-->', pos + 4)
+        pos = endComment === -1 ? xmlStr.length : endComment + 3
+      } else if (/\s/.test(xmlStr[pos])) {
+        pos++
+      } else if (xmlStr.startsWith('<?', pos) || xmlStr.startsWith('<!', pos)) {
+        const endTag = xmlStr.indexOf('>', pos)
+        pos = endTag === -1 ? xmlStr.length : endTag + 1
+      } else {
+        break
+      }
+    }
+  }
+
+  function readTag() {
+    skipWhitespaceAndComments()
+    if (pos >= xmlStr.length || xmlStr[pos] !== '<') return null
+    const end = xmlStr.indexOf('>', pos)
+    if (end === -1) return null
+    const tagContent = xmlStr.slice(pos + 1, end).trim()
+    pos = end + 1
+
+    const isClosing = tagContent.startsWith('/')
+    const isSelfClosing = tagContent.endsWith('/')
+    const cleanName = tagContent.replace(/^\//, '').replace(/\/$/, '').trim().split(/\s+/)[0]
+
+    return {
+      raw: tagContent,
+      name: cleanName.toLowerCase(),
+      isClosing,
+      isSelfClosing
+    }
+  }
+
+  function readTextUntil(closingTagName) {
+    const closeTag = `</${closingTagName}>`
+    const end = xmlStr.indexOf(closeTag, pos)
+    if (end === -1) {
+      const text = xmlStr.slice(pos)
+      pos = xmlStr.length
+      return text
+    }
+    const text = xmlStr.slice(pos, end)
+    pos = end + closeTag.length
+    return text
+  }
+
+  function parseValue(tag) {
+    switch (tag.name) {
+      case 'true':
+        return true
+      case 'false':
+        return false
+      case 'integer': {
+        const text = readTextUntil('integer')
+        return parseInt(text.trim(), 10)
+      }
+      case 'real': {
+        const text = readTextUntil('real')
+        return parseFloat(text.trim())
+      }
+      case 'string': {
+        if (tag.isSelfClosing) return ''
+        const text = readTextUntil('string')
+        return unescapeXml(text)
+      }
+      case 'data': {
+        if (tag.isSelfClosing) return Buffer.alloc(0)
+        const text = readTextUntil('data').replace(/\s+/g, '')
+        return Buffer.from(text, 'base64')
+      }
+      case 'date': {
+        const text = readTextUntil('date').trim()
+        return new Date(text)
+      }
+      case 'array':
+        return parseArray(tag)
+      case 'dict':
+        return parseDict(tag)
+      default:
+        return null
+    }
+  }
+
+  function parseArray(openingTag) {
+    if (openingTag.isSelfClosing) return []
+    const arr = []
+    while (pos < xmlStr.length) {
+      const tag = readTag()
+      if (!tag) break
+      if (tag.isClosing && tag.name === 'array') break
+      arr.push(parseValue(tag))
+    }
+    return arr
+  }
+
+  function parseDict(openingTag) {
+    if (openingTag.isSelfClosing) return {}
+    const dict = {}
+    while (pos < xmlStr.length) {
+      const tag = readTag()
+      if (!tag) break
+      if (tag.isClosing && tag.name === 'dict') break
+      if (tag.name === 'key') {
+        const key = readTextUntil('key').trim()
+        const valueTag = readTag()
+        if (valueTag) {
+          dict[key] = parseValue(valueTag)
+        }
+      }
+    }
+    return dict
+  }
+
+  function unescapeXml(str) {
+    return str
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+  }
+
+  while (pos < xmlStr.length) {
+    const tag = readTag()
+    if (!tag) break
+    if (tag.name === 'dict') {
+      return parseDict(tag)
+    }
+  }
+
+  return {}
+}
+
+/**
+ * Backward compatibility alias for parsePlistXml.
+ */
+function parsePlistDict(xmlStr) {
+  return parsePlistXml(xmlStr)
+}
+
 /**
  * Serializes an in-memory dictionary to compact sorted JSON per SEB specification (Json.cs).
  *
  * Rules:
- * 1. Keys sorted alphabetically using invariant comparison.
+ * 1. Keys sorted alphabetically using InvariantCulture comparison (caseFirst: 'upper').
  * 2. Excludes originatorVersion (case-insensitive).
  * 3. Excludes empty sub-dictionaries.
  * 4. Booleans formatted as lowercase 'true' or 'false'.
  * 5. Numbers serialized using invariant format.
- * 6. Strings and nulls wrapped in quotes.
+ * 6. Strings and nulls wrapped in quotes without JSON escaping raw slashes.
  */
 function serializeSebJson(value) {
   if (value === null || value === undefined) {
@@ -24,20 +177,28 @@ function serializeSebJson(value) {
   }
 
   if (typeof value === 'number') {
-    return String(value)
+    return Number.isInteger(value) ? String(value) : value.toString()
+  }
+
+  if (Buffer.isBuffer(value)) {
+    return `"${value.toString('base64')}"`
+  }
+
+  if (value instanceof Date) {
+    return `"${value.toISOString()}"`
   }
 
   if (typeof value === 'string') {
-    return JSON.stringify(value)
+    return `"${value}"`
   }
 
   if (Array.isArray(value)) {
-    const serializedItems = value.map(serializeSebJson)
-    return `[${serializedItems.join(',')}]`
+    const items = value.map(serializeSebJson)
+    return `[${items.join(',')}]`
   }
 
   if (typeof value === 'object') {
-    const keys = Object.keys(value).sort((a, b) => a.localeCompare(b))
+    const keys = Object.keys(value).sort(collator.compare)
     const parts = []
 
     for (const key of keys) {
@@ -45,42 +206,18 @@ function serializeSebJson(value) {
         continue
       }
       const val = value[key]
-      if (val !== null && typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0) {
-        continue // Skip empty dictionary per Json.cs
+      if (val !== null && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date) && !Buffer.isBuffer(val)) {
+        if (Object.keys(val).length === 0) {
+          continue
+        }
       }
-      parts.push(`${JSON.stringify(key)}:${serializeSebJson(val)}`)
+      parts.push(`"${key}":${serializeSebJson(val)}`)
     }
 
     return `{${parts.join(',')}}`
   }
 
   return '""'
-}
-
-/**
- * Normalizes an XML plist string by removing insignificant whitespace, comments,
- * and excluded keys per SEB Developer Specification.
- */
-function normalizePlistXml(xmlStr) {
-  if (!xmlStr) return ''
-  // Strip XML comments
-  let cleaned = xmlStr.replace(/<!--[\s\S]*?-->/g, '')
-  // Normalize whitespace between tags
-  cleaned = cleaned.replace(/>\s+</g, '><').trim()
-  return cleaned
-}
-
-/**
- * Computes the SEB Configuration Key from a plain XML string.
- * Legacy compatibility helper matching original test harness.
- */
-function computeConfigKeyFromXml(xmlStr) {
-  try {
-    const normalized = normalizePlistXml(xmlStr)
-    return crypto.createHash('sha256').update(normalized, 'utf8').digest('hex').toLowerCase()
-  } catch (_) {
-    return null
-  }
 }
 
 /**
@@ -97,27 +234,24 @@ function computeConfigKeyOfficial(dictionary) {
 }
 
 /**
- * Extracts key-value mappings from a standard Apple XML property list.
+ * Computes the official SEB Configuration Key from a plain XML string per the SEB specification.
  */
-function parsePlistDict(xmlStr) {
-  const settings = {}
-  if (!xmlStr) return settings
-
-  // Match key followed by string, true, false, or integer
-  const keyRegex = /<key>([^<]+)<\/key>\s*(?:<string>([^<]*)<\/string>|<(true|false)\s*\/?>|<integer>([^<]*)<\/integer>)/gi
-  let match
-  while ((match = keyRegex.exec(xmlStr)) !== null) {
-    const key = match[1]
-    if (match[2] !== undefined) {
-      settings[key] = match[2]
-    } else if (match[3] !== undefined) {
-      settings[key] = match[3].toLowerCase() === 'true'
-    } else if (match[4] !== undefined) {
-      settings[key] = parseInt(match[4], 10)
-    }
+function calculateSebConfigKey(xmlStr) {
+  try {
+    if (!xmlStr) return null
+    const dict = parsePlistXml(xmlStr)
+    return computeConfigKeyOfficial(dict)
+  } catch (_) {
+    return null
   }
+}
 
-  return settings
+/**
+ * Computes the SEB Configuration Key from a plain XML string.
+ * Exact official implementation matching SafeExamBrowser.Configuration.DataProcessor.
+ */
+function computeConfigKeyFromXml(xmlStr) {
+  return calculateSebConfigKey(xmlStr)
 }
 
 /**
@@ -317,13 +451,17 @@ function inspectSebBuffer(buffer, options = {}) {
   }
 
   // f. Key Verification
-  const computedKey = computeConfigKeyFromXml(textContent)
+  // Plain XML configurations undergo background service sanitization when served/saved.
+  // Compute the Configuration Key of the sanitized content that SEB will actually receive.
+  const sanitizedContent = sanitizeProhibitedProcesses(textContent)
+  const computedKey = calculateSebConfigKey(sanitizedContent)
+  const rawKey = calculateSebConfigKey(textContent)
   let keyMatch = false
   let keyWarning = null
 
   const cleanedPastedKey = (pastedKey || '').trim().toLowerCase()
   if (cleanedPastedKey && /^[0-9a-f]{64}$/.test(cleanedPastedKey)) {
-    if (computedKey && computedKey === cleanedPastedKey) {
+    if (computedKey && (computedKey === cleanedPastedKey || rawKey === cleanedPastedKey)) {
       keyMatch = true
     } else {
       keyWarning = 'The pasted Configuration Key does not match the computed hash of this plain configuration file. This looks like the Browser Exam Key or a different settings version.'
@@ -588,8 +726,10 @@ module.exports = {
   inspectSebBuffer,
   generateStarterSebConfig,
   sanitizeProhibitedProcesses,
+  calculateSebConfigKey,
   computeConfigKeyFromXml,
   computeConfigKeyOfficial,
   serializeSebJson,
+  parsePlistXml,
   parsePlistDict
 }

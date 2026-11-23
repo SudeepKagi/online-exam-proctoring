@@ -945,3 +945,51 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `99852f5c-c418-4eb8-a947-78ac9e878ef7`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/live-ai-smoke.log`
+
+### [2026-11-23T08:06:18.746Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-ref-id.sh`
+- **Command ID**: `deb78020-b9a7-45d7-9418-a1c928d8732b`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/query-ref-ae97b547.log`
+
+### [2026-11-23T08:07:21.877Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\query-backend-log.sh`
+- **Command ID**: `6eceee83-fc21-4dc2-88f3-d334a925fc7f`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/query-backend-log.log`
+
+### [2026-11-23T08:15:48.300Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\set-env-seb-mode-audit.sh`
+- **Command ID**: `2f5256e1-969b-44d4-bbaf-7ddd019329cb`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/update-env-seb-mode.log`
+
+### [2026-11-23T08:17:37.484Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\fix-seb-mode-env-log.sh`
+- **Command ID**: `f022a3c8-9f61-4c40-ba28-77ee1071bb91`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/fix-seb-mode-env-log.log`
+
+### [2026-11-23T08:19:21.441Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-live-exams.sh`
+- **Command ID**: `4ff1fa39-c6de-4486-abba-7e777bb3cdcf`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-live-exams.log`
+
+### [2026-11-23T08:20:20.971Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-live-exams.sh`
+- **Command ID**: `611c979c-0833-414a-9c24-9249e7719c92`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-live-exams.log`
+
+### [2026-11-23T08:21:34.444Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-exam-student.sh`
+- **Command ID**: `0a156d7f-0734-46e6-8226-3bd391e9c91e`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-exam-student.log`
+
+### [2026-11-23T09:59:04.266Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\update-seb-config-key.sh`
+- **Command ID**: `220712da-bab0-4cce-a8ce-304e17f4fc7a`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/update-seb-config-key.log`
