@@ -17,7 +17,7 @@ async function main() {
     process.exit(1);
   }
   const val = typeof row.value === 'string' ? JSON.parse(row.value) : row.value;
-  val.configKey = 'e6b6658de7e289d476020f39661f3ec79a11aba8832409101f5a5c7c544ce9c0';
+  val.configKey = process.env.NEW_CONFIG_KEY || 'e6b6658de7e289d476020f39661f3ec79a11aba8832409101f5a5c7c544ce9c0';
 
   await prisma.systemSetting.update({
     where: { key: 'seb_config' },

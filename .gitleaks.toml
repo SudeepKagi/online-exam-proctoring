@@ -51,5 +51,8 @@ regexes = [
     '''43965229eadb84a369bd9fcb1be48b89de376538ce6e4dc0798244deb1cd1f8c''',
 
     # 8. Known public SEB starter configuration key
-    '''4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a'''
+    '''4b04249c796a0391b8e1e148662f9520b2efd08c3cb498c56245d747b11baf7a''',
+
+    # 9. Known institution SEB configuration key (ground truth)
+    '''e6b6658de7e289d476020f39661f3ec79a11aba8832409101f5a5c7c544ce9c0'''
 ]
