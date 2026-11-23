@@ -7,6 +7,9 @@ const {
   validateAndRepairExamPayload,
   normalizeGeneratedQuestions,
   generateFallbackQuestions,
+  stripJsonMarkdown,
+  CANDIDATE_GEMINI_MODELS,
+  getAiProviderInfo,
   examExtractionSchema
 } = require('../src/modules/exams/ai.generator')
 
@@ -101,6 +104,45 @@ describe('AI Generator Fixture & Validation Suite', () => {
     const validated = validateAndRepairExamPayload(raw)
     assert.equal(validated.valid, true)
     assert.equal(validated.data.questions[0].needsReview, true)
+  })
+
+  it('6. stripJsonMarkdown strips markdown code fences cleanly', () => {
+    const wrappedJson = '```json\n{"questions": []}\n```'
+    assert.equal(stripJsonMarkdown(wrappedJson), '{"questions": []}')
+
+    const genericWrapped = '```\n{"questions": []}\n```'
+    assert.equal(stripJsonMarkdown(genericWrapped), '{"questions": []}')
+
+    const rawJson = '{"questions": []}'
+    assert.equal(stripJsonMarkdown(rawJson), '{"questions": []}')
+
+    assert.equal(stripJsonMarkdown(null), '')
+    assert.equal(stripJsonMarkdown(undefined), '')
+  })
+
+  it('7. CANDIDATE_GEMINI_MODELS includes modern flash models and excludes deprecated models', () => {
+    assert.ok(Array.isArray(CANDIDATE_GEMINI_MODELS))
+    assert.ok(CANDIDATE_GEMINI_MODELS.includes('gemini-3.5-flash'))
+    assert.ok(CANDIDATE_GEMINI_MODELS.includes('gemini-3.8-flash'))
+    assert.ok(!CANDIDATE_GEMINI_MODELS.includes('gemini-1.5-flash'))
+    assert.ok(!CANDIDATE_GEMINI_MODELS.includes('gemini-2.5-flash'))
+  })
+
+  it('8. getAiProviderInfo resolves default model to gemini-3.5-flash', () => {
+    const prevKey = process.env.GEMINI_API_KEY
+    const prevModel = process.env.GEMINI_MODEL
+    try {
+      process.env.GEMINI_API_KEY = 'test-key-mock'
+      delete process.env.GEMINI_MODEL
+      const info = getAiProviderInfo()
+      assert.equal(info.provider, 'gemini')
+      assert.equal(info.model, 'gemini-3.5-flash')
+    } finally {
+      if (prevKey !== undefined) process.env.GEMINI_API_KEY = prevKey
+      else delete process.env.GEMINI_API_KEY
+      if (prevModel !== undefined) process.env.GEMINI_MODEL = prevModel
+      else delete process.env.GEMINI_MODEL
+    }
   })
 })
 
