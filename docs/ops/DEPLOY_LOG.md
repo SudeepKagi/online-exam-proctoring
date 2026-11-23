@@ -918,3 +918,30 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `ec15f4ce-47ef-4e10-843b-7efd33110752`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/check-gemini-env.log`
+
+### [2026-11-23T04:32:32.868Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `6ae39b27-744c-442c-808b-015d35c34d9f`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-backup-predeploy.log`
+
+### [2026-11-23T04:34:35.031Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `d0704205-c536-457e-b94b-ecb664abd78f`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-9ed0a5f6d5b18ab7ac8de86ccf596e7920dfb008.log`
+
+### [2026-11-23T04:34:36.116Z] Production Deploy: `release-9ed0a5f6d5b18ab7ac8de86ccf596e7920dfb008`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `9ed0a5f6d5b18ab7ac8de86ccf596e7920dfb008`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-9ed0a5f6d5b18ab7ac8de86ccf596e7920dfb008.tar.gz`
+- **Duration**: 79 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-23T04:36:09.207Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-ai-smoke-live.sh`
+- **Command ID**: `99852f5c-c418-4eb8-a947-78ac9e878ef7`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-ai-smoke.log`
