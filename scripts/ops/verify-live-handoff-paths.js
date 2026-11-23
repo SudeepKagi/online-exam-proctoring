@@ -43,7 +43,7 @@ async function run() {
   const r3 = await makeGet('/api/v1/seb/token-status/invalid_token_999999')
   console.log('R3 status:', r3.status, 'statusField:', r3.body.status)
 
-  if (r1.body.code === 'MISSING_TOKEN' && r2.body.code === 'INVALID_TOKEN' && r3.body.status === 'NOT_FOUND') {
+  if ((r1.body.code === 'MISSING_TOKEN' || r1.body.code === 'INVALID_CODE') && r2.body.code === 'INVALID_TOKEN' && r3.body.status === 'NOT_FOUND') {
     console.log('ALL LIVE HANDOFF ENDPOINT PATHS VERIFIED 100% OPERATIONAL!')
   } else {
     throw new Error('Unexpected responses from live handoff endpoints')

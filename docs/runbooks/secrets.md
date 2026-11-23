@@ -12,7 +12,7 @@ ProctorNet production parameters are organized under the `/proctornet/prod/` pat
 | :--- | :--- | :--- |
 | `/proctornet/prod/LLM_PROVIDER` | `String` | Provider identifier: `openai`, `google`, `anthropic`, or `none` |
 | `/proctornet/prod/LLM_API_KEY` | `SecureString` | Production API key for the LLM provider |
-| `/proctornet/prod/LLM_MODEL` | `String` | Model identifier (e.g., `gemini-1.5-flash`, `gpt-4o-mini`) |
+| `/proctornet/prod/LLM_MODEL` | `String` | Model identifier (e.g., `gemini-3.5-flash`, `gpt-4o-mini`) |
 | `/proctornet/prod/DATABASE_URL` | `SecureString` | Production PostgreSQL connection string |
 | `/proctornet/prod/JWT_SECRET` | `SecureString` | Primary JWT signing secret |
 | `/proctornet/prod/AUTH_EPOCH` | `String` | Global authentication epoch counter (integer) |
@@ -36,7 +36,7 @@ aws ssm put-parameter \
 # Set Model Name
 aws ssm put-parameter \
   --name "/proctornet/prod/LLM_MODEL" \
-  --value "gemini-1.5-flash" \
+  --value "gemini-3.5-flash" \
   --type "String" \
   --overwrite \
   --region ap-south-1

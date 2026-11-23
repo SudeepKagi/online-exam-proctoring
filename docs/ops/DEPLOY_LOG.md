@@ -849,3 +849,72 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `ad315b74-5baa-4572-9118-b4cc94e2ea40`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/service-check.log`
+
+### [2026-11-23T03:38:12.835Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `a40d6868-ea8a-4039-bff0-9422f2b70e82`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/live-backup-predeploy.log`
+
+### [2026-11-23T03:40:39.469Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `18ed35cd-b2a3-4348-86db-df064d32ffd9`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-a86e5036124c4d6e274cc6379788c4dd66e7ac39.log`
+
+### [2026-11-23T03:40:40.385Z] Production Deploy: `release-a86e5036124c4d6e274cc6379788c4dd66e7ac39`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `a86e5036124c4d6e274cc6379788c4dd66e7ac39`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-a86e5036124c4d6e274cc6379788c4dd66e7ac39.tar.gz`
+- **Duration**: 96 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
+
+### [2026-11-23T03:43:02.562Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-preflight-live.sh`
+- **Command ID**: `6f3c17c0-727e-4c60-8f26-97f79ca40656`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/preflight-live.log`
+
+### [2026-11-23T03:46:24.232Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-gemini-models.sh`
+- **Command ID**: `f601a890-d738-4776-ade3-58e5552ce0ef`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-gemini-models.log`
+
+### [2026-11-23T03:47:15.525Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\test-gemini-call.sh`
+- **Command ID**: `72cc5ee9-7f6d-4915-9139-d3bafe40a360`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/test-gemini-call.log`
+
+### [2026-11-23T03:48:09.875Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\test-gemini-call.sh`
+- **Command ID**: `edfda205-2269-4255-9932-cfe738333738`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/test-gemini-call.log`
+
+### [2026-11-23T03:49:19.143Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\test-gemini-call.sh`
+- **Command ID**: `37d013cb-9a0e-448a-b71e-a367b1e06b02`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/test-gemini-call.log`
+
+### [2026-11-23T03:50:09.295Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\test-gemini-call.sh`
+- **Command ID**: `12a76887-b88e-4960-b2e0-55a3ee661939`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/test-gemini-models.log`
+
+### [2026-11-23T03:53:50.587Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\update-env-gemini-model.sh`
+- **Command ID**: `608d52aa-f1b5-48b2-922a-1e37165bbbd3`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/update-gemini-model.log`
+
+### [2026-11-23T03:55:11.375Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\check-gemini-env.sh`
+- **Command ID**: `ec15f4ce-47ef-4e10-843b-7efd33110752`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/check-gemini-env.log`

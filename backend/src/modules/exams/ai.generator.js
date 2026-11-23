@@ -26,7 +26,7 @@ function getAiProviderInfo() {
   let model = 'none'
   if (hasGemini) {
     provider = 'gemini'
-    model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+    model = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
   } else if (hasOpenAI) {
     provider = 'openai'
     model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
@@ -69,7 +69,7 @@ async function probeAiAvailability({ timeoutMs = 4000 } = {}) {
     ok: true,
     status: 'CONFIGURED',
     provider: geminiKey ? 'gemini' : 'openai',
-    model: geminiKey ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : (process.env.OPENAI_MODEL || 'gpt-4o-mini')
+    model: geminiKey ? (process.env.GEMINI_MODEL || 'gemini-3.5-flash') : (process.env.OPENAI_MODEL || 'gpt-4o-mini')
   }
 }
 
@@ -110,7 +110,7 @@ const examExtractionSchema = z.object({
   }).optional().default({ positive: 1, negative: 0 }),
   questions: z.array(questionSchema).min(1),
   aiAudit: z.object({
-    modelName: z.string().default('gemini-1.5-flash'),
+    modelName: z.string().default('gemini-3.5-flash'),
     promptVersion: z.string().default('2.2.0'),
     settings: z.record(z.any()).optional()
   }).optional()
@@ -534,7 +534,7 @@ function validateAndRepairExamPayload(raw, sourceText = '', existingPool = []) {
     },
     questions: normalizedQuestions,
     aiAudit: raw.aiAudit || {
-      modelName: 'gemini-1.5-flash',
+      modelName: 'gemini-3.5-flash',
       promptVersion: '2.2.0'
     }
   }
@@ -619,15 +619,45 @@ function generateFallbackQuestions(topic = 'General Computing', syllabusText = '
 // LLM Provider Integrations (Gemini & OpenAI)
 // ---------------------------------------------------------------------------
 
+function stripJsonMarkdown(raw) {
+  if (typeof raw !== 'string') return ''
+  let cleaned = raw.trim()
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim()
+  }
+  return cleaned
+}
+
+const CANDIDATE_GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest']
+
 async function callGemini(apiKey, prompt) {
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
-  const res = await axios.post(url, {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 3500, responseMimeType: 'application/json' }
-  }, { timeout: 25000 })
-  const text = res.data?.candidates?.[0]?.content?.parts?.[0]?.text
-  return JSON.parse(text)
+  const preferredModel = process.env.GEMINI_MODEL || 'gemini-3.5-flash'
+  const modelsToTry = [preferredModel, ...CANDIDATE_GEMINI_MODELS.filter(m => m !== preferredModel)]
+
+  let lastErr = null
+  for (const model of modelsToTry) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
+      const res = await axios.post(url, {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 3500, responseMimeType: 'application/json' }
+      }, { timeout: 25000 })
+
+      const rawText = res.data?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!rawText) continue
+      const cleaned = stripJsonMarkdown(rawText)
+      return JSON.parse(cleaned)
+    } catch (err) {
+      lastErr = err
+      const status = err.response?.status
+      if ([404, 503, 429].includes(status)) {
+        logger.warn({ model, status, msg: err.response?.data?.error?.message }, 'Gemini model unavailable or under high demand, trying next candidate model')
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastErr || new Error('All Gemini candidate models failed')
 }
 
 async function callOpenAI(apiKey, prompt) {
@@ -643,7 +673,9 @@ async function callOpenAI(apiKey, prompt) {
     timeout: 25000
   })
   const text = res.data?.choices?.[0]?.message?.content
-  return JSON.parse(text)
+  if (!text) throw new Error('OpenAI returned empty response')
+  const cleaned = stripJsonMarkdown(text)
+  return JSON.parse(cleaned)
 }
 
 // ---------------------------------------------------------------------------
@@ -817,7 +849,7 @@ Return ONLY valid JSON matching this schema:
   logger.info(
     {
       provider: sourceProvider,
-      model: sourceProvider === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : sourceProvider === 'openai' ? 'gpt-4o-mini' : 'fixture-rules',
+      model: sourceProvider === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-3.5-flash') : sourceProvider === 'openai' ? 'gpt-4o-mini' : 'fixture-rules',
       requestedCount: targetCount,
       honestCount,
       acceptedCount: acceptedQuestions.length,
@@ -844,7 +876,7 @@ Return ONLY valid JSON matching this schema:
     honestyNote,
     aiAudit: {
       provider: sourceProvider,
-      modelName: sourceProvider === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-1.5-flash') : sourceProvider === 'openai' ? 'gpt-4o-mini' : 'deterministic-mock',
+      modelName: sourceProvider === 'gemini' ? (process.env.GEMINI_MODEL || 'gemini-3.5-flash') : sourceProvider === 'openai' ? 'gpt-4o-mini' : 'deterministic-mock',
       promptVersion: '2.2.0',
       extractionStats: {
         totalPages: pages?.length || 1,
@@ -960,6 +992,9 @@ module.exports = {
   getAiProviderInfo,
   probeAiAvailability,
   calculateSimilarity,
+  stripJsonMarkdown,
+  CANDIDATE_GEMINI_MODELS,
+  callGemini,
   examExtractionSchema,
   questionSchema,
   AI_MAX_QUESTIONS_PER_RUN,
