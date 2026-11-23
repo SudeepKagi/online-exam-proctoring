@@ -73,9 +73,9 @@ export function mapStudentError(err, context = {}) {
     return withRef({
       code: 'SEB_HEADER_MISMATCH',
       title: 'Safe Exam Browser Configuration Mismatch',
-      message: 'The security configuration header did not match this server. Enter the 6-digit launch code displayed on your primary browser or sign in with your password to continue.',
-      actionLabel: 'Enter Launch Code',
-      actionType: 'seb_pin'
+      message: 'The security configuration header did not match this server. Sign in with your institutional password to continue.',
+      actionLabel: 'Sign In with Password',
+      actionType: 'login'
     })
   }
 
@@ -83,9 +83,9 @@ export function mapStudentError(err, context = {}) {
     return withRef({
       code: 'SEB_HEADER_MISSING',
       title: 'Configuration Header Missing',
-      message: 'The Safe Exam Browser security header was not detected. Enter your 6-digit launch code or sign in with your password.',
-      actionLabel: 'Enter Launch Code',
-      actionType: 'seb_pin'
+      message: 'The Safe Exam Browser security header was not detected. Sign in with your institutional password to continue.',
+      actionLabel: 'Sign In with Password',
+      actionType: 'login'
     })
   }
 

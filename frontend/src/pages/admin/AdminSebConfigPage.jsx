@@ -60,7 +60,6 @@ export default function AdminSebConfigPage() {
 
   // Testing states
   const [testing, setTesting] = useState(false)
-  const [testPin, setTestPin] = useState(null)
   const [pollCountdown, setPollCountdown] = useState(0)
   const [testDiagnostics, setTestDiagnostics] = useState(null)
   const [recentAttempts, setRecentAttempts] = useState([])
@@ -342,14 +341,10 @@ export default function AdminSebConfigPage() {
     try {
       const res = await apiClient.post('/seb/launch-link', { purpose: 'check' })
       const launchUrl = res.data?.url
-      const pin = res.data?.pin
-      if (pin) setTestPin(pin)
 
-      // Allow 4-second buffer for the administrator to read the PIN before triggering protocol handler
+      // Trigger protocol handler to launch SEB
       if (launchUrl) {
-        setTimeout(() => {
-          window.location.href = launchUrl
-        }, 3500)
+        window.location.href = launchUrl
       }
 
       let secondsLeft = 120
@@ -369,7 +364,6 @@ export default function AdminSebConfigPage() {
           setTesting(false)
           setJustVerified(true)
           setPollCountdown(0)
-          setTestPin(null)
           setMsg({ text: 'Verification confirmed! Safe Exam Browser communicated successfully.', type: 'success' })
         } else if (secondsLeft <= 0) {
           clearInterval(pollTimerRef.current)
@@ -670,8 +664,21 @@ export default function AdminSebConfigPage() {
                   Check <strong>"Use Browser Exam Key and Configuration Key"</strong> (<code>sendBrowserExamKey: true</code>).
                 </p>
                 <div className="p-2 bg-[#edecfb]/60 rounded-[8px] text-[11px] text-[#28253b] font-[420]">
-                  💡 The starter file is a template only. The server never trusts a default key. In the SEB Configuration Tool, go to the <strong>Exam</strong> tab after saving and copy the 64-character <strong>Configuration Key</strong> (NOT the Browser Exam Key)!
+                  💡 Copy the CONFIG KEY, not the Browser Exam Key. In the SEB Configuration Tool, go to the <strong>Exam</strong> tab after saving and copy the 64-character <strong>Configuration Key</strong>.
                 </div>
+              </div>
+
+              {/* Browser / Media Tab */}
+              <div className="bg-[#fbfbff] p-3.5 rounded-[12px] space-y-2">
+                <div className="font-[420] text-[#28253b] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5266eb]" /> Browser / Media Tab
+                </div>
+                <p className="text-[11px] text-[#554e7b]">
+                  Under <em>Media & Webcam</em>, check <strong>"Allow video capture"</strong> (<code>allowVideoCapture: true</code>).
+                </p>
+                <p className="text-[11px] text-[#70707d]">
+                  Required for webcam identity checks and continuous proctoring verification.
+                </p>
               </div>
 
               {/* Session / Quitting */}
@@ -845,6 +852,7 @@ export default function AdminSebConfigPage() {
                   </span>
                 </div>
                 <Input
+                  data-testid="seb-config-key-input"
                   type="text"
                   value={configKey}
                   onChange={handleKeyChange}
@@ -944,25 +952,6 @@ export default function AdminSebConfigPage() {
                   )}
                 </Button>
               </div>
-
-              {testPin && (
-                <div className="p-3 bg-white rounded-[10px] flex items-center justify-between gap-3 text-xs">
-                  <div>
-                    <span className="text-[#554e7b] font-[420]">Manual 6-Digit PIN: </span>
-                    <strong className="font-mono text-sm tracking-wider text-[#28253b]">{testPin}</strong>
-                    <span className="text-[11px] text-[#70707d] ml-2">(If SEB did not open automatically, type this PIN into SEB)</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(testPin, 'testPin')}
-                    className="h-7 px-2.5 text-[11px] rounded-full cursor-pointer shrink-0"
-                  >
-                    {copiedField === 'testPin' ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
-                    {copiedField === 'testPin' ? 'Copied' : 'Copy PIN'}
-                  </Button>
-                </div>
-              )}
 
               {testDiagnostics && (
                 <div className="p-3 bg-[#edecfb] rounded-[10px] text-xs text-[#28253b] space-y-1">
@@ -1136,7 +1125,7 @@ export default function AdminSebConfigPage() {
                                     >
                                       {hop.step === 'LAUNCH_LINK_CREATED' ? '1:Link' :
                                         hop.step === 'CONFIG_DOWNLOAD_REQUEST' ? '2:Config' :
-                                          hop.step === 'TOKEN_EXCHANGE' || hop.step === 'PIN_EXCHANGE' ? '3:Exchange' :
+                                          hop.step === 'TOKEN_EXCHANGE' ? '3:Exchange' :
                                             hop.step === 'EXAM_START_ATTEMPT' ? '4:Start' : hop.step}
                                     </span>
                                   ))}
@@ -1276,10 +1265,10 @@ export default function AdminSebConfigPage() {
                   </thead>
                   <tbody className="divide-y divide-[#edecfb]/60 text-[#28253b]">
                     {[
-                      { code: 'INVALID_CODE', label: 'Invalid / Unrecognized PIN', desc: 'Candidate entered an incorrect or misspelled 6-digit PIN' },
-                      { code: 'CODE_EXPIRED', label: 'Expired Launch Code', desc: 'Candidate waited >5 minutes after generating PIN before launch' },
-                      { code: 'CODE_USED', label: 'PIN Already Consumed', desc: 'Candidate attempted to reuse a PIN that was already redeemed' },
-                      { code: 'RATE_LIMITED', label: 'Rate Limit Exceeded', desc: 'More than 5 invalid PIN attempts within 1 minute' },
+                      { code: 'INVALID_TOKEN', label: 'Invalid / Unrecognized Token', desc: 'Candidate used an invalid or malformed launch token' },
+                      { code: 'TOKEN_EXPIRED', label: 'Expired Launch Token', desc: 'Candidate waited >5 minutes after generating launch link before launch' },
+                      { code: 'TOKEN_ALREADY_USED', label: 'Token Already Consumed', desc: 'Candidate attempted to reuse a token beyond the 60-second replay window' },
+                      { code: 'RATE_LIMITED', label: 'Rate Limit Exceeded', desc: 'Too many launch or exchange requests within 1 minute' },
                       { code: 'SEB_HEADER_MISSING', label: 'Missing ConfigKey Header', desc: 'Candidate opened exam in standard browser or SEB stripped headers' },
                       { code: 'SEB_HEADER_MISMATCH', label: 'Configuration Key Mismatch', desc: 'Client SEB is running a different .seb config file than the server DB' },
                       { code: 'INSTITUTION_NOT_CONFIGURED', label: 'Institution Not Configured', desc: 'No active SEB config file or 64-hex key stored on server' },

@@ -54,7 +54,6 @@ proctornet.duckdns.org {
                 uri query {
                     replace launch "[REDACTED]"
                     replace token "[REDACTED]"
-                    replace pin "[REDACTED]"
                 }
             }
         }

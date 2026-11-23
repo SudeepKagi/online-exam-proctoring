@@ -190,7 +190,7 @@ export default function SebDiagnosticsPage() {
                     onClick={() => { window.location.href = '/seb/enter' }}
                     className="rounded-[32px] text-xs"
                   >
-                    Enter Exam Launch PIN
+                    Open Secure Browser Entry
                   </Button>
                 </div>
               </div>

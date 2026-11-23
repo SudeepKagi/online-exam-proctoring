@@ -2,12 +2,12 @@
 set -euo pipefail
 
 echo "================================================================="
-echo " SEB PIN EXCHANGE & VERIFICATION JOURNAL AUDIT"
+echo " SEB HANDOFF & VERIFICATION JOURNAL AUDIT"
 echo " Timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 echo "================================================================="
 
-echo "--- 1. SYSTEMD JOURNAL LOGS (LAST 30 MIN) FOR PIN & SEB ---"
-journalctl -u proctornet.service --since "30 minutes ago" --no-pager | grep -iE "pin|seb|exchange|launch|enter|token" | tail -n 60 || true
+echo "--- 1. SYSTEMD JOURNAL LOGS (LAST 30 MIN) FOR SEB HANDOFF ---"
+journalctl -u proctornet.service --since "30 minutes ago" --no-pager | grep -iE "seb|exchange|launch|enter|token" | tail -n 60 || true
 
 echo ""
 echo "--- 2. ALL RECENT PROCTORNET LOG ERRORS / WARNS ---"

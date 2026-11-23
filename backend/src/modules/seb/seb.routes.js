@@ -46,7 +46,7 @@ const exchangeLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: (isTest || isLoadTest) ? 10000 : 300,
   keyGenerator: (req) => {
-    const raw = req.query.launch || req.query.token || req.body?.pin || req.body?.code
+    const raw = req.query.launch || req.query.token
     if (raw) return `seb_ex_${String(raw).slice(0, 16)}`
     return req.ip
   },
@@ -70,9 +70,6 @@ router.get('/exchange', exchangeLimiter, sebController.exchange)
 
 // Public SEB diagnostics inspection
 router.get('/diagnostics', pingLimiter, sebController.getPublicDiagnostics)
-
-// Fallback 6-digit PIN exchange
-router.post('/exchange-pin', exchangeLimiter, sebController.exchangePin)
 
 // Student setup status query: authenticated
 router.get('/student-check-status', exchangeLimiter, authenticateToken, sebController.getStudentCheckStatus)

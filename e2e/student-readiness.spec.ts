@@ -203,7 +203,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await page.waitForFunction(() => {
       const v = document.querySelector('video') as HTMLVideoElement | null
       return v && v.readyState >= 2
-    }, { timeout: 10000 }).catch(() => {})
+    }, { timeout: 10000 }).catch(() => { })
     await captureBtn.click()
 
     // Verify primary action button "Continue to exam" is enabled after verified photo
@@ -233,7 +233,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await expect(page.getByRole('button', { name: /Return to Dashboard/i })).toBeVisible()
   })
 
-  test('4. SEB outside SEB: "Open exam in secure browser" button and fallback PIN', async () => {
+  test('4. SEB outside SEB: "Open exam in secure browser" button and live handoff state', async () => {
     const page = studentActor.page
 
     // Mock seb-status to enforce mode outside SEB with faceVerified: true
@@ -250,7 +250,16 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ url: `seb://localhost:5173/api/v1/seb/config/mock-token.seb`, pin: '839201' })
+        body: JSON.stringify({ url: `seb://localhost:5173/api/v1/seb/config/mock-token.seb`, launchToken: 'mock-token-12345' })
+      })
+    })
+
+    // Mock token-status polling
+    await page.route(`**/api/v1/seb/token-status/*`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'PENDING', consumed: false })
       })
     })
 
@@ -261,13 +270,13 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     const openSebBtn = page.getByRole('button', { name: /Open exam in secure browser/i })
     await expect(openSebBtn).toBeVisible({ timeout: 10000 })
 
-    // Click button to trigger launch attempt and show launch fallback panel with PIN
+    // Click button to trigger launch attempt and show live handoff panel
     await openSebBtn.click()
 
-    // Verify SEB launching fallback details
-    await expect(page.getByText(/Safe Exam Browser Launching/i)).toBeVisible({ timeout: 5000 })
-    await expect(page.getByText('839201')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Copy PIN/i })).toBeVisible()
+    // Verify SEB live handoff panel displays waiting state
+    await expect(page.locator('[data-testid="seb-launch-active-panel"]')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText(/Waiting for the secure browser/i)).toBeVisible({ timeout: 5000 })
+    await expect(page.getByRole('button', { name: /Relaunch Safe Exam Browser/i })).toBeVisible()
   })
 
   test('5. Inside SEB: login badge, target exam redirect, and single-stage pre-check', async () => {
@@ -306,7 +315,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await passConsentIfPresent(page)
 
     // Inside SEB, stage indicator is System & Identity Check
-    await expect(page.getByText('System & Identity Check', { exact: true })).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/System & Identity Check|Pre-Examination Identity Verification/i).first()).toBeVisible({ timeout: 10000 })
 
     // Verify button text is Capture Photo
     const capturePhotoBtn = page.getByRole('button', { name: /Capture Photo/i })
@@ -349,7 +358,7 @@ test.describe('E2E: Student Journey, System Readiness & Auto-Exit Suite', () => 
     await page.waitForFunction(() => {
       const v = document.querySelector('video') as HTMLVideoElement | null
       return v && v.readyState >= 2
-    }, { timeout: 10000 }).catch(() => {})
+    }, { timeout: 10000 }).catch(() => { })
     await captureBtn.click()
 
     // Step 2: Confirm & Verify

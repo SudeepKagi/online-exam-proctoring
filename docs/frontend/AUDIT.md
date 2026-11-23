@@ -34,7 +34,7 @@
 | `/invigilator-login` | `INVIGILATOR` | `LoginPage` | `<LoginPage />` |
 | `/student/login` | `STUDENT` | `LoginPage` | `<LoginPage />` |
 | `/forgot-password` | `PUBLIC` | `ForgotPasswordPage` | `<ForgotPasswordPage />` |
-| `/seb/enter` | `PUBLIC` | `SebPinEntryPage` | `<SebPinEntryPage />` |
+| `/seb/enter` | `PUBLIC` | `SebHandoffPage` | `<SebHandoffPage />` |
 | `/seb/diagnostics` | `PUBLIC` | `SebDiagnosticsPage` | `<SebDiagnosticsPage />` |
 | `/onboarding` | `AUTH_ONBOARDING` | `OnboardingGuard` | `<OnboardingGuard><OnboardingPage /></OnboardingGuard>` |
 | `/pending-approval` | `AUTH_ONBOARDING` | `OnboardingGuard` | `<OnboardingGuard><PendingApprovalPage /></OnboardingGuard>` |
@@ -128,7 +128,7 @@ A score of **0/6** represents maximum vulnerability (no loading state, no retry,
 | **P46** | `frontend/src/pages/auth/ForgotPasswordPage.jsx` | **4/6** | 3 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **P47** | `frontend/src/pages/student/ExamArenaPage.jsx` | **4/6** | 9 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | **P48** | `frontend/src/pages/student/PreExamCheckPage.jsx` | **4/6** | 12 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| **P49** | `frontend/src/pages/student/SebPinEntryPage.jsx` | **4/6** | 2 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| **P49** | `frontend/src/pages/student/SebHandoffPage.jsx` | **6/6** | 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **P50** | `frontend/src/pages/student/StudentExamStartPage.jsx` | **5/6** | 15 | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 
 ---
@@ -136,7 +136,7 @@ A score of **0/6** represents maximum vulnerability (no loading state, no retry,
 ## 4. Remediation Plan by Route Group
 
 ### Route Group 1: Student Exam Lifecycle (Priority 1)
-- **Files:** `StudentExamStartPage.jsx`, `ExamArenaPage.jsx`, `PreExamCheckPage.jsx`, `StudentDashboardPage.jsx`, `StudentResultsPage.jsx`, `SebPinEntryPage.jsx`.
+- **Files:** `StudentExamStartPage.jsx`, `ExamArenaPage.jsx`, `PreExamCheckPage.jsx`, `StudentDashboardPage.jsx`, `StudentResultsPage.jsx`, `SebHandoffPage.jsx`.
 - **Target Invariants:**
   1. Standardize `AsyncStateView` for `loading`, `empty`, `error`, `offline`, `forbidden`, `session_expired`.
   2. Map all student backend errors via shared `mapClientError()` helper with plain language and retry action.

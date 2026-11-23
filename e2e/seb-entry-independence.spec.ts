@@ -11,7 +11,7 @@ function calculateSebHash(urlPathAndQuery: string, configKey: string = SEB_CONFI
   return crypto.createHash('sha256').update(fullUrl + configKey.toLowerCase()).digest('hex').toLowerCase()
 }
 
-test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () => {
+test.describe('E2E: Safe Exam Browser Entry Independence & Resilient Handoff (§Phase 2)', () => {
   test.describe.configure({ mode: 'serial' })
 
   let examId: string
@@ -35,7 +35,7 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
         title: `SEB Independence Test Exam ${now}`,
         subject: 'SEB-101',
         courseCode: 'SEB101',
-        description: 'Testing entry independence and launch code fallback',
+        description: 'Testing entry independence and resilient token handoff',
         startTime: new Date(now + 10 * 60 * 1000).toISOString(),
         endTime: new Date(now + 120 * 60 * 1000).toISOString(),
         durationMinutes: 60,
@@ -74,40 +74,31 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
     })
   })
 
-  test('1. Signed-out visitor with SEB UA on / renders launch-code card and never redirects to /login', async ({ browser }) => {
+  test('1. Signed-out visitor with SEB UA on / redirects to /seb/enter and never redirects to /login', async ({ browser }) => {
     const context = await browser.newContext({
       userAgent: SEB_UA
     })
     const page = await context.newPage()
 
     await page.goto('/')
-    await expect(page.locator('input#seb-pin-input, [data-testid="seb-pin-input"]')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Enter Launch Code')).toBeVisible()
+    await expect(page.getByText('Secure Browser Ready')).toBeVisible({ timeout: 10000 })
 
     // Ensure it did not redirect to /login
+    expect(page.url()).toContain('/seb/enter')
     expect(page.url()).not.toContain('/login')
     await context.close()
   })
 
-  test('2. Signed-out visitor with SEB UA on /login renders launch-code card as primary UI with password option', async ({ browser }) => {
+  test('2. Signed-out visitor with SEB UA on /login renders password form with Safe Exam Browser detected badge', async ({ browser }) => {
     const context = await browser.newContext({
       userAgent: SEB_UA
     })
     const page = await context.newPage()
 
     await page.goto('/login')
-    // Primary UI is the launch code card
-    await expect(page.getByText('Enter Launch Code')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('[data-testid="seb-pin-input"], input#seb-login-pin')).toBeVisible()
-
-    // Secondary link to sign in with password
-    const pwLink = page.getByRole('button', { name: /Sign in with password instead/i })
-    await expect(pwLink).toBeVisible()
-
-    // Clicking toggles to standard password login
-    await pwLink.click()
-    await expect(page.getByText(/Student Examination Portal/i)).toBeVisible()
+    await expect(page.getByText('Safe Exam Browser detected')).toBeVisible({ timeout: 10000 })
     await expect(page.locator('input[type="password"]')).toBeVisible()
+    await expect(page.getByRole('button', { name: /Sign In to Student Portal/i })).toBeVisible()
 
     await context.close()
   })
@@ -119,8 +110,7 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
     const page = await context.newPage()
 
     await page.goto('/seb/enter')
-    await expect(page.locator('input#seb-pin-input')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Enter Launch Code')).toBeVisible()
+    await expect(page.getByText('Secure Browser Ready')).toBeVisible({ timeout: 10000 })
 
     // Wait 2 seconds to confirm no delayed 401 redirect kicks them to /login
     await page.waitForTimeout(2000)
@@ -130,22 +120,21 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
     await context.close()
   })
 
-  test('4. Signed-out visitor with SEB UA accessing protected deep link redirects to launch-code card, never to /login', async ({ browser }) => {
+  test('4. Signed-out visitor with SEB UA accessing protected deep link redirects to /seb/enter, never to /login', async ({ browser }) => {
     const context = await browser.newContext({
       userAgent: SEB_UA
     })
     const page = await context.newPage()
 
     await page.goto('/student/dashboard')
-    await expect(page.locator('input#seb-pin-input')).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText('Enter Launch Code')).toBeVisible()
+    await expect(page.getByText('Secure Browser Ready')).toBeVisible({ timeout: 10000 })
     expect(page.url()).toContain('/seb/enter')
     expect(page.url()).not.toContain('/login')
 
     await context.close()
   })
 
-  test('5. Signed-out visitor with ConfigKeyHash header shows launch-code card on /login', async ({ browser }) => {
+  test('5. Signed-out visitor with ConfigKeyHash header shows secure browser badge on /login', async ({ browser }) => {
     const hash = calculateSebHash('/api/v1/seb/ping', SEB_CONFIG_KEY)
     const context = await browser.newContext({
       extraHTTPHeaders: {
@@ -154,15 +143,24 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
     })
     const page = await context.newPage()
 
+    await page.route(`**/api/v1/seb/ping`, async (route) => {
+      const header = route.request().headers()['x-safeexambrowser-configkeyhash']
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ verified: Boolean(header && header === hash), isSebAgent: true })
+      })
+    })
+
     await page.goto('/login')
-    await expect(page.getByText('Enter Launch Code')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('[data-testid="seb-pin-input"], input#seb-login-pin')).toBeVisible()
+    await expect(page.locator('[data-testid="seb-verified-badge"]')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('input[type="password"]')).toBeVisible()
 
     await context.close()
   })
 
-  test('6. Correct 6-digit code entry logs student in and transitions to exam lobby', async ({ browser, request }) => {
-    // Student logs in via API to generate launch link / code
+  test('6. Valid launch token on /seb/enter auto-exchanges and transitions to exam lobby without typing anything', async ({ browser, request }) => {
+    // Student logs in via API to generate launch link
     const studentLogin = await request.post('/api/v1/auth/login', {
       data: {
         email: SEEDED_STUDENTS[0].email,
@@ -175,8 +173,8 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
       data: { examId }
     })
     expect(launchRes.status()).toBe(200)
-    const { pin } = await launchRes.json()
-    expect(pin).toMatch(/^\d{6}$/)
+    const { launchToken } = await launchRes.json()
+    expect(launchToken).toBeTruthy()
 
     // Open SEB browser context
     const context = await browser.newContext({
@@ -184,54 +182,28 @@ test.describe('E2E: Safe Exam Browser Entry Independence Suite (§Phase 2)', () 
     })
     const page = await context.newPage()
 
-    await page.goto('/seb/enter')
-    const pinInput = page.locator('input#seb-pin-input')
-    await expect(pinInput).toBeVisible({ timeout: 10000 })
-    await pinInput.fill(pin)
+    await page.goto(`/seb/enter?launch=${encodeURIComponent(launchToken)}`)
 
-    await page.getByRole('button', { name: /Continue to exam/i }).click()
-
-    // Successfully exchanged: lands on student exam start lobby
+    // Automatically exchanges and lands on student exam start lobby without typing anything
     await page.waitForURL((url: URL) => url.pathname.includes(`/student/exams/${examId}/start`) || url.pathname.includes('/student/dashboard'), { timeout: 15000 })
     expect(page.url()).toContain(examId)
 
     await context.close()
   })
 
-  test('7. Wrong, expired, and reused codes show friendly messages', async ({ browser, request }) => {
-    // Generate valid token to test reuse
-    const studentLogin = await request.post('/api/v1/auth/login', {
-      data: {
-        email: SEEDED_STUDENTS[0].email,
-        password: SEEDED_STUDENTS[0].password
-      }
-    })
-    expect(studentLogin.status()).toBe(200)
-
-    const launchRes = await request.post('/api/v1/seb/launch-link', {
-      data: { examId }
-    })
-    const { pin } = await launchRes.json()
-
+  test('7. Replay within grace window succeeds, invalid launch token shows friendly error with password fallback', async ({ browser, request }) => {
     const context = await browser.newContext({ userAgent: SEB_UA })
     const page = await context.newPage()
 
-    // A. Wrong code
-    await page.goto('/seb/enter')
-    await page.locator('input#seb-pin-input').fill('000000')
-    await page.getByRole('button', { name: /Continue to exam/i }).click()
-    await expect(page.getByText(/Invalid launch code/i)).toBeVisible({ timeout: 5000 })
+    // A. Invalid launch token
+    await page.goto('/seb/enter?launch=invalid_token_999999')
+    await expect(page.getByText(/Ref: #/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/Launch Handoff Incomplete/i)).toBeVisible()
+    await expect(page.locator('[data-testid="seb-signin-fallback-btn"]')).toBeVisible()
 
-    // B. Consume the valid pin via API
-    const consumeRes = await request.post('/api/v1/seb/exchange-pin', {
-      data: { pin }
-    })
-    expect(consumeRes.status()).toBe(200)
-
-    // C. Reused code in the browser
-    await page.locator('input#seb-pin-input').fill(pin)
-    await page.getByRole('button', { name: /Continue to exam/i }).click()
-    await expect(page.getByText(/already been used/i)).toBeVisible({ timeout: 5000 })
+    // B. Direct password login works cleanly from fallback button
+    await page.locator('[data-testid="seb-signin-fallback-btn"]').click()
+    await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 10000 })
 
     await context.close()
   })

@@ -9,8 +9,10 @@ async function findAttemptByExamAndStudent(examId, studentId) {
   })
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function findAttemptById(id) {
-  if (!id) return null
+  if (!id || !UUID_REGEX.test(id)) return null
   return prisma.examAttempt.findUnique({
     where: { id }
   })

@@ -9,5 +9,5 @@ This reference defines the plain-English translations and recommended next actio
 | `EXAM_NOT_OPEN` | Examination not yet started | The testing window for this exam has not opened yet. Check the schedule below. | Return to Dashboard |
 | `EXAM_ENDED` | Examination window closed | The scheduled testing window has ended. Contact your instructor if you need assistance. | Return to Dashboard |
 | `NETWORK_DISCONNECTED` | Connection interrupted | Your answers are safely preserved locally. We will automatically reconnect when connectivity returns. | Retry Connection |
-| `SEB_PIN_INVALID` | Incorrect access code | The 6-digit access code entered does not match this exam session. | Try Again |
+| `TOKEN_ALREADY_USED` | Launch link already used | This launch link has already been redeemed. Return to your main browser to get a fresh link or sign in with your password. | Sign In |
 | `INTERNAL_ERROR` | Temporary service issue | Our servers encountered a temporary issue. Please try again in a few moments. | Retry |

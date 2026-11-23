@@ -14,13 +14,7 @@ const PINO_REDACT_PATHS = [
   'headers.x-safeexambrowser-configkeyhash',
   'req.query.launch',
   'query.launch',
-  'req.body.pin',
-  'body.pin',
-  'req.body.code',
-  'body.code',
-  'launch',
-  'pin',
-  'code'
+  'launch'
 ]
 
 function canLogFullSebHashes() {
@@ -30,10 +24,10 @@ function canLogFullSebHashes() {
 
 function scrubSebString(str) {
   if (typeof str !== 'string') return str
-  // Redact launch tokens and PINs in URLs and query strings
+  // Redact launch tokens in URLs and query strings
   let scrubbed = str
-    .replace(/([?&](?:launch|pin|code|downloadToken)=)[^&#\s]+/gi, '$1[REDACTED]')
-    .replace(/(\?\?(?:launch|pin|code)=)[^&#\s]+/gi, '$1[REDACTED]')
+    .replace(/([?&](?:launch|downloadToken)=)[^&#\s]+/gi, '$1[REDACTED]')
+    .replace(/(\?\?(?:launch)=)[^&#\s]+/gi, '$1[REDACTED]')
 
   if (!canLogFullSebHashes()) {
     scrubbed = scrubbed.replace(/\b([0-9a-fA-F]{8})[0-9a-fA-F]{56}\b/g, '$1...')
@@ -55,7 +49,7 @@ function sanitizeLogPayload(obj) {
       copy[key] = '[REDACTED]'
     } else if (lowerKey.startsWith('x-safeexambrowser-')) {
       copy[key] = '[REDACTED]'
-    } else if (['launch', 'launchtoken', 'downloadtoken', 'pin', 'code'].includes(lowerKey)) {
+    } else if (['launch', 'launchtoken', 'downloadtoken', 'token', 'code'].includes(lowerKey)) {
       copy[key] = '[REDACTED]'
     } else if (typeof value === 'object' && value !== null) {
       copy[key] = sanitizeLogPayload(value)

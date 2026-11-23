@@ -8,7 +8,6 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
 
   let examId: string
   let validLaunchToken: string
-  let validPin: string
 
   test.beforeAll(async ({ request }) => {
     await resetCleanRoom()
@@ -76,9 +75,7 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
     expect(launchRes.status()).toBe(200)
     const launchData = await launchRes.json()
     validLaunchToken = launchData.launchToken
-    validPin = launchData.pin
     expect(validLaunchToken).toBeTruthy()
-    expect(validPin).toMatch(/^\d{6}$/)
   })
 
   test('State 1: Valid forwarded token auto-exchanges and transitions to start lobby', async ({ browser }) => {
@@ -93,7 +90,7 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
     await context.close()
   })
 
-  test('State 2: Invalid forwarded token shows friendly error with Ref ID, PIN form and password fallback', async ({ browser }) => {
+  test('State 2: Invalid forwarded token shows friendly error with Ref ID and password fallback', async ({ browser }) => {
     const context = await browser.newContext({ userAgent: SEB_UA })
     const page = await context.newPage()
 
@@ -101,13 +98,13 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
 
     // Must show friendly error message with Ref ID
     await expect(page.getByText(/Ref: #/i)).toBeVisible({ timeout: 10000 })
-    await expect(page.getByText(/Invalid/i)).toBeVisible()
+    await expect(page.getByText('Invalid or unrecognized launch token.')).toBeVisible()
 
-    // Must display 6-digit code form (never a dead end)
-    await expect(page.locator('input#seb-pin-input')).toBeVisible()
+    // Must show password fallback button (never a dead end)
+    await expect(page.locator('[data-testid="seb-signin-fallback-btn"]')).toBeVisible()
 
-    // Must show password fallback link
-    await expect(page.getByRole('button', { name: /Sign in with password instead/i })).toBeVisible()
+    // Must show diagnostics link
+    await expect(page.locator('[data-testid="seb-diagnostics-link"]')).toBeVisible()
 
     // Must stay on /seb/enter, never kicked to /login
     expect(page.url()).toContain('/seb/enter')
@@ -115,37 +112,32 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
     await context.close()
   })
 
-  test('State 3: Expired forwarded token shows friendly error with Ref ID and PIN form', async ({ browser }) => {
+  test('State 3: Expired forwarded token shows friendly error with Ref ID and password fallback', async ({ browser }) => {
     const context = await browser.newContext({ userAgent: SEB_UA })
     const page = await context.newPage()
 
     await page.goto('/seb/enter?error=expired')
 
     // Must show expired message
-    await expect(page.getByText(/expired/i)).toBeVisible({ timeout: 10000 })
+    await expect(page.getByText(/expired/i).first()).toBeVisible({ timeout: 10000 })
 
-    // Must display 6-digit code form
-    await expect(page.locator('input#seb-pin-input')).toBeVisible()
-
-    // Must show password fallback
-    await expect(page.getByRole('button', { name: /Sign in with password instead/i })).toBeVisible()
+    // Must show password fallback button
+    await expect(page.locator('[data-testid="seb-signin-fallback-btn"]')).toBeVisible()
     await context.close()
   })
 
-  test('State 4: No token on /seb/enter presents launch code form directly with password option', async ({ browser }) => {
+  test('State 4: No token on /seb/enter presents secure browser ready card with dashboard and password options', async ({ browser }) => {
     const context = await browser.newContext({ userAgent: SEB_UA })
     const page = await context.newPage()
 
     await page.goto('/seb/enter')
 
-    await expect(page.getByText('Enter Launch Code')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator('input#seb-pin-input')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Continue to exam/i })).toBeVisible()
-    await expect(page.getByRole('button', { name: /Sign in with password instead/i })).toBeVisible()
+    await expect(page.getByText('Secure Browser Ready')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: /Continue to Dashboard/i })).toBeVisible()
     await context.close()
   })
 
-  test('State 5: Start page error resilience shows Ref ID, PIN form, password fallback and diagnostics link', async ({ browser }) => {
+  test('State 5: Start page error resilience shows Ref ID, password fallback and diagnostics link', async ({ browser }) => {
     // Authenticate student to access start page
     const context = await browser.newContext({ userAgent: SEB_UA })
     const page = await context.newPage()
@@ -180,10 +172,6 @@ test.describe('E2E: SEB Start Page States & Non-Dead-End Resilience (§Phase 1 H
     // Must render the error resilience card (never a dead end!)
     await expect(page.locator('[data-testid="seb-error-resilience-card"]')).toBeVisible({ timeout: 10000 })
     await expect(page.getByText(/Ref: #err-test-8492/i)).toBeVisible()
-
-    // Must show 6-digit fallback PIN input
-    await expect(page.locator('[data-testid="seb-fallback-pin-input"]')).toBeVisible()
-    await expect(page.locator('[data-testid="seb-fallback-pin-submit"]')).toBeVisible()
 
     // Must show password fallback button
     await expect(page.locator('[data-testid="error-signin-password-fallback"]')).toBeVisible()

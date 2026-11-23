@@ -211,11 +211,11 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     await page.evaluate(async (examId) => {
       // @ts-ignore
       const { apiClient } = await import('/src/lib/apiClient.js')
-      await apiClient.post(`/attempts/exams/${examId}/start`, {}).catch(() => {})
+      await apiClient.post(`/attempts/exams/${examId}/start`, {}).catch(() => { })
     }, testExamId)
 
     // Verify interceptor routes to seb-required page
-    await page.waitForURL((url: URL) => url.pathname.includes('/seb-required'), { timeout: 10000 })
+    await expect(page).toHaveURL(new RegExp(`/student/exams/${testExamId}/seb-required`), { timeout: 10000 })
     expect(page.url()).toContain(`/student/exams/${testExamId}/seb-required`)
 
     // Verify UI on SebRequiredPage
@@ -250,9 +250,9 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     await expect(page.locator('div[data-slot="card-title"]', { hasText: 'Test my setup' })).toBeVisible()
 
     // Verify checklist items & helper text
-    await expect(page.getByText(/Copy the Configuration Key.*NOT the Browser Exam Key/i)).toBeVisible()
+    await expect(page.getByText(/Copy the CONFIG KEY, not the Browser Exam Key/i)).toBeVisible()
     await expect(page.getByText(/Use Browser Exam Key and Configuration Key/i)).toBeVisible()
-    await expect(page.getByText(/Download starter configuration/i)).toBeVisible()
+    await expect(page.getByText(/Allow video capture/i)).toBeVisible()
 
     // Test file selection and input
     const fileChooserPromise = page.waitForEvent('filechooser')
@@ -267,7 +267,7 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     await expect(page.getByText('institution.seb')).toBeVisible()
 
     // Fill valid 64-hex config key
-    const configInput = page.getByPlaceholder(/Paste 64-character|Currently:/i)
+    const configInput = page.locator('[data-testid="seb-config-key-input"]')
     await configInput.fill(VALID_CONFIG_KEY)
 
     // Submit form
@@ -275,7 +275,8 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
 
     // Verify success notification & status update
     await expect(page.getByText(/configuration saved successfully/i)).toBeVisible({ timeout: 10000 })
-    await expect(page.getByTestId('seb-status-configured')).toBeVisible()
+    await expect(page.locator('[data-testid="seb-status-configured"]')).toBeVisible()
+    await expect(page.getByText(/••••••••1f8c/)).toBeVisible()
   })
 
   test('7. Admin Secure Browser Setup: "Test my setup" triggers launch link and displays live Verified indicator', async () => {
@@ -311,7 +312,7 @@ test.describe('E2E: Safe Exam Browser (SEB) UI, Status & Interceptor Suite', () 
     const testBtn = page.getByRole('button', { name: /Test my setup/i })
     await testBtn.click()
 
-    // Live green badge should appear
-    await expect(page.getByTestId('seb-verified-pill')).toBeVisible({ timeout: 10000 })
+    // Live badge should appear
+    await expect(page.getByText('Verified ✓').first()).toBeVisible({ timeout: 10000 })
   })
 })

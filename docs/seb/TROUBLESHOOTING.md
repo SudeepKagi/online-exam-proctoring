@@ -71,16 +71,16 @@ The 64-character SHA-256 Configuration Key stored in the PostgreSQL database doe
 
 ---
 
-## 3. Symptom: Launch Code Form Did Not Appear (Bypassed by Auto-Exchange)
+## 3. Symptom: Automated Launch Handoff
 
 ### Problem Description
-Earlier testing showed a 6-digit PIN entry form on `/seb/enter`. Later, the exam opened directly to `/student/exams/:id/start` without prompting for a code.
+The exam opens directly to `/student/exams/:id/start` without requiring manual entry.
 
 ### Root Cause
 This is intentional SEB 3.x query-forwarding behavior. The launch URL format is:
 `sebs://proctornet.duckdns.org/api/v1/seb/config/<downloadToken>.seb??launch=<exchangeToken>`
 SEB 3.x appends `?launch=<exchangeToken>` to the `startURL` (`/seb/enter?launch=...`).
-The React frontend in `SebPinEntryPage.jsx` detects `launchParam`, automatically calls `GET /api/v1/seb/exchange?launch=...`, authenticates the student session, and redirects to the exam without manual PIN entry.
+The React frontend in `SebHandoffPage.jsx` detects `launchParam`, automatically calls `GET /api/v1/seb/exchange?launch=...`, authenticates the student session, and redirects to the exam seamlessly.
 
 ### Confirmation Steps
 1. Check `2026-11-22_09h02m41s_Client.log`:
@@ -91,17 +91,17 @@ The React frontend in `SebPinEntryPage.jsx` detects `launchParam`, automatically
    ```text
    Safe Exam Browser launch token successfully exchanged for user session
    ```
-3. If exchange fails: Verify that `SebPinEntryPage.jsx` falls back to the manual 6-digit PIN input and displays the Reference ID.
+3. If exchange fails: Verify that `SebHandoffPage.jsx` displays the Reference ID, instructions to restart from the main browser, and the password sign-in fallback button.
 
 ---
 
-## 4. Symptom: HTTP 401 `TOKEN_EXPIRED` or `CODE_EXPIRED`
+## 4. Symptom: HTTP 401 `TOKEN_EXPIRED`
 
 ### Problem Description
-SEB displays an error stating the launch link or code has expired.
+SEB displays an error stating the launch link has expired.
 
 ### Root Cause
-Single-use launch tokens and 6-digit PINs carry a strict 5-minute Time-To-Live (`LAUNCH_TOKEN_TTL_MS = 5 * 60 * 1000`). If SEB startup, system reboot, or user delay exceeds 5 minutes, the token expires.
+Single-use launch tokens carry a strict 5-minute Time-To-Live (`LAUNCH_TOKEN_TTL_MS = 5 * 60 * 1000`). If SEB startup, system reboot, or candidate delay exceeds 5 minutes, the token expires.
 
 ### Confirmation Steps
 1. In SEB, note the Reference ID shown on screen: `Ref: #<requestId>`.
@@ -112,13 +112,13 @@ Single-use launch tokens and 6-digit PINs carry a strict 5-minute Time-To-Live (
 3. Expected output:
    ```json
    {
-     "code": "CODE_EXPIRED",
-     "likelyCause": "Launch code exceeded the 5-minute activation window."
+     "code": "TOKEN_EXPIRED",
+     "likelyCause": "Launch token exceeded the 5-minute activation window."
    }
    ```
 
 ### Resolution
-Instruct the candidate to return to their standard browser, click "Launch Safe Exam Browser" or "Copy Code" to generate a fresh 5-minute PIN, and enter the code into the form inside SEB.
+Instruct the candidate to return to their standard browser and click "Relaunch Safe Exam Browser" to generate a fresh link, or sign in directly with their institutional password via the "Sign in with password" button inside SEB.
 
 ---
 
@@ -152,8 +152,7 @@ Execute this numbered manual procedure on a Windows candidate workstation with S
 
 1. **Generate Launch Credentials**:
    - In Chrome/Edge, log in as student at `https://proctornet.duckdns.org/student/exams/<examId>/start`.
-   - Click "Open in Safe Exam Browser" or note the 6-digit launch code displayed on the screen.
-   - Note the Correlation Reference ID.
+   - Click "Open exam in secure browser". Chrome transitions to "Waiting for the secure browser…" with live server status polling.
 
 2. **Launch Safe Exam Browser**:
    - Click the `seb://` or `sebs://` launch link, or download the `.seb` file and open it.
@@ -161,21 +160,15 @@ Execute this numbered manual procedure on a Windows candidate workstation with S
 
 3. **Verify Configuration & Session Startup**:
    - Confirm Safe Exam Browser opens without the native Windows "Configuration failed" dialog.
-   - Verify the splash card appears: *"Connecting to your exam session..."*.
+   - Verify the splash card appears: *"Connecting Secure Session…"*.
 
-4. **Verify Auto-Exchange or Code Fallback (Never a Dead End)**:
-   - **Path A (Normal)**: Within 3 seconds, the session auto-exchanges and transitions directly to `/student/exams/<examId>/start`.
-   - **Path B (Manual Code / Fallback)**: If token is omitted, invalid, or expired, verify the UI displays:
+4. **Verify Auto-Exchange or Password Fallback (Never a Dead End)**:
+   - **Path A (Normal)**: Within 3 seconds, the session auto-exchanges and transitions directly to `/student/exams/<examId>/start` without candidate typing anything. Chrome confirms: *"Your exam is open in the secure browser, you can close this tab"*.
+   - **Path B (Manual Password Fallback)**: If token is omitted, invalid, or expired, verify the UI displays:
      - Clear human-readable error with `Ref: #<correlationId>`
-     - Centered 6-digit numeric input box (`#seb-pin-input`)
-     - Solid primary button "Continue to exam"
-     - Translucent capsule "Sign in with password instead"
-     - Diagnostics link to `/seb/enter`
-
-5. **Submit Launch PIN (if on fallback)**:
-   - Type the 6-digit code into the box.
-   - Click "Continue to exam".
-   - Confirm immediate redirect to the exam start screen.
+     - Solid primary button "Sign in with password"
+     - Diagnostics link to `/seb/diagnostics`
+     - Clean password sign-in working end-to-end inside SEB webview.
 
 6. **Enter Arena**:
    - On the start screen, confirm identity verified status and institutional security banner.

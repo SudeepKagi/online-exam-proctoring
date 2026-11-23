@@ -67,7 +67,7 @@ function computeSebHash(url, key) {
   return crypto.createHash('sha256').update(url + key.toLowerCase()).digest('hex').toLowerCase()
 }
 
-describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructive PIN Flow', () => {
+describe('Phase 1: SEB Resilient Handoff, Diagnostic Codes & Token Flow', () => {
   before(async () => {
     studentUser = await prisma.user.findFirst({
       where: { email: 'student1@institution.edu' }
@@ -196,24 +196,24 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     invalidateInstitutionSebState()
   })
 
-  it('1. Returns INVALID_CODE with requestId for non-existent PIN without burning state', async () => {
+  it('1. Returns INVALID_TOKEN with requestId for non-existent token without burning state', async () => {
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: '/api/v1/seb/exchange?launch=invalid_token_999999',
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: '999999' })
+    })
 
     assert.strictEqual(res.statusCode, 401)
-    assert.strictEqual(res.json?.code, 'INVALID_CODE')
+    assert.strictEqual(res.json?.code, 'INVALID_TOKEN')
     assert.ok(res.json?.requestId, 'Must return requestId for student reference')
   })
 
-  it('2. Returns CODE_EXPIRED with requestId for expired PIN', async () => {
+  it('2. Returns TOKEN_EXPIRED with requestId for expired launch token', async () => {
     const token = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: 'STUDENT',
@@ -226,20 +226,20 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: token.pin })
+    })
 
     assert.strictEqual(res.statusCode, 401)
-    assert.strictEqual(res.json?.code, 'CODE_EXPIRED')
+    assert.strictEqual(res.json?.code, 'TOKEN_EXPIRED')
     assert.ok(res.json?.requestId, 'Must return requestId')
   })
 
-  it('3. In enforce mode with missing header: decoupled exchange succeeds (200) and records diagnostics', async () => {
+  it('3. In enforce mode with missing header: decoupled exchange succeeds (200), grace window allows duplicates in 60s, replay after 60s returns TOKEN_ALREADY_USED (409)', async () => {
     const token = sebTokenService.createLaunchToken({
       userId: studentUser.id,
       userRole: 'STUDENT',
@@ -249,31 +249,47 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     const res1 = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: token.pin })
+    })
 
     assert.strictEqual(res1.statusCode, 200, 'Exchange must succeed under decoupled model')
     assert.strictEqual(res1.json?.success, true)
 
-    // Replay with consumed PIN returns CODE_USED
+    // Immediate replay within 60s grace window succeeds (candidate reload resilience)
     const res2 = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
       }
-    }, { pin: token.pin })
+    })
+    assert.strictEqual(res2.statusCode, 200)
 
-    assert.strictEqual(res2.statusCode, 409)
-    assert.strictEqual(res2.json?.code, 'CODE_USED')
+    // Replay after grace window expires returns TOKEN_ALREADY_USED
+    const record = sebTokenService.tokens.get(sebTokenService.hash(token.launchToken))
+    if (record) record.consumedAt = Date.now() - 70000
+
+    const res3 = await httpRequest({
+      hostname: 'localhost',
+      port,
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)'
+      }
+    })
+
+    assert.strictEqual(res3.statusCode, 409)
+    assert.strictEqual(res3.json?.code, 'TOKEN_ALREADY_USED')
   })
 
   it('4. In enforce mode with mismatched header: decoupled exchange succeeds (200) and records SEB_HEADER_MISMATCH diagnostics', async () => {
@@ -283,20 +299,20 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
       purpose: 'exam'
     })
 
-    const targetUrl = `${config.publicOrigin}/api/v1/seb/exchange-pin`
+    const targetUrl = `${config.publicOrigin}/api/v1/seb/exchange?launch=${token.launchToken}`
     const wrongHash = computeSebHash(targetUrl, FORGED_KEY)
 
     const res1 = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'SEB/3.10.3 (Windows NT 10.0)',
         'X-SafeExamBrowser-ConfigKeyHash': wrongHash
       }
-    }, { pin: token.pin })
+    })
 
     assert.strictEqual(res1.statusCode, 200, 'Exchange must succeed under decoupled model')
     assert.strictEqual(res1.json?.success, true)
@@ -375,13 +391,13 @@ describe('Phase 1: SEB Exchange Error Handling, Diagnostic Codes & Non-Destructi
     const res = await httpRequest({
       hostname: 'localhost',
       port,
-      path: '/api/v1/seb/exchange-pin',
-      method: 'POST',
+      path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0'
       }
-    }, { pin: token.pin })
+    })
 
     assert.strictEqual(res.statusCode, 200)
     assert.strictEqual(res.json?.success, true)

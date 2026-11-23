@@ -15,6 +15,7 @@ function isIgnoredConsoleError(text: string): boolean {
     text.includes('ERR_CONNECTION_REFUSED') ||
     text.includes('ERR_INTERNET_DISCONNECTED') ||
     text.includes('ERR_SOCKET_NOT_CONNECTED') ||
+    text.includes('ERR_NAME_NOT_RESOLVED') ||
     text.includes('proctornet-storage') ||
     text.includes('s3.amazonaws.com') ||
     text.includes('evidence%2Fscreenshots') ||

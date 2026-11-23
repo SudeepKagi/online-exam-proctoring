@@ -143,14 +143,14 @@ class SebDiagnosticsService {
       likelyCause = evaluation.likelyCause
     } else if (code === 'SEB_HEADER_MISSING') {
       likelyCause = 'Candidate accessed the endpoint using a standard web browser or SEB stripped headers.'
-    } else if (code === 'INVALID_CODE') {
-      likelyCause = 'Candidate entered a typo or incorrect 6-digit launch code.'
-    } else if (code === 'CODE_EXPIRED') {
-      likelyCause = 'Launch code exceeded the 5-minute activation window.'
-    } else if (code === 'CODE_USED') {
-      likelyCause = 'Launch code was already redeemed in a prior session.'
+    } else if (code === 'INVALID_TOKEN') {
+      likelyCause = 'Unrecognized or malformed launch token.'
+    } else if (code === 'TOKEN_EXPIRED') {
+      likelyCause = 'Launch token exceeded the 5-minute activation window.'
+    } else if (code === 'TOKEN_ALREADY_USED') {
+      likelyCause = 'Launch token was already redeemed in a prior session.'
     } else if (code === 'RATE_LIMITED') {
-      likelyCause = 'Excessive incorrect code attempts triggered temporary rate limiting.'
+      likelyCause = 'Excessive incorrect attempts triggered temporary rate limiting.'
     } else if (code === 'INSTITUTION_NOT_CONFIGURED') {
       likelyCause = 'Institution Safe Exam Browser configuration is missing or incomplete.'
     } else if (code === 'STORAGE_UNAVAILABLE') {
@@ -191,9 +191,10 @@ class SebDiagnosticsService {
     const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
     const recent = exchangeFailures.filter(e => e.timestamp >= oneDayAgo)
     const failureCounts24h = {
+      INVALID_TOKEN: 0,
       INVALID_CODE: 0,
-      CODE_EXPIRED: 0,
-      CODE_USED: 0,
+      TOKEN_EXPIRED: 0,
+      TOKEN_ALREADY_USED: 0,
       RATE_LIMITED: 0,
       SEB_HEADER_MISSING: 0,
       SEB_HEADER_MISMATCH: 0,

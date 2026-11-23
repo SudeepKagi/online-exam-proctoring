@@ -25,7 +25,7 @@ def analyze_buttons():
         'LiveConsolePage.jsx': '/invigilator/live/:id',
         'ExamArenaPage.jsx': '/student/exams/:id/arena',
         'PreExamCheckPage.jsx': '/student/exams/:id/precheck',
-        'SebPinEntryPage.jsx': '/seb/pin',
+        'SebHandoffPage.jsx': '/seb/handoff',
         'SebRequiredPage.jsx': '/seb/required',
         'StudentDashboardPage.jsx': '/student/dashboard',
         'StudentExamStartPage.jsx': '/student/exams/:id/start',

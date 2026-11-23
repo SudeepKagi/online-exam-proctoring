@@ -252,6 +252,9 @@ class AttemptService {
   }
 
   async getAttemptResults(attemptId, userId, role) {
+    if (!attemptId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(attemptId)) {
+      throw httpErr('Attempt not found', 404, 'ATTEMPT_NOT_FOUND')
+    }
     const attempt = await prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {

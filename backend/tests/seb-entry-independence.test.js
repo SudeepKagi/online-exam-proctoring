@@ -56,7 +56,7 @@ function httpRequest({ hostname, port, path, method = 'GET', headers = {}, body 
   })
 }
 
-describe('Safe Exam Browser (SEB) Entry Independence & Launch Code Suite (§Phase 2)', () => {
+describe('Safe Exam Browser (SEB) Entry Independence & Resilient Handoff Suite (§Phase 2)', () => {
   let server
   let serverPort
   let testStudent
@@ -181,19 +181,19 @@ describe('Safe Exam Browser (SEB) Entry Independence & Launch Code Suite (§Phas
     })
   })
 
-  describe('2. Launch Code: 6 Digits, 5 Minutes TTL, Single-Use & Hashed', () => {
-    it('creates 6-digit numeric PIN with 5-minute validity', () => {
+  describe('2. Launch Token Service & Replay Window: 5 Minutes TTL, Single-Use & 60s Replay Tolerance', () => {
+    it('creates high-entropy launch token with 5-minute validity', () => {
       const token = sebTokenService.createLaunchToken({
         userId: testStudent.id,
         userRole: 'STUDENT',
         examId: testExam.id
       })
-      assert.ok(/^\d{6}$/.test(token.pin), 'PIN must be exactly 6 digits')
+      assert.ok(typeof token.launchToken === 'string' && token.launchToken.length === 64, 'Launch token must be 64-char hex string')
       assert.ok(token.expiresAt > Date.now() + 4 * 60 * 1000, 'TTL must be ~5 minutes')
       assert.ok(token.expiresAt <= Date.now() + 5 * 60 * 1000 + 500, 'TTL must not exceed 5 minutes')
     })
 
-    it('exchanges correct 6-digit code for authenticated user session and returns lobby URL', async () => {
+    it('exchanges launch token for authenticated user session and returns lobby URL', async () => {
       const token = sebTokenService.createLaunchToken({
         userId: testStudent.id,
         userRole: 'STUDENT',
@@ -203,12 +203,12 @@ describe('Safe Exam Browser (SEB) Entry Independence & Launch Code Suite (§Phas
       const res = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
         headers: {
-          'user-agent': 'Mozilla/5.0 SEB/3.10.3'
-        },
-        body: { pin: token.pin }
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
       })
 
       assert.strictEqual(res.statusCode, 200)
@@ -222,56 +222,98 @@ describe('Safe Exam Browser (SEB) Entry Independence & Launch Code Suite (§Phas
       assert.ok(setCookies && setCookies.length > 0, 'Must issue authentication cookies')
     })
 
-    it('rejects wrong 6-digit code with friendly 401 INVALID_PIN / INVALID_CODE', async () => {
-      sebTokenService.createLaunchToken({
-        userId: testStudent.id,
-        userRole: 'STUDENT',
-        examId: testExam.id
-      })
-
-      const res = await httpRequest({
-        hostname: '127.0.0.1',
-        port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: '999999' }
-      })
-
-      assert.strictEqual(res.statusCode, 401)
-      assert.ok(['INVALID_PIN', 'INVALID_CODE'].includes(res.json?.code))
-      assert.ok(res.json?.message?.includes('Invalid') || res.json?.message?.includes('invalid'))
-    })
-
-    it('rejects reused 6-digit code with 409 PIN_ALREADY_USED / CODE_USED', async () => {
+    it('allows duplicate exchange or reload within 60-second replay grace window', async () => {
       const token = sebTokenService.createLaunchToken({
         userId: testStudent.id,
         userRole: 'STUDENT',
         examId: testExam.id
       })
 
-      // First exchange: succeeds
+      // First exchange
       const firstRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: token.pin }
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
       })
       assert.strictEqual(firstRes.statusCode, 200)
 
-      // Second exchange: rejected
+      // Immediate duplicate exchange within 60s
       const secondRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: token.pin }
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
       })
-      assert.strictEqual(secondRes.statusCode, 409)
-      assert.ok(['PIN_ALREADY_USED', 'CODE_USED'].includes(secondRes.json?.code))
+      assert.strictEqual(secondRes.statusCode, 200, 'Duplicate within grace window must succeed')
+      assert.strictEqual(secondRes.json?.success, true)
     })
 
-    it('rejects expired 6-digit code with 401 PIN_EXPIRED / CODE_EXPIRED', async () => {
+    it('rejects reused launch token after 60-second grace window with 409 TOKEN_ALREADY_USED', async () => {
+      const token = sebTokenService.createLaunchToken({
+        userId: testStudent.id,
+        userRole: 'STUDENT',
+        examId: testExam.id
+      })
+
+      // First exchange
+      const firstRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
+      })
+      assert.strictEqual(firstRes.statusCode, 200)
+
+      // Fast forward consumed timestamp beyond 60s
+      const record = sebTokenService.tokens.get(sebTokenService.hash(token.launchToken))
+      if (record) record.consumedAt = Date.now() - 70000
+
+      const secondRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
+      })
+      assert.strictEqual(secondRes.statusCode, 409)
+      assert.strictEqual(secondRes.json?.code, 'TOKEN_ALREADY_USED')
+    })
+
+    it('rejects invalid or unknown launch token with friendly 401 INVALID_TOKEN', async () => {
+      const res = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: '/api/v1/seb/exchange?launch=invalid_tampered_token_000000',
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
+      })
+
+      assert.strictEqual(res.statusCode, 401)
+      assert.strictEqual(res.json?.code, 'INVALID_TOKEN')
+      assert.ok(res.json?.message?.includes('Invalid') || res.json?.message?.includes('invalid'))
+      assert.ok(res.json?.requestId, 'Must provide requestId for diagnostics reference')
+    })
+
+    it('rejects expired launch token with 401 TOKEN_EXPIRED', async () => {
       const token = sebTokenService.createLaunchToken({
         userId: testStudent.id,
         userRole: 'STUDENT',
@@ -286,37 +328,58 @@ describe('Safe Exam Browser (SEB) Entry Independence & Launch Code Suite (§Phas
       const res = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: token.pin }
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
       })
 
       assert.strictEqual(res.statusCode, 401)
-      assert.ok(['PIN_EXPIRED', 'CODE_EXPIRED'].includes(res.json?.code))
+      assert.strictEqual(res.json?.code, 'TOKEN_EXPIRED')
     })
 
-    it('enforces brute force rate limit on PIN after 5 failed attempts (429 TOO_MANY_ATTEMPTS / RATE_LIMITED)', async () => {
-      for (let i = 0; i < 5; i++) {
-        const attemptRes = await httpRequest({
-          hostname: '127.0.0.1',
-          port: serverPort,
-          path: '/api/v1/seb/exchange-pin',
-          method: 'POST',
-          body: { pin: '888888' }
-        })
-        assert.strictEqual(attemptRes.statusCode, 401)
-      }
+    it('polls token status via /api/v1/seb/token-status/:token returning PENDING then CONSUMED', async () => {
+      const token = sebTokenService.createLaunchToken({
+        userId: testStudent.id,
+        userRole: 'STUDENT',
+        examId: testExam.id
+      })
 
-      // 6th attempt on the same PIN is blocked by rate limiter
-      const sixthRes = await httpRequest({
+      // Status before exchange: PENDING
+      const pendingRes = await httpRequest({
         hostname: '127.0.0.1',
         port: serverPort,
-        path: '/api/v1/seb/exchange-pin',
-        method: 'POST',
-        body: { pin: '888888' }
+        path: `/api/v1/seb/token-status/${token.launchToken}`,
+        method: 'GET'
       })
-      assert.strictEqual(sixthRes.statusCode, 429)
-      assert.ok(['TOO_MANY_ATTEMPTS', 'RATE_LIMITED'].includes(sixthRes.json?.code))
+      assert.strictEqual(pendingRes.statusCode, 200)
+      assert.strictEqual(pendingRes.json?.status, 'PENDING')
+      assert.strictEqual(pendingRes.json?.consumed, false)
+
+      // Exchange the token
+      await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/seb/exchange?launch=${token.launchToken}`,
+        method: 'GET',
+        headers: {
+          'user-agent': 'Mozilla/5.0 SEB/3.10.3',
+          Accept: 'application/json'
+        }
+      })
+
+      // Status after exchange: CONSUMED
+      const consumedRes = await httpRequest({
+        hostname: '127.0.0.1',
+        port: serverPort,
+        path: `/api/v1/seb/token-status/${token.launchToken}`,
+        method: 'GET'
+      })
+      assert.strictEqual(consumedRes.statusCode, 200)
+      assert.strictEqual(consumedRes.json?.status, 'CONSUMED')
+      assert.strictEqual(consumedRes.json?.consumed, true)
     })
   })
 
