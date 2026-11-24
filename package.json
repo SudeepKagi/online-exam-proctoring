@@ -28,6 +28,7 @@
     "test:smoke": "playwright test --grep @smoke",
     "test:all": "npm test --workspace=backend && playwright test",
     "release:check": "node scripts/ci/release-check.js",
+    "docs:check": "node scripts/docs/check-docs.js",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,json,md}\""
   },
