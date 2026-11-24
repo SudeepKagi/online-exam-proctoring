@@ -993,3 +993,24 @@ All sensitive data and secrets are redacted in accordance with deployment securi
 - **Command ID**: `220712da-bab0-4cce-a8ce-304e17f4fc7a`
 - **Status**: `Success` (Exit Code: 0)
 - **Log File**: `logs-deploy/update-seb-config-key.log`
+
+### [2026-11-23T10:27:40.110Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\run-live-backup.sh`
+- **Command ID**: `2500359f-0a7d-4c22-bfb9-e091d2fcbe04`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/run-live-backup.log`
+
+### [2026-11-23T10:29:58.132Z] Command on i-0d242d962823f0a89
+- **Script**: `scripts\ops\remote\automated-cutover.sh`
+- **Command ID**: `df8cbafc-e541-4bcb-8898-f78c252ec0f4`
+- **Status**: `Success` (Exit Code: 0)
+- **Log File**: `logs-deploy/deploy-e4813d946520864be4d471c39f587f3ccea9ec0a.log`
+
+### [2026-11-23T10:29:59.274Z] Production Deploy: `release-e4813d946520864be4d471c39f587f3ccea9ec0a`
+- **Target Server**: `i-0d242d962823f0a89` (proctornet.duckdns.org)
+- **Git SHA**: `e4813d946520864be4d471c39f587f3ccea9ec0a`
+- **Release Tarball**: `s3://proctornet-storage-prod-858109978489/releases/release-e4813d946520864be4d471c39f587f3ccea9ec0a.tar.gz`
+- **Duration**: 101 seconds
+- **Status**: SUCCESS
+- **Automated Rollback Safeguard**: Active
+- **Smoke Check**: 8/8 Passed Cleanly
